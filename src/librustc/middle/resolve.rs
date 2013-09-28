@@ -37,7 +37,6 @@ use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use std::str;
 use std::uint;
 use std::hashmap::{HashMap, HashSet};
 use std::util;
@@ -803,8 +802,7 @@ pub fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 
 pub fn Resolver(session: Session,
                 lang_items: LanguageItems,
-                crate: @Crate)
-             -> Resolver {
+                crate_span: Span) -> Resolver {
     let graph_root = @mut NameBindings();
 
     graph_root.define_module(Public,
@@ -812,14 +810,13 @@ pub fn Resolver(session: Session,
                              Some(DefId { crate: 0, node: 0 }),
                              NormalModuleKind,
                              false,
-                             crate.span);
+                             crate_span);
 
     let current_module = graph_root.get_module();
 
     let this = Resolver {
         session: @session,
         lang_items: lang_items,
-        crate: crate,
 
         // The outermost module has def ID 0; this is not reflected in the
         // AST.
@@ -862,7 +859,6 @@ pub fn Resolver(session: Session,
 pub struct Resolver {
     session: @Session,
     lang_items: LanguageItems,
-    crate: @Crate,
 
     intr: @ident_interner,
 
@@ -959,8 +955,8 @@ impl<'self> Visitor<()> for UnusedImportCheckVisitor<'self> {
 
 impl Resolver {
     /// The main name resolution procedure.
-    pub fn resolve(&mut self) {
-        self.build_reduced_graph();
+    pub fn resolve(&mut self, crate: &ast::Crate) {
+        self.build_reduced_graph(crate);
         self.session.abort_if_errors();
 
         self.resolve_imports();
@@ -969,10 +965,10 @@ impl Resolver {
         self.record_exports();
         self.session.abort_if_errors();
 
-        self.resolve_crate();
+        self.resolve_crate(crate);
         self.session.abort_if_errors();
 
-        self.check_for_unused_imports();
+        self.check_for_unused_imports(crate);
     }
 
     //
@@ -983,12 +979,12 @@ impl Resolver {
     //
 
     /// Constructs the reduced graph for the entire crate.
-    pub fn build_reduced_graph(&mut self) {
+    pub fn build_reduced_graph(&mut self, crate: &ast::Crate) {
         let initial_parent =
             ModuleReducedGraphParent(self.graph_root.get_module());
 
         let mut visitor = BuildReducedGraphVisitor { resolver: self, };
-        visit::walk_crate(&mut visitor, self.crate, initial_parent);
+        visit::walk_crate(&mut visitor, crate, initial_parent);
     }
 
     /// Returns the current module tracked by the reduced graph parent.
@@ -3554,10 +3550,10 @@ impl Resolver {
         return None;
     }
 
-    pub fn resolve_crate(&mut self) {
+    pub fn resolve_crate(&mut self, crate: &ast::Crate) {
         debug!("(resolving crate) starting");
 
-        visit::walk_crate(self, self.crate, ());
+        visit::walk_crate(self, crate, ());
     }
 
     pub fn resolve_item(&mut self, item: @item) {
@@ -4986,40 +4982,6 @@ impl Resolver {
         }
     }
 
-    pub fn name_exists_in_scope_struct(&mut self, name: &str) -> bool {
-        let this = &mut *self;
-
-        let mut i = this.type_ribs.len();
-        while i != 0 {
-          i -= 1;
-          match this.type_ribs[i].kind {
-            MethodRibKind(node_id, _) =>
-              for item in this.crate.module.items.iter() {
-                if item.id == node_id {
-                  match item.node {
-                    item_struct(class_def, _) => {
-                      for field in class_def.fields.iter() {
-                        match field.node.kind {
-                          unnamed_field => {},
-                          named_field(ident, _) => {
-                              if str::eq_slice(this.session.str_of(ident),
-                                               name) {
-                                return true
-                              }
-                            }
-                        }
-                      }
-                    }
-                    _ => {}
-                  }
-                }
-            },
-          _ => {}
-        }
-      }
-      return false;
-    }
-
     pub fn resolve_expr(&mut self, expr: @Expr) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
@@ -5060,47 +5022,38 @@ impl Resolver {
                     }
                     None => {
                         let wrong_name = self.path_idents_to_str(path);
-                        if self.name_exists_in_scope_struct(wrong_name) {
-                            self.resolve_error(expr.span,
-                                        fmt!("unresolved name `%s`. \
-                                            Did you mean `self.%s`?",
-                                        wrong_name,
-                                        wrong_name));
-                        }
-                        else {
-                            // Be helpful if the name refers to a struct
-                            // (The pattern matching def_tys where the id is in self.structs
-                            // matches on regular structs while excluding tuple- and enum-like
-                            // structs, which wouldn't result in this error.)
-                            match self.with_no_errors(|this|
-                                this.resolve_path(expr.id, path, TypeNS, false)) {
-                                Some(DefTy(struct_id))
-                                  if self.structs.contains(&struct_id) => {
-                                    self.resolve_error(expr.span,
-                                            fmt!("`%s` is a structure name, but this expression \
-                                                uses it like a function name", wrong_name));
+                        // Be helpful if the name refers to a struct
+                        // (The pattern matching def_tys where the id is in self.structs
+                        // matches on regular structs while excluding tuple- and enum-like
+                        // structs, which wouldn't result in this error.)
+                        match self.with_no_errors(|this|
+                            this.resolve_path(expr.id, path, TypeNS, false)) {
+                            Some(DefTy(struct_id))
+                              if self.structs.contains(&struct_id) => {
+                                self.resolve_error(expr.span,
+                                        fmt!("`%s` is a structure name, but this expression \
+                                            uses it like a function name", wrong_name));
 
-                                    self.session.span_note(expr.span, fmt!("Did you mean to write: \
-                                                `%s { /* fields */ }`?", wrong_name));
+                                self.session.span_note(expr.span, fmt!("Did you mean to write: \
+                                            `%s { /* fields */ }`?", wrong_name));
 
-                                }
-                                _ =>
-                                   // limit search to 5 to reduce the number
-                                   // of stupid suggestions
-                                   match self.find_best_match_for_name(wrong_name, 5) {
-                                       Some(m) => {
-                                           self.resolve_error(expr.span,
-                                               fmt!("unresolved name `%s`. \
-                                                   Did you mean `%s`?",
-                                                   wrong_name, m));
-                                       }
-                                       None => {
-                                           self.resolve_error(expr.span,
-                                                fmt!("unresolved name `%s`.",
-                                                    wrong_name));
-                                       }
-                                   }
                             }
+                            _ =>
+                               // limit search to 5 to reduce the number
+                               // of stupid suggestions
+                               match self.find_best_match_for_name(wrong_name, 5) {
+                                   Some(m) => {
+                                       self.resolve_error(expr.span,
+                                           fmt!("unresolved name `%s`. \
+                                               Did you mean `%s`?",
+                                               wrong_name, m));
+                                   }
+                                   None => {
+                                       self.resolve_error(expr.span,
+                                            fmt!("unresolved name `%s`.",
+                                                wrong_name));
+                                   }
+                               }
                         }
                     }
                 }
@@ -5431,9 +5384,9 @@ impl Resolver {
     // resolve data structures.
     //
 
-    pub fn check_for_unused_imports(&self) {
+    pub fn check_for_unused_imports(&self, crate: &ast::Crate) {
         let mut visitor = UnusedImportCheckVisitor{ resolver: self };
-        visit::walk_crate(&mut visitor, self.crate, ());
+        visit::walk_crate(&mut visitor, crate, ());
     }
 
     pub fn check_for_item_unused_imports(&self, vi: &view_item) {
@@ -5549,10 +5502,10 @@ pub struct CrateMap {
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: Session,
                      lang_items: LanguageItems,
-                     crate: @Crate)
+                     crate: &Crate)
                   -> CrateMap {
-    let mut resolver = Resolver(session, lang_items, crate);
-    resolver.resolve();
+    let mut resolver = Resolver(session, lang_items, crate.span);
+    resolver.resolve(crate);
     CrateMap {
         def_map: resolver.def_map,
         exp_map2: resolver.export_map2,

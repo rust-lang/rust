@@ -3075,16 +3075,17 @@ pub fn write_abi_version(ccx: &mut CrateContext) {
 }
 
 pub fn trans_crate(sess: session::Session,
-                   crate: &ast::Crate,
+                   crate: ast::Crate,
                    analysis: &CrateAnalysis,
                    output: &Path) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
     if unsafe { !llvm::LLVMRustStartMultithreading() } {
-        //sess.bug("couldn't enable multi-threaded LLVM");
+        sess.bug("couldn't enable multi-threaded LLVM");
     }
 
     let mut symbol_hasher = hash::default_state();
-    let link_meta = link::build_link_meta(sess, crate, output, &mut symbol_hasher);
+    let link_meta = link::build_link_meta(sess, &crate, output,
+                                          &mut symbol_hasher);
 
     // Append ".rc" to crate name as LLVM module identifier.
     //
@@ -3107,7 +3108,7 @@ pub fn trans_crate(sess: session::Session,
                                      analysis.reachable);
 
     if ccx.sess.opts.debuginfo {
-        debuginfo::initialize(ccx, crate);
+        debuginfo::initialize(ccx, &crate);
     }
 
     {
@@ -3144,7 +3145,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     // Translate the metadata.
-    write_metadata(ccx, crate);
+    write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
         io::println("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs);

@@ -22,9 +22,9 @@ use syntax::opt_vec;
 
 static STD_VERSION: &'static str = "0.9-pre";
 
-pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::Crate)
-                               -> @ast::Crate {
-    if use_std(crate) {
+pub fn maybe_inject_libstd_ref(sess: Session, crate: ast::Crate)
+                               -> ast::Crate {
+    if use_std(&crate) {
         inject_libstd_ref(sess, crate)
     } else {
         crate
@@ -51,7 +51,7 @@ struct StandardLibraryInjector {
 }
 
 impl fold::ast_fold for StandardLibraryInjector {
-    fn fold_crate(&self, crate: &ast::Crate) -> ast::Crate {
+    fn fold_crate(&self, crate: ast::Crate) -> ast::Crate {
         let version = STD_VERSION.to_managed();
         let vi1 = ast::view_item {
             node: ast::view_item_extern_mod(self.sess.ident_of("std"),
@@ -77,10 +77,9 @@ impl fold::ast_fold for StandardLibraryInjector {
             new_module = self.fold_mod(&new_module);
         }
 
-        // FIXME #2543: Bad copy.
         ast::Crate {
             module: new_module,
-            ..(*crate).clone()
+            ..crate
         }
     }
 
@@ -133,9 +132,9 @@ impl fold::ast_fold for StandardLibraryInjector {
     }
 }
 
-fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
+fn inject_libstd_ref(sess: Session, crate: ast::Crate) -> ast::Crate {
     let fold = StandardLibraryInjector {
         sess: sess,
     };
-    @fold.fold_crate(crate)
+    fold.fold_crate(crate)
 }

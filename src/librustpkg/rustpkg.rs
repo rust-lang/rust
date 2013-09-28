@@ -85,7 +85,7 @@ struct PkgScript<'self> {
     /// The config for compiling the custom build script
     cfg: ast::CrateConfig,
     /// The crate for the custom build script
-    crate: @ast::Crate,
+    crate: Option<ast::Crate>,
     /// Directory in which to store build output
     build_dir: Path
 }
@@ -125,7 +125,7 @@ impl<'self> PkgScript<'self> {
             input: script,
             sess: sess,
             cfg: cfg,
-            crate: crate,
+            crate: Some(crate),
             build_dir: work_dir
         }
     }
@@ -134,12 +134,13 @@ impl<'self> PkgScript<'self> {
     /// is the command to pass to it (e.g., "build", "clean", "install")
     /// Returns a pair of an exit code and list of configs (obtained by
     /// calling the package script's configs() function if it exists
-    fn run_custom(&self, exec: &mut workcache::Exec, sysroot: &Path) -> (~[~str], ExitCode) {
+    fn run_custom(&mut self, exec: &mut workcache::Exec,
+                  sysroot: &Path) -> (~[~str], ExitCode) {
         let sess = self.sess;
 
         debug!("Working directory = %s", self.build_dir.to_str());
         // Collect together any user-defined commands in the package script
-        let crate = util::ready_crate(sess, self.crate);
+        let crate = util::ready_crate(sess, self.crate.take_unwrap());
         debug!("Building output filenames with script name %s",
                driver::source_name(&driver::file_input(self.input.clone())));
         let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
@@ -419,10 +420,10 @@ impl CtxMethods for BuildContext {
                     let sub_id = pkgid.clone();
                     declare_package_script_dependency(prep, &*pkg_src);
                     do prep.exec |exec| {
-                        let pscript = PkgScript::parse(@sub_sysroot.clone(),
-                                                       package_script_path_clone.clone(),
-                                                       &sub_ws,
-                                                       &sub_id);
+                        let mut pscript = PkgScript::parse(@sub_sysroot.clone(),
+                                                          package_script_path_clone.clone(),
+                                                          &sub_ws,
+                                                          &sub_id);
 
                         pscript.run_custom(exec, &sub_sysroot)
                     }
