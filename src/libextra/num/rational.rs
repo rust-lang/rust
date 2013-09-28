@@ -50,7 +50,7 @@ impl<T: Clone + Integer + Ord>
     #[inline]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
         if denom == Zero::zero() {
-            fail!("denominator == 0");
+            fail2!("denominator == 0");
         }
         let mut ret = Ratio::new_raw(numer, denom);
         ret.reduce();
@@ -254,13 +254,13 @@ impl<T: Clone + Integer + Ord> Fractional for Ratio<T> {
 impl<T: ToStr> ToStr for Ratio<T> {
     /// Renders as `numer/denom`.
     fn to_str(&self) -> ~str {
-        fmt!("%s/%s", self.numer.to_str(), self.denom.to_str())
+        format!("{}/{}", self.numer.to_str(), self.denom.to_str())
     }
 }
 impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
     /// Renders as `numer/denom` where the numbers are in base `radix`.
     fn to_str_radix(&self, radix: uint) -> ~str {
-        fmt!("%s/%s", self.numer.to_str_radix(radix), self.denom.to_str_radix(radix))
+        format!("{}/{}", self.numer.to_str_radix(radix), self.denom.to_str_radix(radix))
     }
 }
 

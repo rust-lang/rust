@@ -141,7 +141,7 @@ impl<'self> ToBase64 for &'self [u8] {
                     v.push('=' as u8);
                 }
             }
-            _ => fail!("Algebra is broken, please alert the math police")
+            _ => fail2!("Algebra is broken, please alert the math police")
         }
 
         unsafe {
@@ -202,7 +202,7 @@ impl<'self> FromBase64 for &'self str {
                 '/'|'_' => buf |= 0x3F,
                 '\r'|'\n' => loop,
                 '=' => break,
-                _ => return Err(fmt!("Invalid character '%c' at position %u",
+                _ => return Err(format!("Invalid character '{}' at position {}",
                                      self.char_at(idx), idx))
             }
 
@@ -218,7 +218,7 @@ impl<'self> FromBase64 for &'self str {
 
         for (idx, byte) in it {
             if (byte as char) != '=' {
-                return Err(fmt!("Invalid character '%c' at position %u",
+                return Err(format!("Invalid character '{}' at position {}",
                                 self.char_at(idx), idx));
             }
         }

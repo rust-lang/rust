@@ -232,7 +232,7 @@ pub struct Bitv {
 }
 
 fn die() -> ! {
-    fail!("Tried to do operation on bit vectors with different sizes");
+    fail2!("Tried to do operation on bit vectors with different sizes");
 }
 
 impl Bitv {
@@ -1357,7 +1357,7 @@ mod tests {
         let mut b = Bitv::new(14, true);
         b.clear();
         do b.ones |i| {
-            fail!("found 1 at %?", i)
+            fail2!("found 1 at {:?}", i)
         };
     }
 
@@ -1366,7 +1366,7 @@ mod tests {
         let mut b = Bitv::new(140, true);
         b.clear();
         do b.ones |i| {
-            fail!("found 1 at %?", i)
+            fail2!("found 1 at {:?}", i)
         };
     }
 

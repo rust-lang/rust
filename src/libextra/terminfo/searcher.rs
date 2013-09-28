@@ -60,7 +60,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
             return Some(newp);
         }
         // on some installations the dir is named after the hex of the char (e.g. OS X)
-        let newp = ~p.push_many(&[fmt!("%x", first_char as uint), term.to_owned()]);
+        let newp = ~p.push_many(&[format!("{:x}", first_char as uint), term.to_owned()]);
         if os::path_exists(p) && os::path_exists(newp) {
             return Some(newp);
         }
@@ -72,7 +72,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
 pub fn open(term: &str) -> Result<@Reader, ~str> {
     match get_dbpath_for_term(term) {
         Some(x) => file_reader(x),
-        None => Err(fmt!("could not find terminfo entry for %s", term))
+        None => Err(format!("could not find terminfo entry for {}", term))
     }
 }
 

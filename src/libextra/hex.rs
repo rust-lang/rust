@@ -102,8 +102,8 @@ impl<'self> FromHex for &'self str {
                     buf >>= 4;
                     loop
                 }
-                _ => return Err(fmt!("Invalid character '%c' at position %u",
-                                     self.char_at(idx), idx))
+                _ => return Err(format!("Invalid character '{}' at position {}",
+                                        self.char_at(idx), idx))
             }
 
             modulus += 1;
@@ -158,15 +158,15 @@ mod tests {
     #[test]
     pub fn test_to_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!([i as u8].to_hex(), fmt!("%02x", i as uint));
+            assert_eq!([i as u8].to_hex(), format!("{:02x}", i as uint));
         }
     }
 
     #[test]
     pub fn test_from_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!(fmt!("%02x", i as uint).from_hex().unwrap(), ~[i as u8]);
-            assert_eq!(fmt!("%02X", i as uint).from_hex().unwrap(), ~[i as u8]);
+            assert_eq!(format!("{:02x}", i as uint).from_hex().unwrap(), ~[i as u8]);
+            assert_eq!(format!("{:02X}", i as uint).from_hex().unwrap(), ~[i as u8]);
         }
     }
 

@@ -93,10 +93,10 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                         out.push_char(ch);
                       }
 
-                      _ => out.push_str(fmt!("%%%X", ch as uint))
+                      _ => out.push_str(format!("%{:X}", ch as uint))
                     }
                 } else {
-                    out.push_str(fmt!("%%%X", ch as uint));
+                    out.push_str(format!("%{:X}", ch as uint));
                 }
               }
             }
@@ -192,7 +192,7 @@ fn encode_plus(s: &str) -> ~str {
                 out.push_char(ch);
               }
               ' ' => out.push_char('+'),
-              _ => out.push_str(fmt!("%%%X", ch as uint))
+              _ => out.push_str(format!("%{:X}", ch as uint))
             }
         }
 
@@ -218,7 +218,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
                 first = false;
             }
 
-            out.push_str(fmt!("%s=%s", key, encode_plus(*value)));
+            out.push_str(format!("{}={}", key, encode_plus(*value)));
         }
     }
 
@@ -324,8 +324,8 @@ fn userinfo_from_str(uinfo: &str) -> UserInfo {
 
 fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
     match userinfo.pass {
-        Some(ref pass) => fmt!("%s:%s@", userinfo.user, *pass),
-        None => fmt!("%s@", userinfo.user),
+        Some(ref pass) => format!("{}:{}@", userinfo.user, *pass),
+        None => format!("{}@", userinfo.user),
     }
 }
 
@@ -345,7 +345,7 @@ pub fn query_to_str(query: &Query) -> ~str {
     for kv in query.iter() {
         match kv {
             &(ref k, ref v) => {
-                strvec.push(fmt!("%s=%s",
+                strvec.push(format!("{}={}",
                     encode_component(*k),
                     encode_component(*v))
                 );
@@ -673,21 +673,21 @@ pub fn to_str(url: &Url) -> ~str {
     let authority = if url.host.is_empty() {
         ~""
     } else {
-        fmt!("//%s%s", user, url.host)
+        format!("//{}{}", user, url.host)
     };
 
     let query = if url.query.is_empty() {
         ~""
     } else {
-        fmt!("?%s", query_to_str(&url.query))
+        format!("?{}", query_to_str(&url.query))
     };
 
     let fragment = match url.fragment {
-        Some(ref fragment) => fmt!("#%s", encode_component(*fragment)),
+        Some(ref fragment) => format!("\\#{}", encode_component(*fragment)),
         None => ~"",
     };
 
-    fmt!("%s:%s%s%s%s", url.scheme, authority, url.path, query, fragment)
+    format!("{}:{}{}{}{}", url.scheme, authority, url.path, query, fragment)
 }
 
 impl ToStr for Url {
