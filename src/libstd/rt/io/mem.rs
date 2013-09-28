@@ -22,7 +22,7 @@ use vec;
 
 /// Writes to an owned, growable byte vector
 pub struct MemWriter {
-    buf: ~[u8]
+    priv buf: ~[u8]
 }
 
 impl MemWriter {
@@ -66,8 +66,8 @@ impl Decorator<~[u8]> for MemWriter {
 
 /// Reads from an owned byte vector
 pub struct MemReader {
-    buf: ~[u8],
-    pos: uint
+    priv buf: ~[u8],
+    priv pos: uint
 }
 
 impl MemReader {
@@ -129,8 +129,8 @@ impl Decorator<~[u8]> for MemReader {
 
 /// Writes to a fixed-size byte slice
 pub struct BufWriter<'self> {
-    buf: &'self mut [u8],
-    pos: uint
+    priv buf: &'self mut [u8],
+    priv pos: uint
 }
 
 impl<'self> BufWriter<'self> {
@@ -157,8 +157,8 @@ impl<'self> Seek for BufWriter<'self> {
 
 /// Reads from a fixed-size byte slice
 pub struct BufReader<'self> {
-    buf: &'self [u8],
-    pos: uint
+    priv buf: &'self [u8],
+    priv pos: uint
 }
 
 impl<'self> BufReader<'self> {
@@ -199,9 +199,9 @@ impl<'self> Seek for BufReader<'self> {
 ///Calls a function with a MemWriter and returns
 ///the writer's stored vector.
 pub fn with_mem_writer(writeFn:&fn(&mut MemWriter)) -> ~[u8] {
-  let mut writer = MemWriter::new();
-  writeFn(&mut writer);
-  writer.inner()
+    let mut writer = MemWriter::new();
+    writeFn(&mut writer);
+    writer.inner()
 }
 
 #[cfg(test)]
