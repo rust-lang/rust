@@ -30,6 +30,7 @@ use extra::json::ToJson;
 use extra::sort;
 
 use syntax::ast;
+use syntax::ast_util::is_local;
 use syntax::attr;
 
 use clean;
@@ -325,7 +326,8 @@ impl DocFolder for Cache {
         match item.inner {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
-                    Some(clean::ResolvedPath{ id, _ }) => {
+                    Some(clean::ResolvedPath{ did, _ }) if is_local(did) => {
+                        let id = did.node;
                         let v = do self.implementors.find_or_insert_with(id) |_|{
                             ~[]
                         };
@@ -412,8 +414,8 @@ impl DocFolder for Cache {
             }
             clean::ImplItem(ref i) => {
                 match i.for_ {
-                    clean::ResolvedPath{ id, _ } => {
-                        self.parent_stack.push(id); true
+                    clean::ResolvedPath{ did, _ } if is_local(did) => {
+                        self.parent_stack.push(did.node); true
                     }
                     _ => false
                 }
@@ -428,7 +430,8 @@ impl DocFolder for Cache {
                 match item.inner {
                     clean::ImplItem(i) => {
                         match i.for_ {
-                            clean::ResolvedPath { id, _ } => {
+                            clean::ResolvedPath { did, _ } if is_local(did) => {
+                                let id = did.node;
                                 let v = do self.impls.find_or_insert_with(id) |_| {
                                     ~[]
                                 };
@@ -1179,7 +1182,7 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
         Some(ref ty) => {
             write!(w, "{} for ", *ty);
             match *ty {
-                clean::ResolvedPath { id, _ } => Some(id),
+                clean::ResolvedPath { did, _ } => Some(did),
                 _ => None,
             }
         }
@@ -1201,7 +1204,11 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
         }
 
         // No documentation? Attempt to slurp in the trait's documentation
-        let trait_id = match trait_id { Some(id) => id, None => loop };
+        let trait_id = match trait_id {
+            None => loop,
+            Some(id) if is_local(id) => loop,
+            Some(id) => id.node,
+        };
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
                 let name = meth.name.get_ref().as_slice();
@@ -1307,7 +1314,7 @@ impl<'self> fmt::Default for Source<'self> {
         }
         write!(fmt.buf, "<pre class='line-numbers'>");
         for i in range(1, lines + 1) {
-            write!(fmt.buf, "<span id='{0}'>{0:1$u}</span>\n", i, cols);
+            write!(fmt.buf, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols);
         }
         write!(fmt.buf, "</pre>");
         write!(fmt.buf, "<pre class='rust'>");

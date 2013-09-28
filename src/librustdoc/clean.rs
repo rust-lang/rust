@@ -540,9 +540,11 @@ impl Clean<TraitMethod> for ast::trait_method {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum Type {
     /// structs/enums/traits (anything that'd be an ast::ty_path)
-    ResolvedPath { path: Path, typarams: Option<~[TyParamBound]>, id: ast::NodeId },
-    /// Reference to an item in an external crate (fully qualified path)
-    External(~str, ~str),
+    ResolvedPath {
+        path: Path,
+        typarams: Option<~[TyParamBound]>,
+        did: ast::DefId
+    },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
     /// For parameterized types, so the consumer of the JSON don't go looking
@@ -1148,39 +1150,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         },
         x => fail!("resolved type maps to a weird def %?", x),
     };
-
-    if def_id.crate != ast::CRATE_NODE_ID {
-        use rustc::metadata::decoder::*;
-
-        let sess = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess;
-        let cratedata = ::rustc::metadata::cstore::get_crate_data(sess.cstore, def_id.crate);
-        let doc = lookup_item(def_id.node, cratedata.data);
-        let path = syntax::ast_map::path_to_str_with_sep(item_path(doc), "::", sess.intr());
-        let ty = match def_like_to_def(item_to_def_like(doc, def_id, def_id.crate)) {
-            DefFn(*) => ~"fn",
-            DefTy(*) => ~"enum",
-            DefTrait(*) => ~"trait",
-            DefPrimTy(p) => match p {
-                ty_str => ~"str",
-                ty_bool => ~"bool",
-                ty_int(t) => match t.to_str() {
-                    ~"" => ~"i",
-                    s => s
-                },
-                ty_uint(t) => t.to_str(),
-                ty_float(t) => t.to_str(),
-                ty_char => ~"char",
-            },
-            DefTyParam(*) => ~"generic",
-            DefStruct(*) => ~"struct",
-            DefTyParamBinder(*) => ~"typaram_binder",
-            x => fail!("resolved external maps to a weird def %?", x),
-        };
-        let cname = cratedata.name.to_owned();
-        External(cname + "::" + path, ty)
-    } else {
-        ResolvedPath {path: path.clone(), typarams: tpbs, id: def_id.node}
-    }
+    ResolvedPath{ path: path, typarams: tpbs, did: def_id }
 }
 
 fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
