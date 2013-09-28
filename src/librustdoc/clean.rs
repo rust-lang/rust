@@ -71,7 +71,7 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
         Crate {
             name: match maybe_meta {
                 Some(x) => x.to_owned(),
-                None => fail!("rustdoc_ng requires a #[link(name=\"foo\")] crate attribute"),
+                None => fail2!("rustdoc_ng requires a \\#[link(name=\"foo\")] crate attribute"),
             },
             module: Some(self.module.clean()),
         }
@@ -575,9 +575,9 @@ pub enum Type {
 impl Clean<Type> for ast::Ty {
     fn clean(&self) -> Type {
         use syntax::ast::*;
-        debug!("cleaning type `%?`", self);
+        debug2!("cleaning type `{:?}`", self);
         let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
-        debug!("span corresponds to `%s`", codemap.span_to_str(self.span));
+        debug2!("span corresponds to `{}`", codemap.span_to_str(self.span));
         match self.node {
             ty_nil => Unit,
             ty_ptr(ref m) => RawPointer(m.mutbl.clean(), ~m.ty.clean()),
@@ -595,7 +595,7 @@ impl Clean<Type> for ast::Ty {
             ty_closure(ref c) => Closure(~c.clean()),
             ty_bare_fn(ref barefn) => BareFunction(~barefn.clean()),
             ty_bot => Bottom,
-            ref x => fail!("Unimplemented type %?", x),
+            ref x => fail2!("Unimplemented type {:?}", x),
         }
     }
 }
@@ -873,7 +873,7 @@ pub struct Static {
 
 impl Clean<Item> for doctree::Static {
     fn clean(&self) -> Item {
-        debug!("claning static %s: %?", self.name.clean(), self);
+        debug2!("claning static {}: {:?}", self.name.clean(), self);
         Item {
             name: Some(self.name.clean()),
             attrs: self.attrs.clean(),
@@ -1053,13 +1053,13 @@ trait ToSource {
 
 impl ToSource for syntax::codemap::Span {
     fn to_src(&self) -> ~str {
-        debug!("converting span %? to snippet", self.clean());
+        debug2!("converting span {:?} to snippet", self.clean());
         let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap.clone();
         let sn = match cm.span_to_snippet(*self) {
             Some(x) => x,
             None    => ~""
         };
-        debug!("got snippet %s", sn);
+        debug2!("got snippet {}", sn);
         sn
     }
 }
@@ -1084,17 +1084,17 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
         PatWild => ~"_",
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
-        PatStruct(*) => fail!("tried to get argument name from pat_struct, \
+        PatStruct(*) => fail2!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
         PatTup(*) => ~"(tuple arg NYI)",
         PatBox(p) => name_from_pat(p),
         PatUniq(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
-        PatLit(*) => fail!("tried to get argument name from pat_lit, \
+        PatLit(*) => fail2!("tried to get argument name from pat_lit, \
                             which is not allowed in function arguments"),
-        PatRange(*) => fail!("tried to get argument name from pat_range, \
+        PatRange(*) => fail2!("tried to get argument name from pat_range, \
                               which is not allowed in function arguments"),
-        PatVec(*) => fail!("tried to get argument name from pat_vec, \
+        PatVec(*) => fail2!("tried to get argument name from pat_vec, \
                              which is not allowed in function arguments")
     }
 }
@@ -1117,14 +1117,14 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
     use syntax::ast::*;
 
     let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
-    debug!("searching for %? in defmap", id);
+    debug2!("searching for {:?} in defmap", id);
     let d = match dm.find(&id) {
         Some(k) => k,
         None => {
             let ctxt = local_data::get(super::ctxtkey, |x| *x.unwrap());
-            debug!("could not find %? in defmap (`%s`)", id,
+            debug2!("could not find {:?} in defmap (`{}`)", id,
                    syntax::ast_map::node_id_to_str(ctxt.tycx.items, id, ctxt.sess.intr()));
-            fail!("Unexpected failure: unresolved id not in defmap (this is a bug!)")
+            fail2!("Unexpected failure: unresolved id not in defmap (this is a bug!)")
         }
     };
 
@@ -1133,7 +1133,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         DefSelf(i) | DefSelfTy(i) => return Self(i),
         DefTy(i) => i,
         DefTrait(i) => {
-            debug!("saw DefTrait in def_to_id");
+            debug2!("saw DefTrait in def_to_id");
             i
         },
         DefPrimTy(p) => match p {
@@ -1144,10 +1144,10 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         DefTyParam(i, _) => return Generic(i.node),
         DefStruct(i) => i,
         DefTyParamBinder(i) => {
-            debug!("found a typaram_binder, what is it? %d", i);
+            debug2!("found a typaram_binder, what is it? {}", i);
             return TyParamBinder(i);
         },
-        x => fail!("resolved type maps to a weird def %?", x),
+        x => fail2!("resolved type maps to a weird def {:?}", x),
     };
     ResolvedPath{ path: path, typarams: tpbs, did: def_id }
 }

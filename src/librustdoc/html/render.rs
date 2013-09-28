@@ -205,7 +205,7 @@ fn mkdir(path: &Path) {
     do io::io_error::cond.trap(|err| {
         error2!("Couldn't create directory `{}`: {}",
                 path.to_str(), err.desc);
-        fail!()
+        fail2!()
     }).inside {
         if !path.is_dir() {
             file::mkdir(path);
