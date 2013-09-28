@@ -34,7 +34,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
         expr_to_str(cx, args[0],
                     "first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;
-    debug!("Format string: %s", fmt);
+    debug2!("Format string: {}", fmt);
     fn parse_fmt_err_(cx: @ExtCtxt, sp: Span, msg: &str) -> ! {
         cx.span_fatal(sp, msg);
     }
@@ -198,53 +198,53 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
                               cx.expr_mut_addr_of(arg.span, buf));
     }
     fn log_conv(c: &Conv) {
-        debug!("Building conversion:");
+        debug2!("Building conversion:");
         match c.param {
-          Some(p) => { debug!("param: %s", p.to_str()); }
-          _ => debug!("param: none")
+          Some(p) => { debug2!("param: {}", p.to_str()); }
+          _ => debug2!("param: none")
         }
         for f in c.flags.iter() {
             match *f {
-              FlagLeftJustify => debug!("flag: left justify"),
-              FlagLeftZeroPad => debug!("flag: left zero pad"),
-              FlagSpaceForSign => debug!("flag: left space pad"),
-              FlagSignAlways => debug!("flag: sign always"),
-              FlagAlternate => debug!("flag: alternate")
+              FlagLeftJustify => debug2!("flag: left justify"),
+              FlagLeftZeroPad => debug2!("flag: left zero pad"),
+              FlagSpaceForSign => debug2!("flag: left space pad"),
+              FlagSignAlways => debug2!("flag: sign always"),
+              FlagAlternate => debug2!("flag: alternate")
             }
         }
         match c.width {
           CountIs(i) =>
-              debug!("width: count is %s", i.to_str()),
+              debug2!("width: count is {}", i.to_str()),
           CountIsParam(i) =>
-              debug!("width: count is param %s", i.to_str()),
-          CountIsNextParam => debug!("width: count is next param"),
-          CountImplied => debug!("width: count is implied")
+              debug2!("width: count is param {}", i.to_str()),
+          CountIsNextParam => debug2!("width: count is next param"),
+          CountImplied => debug2!("width: count is implied")
         }
         match c.precision {
           CountIs(i) =>
-              debug!("prec: count is %s", i.to_str()),
+              debug2!("prec: count is {}", i.to_str()),
           CountIsParam(i) =>
-              debug!("prec: count is param %s", i.to_str()),
-          CountIsNextParam => debug!("prec: count is next param"),
-          CountImplied => debug!("prec: count is implied")
+              debug2!("prec: count is param {}", i.to_str()),
+          CountIsNextParam => debug2!("prec: count is next param"),
+          CountImplied => debug2!("prec: count is implied")
         }
         match c.ty {
-          TyBool => debug!("type: bool"),
-          TyStr => debug!("type: str"),
-          TyChar => debug!("type: char"),
+          TyBool => debug2!("type: bool"),
+          TyStr => debug2!("type: str"),
+          TyChar => debug2!("type: char"),
           TyInt(s) => match s {
-            Signed => debug!("type: signed"),
-            Unsigned => debug!("type: unsigned")
+            Signed => debug2!("type: signed"),
+            Unsigned => debug2!("type: unsigned")
           },
-          TyBits => debug!("type: bits"),
+          TyBits => debug2!("type: bits"),
           TyHex(cs) => match cs {
-            CaseUpper => debug!("type: uhex"),
-            CaseLower => debug!("type: lhex"),
+            CaseUpper => debug2!("type: uhex"),
+            CaseLower => debug2!("type: lhex"),
           },
-          TyOctal => debug!("type: octal"),
-          TyFloat => debug!("type: float"),
-          TyPointer => debug!("type: pointer"),
-          TyPoly => debug!("type: poly")
+          TyOctal => debug2!("type: octal"),
+          TyFloat => debug2!("type: float"),
+          TyPointer => debug2!("type: pointer"),
+          TyPoly => debug2!("type: poly")
         }
     }
 
@@ -319,7 +319,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
     let expected_nargs = n + 1u; // n conversions + the fmt string
     if expected_nargs < nargs {
         cx.span_fatal
-            (sp, fmt!("too many arguments to fmt!. found %u, expected %u",
+            (sp, format!("too many arguments to fmt!. found {}, expected {}",
                            nargs, expected_nargs));
     }
 

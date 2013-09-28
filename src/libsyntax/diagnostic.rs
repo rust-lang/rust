@@ -69,7 +69,7 @@ struct CodemapT {
 impl span_handler for CodemapT {
     fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
-        fail!();
+        fail2!();
     }
     fn span_err(@mut self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
@@ -95,7 +95,7 @@ impl span_handler for CodemapT {
 impl handler for HandlerT {
     fn fatal(@mut self, msg: &str) -> ! {
         self.emit.emit(None, msg, fatal);
-        fail!();
+        fail2!();
     }
     fn err(@mut self, msg: &str) {
         self.emit.emit(None, msg, error);
@@ -116,7 +116,7 @@ impl handler for HandlerT {
           0u => return,
           1u => s = ~"aborting due to previous error",
           _  => {
-            s = fmt!("aborting due to %u previous errors",
+            s = format!("aborting due to {} previous errors",
                      self.err_count);
           }
         }
@@ -143,7 +143,7 @@ impl handler for HandlerT {
 }
 
 pub fn ice_msg(msg: &str) -> ~str {
-    fmt!("internal compiler error: %s", msg)
+    format!("internal compiler error: {}", msg)
 }
 
 pub fn mk_span_handler(handler: @mut handler, cm: @codemap::CodeMap)
@@ -228,12 +228,12 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
     let stderr = io::stderr();
 
     if !topic.is_empty() {
-        stderr.write_str(fmt!("%s ", topic));
+        stderr.write_str(format!("{} ", topic));
     }
 
-    print_maybe_styled(fmt!("%s: ", diagnosticstr(lvl)),
+    print_maybe_styled(format!("{}: ", diagnosticstr(lvl)),
                             term::attr::ForegroundColor(diagnosticcolor(lvl)));
-    print_maybe_styled(fmt!("%s\n", msg), term::attr::Bold);
+    print_maybe_styled(format!("{}\n", msg), term::attr::Bold);
 }
 
 pub struct DefaultEmitter;
@@ -273,13 +273,13 @@ fn highlight_lines(cm: @codemap::CodeMap,
     }
     // Print the offending lines
     for line in display_lines.iter() {
-        io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
+        io::stderr().write_str(format!("{}:{} ", fm.name, *line + 1u));
         let s = fm.get_line(*line as int) + "\n";
         io::stderr().write_str(s);
     }
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
-        let s = fmt!("%s:%u ", fm.name, last_line + 1u);
+        let s = format!("{}:{} ", fm.name, last_line + 1u);
         let mut indent = s.len();
         let mut out = ~"";
         while indent > 0u {
@@ -339,7 +339,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.map_default(~"", |span| cm.span_to_str(*span));
         print_diagnostic(ss, note,
-                         fmt!("in expansion of %s!", ei.callee.name));
+                         format!("in expansion of {}!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
         print_diagnostic(ss, note, "expansion site");
         print_macro_backtrace(cm, ei.call_site);

@@ -125,7 +125,7 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
-            Some(Err(msg)) => fail2!(msg),
+            Some(Err(msg)) => fail2!("{}", msg),
             None => return
         };
     if !run_tests_console(&opts, tests) { fail2!("Some tests failed"); }

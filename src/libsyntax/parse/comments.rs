@@ -134,7 +134,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         return lines.connect("\n");
     }
 
-    fail!("not a doc-comment: %s", comment);
+    fail2!("not a doc-comment: {}", comment);
 }
 
 fn read_to_eol(rdr: @mut StringReader) -> ~str {
@@ -161,7 +161,7 @@ fn consume_non_eol_whitespace(rdr: @mut StringReader) {
 }
 
 fn push_blank_line_comment(rdr: @mut StringReader, comments: &mut ~[cmnt]) {
-    debug!(">>> blank-line comment");
+    debug2!(">>> blank-line comment");
     let v: ~[~str] = ~[];
     comments.push(cmnt {style: blank_line, lines: v, pos: rdr.last_pos});
 }
@@ -179,9 +179,9 @@ fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
 
 fn read_shebang_comment(rdr: @mut StringReader, code_to_the_left: bool,
                                             comments: &mut ~[cmnt]) {
-    debug!(">>> shebang comment");
+    debug2!(">>> shebang comment");
     let p = rdr.last_pos;
-    debug!("<<< shebang comment");
+    debug2!("<<< shebang comment");
     comments.push(cmnt {
         style: if code_to_the_left { trailing } else { isolated },
         lines: ~[read_one_line_comment(rdr)],
@@ -191,19 +191,19 @@ fn read_shebang_comment(rdr: @mut StringReader, code_to_the_left: bool,
 
 fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
-    debug!(">>> line comments");
+    debug2!(">>> line comments");
     let p = rdr.last_pos;
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
-        debug!("%s", line);
+        debug2!("{}", line);
         if is_doc_comment(line) { // doc-comments are not put in comments
             break;
         }
         lines.push(line);
         consume_non_eol_whitespace(rdr);
     }
-    debug!("<<< line comments");
+    debug2!("<<< line comments");
     if !lines.is_empty() {
         comments.push(cmnt {
             style: if code_to_the_left { trailing } else { isolated },
@@ -242,14 +242,14 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
         }
         None => s,
     };
-    debug!("pushing line: %s", s1);
+    debug2!("pushing line: {}", s1);
     lines.push(s1);
 }
 
 fn read_block_comment(rdr: @mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut ~[cmnt]) {
-    debug!(">>> block comment");
+    debug2!(">>> block comment");
     let p = rdr.last_pos;
     let mut lines: ~[~str] = ~[];
     let col: CharPos = rdr.col;
@@ -275,7 +275,7 @@ fn read_block_comment(rdr: @mut StringReader,
     } else {
         let mut level: int = 1;
         while level > 0 {
-            debug!("=== block comment level %d", level);
+            debug2!("=== block comment level {}", level);
             if is_eof(rdr) {
                 (rdr as @mut reader).fatal(~"unterminated block comment");
             }
@@ -311,7 +311,7 @@ fn read_block_comment(rdr: @mut StringReader,
     if !is_eof(rdr) && rdr.curr != '\n' && lines.len() == 1u {
         style = mixed;
     }
-    debug!("<<< block comment");
+    debug2!("<<< block comment");
     comments.push(cmnt {style: style, lines: lines, pos: p});
 }
 
@@ -324,15 +324,15 @@ fn peeking_at_comment(rdr: @mut StringReader) -> bool {
 fn consume_comment(rdr: @mut StringReader,
                    code_to_the_left: bool,
                    comments: &mut ~[cmnt]) {
-    debug!(">>> consume comment");
+    debug2!(">>> consume comment");
     if rdr.curr == '/' && nextch(rdr) == '/' {
         read_line_comments(rdr, code_to_the_left, comments);
     } else if rdr.curr == '/' && nextch(rdr) == '*' {
         read_block_comment(rdr, code_to_the_left, comments);
     } else if rdr.curr == '#' && nextch(rdr) == '!' {
         read_shebang_comment(rdr, code_to_the_left, comments);
-    } else { fail!(); }
-    debug!("<<< consume comment");
+    } else { fail2!(); }
+    debug2!("<<< consume comment");
 }
 
 #[deriving(Clone)]
@@ -378,11 +378,11 @@ pub fn gather_comments_and_literals(span_diagnostic:
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
             do with_str_from(rdr, bstart) |s| {
-                debug!("tok lit: %s", s);
+                debug2!("tok lit: {}", s);
                 literals.push(lit {lit: s.to_owned(), pos: sp.lo});
             }
         } else {
-            debug!("tok: %s", token::to_str(get_ident_interner(), &tok));
+            debug2!("tok: {}", token::to_str(get_ident_interner(), &tok));
         }
         first_read = false;
     }
