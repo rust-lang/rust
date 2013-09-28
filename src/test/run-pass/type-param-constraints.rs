@@ -19,7 +19,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn r(i:int) -> r {

@@ -61,12 +61,10 @@ impl Clone for LoanDataFlowOperator {
 
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
-struct BorrowckVisitor;
-
-impl Visitor<@BorrowckCtxt> for BorrowckVisitor {
+impl Visitor<()> for BorrowckCtxt {
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl,
-                b:&Block, s:Span, n:NodeId, e:@BorrowckCtxt) {
-        borrowck_fn(self, fk, fd, b, s, n, e);
+                b:&Block, s:Span, n:NodeId, _:()) {
+        borrowck_fn(self, fk, fd, b, s, n);
     }
 }
 
@@ -78,7 +76,7 @@ pub fn check_crate(
     capture_map: moves::CaptureMap,
     crate: &ast::Crate) -> (root_map, write_guard_map)
 {
-    let bccx = @BorrowckCtxt {
+    let mut bccx = BorrowckCtxt {
         tcx: tcx,
         method_map: method_map,
         moves_map: moves_map,
@@ -96,40 +94,39 @@ pub fn check_crate(
             guaranteed_paths: 0,
         }
     };
+    let bccx = &mut bccx;
 
-    let mut v = BorrowckVisitor;
-    visit::walk_crate(&mut v, crate, bccx);
+    visit::walk_crate(bccx, crate, ());
 
     if tcx.sess.borrowck_stats() {
         io::println("--- borrowck stats ---");
-        printfln!("paths requiring guarantees: %u",
-                  bccx.stats.guaranteed_paths);
-        printfln!("paths requiring loans     : %s",
-                  make_stat(bccx, bccx.stats.loaned_paths_same));
-        printfln!("paths requiring imm loans : %s",
-                  make_stat(bccx, bccx.stats.loaned_paths_imm));
-        printfln!("stable paths              : %s",
-                  make_stat(bccx, bccx.stats.stable_paths));
-        printfln!("paths requiring purity    : %s",
-                  make_stat(bccx, bccx.stats.req_pure_paths));
+        println!("paths requiring guarantees: {}",
+                 bccx.stats.guaranteed_paths);
+        println!("paths requiring loans     : {}",
+                 make_stat(bccx, bccx.stats.loaned_paths_same));
+        println!("paths requiring imm loans : {}",
+                 make_stat(bccx, bccx.stats.loaned_paths_imm));
+        println!("stable paths              : {}",
+                 make_stat(bccx, bccx.stats.stable_paths));
+        println!("paths requiring purity    : {}",
+                 make_stat(bccx, bccx.stats.req_pure_paths));
     }
 
     return (bccx.root_map, bccx.write_guard_map);
 
-    fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> ~str {
+    fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as float;
         let total = bccx.stats.guaranteed_paths as float;
         fmt!("%u (%.0f%%)", stat  , stat_f * 100f / total)
     }
 }
 
-fn borrowck_fn(v: &mut BorrowckVisitor,
+fn borrowck_fn(this: &mut BorrowckCtxt,
                fk: &visit::fn_kind,
                decl: &ast::fn_decl,
                body: &ast::Block,
                sp: Span,
-               id: ast::NodeId,
-               this: @BorrowckCtxt) {
+               id: ast::NodeId) {
     match fk {
         &visit::fk_anon(*) |
         &visit::fk_fn_block(*) => {
@@ -166,7 +163,7 @@ fn borrowck_fn(v: &mut BorrowckVisitor,
         }
     }
 
-    visit::walk_fn(v, fk, decl, body, sp, id, this);
+    visit::walk_fn(this, fk, decl, body, sp, id, ());
 }
 
 // ----------------------------------------------------------------------

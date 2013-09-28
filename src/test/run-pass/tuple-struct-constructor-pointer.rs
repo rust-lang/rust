@@ -13,7 +13,7 @@ struct Foo(int);
 #[deriving(Eq)]
 struct Bar(int, int);
 
-fn main() {
+pub fn main() {
     let f: extern fn(int) -> Foo = Foo;
     let g: extern fn(int, int) -> Bar = Bar;
     assert_eq!(f(42), Foo(42));

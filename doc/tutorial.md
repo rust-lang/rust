@@ -63,9 +63,8 @@ recommended.
 
 Since the Rust compiler is written in Rust, it must be built by
 a precompiled "snapshot" version of itself (made in an earlier state
-of development). As such, source builds require a connection to
-the Internet, to fetch snapshots, and an OS that can execute the
-available snapshot binaries.
+of development). The source build automatically fetches these snapshots
+from the Internet on our supported platforms.
 
 Snapshot binaries are currently built and tested on several platforms:
 
@@ -99,9 +98,9 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://static.rust-lang.org/dist/rust-0.7.tar.gz
-$ tar -xzf rust-0.7.tar.gz
-$ cd rust-0.7
+$ curl -O http://static.rust-lang.org/dist/rust-0.8.tar.gz
+$ tar -xzf rust-0.8.tar.gz
+$ cd rust-0.8
 $ ./configure
 $ make && make install
 ~~~~
@@ -118,8 +117,8 @@ API-documentation tool; `rustpkg`, the Rust package manager;
 `rusti`, the Rust REPL; and `rust`, a tool which acts both as a unified
 interface for them, and for a few common command line scenarios.
 
-[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-0.8.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-0.8-install.exe
 
 ## Compiling your first program
 
@@ -1470,34 +1469,6 @@ cannot be stored in data structures or returned from
 functions. Despite these limitations, stack closures are used
 pervasively in Rust code.
 
-## Managed closures
-
-When you need to store a closure in a data structure, a stack closure
-will not do, since the compiler will refuse to let you store it. For
-this purpose, Rust provides a type of closure that has an arbitrary
-lifetime, written `@fn` (boxed closure, analogous to the `@` pointer
-type described earlier). This type of closure *is* first-class.
-
-A managed closure does not directly access its environment, but merely
-copies out the values that it closes over into a private data
-structure. This means that it can not assign to these variables, and
-cannot observe updates to them.
-
-This code creates a closure that adds a given string to its argument,
-returns it from a function, and then calls it:
-
-~~~~
-fn mk_appender(suffix: ~str) -> @fn(~str) -> ~str {
-    // The compiler knows that we intend this closure to be of type @fn
-    return |s| s + suffix;
-}
-
-fn main() {
-    let shout = mk_appender(~"!");
-    println(shout(~"hey ho, let's go"));
-}
-~~~~
-
 ## Owned closures
 
 Owned closures, written `~fn` in analogy to the `~` pointer type,
@@ -1898,7 +1869,7 @@ struct TimeBomb {
 }
 
 impl Drop for TimeBomb {
-    fn drop(&self) {
+    fn drop(&mut self) {
         for _ in range(0, self.explosivity) {
             println("blam!");
         }
@@ -2421,7 +2392,8 @@ However, in practice you usually want to split you code up into multiple source 
 In order to do that, Rust allows you to move the body of any module into it's own source file, which works like this:
 
 If you declare a module without its body, like `mod foo;`, the compiler will look for the
-files `foo.rs` and `foo/mod.rs`. If it finds either, it uses the content of that file as the body of the module.
+files `foo.rs` and `foo/mod.rs` inside some directory (usually the same as of the source file containing
+the `mod foo;`). If it finds either, it uses the content of that file as the body of the module.
 If it finds both, that's a compile error.
 
 So, if we want to move the content of `mod farm` into it's own file, it would look like this:
@@ -2447,7 +2419,7 @@ pub mod barn {
 # fn main() { }
 ~~~~
 
-So, in short `mod foo;` is just syntactic sugar for `mod foo { /* include content of foo.rs or foo/mod.rs here */ }`.
+In short, `mod foo;` is just syntactic sugar for `mod foo { /* content of <...>/foo.rs or <...>/foo/mod.rs */ }`.
 
 This also means that having two or more identical `mod foo;` somewhere
 in your crate hierarchy is generally a bad idea,
@@ -2456,14 +2428,14 @@ Both will result in duplicate and mutually incompatible definitions.
 
 The directory the compiler looks in for those two files is determined by starting with
 the same directory as the source file that contains the `mod foo;` declaration, and concatenating to that a
-path equivalent to the relative path of all nested `mod { ... }` declarations the `mod foo;` is contained in, if any.
+path equivalent to the relative path of all nested `mod { ... }` declarations the `mod foo;`
+is contained in, if any.
 
 For example, given a file with this module body:
 
 ~~~ {.ignore}
 // src/main.rs
 mod plants;
-mod fungi;
 mod animals {
     mod fish;
     mod mammals {
@@ -2478,9 +2450,6 @@ The compiler would then try all these files:
 src/plants.rs
 src/plants/mod.rs
 
-src/fungi.rs
-src/fungi/mod.rs
-
 src/animals/fish.rs
 src/animals/fish/mod.rs
 
@@ -2488,15 +2457,54 @@ src/animals/mammals/humans.rs
 src/animals/mammals/humans/mod.rs
 ~~~
 
-These rules per default result in any directory structure mirroring
-the crates's module hierarchy, and allow you to have both small modules that only need
-to consist of one source file, and big modules that group the source files of submodules together.
-
-If you need to circumvent those defaults, you can also overwrite the path a `mod foo;` would take:
+Keep in mind that identical module hierachies can still lead to different path lookups
+depending on how and where you've moved a module body to its own file.
+For example, if we move the `animals` module above into its own file...
 
 ~~~ {.ignore}
-#[path="../../area51/classified.rs"]
-mod alien;
+// src/main.rs
+mod plants;
+mod animals;
+~~~
+~~~ {.ignore}
+// src/animals.rs or src/animals/mod.rs
+mod fish;
+mod mammals {
+    mod humans;
+}
+~~~
+...then the source files of `mod animals`'s submodules can
+either be placed right next to that of its parents, or in a subdirectory if `animals` source file is:
+
+~~~ {.notrust}
+src/plants.rs
+src/plants/mod.rs
+
+src/animals.rs - if file sits next to that of parent module's:
+    src/fish.rs
+    src/fish/mod.rs
+
+    src/mammals/humans.rs
+    src/mammals/humans/mod.rs
+
+src/animals/mod.rs - if file is in it's own subdirectory:
+    src/animals/fish.rs
+    src/animals/fish/mod.rs
+
+    src/animals/mammals/humans.rs
+    src/animals/mammals/humans/mod.rs
+
+~~~
+
+These rules allow you to have both small modules that only need
+to consist of one source file each and can be conveniently placed right next to each other,
+and big complicated modules that group the source files of submodules in subdirectories.
+
+If you need to circumvent the defaults, you can also overwrite the path a `mod foo;` would take:
+
+~~~ {.ignore}
+#[path="../../area51/alien.rs"]
+mod classified;
 ~~~
 
 ## Importing names into the local scope
@@ -2656,7 +2664,7 @@ fn main() {
 
 In general, `use` creates an local alias:
 An alternate path and a possibly different name to access the same item,
-whiteout touching the original, and with both being interchangeable.
+without touching the original, and with both being interchangeable.
 
 ## Reexporting names
 
@@ -2979,7 +2987,7 @@ tutorials on individual topics.
 * [The foreign function interface][ffi]
 * [Containers and iterators](tutorial-container.html)
 * [Error-handling and Conditions](tutorial-conditions.html)
-* [Packaging up Rust code](rustpkg)
+* [Packaging up Rust code][rustpkg]
 
 There is further documentation on the [wiki], however those tend to be even more out of date as this document.
 

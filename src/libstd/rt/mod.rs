@@ -54,7 +54,8 @@ Several modules in `core` are clients of `rt`:
 
 */
 
-#[doc(hidden)];
+// XXX: this should not be here.
+#[allow(missing_doc)];
 
 use cell::Cell;
 use clone::Clone;
@@ -171,14 +172,13 @@ pub mod borrowck;
 ///
 /// * `argc` & `argv` - The argument vector. On Unix this information is used
 ///   by os::args.
-/// * `crate_map` - Runtime information about the executing crate, mostly for logging
 ///
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
+pub fn start(argc: int, argv: **u8, main: ~fn()) -> int {
 
-    init(argc, argv, crate_map);
+    init(argc, argv);
     let exit_code = run(main);
     cleanup();
 
@@ -190,24 +190,12 @@ pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 ///
 /// This is appropriate for running code that must execute on the main thread,
 /// such as the platform event loop and GUI.
-pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
-    init(argc, argv, crate_map);
+pub fn start_on_main_thread(argc: int, argv: **u8, main: ~fn()) -> int {
+    init(argc, argv);
     let exit_code = run_on_main_thread(main);
     cleanup();
 
     return exit_code;
-}
-
-#[cfg(stage0)]
-mod macro_hack {
-#[macro_escape];
-macro_rules! externfn(
-    (fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
-        extern {
-            fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
-        }
-    )
-)
 }
 
 /// One-time runtime initialization.
@@ -215,13 +203,13 @@ macro_rules! externfn(
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
-pub fn init(argc: int, argv: **u8, crate_map: *u8) {
+pub fn init(argc: int, argv: **u8) {
     // XXX: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);
         env::init();
-        logging::init(crate_map);
+        logging::init();
     }
 }
 

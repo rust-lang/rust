@@ -18,7 +18,7 @@ struct foo {
 
 #[unsafe_destructor]
 impl Drop for foo {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             println("Goodbye, World!");
             *self.x += 1;

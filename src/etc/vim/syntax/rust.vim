@@ -18,9 +18,8 @@ syn keyword   rustOperator    as
 
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
-syn keyword   rustKeyword     break copy do extern
+syn keyword   rustKeyword     break continue do extern
 syn keyword   rustKeyword     in if impl let log
-syn keyword   rustKeyword     copy do extern
 syn keyword   rustKeyword     for impl let log
 syn keyword   rustKeyword     loop mod once priv pub
 syn keyword   rustKeyword     return
@@ -35,7 +34,7 @@ syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:spac
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved (but not yet used) keywords {{{2
-syn keyword   rustKeyword     be yield typeof
+syn keyword   rustKeyword     alignof be offsetof pure sizeof typeof yield
 
 " Built-in types {{{2
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32

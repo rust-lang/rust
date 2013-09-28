@@ -24,7 +24,7 @@
 # working under these assumptions).
 
 # Hack for passing flags into LIBUV, see below.
-LIBUV_FLAGS_i386 = -m32 -fPIC
+LIBUV_FLAGS_i386 = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
 ifeq ($(OSTYPE_$(1)), linux-androideabi)
 LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
@@ -71,11 +71,9 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
               rt/rust_builtin.cpp \
-              rt/rust_run_program.cpp \
               rt/rust_rng.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
-              rt/isaac/randport.cpp \
               rt/miniz.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
@@ -84,7 +82,16 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
-RUNTIME_CS_$(1)_$(2) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
+RUNTIME_CS_$(1)_$(2) := rt/linenoise/linenoise.c \
+			rt/linenoise/utf8.c \
+			rt/sundown/src/autolink.c \
+			rt/sundown/src/buffer.c \
+			rt/sundown/src/stack.c \
+			rt/sundown/src/markdown.c \
+			rt/sundown/html/houdini_href_e.c \
+			rt/sundown/html/houdini_html_e.c \
+			rt/sundown/html/html_smartypants.c \
+			rt/sundown/html/html.c
 
 RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/ccall.S \
@@ -119,6 +126,8 @@ RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1)) \
                      -I $$(S)src/rt/linenoise \
+                     -I $$(S)src/rt/sundown/src \
+                     -I $$(S)src/rt/sundown/html \
                      -I $$(S)src/libuv/include
 RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
                      $$(RUNTIME_CS_$(1)_$(2):rt/%.c=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \

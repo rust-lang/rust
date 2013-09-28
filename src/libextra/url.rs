@@ -21,7 +21,7 @@ use std::to_bytes;
 use std::uint;
 
 #[deriving(Clone, Eq)]
-struct Url {
+pub struct Url {
     scheme: ~str,
     user: Option<UserInfo>,
     host: ~str,
@@ -32,7 +32,7 @@ struct Url {
 }
 
 #[deriving(Clone, Eq)]
-struct UserInfo {
+pub struct UserInfo {
     user: ~str,
     pass: Option<~str>
 }
@@ -1061,16 +1061,12 @@ mod tests {
 
     #[test]
     fn test_decode_form_urlencoded() {
-        // FIXME #4449: Commented out because this causes an ICE, but only
-        // on FreeBSD
-        /*
         assert_eq!(decode_form_urlencoded([]).len(), 0);
 
         let s = "a=1&foo+bar=abc&foo+bar=12+%3D+34".as_bytes();
         let form = decode_form_urlencoded(s);
         assert_eq!(form.len(), 2);
-        assert_eq!(form.get_ref(&~"a"), &~[~"1"]);
-        assert_eq!(form.get_ref(&~"foo bar"), &~[~"abc", ~"12 = 34"]);
-        */
+        assert_eq!(form.get(&~"a"), &~[~"1"]);
+        assert_eq!(form.get(&~"foo bar"), &~[~"abc", ~"12 = 34"]);
     }
 }

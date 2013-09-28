@@ -14,16 +14,9 @@ fn f(i: int, f: &fn(int) -> int) -> int { f(i) }
 
 fn g(_g: &fn()) { }
 
-fn ff() -> @fn(int) -> int {
-    return |x| x + 1;
-}
-
 pub fn main() {
     assert_eq!(f(10, |a| a), 10);
     g(||());
     assert_eq!(do f(10) |a| { a }, 10);
     do g() { }
-    let _x: @fn() -> int = || 10;
-    let _y: @fn(int) -> int = |a| a;
-    assert_eq!(ff()(10), 11);
 }

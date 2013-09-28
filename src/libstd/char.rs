@@ -128,6 +128,14 @@ pub fn is_alphanumeric(c: char) -> bool {
         || general_category::No(c)
 }
 
+///
+/// Indicates whether a character is a control character. Control
+/// characters are defined in terms of the Unicode General Category
+/// 'Cc'.
+///
+#[inline]
+pub fn is_control(c: char) -> bool { general_category::Cc(c) }
+
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline]
 pub fn is_digit(c: char) -> bool {
@@ -281,11 +289,11 @@ pub fn escape_unicode(c: char, f: &fn(char)) {
     // avoid calling str::to_str_radix because we don't really need to allocate
     // here.
     f('\\');
-    let pad = cond!(
-        (c <= '\xff')   { f('x'); 2 }
-        (c <= '\uffff') { f('u'); 4 }
-        _               { f('U'); 8 }
-    );
+    let pad = match () {
+        _ if c <= '\xff'    => { f('x'); 2 }
+        _ if c <= '\uffff'  => { f('u'); 4 }
+        _                   => { f('U'); 8 }
+    };
     for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
         unsafe {
             match ((c as i32) >> offset) & 0xf {
@@ -329,13 +337,13 @@ pub fn len_utf8_bytes(c: char) -> uint {
     static MAX_FOUR_B:  uint = 2097152u;
 
     let code = c as uint;
-    cond!(
-        (code < MAX_ONE_B)   { 1u }
-        (code < MAX_TWO_B)   { 2u }
-        (code < MAX_THREE_B) { 3u }
-        (code < MAX_FOUR_B)  { 4u }
-        _ { fail!("invalid character!") }
-    )
+    match () {
+        _ if code < MAX_ONE_B   => 1u,
+        _ if code < MAX_TWO_B   => 2u,
+        _ if code < MAX_THREE_B => 3u,
+        _ if code < MAX_FOUR_B  => 4u,
+        _                       => fail!("invalid character!"),
+    }
 }
 
 impl ToStr for char {
@@ -354,6 +362,7 @@ pub trait Char {
     fn is_uppercase(&self) -> bool;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
+    fn is_control(&self) -> bool;
     fn is_digit(&self) -> bool;
     fn is_digit_radix(&self, radix: uint) -> bool;
     fn to_digit(&self, radix: uint) -> Option<uint>;
@@ -383,6 +392,8 @@ impl Char for char {
     fn is_whitespace(&self) -> bool { is_whitespace(*self) }
 
     fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
+
+    fn is_control(&self) -> bool { is_control(*self) }
 
     fn is_digit(&self) -> bool { is_digit(*self) }
 
@@ -492,6 +503,19 @@ fn test_to_digit() {
     assert_eq!('Z'.to_digit(36u), Some(35u));
     assert_eq!(' '.to_digit(10u), None);
     assert_eq!('$'.to_digit(36u), None);
+}
+
+#[test]
+fn test_is_control() {
+    assert!('\u0000'.is_control());
+    assert!('\u0003'.is_control());
+    assert!('\u0006'.is_control());
+    assert!('\u0009'.is_control());
+    assert!('\u007f'.is_control());
+    assert!('\u0092'.is_control());
+    assert!(!'\u0020'.is_control());
+    assert!(!'\u0055'.is_control());
+    assert!(!'\u0068'.is_control());
 }
 
 #[test]

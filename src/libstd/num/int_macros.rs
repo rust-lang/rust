@@ -11,6 +11,7 @@
 // FIXME(#4375): this shouldn't have to be a nested module named 'generated'
 
 #[macro_escape];
+#[doc(hidden)];
 
 macro_rules! int_module (($T:ty, $bits:expr) => (mod generated {
 
@@ -117,7 +118,7 @@ impl Div<$T,$T> for $T {
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// assert!( 8 /  3 ==  2);
     /// assert!( 8 / -3 == -2);
     /// assert!(-8 /  3 == -2);
@@ -127,7 +128,7 @@ impl Div<$T,$T> for $T {
     /// assert!( 1 / -2 ==  0);
     /// assert!(-1 /  2 ==  0);
     /// assert!(-1 / -2 ==  0);
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn div(&self, other: &$T) -> $T { *self / *other }
@@ -138,13 +139,13 @@ impl Rem<$T,$T> for $T {
     ///
     /// Returns the integer remainder after division, satisfying:
     ///
-    /// ~~~
+    /// ```
     /// assert!((n / d) * d + (n % d) == n)
-    /// ~~~
+    /// ```
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// assert!( 8 %  3 ==  2);
     /// assert!( 8 % -3 ==  2);
     /// assert!(-8 %  3 == -2);
@@ -154,7 +155,7 @@ impl Rem<$T,$T> for $T {
     /// assert!( 1 % -2 ==  1);
     /// assert!(-1 %  2 == -1);
     /// assert!(-1 % -2 == -1);
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn rem(&self, other: &$T) -> $T { *self % *other }
@@ -213,7 +214,7 @@ impl Integer for $T {
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// assert!(( 8).div_floor( 3) ==  2);
     /// assert!(( 8).div_floor(-3) == -3);
     /// assert!((-8).div_floor( 3) == -3);
@@ -223,7 +224,7 @@ impl Integer for $T {
     /// assert!(( 1).div_floor(-2) == -1);
     /// assert!((-1).div_floor( 2) == -1);
     /// assert!((-1).div_floor(-2) ==  0);
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn div_floor(&self, other: &$T) -> $T {
@@ -239,13 +240,13 @@ impl Integer for $T {
     ///
     /// Integer modulo, satisfying:
     ///
-    /// ~~~
+    /// ```
     /// assert!(n.div_floor(d) * d + n.mod_floor(d) == n)
-    /// ~~~
+    /// ```
     ///
     /// # Examples
     ///
-    /// ~~~
+    /// ```
     /// assert!(( 8).mod_floor( 3) ==  2);
     /// assert!(( 8).mod_floor(-3) == -1);
     /// assert!((-8).mod_floor( 3) ==  1);
@@ -255,7 +256,7 @@ impl Integer for $T {
     /// assert!(( 1).mod_floor(-2) == -1);
     /// assert!((-1).mod_floor( 2) ==  1);
     /// assert!((-1).mod_floor(-2) == -1);
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn mod_floor(&self, other: &$T) -> $T {

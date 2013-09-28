@@ -23,4 +23,7 @@ extern mod this(name = "rust");
 #[cfg(rustc)]
 extern mod this(name = "rustc");
 
+#[cfg(rustdoc_ng)]
+extern mod this(name = "rustdoc_ng");
+
 fn main() { this::main() }

@@ -15,11 +15,11 @@ use syntax::print::pprust;
 use syntax::parse::token;
 use syntax::visit;
 
-struct EachBindingVisitor {
-    f: @fn(&ast::Path, ast::NodeId)
+struct EachBindingVisitor<'self> {
+    f: &'self fn(&ast::Path, ast::NodeId)
 }
 
-impl visit::Visitor<()> for EachBindingVisitor {
+impl<'self> visit::Visitor<()> for EachBindingVisitor<'self> {
     fn visit_pat(&mut self, pat:@ast::Pat, _:()) {
                 match pat.node {
                     ast::PatIdent(_, ref path, _) => {
@@ -32,7 +32,7 @@ impl visit::Visitor<()> for EachBindingVisitor {
     }
 }
 
-pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::NodeId)) {
+pub fn each_binding(l: @ast::Local, f: &fn(&ast::Path, ast::NodeId)) {
     use syntax::visit::Visitor;
 
     let mut vt = EachBindingVisitor{ f: f };

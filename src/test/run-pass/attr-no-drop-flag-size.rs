@@ -17,9 +17,9 @@ struct Test<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for Test<T> {
-    fn drop(&self) { }
+    fn drop(&mut self) { }
 }
 
-fn main() {
+pub fn main() {
     assert_eq!(size_of::<int>(), size_of::<Test<int>>());
 }

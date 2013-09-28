@@ -13,7 +13,7 @@
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
-       vers = "0.8-pre",
+       vers = "0.9-pre",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
        url = "https://github.com/mozilla/rust/tree/master/src/rust")];
 
@@ -28,7 +28,6 @@ extern mod rustc;
 use std::io;
 use std::os;
 use std::run;
-use std::libc::exit;
 
 enum ValidUsage {
     Valid(int), Invalid
@@ -45,7 +44,7 @@ impl ValidUsage {
 
 enum Action {
     Call(extern "Rust" fn(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, extern "Rust" fn(&[~str])),
+    CallMain(&'static str, extern "Rust" fn(&[~str]) -> int),
 }
 
 enum UsageSource<'self> {
@@ -92,7 +91,7 @@ static COMMANDS: &'static [Command<'static>] = &'static [
         cmd: "doc",
         action: CallMain("rustdoc", rustdoc::main_args),
         usage_line: "generate documentation from doc comments",
-        usage_full: UsgCall(rustdoc::config::usage),
+        usage_full: UsgCall(rustdoc_help),
     },
     Command {
         cmd: "pkg",
@@ -122,6 +121,10 @@ fn rustc_help() {
     rustc::usage(os::args()[0].clone())
 }
 
+fn rustdoc_help() {
+    rustdoc::usage(os::args()[0].clone())
+}
+
 fn find_cmd(command_string: &str) -> Option<Command> {
     do COMMANDS.iter().find |command| {
         command.cmd == command_string
@@ -133,13 +136,13 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
         match find_cmd(command_string) {
             Some(command) => {
                 match command.action {
-                    CallMain(prog, _) => printfln!(
-                        "The %s command is an alias for the %s program.",
+                    CallMain(prog, _) => println!(
+                        "The {} command is an alias for the {} program.",
                         command.cmd, prog),
                     _       => ()
                 }
                 match command.usage_full {
-                    UsgStr(msg) => printfln!("%s\n", msg),
+                    UsgStr(msg) => println!("{}\n", msg),
                     UsgCall(f)  => f(),
                 }
                 Valid(0)
@@ -182,18 +185,17 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
     }
 }
 
-fn invoke(prog: &str, args: &[~str], f: &fn(&[~str])) {
+fn invoke(prog: &str, args: &[~str], f: &fn(&[~str]) -> int) -> int {
     let mut osargs = ~[prog.to_owned()];
     osargs.push_all_move(args.to_owned());
-    f(osargs);
+    f(osargs)
 }
 
 fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
     match command.action {
         Call(f) => f(args),
         CallMain(prog, f) => {
-            invoke(prog, args, f);
-            Valid(0)
+            Valid(invoke(prog, args, f))
         }
     }
 }
@@ -213,7 +215,7 @@ fn usage() {
 
     for command in COMMANDS.iter() {
         let padding = " ".repeat(INDENT - command.cmd.len());
-        printfln!("    %s%s%s", command.cmd, padding, command.usage_line);
+        println!("    {}{}{}", command.cmd, padding, command.usage_line);
     }
 
     io::print(
@@ -231,7 +233,7 @@ pub fn main() {
 
     if (os_args.len() > 1 && (os_args[1] == ~"-v" || os_args[1] == ~"--version")) {
         rustc::version(os_args[0]);
-        unsafe { exit(0); }
+        return;
     }
 
     let args = os_args.tail();
@@ -241,8 +243,11 @@ pub fn main() {
         for command in r.iter() {
             let result = do_command(command, args.tail());
             match result {
-                Valid(exit_code) => unsafe { exit(exit_code.to_i32()) },
-                _                => loop
+                Valid(exit_code) => {
+                    os::set_exit_status(exit_code);
+                    return;
+                }
+                _ => loop
             }
         }
     }

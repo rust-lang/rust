@@ -14,12 +14,12 @@ struct Foo(@mut int);
 
 #[unsafe_destructor]
 impl Drop for Foo {
-    fn drop(&self) {
+    fn drop(&mut self) {
         ***self = 23;
     }
 }
 
-fn main() {
+pub fn main() {
     let y = @mut 32;
     {
         let _x = Foo(y);

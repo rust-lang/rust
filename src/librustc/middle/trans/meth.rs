@@ -61,9 +61,9 @@ pub fn trans_impl(ccx: @mut CrateContext,
     // Both here and below with generic methods, be sure to recurse and look for
     // items that we need to translate.
     if !generics.ty_params.is_empty() {
-        let mut v = TransItemVisitor;
+        let mut v = TransItemVisitor{ ccx: ccx };
         for method in methods.iter() {
-            visit::walk_method_helper(&mut v, *method, ccx);
+            visit::walk_method_helper(&mut v, *method, ());
         }
         return;
     }
@@ -80,8 +80,8 @@ pub fn trans_impl(ccx: @mut CrateContext,
                          None,
                          llfn);
         } else {
-            let mut v = TransItemVisitor;
-            visit::walk_method_helper(&mut v, *method, ccx);
+            let mut v = TransItemVisitor{ ccx: ccx };
+            visit::walk_method_helper(&mut v, *method, ());
         }
     }
 }
@@ -434,13 +434,22 @@ pub fn trans_trait_callee(bcx: @mut Block,
     let _icx = push_ctxt("impl::trans_trait_callee");
     let mut bcx = bcx;
 
+    // make a local copy for trait if needed
     let self_ty = expr_ty_adjusted(bcx, self_expr);
-    let self_scratch = scratch_datum(bcx, self_ty, "__trait_callee", false);
-    bcx = expr::trans_into(bcx, self_expr, expr::SaveIn(self_scratch.val));
+    let self_scratch = match ty::get(self_ty).sty {
+        ty::ty_trait(_, _, ty::RegionTraitStore(*), _, _) => {
+            unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr))
+        }
+        _ => {
+            let d = scratch_datum(bcx, self_ty, "__trait_callee", false);
+            bcx = expr::trans_into(bcx, self_expr, expr::SaveIn(d.val));
+            // Arrange a temporary cleanup for the object in case something
+            // should go wrong before the method is actually *invoked*.
+            d.add_clean(bcx);
+            d
+        }
+    };
 
-    // Arrange a temporary cleanup for the object in case something
-    // should go wrong before the method is actually *invoked*.
-    self_scratch.add_clean(bcx);
 
     let callee_ty = node_id_type(bcx, callee_id);
     trans_trait_callee_from_llval(bcx,
@@ -511,8 +520,7 @@ pub fn vtable_id(ccx: @mut CrateContext,
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                &psubsts,
-                None)
+                &psubsts)
         }
 
         // can't this be checked at the callee?

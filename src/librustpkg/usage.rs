@@ -148,3 +148,11 @@ and exit code will be redirected.
 Options:
     -c, --cfg      Pass a cfg flag to the package script");
 }
+
+pub fn init() {
+    io::println("rustpkg init
+
+This will turn the current working directory into a workspace. The first
+command you run when starting off a new project.
+");
+}

@@ -33,7 +33,7 @@ use util::ppaux::Repr;
 
 #[deriving(Clone)]
 struct CheckLoanCtxt<'self> {
-    bccx: @BorrowckCtxt,
+    bccx: &'self BorrowckCtxt,
     dfcx_loans: &'self LoanDataFlow,
     move_data: @move_data::FlowedMoveData,
     all_loans: &'self [Loan],
@@ -60,7 +60,7 @@ impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
     }
 }
 
-pub fn check_loans(bccx: @BorrowckCtxt,
+pub fn check_loans(bccx: &BorrowckCtxt,
                    dfcx_loans: &LoanDataFlow,
                    move_data: move_data::FlowedMoveData,
                    all_loans: &[Loan],

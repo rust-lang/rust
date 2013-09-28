@@ -143,9 +143,9 @@ fn main() {
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);
-    printfln!("%.9f", energy(&bodies) as float);
+    println!("{:.9f}", energy(&bodies) as float);
 
     advance(&mut bodies, 0.01, n);
 
-    printfln!("%.9f", energy(&bodies) as float);
+    println!("{:.9f}", energy(&bodies) as float);
 }

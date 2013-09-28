@@ -26,9 +26,9 @@ static magic: uint = 42;
 #[link_section="__DATA,__mut"]
 static mut frobulator: uint = 0xdeadbeef;
 
-fn main() {
+pub fn main() {
     unsafe {
         frobulator = 0xcafebabe;
-        printfln!("%? %? %?", i_live_in_more_text(), magic, frobulator);
+        println!("{} {} {}", i_live_in_more_text(), magic, frobulator);
     }
 }

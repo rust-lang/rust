@@ -119,7 +119,7 @@ trait Trait {
     }
 }
 
-impl Trait for Struct;
+impl Trait for Struct {}
 
 fn main() {
     let stack = Struct { x: 987 };

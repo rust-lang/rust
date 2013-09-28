@@ -118,6 +118,17 @@ impl<T> ChanOne<T> {
             rtassert!(!rt::in_sched_context());
         }
 
+        // In order to prevent starvation of other tasks in situations
+        // where a task sends repeatedly without ever receiving, we
+        // occassionally yield instead of doing a send immediately.
+        // Only doing this if we're doing a rescheduling send,
+        // otherwise the caller is expecting not to context switch.
+        if do_resched {
+            // XXX: This TLS hit should be combined with other uses of the scheduler below
+            let sched: ~Scheduler = Local::take();
+            sched.maybe_yield();
+        }
+
         let mut this = self;
         let mut recvr_active = true;
         let packet = this.packet();
@@ -363,7 +374,7 @@ impl<T> Peekable<T> for PortOne<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for ChanOne<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if self.suppress_finalize { return }
 
         unsafe {
@@ -391,7 +402,7 @@ impl<T> Drop for ChanOne<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for PortOne<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if self.suppress_finalize { return }
 
         unsafe {
@@ -1095,7 +1106,7 @@ mod test {
     #[test]
     fn megapipe_stress() {
         use rand;
-        use rand::RngUtil;
+        use rand::Rng;
 
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
 
@@ -1106,7 +1117,7 @@ mod test {
             let total = stress_factor() + 10;
             let mut rng = rand::rng();
             do total.times {
-                let msgs = rng.gen_uint_range(0, 10);
+                let msgs = rng.gen_integer_range(0u, 10);
                 let pipe_clone = pipe.clone();
                 let end_chan_clone = end_chan.clone();
                 do spawntask_random {

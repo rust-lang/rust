@@ -13,13 +13,12 @@ struct C {
 }
 
 impl Drop for C {
-    fn drop(&self) {
+    fn drop(&mut self) {
         error!("dropping: %?", self.x);
     }
 }
 
 fn main() {
     let c = C{ x: 2};
-    let d = c.clone(); //~ ERROR does not implement any method in scope
-    error!("%?", d.x);
+    let _d = c.clone(); //~ ERROR does not implement any method in scope
 }

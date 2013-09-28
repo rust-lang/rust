@@ -6,4 +6,4 @@ struct RGBA {
     a: f32
 }
 
-fn main() {}
+pub fn main() {}

@@ -16,12 +16,12 @@ use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::astencode;
+use middle::privacy;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
 use middle::trans::debuginfo;
-use middle::trans::type_use;
 use middle::trans::common::{C_i32, C_null};
 use middle::ty;
 
@@ -49,6 +49,7 @@ pub struct CrateContext {
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: HashMap<ast::NodeId, ValueRef>,
      exp_map2: resolve::ExportMap2,
+     exported_items: @privacy::ExportedItems,
      reachable: @mut HashSet<ast::NodeId>,
      item_symbols: HashMap<ast::NodeId, ~str>,
      link_meta: LinkMeta,
@@ -71,8 +72,6 @@ pub struct CrateContext {
      // Cache instances of monomorphized functions
      monomorphized: HashMap<mono_id, ValueRef>,
      monomorphizing: HashMap<ast::DefId, uint>,
-     // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: HashMap<ast::DefId, @~[type_use::type_uses]>,
      // Cache generated vtables
      vtables: HashMap<(ty::t, mono_id), ValueRef>,
      // Cache of constant strings,
@@ -127,6 +126,7 @@ impl CrateContext {
                name: &str,
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
+               exported_items: @privacy::ExportedItems,
                maps: astencode::Maps,
                symbol_hasher: hash::State,
                link_meta: LinkMeta,
@@ -187,6 +187,7 @@ impl CrateContext {
                   intrinsics: intrinsics,
                   item_vals: HashMap::new(),
                   exp_map2: emap2,
+                  exported_items: exported_items,
                   reachable: reachable,
                   item_symbols: HashMap::new(),
                   link_meta: link_meta,
@@ -200,7 +201,6 @@ impl CrateContext {
                   non_inlineable_statics: HashSet::new(),
                   monomorphized: HashMap::new(),
                   monomorphizing: HashMap::new(),
-                  type_use_cache: HashMap::new(),
                   vtables: HashMap::new(),
                   const_cstr_cache: HashMap::new(),
                   const_globals: HashMap::new(),
@@ -282,12 +282,12 @@ impl CrateContext {
 
 #[unsafe_destructor]
 impl Drop for CrateContext {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unset_task_llcx();
     }
 }
 
-static task_local_llcx_key: local_data::Key<@ContextRef> = &local_data::Key;
+local_data_key!(task_local_llcx_key: @ContextRef)
 
 pub fn task_llcx() -> ContextRef {
     let opt = local_data::get(task_local_llcx_key, |k| k.map_move(|k| *k));

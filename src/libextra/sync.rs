@@ -578,7 +578,7 @@ impl RWLock {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * do lock.write_downgrade |mut write_token| {
      *     do write_token.write_cond |condvar| {
      *         ... exclusive access ...
@@ -588,7 +588,7 @@ impl RWLock {
      *         ... shared access ...
      *     }
      * }
-     * ~~~
+     * ```
      */
     pub fn write_downgrade<U>(&self, blk: &fn(v: RWLockWriteMode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.

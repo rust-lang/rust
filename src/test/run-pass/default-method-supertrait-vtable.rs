@@ -29,8 +29,8 @@ impl Y for int {
     fn y(self) -> int { self }
 }
 
-impl Z for int;
+impl Z for int {}
 
-fn main() {
+pub fn main() {
     assert_eq!(12.x(), 12);
 }

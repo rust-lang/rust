@@ -13,7 +13,7 @@ use cast::transmute;
 use cast;
 use cell::Cell;
 use clone::Clone;
-use libc::{c_int, c_uint, c_void};
+use libc::{c_int, c_uint, c_void, pid_t};
 use ops::Drop;
 use option::*;
 use ptr;
@@ -22,6 +22,8 @@ use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
 use rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur, SeekEnd};
+use rt::io::process::ProcessConfig;
+use rt::kill::BlockedTask;
 use rt::local::Local;
 use rt::rtio::*;
 use rt::sched::{Scheduler, SchedHandle};
@@ -32,11 +34,13 @@ use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr, accum_sockaddrs};
 use rt::uv::addrinfo::GetAddrInfoRequest;
 use unstable::sync::Exclusive;
+use path::Path;
 use super::super::io::support::PathLike;
 use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
-          S_IRUSR, S_IWUSR};
+          S_IRUSR, S_IWUSR, S_IRWXU};
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
-            CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite};
+             CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
+             FileStat};
 use task;
 
 #[cfg(test)] use container::Container;
@@ -187,12 +191,8 @@ impl UvEventLoop {
 }
 
 impl Drop for UvEventLoop {
-    fn drop(&self) {
-        // XXX: Need mutable finalizer
-        let this = unsafe {
-            transmute::<&UvEventLoop, &mut UvEventLoop>(self)
-        };
-        this.uvio.uv_loop().close();
+    fn drop(&mut self) {
+        self.uvio.uv_loop().close();
     }
 }
 
@@ -351,7 +351,7 @@ impl RemoteCallback for UvRemoteCallback {
 }
 
 impl Drop for UvRemoteCallback {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             let this: &mut UvRemoteCallback = cast::transmute_mut(self);
             do this.exit_flag.with |should_exit| {
@@ -409,6 +409,36 @@ impl UvIoFactory {
     pub fn uv_loop<'a>(&'a mut self) -> &'a mut Loop {
         match self { &UvIoFactory(ref mut ptr) => ptr }
     }
+}
+
+/// Helper for a variety of simple uv_fs_* functions that
+/// have no ret val
+fn uv_fs_helper<P: PathLike>(loop_: &mut Loop, path: &P,
+                             cb: ~fn(&mut FsRequest, &mut Loop, &P,
+                                     ~fn(&FsRequest, Option<UvError>)))
+        -> Result<(), IoError> {
+    let result_cell = Cell::new_empty();
+    let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+    let path_cell = Cell::new(path);
+    do task::unkillable { // FIXME(#8674)
+        let scheduler: ~Scheduler = Local::take();
+        let mut new_req = FsRequest::new();
+        do scheduler.deschedule_running_task_and_then |_, task| {
+            let task_cell = Cell::new(task);
+            let path = path_cell.take();
+            do cb(&mut new_req, loop_, path) |_, err| {
+                let res = match err {
+                    None => Ok(()),
+                    Some(err) => Err(uv_error_to_io_error(err))
+                };
+                unsafe { (*result_cell_ptr).put_back(res); }
+                let scheduler: ~Scheduler = Local::take();
+                scheduler.resume_blocked_task_immediately(task_cell.take());
+            };
+        }
+    }
+    assert!(!result_cell.is_empty());
+    return result_cell.take();
 }
 
 impl IoFactory for UvIoFactory {
@@ -516,7 +546,6 @@ impl IoFactory for UvIoFactory {
 
     fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream {
         let loop_ = Loop {handle: self.uv_loop().native_handle()};
-        let fd = file::FileDescriptor(fd);
         let home = get_handle_to_current_scheduler!();
         ~UvFileStream::new(loop_, fd, close_on_drop, home) as ~RtioFileStream
     }
@@ -547,15 +576,16 @@ impl IoFactory for UvIoFactory {
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
+            let open_req = file::FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                do file::FsRequest::open(self.uv_loop(), path, flags as int, create_mode as int)
+                do open_req.open(self.uv_loop(), path, flags as int, create_mode as int)
                       |req,err| {
                     if err.is_none() {
                         let loop_ = Loop {handle: req.get_loop().native_handle()};
                         let home = get_handle_to_current_scheduler!();
-                        let fd = file::FileDescriptor(req.get_result());
+                        let fd = req.get_result() as c_int;
                         let fs = ~UvFileStream::new(
                             loop_, fd, true, home) as ~RtioFileStream;
                         let res = Ok(fs);
@@ -570,31 +600,56 @@ impl IoFactory for UvIoFactory {
                     }
                 };
             };
-        }
+        };
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
 
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+        do uv_fs_helper(self.uv_loop(), path) |unlink_req, l, p, cb| {
+            do unlink_req.unlink(l, p) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError> {
+        use str::StrSlice;
         let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<FileStat,
+                                           IoError>> = &result_cell;
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
+            let stat_req = file::FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                do file::FsRequest::unlink(self.uv_loop(), path) |_, err| {
+                let path_str = path.path_as_str(|p| p.to_owned());
+                do stat_req.stat(self.uv_loop(), path)
+                      |req,err| {
                     let res = match err {
-                        None => Ok(()),
-                        Some(err) => Err(uv_error_to_io_error(err))
+                        None => {
+                            let stat = req.get_stat();
+                            Ok(FileStat {
+                                path: Path(path_str),
+                                is_file: stat.is_file(),
+                                is_dir: stat.is_dir(),
+                                size: stat.st_size,
+                                created: stat.st_ctim.tv_sec as u64,
+                                modified: stat.st_mtim.tv_sec as u64,
+                                accessed: stat.st_atim.tv_sec as u64
+                            })
+                        },
+                        Some(e) => {
+                            Err(uv_error_to_io_error(e))
+                        }
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 };
             };
-        }
+        };
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
@@ -629,6 +684,117 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
+    fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+        let mode = S_IRWXU as int;
+        do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
+            do mkdir_req.mkdir(l, p, mode as int) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+        do uv_fs_helper(self.uv_loop(), path) |rmdir_req, l, p, cb| {
+            do rmdir_req.rmdir(l, p) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
+        Result<~[Path], IoError> {
+        use str::StrSlice;
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<~[Path],
+                                           IoError>> = &result_cell;
+        let path_cell = Cell::new(path);
+        do task::unkillable { // FIXME(#8674)
+            let scheduler: ~Scheduler = Local::take();
+            let stat_req = file::FsRequest::new();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task_cell = Cell::new(task);
+                let path = path_cell.take();
+                let path_str = path.path_as_str(|p| p.to_owned());
+                do stat_req.readdir(self.uv_loop(), path, flags)
+                      |req,err| {
+                    let res = match err {
+                        None => {
+                            let rel_paths = req.get_paths();
+                            let mut paths = ~[];
+                            for r in rel_paths.iter() {
+                                paths.push(Path(path_str+"/"+*r));
+                            }
+                            Ok(paths)
+                        },
+                        Some(e) => {
+                            Err(uv_error_to_io_error(e))
+                        }
+                    };
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler: ~Scheduler = Local::take();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                };
+            };
+        };
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
+    }
+
+    fn pipe_init(&mut self, ipc: bool) -> Result<~RtioUnboundPipeObject, IoError> {
+        let home = get_handle_to_current_scheduler!();
+        Ok(~UvUnboundPipe { pipe: Pipe::new(self.uv_loop(), ipc), home: home })
+    }
+
+    fn spawn(&mut self, config: ProcessConfig)
+            -> Result<(~RtioProcessObject, ~[Option<RtioPipeObject>]), IoError>
+    {
+        // Sadly, we must create the UvProcess before we actually call uv_spawn
+        // so that the exit_cb can close over it and notify it when the process
+        // has exited.
+        let mut ret = ~UvProcess {
+            process: Process::new(),
+            home: None,
+            exit_status: None,
+            term_signal: None,
+            exit_error: None,
+            descheduled: None,
+        };
+        let ret_ptr = unsafe {
+            *cast::transmute::<&~UvProcess, &*mut UvProcess>(&ret)
+        };
+
+        // The purpose of this exit callback is to record the data about the
+        // exit and then wake up the task which may be waiting for the process
+        // to exit. This is all performed in the current io-loop, and the
+        // implementation of UvProcess ensures that reading these fields always
+        // occurs on the current io-loop.
+        let exit_cb: ExitCallback = |_, exit_status, term_signal, error| {
+            unsafe {
+                assert!((*ret_ptr).exit_status.is_none());
+                (*ret_ptr).exit_status = Some(exit_status);
+                (*ret_ptr).term_signal = Some(term_signal);
+                (*ret_ptr).exit_error = error;
+                match (*ret_ptr).descheduled.take() {
+                    Some(task) => {
+                        let scheduler: ~Scheduler = Local::take();
+                        scheduler.resume_blocked_task_immediately(task);
+                    }
+                    None => {}
+                }
+            }
+        };
+
+        match ret.process.spawn(self.uv_loop(), config, exit_cb) {
+            Ok(io) => {
+                // Only now do we actually get a handle to this scheduler.
+                ret.home = Some(get_handle_to_current_scheduler!());
+                Ok((ret, io))
+            }
+            Err(uverr) => {
+                // We still need to close the process handle we created, but
+                // that's taken care for us in the destructor of UvProcess
+                Err(uv_error_to_io_error(uverr))
+            }
+        }
+    }
 }
 
 pub struct UvTcpListener {
@@ -647,10 +813,8 @@ impl UvTcpListener {
 }
 
 impl Drop for UvTcpListener {
-    fn drop(&self) {
-        // XXX need mutable finalizer
-        let self_ = unsafe { transmute::<&UvTcpListener, &mut UvTcpListener>(self) };
-        do self_.home_for_io_with_sched |self_, scheduler| {
+    fn drop(&mut self) {
+        do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task = Cell::new(task);
                 do self_.watcher.as_stream().close {
@@ -752,6 +916,126 @@ impl RtioTcpAcceptor for UvTcpAcceptor {
     }
 }
 
+fn read_stream(mut watcher: StreamWatcher,
+               scheduler: ~Scheduler,
+               buf: &mut [u8]) -> Result<uint, IoError> {
+    let result_cell = Cell::new_empty();
+    let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
+
+    let buf_ptr: *&mut [u8] = &buf;
+    do scheduler.deschedule_running_task_and_then |_sched, task| {
+        let task_cell = Cell::new(task);
+        // XXX: We shouldn't reallocate these callbacks every
+        // call to read
+        let alloc: AllocCallback = |_| unsafe {
+            slice_to_uv_buf(*buf_ptr)
+        };
+        do watcher.read_start(alloc) |mut watcher, nread, _buf, status| {
+
+            // Stop reading so that no read callbacks are
+            // triggered before the user calls `read` again.
+            // XXX: Is there a performance impact to calling
+            // stop here?
+            watcher.read_stop();
+
+            let result = if status.is_none() {
+                assert!(nread >= 0);
+                Ok(nread as uint)
+            } else {
+                Err(uv_error_to_io_error(status.unwrap()))
+            };
+
+            unsafe { (*result_cell_ptr).put_back(result); }
+
+            let scheduler: ~Scheduler = Local::take();
+            scheduler.resume_blocked_task_immediately(task_cell.take());
+        }
+    }
+
+    assert!(!result_cell.is_empty());
+    result_cell.take()
+}
+
+fn write_stream(mut watcher: StreamWatcher,
+                scheduler: ~Scheduler,
+                buf: &[u8]) -> Result<(), IoError> {
+    let result_cell = Cell::new_empty();
+    let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+    let buf_ptr: *&[u8] = &buf;
+    do scheduler.deschedule_running_task_and_then |_, task| {
+        let task_cell = Cell::new(task);
+        let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
+        do watcher.write(buf) |_watcher, status| {
+            let result = if status.is_none() {
+                Ok(())
+            } else {
+                Err(uv_error_to_io_error(status.unwrap()))
+            };
+
+            unsafe { (*result_cell_ptr).put_back(result); }
+
+            let scheduler: ~Scheduler = Local::take();
+            scheduler.resume_blocked_task_immediately(task_cell.take());
+        }
+    }
+
+    assert!(!result_cell.is_empty());
+    result_cell.take()
+}
+
+pub struct UvUnboundPipe {
+    pipe: Pipe,
+    home: SchedHandle,
+}
+
+impl HomingIO for UvUnboundPipe {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl Drop for UvUnboundPipe {
+    fn drop(&mut self) {
+        do self.home_for_io |self_| {
+            let scheduler: ~Scheduler = Local::take();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task_cell = Cell::new(task);
+                do self_.pipe.close {
+                    let scheduler: ~Scheduler = Local::take();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                }
+            }
+        }
+    }
+}
+
+impl UvUnboundPipe {
+    pub unsafe fn bind(~self) -> UvPipeStream {
+        UvPipeStream { inner: self }
+    }
+}
+
+pub struct UvPipeStream {
+    priv inner: ~UvUnboundPipe,
+}
+
+impl UvPipeStream {
+    pub fn new(inner: ~UvUnboundPipe) -> UvPipeStream {
+        UvPipeStream { inner: inner }
+    }
+}
+
+impl RtioPipe for UvPipeStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+        do self.inner.home_for_io_with_sched |self_, scheduler| {
+            read_stream(self_.pipe.as_stream(), scheduler, buf)
+        }
+    }
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+        do self.inner.home_for_io_with_sched |self_, scheduler| {
+            write_stream(self_.pipe.as_stream(), scheduler, buf)
+        }
+    }
+}
+
 pub struct UvTcpStream {
     watcher: TcpWatcher,
     home: SchedHandle,
@@ -762,10 +1046,8 @@ impl HomingIO for UvTcpStream {
 }
 
 impl Drop for UvTcpStream {
-    fn drop(&self) {
-        // XXX need mutable finalizer
-        let this = unsafe { transmute::<&UvTcpStream, &mut UvTcpStream>(self) };
-        do this.home_for_io_with_sched |self_, scheduler| {
+    fn drop(&mut self) {
+        do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.as_stream().close {
@@ -788,70 +1070,13 @@ impl RtioSocket for UvTcpStream {
 impl RtioTcpStream for UvTcpStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         do self.home_for_io_with_sched |self_, scheduler| {
-            let result_cell = Cell::new_empty();
-            let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
-
-            let buf_ptr: *&mut [u8] = &buf;
-            do scheduler.deschedule_running_task_and_then |_sched, task| {
-                let task_cell = Cell::new(task);
-                // XXX: We shouldn't reallocate these callbacks every
-                // call to read
-                let alloc: AllocCallback = |_| unsafe {
-                    slice_to_uv_buf(*buf_ptr)
-                };
-                let mut watcher = self_.watcher.as_stream();
-                do watcher.read_start(alloc) |mut watcher, nread, _buf, status| {
-
-                    // Stop reading so that no read callbacks are
-                    // triggered before the user calls `read` again.
-                    // XXX: Is there a performance impact to calling
-                    // stop here?
-                    watcher.read_stop();
-
-                    let result = if status.is_none() {
-                        assert!(nread >= 0);
-                        Ok(nread as uint)
-                    } else {
-                        Err(uv_error_to_io_error(status.unwrap()))
-                    };
-
-                    unsafe { (*result_cell_ptr).put_back(result); }
-
-                    let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
-                }
-            }
-
-            assert!(!result_cell.is_empty());
-            result_cell.take()
+            read_stream(self_.watcher.as_stream(), scheduler, buf)
         }
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         do self.home_for_io_with_sched |self_, scheduler| {
-            let result_cell = Cell::new_empty();
-            let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-            let buf_ptr: *&[u8] = &buf;
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-                let mut watcher = self_.watcher.as_stream();
-                do watcher.write(buf) |_watcher, status| {
-                    let result = if status.is_none() {
-                        Ok(())
-                    } else {
-                        Err(uv_error_to_io_error(status.unwrap()))
-                    };
-
-                    unsafe { (*result_cell_ptr).put_back(result); }
-
-                    let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
-                }
-            }
-
-            assert!(!result_cell.is_empty());
-            result_cell.take()
+            write_stream(self_.watcher.as_stream(), scheduler, buf)
         }
     }
 
@@ -921,10 +1146,8 @@ impl HomingIO for UvUdpSocket {
 }
 
 impl Drop for UvUdpSocket {
-    fn drop(&self) {
-        // XXX need mutable finalizer
-        let this = unsafe { transmute::<&UvUdpSocket, &mut UvUdpSocket>(self) };
-        do this.home_for_io_with_sched |self_, scheduler| {
+    fn drop(&mut self) {
+        do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.close {
@@ -1139,9 +1362,8 @@ impl UvTimer {
 }
 
 impl Drop for UvTimer {
-    fn drop(&self) {
-        let self_ = unsafe { transmute::<&UvTimer, &mut UvTimer>(self) };
-        do self_.home_for_io_with_sched |self_, scheduler| {
+    fn drop(&mut self) {
+        do self.home_for_io_with_sched |self_, scheduler| {
             rtdebug!("closing UvTimer");
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
@@ -1173,7 +1395,7 @@ impl RtioTimer for UvTimer {
 
 pub struct UvFileStream {
     loop_: Loop,
-    fd: file::FileDescriptor,
+    fd: c_int,
     close_on_drop: bool,
     home: SchedHandle
 }
@@ -1183,7 +1405,7 @@ impl HomingIO for UvFileStream {
 }
 
 impl UvFileStream {
-    fn new(loop_: Loop, fd: file::FileDescriptor, close_on_drop: bool,
+    fn new(loop_: Loop, fd: c_int, close_on_drop: bool,
            home: SchedHandle) -> UvFileStream {
         UvFileStream {
             loop_: loop_,
@@ -1200,7 +1422,8 @@ impl UvFileStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let task_cell = Cell::new(task);
-                do self_.fd.read(&self_.loop_, buf, offset) |req, uverr| {
+                let read_req = file::FsRequest::new();
+                do read_req.read(&self_.loop_, self_.fd, buf, offset) |req, uverr| {
                     let res = match uverr  {
                         None => Ok(req.get_result() as int),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -1221,7 +1444,8 @@ impl UvFileStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let task_cell = Cell::new(task);
-                do self_.fd.write(&self_.loop_, buf, offset) |_, uverr| {
+                let write_req = file::FsRequest::new();
+                do write_req.write(&self_.loop_, self_.fd, buf, offset) |_, uverr| {
                     let res = match uverr  {
                         None => Ok(()),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -1238,7 +1462,7 @@ impl UvFileStream {
         Result<u64, IoError>{
         #[fixed_stack_segment]; #[inline(never)];
         unsafe {
-            match lseek((*self.fd), pos as off_t, whence) {
+            match lseek(self.fd, pos as off_t, whence) {
                 -1 => {
                     Err(IoError {
                         kind: OtherIoError,
@@ -1253,13 +1477,13 @@ impl UvFileStream {
 }
 
 impl Drop for UvFileStream {
-    fn drop(&self) {
-        let self_ = unsafe { transmute::<&UvFileStream, &mut UvFileStream>(self) };
+    fn drop(&mut self) {
         if self.close_on_drop {
-            do self_.home_for_io_with_sched |self_, scheduler| {
+            do self.home_for_io_with_sched |self_, scheduler| {
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     let task_cell = Cell::new(task);
-                    do self_.fd.close(&self.loop_) |_,_| {
+                    let close_req = file::FsRequest::new();
+                    do close_req.close(&self_.loop_, self_.fd) |_,_| {
                         let scheduler: ~Scheduler = Local::take();
                         scheduler.resume_blocked_task_immediately(task_cell.take());
                     };
@@ -1299,6 +1523,86 @@ impl RtioFileStream for UvFileStream {
     }
     fn flush(&mut self) -> Result<(), IoError> {
         Ok(())
+    }
+}
+
+pub struct UvProcess {
+    process: process::Process,
+
+    // Sadly, this structure must be created before we return it, so in that
+    // brief interim the `home` is None.
+    home: Option<SchedHandle>,
+
+    // All None until the process exits (exit_error may stay None)
+    priv exit_status: Option<int>,
+    priv term_signal: Option<int>,
+    priv exit_error: Option<UvError>,
+
+    // Used to store which task to wake up from the exit_cb
+    priv descheduled: Option<BlockedTask>,
+}
+
+impl HomingIO for UvProcess {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { self.home.get_mut_ref() }
+}
+
+impl Drop for UvProcess {
+    fn drop(&mut self) {
+        let close = |self_: &mut UvProcess| {
+            let scheduler: ~Scheduler = Local::take();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task = Cell::new(task);
+                do self_.process.close {
+                    let scheduler: ~Scheduler = Local::take();
+                    scheduler.resume_blocked_task_immediately(task.take());
+                }
+            }
+        };
+
+        // If home is none, then this process never actually successfully
+        // spawned, so there's no need to switch event loops
+        if self.home.is_none() {
+            close(self)
+        } else {
+            self.home_for_io(close)
+        }
+    }
+}
+
+impl RtioProcess for UvProcess {
+    fn id(&self) -> pid_t {
+        self.process.pid()
+    }
+
+    fn kill(&mut self, signal: int) -> Result<(), IoError> {
+        do self.home_for_io |self_| {
+            match self_.process.kill(signal) {
+                Ok(()) => Ok(()),
+                Err(uverr) => Err(uv_error_to_io_error(uverr))
+            }
+        }
+    }
+
+    fn wait(&mut self) -> int {
+        // Make sure (on the home scheduler) that we have an exit status listed
+        do self.home_for_io |self_| {
+            match self_.exit_status {
+                Some(*) => {}
+                None => {
+                    // If there's no exit code previously listed, then the
+                    // process's exit callback has yet to be invoked. We just
+                    // need to deschedule ourselves and wait to be reawoken.
+                    let scheduler: ~Scheduler = Local::take();
+                    do scheduler.deschedule_running_task_and_then |_, task| {
+                        assert!(self_.descheduled.is_none());
+                        self_.descheduled = Some(task);
+                    }
+                    assert!(self_.exit_status.is_some());
+                }
+            }
+        }
+
+        self.exit_status.unwrap()
     }
 }
 

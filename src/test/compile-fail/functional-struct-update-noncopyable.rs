@@ -17,10 +17,10 @@ use extra::arc::*;
 struct A { y: Arc<int>, x: Arc<int> }
 
 impl Drop for A {
-    fn drop(&self) { println(fmt!("x=%?", self.x.get())); }
+    fn drop(&mut self) { println(fmt!("x=%?", self.x.get())); }
 }
 fn main() {
     let a = A { y: Arc::new(1), x: Arc::new(2) };
-    let _b = A { y: Arc::new(3), ..a };
-    let _c = a; //~ ERROR use of moved value
+    let _b = A { y: Arc::new(3), ..a }; //~ ERROR cannot move out of type `A`
+    let _c = a;
 }

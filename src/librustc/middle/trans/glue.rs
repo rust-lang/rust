@@ -581,11 +581,7 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
       | ty::ty_estr(ty::vstore_slice(_)) => {
         bcx
       }
-      ty::ty_closure(ty::ClosureTy { sigil: ast::BorrowedSigil, _ }) |
-      ty::ty_closure(ty::ClosureTy { sigil: ast::ManagedSigil, _ }) => {
-        closure::make_closure_glue(bcx, v, t, take_ty)
-      }
-      ty::ty_closure(ty::ClosureTy { sigil: ast::OwnedSigil, _ }) => bcx,
+      ty::ty_closure(_) => bcx,
       ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]));
         incr_refcnt_of_boxed(bcx, llbox);
@@ -606,9 +602,7 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
                                 None);
           bcx
       }
-      ty::ty_opaque_closure_ptr(ck) => {
-        closure::make_opaque_cbox_take_glue(bcx, ck, v)
-      }
+      ty::ty_opaque_closure_ptr(_) => bcx,
       ty::ty_struct(did, _) => {
         let tcx = bcx.tcx();
         let bcx = iter_structural_ty(bcx, v, t, take_ty);
@@ -652,8 +646,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let llty = type_of(ccx, t);
 
     if ccx.sess.count_type_sizes() {
-        printfln!("%u\t%s", llsize_of_real(ccx, llty),
-                  ppaux::ty_to_str(ccx.tcx, t));
+        println!("{}\t{}", llsize_of_real(ccx, llty),
+                 ppaux::ty_to_str(ccx.tcx, t));
     }
 
     let has_header = match ty::get(t).sty {

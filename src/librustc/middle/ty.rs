@@ -2308,12 +2308,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ast::Many => TC_NONE
         };
         // Prevent noncopyable types captured in the environment from being copied.
-        let ct = if cty.sigil == ast::ManagedSigil {
-            TC_NONE
-        } else {
-            TC_NONCOPY_TRAIT
-        };
-        st + rt + ot + ct
+        st + rt + ot + TC_NONCOPY_TRAIT
     }
 
     fn trait_contents(store: TraitStore, mutbl: ast::Mutability,

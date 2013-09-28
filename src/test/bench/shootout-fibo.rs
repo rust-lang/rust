@@ -31,5 +31,5 @@ fn main() {
         args
     };
     let n = from_str::<int>(args[1]).unwrap();
-    printfln!("%d\n", fib(n));
+    println!("{}\n", fib(n));
 }

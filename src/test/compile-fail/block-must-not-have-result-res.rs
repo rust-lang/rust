@@ -13,7 +13,7 @@
 struct r;
 
 impl Drop for r {
-    fn drop(&self) {
+    fn drop(&mut self) {
         true
     }
 }

@@ -10,10 +10,10 @@
 
 /*!
 
-A Big integer (signed version: BigInt, unsigned version: BigUint).
+A Big integer (signed version: `BigInt`, unsigned version: `BigUint`).
 
-A BigUint is represented as an array of BigDigits.
-A BigInt is a combination of BigUint and Sign.
+A `BigUint` is represented as an array of `BigDigit`s.
+A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
 #[allow(missing_doc)];
@@ -23,23 +23,23 @@ use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::int;
 use std::num;
 use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
-use std::rand::{Rng, RngUtil};
+use std::rand::Rng;
 use std::str;
 use std::uint;
 use std::vec;
 
 /**
-A BigDigit is a BigUint's composing element.
+A `BigDigit` is a `BigUint`'s composing element.
 
-A BigDigit is half the size of machine word size.
+A `BigDigit` is half the size of machine word size.
 */
 #[cfg(target_word_size = "32")]
 pub type BigDigit = u16;
 
 /**
-A BigDigit is a BigUint's composing element.
+A `BigDigit` is a `BigUint`'s composing element.
 
-A BigDigit is half the size of machine word size.
+A `BigDigit` is half the size of machine word size.
 */
 #[cfg(target_word_size = "64")]
 pub type BigDigit = u32;
@@ -64,13 +64,13 @@ pub mod BigDigit {
     #[inline]
     fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
 
-    /// Split one machine sized unsigned integer into two BigDigits.
+    /// Split one machine sized unsigned integer into two `BigDigit`s.
     #[inline]
     pub fn from_uint(n: uint) -> (BigDigit, BigDigit) {
         (get_hi(n), get_lo(n))
     }
 
-    /// Join two BigDigits into one machine sized unsigned integer
+    /// Join two `BigDigit`s into one machine sized unsigned integer
     #[inline]
     pub fn to_uint(hi: BigDigit, lo: BigDigit) -> uint {
         (lo as uint) | ((hi as uint) << bits)
@@ -80,8 +80,8 @@ pub mod BigDigit {
 /**
 A big unsigned integer type.
 
-A BigUint-typed value BigUint { data: @[a, b, c] } represents a number
-(a + b * BigDigit::base + c * BigDigit::base^2).
+A `BigUint`-typed value `BigUint { data: @[a, b, c] }` represents a number
+`(a + b * BigDigit::base + c * BigDigit::base^2)`.
 */
 #[deriving(Clone)]
 pub struct BigUint {
@@ -115,8 +115,8 @@ impl TotalOrd for BigUint {
         if s_len > o_len { return Greater;  }
 
         for (&self_i, &other_i) in self.data.rev_iter().zip(other.data.rev_iter()) {
-            cond!((self_i < other_i) { return Less; }
-                  (self_i > other_i) { return Greater; })
+            if self_i < other_i { return Less; }
+            if self_i > other_i { return Greater; }
         }
         return Equal;
     }
@@ -550,7 +550,7 @@ impl ToStrRadix for BigUint {
 }
 
 impl FromStrRadix for BigUint {
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
@@ -559,7 +559,7 @@ impl FromStrRadix for BigUint {
 }
 
 impl BigUint {
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     pub fn new(v: ~[BigDigit]) -> BigUint {
         // omit trailing zeros
@@ -571,7 +571,7 @@ impl BigUint {
         return BigUint { data: v };
     }
 
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     pub fn from_uint(n: uint) -> BigUint {
         match BigDigit::from_uint(n) {
@@ -581,13 +581,13 @@ impl BigUint {
         }
     }
 
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
         return BigUint::new(slice.to_owned());
     }
 
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigUint> {
         let (base, unit_len) = get_radix_base(radix);
@@ -615,14 +615,14 @@ impl BigUint {
     }
 
 
-    /// Converts this BigUint into a uint, failing if the conversion
+    /// Converts this `BigUint` into a `uint`, failing if the conversion
     /// would overflow.
     #[inline]
     pub fn to_uint(&self) -> uint {
         self.to_uint_opt().expect("BigUint conversion would overflow uint")
     }
 
-    /// Converts this BigUint into a uint, unless it would overflow.
+    /// Converts this `BigUint` into a `uint`, unless it would overflow.
     #[inline]
     pub fn to_uint_opt(&self) -> Option<uint> {
         match self.data.len() {
@@ -633,7 +633,7 @@ impl BigUint {
         }
     }
 
-    // Converts this BigUint into an int, unless it would overflow.
+    /// Converts this `BigUint` into an `int`, unless it would overflow.
     pub fn to_int_opt(&self) -> Option<int> {
         self.to_uint_opt().and_then(|n| {
             // If top bit of uint is set, it's too large to convert to
@@ -646,7 +646,7 @@ impl BigUint {
         })
     }
 
-    /// Converts this BigUint into a BigInt.
+    /// Converts this `BigUint` into a `BigInt`.
     #[inline]
     pub fn to_bigint(&self) -> BigInt {
         BigInt::from_biguint(Plus, self.clone())
@@ -696,6 +696,13 @@ impl BigUint {
             borrow = *elem << (BigDigit::bits - n_bits);
         }
         return BigUint::new(shifted);
+    }
+
+    /// Determines the fewest bits necessary to express the `BigUint`.
+    pub fn bits(&self) -> uint {
+        if self.is_zero() { return 0; }
+        let zeros = self.data.last().leading_zeros();
+        return self.data.len()*BigDigit::bits - (zeros as uint);
     }
 }
 
@@ -747,7 +754,7 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
     }
 }
 
-/// A Sign is a BigInt's composing element.
+/// A Sign is a `BigInt`'s composing element.
 #[deriving(Eq, Clone)]
 pub enum Sign { Minus, Zero, Plus }
 
@@ -1110,15 +1117,28 @@ impl FromStrRadix for BigInt {
 }
 
 trait RandBigInt {
-    /// Generate a random BigUint of the given bit size.
+    /// Generate a random `BigUint` of the given bit size.
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
 
     /// Generate a random BigInt of the given bit size.
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt;
+
+    /// Generate a random `BigUint` less than the given bound. Fails
+    /// when the bound is zero.
+    fn gen_biguint_below(&mut self, bound: &BigUint) -> BigUint;
+
+    /// Generate a random `BigUint` within the given range. The lower
+    /// bound is inclusive; the upper bound is exclusive. Fails when
+    /// the upper bound is not greater than the lower bound.
+    fn gen_biguint_range(&mut self, lbound: &BigUint, ubound: &BigUint) -> BigUint;
+
+    /// Generate a random `BigInt` within the given range. The lower
+    /// bound is inclusive; the upper bound is exclusive. Fails when
+    /// the upper bound is not greater than the lower bound.
+    fn gen_bigint_range(&mut self, lbound: &BigInt, ubound: &BigInt) -> BigInt;
 }
 
 impl<R: Rng> RandBigInt for R {
-    /// Generate a random BigUint of the given bit size.
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint {
         let (digits, rem) = bit_size.div_rem(&BigDigit::bits);
         let mut data = vec::with_capacity(digits+1);
@@ -1132,7 +1152,6 @@ impl<R: Rng> RandBigInt for R {
         return BigUint::new(data);
     }
 
-    /// Generate a random BigInt of the given bit size.
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt {
         // Generate a random BigUint...
         let biguint = self.gen_biguint(bit_size);
@@ -1154,6 +1173,32 @@ impl<R: Rng> RandBigInt for R {
         };
         return BigInt::from_biguint(sign, biguint);
     }
+
+    fn gen_biguint_below(&mut self, bound: &BigUint) -> BigUint {
+        assert!(!bound.is_zero());
+        let bits = bound.bits();
+        loop {
+            let n = self.gen_biguint(bits);
+            if n < *bound { return n; }
+        }
+    }
+
+    fn gen_biguint_range(&mut self,
+                         lbound: &BigUint,
+                         ubound: &BigUint)
+                         -> BigUint {
+        assert!(*lbound < *ubound);
+        return *lbound + self.gen_biguint_below(&(*ubound - *lbound));
+    }
+
+    fn gen_bigint_range(&mut self,
+                        lbound: &BigInt,
+                        ubound: &BigInt)
+                        -> BigInt {
+        assert!(*lbound < *ubound);
+        let delta = (*ubound - *lbound).to_biguint();
+        return *lbound + self.gen_biguint_below(&delta).to_bigint();
+    }
 }
 
 impl BigInt {
@@ -1163,7 +1208,7 @@ impl BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     #[inline]
     pub fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
         if sign == Zero || data.is_zero() {
@@ -1172,20 +1217,20 @@ impl BigInt {
         return BigInt { sign: sign, data: data };
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     #[inline]
     pub fn from_uint(n: uint) -> BigInt {
         if n == 0 { return Zero::zero(); }
         return BigInt::from_biguint(Plus, BigUint::from_uint(n));
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     #[inline]
     pub fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::from_slice(slice))
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigInt> {
         if buf.is_empty() { return None; }
@@ -1199,14 +1244,14 @@ impl BigInt {
             .map_move(|bu| BigInt::from_biguint(sign, bu));
     }
 
-    /// Converts this BigInt into a uint, failing if the conversion
+    /// Converts this `BigInt` into a `uint`, failing if the conversion
     /// would overflow.
     #[inline]
     pub fn to_uint(&self) -> uint {
         self.to_uint_opt().expect("BigInt conversion would overflow uint")
     }
 
-    /// Converts this BigInt into a uint, unless it would overflow.
+    /// Converts this `BigInt` into a `uint`, unless it would overflow.
     #[inline]
     pub fn to_uint_opt(&self) -> Option<uint> {
         match self.sign {
@@ -1216,7 +1261,7 @@ impl BigInt {
         }
     }
 
-    /// Converts this BigInt into an int, unless it would overflow.
+    /// Converts this `BigInt` into an `int`, unless it would overflow.
     pub fn to_int_opt(&self) -> Option<int> {
         match self.sign {
             Plus  => self.data.to_int_opt(),
@@ -1234,14 +1279,14 @@ impl BigInt {
         }
     }
 
-    /// Converts this BigInt into a BigUint, failing if BigInt is
+    /// Converts this `BigInt` into a `BigUint`, failing if BigInt is
     /// negative.
     #[inline]
     pub fn to_biguint(&self) -> BigUint {
         self.to_biguint_opt().expect("negative BigInt cannot convert to BigUint")
     }
 
-    /// Converts this BigInt into a BigUint, if it's not negative.
+    /// Converts this `BigInt` into a `BigUint`, if it's not negative.
     #[inline]
     pub fn to_biguint_opt(&self) -> Option<BigUint> {
         match self.sign {
@@ -1781,10 +1826,61 @@ mod biguint_tests {
     }
 
     #[test]
+    fn test_bits() {
+        assert_eq!(BigUint::new(~[0,0,0,0]).bits(), 0);
+        assert_eq!(BigUint::from_uint(0).bits(), 0);
+        assert_eq!(BigUint::from_uint(1).bits(), 1);
+        assert_eq!(BigUint::from_uint(3).bits(), 2);
+        let n: BigUint = FromStrRadix::from_str_radix("4000000000", 16).unwrap();
+        assert_eq!(n.bits(), 39);
+        let one: BigUint = One::one();
+        assert_eq!((one << 426).bits(), 427);
+    }
+
+    #[test]
     fn test_rand() {
         let mut rng = task_rng();
         let _n: BigUint = rng.gen_biguint(137);
         assert!(rng.gen_biguint(0).is_zero());
+    }
+
+    #[test]
+    fn test_rand_range() {
+        let mut rng = task_rng();
+
+        do 10.times {
+            assert_eq!(rng.gen_bigint_range(&BigInt::from_uint(236),
+                                            &BigInt::from_uint(237)),
+                       BigInt::from_uint(236));
+        }
+
+        let l = BigUint::from_uint(403469000 + 2352);
+        let u = BigUint::from_uint(403469000 + 3513);
+        do 1000.times {
+            let n: BigUint = rng.gen_biguint_below(&u);
+            assert!(n < u);
+
+            let n: BigUint = rng.gen_biguint_range(&l, &u);
+            assert!(n >= l);
+            assert!(n < u);
+        }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_zero_rand_range() {
+        task_rng().gen_biguint_range(&BigUint::from_uint(54),
+                                     &BigUint::from_uint(54));
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_negative_rand_range() {
+        let mut rng = task_rng();
+        let l = BigUint::from_uint(2352);
+        let u = BigUint::from_uint(3513);
+        // Switching u and l should fail:
+        let _n: BigUint = rng.gen_biguint_range(&u, &l);
     }
 }
 
@@ -2236,6 +2332,48 @@ mod bigint_tests {
         let mut rng = task_rng();
         let _n: BigInt = rng.gen_bigint(137);
         assert!(rng.gen_bigint(0).is_zero());
+    }
+
+    #[test]
+    fn test_rand_range() {
+        let mut rng = task_rng();
+
+        do 10.times {
+            assert_eq!(rng.gen_bigint_range(&BigInt::from_uint(236),
+                                            &BigInt::from_uint(237)),
+                       BigInt::from_uint(236));
+        }
+
+        fn check(l: BigInt, u: BigInt) {
+            let mut rng = task_rng();
+            do 1000.times {
+                let n: BigInt = rng.gen_bigint_range(&l, &u);
+                assert!(n >= l);
+                assert!(n < u);
+            }
+        }
+        let l = BigInt::from_uint(403469000 + 2352);
+        let u = BigInt::from_uint(403469000 + 3513);
+        check( l.clone(),  u.clone());
+        check(-l.clone(),  u.clone());
+        check(-u.clone(), -l.clone());
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_zero_rand_range() {
+        task_rng().gen_bigint_range(&IntConvertible::from_int(54),
+                                    &IntConvertible::from_int(54));
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_negative_rand_range() {
+        let mut rng = task_rng();
+        let l = BigInt::from_uint(2352);
+        let u = BigInt::from_uint(3513);
+        // Switching u and l should fail:
+        let _n: BigInt = rng.gen_bigint_range(&u, &l);
     }
 }
 

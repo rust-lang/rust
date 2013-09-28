@@ -39,7 +39,7 @@
 		<keyword>assert</keyword>
 		<keyword>break</keyword>
 		<keyword>const</keyword>
-		<keyword>copy</keyword>
+		<keyword>continue</keyword>
 		<keyword>do</keyword>
 		<keyword>drop</keyword>
 		<keyword>else</keyword>

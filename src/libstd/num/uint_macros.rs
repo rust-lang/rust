@@ -11,6 +11,7 @@
 // FIXME(#4375): this shouldn't have to be a nested module named 'generated'
 
 #[macro_escape];
+#[doc(hidden)];
 
 macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
 
@@ -70,11 +71,11 @@ impl Orderable for $T {
     /// Returns the number constrained within the range `mn <= self <= mx`.
     #[inline]
     fn clamp(&self, mn: &$T, mx: &$T) -> $T {
-        cond!(
-            (*self > *mx) { *mx   }
-            (*self < *mn) { *mn   }
-            _             { *self }
-        )
+        match () {
+            _ if (*self > *mx) => *mx,
+            _ if (*self < *mn) => *mn,
+            _                  => *self,
+        }
     }
 }
 

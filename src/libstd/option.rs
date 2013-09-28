@@ -23,12 +23,12 @@ of a value and take action, always accounting for the `None` case.
 
 # Example
 
-~~~
+ ```
 let msg = Some(~"howdy");
 
 // Take a reference to the contained string
 match msg {
-    Some(ref m) => io::println(m),
+    Some(ref m) => io::println(*m),
     None => ()
 }
 
@@ -37,7 +37,7 @@ let unwrapped_msg = match msg {
     Some(m) => m,
     None => ~"default message"
 };
-~~~
+ ```
 
 */
 
@@ -467,15 +467,6 @@ impl<T: Default> Option<T> {
             None => Default::default()
         }
     }
-
-    /// Returns self or `Some`-wrapped default value
-    #[inline]
-    pub fn or_default(self) -> Option<T> {
-        match self {
-            None => Some(Default::default()),
-            x => x,
-        }
-    }
 }
 
 impl<T> Default for Option<T> {
@@ -483,22 +474,13 @@ impl<T> Default for Option<T> {
     fn default() -> Option<T> { None }
 }
 
-impl<T:Zero> Option<T> {
+impl<T: Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline]
     pub fn unwrap_or_zero(self) -> T {
         match self {
             Some(x) => x,
             None => Zero::zero()
-        }
-    }
-
-    /// Returns self or `Some`-wrapped zero value
-    #[inline]
-    pub fn or_zero(self) -> Option<T> {
-        match self {
-            None => Some(Zero::zero()),
-            x => x
         }
     }
 }
@@ -573,7 +555,7 @@ mod tests {
 
         #[unsafe_destructor]
         impl ::ops::Drop for R {
-           fn drop(&self) { *(self.i) += 1; }
+           fn drop(&mut self) { *(self.i) += 1; }
         }
 
         fn R(i: @mut int) -> R {

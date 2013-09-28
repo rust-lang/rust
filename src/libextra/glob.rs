@@ -23,7 +23,7 @@
  * `glob`/`fnmatch` functions.
  */
 
-use std::{os, path, util};
+use std::{os, path};
 
 use sort;
 
@@ -51,18 +51,18 @@ pub struct GlobIterator {
  * Consider a directory `/media/pictures` containing only the files `kittens.jpg`,
  * `puppies.jpg` and `hamsters.gif`:
  *
- * ~~~ {.rust}
+ * ```rust
  * for path in glob("/media/pictures/*.jpg") {
  *     println(path.to_str());
  * }
- * ~~~
+ * ```
  *
  * The above code will print:
  *
- * ~~~
+ * ```
  * /media/pictures/kittens.jpg
  * /media/pictures/puppies.jpg
- * ~~~
+ * ```
  */
 pub fn glob(pattern: &str) -> GlobIterator {
     glob_with(pattern, MatchOptions::new())
@@ -137,16 +137,6 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
 /**
  * A compiled Unix shell style pattern.
  */
-#[cfg(stage0)]
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
-pub struct Pattern {
-    priv tokens: ~[PatternToken]
-}
-
-/**
- * A compiled Unix shell style pattern.
- */
-#[cfg(not(stage0))]
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
 pub struct Pattern {
     priv tokens: ~[PatternToken]
@@ -280,11 +270,11 @@ impl Pattern {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * assert!(Pattern::new("c?t").matches("cat"));
      * assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
      * assert!(Pattern::new("d*g").matches("doog"));
-     * ~~~
+     * ```
      */
     pub fn matches(&self, str: &str) -> bool {
         self.matches_with(str, MatchOptions::new())
@@ -366,7 +356,7 @@ impl Pattern {
                             chars_eq(c, c2, options.case_sensitive)
                         }
                         AnySequence => {
-                            util::unreachable()
+                            unreachable!()
                         }
                     };
                     if !matches {
@@ -465,39 +455,10 @@ fn is_sep(c: char) -> bool {
     }
 }
 
-/**
- * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
- */
-#[cfg(stage0)]
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
-pub struct MatchOptions {
-
-    /**
-     * Whether or not patterns should be matched in a case-sensitive manner. This
-     * currently only considers upper/lower case relationships between ASCII characters,
-     * but in future this might be extended to work with Unicode.
-     */
-    case_sensitive: bool,
-
-    /**
-     * If this is true then path-component separator characters (e.g. `/` on Posix)
-     * must be matched by a literal `/`, rather than by `*` or `?` or `[...]`
-     */
-    require_literal_separator: bool,
-
-    /**
-     * If this is true then paths that contain components that start with a `.` will
-     * not match unless the `.` appears literally in the pattern: `*`, `?` or `[...]`
-     * will not match. This is useful because such files are conventionally considered
-     * hidden on Unix systems and it might be desirable to skip them when listing files.
-     */
-    require_literal_leading_dot: bool
-}
 
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
  */
-#[cfg(not(stage0))]
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
 pub struct MatchOptions {
 
@@ -531,13 +492,13 @@ impl MatchOptions {
      *
      * This function always returns this value:
      *
-     * ~~~ {.rust}
+     * ```rust
      * MatchOptions {
      *     case_sensitive: true,
      *     require_literal_separator: false.
      *     require_literal_leading_dot: false
      * }
-     * ~~~
+     * ```
      */
     pub fn new() -> MatchOptions {
         MatchOptions {
@@ -551,10 +512,8 @@ impl MatchOptions {
 
 #[cfg(test)]
 mod test {
-    use std::{io, os, unstable};
-    use std::unstable::finally::Finally;
+    use std::os;
     use super::*;
-    use tempfile;
 
     #[test]
     fn test_absolute_pattern() {

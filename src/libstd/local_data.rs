@@ -22,18 +22,18 @@ To declare a new key for storing local data of a particular type, use the
 named and annotated. This name is then passed to the functions in this module to
 modify/read the slot specified by the key.
 
-~~~{.rust}
+```rust
 use std::local_data;
 
-local_data_key!(key_int: int);
-local_data_key!(key_vector: ~[int]);
+local_data_key!(key_int: int)
+local_data_key!(key_vector: ~[int])
 
 local_data::set(key_int, 3);
 local_data::get(key_int, |opt| assert_eq!(opt, Some(&3)));
 
 local_data::set(key_vector, ~[4]);
 local_data::get(key_vector, |opt| assert_eq!(opt, Some(&~[4])));
-~~~
+ ```
 
 */
 
@@ -72,7 +72,7 @@ impl<T: 'static> LocalData for T {}
 //
 // One of the most important operations is loaning a value via `get` to a
 // caller. In doing so, the slot that the TLS entry is occupying cannot be
-// invalidated because upon returning it's loan state must be updated. Currently
+// invalidated because upon returning its loan state must be updated. Currently
 // the TLS map is a vector, but this is possibly dangerous because the vector
 // can be reallocated/moved when new values are pushed onto it.
 //

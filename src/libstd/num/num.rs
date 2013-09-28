@@ -82,12 +82,12 @@ pub trait Unsigned: Num {}
 
 /// Times trait
 ///
-/// ~~~ {.rust}
+/// ```rust
 /// use num::Times;
 /// let ten = 10 as uint;
 /// let mut accum = 0;
 /// do ten.times { accum += 1; }
-/// ~~~
+/// ```
 ///
 pub trait Times {
     fn times(&self, it: &fn());
@@ -320,12 +320,12 @@ pub trait Float: Real
                + Primitive
                + ApproxEq<Self> {
     // FIXME (#5527): These should be associated constants
-    fn NaN() -> Self;
+    fn nan() -> Self;
     fn infinity() -> Self;
     fn neg_infinity() -> Self;
     fn neg_zero() -> Self;
 
-    fn is_NaN(&self) -> bool;
+    fn is_nan(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
     fn is_normal(&self) -> bool;
@@ -357,10 +357,10 @@ pub trait Float: Real
 ///
 /// # Example
 ///
-/// ~~~
+/// ```
 /// let twenty: f32 = num::cast(0x14);
 /// assert_eq!(twenty, 20f32);
-/// ~~~
+/// ```
 ///
 #[inline]
 pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {

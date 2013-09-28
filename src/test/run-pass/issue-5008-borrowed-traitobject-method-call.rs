@@ -37,7 +37,7 @@ fn print_name(x: &Debuggable)
     println(fmt!("debug_name = %s", x.debug_name()));
 }
 
-fn main() {
+pub fn main() {
     let thing = Thing::new();
     print_name(&thing as &Debuggable);
 }

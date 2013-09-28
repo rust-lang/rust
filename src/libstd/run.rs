@@ -436,12 +436,9 @@ impl Process {
 }
 
 impl Drop for Process {
-    fn drop(&self) {
-        // FIXME(#4330) Need self by value to get mutability.
-        let mut_self: &mut Process = unsafe { cast::transmute(self) };
-
-        mut_self.finish();
-        mut_self.close_outputs();
+    fn drop(&mut self) {
+        self.finish();
+        self.close_outputs();
         free_handle(self.handle);
     }
 }
@@ -646,13 +643,26 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use libc::funcs::bsd44::getdtablesize;
 
     mod rustrt {
-        use libc::c_void;
-
         #[abi = "cdecl"]
         extern {
             pub fn rust_unset_sigprocmask();
-            pub fn rust_set_environ(envp: *c_void);
         }
+    }
+
+    #[cfg(windows)]
+    unsafe fn set_environ(_envp: *c_void) {}
+    #[cfg(target_os = "macos")]
+    unsafe fn set_environ(envp: *c_void) {
+        externfn!(fn _NSGetEnviron() -> *mut *c_void);
+
+        *_NSGetEnviron() = envp;
+    }
+    #[cfg(not(target_os = "macos"), not(windows))]
+    unsafe fn set_environ(envp: *c_void) {
+        extern {
+            static mut environ: *c_void;
+        }
+        environ = envp;
     }
 
     unsafe {
@@ -688,7 +698,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         do with_envp(env) |envp| {
             if !envp.is_null() {
-                rustrt::rust_set_environ(envp);
+                set_environ(envp);
             }
             do with_argv(prog, args) |argv| {
                 execvp(*argv, argv);
@@ -739,8 +749,6 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
             let mut tmps = vec::with_capacity(env.len());
 
             for pair in env.iter() {
-                // Use of match here is just to workaround limitations
-                // in the stage0 irrefutable pattern impl.
                 let kv = fmt!("%s=%s", pair.first(), pair.second());
                 tmps.push(kv.to_c_str());
             }

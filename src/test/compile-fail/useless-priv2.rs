@@ -12,8 +12,3 @@ pub trait E {
     pub fn foo();               //~ ERROR: obsolete syntax
 }
 trait F { pub fn foo(); }       //~ ERROR: obsolete syntax
-
-struct B;
-impl E for B {
-    priv fn foo() {}             //~ ERROR: obsolete syntax
-}

@@ -129,12 +129,16 @@ pub unsafe fn unsafe_borrow<T>() -> *mut T {
 }
 
 pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
-    let key = tls_key();
-    let void_ptr = tls::get(key);
-    if void_ptr.is_null() {
-        None
-    } else {
-        Some(void_ptr as *mut T)
+    match maybe_tls_key() {
+        Some(key) => {
+            let void_ptr = tls::get(key);
+            if void_ptr.is_null() {
+                None
+            } else {
+                Some(void_ptr as *mut T)
+            }
+        }
+        None => None
     }
 }
 

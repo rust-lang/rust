@@ -22,6 +22,7 @@ use path_util::{find_dir_using_rust_path_hack, default_workspace, make_dir_rwx_r
 use util::compile_crate;
 use workspace::is_workspace;
 use workcache_support;
+use workcache_support::crate_tag;
 use extra::workcache;
 
 // An enumeration of the unpacked source of a package workspace.
@@ -58,7 +59,8 @@ impl PkgSrc {
         use conditions::nonexistent_package::cond;
 
         debug!("Checking package source for package ID %s, \
-               workspace = %s", id.to_str(), workspace.to_str());
+               workspace = %s use_rust_path_hack = %?",
+               id.to_str(), workspace.to_str(), use_rust_path_hack);
 
         let mut to_try = ~[];
         if use_rust_path_hack {
@@ -231,7 +233,7 @@ impl PkgSrc {
         p.filestem().map_default(false, |p| { p == &self.id.short_name.as_slice() })
     }
 
-    fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
+    pub fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
         assert!(p.components.len() > prefix);
         let mut sub = Path("");
         for c in p.components.slice(prefix, p.components.len()).iter() {
@@ -244,13 +246,17 @@ impl PkgSrc {
     /// Infers crates to build. Called only in the case where there
     /// is no custom build logic
     pub fn find_crates(&mut self) {
+        self.find_crates_with_filter(|_| true);
+    }
+
+    pub fn find_crates_with_filter(&mut self, filter: &fn(&str) -> bool) {
         use conditions::missing_pkg_files::cond;
 
         let prefix = self.start_dir.components.len();
         debug!("Matching against %s", self.id.short_name);
         do os::walk_dir(&self.start_dir) |pth| {
             let maybe_known_crate_set = match pth.filename() {
-                Some(filename) => match filename {
+                Some(filename) if filter(filename) => match filename {
                     "lib.rs" => Some(&mut self.libs),
                     "main.rs" => Some(&mut self.mains),
                     "test.rs" => Some(&mut self.tests),
@@ -286,7 +292,6 @@ impl PkgSrc {
 
     fn build_crates(&self,
                     ctx: &BuildContext,
-                    exec: &mut workcache::Exec,
                     destination_dir: &Path,
                     crates: &[Crate],
                     cfgs: &[~str],
@@ -297,25 +302,40 @@ impl PkgSrc {
             let path_str = path.to_str();
             let cfgs = crate.cfgs + cfgs;
 
-            let result =
-                // compile_crate should return the path of the output artifact
-                compile_crate(ctx,
-                              exec,
-                              &self.id,
-                              &path,
-                              destination_dir,
-                              crate.flags,
-                              cfgs,
-                              false,
-                              what).to_str();
-            debug!("Result of compiling %s was %s", path_str, result);
+            do ctx.workcache_context.with_prep(crate_tag(&path)) |prep| {
+                debug!("Building crate %s, declaring it as an input", path.to_str());
+                prep.declare_input("file", path.to_str(),
+                                   workcache_support::digest_file_with_date(&path));
+                let subpath = path.clone();
+                let subcfgs = cfgs.clone();
+                let subpath_str = path_str.clone();
+                let subcx = ctx.clone();
+                let id = self.id.clone();
+                let sub_dir = destination_dir.clone();
+                let sub_flags = crate.flags.clone();
+                do prep.exec |exec| {
+                    let result = compile_crate(&subcx,
+                                               exec,
+                                               &id,
+                                               &subpath,
+                                               &sub_dir,
+                                               sub_flags,
+                                               subcfgs,
+                                               false,
+                                               what).to_str();
+                    debug!("Result of compiling %s was %s", subpath_str, result);
+                    result
+                }
+            };
         }
     }
 
     /// Declare all the crate files in the package source as inputs
+    /// (to the package)
     pub fn declare_inputs(&self, prep: &mut workcache::Prep) {
         let to_do = ~[self.libs.clone(), self.mains.clone(),
                       self.tests.clone(), self.benchs.clone()];
+        debug!("In declare inputs, self = %s", self.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
                 let path = self.start_dir.push_rel(&c.file).normalize();
@@ -330,7 +350,6 @@ impl PkgSrc {
     // It would be better if build returned a Path, but then Path would have to derive
     // Encodable.
     pub fn build(&self,
-                 exec: &mut workcache::Exec,
                  build_context: &BuildContext,
                  cfgs: ~[~str]) -> ~str {
         use conditions::not_a_workspace::cond;
@@ -360,13 +379,23 @@ impl PkgSrc {
         let benchs = self.benchs.clone();
         debug!("Building libs in %s, destination = %s",
                destination_workspace.to_str(), destination_workspace.to_str());
-        self.build_crates(build_context, exec, &destination_workspace, libs, cfgs, Lib);
+        self.build_crates(build_context, &destination_workspace, libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(build_context, exec, &destination_workspace, mains, cfgs, Main);
+        self.build_crates(build_context, &destination_workspace, mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(build_context, exec, &destination_workspace, tests, cfgs, Test);
+        self.build_crates(build_context, &destination_workspace, tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(build_context, exec, &destination_workspace, benchs, cfgs, Bench);
+        self.build_crates(build_context, &destination_workspace, benchs, cfgs, Bench);
         destination_workspace.to_str()
+    }
+
+    /// Debugging
+    pub fn dump_crates(&self) {
+        let crate_sets = [&self.libs, &self.mains, &self.tests, &self.benchs];
+        for crate_set in crate_sets.iter() {
+            for c in crate_set.iter() {
+                debug!("Built crate: %s", c.file.to_str())
+            }
+        }
     }
 }

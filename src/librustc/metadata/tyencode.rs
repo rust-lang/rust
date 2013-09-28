@@ -26,7 +26,7 @@ use syntax::print::pprust::*;
 pub struct ctxt {
     diag: @mut span_handler,
     // Def -> str Callback:
-    ds: @fn(DefId) -> ~str,
+    ds: extern "Rust" fn(DefId) -> ~str,
     // The type context.
     tcx: ty::ctxt,
     abbrevs: abbrev_ctxt

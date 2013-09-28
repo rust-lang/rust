@@ -126,7 +126,7 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                     Some(&DefStatic(did, false)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                         match eval_const_expr(cx.tcx, const_expr) {
-                            const_float(f) if f.is_NaN() => true,
+                            const_float(f) if f.is_nan() => true,
                             _ => false
                         }
                     }
@@ -136,7 +136,7 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
             do walk_pat(*pat) |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
-                                                   use the is_NaN method in a guard instead");
+                                                   use the is_nan method in a guard instead");
                 }
                 true
             };

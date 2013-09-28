@@ -32,6 +32,6 @@ pub fn main() {
     assert_eq!(z.b, 22);
     assert_eq!(w.a, 5);
     assert_eq!(w.c, 3);
-    printfln!("0x%x", x.b as uint);
-    printfln!("0x%x", z.c as uint);
+    println!("{:#x}", x.b);
+    println!("{:#x}", z.c);
 }

@@ -63,5 +63,5 @@ fn main() {
         mult_AtAv(v, u, tmp);
     }
 
-    printfln!("%.9f", (dot(u,v) / dot(v,v)).sqrt() as float);
+    println!("{:.9f}", (dot(u,v) / dot(v,v)).sqrt() as float);
 }

@@ -26,7 +26,7 @@ fn foo<T: Foo>(val: T, chan: comm::Chan<T>) {
     chan.send(val);
 }
 
-fn main() {
+pub fn main() {
     let (p,c) = comm::stream();
     foo(31337, c);
     assert!(p.recv() == 31337);

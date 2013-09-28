@@ -280,7 +280,7 @@ fn fib(n: uint) -> uint {
     12586269025
 }
 
-let mut delayed_fib = extra::future::spawn (|| fib(50) );
+let mut delayed_fib = extra::future::Future::spawn (|| fib(50) );
 make_a_sandwich();
 println(fmt!("fib(50) = %?", delayed_fib.get()))
 ~~~
@@ -304,7 +304,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = vec::from_fn(1000, |ind| do extra::future::spawn { partial_sum(ind) });
+    let mut futures = vec::from_fn(1000, |ind| do extra::future::Future::spawn { partial_sum(ind) });
 
     let mut final_res = 0f64;
     for ft in futures.mut_iter()  {
@@ -423,7 +423,7 @@ do_some_work();
 While it isn't possible for a task to recover from failure, tasks may notify
 each other of failure. The simplest way of handling task failure is with the
 `try` function, which is similar to `spawn`, but immediately blocks waiting
-for the child task to finish. `try` returns a value of type `Result<int,
+for the child task to finish. `try` returns a value of type `Result<T,
 ()>`. `Result` is an `enum` type with two variants: `Ok` and `Err`. In this
 case, because the type arguments to `Result` are `int` and `()`, callers can
 pattern-match on a result to check whether it's an `Ok` result with an `int`

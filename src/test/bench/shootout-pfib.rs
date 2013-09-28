@@ -64,7 +64,7 @@ fn parse_opts(argv: ~[~str]) -> Config {
 
     match getopts::getopts(opt_args, opts) {
       Ok(ref m) => {
-          return Config {stress: getopts::opt_present(m, "stress")}
+          return Config {stress: m.opt_present("stress")}
       }
       Err(_) => { fail!(); }
     }

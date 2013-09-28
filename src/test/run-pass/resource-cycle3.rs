@@ -27,7 +27,7 @@ struct R {
 }
 
 impl Drop for R {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             let _v2: ~int = cast::transmute(self.v.c);
             // let _v3: ~int = cast::transmute_copy(self.x);

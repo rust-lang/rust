@@ -720,11 +720,11 @@ pub fn early_resolve_expr(ex: @ast::Expr,
     }
 }
 
-fn resolve_expr(v: &mut VtableResolveVisitor,
-                ex: @ast::Expr,
-                fcx: @mut FnCtxt) {
+fn resolve_expr(fcx: @mut FnCtxt,
+                ex: @ast::Expr) {
+    let mut fcx = fcx;
     early_resolve_expr(ex, fcx, false);
-    visit::walk_expr(v, ex, fcx);
+    visit::walk_expr(&mut fcx, ex, ());
 }
 
 pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
@@ -771,13 +771,11 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
     }
 }
 
-struct VtableResolveVisitor;
-
-impl visit::Visitor<@mut FnCtxt> for VtableResolveVisitor {
-    fn visit_expr(&mut self, ex:@ast::Expr, e:@mut FnCtxt) {
-        resolve_expr(self, ex, e);
+impl visit::Visitor<()> for @mut FnCtxt {
+    fn visit_expr(&mut self, ex:@ast::Expr, _:()) {
+        resolve_expr(*self, ex);
     }
-    fn visit_item(&mut self, _:@ast::item, _:@mut FnCtxt) {
+    fn visit_item(&mut self, _:@ast::item, _:()) {
         // no-op
     }
 }
@@ -785,6 +783,6 @@ impl visit::Visitor<@mut FnCtxt> for VtableResolveVisitor {
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::Block) {
-    let mut visitor = VtableResolveVisitor;
-    visit::walk_block(&mut visitor, bl, fcx);
+    let mut fcx = fcx;
+    visit::walk_block(&mut fcx, bl, ());
 }

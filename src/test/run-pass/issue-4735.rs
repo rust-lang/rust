@@ -15,13 +15,13 @@ use std::libc::c_void;
 struct NonCopyable(*c_void);
 
 impl Drop for NonCopyable {
-    fn drop(&self) {
+    fn drop(&mut self) {
         let p = **self;
         let _v = unsafe { transmute::<*c_void, ~int>(p) };
     }
 }
 
-fn main() {
+pub fn main() {
     let t = ~0;
     let p = unsafe { transmute::<~int, *c_void>(t) };
     let _z = NonCopyable(p);

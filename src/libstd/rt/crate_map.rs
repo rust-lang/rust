@@ -9,14 +9,28 @@
 // except according to those terms.
 
 
-use libc::{c_void, c_char};
+use libc::c_char;
 use ptr;
 use ptr::RawPtr;
 use vec;
 use hashmap::HashSet;
 use container::MutableSet;
 
-pub struct ModEntry{
+// Need to tell the linker on OS X to not barf on undefined symbols
+// and instead look them up at runtime, which we need to resolve
+// the crate_map properly.
+#[cfg(target_os = "macos")]
+#[link_args = "-undefined dynamic_lookup"]
+extern {}
+
+#[cfg(not(windows))]
+extern {
+    #[weak_linkage]
+    #[link_name = "_rust_crate_map_toplevel"]
+    static CRATE_MAP: CrateMap;
+}
+
+pub struct ModEntry {
     name: *c_char,
     log_level: *mut u32
 }
@@ -27,26 +41,40 @@ struct CrateMapV0 {
 
 struct CrateMap {
     version: i32,
-    annihilate_fn: *c_void,
     entries: *ModEntry,
     /// a dynamically sized struct, where all pointers to children are listed adjacent
     /// to the struct, terminated with NULL
     children: [*CrateMap, ..1]
 }
 
+#[cfg(not(windows))]
+pub fn get_crate_map() -> *CrateMap {
+    &'static CRATE_MAP as *CrateMap
+}
+
+#[cfg(windows)]
+#[fixed_stack_segment]
+#[inline(never)]
+pub fn get_crate_map() -> *CrateMap {
+    use c_str::ToCStr;
+    use unstable::dynamic_lib::dl;
+
+    let sym = unsafe {
+        let module = dl::open_internal();
+        let sym = do "__rust_crate_map_toplevel".with_c_str |buf| {
+            dl::symbol(module, buf)
+        };
+        dl::close(module);
+        sym
+    };
+
+    sym as *CrateMap
+}
+
 unsafe fn version(crate_map: *CrateMap) -> i32 {
     match (*crate_map).version {
         1 => return 1,
         _ => return 0
-    }
-}
-
-/// Returns a pointer to the annihilate function of the CrateMap
-pub unsafe fn annihilate_fn(crate_map: *CrateMap) -> *c_void {
-    match version(crate_map) {
-        0 => return ptr::null(),
-        1 => return (*crate_map).annihilate_fn,
-        _ => fail!("Unknown crate map version!")
     }
 }
 
@@ -107,7 +135,6 @@ fn iter_crate_map_duplicates() {
 
     struct CrateMapT3 {
         version: i32,
-        annihilate_fn: *c_void,
         entries: *ModEntry,
         children: [*CrateMap, ..3]
     }
@@ -122,13 +149,12 @@ fn iter_crate_map_duplicates() {
         ];
         let child_crate = CrateMap {
             version: 1,
-            annihilate_fn: ptr::null(),
             entries: vec::raw::to_ptr(entries),
             children: [ptr::null()]
         };
 
         let root_crate = CrateMapT3 {
-            version: 1, annihilate_fn: ptr::null(),
+            version: 1,
             entries: vec::raw::to_ptr([ModEntry { name: ptr::null(), log_level: ptr::mut_null()}]),
             children: [&child_crate as *CrateMap, &child_crate as *CrateMap, ptr::null()]
         };
@@ -149,7 +175,6 @@ fn iter_crate_map_follow_children() {
 
     struct CrateMapT2 {
         version: i32,
-        annihilate_fn: *c_void,
         entries: *ModEntry,
         children: [*CrateMap, ..2]
     }
@@ -161,7 +186,6 @@ fn iter_crate_map_follow_children() {
         let mut level3: u32 = 3;
         let child_crate2 = CrateMap {
             version: 1,
-            annihilate_fn: ptr::null(),
             entries: vec::raw::to_ptr([
                 ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level2},
                 ModEntry { name: mod_name2.with_ref(|buf| buf), log_level: &mut level3},
@@ -172,9 +196,8 @@ fn iter_crate_map_follow_children() {
 
         let child_crate1 = CrateMapT2 {
             version: 1,
-            annihilate_fn: ptr::null(),
             entries: vec::raw::to_ptr([
-                ModEntry { name: "t::f1".to_c_str().with_ref(|buf| buf), log_level: &mut 1},
+                ModEntry { name: "t::f1".with_c_str(|buf| buf), log_level: &mut 1},
                 ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
             ]),
             children: [&child_crate2 as *CrateMap, ptr::null()]
@@ -182,9 +205,9 @@ fn iter_crate_map_follow_children() {
 
         let child_crate1_ptr: *CrateMap = transmute(&child_crate1);
         let root_crate = CrateMapT2 {
-            version: 1, annihilate_fn: ptr::null(),
+            version: 1,
             entries: vec::raw::to_ptr([
-                ModEntry { name: "t::f1".to_c_str().with_ref(|buf| buf), log_level: &mut 0},
+                ModEntry { name: "t::f1".with_c_str(|buf| buf), log_level: &mut 0},
                 ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
             ]),
             children: [child_crate1_ptr, ptr::null()]

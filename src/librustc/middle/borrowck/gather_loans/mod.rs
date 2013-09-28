@@ -64,8 +64,8 @@ mod gather_moves;
 /// No good.  Instead what will happen is that `root_ub` will be set to the
 /// body of the while loop and we will refuse to root the pointer `&*x`
 /// because it would have to be rooted for a region greater than `root_ub`.
-struct GatherLoanCtxt {
-    bccx: @BorrowckCtxt,
+struct GatherLoanCtxt<'self> {
+    bccx: &'self BorrowckCtxt,
     id_range: id_range,
     move_data: @mut move_data::MoveData,
     all_loans: @mut ~[Loan],
@@ -73,7 +73,7 @@ struct GatherLoanCtxt {
     repeating_ids: ~[ast::NodeId]
 }
 
-impl visit::Visitor<()> for GatherLoanCtxt {
+impl<'self> visit::Visitor<()> for GatherLoanCtxt<'self> {
     fn visit_expr(&mut self, ex:@Expr, _:()) {
         gather_loans_in_expr(self, ex);
     }
@@ -100,7 +100,7 @@ impl visit::Visitor<()> for GatherLoanCtxt {
     fn visit_item(&mut self, _:@ast::item, _:()) { }
 }
 
-pub fn gather_loans(bccx: @BorrowckCtxt,
+pub fn gather_loans(bccx: &BorrowckCtxt,
                     decl: &ast::fn_decl,
                     body: &ast::Block)
                     -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
@@ -315,7 +315,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     }
 }
 
-impl GatherLoanCtxt {
+impl<'self> GatherLoanCtxt<'self> {
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     pub fn push_repeating_id(&mut self, id: ast::NodeId) {
@@ -532,7 +532,7 @@ impl GatherLoanCtxt {
             //    }
         // }
 
-        fn check_mutability(bccx: @BorrowckCtxt,
+        fn check_mutability(bccx: &BorrowckCtxt,
                             borrow_span: Span,
                             cmt: mc::cmt,
                             req_mutbl: LoanMutability) {

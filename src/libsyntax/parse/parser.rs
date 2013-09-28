@@ -341,7 +341,7 @@ pub struct Parser {
 #[unsafe_destructor]
 impl Drop for Parser {
     /* do not copy the parser; its state is tied to outside state */
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
@@ -922,7 +922,8 @@ impl Parser {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
-            let vis = p.parse_non_priv_visibility();
+            let vis_span = *self.span;
+            let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
@@ -947,7 +948,7 @@ impl Parser {
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 if vis != ast::inherited {
-                    self.obsolete(*self.last_span,
+                    self.obsolete(vis_span,
                                   ObsoleteTraitFuncVisibility);
                 }
                 required(TypeMethod {
@@ -1213,14 +1214,16 @@ impl Parser {
     // parse an optional, obsolete argument mode.
     pub fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
-            self.obsolete(*self.span, ObsoleteMode);
+            self.obsolete(*self.last_span, ObsoleteMode);
         } else if self.eat(&token::ANDAND) {
-            self.obsolete(*self.span, ObsoleteMode);
+            self.obsolete(*self.last_span, ObsoleteMode);
         } else if self.eat(&token::BINOP(token::PLUS)) {
+            let lo = self.last_span.lo;
             if self.eat(&token::BINOP(token::PLUS)) {
-                self.obsolete(*self.span, ObsoleteMode);
+                let hi = self.last_span.hi;
+                self.obsolete(mk_sp(lo, hi), ObsoleteMode);
             } else {
-                self.obsolete(*self.span, ObsoleteMode);
+                self.obsolete(*self.last_span, ObsoleteMode);
             }
         } else {
             // Ignore.
@@ -1786,6 +1789,17 @@ impl Parser {
             }
         } else if self.eat_keyword(keywords::Loop) {
             return self.parse_loop_expr(None);
+        } else if self.eat_keyword(keywords::Continue) {
+            let lo = self.span.lo;
+            let ex = if self.token_is_lifetime(&*self.token) {
+                let lifetime = self.get_lifetime(&*self.token);
+                self.bump();
+                ExprAgain(Some(lifetime.name))
+            } else {
+                ExprAgain(None)
+            };
+            let hi = self.span.hi;
+            return self.mk_expr(lo, hi, ex);
         } else if self.eat_keyword(keywords::Match) {
             return self.parse_match_expr();
         } else if self.eat_keyword(keywords::Unsafe) {
@@ -2035,6 +2049,11 @@ impl Parser {
 
     // parse a single token tree from the input.
     pub fn parse_token_tree(&self) -> token_tree {
+        // FIXME #6994: currently, this is too eager. It
+        // parses token trees but also identifies tt_seq's
+        // and tt_nonterminals; it's too early to know yet
+        // whether something will be a nonterminal or a seq
+        // yet.
         maybe_whole!(deref self, nt_tt);
 
         // this is the fall-through for the 'match' below.
@@ -2573,6 +2592,7 @@ impl Parser {
             return self.mk_expr(lo, hi, ExprLoop(body, opt_ident));
         } else {
             // This is a 'continue' expression
+            // FIXME #9467 rm support for 'loop' here after snapshot
             if opt_ident.is_some() {
                 self.span_err(*self.last_span,
                               "a label may not be used with a `loop` expression");
@@ -3753,7 +3773,7 @@ impl Parser {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
 
-        let visa = self.parse_non_priv_visibility();
+        let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_ident();
         let generics = self.parse_generics();
@@ -3801,7 +3821,7 @@ impl Parser {
     // Parses two variants (with the region/type params always optional):
     //    impl<T> Foo { ... }
     //    impl<T> ToStr for ~[T] { ... }
-    fn parse_item_impl(&self, visibility: ast::visibility) -> item_info {
+    fn parse_item_impl(&self) -> item_info {
         // First, parse type parameters if necessary.
         let generics = self.parse_generics();
 
@@ -3846,13 +3866,10 @@ impl Parser {
             None
         };
 
-        // Do not allow visibility to be specified.
-        if visibility != ast::inherited {
-            self.obsolete(*self.span, ObsoleteImplVisibility);
-        }
-
         let mut meths = ~[];
-        if !self.eat(&token::SEMI) {
+        if self.eat(&token::SEMI) {
+            self.obsolete(*self.last_span, ObsoleteEmptyImpl);
+        } else {
             self.expect(&token::LBRACE);
             while !self.eat(&token::RBRACE) {
                 meths.push(self.parse_method());
@@ -4010,18 +4027,6 @@ impl Parser {
         if self.eat_keyword(keywords::Pub) { public }
         else if self.eat_keyword(keywords::Priv) { private }
         else { inherited }
-    }
-
-    // parse visibility, but emits an obsolete error if it's private
-    fn parse_non_priv_visibility(&self) -> visibility {
-        match self.parse_visibility() {
-            public => public,
-            inherited => inherited,
-            private => {
-                self.obsolete(*self.last_span, ObsoletePrivVisibility);
-                inherited
-            }
-        }
     }
 
     fn parse_staticness(&self) -> bool {
@@ -4214,9 +4219,9 @@ impl Parser {
     }
 
     // parse a function declaration from a foreign module
-    fn parse_item_foreign_fn(&self,  attrs: ~[Attribute]) -> @foreign_item {
+    fn parse_item_foreign_fn(&self, vis: ast::visibility,
+                             attrs: ~[Attribute]) -> @foreign_item {
         let lo = self.span.lo;
-        let vis = self.parse_non_priv_visibility();
 
         // Parse obsolete purity.
         let purity = self.parse_fn_purity();
@@ -4352,11 +4357,6 @@ impl Parser {
                 self.obsolete(*self.last_span, ObsoleteNamedExternModule);
             }
 
-            // Do not allow visibility to be specified.
-            if visibility != ast::inherited {
-                self.obsolete(*self.last_span, ObsoleteExternVisibility);
-            }
-
             let abis = opt_abis.unwrap_or(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();
@@ -4367,7 +4367,7 @@ impl Parser {
                                           self.last_span.hi,
                                           ident,
                                           item_foreign_mod(m),
-                                          public,
+                                          visibility,
                                           maybe_append(attrs, Some(inner))));
         }
 
@@ -4614,7 +4614,7 @@ impl Parser {
 
         let lo = self.span.lo;
 
-        let visibility = self.parse_non_priv_visibility();
+        let visibility = self.parse_visibility();
 
         // must be a view item:
         if self.eat_keyword(keywords::Use) {
@@ -4722,8 +4722,7 @@ impl Parser {
         }
         if self.eat_keyword(keywords::Impl) {
             // IMPL ITEM
-            let (ident, item_, extra_attrs) =
-                self.parse_item_impl(visibility);
+            let (ident, item_, extra_attrs) = self.parse_item_impl();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
@@ -4746,7 +4745,7 @@ impl Parser {
         maybe_whole!(iovi self, nt_item);
         let lo = self.span.lo;
 
-        let visibility = self.parse_non_priv_visibility();
+        let visibility = self.parse_visibility();
 
         if (self.is_keyword(keywords::Const) || self.is_keyword(keywords::Static)) {
             // FOREIGN CONST ITEM
@@ -4756,7 +4755,7 @@ impl Parser {
         if (self.is_keyword(keywords::Fn) || self.is_keyword(keywords::Pure) ||
                 self.is_keyword(keywords::Unsafe)) {
             // FOREIGN FUNCTION ITEM
-            let item = self.parse_item_foreign_fn(attrs);
+            let item = self.parse_item_foreign_fn(visibility, attrs);
             return iovi_foreign_item(item);
         }
         self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)

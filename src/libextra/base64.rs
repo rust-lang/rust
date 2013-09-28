@@ -13,19 +13,19 @@ use std::str;
 
 /// Available encoding character sets
 pub enum CharacterSet {
-    /// The standard character set (uses '+' and '/')
+    /// The standard character set (uses `+` and `/`)
     Standard,
-    /// The URL safe character set (uses '-' and '_')
+    /// The URL safe character set (uses `-` and `_`)
     UrlSafe
 }
 
-/// Contains configuration parameters for to_base64
+/// Contains configuration parameters for `to_base64`.
 pub struct Config {
     /// Character set to use
     char_set: CharacterSet,
-    /// True to pad output with '=' characters
+    /// True to pad output with `=` characters
     pad: bool,
-    /// Some(len) to wrap lines at len, None to disable line wrapping
+    /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
     line_length: Option<uint>
 }
 
@@ -62,15 +62,15 @@ impl<'self> ToBase64 for &'self [u8] {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * extern mod extra;
      * use extra::base64::{ToBase64, standard};
      *
      * fn main () {
      *     let str = [52,32].to_base64(standard);
-     *     printfln!("%s", str);
+     *     println!("{}", str);
      * }
-     * ~~~
+     * ```
      */
     fn to_base64(&self, config: Config) -> ~str {
         let bytes = match config.char_set {
@@ -170,20 +170,20 @@ impl<'self> FromBase64 for &'self str {
      *
      * This converts a string literal to base64 and back.
      *
-     * ~~~ {.rust}
+     * ```rust
      * extern mod extra;
      * use extra::base64::{ToBase64, FromBase64, standard};
      * use std::str;
      *
      * fn main () {
      *     let hello_str = "Hello, World".to_base64(standard);
-     *     printfln!("%s", hello_str);
+     *     println!("{}", hello_str);
      *     let bytes = hello_str.from_base64();
-     *     printfln!("%?", bytes);
+     *     println!("{:?}", bytes);
      *     let result_str = str::from_utf8(bytes);
-     *     printfln!("%s", result_str);
+     *     println!("{}", result_str);
      * }
-     * ~~~
+     * ```
      */
     fn from_base64(&self) -> Result<~[u8], ~str> {
         let mut r = ~[];
@@ -311,11 +311,11 @@ mod test {
 
     #[test]
     fn test_base64_random() {
-        use std::rand::{task_rng, random, RngUtil};
+        use std::rand::{task_rng, random, Rng};
         use std::vec;
 
         do 1000.times {
-            let times = task_rng().gen_uint_range(1, 100);
+            let times = task_rng().gen_integer_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }

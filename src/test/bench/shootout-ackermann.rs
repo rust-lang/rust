@@ -35,5 +35,5 @@ fn main() {
         args
     };
     let n = from_str::<int>(args[1]).unwrap();
-    printfln!("Ack(3,%d): %d\n", n, ack(3, n));
+    println!("Ack(3,{}): {}\n", n, ack(3, n));
 }

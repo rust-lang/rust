@@ -16,31 +16,13 @@ use clone::Clone;
 use cmp::Equiv;
 use iter::{range, Iterator};
 use option::{Option, Some, None};
-#[cfg(stage0)]
-use sys;
 use unstable::intrinsics;
 use util::swap;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 
-/// Calculate the offset from a pointer. The count *must* be in bounds or
-/// otherwise the loads of this address are undefined.
-#[inline]
-#[cfg(stage0)]
-pub unsafe fn offset<T>(ptr: *T, count: int) -> *T {
-    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *T
-}
-
-/// Calculate the offset from a mut pointer
-#[inline]
-#[cfg(stage0)]
-pub unsafe fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
-    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *mut T
-}
-
 /// Calculate the offset from a pointer
 #[inline]
-#[cfg(not(stage0))]
 pub unsafe fn offset<T>(ptr: *T, count: int) -> *T {
     intrinsics::offset(ptr, count)
 }
@@ -48,7 +30,6 @@ pub unsafe fn offset<T>(ptr: *T, count: int) -> *T {
 /// Calculate the offset from a mut pointer. The count *must* be in bounds or
 /// otherwise the loads of this address are undefined.
 #[inline]
-#[cfg(not(stage0))]
 pub unsafe fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     intrinsics::offset(ptr as *T, count) as *mut T
 }
@@ -383,17 +364,7 @@ impl<T> RawPtr<T> for *mut T {
 }
 
 // Equality for pointers
-#[cfg(stage0, not(test))]
-impl<T> Eq for *T {
-    #[inline]
-    fn eq(&self, other: &*T) -> bool {
-        (*self as uint) == (*other as uint)
-    }
-    #[inline]
-    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
-}
-
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 impl<T> Eq for *T {
     #[inline]
     fn eq(&self, other: &*T) -> bool {
@@ -403,17 +374,7 @@ impl<T> Eq for *T {
     fn ne(&self, other: &*T) -> bool { !self.eq(other) }
 }
 
-#[cfg(stage0, not(test))]
-impl<T> Eq for *mut T {
-    #[inline]
-    fn eq(&self, other: &*mut T) -> bool {
-        (*self as uint) == (*other as uint)
-    }
-    #[inline]
-    fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
-}
-
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 impl<T> Eq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool {
@@ -480,27 +441,7 @@ mod externfnpointers {
 }
 
 // Comparison for pointers
-#[cfg(stage0, not(test))]
-impl<T> Ord for *T {
-    #[inline]
-    fn lt(&self, other: &*T) -> bool {
-        (*self as uint) < (*other as uint)
-    }
-    #[inline]
-    fn le(&self, other: &*T) -> bool {
-        (*self as uint) <= (*other as uint)
-    }
-    #[inline]
-    fn ge(&self, other: &*T) -> bool {
-        (*self as uint) >= (*other as uint)
-    }
-    #[inline]
-    fn gt(&self, other: &*T) -> bool {
-        (*self as uint) > (*other as uint)
-    }
-}
-
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 impl<T> Ord for *T {
     #[inline]
     fn lt(&self, other: &*T) -> bool {
@@ -520,27 +461,7 @@ impl<T> Ord for *T {
     }
 }
 
-#[cfg(stage0, not(test))]
-impl<T> Ord for *mut T {
-    #[inline]
-    fn lt(&self, other: &*mut T) -> bool {
-        (*self as uint) < (*other as uint)
-    }
-    #[inline]
-    fn le(&self, other: &*mut T) -> bool {
-        (*self as uint) <= (*other as uint)
-    }
-    #[inline]
-    fn ge(&self, other: &*mut T) -> bool {
-        (*self as uint) >= (*other as uint)
-    }
-    #[inline]
-    fn gt(&self, other: &*mut T) -> bool {
-        (*self as uint) > (*other as uint)
-    }
-}
-
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 impl<T> Ord for *mut T {
     #[inline]
     fn lt(&self, other: &*mut T) -> bool {

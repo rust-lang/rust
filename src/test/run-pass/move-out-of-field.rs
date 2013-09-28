@@ -12,7 +12,7 @@ fn to_str(sb: StringBuffer) -> ~str {
     sb.s
 }
 
-fn main() {
+pub fn main() {
     let mut sb = StringBuffer {s: ~""};
     sb.append("Hello, ");
     sb.append("World!");

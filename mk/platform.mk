@@ -343,6 +343,7 @@ CFG_PATH_MUNGE_mips-unknown-linux-gnu := true
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
+RUSTC_FLAGS_mips-unknown-linux-gnu := --linker=$(CXX_mips-unknown-linux-gnu) --target-cpu mips32r2 --target-feature +mips32r2,+o32
 
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
@@ -352,7 +353,7 @@ AR_i686-pc-mingw32=$(AR)
 CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
 CFG_LIB_GLOB_i686-pc-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-pc-mingw32=$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -m32 -march=i686 -D_WIN32_WINNT=0x0600
+CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -m32 -march=i686 -D_WIN32_WINNT=0x0600 -I$(CFG_SRC_DIR)src/etc/mingw-fix-include
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g -m32
 CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
@@ -361,6 +362,7 @@ CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_DEF_SUFFIX_i686-pc-mingw32 := .mingw32.def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
 CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 := -lWs2_32 -lpsapi -liphlpapi
+CFG_LLVM_BUILD_ENV_i686-pc-mingw32 := CPATH=$(CFG_SRC_DIR)src/etc/mingw-fix-include
 CFG_EXE_SUFFIX_i686-pc-mingw32 := .exe
 CFG_WINDOWSY_i686-pc-mingw32 := 1
 CFG_UNIXY_i686-pc-mingw32 :=
@@ -479,7 +481,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
-  ifneq ($(HOST_$(1)),arm)
+  ifeq ($$(findstring $(HOST_$(1)),arm mips),)
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
@@ -491,7 +493,7 @@ define CFG_MAKE_TOOLCHAIN
                     -o=$$(1)
   else
 
-  # For the ARM crosses, use the toolchain assembler
+  # For the ARM and MIPS crosses, use the toolchain assembler
   # XXX: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
 

@@ -21,7 +21,6 @@ use rt::io::{Reader, Writer, Decorator};
 use rt::io::{read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
 use option::{Option, Some, None};
 use unstable::finally::Finally;
-use util;
 use cast;
 use io::{u64_to_le_bytes, u64_to_be_bytes};
 
@@ -293,7 +292,7 @@ impl<T: Reader> ReaderUtil for T {
                 self.read_byte()
             }
             Some(1) => Some(buf[0]),
-            Some(_) => util::unreachable(),
+            Some(_) => unreachable!(),
             None => None
         }
     }

@@ -11,7 +11,7 @@
 // xfail-fast
 // -*- rust -*-
 
-type compare<T> = @fn(T, T) -> bool;
+type compare<T> = &'static fn(T, T) -> bool;
 
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
     let actual: T = match true { true => { expected.clone() }, _ => fail!("wat") };

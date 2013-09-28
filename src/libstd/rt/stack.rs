@@ -53,7 +53,7 @@ impl StackSegment {
 }
 
 impl Drop for StackSegment {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         unsafe {

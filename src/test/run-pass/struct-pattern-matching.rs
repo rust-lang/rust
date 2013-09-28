@@ -16,6 +16,6 @@ struct Foo {
 pub fn main() {
     let a = Foo { x: 1, y: 2 };
     match a {
-        Foo { x: x, y: y } => printfln!("yes, %d, %d", x, y)
+        Foo { x: x, y: y } => println!("yes, {}, {}", x, y)
     }
 }

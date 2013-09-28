@@ -477,11 +477,15 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "use",                // 61
         "while",              // 62
         "in",                 // 63
+        "continue",           // 64
 
-        "be",                 // 64
-        "pure",               // 65
-        "yield",              // 66
-        "typeof",             // 67
+        "be",                 // 65
+        "pure",               // 66
+        "yield",              // 67
+        "typeof",             // 68
+        "alignof",            // 69
+        "offsetof",           // 70
+        "sizeof",             // 71
     ];
 
     @interner::StrInterner::prefill(init_vec)
@@ -490,8 +494,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
 pub fn get_ident_interner() -> @ident_interner {
-    static key: local_data::Key<@@::parse::token::ident_interner> =
-        &local_data::Key;
+    local_data_key!(key: @@::parse::token::ident_interner)
     match local_data::get(key, |k| k.map_move(|k| *k)) {
         Some(interner) => *interner,
         None => {
@@ -623,14 +626,18 @@ pub mod keywords {
         True,
         Trait,
         Type,
-        Typeof,
         Unsafe,
         Use,
         While,
+        Continue,
 
         // Reserved keywords
+        Alignof,
         Be,
+        Offsetof,
         Pure,
+        Sizeof,
+        Typeof,
         Yield,
     }
 
@@ -668,13 +675,18 @@ pub mod keywords {
                 True => Ident { name: 57, ctxt: 0 },
                 Trait => Ident { name: 58, ctxt: 0 },
                 Type => Ident { name: 59, ctxt: 0 },
-                Typeof => Ident { name: 67, ctxt: 0 },
                 Unsafe => Ident { name: 60, ctxt: 0 },
                 Use => Ident { name: 61, ctxt: 0 },
                 While => Ident { name: 62, ctxt: 0 },
-                Be => Ident { name: 64, ctxt: 0 },
-                Pure => Ident { name: 65, ctxt: 0 },
-                Yield => Ident { name: 66, ctxt: 0 },
+                Continue => Ident { name: 64, ctxt: 0 },
+
+                Alignof => Ident { name: 69, ctxt: 0 },
+                Be => Ident { name: 65, ctxt: 0 },
+                Offsetof => Ident { name: 70, ctxt: 0 },
+                Pure => Ident { name: 66, ctxt: 0 },
+                Sizeof => Ident { name: 71, ctxt: 0 },
+                Typeof => Ident { name: 68, ctxt: 0 },
+                Yield => Ident { name: 67, ctxt: 0 },
             }
         }
     }
@@ -690,7 +702,7 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 67 => true,
+            8 | 27 | 32 .. 70 => true,
             _ => false,
         },
         _ => false
@@ -700,7 +712,7 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 63 => true,
+            8 | 27 | 32 .. 64 => true,
             _ => false,
         },
         _ => false,
@@ -710,7 +722,7 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            64 .. 67 => true,
+            65 .. 71 => true,
             _ => false,
         },
         _ => false,

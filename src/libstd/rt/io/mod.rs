@@ -245,6 +245,7 @@ Out of scope
 use prelude::*;
 use to_str::ToStr;
 use str::{StrSlice, OwnedStr};
+use path::Path;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -259,6 +260,9 @@ pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
+pub use self::pipe::PipeStream;
+pub use self::pipe::UnboundPipeStream;
+pub use self::process::Process;
 
 // Some extension traits that all Readers and Writers get.
 pub use self::extensions::ReaderUtil;
@@ -267,6 +271,12 @@ pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
 pub mod file;
+
+/// Synchronous, in-memory I/O.
+pub mod pipe;
+
+/// Child process management.
+pub mod process;
 
 /// Synchronous, non-blocking network I/O.
 pub mod net;
@@ -357,7 +367,10 @@ pub enum IoErrorKind {
     Closed,
     ConnectionRefused,
     ConnectionReset,
-    BrokenPipe
+    BrokenPipe,
+    PathAlreadyExists,
+    PathDoesntExist,
+    MismatchedFileTypeForOperation
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -373,7 +386,10 @@ impl ToStr for IoErrorKind {
             Closed => ~"Closed",
             ConnectionRefused => ~"ConnectionRefused",
             ConnectionReset => ~"ConnectionReset",
-            BrokenPipe => ~"BrokenPipe"
+            BrokenPipe => ~"BrokenPipe",
+            PathAlreadyExists => ~"PathAlreadyExists",
+            PathDoesntExist => ~"PathDoesntExist",
+            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation"
         }
     }
 }
@@ -381,17 +397,25 @@ impl ToStr for IoErrorKind {
 // XXX: Can't put doc comments on macros
 // Raised by `I/O` operations on error.
 condition! {
-    // NOTE: this super::IoError should be IoError
-    // Change this next time the snapshot is updated.
-    pub io_error: super::IoError -> ();
+    pub io_error: IoError -> ();
 }
 
 // XXX: Can't put doc comments on macros
 // Raised by `read` on error
 condition! {
-    // NOTE: this super::IoError should be IoError
-    // Change this next time the snapshot it updated.
-    pub read_error: super::IoError -> ();
+    pub read_error: IoError -> ();
+}
+
+/// Helper for wrapper calls where you want to
+/// ignore any io_errors that might be raised
+pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
+    do io_error::cond.trap(|_| {
+        // just swallow the error.. downstream users
+        // who can make a decision based on a None result
+        // won't care
+    }).inside {
+        cb()
+    }
 }
 
 pub trait Reader {
@@ -448,7 +472,7 @@ pub trait Writer {
 
 pub trait Stream: Reader + Writer { }
 
-impl<T: Reader + Writer> Stream for T;
+impl<T: Reader + Writer> Stream for T {}
 
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
@@ -595,4 +619,23 @@ pub enum FileAccess {
     Read,
     Write,
     ReadWrite
+}
+
+pub struct FileStat {
+    /// A `Path` object containing information about the `PathInfo`'s location
+    path: Path,
+    /// `true` if the file pointed at by the `PathInfo` is a regular file
+    is_file: bool,
+    /// `true` if the file pointed at by the `PathInfo` is a directory
+    is_dir: bool,
+    /// The file pointed at by the `PathInfo`'s size in bytes
+    size: u64,
+    /// The file pointed at by the `PathInfo`'s creation time
+    created: u64,
+    /// The file pointed at by the `PathInfo`'s last-modification time in
+    /// platform-dependent msecs
+    modified: u64,
+    /// The file pointed at by the `PathInfo`'s last-accessd time (e.g. read) in
+    /// platform-dependent msecs
+    accessed: u64,
 }

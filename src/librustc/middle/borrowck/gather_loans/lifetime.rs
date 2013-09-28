@@ -20,7 +20,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::{note_and_explain_region};
 
-pub fn guarantee_lifetime(bccx: @BorrowckCtxt,
+pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                           item_scope_id: ast::NodeId,
                           root_scope_id: ast::NodeId,
                           span: Span,
@@ -42,8 +42,8 @@ pub fn guarantee_lifetime(bccx: @BorrowckCtxt,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct GuaranteeLifetimeContext {
-    bccx: @BorrowckCtxt,
+struct GuaranteeLifetimeContext<'self> {
+    bccx: &'self BorrowckCtxt,
 
     // the node id of the function body for the enclosing item
     item_scope_id: ast::NodeId,
@@ -58,7 +58,7 @@ struct GuaranteeLifetimeContext {
     cmt_original: mc::cmt
 }
 
-impl GuaranteeLifetimeContext {
+impl<'self> GuaranteeLifetimeContext<'self> {
     fn tcx(&self) -> ty::ctxt {
         self.bccx.tcx
     }

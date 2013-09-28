@@ -26,11 +26,11 @@
  *
  * # Example
  *
- * ~~~
+ * ```
  * do spawn {
  *     log(error, "Hello, World!");
  * }
- * ~~~
+ * ```
  */
 
 #[allow(missing_doc)];
@@ -542,12 +542,9 @@ pub fn deschedule() {
     use rt::local::Local;
     use rt::sched::Scheduler;
 
-    // FIXME #6842: What does yield really mean in newsched?
     // FIXME(#7544): Optimize this, since we know we won't block.
     let sched: ~Scheduler = Local::take();
-    do sched.deschedule_running_task_and_then |sched, task| {
-        sched.enqueue_blocked_task(task);
-    }
+    sched.yield_now();
 }
 
 pub fn failing() -> bool {
@@ -565,7 +562,7 @@ pub fn failing() -> bool {
  *
  * # Example
  *
- * ~~~
+ * ```
  * do task::unkillable {
  *     // detach / deschedule / destroy must all be called together
  *     rustrt::rust_port_detach(po);
@@ -573,7 +570,7 @@ pub fn failing() -> bool {
  *     task::deschedule();
  *     rustrt::rust_port_destroy(po);
  * }
- * ~~~
+ * ```
  */
 pub fn unkillable<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
@@ -602,7 +599,7 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
  *
  * # Example
  *
- * ~~~
+ * ```
  * do task::unkillable {
  *     do task::rekillable {
  *          // Task is killable

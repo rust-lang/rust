@@ -44,7 +44,6 @@ pub enum ObsoleteSyntax {
     ObsoleteImplSyntax,
     ObsoleteMutOwnedPointer,
     ObsoleteMutVector,
-    ObsoleteImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
     ObsoletePostFnTySigil,
@@ -60,11 +59,10 @@ pub enum ObsoleteSyntax {
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
-    ObsoleteExternVisibility,
     ObsoleteUnsafeExternFn,
-    ObsoletePrivVisibility,
     ObsoleteTraitFuncVisibility,
     ObsoleteConstPointer,
+    ObsoleteEmptyImpl,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -161,11 +159,6 @@ impl ParserObsoleteMethods for Parser {
                  in a mutable location, like a mutable local variable or an \
                  `@mut` box"
             ),
-            ObsoleteImplVisibility => (
-                "visibility-qualified implementation",
-                "`pub` or `priv` goes on individual functions; remove the \
-                 `pub` or `priv`"
-            ),
             ObsoleteRecordType => (
                 "structural record type",
                 "use a structure instead"
@@ -233,19 +226,10 @@ impl ParserObsoleteMethods for Parser {
                 "use multiple local declarations instead of e.g. `let mut \
                  (x, y) = ...`."
             ),
-            ObsoleteExternVisibility => (
-                "`pub extern` or `priv extern`",
-                "place the `pub` or `priv` on the individual external items \
-                 instead"
-            ),
             ObsoleteUnsafeExternFn => (
                 "unsafe external function",
                 "external functions are always unsafe; remove the `unsafe` \
                  keyword"
-            ),
-            ObsoletePrivVisibility => (
-                "`priv` not necessary",
-                "an item without a visibility qualifier is private by default"
             ),
             ObsoleteTraitFuncVisibility => (
                 "visibility not necessary",
@@ -255,6 +239,10 @@ impl ParserObsoleteMethods for Parser {
                 "const pointer",
                 "instead of `&const Foo` or `@const Foo`, write `&Foo` or \
                  `@Foo`"
+            ),
+            ObsoleteEmptyImpl => (
+                "empty implementation",
+                "instead of `impl A;`, write `impl A {}`"
             ),
         };
 

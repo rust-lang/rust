@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustc",
-       vers = "0.8-pre",
+       vers = "0.9-pre",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -33,6 +33,7 @@ use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
 
+use std::comm;
 use std::io;
 use std::num;
 use std::os;
@@ -40,9 +41,10 @@ use std::result;
 use std::str;
 use std::task;
 use std::vec;
-use extra::getopts::{groups, opt_present};
+use extra::getopts::groups;
 use extra::getopts;
 use syntax::codemap;
+use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 
 pub mod middle {
@@ -128,13 +130,13 @@ pub fn version(argv0: &str) {
         Some(vers) => vers,
         None => "unknown version"
     };
-    printfln!("%s %s", argv0, vers);
-    printfln!("host: %s", host_triple());
+    println!("{} {}", argv0, vers);
+    println!("host: {}", host_triple());
 }
 
 pub fn usage(argv0: &str) {
     let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
-    printfln!("%s\
+    println!("{}\n\
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
@@ -165,16 +167,16 @@ Available lint options:
         str::from_utf8(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
     println("\nAvailable lint checks:\n");
-    printfln!("    %s  %7.7s  %s",
-              padded(max_key, "name"), "default", "meaning");
-    printfln!("    %s  %7.7s  %s\n",
-              padded(max_key, "----"), "-------", "-------");
+    println!("    {}  {:7.7s}  {}",
+             padded(max_key, "name"), "default", "meaning");
+    println!("    {}  {:7.7s}  {}\n",
+             padded(max_key, "----"), "-------", "-------");
     for (spec, name) in lint_dict.move_iter() {
         let name = name.replace("_", "-");
-        printfln!("    %s  %7.7s  %s",
-                  padded(max_key, name),
-                  lint::level_to_str(spec.default),
-                  spec.desc);
+        println!("    {}  {:7.7s}  {}",
+                 padded(max_key, name),
+                 lint::level_to_str(spec.default),
+                 spec.desc);
     }
     io::println("");
 }
@@ -185,13 +187,13 @@ pub fn describe_debug_flags() {
     for tuple in r.iter() {
         match *tuple {
             (ref name, ref desc, _) => {
-                printfln!("    -Z %-20s -- %s", *name, *desc);
+                println!("    -Z {:>20s} -- {}", *name, *desc);
             }
         }
     }
 }
 
-pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
+pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     ::std::logging::console_off();
 
@@ -204,39 +206,39 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
         &match getopts::groups::getopts(args, optgroups()) {
           Ok(m) => m,
           Err(f) => {
-            early_error(demitter, getopts::fail_str(f));
+            early_error(demitter, f.to_err_msg());
           }
         };
 
-    if opt_present(matches, "h") || opt_present(matches, "help") {
+    if matches.opt_present("h") || matches.opt_present("help") {
         usage(binary);
         return;
     }
 
     // Display the available lint options if "-W help" or only "-W" is given.
-    let lint_flags = vec::append(getopts::opt_strs(matches, "W"),
-                                 getopts::opt_strs(matches, "warn"));
+    let lint_flags = vec::append(matches.opt_strs("W"),
+                                 matches.opt_strs("warn"));
 
     let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
-        (opt_present(matches, "W") && lint_flags.is_empty());
+        (matches.opt_present("W") && lint_flags.is_empty());
 
     if show_lint_options {
         describe_warnings();
         return;
     }
 
-    let r = getopts::opt_strs(matches, "Z");
+    let r = matches.opt_strs("Z");
     if r.iter().any(|x| x == &~"help") {
         describe_debug_flags();
         return;
     }
 
-    if getopts::opt_maybe_str(matches, "passes") == Some(~"list") {
+    if matches.opt_str("passes") == Some(~"list") {
         unsafe { lib::llvm::llvm::LLVMRustPrintPasses(); }
         return;
     }
 
-    if opt_present(matches, "v") || opt_present(matches, "version") {
+    if matches.opt_present("v") || matches.opt_present("version") {
         version(binary);
         return;
     }
@@ -256,10 +258,10 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
 
     let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
-    let odir = getopts::opt_maybe_str(matches, "out-dir").map_move(|o| Path(o));
-    let ofile = getopts::opt_maybe_str(matches, "o").map_move(|o| Path(o));
+    let odir = matches.opt_str("out-dir").map_move(|o| Path(o));
+    let ofile = matches.opt_str("o").map_move(|o| Path(o));
     let cfg = build_configuration(sess);
-    let pretty = do getopts::opt_default(matches, "pretty", "normal").map_move |a| {
+    let pretty = do matches.opt_default("pretty", "normal").map_move |a| {
         parse_pretty(sess, a)
     };
     match pretty {
@@ -269,7 +271,7 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
       }
       None::<PpMode> => {/* continue */ }
     }
-    let ls = opt_present(matches, "ls");
+    let ls = matches.opt_present("ls");
     if ls {
         match input {
           file_input(ref ifile) => {
@@ -291,6 +293,23 @@ pub enum monitor_msg {
     done,
 }
 
+struct RustcEmitter {
+    ch_capture: comm::SharedChan<monitor_msg>
+}
+
+impl diagnostic::Emitter for RustcEmitter {
+    fn emit(&self,
+            cmsp: Option<(@codemap::CodeMap, codemap::Span)>,
+            msg: &str,
+            lvl: diagnostic::level) {
+        if lvl == diagnostic::fatal {
+            self.ch_capture.send(fatal)
+        }
+
+        diagnostic::DefaultEmitter.emit(cmsp, msg, lvl)
+    }
+}
+
 /*
 This is a sanity check that any failure of the compiler is performed
 through the diagnostic module and reported properly - we shouldn't be calling
@@ -303,7 +322,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(f: ~fn(diagnostic::Emitter)) {
+pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
     use std::comm::*;
 
     // XXX: This is a hack for newsched since it doesn't support split stacks.
@@ -324,25 +343,18 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
 
     match do task_builder.try {
         let ch = ch_capture.clone();
-        let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
-        let demitter: @fn(Option<(@codemap::CodeMap, codemap::Span)>,
-                          &str,
-                          diagnostic::level) =
-                          |cmsp, msg, lvl| {
-            if lvl == diagnostic::fatal {
-                ch_capture.send(fatal);
-            }
-            diagnostic::emit(cmsp, msg, lvl);
-        };
+        let demitter = @RustcEmitter {
+            ch_capture: ch.clone(),
+        } as @diagnostic::Emitter;
 
         struct finally {
             ch: SharedChan<monitor_msg>,
         }
 
         impl Drop for finally {
-            fn drop(&self) { self.ch.send(done); }
+            fn drop(&mut self) { self.ch.send(done); }
         }
 
         let _finally = finally { ch: ch };
@@ -357,7 +369,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
         result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
             if p.recv() == done {
-                diagnostic::emit(
+                diagnostic::DefaultEmitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
                     diagnostic::error);
@@ -370,7 +382,9 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
                      to github.com/mozilla/rust/issues"
                 ];
                 for note in xs.iter() {
-                    diagnostic::emit(None, *note, diagnostic::note)
+                    diagnostic::DefaultEmitter.emit(None,
+                                                    *note,
+                                                    diagnostic::note)
                 }
             }
             // Fail so the process returns a failure code
@@ -380,13 +394,14 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
 }
 
 pub fn main() {
-    let args = os::args();
-    main_args(args);
+    std::os::set_exit_status(main_args(std::os::args()));
 }
 
-pub fn main_args(args: &[~str]) {
+pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
     do monitor |demitter| {
         run_compiler(owned_args, demitter);
     }
+
+    return 0;
 }

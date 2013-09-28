@@ -227,8 +227,9 @@ ALL_CS := $(wildcard $(S)src/rt/*.cpp \
                      $(S)src/rt/*/*/*.cpp \
                      $(S)src/rustllvm/*.cpp)
 ALL_CS := $(filter-out $(S)src/rt/miniz.cpp \
-                       $(S)src/rt/linenoise/linenoise.c \
-                       $(S)src/rt/linenoise/utf8.c \
+		       $(wildcard $(S)src/rt/linenoise/*.c) \
+		       $(wildcard $(S)src/rt/sundown/src/*.c) \
+		       $(wildcard $(S)src/rt/sundown/html/*.c) \
 	,$(ALL_CS))
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
@@ -241,6 +242,8 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
                        $(S)src/rt/msvc/inttypes.h \
                        $(S)src/rt/linenoise/linenoise.h \
                        $(S)src/rt/linenoise/utf8.h \
+		       $(wildcard $(S)src/rt/sundown/src/*.h) \
+		       $(wildcard $(S)src/rt/sundown/html/*.h) \
 	,$(ALL_HS))
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
@@ -567,7 +570,7 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 
 # The tests select when to use debug configuration on their own;
 # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
-CTEST_RUSTC_FLAGS := $$(subst --cfg debug,,$$(CFG_RUSTC_FLAGS))
+CTEST_RUSTC_FLAGS := $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
 
 # The tests can not be optimized while the rest of the compiler is optimized, so
 # filter out the optimization (if any) from rustc and then figure out if we need

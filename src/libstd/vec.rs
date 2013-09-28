@@ -10,14 +10,16 @@
 
 /*!
 
+Vector manipulation
+
 The `vec` module contains useful code to help work with vector values.
 Vectors are Rust's list type. Vectors contain zero or more values of
 homogeneous types:
 
-~~~ {.rust}
+```rust
 let int_vector = [1,2,3];
 let str_vector = ["one", "two", "three"];
-~~~
+ ```
 
 This is a big module, but for a high-level overview:
 
@@ -38,11 +40,11 @@ case.
 An example is the method `.slice(a, b)` that returns an immutable "view" into
 a vector or a vector slice from the index interval `[a, b)`:
 
-~~~ {.rust}
+```rust
 let numbers = [0, 1, 2];
 let last_numbers = numbers.slice(1, 3);
 // last_numbers is now &[1, 2]
-~~~
+ ```
 
 Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
 on such vectors. These methods deal with adding elements or otherwise changing
@@ -51,11 +53,11 @@ the allocation of the vector.
 An example is the method `.push(element)` that will add an element at the end
 of the vector:
 
-~~~ {.rust}
+```rust
 let mut numbers = ~[0, 1, 2];
 numbers.push(7);
 // numbers is now ~[0, 1, 2, 7];
-~~~
+ ```
 
 ## Implementations of other traits
 
@@ -72,12 +74,12 @@ The method `iter()` returns an iteration value for a vector or a vector slice.
 The iterator yields borrowed pointers to the vector's elements, so if the element
 type of the vector is `int`, the element type of the iterator is `&int`.
 
-~~~ {.rust}
+```rust
 let numbers = [0, 1, 2];
 for &x in numbers.iter() {
     println!("{} is a number!", x);
 }
-~~~
+ ```
 
 * `.rev_iter()` returns an iterator with the same values as `.iter()`,
   but going in the reverse order, starting with the back element.
@@ -923,22 +925,24 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
+    /// Returns an iterator over the vector
     fn iter(self) -> VecIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_ptr(self);
             if sys::size_of::<T>() == 0 {
                 VecIterator{ptr: p,
                             end: (p as uint + self.len()) as *T,
-                            lifetime: cast::transmute(p)}
+                            lifetime: None}
             } else {
                 VecIterator{ptr: p,
                             end: p.offset(self.len() as int),
-                            lifetime: cast::transmute(p)}
+                            lifetime: None}
             }
         }
     }
 
     #[inline]
+    /// Returns a reversed iterator over a vector
     fn rev_iter(self) -> RevIterator<'self, T> {
         self.iter().invert()
     }
@@ -996,12 +1000,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`,
      * `[3,4]`):
      *
-     * ~~~ {.rust}
+     * ```rust
      * let v = &[1,2,3,4];
      * for win in v.window_iter() {
-     *     printfln!(win);
+     *     println!("{:?}", win);
      * }
-     * ~~~
+     * ```
      *
      */
     fn window_iter(self, size: uint) -> WindowIter<'self, T> {
@@ -1025,12 +1029,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * Print the vector two elements at a time (i.e. `[1,2]`,
      * `[3,4]`, `[5]`):
      *
-     * ~~~ {.rust}
+     * ```rust
      * let v = &[1,2,3,4,5];
      * for win in v.chunk_iter() {
-     *     printfln!(win);
+     *     println!("{:?}", win);
      * }
-     * ~~~
+     * ```
      *
      */
     fn chunk_iter(self, size: uint) -> ChunkIter<'self, T> {
@@ -1275,13 +1279,13 @@ impl<T> OwnedVector<T> for ~[T] {
     ///
     /// # Examples
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v = ~[~"a", ~"b"];
     /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
     ///   println(s);
     /// }
-    /// ~~~
+    /// ```
     fn move_iter(self) -> MoveIterator<T> {
         MoveIterator { v: self, idx: 0 }
     }
@@ -1445,11 +1449,11 @@ impl<T> OwnedVector<T> for ~[T] {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let mut a = ~[~1];
     /// a.push_all_move(~[~2, ~3, ~4]);
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
-    /// ~~~
+    /// ```
     #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
         let self_len = self.len();
@@ -1693,11 +1697,11 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let mut a = ~[1];
     /// a.push_all([2, 3, 4]);
     /// assert!(a == ~[1, 2, 3, 4]);
-    /// ~~~
+    /// ```
     #[inline]
     fn push_all(&mut self, rhs: &[T]) {
         let new_len = self.len() + rhs.len();
@@ -1929,22 +1933,24 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    /// Returns an iterator that allows modifying each value
     fn mut_iter(self) -> VecMutIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
             if sys::size_of::<T>() == 0 {
                 VecMutIterator{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
-                               lifetime: cast::transmute(p)}
+                               lifetime: None}
             } else {
                 VecMutIterator{ptr: p,
                                end: p.offset(self.len() as int),
-                               lifetime: cast::transmute(p)}
+                               lifetime: None}
             }
         }
     }
 
     #[inline]
+    /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
         self.mut_iter().invert()
     }
@@ -1986,11 +1992,13 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T {
         ptr::mut_offset(self.repr().data as *mut T, index as int)
     }
 
     #[inline]
+    /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
@@ -2381,7 +2389,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
 pub struct VecIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
-    priv lifetime: &'self T // FIXME: #5922
+    priv lifetime: Option<&'self ()> // FIXME: #5922
 }
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
@@ -2399,7 +2407,7 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 pub struct VecMutIterator<'self, T> {
     priv ptr: *mut T,
     priv end: *mut T,
-    priv lifetime: &'self mut T // FIXME: #5922
+    priv lifetime: Option<&'self mut ()> // FIXME: #5922
 }
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}

@@ -34,7 +34,7 @@ pub struct TaskPool<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for TaskPool<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         for channel in self.channels.iter() {
             channel.send(Quit);
         }
@@ -103,6 +103,6 @@ fn test_task_pool() {
     };
     let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
     do 8.times {
-        pool.execute(|i| printfln!("Hello from thread %u!", *i));
+        pool.execute(|i| println!("Hello from thread {}!", *i));
     }
 }

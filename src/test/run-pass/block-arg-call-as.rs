@@ -14,18 +14,12 @@ fn asSendfn( f : ~fn()->uint ) -> uint {
    return f();
 }
 
-fn asLambda( f : @fn()->uint ) -> uint {
-   return f();
-}
-
 fn asBlock( f : &fn()->uint ) -> uint {
    return f();
 }
 
 pub fn main() {
    let x = asSendfn(|| 22u);
-   assert_eq!(x, 22u);
-   let x = asLambda(|| 22u);
    assert_eq!(x, 22u);
    let x = asBlock(|| 22u);
    assert_eq!(x, 22u);

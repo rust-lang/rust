@@ -87,6 +87,42 @@ struct LoopScope<'self> {
     break_bits: ~[uint]
 }
 
+impl<O:DataFlowOperator> pprust::pp_ann for DataFlowContext<O> {
+    fn pre(&self, node: pprust::ann_node) {
+        let (ps, id) = match node {
+            pprust::node_expr(ps, expr) => (ps, expr.id),
+            pprust::node_block(ps, blk) => (ps, blk.id),
+            pprust::node_item(ps, _) => (ps, 0),
+            pprust::node_pat(ps, pat) => (ps, pat.id)
+        };
+
+        if self.nodeid_to_bitset.contains_key(&id) {
+            let (start, end) = self.compute_id_range_frozen(id);
+            let on_entry = self.on_entry.slice(start, end);
+            let entry_str = bits_to_str(on_entry);
+
+            let gens = self.gens.slice(start, end);
+            let gens_str = if gens.iter().any(|&u| u != 0) {
+                fmt!(" gen: %s", bits_to_str(gens))
+            } else {
+                ~""
+            };
+
+            let kills = self.kills.slice(start, end);
+            let kills_str = if kills.iter().any(|&u| u != 0) {
+                fmt!(" kill: %s", bits_to_str(kills))
+            } else {
+                ~""
+            };
+
+            let comment_str = fmt!("id %d: %s%s%s",
+                                   id, entry_str, gens_str, kills_str);
+            pprust::synth_comment(ps, comment_str);
+            pp::space(ps.s);
+        }
+    }
+}
+
 impl<O:DataFlowOperator> DataFlowContext<O> {
     pub fn new(tcx: ty::ctxt,
                method_map: typeck::method_map,
@@ -319,46 +355,9 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     }
 
     fn pretty_print_to(@self, wr: @io::Writer, blk: &ast::Block) {
-        let pre: @fn(pprust::ann_node) = |node| {
-            let (ps, id) = match node {
-                pprust::node_expr(ps, expr) => (ps, expr.id),
-                pprust::node_block(ps, blk) => (ps, blk.id),
-                pprust::node_item(ps, _) => (ps, 0),
-                pprust::node_pat(ps, pat) => (ps, pat.id)
-            };
-
-            if self.nodeid_to_bitset.contains_key(&id) {
-                let (start, end) = self.compute_id_range_frozen(id);
-                let on_entry = self.on_entry.slice(start, end);
-                let entry_str = bits_to_str(on_entry);
-
-                let gens = self.gens.slice(start, end);
-                let gens_str = if gens.iter().any(|&u| u != 0) {
-                    fmt!(" gen: %s", bits_to_str(gens))
-                } else {
-                    ~""
-                };
-
-                let kills = self.kills.slice(start, end);
-                let kills_str = if kills.iter().any(|&u| u != 0) {
-                    fmt!(" kill: %s", bits_to_str(kills))
-                } else {
-                    ~""
-                };
-
-                let comment_str = fmt!("id %d: %s%s%s",
-                                       id, entry_str, gens_str, kills_str);
-                pprust::synth_comment(ps, comment_str);
-                pp::space(ps.s);
-            }
-        };
-
-        let post: @fn(pprust::ann_node) = |_| {
-        };
-
-        let ps = pprust::rust_printer_annotated(
-            wr, self.tcx.sess.intr(),
-            pprust::pp_ann {pre:pre, post:post});
+        let ps = pprust::rust_printer_annotated(wr,
+                                                self.tcx.sess.intr(),
+                                                self as @pprust::pp_ann);
         pprust::cbox(ps, pprust::indent_unit);
         pprust::ibox(ps, 0u);
         pprust::print_block(ps, blk);

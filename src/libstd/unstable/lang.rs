@@ -94,12 +94,11 @@ pub unsafe fn check_not_borrowed(a: *u8,
 }
 
 #[lang="start"]
-pub fn start(main: *u8, argc: int, argv: **c_char,
-             crate_map: *u8) -> int {
+pub fn start(main: *u8, argc: int, argv: **c_char) -> int {
     use rt;
 
     unsafe {
-        return do rt::start(argc, argv as **u8, crate_map) {
+        return do rt::start(argc, argv as **u8) {
             let main: extern "Rust" fn() = transmute(main);
             main();
         };

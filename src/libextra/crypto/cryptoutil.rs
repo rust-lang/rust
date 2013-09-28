@@ -347,12 +347,12 @@ impl <T: FixedBuffer> StandardPadding for T {
 
 #[cfg(test)]
 mod test {
-    use std::rand::IsaacRng;
-    use std::rand::RngUtil;
+    use std::rand::{IsaacRng, Rng};
     use std::vec;
 
     use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple};
     use digest::Digest;
+    use hex::FromHex;
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
     /// correct.
@@ -365,7 +365,7 @@ mod test {
         digest.reset();
 
         while count < total_size {
-            let next: uint = rng.gen_uint_range(0, 2 * blocksize + 1);
+            let next: uint = rng.gen_integer_range(0, 2 * blocksize + 1);
             let remaining = total_size - count;
             let size = if next > remaining { remaining } else { next };
             digest.input(buffer.slice_to(size));
@@ -373,8 +373,10 @@ mod test {
         }
 
         let result_str = digest.result_str();
+        let result_bytes = digest.result_bytes();
 
-        assert!(expected == result_str);
+        assert_eq!(expected, result_str.as_slice());
+        assert_eq!(expected.from_hex().unwrap(), result_bytes);
     }
 
     // A normal addition - no overflow occurs

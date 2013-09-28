@@ -22,7 +22,7 @@ pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
     let start = extra::time::precise_time_s();
     let rv = thunk();
     let end = extra::time::precise_time_s();
-    printfln!("time: %3.3f s\t%s", end - start, what);
+    println!("time: {:3.3f} s\t{}", end - start, what);
     rv
 }
 
@@ -40,7 +40,7 @@ pub struct _indenter {
 }
 
 impl Drop for _indenter {
-    fn drop(&self) { debug!("<<"); }
+    fn drop(&mut self) { debug!("<<"); }
 }
 
 pub fn _indenter(_i: ()) -> _indenter {
@@ -60,49 +60,55 @@ pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
     fields.map(|f| f.expr)
 }
 
-struct LoopQueryVisitor {
-    p: @fn(&ast::Expr_) -> bool
+struct LoopQueryVisitor<'self> {
+    p: &'self fn(&ast::Expr_) -> bool,
+    flag: bool,
 }
 
-impl Visitor<@mut bool> for LoopQueryVisitor {
-    fn visit_expr(&mut self, e:@ast::Expr, flag:@mut bool) {
-        *flag |= (self.p)(&e.node);
+impl<'self> Visitor<()> for LoopQueryVisitor<'self> {
+    fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
+        self.flag |= (self.p)(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
           ast::ExprLoop(*) | ast::ExprWhile(*) => {}
-          _ => visit::walk_expr(self, e, flag)
+          _ => visit::walk_expr(self, e, ())
         }
     }
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: @fn(&ast::Expr_) -> bool) -> bool {
-    let rs = @mut false;
-    let mut v = LoopQueryVisitor { p: p };
-    visit::walk_block(&mut v, b, rs);
-    return *rs;
+pub fn loop_query(b: &ast::Block, p: &fn(&ast::Expr_) -> bool) -> bool {
+    let mut v = LoopQueryVisitor {
+        p: p,
+        flag: false,
+    };
+    visit::walk_block(&mut v, b, ());
+    return v.flag;
 }
 
-struct BlockQueryVisitor {
-    p: @fn(@ast::Expr) -> bool
+struct BlockQueryVisitor<'self> {
+    p: &'self fn(@ast::Expr) -> bool,
+    flag: bool,
 }
 
-impl Visitor<@mut bool> for BlockQueryVisitor {
-    fn visit_expr(&mut self, e:@ast::Expr, flag:@mut bool) {
-        *flag |= (self.p)(e);
-        visit::walk_expr(self, e, flag)
+impl<'self> Visitor<()> for BlockQueryVisitor<'self> {
+    fn visit_expr(&mut self, e: @ast::Expr, _:()) {
+        self.flag |= (self.p)(e);
+        visit::walk_expr(self, e, ())
     }
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::Block, p: @fn(@ast::Expr) -> bool) -> bool {
-    let rs = @mut false;
-    let mut v = BlockQueryVisitor { p: p };
-    visit::walk_block(&mut v, b, rs);
-    return *rs;
+pub fn block_query(b: &ast::Block, p: &fn(@ast::Expr) -> bool) -> bool {
+    let mut v = BlockQueryVisitor {
+        p: p,
+        flag: false,
+    };
+    visit::walk_block(&mut v, b, ());
+    return v.flag;
 }
 
 pub fn local_rhs_span(l: @ast::Local, def: Span) -> Span {

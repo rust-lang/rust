@@ -13,7 +13,7 @@ struct noncopyable {
 }
 
 impl Drop for noncopyable {
-    fn drop(&self) {
+    fn drop(&mut self) {
         error!("dropped");
     }
 }
@@ -26,7 +26,7 @@ fn noncopyable() -> noncopyable {
 
 struct wrapper(noncopyable);
 
-fn main() {
+pub fn main() {
     let x1 = wrapper(noncopyable());
     let _x2 = *x1;
 }

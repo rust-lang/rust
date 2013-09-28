@@ -15,7 +15,7 @@ pub struct S {
 }
 
 impl Drop for S {
-    fn drop(&self) {
+    fn drop(&mut self) {
         println("goodbye");
     }
 }

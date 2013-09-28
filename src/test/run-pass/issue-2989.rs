@@ -40,7 +40,7 @@ pub fn main() {
     let bools2 = to_bools(Storage{storage: ~[0b01100100]});
 
     for i in range(0u, 8) {
-        printfln!("%u => %u vs %u", i, bools[i] as uint, bools2[i] as uint);
+        println!("{} => {} vs {}", i, bools[i], bools2[i]);
     }
 
     assert_eq!(bools, bools2);

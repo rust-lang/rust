@@ -230,7 +230,8 @@ impl Engine512 {
 }
 
 
-struct Sha512 {
+/// The SHA-512 hash algorithm
+pub struct Sha512 {
     priv engine: Engine512
 }
 
@@ -282,7 +283,8 @@ static H512: [u64, ..8] = [
 ];
 
 
-struct Sha384 {
+/// The SHA-384 hash algorithm
+pub struct Sha384 {
     priv engine: Engine512
 }
 
@@ -332,7 +334,8 @@ static H384: [u64, ..8] = [
 ];
 
 
-struct Sha512Trunc256 {
+/// The SHA-512 hash algorithm with digest truncated to 256 bits
+pub struct Sha512Trunc256 {
     priv engine: Engine512
 }
 
@@ -380,7 +383,8 @@ static H512_TRUNC_256: [u64, ..8] = [
 ];
 
 
-struct Sha512Trunc224 {
+/// The SHA-512 hash algorithm with digest truncated to 224 bits
+pub struct Sha512Trunc224 {
     priv engine: Engine512
 }
 
@@ -635,7 +639,8 @@ impl Engine256 {
 }
 
 
-struct Sha256 {
+/// The SHA-256 hash algorithm
+pub struct Sha256 {
     priv engine: Engine256
 }
 
@@ -687,7 +692,8 @@ static H256: [u32, ..8] = [
 ];
 
 
-struct Sha224 {
+/// The SHA-224 hash algorithm
+pub struct Sha224 {
     priv engine: Engine256
 }
 

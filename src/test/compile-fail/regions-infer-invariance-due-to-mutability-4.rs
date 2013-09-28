@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct invariant<'self> {
-    f: @fn() -> @mut &'self int
+    f: &'static fn() -> @mut &'self int
 }
 
 fn to_same_lifetime<'r>(bi: invariant<'r>) {

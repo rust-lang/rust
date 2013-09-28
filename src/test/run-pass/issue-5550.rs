@@ -10,7 +10,7 @@
 
 #[allow(dead_assignment)];
 
-fn main() {
+pub fn main() {
     let s: ~str = ~"foobar";
     let mut t: &str = s;
     t = t.slice(0, 3); // for master: str::view(t, 0, 3) maybe

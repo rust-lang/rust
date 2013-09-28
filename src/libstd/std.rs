@@ -49,13 +49,16 @@ they contained the following prologue:
 
 
 #[link(name = "std",
-       vers = "0.8-pre",
+       vers = "0.9-pre",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
+
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico")];
 
 // Don't link to std. We are std.
 #[no_std];
@@ -64,7 +67,7 @@ they contained the following prologue:
 #[deny(missing_doc)];
 
 // Make extra accessible for benchmarking
-#[cfg(test)] extern mod extra(vers="0.8-pre");
+#[cfg(test)] extern mod extra(vers="0.9-pre");
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realstd(name = "std");
@@ -179,19 +182,13 @@ pub mod run;
 pub mod sys;
 pub mod cast;
 pub mod fmt;
-#[cfg(stage0)] #[path = "repr_stage0.rs"]
-pub mod repr;
-#[cfg(not(stage0))]
 pub mod repr;
 pub mod cleanup;
-#[cfg(stage0)] #[path = "reflect_stage0.rs"]
-pub mod reflect;
-#[cfg(not(stage0))]
 pub mod reflect;
 pub mod condition;
 pub mod logging;
 pub mod util;
-
+pub mod routine;
 
 /* Unsupported interfaces */
 
@@ -226,4 +223,5 @@ mod std {
     pub use os;
     pub use fmt;
     pub use to_bytes;
+    pub use logging;
 }

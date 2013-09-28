@@ -1,9 +1,10 @@
 [attr]rust text eol=lf whitespace=tab-in-indent,trailing-space,tabwidth=4
 
-* text eol=lf
+* text=auto eol=lf
 *.cpp rust
 *.h rust
 *.rs rust
+src/etc/pkg/rust-logo.ico binary
 src/rt/msvc/* -whitespace
 src/rt/vg/* -whitespace
 src/rt/linenoise/* -whitespace

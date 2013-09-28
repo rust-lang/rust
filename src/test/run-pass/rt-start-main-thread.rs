@@ -11,8 +11,8 @@
 // xfail-fast
 
 #[start]
-fn start(argc: int, argv: **u8, crate_map: *u8) -> int {
-    do std::rt::start_on_main_thread(argc, argv, crate_map) {
+fn start(argc: int, argv: **u8) -> int {
+    do std::rt::start_on_main_thread(argc, argv) {
         info!("running on main thread");
         do spawn {
             info!("running on another thread");

@@ -62,9 +62,7 @@ fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         cx.ident_of("Zero"),
         cx.ident_of("zero")
     ];
-    let zero_call = || {
-        cx.expr_call_global(span, zero_ident.clone(), ~[])
-    };
+    let zero_call = cx.expr_call_global(span, zero_ident.clone(), ~[]);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -73,13 +71,13 @@ fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
                     if count == 0 {
                         cx.expr_ident(span, substr.type_ident)
                     } else {
-                        let exprs = vec::from_fn(count, |_| zero_call());
+                        let exprs = vec::from_elem(count, zero_call);
                         cx.expr_call_ident(span, substr.type_ident, exprs)
                     }
                 }
                 Right(ref fields) => {
                     let zero_fields = do fields.map |ident| {
-                        cx.field_imm(span, *ident, zero_call())
+                        cx.field_imm(span, *ident, zero_call)
                     };
                     cx.expr_struct_ident(span, substr.type_ident, zero_fields)
                 }

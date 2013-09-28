@@ -20,6 +20,6 @@ impl Fooable for uint {
     }
 }
 
-fn main() {
+pub fn main() {
     2.yes();
 }

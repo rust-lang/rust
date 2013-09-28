@@ -67,20 +67,19 @@ pub static debug_llvm:              uint = 1 << 13;
 pub static count_type_sizes:        uint = 1 << 14;
 pub static meta_stats:              uint = 1 << 15;
 pub static no_opt:                  uint = 1 << 16;
-pub static no_monomorphic_collapse: uint = 1 << 17;
-pub static gc:                      uint = 1 << 18;
-pub static jit:                     uint = 1 << 19;
-pub static debug_info:              uint = 1 << 20;
-pub static extra_debug_info:        uint = 1 << 21;
-pub static statik:                  uint = 1 << 22;
-pub static print_link_args:         uint = 1 << 23;
-pub static no_debug_borrows:        uint = 1 << 24;
-pub static lint_llvm:               uint = 1 << 25;
-pub static once_fns:                uint = 1 << 26;
-pub static print_llvm_passes:       uint = 1 << 27;
-pub static no_vectorize_loops:      uint = 1 << 28;
-pub static no_vectorize_slp:        uint = 1 << 29;
-pub static no_prepopulate_passes:   uint = 1 << 30;
+pub static gc:                      uint = 1 << 17;
+pub static jit:                     uint = 1 << 18;
+pub static debug_info:              uint = 1 << 19;
+pub static extra_debug_info:        uint = 1 << 20;
+pub static statik:                  uint = 1 << 21;
+pub static print_link_args:         uint = 1 << 22;
+pub static no_debug_borrows:        uint = 1 << 23;
+pub static lint_llvm:               uint = 1 << 24;
+pub static once_fns:                uint = 1 << 25;
+pub static print_llvm_passes:       uint = 1 << 26;
+pub static no_vectorize_loops:      uint = 1 << 27;
+pub static no_vectorize_slp:        uint = 1 << 28;
+pub static no_prepopulate_passes:   uint = 1 << 29;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -106,8 +105,6 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       count_type_sizes),
      (~"meta-stats", ~"gather metadata statistics", meta_stats),
      (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
-     (~"no-monomorphic-collapse", ~"do not collapse template instantiations",
-      no_monomorphic_collapse),
      (~"print-link-args", ~"Print the arguments passed to the linker", print_link_args),
      (~"gc", ~"Garbage collect shared data (experimental)", gc),
      (~"jit", ~"Execute using JIT (experimental)", jit),
@@ -325,9 +322,6 @@ impl Session_ {
     }
     pub fn borrowck_note_loan(&self) -> bool {
         self.debugging_opt(borrowck_note_loan)
-    }
-    pub fn no_monomorphic_collapse(&self) -> bool {
-        self.debugging_opt(no_monomorphic_collapse)
     }
     pub fn debug_borrows(&self) -> bool {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)

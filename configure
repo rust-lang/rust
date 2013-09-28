@@ -373,7 +373,7 @@ opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
 opt optimize-tests 1 "build tests with optimizations"
 opt llvm-assertions 1 "build LLVM with assertions"
-opt debug 0 "build with extra debug fun"
+opt debug 1 "build with extra debug fun"
 opt ratchet-bench 0 "ratchet benchmarks"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt manage-submodules 1 "let the build manage the git submodules"
@@ -684,7 +684,7 @@ do
       isaac linenoise sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
       libuv libuv/src/ares libuv/src/eio libuv/src/ev \
-      jemalloc
+      jemalloc sundown/src sundown/html
     do
       make_dir $t/rt/stage$s/$i
     done
@@ -845,6 +845,11 @@ do
 
         # Disable unused LLVM features
         LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
+        # Disable term-info, linkage of which comes in multiple forms,
+        # making our snapshots incompatible (#9334)
+        LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
+        # Try to have LLVM pull in as few dependencies as possible (#9397)
+        LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
 
         case "$CFG_C_COMPILER" in
             ("ccache clang")

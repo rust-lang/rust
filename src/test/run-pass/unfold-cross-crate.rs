@@ -13,7 +13,7 @@ use std::iter::*;
 // Unfold had a bug with 'self that mean it didn't work
 // cross-crate
 
-fn main() {
+pub fn main() {
     fn count(st: &mut uint) -> Option<uint> {
         if *st < 10 {
             let ret = Some(*st);

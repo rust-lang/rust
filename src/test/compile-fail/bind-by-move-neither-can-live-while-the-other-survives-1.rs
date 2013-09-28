@@ -11,7 +11,7 @@
 struct X { x: () }
 
 impl Drop for X {
-    fn drop(&self) {
+    fn drop(&mut self) {
         error!("destructor runs");
     }
 }

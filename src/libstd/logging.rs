@@ -10,11 +10,11 @@
 
 //! Logging
 
+use fmt;
 use option::*;
 use os;
 use rt;
 use rt::logging::{Logger, StdErrLogger};
-use send_str::SendStrOwned;
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
@@ -37,18 +37,8 @@ pub fn console_off() {
     rt::logging::console_off();
 }
 
-#[cfg(not(test), stage0)]
-#[lang="log_type"]
 #[allow(missing_doc)]
-pub fn log_type<T>(_level: u32, object: &T) {
-    use sys;
-
-    // XXX: Bad allocation
-    let msg = sys::log_str(object);
-    newsched_log_str(msg);
-}
-
-fn newsched_log_str(msg: ~str) {
+pub fn log(_level: u32, args: &fmt::Arguments) {
     use rt::task::Task;
     use rt::local::Local;
 
@@ -57,20 +47,13 @@ fn newsched_log_str(msg: ~str) {
         match optional_task {
             Some(local) => {
                 // Use the available logger
-                (*local).logger.log(SendStrOwned(msg));
+                (*local).logger.log(args);
             }
             None => {
                 // There is no logger anywhere, just write to stderr
                 let mut logger = StdErrLogger;
-                logger.log(SendStrOwned(msg));
+                logger.log(args);
             }
         }
     }
-}
-
-// XXX: This will change soon to not require an allocation. This is an unstable
-//      api which should not be used outside of the macros in ext/expand.
-#[doc(hidden)]
-pub fn log(_level: u32, msg: ~str) {
-    newsched_log_str(msg);
 }

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Test that we ignore modes when calling extern functions.
+// xfail-fast #9205
 
 #[deriving(Eq)]
 struct TwoU64s {

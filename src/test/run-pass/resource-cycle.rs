@@ -17,10 +17,10 @@ struct r {
 }
 
 impl Drop for r {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             info!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
-              cast::transmute::<*r, uint>(self),
+              cast::transmute::<*mut r, uint>(self),
               cast::transmute::<**int, uint>(&(self.v)),
               cast::transmute::<*int, uint>(self.v));
             let _v2: ~int = cast::transmute(self.v);

@@ -54,9 +54,8 @@ clean-misc:
 	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -Rf $(foreach ext, \
                  html aux cp fn ky log pdf pg toc tp vr cps, \
-                 $(wildcard doc/*.$(ext) \
-                            doc/*/*.$(ext) \
-                            doc/*/*/*.$(ext)))
+                 $(wildcard doc/*.$(ext)))
+	$(Q)find doc/std doc/extra -mindepth 1 | xargs rm -Rf
 	$(Q)rm -Rf doc/version.md
 	$(Q)rm -Rf $(foreach sub, index styles files search javascript, \
                  $(wildcard doc/*/$(sub)))
@@ -72,7 +71,6 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rust$(X_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTPKG_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOC_$(2))
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOCNG_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_STDLIB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_EXTRALIB_$(2))
@@ -86,7 +84,6 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTPKG_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB_$(2))
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOCNG_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTI_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUST_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM_$(2))
@@ -109,7 +106,6 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rust$(X_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2))
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))
@@ -123,7 +119,6 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTPKG_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOC_GLOB_$(2))
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOCNG_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTI_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUST_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(2))

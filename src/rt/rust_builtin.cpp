@@ -69,33 +69,9 @@ rust_env_pairs() {
 }
 #endif
 
-extern "C" CDECL size_t
-rand_seed_size() {
-    return rng_seed_size();
-}
-
 extern "C" CDECL void
 rand_gen_seed(uint8_t* dest, size_t size) {
     rng_gen_seed(dest, size);
-}
-
-extern "C" CDECL void *
-rand_new_seeded(uint8_t* seed, size_t seed_size) {
-    assert(seed != NULL);
-    rust_rng *rng = (rust_rng *) malloc(sizeof(rust_rng));
-    assert(rng != NULL && "rng alloc failed");
-    rng_init(rng, NULL, seed, seed_size);
-    return rng;
-}
-
-extern "C" CDECL uint32_t
-rand_next(rust_rng *rng) {
-    return rng_gen_u32(rng);
-}
-
-extern "C" CDECL void
-rand_free(rust_rng *rng) {
-    free(rng);
 }
 
 extern "C" CDECL char*
@@ -642,6 +618,29 @@ extern "C" CDECL void
 rust_valgrind_stack_deregister(unsigned int id) {
   VALGRIND_STACK_DEREGISTER(id);
 }
+
+#if defined(__WIN32__)
+
+extern "C" CDECL void
+rust_unset_sigprocmask() {
+    // empty stub for windows to keep linker happy
+}
+
+#else
+
+#include <signal.h>
+#include <unistd.h>
+
+extern "C" CDECL void
+rust_unset_sigprocmask() {
+    // this can't be safely converted to rust code because the
+    // representation of sigset_t is platform-dependent
+    sigset_t sset;
+    sigemptyset(&sset);
+    sigprocmask(SIG_SETMASK, &sset, NULL);
+}
+
+#endif
 
 //
 // Local Variables:
