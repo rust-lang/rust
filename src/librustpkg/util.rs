@@ -68,7 +68,6 @@ struct ListenerFn {
 
 struct ReadyCtx {
     sess: session::Session,
-    crate: @ast::Crate,
     ext_cx: @ExtCtxt,
     path: ~[ast::Ident],
     fns: ~[ListenerFn]
@@ -151,10 +150,9 @@ impl fold::ast_fold for CrateSetup {
 
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
-                   crate: @ast::Crate) -> @ast::Crate {
+                   crate: ast::Crate) -> ast::Crate {
     let ctx = @mut ReadyCtx {
         sess: sess,
-        crate: crate,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
         fns: ~[]
@@ -162,7 +160,7 @@ pub fn ready_crate(sess: session::Session,
     let fold = CrateSetup {
         ctx: ctx,
     };
-    @fold.fold_crate(crate)
+    fold.fold_crate(crate)
 }
 
 pub fn compile_input(context: &BuildContext,
@@ -262,7 +260,7 @@ pub fn compile_input(context: &BuildContext,
     let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
     crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
 
-    find_and_install_dependencies(context, pkg_id, sess, exec, crate,
+    find_and_install_dependencies(context, pkg_id, sess, exec, &crate,
                                   |p| {
                                       debug!("a dependency: %s", p.to_str());
                                       // Pass the directory containing a dependency
@@ -289,10 +287,7 @@ pub fn compile_input(context: &BuildContext,
                                            pkg_id.path.to_str().to_managed())];
 
         debug!("link options: %?", link_options);
-        crate = @ast::Crate {
-            attrs: ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))],
-            .. (*crate).clone()
-        }
+        crate.attrs = ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))];
     }
 
     debug!("calling compile_crate_from_input, workspace = %s,
@@ -334,7 +329,7 @@ pub fn compile_crate_from_input(input: &Path,
                                 sess: session::Session,
 // Returns None if one of the flags that suppresses compilation output was
 // given
-                                crate: @ast::Crate) -> Option<Path> {
+                                crate: ast::Crate) -> Option<Path> {
     debug!("Calling build_output_filenames with %s, building library? %?",
            out_dir.to_str(), sess.building_library);
 
@@ -352,7 +347,7 @@ pub fn compile_crate_from_input(input: &Path,
     for lib in sess.opts.addl_lib_search_paths.iter() {
         debug!("an additional library: %s", lib.to_str());
     }
-    let analysis = driver::phase_3_run_analysis_passes(sess, crate);
+    let analysis = driver::phase_3_run_analysis_passes(sess, &crate);
     if driver::stop_after_phase_3(sess) { return None; }
     let translation = driver::phase_4_translate_to_llvm(sess, crate,
                                                         &analysis,
