@@ -36,6 +36,8 @@ WFLAGS_ST2 = -D warnings
 # had its chance to clean it out; otherwise the other products will be
 # inadvertantly included in the clean out.
 
+SNAPSHOT_RUSTC_POST_CLEANUP=$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE))
+
 define TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
