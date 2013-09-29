@@ -163,11 +163,11 @@ fn main() {
         }
     };
 
-    let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let seed = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let max = 200000;
 
     {
-        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || {
             let s: HashSet<uint> = HashSet::new();
@@ -181,7 +181,7 @@ fn main() {
     }
 
     {
-        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || {
             let s: TreeSet<uint> = TreeSet::new();
@@ -195,7 +195,7 @@ fn main() {
     }
 
     {
-        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || BitvSet::new());
         write_results("extra::bitv::BitvSet", &results);

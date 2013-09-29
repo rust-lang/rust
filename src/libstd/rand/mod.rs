@@ -638,6 +638,42 @@ pub trait Rng {
     }
 }
 
+/// A random number generator that can be explicitly seeded to produce
+/// the same stream of randomness multiple times.
+pub trait SeedableRng<Seed>: Rng {
+    /// Reseed an RNG with the given seed.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::rand;
+    /// use std::rand::Rng;
+    ///
+    /// fn main() {
+    ///     let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     println!("{}", rng.gen::<f64>());
+    ///     rng.reseed([5, 6, 7, 8]);
+    ///     println!("{}", rng.gen::<f64>());
+    /// }
+    /// ```
+    fn reseed(&mut self, Seed);
+
+    /// Create a new RNG with the given seed.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::rand;
+    /// use std::rand::Rng;
+    ///
+    /// fn main() {
+    ///     let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     println!("{}", rng.gen::<f64>());
+    /// }
+    /// ```
+    fn from_seed(seed: Seed) -> Self;
+}
+
 /// Create a random number generator with a default algorithm and seed.
 ///
 /// It returns the cryptographically-safest `Rng` algorithm currently
@@ -686,6 +722,18 @@ impl Rng for StdRng {
     }
 }
 
+impl<'self> SeedableRng<&'self [uint]> for StdRng {
+    fn reseed(&mut self, seed: &'self [uint]) {
+        // the internal RNG can just be seeded from the above
+        // randomness.
+        self.rng.reseed(unsafe {cast::transmute(seed)})
+    }
+
+    fn from_seed(seed: &'self [uint]) -> StdRng {
+        StdRng { rng: SeedableRng::from_seed(unsafe {cast::transmute(seed)}) }
+    }
+}
+
 /// Create a weak random number generator with a default algorithm and seed.
 ///
 /// It returns the fastest `Rng` algorithm currently available in Rust without
@@ -723,11 +771,35 @@ impl Rng for XorShiftRng {
     }
 }
 
+impl SeedableRng<[u32, .. 4]> for XorShiftRng {
+    /// Reseed an XorShiftRng. This will fail if `seed` is entirely 0.
+    fn reseed(&mut self, seed: [u32, .. 4]) {
+        assert!(!seed.iter().all(|&x| x == 0),
+                "XorShiftRng.reseed called with an all zero seed.");
+
+        self.x = seed[0];
+        self.y = seed[1];
+        self.z = seed[2];
+        self.w = seed[3];
+    }
+
+    /// Create a new XorShiftRng. This will fail if `seed` is entirely 0.
+    fn from_seed(seed: [u32, .. 4]) -> XorShiftRng {
+        assert!(!seed.iter().all(|&x| x == 0),
+                "XorShiftRng::from_seed called with an all zero seed.");
+
+        XorShiftRng {
+            x: seed[0],
+            y: seed[1],
+            z: seed[2],
+            w: seed[3]
+        }
+    }
+}
+
 impl XorShiftRng {
     /// Create an xor shift random number generator with a random seed.
     pub fn new() -> XorShiftRng {
-        #[fixed_stack_segment]; #[inline(never)];
-
         // generate seeds the same way as seed(), except we have a
         // specific size, so we can just use a fixed buffer.
         let mut s = [0u8, ..16];
@@ -740,29 +812,21 @@ impl XorShiftRng {
             }
         }
         let s: &[u32, ..4] = unsafe { cast::transmute(&s) };
-        XorShiftRng::new_seeded(s[0], s[1], s[2], s[3])
-    }
-
-    /**
-     * Create a random number generator using the specified seed. A generator
-     * constructed with a given seed will generate the same sequence of values
-     * as all other generators constructed with the same seed.
-     */
-    pub fn new_seeded(x: u32, y: u32, z: u32, w: u32) -> XorShiftRng {
-        XorShiftRng {
-            x: x,
-            y: y,
-            z: z,
-            w: w,
-        }
+        SeedableRng::from_seed(*s)
     }
 }
 
-/// Create a new random seed of length `n`.
-pub fn seed(n: uint) -> ~[u8] {
-    let mut s = vec::from_elem(n as uint, 0_u8);
+/// Create a new random seed of length `n`. This should only be used
+/// to create types for which *any* bit pattern is valid.
+pub unsafe fn seed<T: Clone>(n: uint) -> ~[T] {
+    use unstable::intrinsics;
+    let mut s = vec::from_elem(n, intrinsics::init());
     let mut r = OSRng::new();
-    r.fill_bytes(s);
+
+    {
+        let s_u8 = cast::transmute::<&mut [T], &mut [u8]>(s);
+        r.fill_bytes(s_u8);
+    }
     s
 }
 

@@ -26,7 +26,7 @@ use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback};
 use borrow::{to_uint};
 use cell::Cell;
-use rand::{XorShiftRng, Rng, Rand};
+use rand::{SeedableRng, XorShiftRng, Rng, Rand};
 use iter::range;
 use vec::{OwnedVector};
 
@@ -895,7 +895,7 @@ fn new_sched_rng() -> XorShiftRng {
     // know that the only way that we can fail here is `abort`ing?
     unsafe {libc::fclose(file);}
 
-    XorShiftRng::new_seeded(seeds[0], seeds[1], seeds[2], seeds[3])
+    SeedableRng::from_seed(seeds)
 }
 
 #[cfg(test)]

@@ -97,6 +97,8 @@ mod test {
     use super::*;
     use rand::Rng;
     use default::Default;
+    use iter::range;
+    use option::{None, Some};
 
     struct Counter {
         i: u32
@@ -117,7 +119,7 @@ mod test {
 
     #[test]
     fn test_reseeding() {
-        let mut rs = ReseedingRng::from_options(Counter {i:0}, 100, ReseedWithDefault);
+        let mut rs = ReseedingRng::new(Counter {i:0}, 400, ReseedWithDefault);
 
         let mut i = 0;
         for _ in range(0, 1000) {
