@@ -11,9 +11,8 @@
 mod libc {
     use std::libc::{c_char, c_long, c_longlong};
 
-    #[abi = "cdecl"]
     #[nolink]
-    extern {
+    extern "cdecl" {
         pub fn atol(x: *c_char) -> c_long;
         pub fn atoll(x: *c_char) -> c_longlong;
     }

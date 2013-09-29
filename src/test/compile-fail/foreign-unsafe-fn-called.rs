@@ -11,8 +11,7 @@
 
 
 mod test {
-    #[abi = "cdecl"]
-    extern {
+    extern "cdecl" {
         pub fn free();
     }
 }

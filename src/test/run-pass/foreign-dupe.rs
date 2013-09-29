@@ -14,9 +14,8 @@
 mod rustrt1 {
     use std::libc;
 
-    #[abi = "cdecl"]
     #[link_name = "rustrt"]
-    extern {
+    extern "cdecl" {
         fn rust_get_test_int() -> libc::intptr_t;
     }
 }
@@ -24,9 +23,8 @@ mod rustrt1 {
 mod rustrt2 {
     use std::libc;
 
-    #[abi = "cdecl"]
     #[link_name = "rustrt"]
-    extern {
+    extern "cdecl" {
         fn rust_get_test_int() -> libc::intptr_t;
     }
 }
