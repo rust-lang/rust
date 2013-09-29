@@ -298,8 +298,7 @@ pub mod llvm {
 
     #[link_args = "-Lrustllvm -lrustllvm"]
     #[link_name = "rustllvm"]
-    #[abi = "cdecl"]
-    extern {
+    extern "cdecl" {
         /* Create and destroy contexts. */
         #[fast_ffi]
         pub fn LLVMContextCreate() -> ContextRef;

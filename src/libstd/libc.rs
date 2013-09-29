@@ -2664,11 +2664,10 @@ pub mod funcs {
 
     pub mod c95 {
         #[nolink]
-        #[abi = "cdecl"]
         pub mod ctype {
             use libc::types::os::arch::c95::{c_char, c_int};
 
-            extern {
+            extern "cdecl" {
                 pub fn isalnum(c: c_int) -> c_int;
                 pub fn isalpha(c: c_int) -> c_int;
                 pub fn iscntrl(c: c_int) -> c_int;
@@ -2686,12 +2685,11 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod stdio {
             use libc::types::common::c95::{FILE, c_void, fpos_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long, size_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
                 pub fn freopen(filename: *c_char, mode: *c_char, file: *FILE)
                                -> *FILE;
@@ -2748,14 +2746,13 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod stdlib {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_char, c_double, c_int};
             use libc::types::os::arch::c95::{c_long, c_uint, c_ulong};
             use libc::types::os::arch::c95::{size_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn abs(i: c_int) -> c_int;
                 pub fn labs(i: c_long) -> c_long;
                 // Omitted: div, ldiv (return pub type incomplete).
@@ -2786,13 +2783,12 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod string {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_char, c_int, size_t};
             use libc::types::os::arch::c95::{wchar_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
                 pub fn strncpy(dst: *c_char, src: *c_char, n: size_t)
                                -> *c_char;
@@ -2836,12 +2832,11 @@ pub mod funcs {
     #[cfg(target_os = "win32")]
     pub mod posix88 {
         #[nolink]
-        #[abi = "cdecl"]
         pub mod stat_ {
             use libc::types::os::common::posix01::stat;
             use libc::types::os::arch::c95::{c_int, c_char};
 
-            extern {
+            extern "cdecl" {
                 #[link_name = "_chmod"]
                 pub fn chmod(path: *c_char, mode: c_int) -> c_int;
                 #[link_name = "_mkdir"]
@@ -2854,12 +2849,11 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod stdio {
             use libc::types::common::c95::FILE;
             use libc::types::os::arch::c95::{c_int, c_char};
 
-            extern {
+            extern "cdecl" {
                 #[link_name = "_popen"]
                 pub fn popen(command: *c_char, mode: *c_char) -> *FILE;
                 #[link_name = "_pclose"]
@@ -2873,10 +2867,9 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod fcntl {
             use libc::types::os::arch::c95::{c_int, c_char};
-            extern {
+            extern "cdecl" {
                 #[link_name = "_open"]
                 pub fn open(path: *c_char, oflag: c_int, mode: c_int)
                             -> c_int;
@@ -2886,20 +2879,18 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod dirent {
             // Not supplied at all.
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod unistd {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_int, c_uint, c_char,
                                              c_long, size_t};
             use libc::types::os::arch::c99::intptr_t;
 
-            extern {
+            extern "cdecl" {
                 #[link_name = "_access"]
                 pub fn access(path: *c_char, amode: c_int) -> c_int;
                 #[link_name = "_chdir"]
@@ -2962,8 +2953,7 @@ pub mod funcs {
             use libc::types::os::arch::posix88::mode_t;
 
             #[nolink]
-            #[abi = "cdecl"]
-            extern {
+            extern "cdecl" {
                 pub fn chmod(path: *c_char, mode: mode_t) -> c_int;
                 pub fn fchmod(fd: c_int, mode: mode_t) -> c_int;
 
@@ -2991,12 +2981,11 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod stdio {
             use libc::types::common::c95::FILE;
             use libc::types::os::arch::c95::{c_char, c_int};
 
-            extern {
+            extern "cdecl" {
                 pub fn popen(command: *c_char, mode: *c_char) -> *FILE;
                 pub fn pclose(stream: *FILE) -> c_int;
                 pub fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
@@ -3005,12 +2994,11 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod fcntl {
             use libc::types::os::arch::c95::{c_char, c_int};
             use libc::types::os::arch::posix88::mode_t;
 
-            extern {
+            extern "cdecl" {
                 pub fn open(path: *c_char, oflag: c_int, mode: c_int)
                             -> c_int;
                 pub fn creat(path: *c_char, mode: mode_t) -> c_int;
@@ -3019,7 +3007,6 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod dirent {
             use libc::types::common::posix88::{DIR, dirent_t};
             use libc::types::os::arch::c95::{c_char, c_int, c_long};
@@ -3039,12 +3026,12 @@ pub mod funcs {
                 rust_readdir(dirp)
             }
 
-            extern {
+            extern "cdecl" {
                 fn rust_opendir(dirname: *c_char) -> *DIR;
                 fn rust_readdir(dirp: *DIR) -> *dirent_t;
             }
 
-            extern {
+            extern "cdecl" {
                 pub fn closedir(dirp: *DIR) -> c_int;
                 pub fn rewinddir(dirp: *DIR);
                 pub fn seekdir(dirp: *DIR, loc: c_long);
@@ -3053,7 +3040,6 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod unistd {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
@@ -3061,7 +3047,7 @@ pub mod funcs {
             use libc::types::os::arch::posix88::{gid_t, off_t, pid_t};
             use libc::types::os::arch::posix88::{ssize_t, uid_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn access(path: *c_char, amode: c_int) -> c_int;
                 pub fn alarm(seconds: c_uint) -> c_uint;
                 pub fn chdir(dir: *c_char) -> c_int;
@@ -3115,24 +3101,22 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod signal {
             use libc::types::os::arch::c95::{c_int};
             use libc::types::os::arch::posix88::{pid_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn kill(pid: pid_t, sig: c_int) -> c_int;
             }
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod mman {
             use libc::types::common::c95::{c_void};
             use libc::types::os::arch::c95::{size_t, c_int, c_char};
             use libc::types::os::arch::posix88::{mode_t, off_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn mlock(addr: *c_void, len: size_t) -> c_int;
                 pub fn munlock(addr: *c_void, len: size_t) -> c_int;
                 pub fn mlockall(flags: c_int) -> c_int;
@@ -3165,12 +3149,11 @@ pub mod funcs {
     #[cfg(target_os = "freebsd")]
     pub mod posix01 {
         #[nolink]
-        #[abi = "cdecl"]
         pub mod stat_ {
             use libc::types::os::arch::c95::{c_char, c_int};
             use libc::types::os::arch::posix01::stat;
 
-            extern {
+            extern "cdecl" {
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
                 #[cfg(target_os = "android")]
@@ -3183,12 +3166,11 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod unistd {
             use libc::types::os::arch::c95::{c_char, c_int, size_t};
             use libc::types::os::arch::posix88::{ssize_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn readlink(path: *c_char,
                                 buf: *mut c_char,
                                 bufsz: size_t)
@@ -3210,25 +3192,23 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod wait {
             use libc::types::os::arch::c95::{c_int};
             use libc::types::os::arch::posix88::{pid_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn waitpid(pid: pid_t, status: *mut c_int, options: c_int)
                                -> pid_t;
             }
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod glob {
             use libc::types::os::arch::c95::{c_char, c_int};
             use libc::types::os::common::posix01::{glob_t};
             use option::Option;
 
-            extern {
+            extern "cdecl" {
                 pub fn glob(pattern: *c_char,
                             flags: c_int,
                             errfunc: Option<extern "C" fn(epath: *c_char, errno: int) -> int>,
@@ -3238,12 +3218,11 @@ pub mod funcs {
         }
 
         #[nolink]
-        #[abi = "cdecl"]
         pub mod mman {
             use libc::types::common::c95::{c_void};
             use libc::types::os::arch::c95::{c_int, size_t};
 
-            extern {
+            extern "cdecl" {
                 pub fn posix_madvise(addr: *c_void,
                                      len: size_t,
                                      advice: c_int)
@@ -3286,8 +3265,7 @@ pub mod funcs {
         use libc::types::os::arch::c95::{c_char, c_uchar, c_int, c_uint,
                                          size_t};
 
-        #[abi = "cdecl"]
-        extern {
+        extern "cdecl" {
             pub fn sysctl(name: *c_int,
                           namelen: c_uint,
                           oldp: *mut c_void,
@@ -3320,8 +3298,7 @@ pub mod funcs {
         use libc::types::common::c95::{c_void};
         use libc::types::os::arch::c95::{c_uchar, c_int, size_t};
 
-        #[abi = "cdecl"]
-        extern {
+        extern "cdecl" {
             pub fn getdtablesize() -> c_int;
             pub fn madvise(addr: *c_void, len: size_t, advice: c_int)
                            -> c_int;
@@ -3340,8 +3317,7 @@ pub mod funcs {
     pub mod extra {
         use libc::types::os::arch::c95::{c_char, c_int};
 
-        #[abi = "cdecl"]
-        extern {
+        extern "cdecl" {
             pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32)
                                         -> c_int;
         }
@@ -3373,7 +3349,6 @@ pub mod funcs {
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
             #[cfg(target_arch = "x86")]
-            #[abi = "stdcall"]
             extern "stdcall" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
                                                v: LPWSTR,
@@ -3587,9 +3562,8 @@ pub mod funcs {
         pub mod msvcrt {
             use libc::types::os::arch::c95::{c_int, c_long};
 
-            #[abi = "cdecl"]
             #[nolink]
-            extern {
+            extern "cdecl" {
                 #[link_name = "_commit"]
                 pub fn commit(fd: c_int) -> c_int;
 
