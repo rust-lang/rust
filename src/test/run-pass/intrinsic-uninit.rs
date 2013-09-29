@@ -9,7 +9,6 @@
 // except according to those terms.
 
 mod rusti {
-    #[abi = "rust-intrinsic"]
     extern "rust-intrinsic" {
         pub fn uninit<T>() -> T;
     }

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[abi = "cdecl"];
 #[link_name = "rustrt"];
 #[link(name = "anonexternmod",
        vers = "0.1")];
@@ -17,6 +16,6 @@
 
 use std::libc;
 
-extern {
+extern "cdecl" {
     pub fn rust_get_test_int() -> libc::intptr_t;
 }

@@ -18,7 +18,6 @@ pub type BOOL = u8;
 mod kernel32 {
     use super::{HANDLE, DWORD, SIZE_T, LPVOID, BOOL};
 
-    #[abi = "stdcall"]
     extern "stdcall" {
         pub fn GetProcessHeap() -> HANDLE;
         pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T)

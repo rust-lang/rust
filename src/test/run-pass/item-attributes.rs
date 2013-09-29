@@ -39,8 +39,7 @@ mod test_single_attr_outer {
 
     pub mod rustrt {
         #[attr = "val"]
-        #[abi = "cdecl"]
-        extern {}
+        extern "cdecl" {}
     }
 }
 
@@ -60,8 +59,7 @@ mod test_multi_attr_outer {
     pub mod rustrt {
         #[attr1 = "val"]
         #[attr2 = "val"]
-        #[abi = "cdecl"]
-        extern {}
+        extern "cdecl" {}
     }
 
     #[attr1 = "val"]
@@ -83,8 +81,7 @@ mod test_stmt_single_attr_outer {
 
         mod rustrt {
             #[attr = "val"]
-            #[abi = "cdecl"]
-            extern {
+            extern "cdecl" {
             }
         }
     }
@@ -110,8 +107,7 @@ mod test_stmt_multi_attr_outer {
         pub mod rustrt {
             #[attr1 = "val"]
             #[attr2 = "val"]
-            #[abi = "cdecl"]
-            extern {
+            extern "cdecl" {
             }
         }
         */
@@ -169,8 +165,7 @@ mod test_foreign_items {
     pub mod rustrt {
         use std::libc;
 
-        #[abi = "cdecl"]
-        extern {
+        extern "cdecl" {
             #[attr];
 
             #[attr]
