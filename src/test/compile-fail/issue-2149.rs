@@ -16,8 +16,7 @@ impl<A> vec_monad<A> for ~[A] {
     fn bind<B>(&self, f: &fn(A) -> ~[B]) {
         let mut r = fail2!();
         for elt in self.iter() { r = r + f(*elt); }
-        //~^ WARNING unreachable expression
-        //~^^ ERROR the type of this value must be known
+        //~^ ERROR the type of this value must be known
    }
 }
 fn main() {
