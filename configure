@@ -402,6 +402,9 @@ valopt datadir "/usr/share" ""
 valopt infodir "/usr/share/info" ""
 valopt mandir "/usr/share/man" "install man pages in PATH"
 
+#Using as /usr/lib64 on 64 bit systems
+valopt libdir "/usr/lib" ""
+
 # Validate Options
 step_msg "validating $CFG_SELF args"
 validate_opt
