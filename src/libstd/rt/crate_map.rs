@@ -11,7 +11,6 @@
 #[cfg(not(stage0))] use cast::transmute;
 use container::MutableSet;
 use hashmap::HashSet;
-use libc::c_char;
 use option::{Some, None};
 use vec::ImmutableVector;
 
@@ -29,19 +28,19 @@ extern {
     static CRATE_MAP: CrateMap<'static>;
 }
 
-pub struct ModEntry {
-    name: *c_char,
+pub struct ModEntry<'self> {
+    name: &'self str,
     log_level: *mut u32
 }
 
 pub struct CrateMapV0<'self> {
-    entries: &'self [ModEntry],
+    entries: &'self [ModEntry<'self>],
     children: &'self [&'self CrateMap<'self>]
 }
 
 pub struct CrateMap<'self> {
     version: i32,
-    entries: &'self [ModEntry],
+    entries: &'self [ModEntry<'self>],
     /// a dynamically sized struct, where all pointers to children are listed adjacent
     /// to the struct, terminated with NULL
     children: &'self [&'self CrateMap<'self>]
@@ -79,7 +78,7 @@ fn version(crate_map: &CrateMap) -> i32 {
 
 #[cfg(not(stage0))]
 fn get_entries_and_children<'a>(crate_map: &'a CrateMap<'a>) ->
-                    (&'a [ModEntry], &'a [&'a CrateMap<'a>]) {
+                    (&'a [ModEntry<'a>], &'a [&'a CrateMap<'a>]) {
     match version(crate_map) {
         0 => {
             unsafe {
@@ -127,34 +126,31 @@ pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry)) {
 
 #[cfg(test)]
 mod tests {
-    use c_str::ToCStr;
-    use cast::transmute;
     use rt::crate_map::{CrateMap, ModEntry, iter_crate_map};
 
     #[test]
     fn iter_crate_map_duplicates() {
+        let mut level3: u32 = 3;
+
+        let entries = [
+            ModEntry { name: "c::m1", log_level: &mut level3},
+        ];
+
+        let child_crate = CrateMap {
+            version: 1,
+            entries: entries,
+            children: []
+        };
+
+        let root_crate = CrateMap {
+            version: 1,
+            entries: [],
+            children: [&child_crate, &child_crate]
+        };
+
+        let mut cnt = 0;
         unsafe {
-            let mod_name1 = "c::m1".to_c_str();
-            let mut level3: u32 = 3;
-
-            let entries = [
-                ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level3},
-            ];
-
-            let child_crate = CrateMap {
-                version: 1,
-                entries: entries,
-                children: []
-            };
-
-            let root_crate = CrateMap {
-                version: 1,
-                entries: [],
-                children: [&child_crate, &child_crate]
-            };
-
-            let mut cnt = 0;
-            do iter_crate_map(transmute(&root_crate)) |entry| {
+            do iter_crate_map(&root_crate) |entry| {
                 assert!(*entry.log_level == 3);
                 cnt += 1;
             }
@@ -164,38 +160,36 @@ mod tests {
 
     #[test]
     fn iter_crate_map_follow_children() {
+        let mut level2: u32 = 2;
+        let mut level3: u32 = 3;
+        let child_crate2 = CrateMap {
+            version: 1,
+            entries: [
+                ModEntry { name: "c::m1", log_level: &mut level2},
+                ModEntry { name: "c::m2", log_level: &mut level3},
+            ],
+            children: []
+        };
+
+        let child_crate1 = CrateMap {
+            version: 1,
+            entries: [
+                ModEntry { name: "t::f1", log_level: &mut 1},
+            ],
+            children: [&child_crate2]
+        };
+
+        let root_crate = CrateMap {
+            version: 1,
+            entries: [
+                ModEntry { name: "t::f2", log_level: &mut 0},
+            ],
+            children: [&child_crate1]
+        };
+
+        let mut cnt = 0;
         unsafe {
-            let mod_name1 = "c::m1".to_c_str();
-            let mod_name2 = "c::m2".to_c_str();
-            let mut level2: u32 = 2;
-            let mut level3: u32 = 3;
-            let child_crate2 = CrateMap {
-                version: 1,
-                entries: [
-                    ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level2},
-                    ModEntry { name: mod_name2.with_ref(|buf| buf), log_level: &mut level3},
-                ],
-                children: []
-            };
-
-            let child_crate1 = CrateMap {
-                version: 1,
-                entries: [
-                    ModEntry { name: "t::f1".to_c_str().with_ref(|buf| buf), log_level: &mut 1},
-                ],
-                children: [&child_crate2]
-            };
-
-            let root_crate = CrateMap {
-                version: 1,
-                entries: [
-                    ModEntry { name: "t::f1".to_c_str().with_ref(|buf| buf), log_level: &mut 0},
-                ],
-                children: [&child_crate1]
-            };
-
-            let mut cnt = 0;
-            do iter_crate_map(transmute(&root_crate)) |entry| {
+            do iter_crate_map(&root_crate) |entry| {
                 assert!(*entry.log_level == cnt);
                 cnt += 1;
             }
