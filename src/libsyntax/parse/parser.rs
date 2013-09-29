@@ -5140,7 +5140,7 @@ impl Parser {
 
     // Parses a source module as a crate. This is the main
     // entry point for the parser.
-    pub fn parse_crate_mod(&self) -> @Crate {
+    pub fn parse_crate_mod(&self) -> Crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one
         // of the attrs of an item:
@@ -5149,7 +5149,7 @@ impl Parser {
         // parse the items inside the crate:
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
 
-        @ast::Crate {
+        ast::Crate {
             module: m,
             attrs: inner,
             config: self.cfg.clone(),

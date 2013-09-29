@@ -37,17 +37,17 @@ struct Test {
 
 struct TestCtxt {
     sess: session::Session,
-    crate: @ast::Crate,
     path: ~[ast::Ident],
     ext_cx: @ExtCtxt,
-    testfns: ~[Test]
+    testfns: ~[Test],
+    is_extra: bool,
+    config: ast::CrateConfig,
 }
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: session::Session,
-                          crate: @ast::Crate)
-                       -> @ast::Crate {
+                          crate: ast::Crate) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
@@ -65,7 +65,7 @@ struct TestHarnessGenerator {
 }
 
 impl fold::ast_fold for TestHarnessGenerator {
-    fn fold_crate(&self, c: &ast::Crate) -> ast::Crate {
+    fn fold_crate(&self, c: ast::Crate) -> ast::Crate {
         let folded = fold::noop_fold_crate(c, self);
 
         // Add a special __test module to the crate that will contain code
@@ -141,14 +141,15 @@ impl fold::ast_fold for TestHarnessGenerator {
     }
 }
 
-fn generate_test_harness(sess: session::Session, crate: @ast::Crate)
-                         -> @ast::Crate {
+fn generate_test_harness(sess: session::Session, crate: ast::Crate)
+                         -> ast::Crate {
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
-        crate: crate,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
-        testfns: ~[]
+        testfns: ~[],
+        is_extra: is_extra(&crate),
+        config: crate.config.clone(),
     };
 
     let ext_cx = cx.ext_cx;
@@ -163,12 +164,12 @@ fn generate_test_harness(sess: session::Session, crate: @ast::Crate)
     let fold = TestHarnessGenerator {
         cx: cx
     };
-    let res = @fold.fold_crate(&*crate);
+    let res = fold.fold_crate(crate);
     ext_cx.bt_pop();
     return res;
 }
 
-fn strip_test_functions(crate: &ast::Crate) -> @ast::Crate {
+fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {
@@ -234,7 +235,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
     do i.attrs.iter().any |attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
-            Some(ref cfgs) => attr::test_cfg(cx.crate.config, cfgs.iter().map(|x| *x)),
+            Some(ref cfgs) => attr::test_cfg(cx.config, cfgs.iter().map(|x| *x)),
             None => true
         }
     }
@@ -273,7 +274,7 @@ mod __test {
 
 fn mk_std(cx: &TestCtxt) -> ast::view_item {
     let id_extra = cx.sess.ident_of("extra");
-    let vi = if is_extra(cx) {
+    let vi = if cx.is_extra {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_extra,
                                             path_node(~[id_extra]),
@@ -371,8 +372,8 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     )).unwrap()
 }
 
-fn is_extra(cx: &TestCtxt) -> bool {
-    let items = attr::find_linkage_metas(cx.crate.attrs);
+fn is_extra(crate: &ast::Crate) -> bool {
+    let items = attr::find_linkage_metas(crate.attrs);
     match attr::last_meta_item_value_str_by_name(items, "name") {
         Some(s) if "extra" == s => true,
         _ => false
