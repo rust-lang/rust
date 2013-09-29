@@ -75,6 +75,11 @@ pub struct TyDesc {
 #[cfg(not(test))]
 pub enum Opaque { }
 
+#[cfg(stage0)]
+pub type Disr = int;
+#[cfg(not(stage0))]
+pub type Disr = u64;
+
 #[lang="ty_visitor"]
 #[cfg(not(test))]
 pub trait TyVisitor {
@@ -140,19 +145,19 @@ pub trait TyVisitor {
                        sz: uint, align: uint) -> bool;
 
     fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint) -> bool;
     fn visit_enter_enum_variant(&mut self, variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool;
     fn visit_enum_variant_field(&mut self, i: uint, offset: uint, inner: *TyDesc) -> bool;
     fn visit_leave_enum_variant(&mut self, variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool;
     fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint) -> bool;
 
     fn visit_enter_fn(&mut self, purity: uint, proto: uint,
