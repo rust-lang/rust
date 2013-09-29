@@ -19,7 +19,7 @@ enum A {
     Qux,
 }
 
-fn main() {
+pub fn main() {
     let x: Option<A> = FromPrimitive::from_int(int::max_value);
     assert_eq!(x, Some(Foo));
 

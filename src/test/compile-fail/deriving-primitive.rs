@@ -31,4 +31,4 @@ enum D { Baz { x: int } }
 //~^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
 //~^^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
 
-fn main() {}
+pub fn main() {}
