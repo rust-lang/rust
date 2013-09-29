@@ -620,14 +620,8 @@ impl CtxMethods for BuildContext {
         match built_test_in_workspace(pkgid, workspace) {
             Some(test_exec) => {
                 debug!("test: test_exec = %s", test_exec.to_str());
-                let p_output = run::process_output(test_exec.to_str(), [~"--test"]);
-                if p_output.status == 0 {
-                    println(str::from_utf8(p_output.output));
-                }
-                    else {
-                    println(str::from_utf8(p_output.error));
-                }
-                os::set_exit_status(p_output.status);
+                let status = run::process_status(test_exec.to_str(), [~"--test"]);
+                os::set_exit_status(status);
             }
             None => {
                 error(fmt!("Internal error: test executable for package ID %s in workspace %s \
