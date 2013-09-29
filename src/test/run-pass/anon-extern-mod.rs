@@ -10,9 +10,8 @@
 
 use std::libc;
 
-#[abi = "cdecl"]
 #[link_name = "rustrt"]
-extern {
+extern "cdecl" {
     fn rust_get_test_int() -> libc::intptr_t;
 }
 

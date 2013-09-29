@@ -237,11 +237,10 @@ impl<T: Rand + 'static> Rand for @T {
     fn rand<R: Rng>(rng: &mut R) -> @T { @rng.gen() }
 }
 
-#[abi = "cdecl"]
 pub mod rustrt {
     use libc::size_t;
 
-    extern {
+    extern "cdecl" {
         pub fn rand_gen_seed(buf: *mut u8, sz: size_t);
     }
 }

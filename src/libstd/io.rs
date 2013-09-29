@@ -76,9 +76,8 @@ pub type fd_t = c_int;
 pub mod rustrt {
     use libc;
 
-    #[abi = "cdecl"]
     #[link_name = "rustrt"]
-    extern {
+    extern "cdecl" {
         pub fn rust_get_stdin() -> *libc::FILE;
         pub fn rust_get_stdout() -> *libc::FILE;
         pub fn rust_get_stderr() -> *libc::FILE;
