@@ -29,7 +29,7 @@ pub fn get_os(triple: &str) -> &'static str {
             return os
         }
     }
-    fail!("Cannot determine OS from triple");
+    fail2!("Cannot determine OS from triple");
 }
 
 pub fn make_new_path(path: &str) -> ~str {
@@ -38,7 +38,7 @@ pub fn make_new_path(path: &str) -> ~str {
     // maintain the current value while adding our own
     match getenv(lib_path_env_var()) {
       Some(curr) => {
-        fmt!("%s%s%s", path, path_div(), curr)
+        format!("{}{}{}", path, path_div(), curr)
       }
       None => path.to_str()
     }
@@ -63,6 +63,6 @@ pub fn path_div() -> ~str { ~":" }
 pub fn path_div() -> ~str { ~";" }
 
 pub fn logv(config: &config, s: ~str) {
-    debug!("%s", s);
+    debug2!("{}", s);
     if config.verbose { io::println(s); }
 }
