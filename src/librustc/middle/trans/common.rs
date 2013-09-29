@@ -868,6 +868,10 @@ pub fn C_i64(i: i64) -> ValueRef {
     return C_integral(Type::i64(), i as u64, true);
 }
 
+pub fn C_u64(i: u64) -> ValueRef {
+    return C_integral(Type::i64(), i, false);
+}
+
 pub fn C_int(cx: &CrateContext, i: int) -> ValueRef {
     return C_integral(cx.int_type, i as u64, true);
 }

@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
+use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
 
 struct MyVisitor {
     types: @mut ~[~str],
@@ -114,22 +114,22 @@ impl TyVisitor for MyVisitor {
                        _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_enum(&mut self, _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         _sz: uint, _align: uint) -> bool { true }
     fn visit_enter_enum_variant(&mut self,
                                 _variant: uint,
-                                _disr_val: int,
+                                _disr_val: Disr,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
     fn visit_enum_variant_field(&mut self, _i: uint, _offset: uint, _inner: *TyDesc) -> bool { true }
     fn visit_leave_enum_variant(&mut self,
                                 _variant: uint,
-                                _disr_val: int,
+                                _disr_val: Disr,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
     fn visit_leave_enum(&mut self,
                         _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
