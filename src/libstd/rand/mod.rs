@@ -62,6 +62,7 @@ pub mod distributions;
 pub mod isaac;
 pub mod os;
 pub mod reader;
+pub mod reseeding;
 
 /// A type that can be randomly generated using an Rng
 pub trait Rand {
