@@ -9,31 +9,27 @@
 // except according to those terms.
 
 mod bar {
-    #[abi = "cdecl"]
     #[nolink]
-    extern {}
+    extern "cdecl" {}
 }
 
 mod zed {
-    #[abi = "cdecl"]
     #[nolink]
-    extern {}
+    extern "cdecl" {}
 }
 
 mod libc {
     use std::libc::{c_int, c_void, size_t, ssize_t};
 
-    #[abi = "cdecl"]
     #[nolink]
-    extern {
+    extern "cdecl" {
         pub fn write(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
     }
 }
 
 mod baz {
-    #[abi = "cdecl"]
     #[nolink]
-    extern {}
+    extern "cdecl" {}
 }
 
 pub fn main() { }

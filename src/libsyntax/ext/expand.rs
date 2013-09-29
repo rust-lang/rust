@@ -1059,7 +1059,6 @@ pub fn std_macros() -> @str {
     // It is intended to be used like:
     //
     // externfn!(#[nolink]
-    //           #[abi = \"cdecl\"]
     //           fn memcmp(cx: *u8, ct: *u8, n: u32) -> u32)
     //
     // Due to limitations in the macro parser, this pattern must be
