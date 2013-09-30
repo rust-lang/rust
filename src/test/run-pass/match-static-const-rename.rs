@@ -13,7 +13,7 @@
 // This is similar to compile-fail/match-static-const-lc, except it
 // shows the expected usual workaround (choosing a different name for
 // the static definition) and also demonstrates that one can work
-// around this problem locally by reanming the constant in the `use`
+// around this problem locally by renaming the constant in the `use`
 // form to an uppercase identifier that placates the lint.
 
 #[deny(non_uppercase_pattern_statics)];
