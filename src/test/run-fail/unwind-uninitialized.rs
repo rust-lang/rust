@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn f() {
-    fail!();
+    fail2!();
 }
 
 fn main() {

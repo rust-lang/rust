@@ -13,5 +13,5 @@
 use std::result;
 
 fn main() {
-    error!(result::Err::<int,~str>(~"kitty").unwrap());
+    error2!("{:?}", result::Err::<int,~str>(~"kitty").unwrap());
 }

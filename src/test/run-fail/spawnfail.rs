@@ -17,7 +17,7 @@ use std::task;
 // We don't want to see any invalid reads
 fn main() {
     fn f() {
-        fail!();
+        fail2!();
     }
     task::spawn(|| f() );
 }

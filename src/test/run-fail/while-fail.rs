@@ -12,5 +12,5 @@
 
 // error-pattern:giraffe
 fn main() {
-    fail!({ while true { fail!("giraffe") }; "clandestine" });
+    fail2!({ while true { fail2!("giraffe") }; "clandestine" });
 }

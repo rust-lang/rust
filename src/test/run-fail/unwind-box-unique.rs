@@ -11,11 +11,11 @@
 // error-pattern:fail
 
 fn failfn() {
-    fail!();
+    fail2!();
 }
 
 fn main() {
     let x = @~0;
     failfn();
-    error!(x);
+    error2!("{:?}", x);
 }

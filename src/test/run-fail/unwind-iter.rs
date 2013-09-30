@@ -14,7 +14,7 @@
 #[allow(unused_variable)];
 
 fn x(it: &fn(int)) {
-    fail!();
+    fail2!();
     it(0);
 }
 
