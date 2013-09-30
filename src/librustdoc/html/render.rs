@@ -76,7 +76,7 @@ struct Cache {
 struct SourceCollector<'self> {
     seen: HashSet<~str>,
     dst: Path,
-    cx: &'self Context,
+    cx: &'self mut Context,
 }
 
 struct Item<'self> { cx: &'self Context, item: &'self clean::Item, }
@@ -179,7 +179,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         w.flush();
     }
 
-    if cx.include_sources {
+    {
         let dst = cx.dst.push("src");
         mkdir(&dst);
         let dst = dst.push(crate.name);
@@ -187,7 +187,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         let mut folder = SourceCollector {
             dst: dst,
             seen: HashSet::new(),
-            cx: &cx,
+            cx: &mut cx,
         };
         crate = folder.fold_crate(crate);
     }
@@ -229,16 +229,28 @@ fn clean_srcpath(src: &str, f: &fn(&str)) {
 
 impl<'self> DocFolder for SourceCollector<'self> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        if !self.seen.contains(&item.source.filename) {
-            self.emit_source(item.source.filename);
+        if self.cx.include_sources && !self.seen.contains(&item.source.filename) {
+            // If it turns out that we couldn't read this file, then we probably
+            // can't read any of the files (generating html output from json or
+            // something like that), so just don't include sources for the
+            // entire crate. The other option is maintaining this mapping on a
+            // per-file basis, but that's probably not worth it...
+            self.cx.include_sources = self.emit_source(item.source.filename);
             self.seen.insert(item.source.filename.clone());
+
+            if !self.cx.include_sources {
+                println!("warning: source code was requested to be rendered, \
+                          but `{}` is a missing source file.",
+                         item.source.filename);
+                println!("         skipping rendering of source code");
+            }
         }
         self.fold_item_recur(item)
     }
 }
 
 impl<'self> SourceCollector<'self> {
-    fn emit_source(&self, filename: &str) {
+    fn emit_source(&mut self, filename: &str) -> bool {
         let p = Path(filename);
 
         // Read the contents of the file
@@ -251,7 +263,11 @@ impl<'self> SourceCollector<'self> {
             // If we couldn't open this file, then just returns because it
             // probably means that it's some standard library macro thing and we
             // can't have the source to it anyway.
-            let mut r = match r { Some(r) => r, None => return };
+            let mut r = match r {
+                Some(r) => r,
+                // eew macro hacks
+                None => return filename == "<std-macros>"
+            };
 
             // read everything
             loop {
@@ -283,6 +299,7 @@ impl<'self> SourceCollector<'self> {
         };
         layout::render(&mut w as &mut io::Writer, &self.cx.layout,
                        &page, &(""), &Source(contents.as_slice()));
+        return true;
     }
 }
 
