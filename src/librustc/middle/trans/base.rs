@@ -1407,7 +1407,10 @@ pub fn cleanup_and_leave(bcx: @mut Block,
     }
     match leave {
       Some(target) => Br(bcx, target),
-      None => { Resume(bcx, Load(bcx, bcx.fcx.personality.unwrap())); }
+      None => {
+          let ll_load = Load(bcx, bcx.fcx.personality.unwrap());
+          Resume(bcx, ll_load);
+      }
     }
 }
 
