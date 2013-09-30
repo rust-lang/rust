@@ -67,7 +67,8 @@ LLVMRustCreateTargetMachine(const char *triple,
                             CodeModel::Model CM,
                             Reloc::Model RM,
                             CodeGenOpt::Level OptLevel,
-                            bool EnableSegmentedStacks) {
+                            bool EnableSegmentedStacks,
+                            bool UseSoftFloat) {
     std::string Error;
     Triple Trip(Triple::normalize(triple));
     const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip.getTriple(),
@@ -84,6 +85,10 @@ LLVMRustCreateTargetMachine(const char *triple,
     Options.FloatABIType =
          (Trip.getEnvironment() == Triple::GNUEABIHF) ? FloatABI::Hard :
                                                         FloatABI::Default;
+    Options.UseSoftFloat = UseSoftFloat;
+    if (UseSoftFloat) {
+        Options.FloatABIType = FloatABI::Soft;
+    }
 
     TargetMachine *TM = TheTarget->createTargetMachine(Trip.getTriple(),
                                                        cpu,

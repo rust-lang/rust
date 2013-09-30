@@ -343,7 +343,7 @@ CFG_PATH_MUNGE_mips-unknown-linux-gnu := true
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
-RUSTC_FLAGS_mips-unknown-linux-gnu := --linker=$(CXX_mips-unknown-linux-gnu) --target-cpu mips32r2 --target-feature +mips32r2,+o32
+RUSTC_FLAGS_mips-unknown-linux-gnu := --linker=$(CXX_mips-unknown-linux-gnu) --target-cpu mips32r2 --target-feature +mips32r2,+o32 -Z soft-float
 
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
