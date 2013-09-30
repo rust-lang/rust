@@ -21,7 +21,7 @@ fn a() {
 
     p[0] = 5; //~ ERROR cannot assign
 
-    info!("%d", *q);
+    info2!("{}", *q);
 }
 
 fn borrow(_x: &[int], _f: &fn()) {}

@@ -17,6 +17,6 @@ fn compute1() -> float {
 
 fn main() {
     let x = compute1();
-    info!(x);
+    info2!("{:?}", x);
     assert_eq!(x, -4f);
 }

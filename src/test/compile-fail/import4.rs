@@ -13,4 +13,4 @@
 mod a { pub use b::foo; }
 mod b { pub use a::foo; }
 
-fn main(args: ~[str]) { info!("loop"); }
+fn main(args: ~[str]) { info2!("loop"); }

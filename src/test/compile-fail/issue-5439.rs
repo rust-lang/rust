@@ -25,5 +25,5 @@ impl Bar {
 fn main () {
     let bar = Bar { bar: 1 };
     let foo = bar.make_foo(2);
-    println(fmt!("%d", foo.foo));
+    println!("{}", foo.foo);
 }

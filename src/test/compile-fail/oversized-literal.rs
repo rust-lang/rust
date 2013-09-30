@@ -10,4 +10,4 @@
 
 // error-pattern:literal out of range
 
-fn main() { info!(300u8); }
+fn main() { info2!("{}", 300u8); }

@@ -9,13 +9,13 @@
 // except according to those terms.
 
 fn a(x: ~str) -> ~str {
-    fmt!("First function with %s", x)
+    format!("First function with {}", x)
 }
 
 fn a(x: ~str, y: ~str) -> ~str { //~ ERROR duplicate definition of value `a`
-    fmt!("Second function with %s and %s", x, y)
+    format!("Second function with {} and {}", x, y)
 }
 
 fn main() {
-    info!("Result: ");
+    info2!("Result: ");
 }

@@ -10,4 +10,4 @@
 
 // error-pattern:unknown type
 
-fn main() { fmt!("%w"); }
+fn main() { oldfmt!("%w"); }

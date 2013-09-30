@@ -10,12 +10,12 @@ fn distinct_variant() {
 
     let a = match y {
       Y(ref mut a, _) => a,
-      X => fail!()
+      X => fail2!()
     };
 
     let b = match y {
       Y(_, ref mut b) => b,
-      X => fail!()
+      X => fail2!()
     };
 
     *a += 1;
@@ -27,12 +27,12 @@ fn same_variant() {
 
     let a = match y {
       Y(ref mut a, _) => a,
-      X => fail!()
+      X => fail2!()
     };
 
     let b = match y {
       Y(ref mut b, _) => b, //~ ERROR cannot borrow
-      X => fail!()
+      X => fail2!()
     };
 
     *a += 1;

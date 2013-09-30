@@ -10,4 +10,4 @@
 
 // error-pattern:missing type
 
-fn main() { fmt!("%+"); }
+fn main() { oldfmt!("%+"); }

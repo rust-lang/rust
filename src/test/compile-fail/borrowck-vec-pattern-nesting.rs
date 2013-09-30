@@ -4,7 +4,7 @@ fn a() {
         [~ref _a] => {
             vec[0] = ~4; //~ ERROR cannot assign to `(*vec)[]` because it is borrowed
         }
-        _ => fail!("foo")
+        _ => fail2!("foo")
     }
 }
 
