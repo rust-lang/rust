@@ -181,7 +181,7 @@ pub struct StdErrLogger;
 impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
         if should_log_console() {
-            fmt::write(self as &mut rt::io::Writer, args);
+            fmt::writeln(self as &mut rt::io::Writer, args);
         }
     }
 }
