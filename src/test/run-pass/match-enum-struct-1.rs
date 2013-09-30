@@ -17,10 +17,10 @@ pub fn main() {
     let e = Foo{f: 1};
     match e {
         Foo{_} => (),
-        _ => fail!(),
+        _ => fail2!(),
     }
     match e {
         Foo{f: _f} => (),
-        _ => fail!(),
+        _ => fail2!(),
     }
 }

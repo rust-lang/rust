@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --cfg nofmt
+
 extern mod extra;
 
+macro_rules! fmt(($($arg:tt)*) => (oldfmt!($($arg)*)))
+
 fn test(actual: ~str, expected: ~str) {
-    info!(actual.clone());
-    info!(expected.clone());
+    info2!("{}", actual.clone());
+    info2!("{}", expected.clone());
     assert_eq!(actual, expected);
 }
 

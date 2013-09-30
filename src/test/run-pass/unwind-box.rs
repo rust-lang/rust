@@ -14,7 +14,7 @@ use std::task;
 
 fn f() {
     let _a = @0;
-    fail!();
+    fail2!();
 }
 
 pub fn main() {

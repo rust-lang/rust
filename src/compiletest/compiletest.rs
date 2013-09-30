@@ -91,7 +91,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     let matches =
         &match getopts::groups::getopts(args_, groups) {
           Ok(m) => m,
-          Err(f) => fail2!(f.to_err_msg())
+          Err(f) => fail2!("{}", f.to_err_msg())
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {

@@ -151,7 +151,7 @@ mod test_distinguish_syntax_ext {
     extern mod extra;
 
     pub fn f() {
-        fmt!("test%s", "s");
+        format!("test{}", "s");
         #[attr = "val"]
         fn g() { }
     }

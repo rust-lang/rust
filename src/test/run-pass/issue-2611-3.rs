@@ -20,7 +20,8 @@ struct E {
 }
 
 impl A for E {
-  fn b<F,G>(_x: F) -> F { fail!() } //~ ERROR in method `b`, type parameter 0 has 1 bound, but
+  fn b<F,G>(_x: F) -> F { fail2!() }
+  //~^ ERROR in method `b`, type parameter 0 has 1 bound, but
 }
 
 pub fn main() {}

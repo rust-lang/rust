@@ -150,7 +150,7 @@ impl Canvas for AsciiArt {
 // this little helper.
 pub fn check_strs(actual: &str, expected: &str) -> bool {
     if actual != expected {
-        io::stderr().write_line(fmt!("Found:\n%s\nbut expected\n%s", actual, expected));
+        io::stderr().write_line(format!("Found:\n{}\nbut expected\n{}", actual, expected));
         return false;
     }
     return true;

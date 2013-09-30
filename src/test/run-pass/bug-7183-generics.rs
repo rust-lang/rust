@@ -19,14 +19,14 @@ fn hello<S:Speak>(s:&S) -> ~str{
 
 impl Speak for int {
     fn say(&self, s:&str) -> ~str {
-        fmt!("%s: %d", s, *self)
+        format!("{}: {}", s, *self)
     }
 }
 
 impl<T: Speak> Speak for Option<T> {
     fn say(&self, s:&str) -> ~str {
         match *self {
-            None => fmt!("%s - none", s),
+            None => format!("{} - none", s),
             Some(ref x) => { ~"something!" + x.say(s) }
         }
     }

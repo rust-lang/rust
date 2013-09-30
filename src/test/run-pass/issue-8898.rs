@@ -11,7 +11,7 @@
 
 fn assert_repr_eq<T>(obj : T, expected : ~str) {
 
-    assert_eq!(expected, fmt!("%?", obj));
+    assert_eq!(expected, format!("{:?}", obj));
 }
 
 pub fn main() {

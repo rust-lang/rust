@@ -17,6 +17,6 @@ fn unbox<T:Clone>(b: Box<T>) -> T { return (*b.c).clone(); }
 pub fn main() {
     let foo: int = 17;
     let bfoo: Box<int> = Box {c: @foo};
-    info!("see what's in our box");
+    info2!("see what's in our box");
     assert_eq!(unbox::<int>(bfoo), foo);
 }

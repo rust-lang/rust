@@ -21,8 +21,8 @@ pub fn main() {
     let mut j: int = 0;
     do pairs() |p| {
         let (_0, _1) = p;
-        info!(_0);
-        info!(_1);
+        info2!("{}", _0);
+        info2!("{}", _1);
         assert_eq!(_0 + 10, i);
         i += 1;
         j = _1;

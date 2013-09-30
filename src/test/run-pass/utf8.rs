@@ -42,10 +42,10 @@ pub fn main() {
     fn check_str_eq(a: ~str, b: ~str) {
         let mut i: int = 0;
         for ab in a.byte_iter() {
-            info!(i);
-            info!(ab);
+            info2!("{}", i);
+            info2!("{}", ab);
             let bb: u8 = b[i];
-            info!(bb);
+            info2!("{}", bb);
             assert_eq!(ab, bb);
             i += 1;
         }

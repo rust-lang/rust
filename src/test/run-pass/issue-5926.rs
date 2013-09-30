@@ -14,6 +14,6 @@ pub fn main() {
     let  mut your_favorite_numbers = @[1,2,3];
     let  mut my_favorite_numbers = @[4,5,6];
     let  f = your_favorite_numbers + my_favorite_numbers;
-    println(fmt!("The third favorite number is %?.", f))
+    println!("The third favorite number is {:?}.", f)
 }
 

@@ -20,7 +20,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for ~[T] {
     fn to_string(&self) -> ~str {
-        fmt!("[%s]", self.iter().map(|e| e.to_string()).collect::<~[~str]>().connect(", "))
+        format!("[{}]", self.iter().map(|e| e.to_string()).to_owned_vec().connect(", "))
     }
 }
 
