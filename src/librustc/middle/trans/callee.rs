@@ -655,7 +655,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         // not care about the result, just make a stack slot.
         let opt_llretslot = match dest {
             None => {
-                assert!(!type_of::return_uses_outptr(in_cx.tcx(), ret_ty));
+                assert!(!type_of::return_uses_outptr(in_cx.ccx(), ret_ty));
                 None
             }
             Some(expr::SaveIn(dst)) => Some(dst),
@@ -685,7 +685,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
 
             // Push the out-pointer if we use an out-pointer for this
             // return type, otherwise push "undef".
-            if type_of::return_uses_outptr(in_cx.tcx(), ret_ty) {
+            if type_of::return_uses_outptr(in_cx.ccx(), ret_ty) {
                 llargs.push(opt_llretslot.unwrap());
             }
 
@@ -711,7 +711,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             // any attributes with ABI implications directly to the call instruction. Right now, the
             // only attribute we need to worry about is `sret`.
             let mut attrs = ~[];
-            if type_of::return_uses_outptr(in_cx.tcx(), ret_ty) {
+            if type_of::return_uses_outptr(in_cx.ccx(), ret_ty) {
                 attrs.push((1, StructRetAttribute));
             }
 
@@ -734,7 +734,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             // the return value, copy it into llretslot.
             match opt_llretslot {
                 Some(llretslot) => {
-                    if !type_of::return_uses_outptr(bcx.tcx(), ret_ty) &&
+                    if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
                         !ty::type_is_voidish(ret_ty)
                     {
                         Store(bcx, llret, llretslot);
@@ -758,7 +758,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         // drop the temporary slot we made.
         match dest {
             None => {
-                assert!(!type_of::return_uses_outptr(bcx.tcx(), ret_ty));
+                assert!(!type_of::return_uses_outptr(bcx.ccx(), ret_ty));
             }
             Some(expr::Ignore) => {
                 // drop the value if it is not being saved.
@@ -871,7 +871,7 @@ pub fn trans_arg_expr(bcx: @mut Block,
             DontAutorefArg => {
                 let need_scratch = ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
                     (bcx.expr_is_lval(arg_expr) &&
-                     arg_datum.appropriate_mode(bcx.tcx()).is_by_ref());
+                     arg_datum.appropriate_mode(bcx.ccx()).is_by_ref());
 
                 let arg_datum = if need_scratch {
                     let scratch = scratch_datum(bcx, arg_datum.ty, "__self", false);

@@ -188,7 +188,7 @@ pub fn scratch_datum(bcx: @mut Block, ty: ty::t, name: &str, zero: bool) -> Datu
     Datum { val: scratch, ty: ty, mode: ByRef(RevokeClean) }
 }
 
-pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
+pub fn appropriate_mode(ccx: &mut CrateContext, ty: ty::t) -> DatumMode {
     /*!
      * Indicates the "appropriate" mode for this value,
      * which is either by ref or by value, depending
@@ -197,7 +197,7 @@ pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
 
     if ty::type_is_voidish(ty) {
         ByValue
-    } else if type_is_immediate(tcx, ty) {
+    } else if type_is_immediate(ccx, ty) {
         ByValue
     } else {
         ByRef(RevokeClean)
@@ -505,10 +505,10 @@ impl Datum {
         }
     }
 
-    pub fn appropriate_mode(&self, tcx: ty::ctxt) -> DatumMode {
+    pub fn appropriate_mode(&self, ccx: &mut CrateContext) -> DatumMode {
         /*! See the `appropriate_mode()` function */
 
-        appropriate_mode(tcx, self.ty)
+        appropriate_mode(ccx, self.ty)
     }
 
     pub fn to_appropriate_llval(&self, bcx: @mut Block) -> ValueRef {
@@ -516,7 +516,7 @@ impl Datum {
          *
          * Yields an llvalue with the `appropriate_mode()`. */
 
-        match self.appropriate_mode(bcx.tcx()) {
+        match self.appropriate_mode(bcx.ccx()) {
             ByValue => self.to_value_llval(bcx),
             ByRef(_) => self.to_ref_llval(bcx)
         }
@@ -527,7 +527,7 @@ impl Datum {
          *
          * Yields a datum with the `appropriate_mode()`. */
 
-        match self.appropriate_mode(bcx.tcx()) {
+        match self.appropriate_mode(bcx.ccx()) {
             ByValue => self.to_value_datum(bcx),
             ByRef(_) => self.to_ref_datum(bcx)
         }
@@ -667,7 +667,7 @@ impl Datum {
                     ByValue => {
                         // Actually, this case cannot happen right
                         // now, because enums are never immediate.
-                        assert!(type_is_immediate(bcx.tcx(), ty));
+                        assert!(type_is_immediate(bcx.ccx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 };
@@ -699,7 +699,7 @@ impl Datum {
                         )
                     }
                     ByValue => {
-                        assert!(type_is_immediate(bcx.tcx(), ty));
+                        assert!(type_is_immediate(bcx.ccx(), ty));
                         (
                             Some(Datum {
                                 val: ExtractValue(bcx, self.val, 0),
