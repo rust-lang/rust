@@ -550,7 +550,7 @@ pub fn revoke_clean(cx: @mut Block, val: ValueRef) {
     }
 }
 
-pub fn block_cleanups(bcx: @mut Block) -> ~[cleanup] {
+pub fn block_cleanups(bcx: &mut Block) -> ~[cleanup] {
     match bcx.scope {
        None  => ~[],
        Some(inf) => inf.cleanups.clone(),
@@ -670,7 +670,7 @@ impl Block {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    pub fn expr_to_str(&self, e: @ast::Expr) -> ~str {
+    pub fn expr_to_str(&self, e: &ast::Expr) -> ~str {
         e.repr(self.tcx())
     }
 
@@ -1061,7 +1061,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     r
 }
 
-pub fn monomorphize_type(bcx: @mut Block, t: ty::t) -> ty::t {
+pub fn monomorphize_type(bcx: &mut Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
@@ -1074,23 +1074,23 @@ pub fn monomorphize_type(bcx: @mut Block, t: ty::t) -> ty::t {
     }
 }
 
-pub fn node_id_type(bcx: @mut Block, id: ast::NodeId) -> ty::t {
+pub fn node_id_type(bcx: &mut Block, id: ast::NodeId) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty(bcx: @mut Block, ex: &ast::Expr) -> ty::t {
+pub fn expr_ty(bcx: &mut Block, ex: &ast::Expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted(bcx: @mut Block, ex: &ast::Expr) -> ty::t {
+pub fn expr_ty_adjusted(bcx: &mut Block, ex: &ast::Expr) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::expr_ty_adjusted(tcx, ex);
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: @mut Block, id: ast::NodeId) -> ~[ty::t] {
+pub fn node_id_type_params(bcx: &mut Block, id: ast::NodeId) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
 
