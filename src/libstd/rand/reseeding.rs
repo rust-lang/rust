@@ -11,7 +11,7 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 use default::Default;
 
 /// How many bytes of entropy the underling RNG is allowed to generate
@@ -73,6 +73,23 @@ impl<R: Rng, Rsdr: Reseeder<R>> Rng for ReseedingRng<R, Rsdr> {
         self.reseed_if_necessary();
         self.bytes_generated += dest.len();
         self.fill_bytes(dest)
+    }
+}
+
+impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default> SeedableRng<S> for ReseedingRng<R, Rsdr> {
+    fn reseed(&mut self, seed: S) {
+        self.rng.reseed(seed);
+        self.bytes_generated = 0;
+    }
+    /// Create a new `ReseedingRng` from the given seed. This uses
+    /// default values for both `generation_threshold` and `reseeder`.
+    fn from_seed(seed: S) -> ReseedingRng<R, Rsdr> {
+        ReseedingRng {
+            rng: SeedableRng::from_seed(seed),
+            generation_threshold: DEFAULT_GENERATION_THRESHOLD,
+            bytes_generated: 0,
+            reseeder: Default::default()
+        }
     }
 }
 
