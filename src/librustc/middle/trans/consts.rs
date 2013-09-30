@@ -177,7 +177,7 @@ pub fn get_const_val(cx: @mut CrateContext,
      !cx.non_inlineable_statics.contains(&def_id.node))
 }
 
-pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
+pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     let (llconst, inlineable) = const_expr_unadjusted(cx, e);
     let mut llconst = llconst;
     let mut inlineable = inlineable;
