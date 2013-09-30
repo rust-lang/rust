@@ -130,8 +130,8 @@ pub enum input {
 }
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
-    -> @ast::Crate {
-    time(sess.time_passes(), ~"parsing", || {
+    -> ast::Crate {
+    time(sess.time_passes(), ~"parsing", (), |_| {
         match *input {
             file_input(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
@@ -153,11 +153,11 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
 /// standard library and prelude.
 pub fn phase_2_configure_and_expand(sess: Session,
                                     cfg: ast::CrateConfig,
-                                    mut crate: @ast::Crate) -> @ast::Crate {
+                                    mut crate: ast::Crate) -> ast::Crate {
     let time_passes = sess.time_passes();
 
     *sess.building_library = session::building_library(sess.opts.crate_type,
-                                                       crate, sess.opts.test);
+                                                       &crate, sess.opts.test);
 
 
     // strip before expansion to allow macros to depend on
@@ -167,29 +167,29 @@ pub fn phase_2_configure_and_expand(sess: Session,
     //   mod bar { macro_rules! baz!(() => {{}}) }
     //
     // baz! should not use this definition unless foo is enabled.
-    crate = time(time_passes, ~"std macros injection", ||
+    crate = time(time_passes, ~"std macros injection", crate, |crate|
                  syntax::ext::expand::inject_std_macros(sess.parse_sess,
                                                         cfg.clone(),
                                                         crate));
 
-    crate = time(time_passes, ~"configuration 1", ||
+    crate = time(time_passes, ~"configuration 1", crate, |crate|
                  front::config::strip_unconfigured_items(crate));
 
-    crate = time(time_passes, ~"expansion", ||
+    crate = time(time_passes, ~"expansion", crate, |crate|
                  syntax::ext::expand::expand_crate(sess.parse_sess, cfg.clone(),
                                                    crate));
 
     // strip again, in case expansion added anything with a #[cfg].
-    crate = time(time_passes, ~"configuration 2", ||
+    crate = time(time_passes, ~"configuration 2", crate, |crate|
                  front::config::strip_unconfigured_items(crate));
 
-    crate = time(time_passes, ~"maybe building test harness", ||
+    crate = time(time_passes, ~"maybe building test harness", crate, |crate|
                  front::test::modify_for_testing(sess, crate));
 
-    crate = time(time_passes, ~"std injection", ||
+    crate = time(time_passes, ~"std injection", crate, |crate|
                  front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
-    crate = time(time_passes, ~"assigning node ids", ||
+    crate = time(time_passes, ~"assigning node ids", crate, |crate|
                  front::assign_node_ids::assign_node_ids(sess, crate));
 
     return crate;
@@ -207,21 +207,21 @@ pub struct CrateAnalysis {
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes(sess: Session,
-                                   crate: @ast::Crate) -> CrateAnalysis {
+                                   crate: &ast::Crate) -> CrateAnalysis {
 
     let time_passes = sess.time_passes();
 
-    let ast_map = time(time_passes, ~"ast indexing", ||
+    let ast_map = time(time_passes, ~"ast indexing", (), |_|
                        syntax::ast_map::map_crate(sess.diagnostic(), crate));
 
-    time(time_passes, ~"external crate/lib resolution", ||
+    time(time_passes, ~"external crate/lib resolution", (), |_|
          creader::read_crates(sess.diagnostic(), crate, sess.cstore,
                               sess.filesearch,
                               session::sess_os_to_meta_os(sess.targ_cfg.os),
                               sess.opts.is_static,
                               token::get_ident_interner()));
 
-    let lang_items = time(time_passes, ~"language item collection", ||
+    let lang_items = time(time_passes, ~"language item collection", (), |_|
                           middle::lang_items::collect_language_items(crate, sess));
 
     let middle::resolve::CrateMap {
@@ -229,19 +229,19 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         exp_map2: exp_map2,
         trait_map: trait_map
     } =
-        time(time_passes, ~"resolution", ||
+        time(time_passes, ~"resolution", (), |_|
              middle::resolve::resolve_crate(sess, lang_items, crate));
 
-    time(time_passes, ~"looking for entry point",
-         || middle::entry::find_entry_point(sess, crate, ast_map));
+    time(time_passes, ~"looking for entry point", (),
+         |_| middle::entry::find_entry_point(sess, crate, ast_map));
 
-    let freevars = time(time_passes, ~"freevar finding", ||
+    let freevars = time(time_passes, ~"freevar finding", (), |_|
                         freevars::annotate_freevars(def_map, crate));
 
-    let region_map = time(time_passes, ~"region resolution", ||
+    let region_map = time(time_passes, ~"region resolution", (), |_|
                           middle::region::resolve_crate(sess, def_map, crate));
 
-    let rp_set = time(time_passes, ~"region parameterization inference", ||
+    let rp_set = time(time_passes, ~"region parameterization inference", (), |_|
                       middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
@@ -252,53 +252,53 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         ty_cx, trait_map, crate);
 
     // These next two const passes can probably be merged
-    time(time_passes, ~"const marking", ||
+    time(time_passes, ~"const marking", (), |_|
          middle::const_eval::process_crate(crate, ty_cx));
 
-    time(time_passes, ~"const checking", ||
+    time(time_passes, ~"const checking", (), |_|
          middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                           method_map, ty_cx));
 
     let exported_items =
-        time(time_passes, ~"privacy checking", ||
+        time(time_passes, ~"privacy checking", (), |_|
              middle::privacy::check_crate(ty_cx, &method_map, &exp_map2, crate));
 
-    time(time_passes, ~"effect checking", ||
+    time(time_passes, ~"effect checking", (), |_|
          middle::effect::check_crate(ty_cx, method_map, crate));
 
-    time(time_passes, ~"loop checking", ||
+    time(time_passes, ~"loop checking", (), |_|
          middle::check_loop::check_crate(ty_cx, crate));
 
-    time(time_passes, ~"stack checking", ||
+    time(time_passes, ~"stack checking", (), |_|
          middle::stack_check::stack_check_crate(ty_cx, crate));
 
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
-        time(time_passes, ~"compute moves", ||
+        time(time_passes, ~"compute moves", (), |_|
              middle::moves::compute_moves(ty_cx, method_map, crate));
 
-    time(time_passes, ~"match checking", ||
+    time(time_passes, ~"match checking", (), |_|
          middle::check_match::check_crate(ty_cx, method_map,
                                           moves_map, crate));
 
-    time(time_passes, ~"liveness checking", ||
+    time(time_passes, ~"liveness checking", (), |_|
          middle::liveness::check_crate(ty_cx, method_map,
                                        capture_map, crate));
 
     let (root_map, write_guard_map) =
-        time(time_passes, ~"borrow checking", ||
+        time(time_passes, ~"borrow checking", (), |_|
              middle::borrowck::check_crate(ty_cx, method_map,
                                            moves_map, moved_variables_set,
                                            capture_map, crate));
 
-    time(time_passes, ~"kind checking", ||
+    time(time_passes, ~"kind checking", (), |_|
          kind::check_crate(ty_cx, method_map, crate));
 
     let reachable_map =
-        time(time_passes, ~"reachability checking", ||
+        time(time_passes, ~"reachability checking", (), |_|
              reachable::find_reachable(ty_cx, method_map, crate));
 
-    time(time_passes, ~"lint checking", ||
+    time(time_passes, ~"lint checking", (), |_|
          lint::check_crate(ty_cx, crate));
 
     CrateAnalysis {
@@ -325,10 +325,10 @@ pub struct CrateTranslation {
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm(sess: Session,
-                                 crate: @ast::Crate,
+                                 crate: ast::Crate,
                                  analysis: &CrateAnalysis,
                                  outputs: &OutputFilenames) -> CrateTranslation {
-    time(sess.time_passes(), ~"translation", ||
+    time(sess.time_passes(), ~"translation", crate, |crate|
          trans::base::trans_crate(sess, crate, analysis,
                                   &outputs.obj_filename))
 }
@@ -349,7 +349,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
         let output_type = link::output_type_assembly;
         let asm_filename = outputs.obj_filename.with_filetype("s");
 
-        time(sess.time_passes(), ~"LLVM passes", ||
+        time(sess.time_passes(), ~"LLVM passes", (), |_|
             link::write::run_passes(sess,
                                     trans.context,
                                     trans.module,
@@ -363,7 +363,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
             os::remove_file(&asm_filename);
         }
     } else {
-        time(sess.time_passes(), ~"LLVM passes", ||
+        time(sess.time_passes(), ~"LLVM passes", (), |_|
             link::write::run_passes(sess,
                                     trans.context,
                                     trans.module,
@@ -377,7 +377,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 pub fn phase_6_link_output(sess: Session,
                            trans: &CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(), ~"linking", ||
+    time(sess.time_passes(), ~"linking", (), |_|
          link::link_binary(sess,
                            &outputs.obj_filename,
                            &outputs.out_filename,
@@ -430,7 +430,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
             if stop_after_phase_1(sess) { return; }
             phase_2_configure_and_expand(sess, cfg, crate)
         };
-        let analysis = phase_3_run_analysis_passes(sess, expanded_crate);
+        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
         if stop_after_phase_3(sess) { return; }
         let outputs = build_output_filenames(input, outdir, output, [], sess);
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
@@ -535,7 +535,7 @@ pub fn pretty_print_input(sess: Session,
             } as @pprust::pp_ann
         }
         PpmTyped => {
-            let analysis = phase_3_run_analysis_passes(sess, crate);
+            let analysis = phase_3_run_analysis_passes(sess, &crate);
             @TypedAnnotation {
                 analysis: analysis
             } as @pprust::pp_ann
@@ -548,7 +548,7 @@ pub fn pretty_print_input(sess: Session,
         pprust::print_crate(sess.codemap,
                             token::get_ident_interner(),
                             sess.span_diagnostic,
-                            crate,
+                            &crate,
                             source_name(input),
                             rdr,
                             io::stdout(),

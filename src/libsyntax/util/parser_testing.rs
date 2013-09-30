@@ -47,14 +47,14 @@ fn with_error_checking_parse<T>(s: @str, f: &fn(&mut Parser) -> T) -> T {
 }
 
 // parse a string, return a crate.
-pub fn string_to_crate (source_str : @str) -> @ast::Crate {
+pub fn string_to_crate (source_str : @str) -> ast::Crate {
     do with_error_checking_parse(source_str) |p| {
         p.parse_crate_mod()
     }
 }
 
 // parse a string, return a crate and the ParseSess
-pub fn string_to_crate_and_sess (source_str : @str) -> (@ast::Crate,@mut ParseSess) {
+pub fn string_to_crate_and_sess (source_str : @str) -> (ast::Crate,@mut ParseSess) {
     let (p,ps) = string_to_parser_and_sess(source_str);
     (p.parse_crate_mod(),ps)
 }
