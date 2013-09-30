@@ -28,6 +28,7 @@ use std::vec;
 use extra::arc::RWArc;
 use extra::json::ToJson;
 use extra::sort;
+use extra::time;
 
 use syntax::ast;
 use syntax::ast_util::is_local;
@@ -179,6 +180,8 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         w.flush();
     }
 
+    info2!("emitting source files");
+    let started = time::precise_time_ns();
     {
         let dst = cx.dst.push("src");
         mkdir(&dst);
@@ -191,9 +194,14 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         };
         crate = folder.fold_crate(crate);
     }
+    let ended = time::precise_time_ns();
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 
-    // Now render the whole crate.
+    info2!("rendering the whole crate");
+    let started = time::precise_time_ns();
     cx.crate(crate, cache);
+    let ended = time::precise_time_ns();
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 }
 
 fn write(dst: Path, contents: &str) {
@@ -289,7 +297,8 @@ impl<'self> SourceCollector<'self> {
         }
 
         let dst = cur.push(*p.components.last() + ".html");
-        let mut w = dst.open_writer(io::CreateOrTruncate);
+        let w = dst.open_writer(io::CreateOrTruncate);
+        let mut w = BufferedWriter::new(w);
 
         let title = format!("{} -- source", *dst.components.last());
         let page = layout::Page {
@@ -299,6 +308,7 @@ impl<'self> SourceCollector<'self> {
         };
         layout::render(&mut w as &mut io::Writer, &self.cx.layout,
                        &page, &(""), &Source(contents.as_slice()));
+        w.flush();
         return true;
     }
 }
