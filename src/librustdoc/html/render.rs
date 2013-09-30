@@ -1081,6 +1081,20 @@ fn item_struct(w: &mut io::Writer, it: &clean::Item, s: &clean::Struct) {
     write!(w, "</pre>");
 
     document(w, it);
+    match s.struct_type {
+        doctree::Plain => {
+            write!(w, "<h2 class='fields'>Fields</h2>\n<table>");
+            for field in s.fields.iter() {
+                write!(w, "<tr><td id='structfield.{name}'>\
+                                <code>{name}</code></td><td>",
+                       name = field.name.get_ref().as_slice());
+                document(w, field);
+                write!(w, "</td></tr>");
+            }
+            write!(w, "</table>");
+        }
+        _ => {}
+    }
     render_methods(w, it);
 }
 
@@ -1094,36 +1108,46 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
     } else {
         write!(w, " \\{\n");
         for v in e.variants.iter() {
-            let name = format!("<a name='variant.{0}'>{0}</a>",
-                               v.name.get_ref().as_slice());
+            write!(w, "    ");
+            let name = v.name.get_ref().as_slice();
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
-                        clean::CLikeVariant => write!(w, "    {},\n", name),
+                        clean::CLikeVariant => write!(w, "{}", name),
                         clean::TupleVariant(ref tys) => {
-                            write!(w, "    {}(", name);
+                            write!(w, "{}(", name);
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 { write!(w, ", ") }
                                 write!(w, "{}", *ty);
                             }
-                            write!(w, "),\n");
+                            write!(w, ")");
                         }
                         clean::StructVariant(ref s) => {
-                            write!(w, "    ");
                             render_struct(w, v, None, s.struct_type, s.fields,
                                           "    ", false);
-                            write!(w, ",\n");
                         }
                     }
                 }
                 _ => unreachable!()
             }
+            write!(w, ",\n");
         }
         write!(w, "\\}");
     }
     write!(w, "</pre>");
 
     document(w, it);
+    if e.variants.len() > 0 {
+        write!(w, "<h2 class='variants'>Variants</h2>\n<table>");
+        for variant in e.variants.iter() {
+            write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
+                   name = variant.name.get_ref().as_slice());
+            document(w, variant);
+            write!(w, "</td></tr>");
+        }
+        write!(w, "</table>");
+
+    }
     render_methods(w, it);
 }
 
@@ -1147,12 +1171,11 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
             for field in fields.iter() {
                 match field.inner {
                     clean::StructFieldItem(ref ty) => {
-                        write!(w, "    {}<a name='structfield.{name}'>{name}</a>: \
-                                   {},\n{}",
+                        write!(w, "    {}{}: {},\n{}",
                                VisSpace(field.visibility),
+                               field.name.get_ref().as_slice(),
                                ty.type_,
-                               tab,
-                               name = field.name.get_ref().as_slice());
+                               tab);
                     }
                     _ => unreachable!()
                 }
