@@ -95,7 +95,7 @@ pub fn opts() -> ~[groups::OptGroup] {
                  "PASSES"),
         optmulti("", "plugins", "space separated list of plugins to also load",
                  "PLUGINS"),
-        optflag("", "nodefaults", "don't run the default passes"),
+        optflag("", "no-defaults", "don't run the default passes"),
     ]
 }
 
@@ -181,7 +181,7 @@ fn acquire_input(matches: &getopts::Matches) -> Result<Output, ~str> {
 ///
 /// This form of input will run all of the plug/cleaning passes
 fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
-    let mut default_passes = !matches.opt_present("nodefaults");
+    let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
 
@@ -227,7 +227,8 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     }
 
     // Load all plugins/passes into a PluginManager
-    let mut pm = plugins::PluginManager::new(Path("/tmp/rustdoc_ng/plugins"));
+    let path = matches.opt_str("plugin-path").unwrap_or(~"/tmp/rustdoc_ng/plugins");
+    let mut pm = plugins::PluginManager::new(Path(path));
     for pass in passes.iter() {
         let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
             Some(i) => PASSES[i].n1(),
