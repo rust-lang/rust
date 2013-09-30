@@ -405,6 +405,25 @@ pub trait Iterator<A> {
         Inspect{iter: self, f: f}
     }
 
+    /// Creates a wrapper around a mutable reference to the iterator.
+    ///
+    /// This is useful to allow applying iterator adaptors while still
+    /// retaining ownership of the original iterator value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut xs = range(0, 10);
+    /// // sum the first five values
+    /// let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
+    /// assert!(partial_sum == 10);
+    /// // xs.next() is now `5`
+    /// assert!(xs.next() == Some(5));
+    /// ```
+    fn by_ref<'r>(&'r mut self) -> ByRef<'r, Self> {
+        ByRef{iter: self}
+    }
+
     /// An adaptation of an external iterator to the for-loop protocol of rust.
     ///
     /// # Example
@@ -769,6 +788,22 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
     fn idx(&self, index: uint) -> Option<A> {
         self.iter.idx(self.indexable() - index - 1)
     }
+}
+
+/// A mutable reference to an iterator
+pub struct ByRef<'self, T> {
+    priv iter: &'self mut T
+}
+
+impl<'self, A, T: Iterator<A>> Iterator<A> for ByRef<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> { self.iter.next() }
+    // FIXME: #9629 we cannot implement &self methods like size_hint on ByRef
+}
+
+impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for ByRef<'self, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> { self.iter.next_back() }
 }
 
 /// A trait for iterators over elements which can be added together
@@ -2498,6 +2533,15 @@ mod tests {
     fn test_min_by() {
         let xs: &[int] = &[-3, 0, 1, 5, -10];
         assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_by_ref() {
+        let mut xs = range(0, 10);
+        // sum the first five values
+        let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
+        assert_eq!(partial_sum, 10);
+        assert_eq!(xs.next(), Some(5));
     }
 
     #[test]
