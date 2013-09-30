@@ -15,7 +15,7 @@ use driver::session;
 use driver::session::Session;
 use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
-use lib::llvm::{llvm};
+use lib::llvm::llvm;
 use lib;
 use middle::lang_items::LangItem;
 use middle::trans::base;
@@ -28,23 +28,42 @@ use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
 use middle::borrowck::root_map_key;
-use util::ppaux::{Repr};
+use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
 use std::cast::transmute;
 use std::cast;
-use std::hashmap::{HashMap};
+use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
-use syntax::ast::{Name,Ident};
+use syntax::ast::{Name, Ident};
 use syntax::ast_map::{path, path_elt, path_pretty_name};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
+
+fn type_is_newtype_immediate(cx: ty::ctxt, ty: ty::t) -> bool {
+    match ty::get(ty).sty {
+        ty::ty_struct(def_id, ref substs) => {
+            let fields = ty::struct_fields(cx, def_id, substs);
+            fields.len() == 1 &&
+                fields[0].ident.name == token::special_idents::unnamed_field.name &&
+                type_is_immediate(cx, fields[0].mt.ty)
+        }
+        _ => false
+    }
+}
+
+pub fn type_is_immediate(cx: ty::ctxt, ty: ty::t) -> bool {
+    ty::type_is_scalar(ty) || ty::type_is_boxed(ty) ||
+        ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
+        type_is_newtype_immediate(cx, ty) ||
+        ty::type_is_simd(cx, ty)
+}
 
 pub fn gensym_name(name: &str) -> (Ident, path_elt) {
     let name = token::gensym(name);

@@ -278,7 +278,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if ty::type_is_immediate(ccx.tcx, retty) && !ty::type_is_nil(retty) {
+            if type_is_immediate(ccx.tcx, retty) && !ty::type_is_nil(retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
@@ -316,7 +316,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
             if !ty::type_is_voidish(out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
-                if ty::type_is_immediate(ccx.tcx, in_type) {
+                if type_is_immediate(ccx.tcx, in_type) {
                     match fcx.llretptr {
                         Some(llretptr) => {
                             Store(bcx, llsrcval, PointerCast(bcx, llretptr, llintype.ptr_to()));
@@ -335,7 +335,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             }
                         }
                     }
-                } else if ty::type_is_immediate(ccx.tcx, out_type) {
+                } else if type_is_immediate(ccx.tcx, out_type) {
                     let llsrcptr = PointerCast(bcx, llsrcval, llouttype.ptr_to());
                     let ll_load = Load(bcx, llsrcptr);
                     Ret(bcx, ll_load);

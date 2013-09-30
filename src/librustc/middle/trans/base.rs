@@ -1121,13 +1121,13 @@ pub fn do_spill_noroot(cx: @mut Block, v: ValueRef) -> ValueRef {
 
 pub fn spill_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("spill_if_immediate");
-    if ty::type_is_immediate(cx.tcx(), t) { return do_spill(cx, v, t); }
+    if type_is_immediate(cx.tcx(), t) { return do_spill(cx, v, t); }
     return v;
 }
 
 pub fn load_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
-    if ty::type_is_immediate(cx.tcx(), t) { return Load(cx, v); }
+    if type_is_immediate(cx.tcx(), t) { return Load(cx, v); }
     return v;
 }
 

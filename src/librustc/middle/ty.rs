@@ -1752,25 +1752,6 @@ pub fn type_is_scalar(ty: t) -> bool {
     }
 }
 
-fn type_is_newtype_immediate(cx: ctxt, ty: t) -> bool {
-    match get(ty).sty {
-        ty_struct(def_id, ref substs) => {
-            let fields = struct_fields(cx, def_id, substs);
-            fields.len() == 1 &&
-                fields[0].ident.name == token::special_idents::unnamed_field.name &&
-                type_is_immediate(cx, fields[0].mt.ty)
-        }
-        _ => false
-    }
-}
-
-pub fn type_is_immediate(cx: ctxt, ty: t) -> bool {
-    return type_is_scalar(ty) || type_is_boxed(ty) ||
-        type_is_unique(ty) || type_is_region_ptr(ty) ||
-        type_is_newtype_immediate(cx, ty) ||
-        type_is_simd(cx, ty);
-}
-
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     type_contents(cx, ty).needs_drop(cx)
 }
@@ -2538,6 +2519,13 @@ pub fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
     });
 }
 
+pub fn type_is_trait(ty: t) -> bool {
+    match get(ty).sty {
+        ty_trait(*) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_integral(ty: t) -> bool {
     match get(ty).sty {
       ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) => true,
@@ -3289,10 +3277,10 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprCast(*) => {
             match tcx.node_types.find(&(expr.id as uint)) {
                 Some(&t) => {
-                    if ty::type_is_immediate(tcx, t) {
-                        RvalueDatumExpr
-                    } else {
+                    if type_is_trait(t) {
                         RvalueDpsExpr
+                    } else {
+                        RvalueDatumExpr
                     }
                 }
                 None => {
