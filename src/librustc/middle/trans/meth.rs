@@ -139,7 +139,7 @@ pub fn trans_method(ccx: @mut CrateContext,
 }
 
 pub fn trans_self_arg(bcx: @mut Block,
-                      base: @ast::Expr,
+                      base: &ast::Expr,
                       temp_cleanups: &mut ~[ValueRef],
                       mentry: typeck::method_map_entry) -> Result {
     let _icx = push_ctxt("impl::trans_self_arg");
@@ -156,7 +156,7 @@ pub fn trans_self_arg(bcx: @mut Block,
 
 pub fn trans_method_callee(bcx: @mut Block,
                            callee_id: ast::NodeId,
-                           this: @ast::Expr,
+                           this: &ast::Expr,
                            mentry: typeck::method_map_entry)
                            -> Callee {
     let _icx = push_ctxt("impl::trans_method_callee");
@@ -313,7 +313,7 @@ pub fn method_with_name(ccx: &mut CrateContext,
 
 pub fn trans_monomorphized_callee(bcx: @mut Block,
                                   callee_id: ast::NodeId,
-                                  base: @ast::Expr,
+                                  base: &ast::Expr,
                                   mentry: typeck::method_map_entry,
                                   trait_id: ast::DefId,
                                   n_method: uint,
@@ -420,7 +420,7 @@ pub fn combine_impl_and_methods_tps(bcx: @mut Block,
 pub fn trans_trait_callee(bcx: @mut Block,
                           callee_id: ast::NodeId,
                           n_method: uint,
-                          self_expr: @ast::Expr)
+                          self_expr: &ast::Expr)
                           -> Callee {
     /*!
      * Create a method callee where the method is coming from a trait
@@ -630,7 +630,7 @@ fn emit_vtable_methods(bcx: @mut Block,
 }
 
 pub fn trans_trait_cast(bcx: @mut Block,
-                        val: @ast::Expr,
+                        val: &ast::Expr,
                         id: ast::NodeId,
                         dest: expr::Dest,
                         _store: ty::TraitStore)
