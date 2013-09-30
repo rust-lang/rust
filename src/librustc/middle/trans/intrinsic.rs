@@ -49,7 +49,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
         }
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, args.slice(0, num_args), []));
+        let llcall = Call(bcx, llfn, args.slice(0, num_args), []);
+        Ret(bcx, llcall);
     }
 
     fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str) {
@@ -116,7 +117,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, [x, y], []));
+        let llcall = Call(bcx, llfn, [x, y], []);
+        Ret(bcx, llcall);
     }
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
@@ -324,14 +326,19 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             (Pointer, other) | (other, Pointer) if other != Pointer => {
                                 let tmp = Alloca(bcx, llouttype, "");
                                 Store(bcx, llsrcval, PointerCast(bcx, tmp, llintype.ptr_to()));
-                                Ret(bcx, Load(bcx, tmp));
+                                let ll_load = Load(bcx, tmp);
+                                Ret(bcx, ll_load);
                             }
-                            _ => Ret(bcx, BitCast(bcx, llsrcval, llouttype))
+                            _ => {
+                                let llbitcast = BitCast(bcx, llsrcval, llouttype);
+                                Ret(bcx, llbitcast)
+                            }
                         }
                     }
                 } else if ty::type_is_immediate(ccx.tcx, out_type) {
                     let llsrcptr = PointerCast(bcx, llsrcval, llouttype.ptr_to());
-                    Ret(bcx, Load(bcx, llsrcptr));
+                    let ll_load = Load(bcx, llsrcptr);
+                    Ret(bcx, ll_load);
                 } else {
                     // NB: Do not use a Load and Store here. This causes massive
                     // code bloat when `transmute` is used on large structural
@@ -404,7 +411,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "offset" => {
             let ptr = get_param(decl, first_real_arg);
             let offset = get_param(decl, first_real_arg + 1);
-            Ret(bcx, InBoundsGEP(bcx, ptr, [offset]));
+            let lladdr = InBoundsGEP(bcx, ptr, [offset]);
+            Ret(bcx, lladdr);
         }
         "memcpy32" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i32", substs.tys[0], 32),
         "memcpy64" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i64", substs.tys[0], 64),
