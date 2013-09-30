@@ -257,12 +257,12 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     };
 
     let sopts = build_session_options(binary, matches, demitter);
-    let sess = build_session(sopts, demitter);
+    let mut sess = build_session(sopts, demitter);
     let odir = matches.opt_str("out-dir").map_move(|o| Path(o));
     let ofile = matches.opt_str("o").map_move(|o| Path(o));
-    let cfg = build_configuration(sess);
+    let cfg = build_configuration(&sess);
     let pretty = do matches.opt_default("pretty", "normal").map_move |a| {
-        parse_pretty(sess, a)
+        parse_pretty(&sess, a)
     };
     match pretty {
       Some::<PpMode>(ppm) => {
@@ -275,7 +275,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     if ls {
         match input {
           file_input(ref ifile) => {
-            list_metadata(sess, &(*ifile), io::stdout());
+            list_metadata(&sess, &(*ifile), io::stdout());
           }
           str_input(_) => {
             early_error(demitter, ~"can not list metadata for stdin");
@@ -284,7 +284,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
 
-    compile_input(sess, cfg, &input, &odir, &ofile);
+    compile_input(&mut sess, cfg, &input, &odir, &ofile);
 }
 
 #[deriving(Eq)]

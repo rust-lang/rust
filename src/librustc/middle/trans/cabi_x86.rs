@@ -41,7 +41,7 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
         // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
 
         enum Strategy { RetValue(Type), RetPointer }
-        let strategy = match ccx.sess.targ_cfg.os {
+        let strategy = match ccx.tcx.sess.targ_cfg.os {
             OsWin32 | OsMacos => {
                 match llsize_of_alloc(ccx, rty) {
                     1 => RetValue(Type::i8()),

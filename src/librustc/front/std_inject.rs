@@ -22,7 +22,7 @@ use syntax::opt_vec;
 
 static STD_VERSION: &'static str = "0.9-pre";
 
-pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::Crate)
+pub fn maybe_inject_libstd_ref(sess: &Session, crate: @ast::Crate)
                                -> @ast::Crate {
     if use_std(crate) {
         inject_libstd_ref(sess, crate)
@@ -46,11 +46,11 @@ fn spanned<T>(x: T) -> codemap::Spanned<T> {
     }
 }
 
-struct StandardLibraryInjector {
-    sess: Session,
+struct StandardLibraryInjector<'self> {
+    sess: &'self Session,
 }
 
-impl fold::ast_fold for StandardLibraryInjector {
+impl<'self> fold::ast_fold for StandardLibraryInjector<'self> {
     fn fold_crate(&self, crate: &ast::Crate) -> ast::Crate {
         let version = STD_VERSION.to_managed();
         let vi1 = ast::view_item {
@@ -133,7 +133,7 @@ impl fold::ast_fold for StandardLibraryInjector {
     }
 }
 
-fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
+fn inject_libstd_ref(sess: &Session, crate: &ast::Crate) -> @ast::Crate {
     let fold = StandardLibraryInjector {
         sess: sess,
     };

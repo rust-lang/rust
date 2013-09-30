@@ -37,6 +37,7 @@ use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
+use std::cast;
 use std::str;
 use std::uint;
 use std::hashmap::{HashMap, HashSet};
@@ -801,7 +802,7 @@ pub fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     }
 }
 
-pub fn Resolver(session: Session,
+pub fn Resolver(session: &Session,
                 lang_items: LanguageItems,
                 crate: @Crate)
              -> Resolver {
@@ -816,8 +817,14 @@ pub fn Resolver(session: Session,
 
     let current_module = graph_root.get_module();
 
+    // NOTE: Since threading the lifetime of the Session through
+    // Resolver triggers conflicting lifetime errors and
+    // we know that the Session outlives the Resolver
+    // we cheat a little bit here.
+    let session: &'static Session = unsafe { cast::transmute(session) };
+
     let this = Resolver {
-        session: @session,
+        session: session,
         lang_items: lang_items,
         crate: crate,
 
@@ -860,7 +867,7 @@ pub fn Resolver(session: Session,
 
 /// The main resolver class.
 pub struct Resolver {
-    session: @Session,
+    session: &'static Session,
     lang_items: LanguageItems,
     crate: @Crate,
 
@@ -5547,7 +5554,7 @@ pub struct CrateMap {
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate(session: Session,
+pub fn resolve_crate(session: &Session,
                      lang_items: LanguageItems,
                      crate: @Crate)
                   -> CrateMap {

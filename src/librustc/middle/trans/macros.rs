@@ -34,7 +34,7 @@ macro_rules! trace_span(
     ($bcx: ident, $sp: expr, $str: expr) => (
         {
             let bcx = $bcx;
-            if bcx.sess().trace() {
+            if bcx.tcx().sess.trace() {
                 trans_trace(bcx, Some($sp), $str);
             }
         }
@@ -45,7 +45,7 @@ macro_rules! trace(
     ($bcx: ident, $str: expr) => (
         {
             let bcx = $bcx;
-            if bcx.sess().trace() {
+            if bcx.tcx().sess.trace() {
                 trans_trace(bcx, None, $str);
             }
         }

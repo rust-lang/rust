@@ -275,7 +275,7 @@ impl FunctionContext {
 pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
     if !ccx.do_not_commit_warning_issued {
         ccx.do_not_commit_warning_issued = true;
-        ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
+        ccx.tcx.sess.warn(msg.to_str() + " -- do not commit like this!");
     }
 }
 
@@ -660,14 +660,13 @@ impl Block {
 
     pub fn ccx(&self) -> @mut CrateContext { self.fcx.ccx }
     pub fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
-    pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
     pub fn ident(&self, ident: Ident) -> @str {
         token::ident_to_str(&ident)
     }
 
     pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
-        ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
+        ast_map::node_id_to_str(self.tcx().items, id, self.tcx().sess.intr())
     }
 
     pub fn expr_to_str(&self, e: @ast::Expr) -> ~str {
@@ -769,7 +768,7 @@ pub fn in_scope_cx(cx: @mut Block, scope_id: Option<ast::NodeId>, f: &fn(si: &mu
 pub fn block_parent(cx: @mut Block) -> @mut Block {
     match cx.parent {
       Some(b) => b,
-      None    => cx.sess().bug(fmt!("block_parent called on root block %?",
+      None    => cx.tcx().sess.bug(fmt!("block_parent called on root block %?",
                                    cx))
     }
 }
@@ -1042,7 +1041,7 @@ pub fn align_to(cx: @mut Block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
+pub fn path_str(sess: &session::Session, p: &[path_elt]) -> ~str {
     let mut r = ~"";
     let mut first = true;
     for e in p.iter() {
@@ -1095,7 +1094,7 @@ pub fn node_id_type_params(bcx: @mut Block, id: ast::NodeId) -> ~[ty::t] {
     let params = ty::node_id_to_type_params(tcx, id);
 
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
-        bcx.sess().bug(
+        bcx.tcx().sess.bug(
             fmt!("Type parameters for node %d include inference types: %s",
                  id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
@@ -1212,7 +1211,7 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
 
 pub fn filename_and_line_num_from_span(bcx: @mut Block,
                                        span: Span) -> (ValueRef, ValueRef) {
-    let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
+    let loc = bcx.tcx().sess.parse_sess.cm.lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p());
     let line = C_int(bcx.ccx(), loc.line as int);

@@ -310,7 +310,7 @@ pub fn trans_fail_expr(bcx: @mut Block,
             } else if bcx.unreachable || ty::type_is_bot(arg_datum.ty) {
                 return bcx;
             } else {
-                bcx.sess().span_bug(
+                bcx.tcx().sess.span_bug(
                     arg_expr.span, ~"fail called with unsupported type " +
                     ppaux::ty_to_str(tcx, arg_datum.ty));
             }
@@ -336,8 +336,7 @@ fn trans_fail_value(bcx: @mut Block,
     let ccx = bcx.ccx();
     let (V_filename, V_line) = match sp_opt {
       Some(sp) => {
-        let sess = bcx.sess();
-        let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
+        let loc = bcx.tcx().sess.parse_sess.cm.lookup_char_pos(sp.lo);
         (C_cstr(bcx.ccx(), loc.file.name),
          loc.line as int)
       }

@@ -254,7 +254,7 @@ struct ctxt_ {
     interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
     cstore: @mut metadata::cstore::CStore,
-    sess: session::Session,
+    sess: &'static session::Session,
     def_map: resolve::DefMap,
 
     region_maps: @mut middle::region::RegionMaps,
@@ -910,7 +910,7 @@ pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
     @mut HashMap::new()
 }
 
-pub fn mk_ctxt(s: session::Session,
+pub fn mk_ctxt(s: &session::Session,
                dm: resolve::DefMap,
                amap: ast_map::map,
                freevars: freevars::freevar_map,
@@ -918,6 +918,13 @@ pub fn mk_ctxt(s: session::Session,
                region_paramd_items: middle::region::region_paramd_items,
                lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
+    // NOTE: we can't thread the session through the type context
+    // because it hides behind @ :(
+    // since we know the session will outlive it, we just cheat
+    // and tell it the session has a static lifetime
+    let s: &'static session::Session = unsafe {
+        cast::transmute(s)
+    };
     @ctxt_ {
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),

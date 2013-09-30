@@ -266,7 +266,7 @@ impl Reflector {
               do self.bracketed("class", extra) |this| {
                   for (i, field) in fields.iter().enumerate() {
                       let extra = ~[this.c_uint(i),
-                                    this.c_slice(bcx.ccx().sess.str_of(field.ident)),
+                                    this.c_slice(bcx.ccx().tcx.sess.str_of(field.ident)),
                                     this.c_bool(named_fields)]
                           + this.c_mt(&field.mt);
                       this.visit("class_field", extra);
@@ -323,7 +323,7 @@ impl Reflector {
                 + self.c_size_and_align(t);
             do self.bracketed("enum", enum_args) |this| {
                 for (i, v) in variants.iter().enumerate() {
-                    let name = ccx.sess.str_of(v.name);
+                    let name = ccx.tcx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
                                          C_integral(self.bcx.ccx().int_type, v.disr_val, false),
                                          this.c_uint(v.args.len()),

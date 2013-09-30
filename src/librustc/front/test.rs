@@ -24,6 +24,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::fold::ast_fold;
 use syntax::fold;
 use syntax::opt_vec;
+use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
@@ -36,7 +37,6 @@ struct Test {
 }
 
 struct TestCtxt {
-    sess: session::Session,
     crate: @ast::Crate,
     path: ~[ast::Ident],
     ext_cx: @ExtCtxt,
@@ -45,9 +45,8 @@ struct TestCtxt {
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-pub fn modify_for_testing(sess: session::Session,
-                          crate: @ast::Crate)
-                       -> @ast::Crate {
+pub fn modify_for_testing(sess: &session::Session,
+                          crate: @ast::Crate) -> @ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
@@ -60,11 +59,12 @@ pub fn modify_for_testing(sess: session::Session,
     }
 }
 
-struct TestHarnessGenerator {
+struct TestHarnessGenerator<'self> {
     cx: @mut TestCtxt,
+    sess: &'self session::Session
 }
 
-impl fold::ast_fold for TestHarnessGenerator {
+impl<'self> fold::ast_fold for TestHarnessGenerator<'self> {
     fn fold_crate(&self, c: &ast::Crate) -> ast::Crate {
         let folded = fold::noop_fold_crate(c, self);
 
@@ -81,14 +81,13 @@ impl fold::ast_fold for TestHarnessGenerator {
         debug!("current path: %s",
                ast_util::path_name_i(self.cx.path.clone()));
 
-        if is_test_fn(self.cx, i) || is_bench_fn(i) {
+        if is_test_fn(i, self.sess) || is_bench_fn(i) {
             match i.node {
                 ast::item_fn(_, purity, _, _, _)
                     if purity == ast::unsafe_fn => {
-                    let sess = self.cx.sess;
-                    sess.span_fatal(i.span,
-                                    "unsafe functions cannot be used for \
-                                     tests");
+                    self.sess.span_fatal(i.span,
+                                            "unsafe functions cannot be used for \
+                                             tests");
                 }
                 _ => {
                     debug!("this is a test function");
@@ -115,8 +114,8 @@ impl fold::ast_fold for TestHarnessGenerator {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
-            if !*cx.sess.building_library {
+        fn nomain(item: @ast::item, lib: bool) -> @ast::item {
+            if !lib {
                 @ast::item {
                     attrs: do item.attrs.iter().filter_map |attr| {
                         if "main" != attr.name() {
@@ -134,17 +133,16 @@ impl fold::ast_fold for TestHarnessGenerator {
 
         let mod_nomain = ast::_mod {
             view_items: m.view_items.clone(),
-            items: m.items.iter().map(|i| nomain(self.cx, *i)).collect(),
+            items: m.items.iter().map(|i| nomain(*i, self.sess.building_library)).collect()
         };
 
         fold::noop_fold_mod(&mod_nomain, self)
     }
 }
 
-fn generate_test_harness(sess: session::Session, crate: @ast::Crate)
-                         -> @ast::Crate {
+fn generate_test_harness(sess: &session::Session, crate: @ast::Crate) -> @ast::Crate {
+
     let cx: @mut TestCtxt = @mut TestCtxt {
-        sess: sess,
         crate: crate,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
@@ -161,11 +159,13 @@ fn generate_test_harness(sess: session::Session, crate: @ast::Crate)
     });
 
     let fold = TestHarnessGenerator {
-        cx: cx
+        cx: cx,
+        sess: sess
     };
     let res = @fold.fold_crate(&*crate);
     ext_cx.bt_pop();
-    return res;
+
+    res
 }
 
 fn strip_test_functions(crate: &ast::Crate) -> @ast::Crate {
@@ -177,7 +177,7 @@ fn strip_test_functions(crate: &ast::Crate) -> @ast::Crate {
     }
 }
 
-fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
+fn is_test_fn(i: @ast::item, sess: &session::Session) -> bool {
     let has_test_attr = attr::contains_name(i.attrs, "test");
 
     fn has_test_signature(i: @ast::item) -> bool {
@@ -196,7 +196,6 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
     }
 
     if has_test_attr && !has_test_signature(i) {
-        let sess = cx.sess;
         sess.span_err(
             i.span,
             "functions used as tests must have signature fn() -> ()."
@@ -272,7 +271,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> ast::view_item {
-    let id_extra = cx.sess.ident_of("extra");
+    let id_extra = token::str_to_ident("extra");
     let vi = if is_extra(cx) {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_extra,
@@ -318,7 +317,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
         attr::mk_attr(attr::mk_word_item(@"!resolve_unexported"));
 
     let item = ast::item {
-        ident: cx.sess.ident_of("__test"),
+        ident: token::str_to_ident("__test"),
         attrs: ~[resolve_unexported_attr],
         id: ast::DUMMY_NODE_ID,
         node: item_,
@@ -327,7 +326,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
      };
 
     debug!("Synthetic test module:\n%s\n",
-           pprust::item_to_str(@item.clone(), cx.sess.intr()));
+           pprust::item_to_str(@item.clone(), token::get_ident_interner()));
 
     return @item;
 }

@@ -200,7 +200,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-pub struct Session_ {
+pub struct Session {
     targ_cfg: @config,
     opts: @options,
     cstore: @mut metadata::cstore::CStore,
@@ -211,15 +211,13 @@ pub struct Session_ {
     entry_type: @mut Option<EntryFnType>,
     span_diagnostic: @mut diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
-    building_library: @mut bool,
+    building_library: bool,
     working_dir: Path,
     lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
     node_id: @mut uint,
 }
 
-pub type Session = @Session_;
-
-impl Session_ {
+impl Session {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
@@ -389,7 +387,7 @@ pub fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: &fn() -> ~str)
+pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: &fn() -> ~str)
                        -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }

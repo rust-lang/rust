@@ -19,8 +19,8 @@ use syntax::parse::token::special_idents;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-struct EntryContext {
-    session: Session,
+struct EntryContext<'self> {
+    session: &'self Session,
 
     ast_map: ast_map::map,
 
@@ -38,16 +38,16 @@ struct EntryContext {
     non_main_fns: ~[(NodeId, Span)],
 }
 
-impl Visitor<()> for EntryContext {
+impl<'self> Visitor<()> for EntryContext<'self> {
     fn visit_item(&mut self, item:@item, _:()) {
         find_item(item, self);
     }
 }
 
-pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) {
+pub fn find_entry_point(session: &Session, crate: &Crate, ast_map: ast_map::map) {
 
     // FIXME #4404 android JNI hacks
-    if *session.building_library &&
+    if session.building_library &&
         session.targ_cfg.os != session::OsAndroid {
         // No need to find a main function
         return;
@@ -134,7 +134,7 @@ fn configure_main(this: &mut EntryContext) {
         *this.session.entry_fn = this.main_fn;
         *this.session.entry_type = Some(session::EntryMain);
     } else {
-        if !*this.session.building_library {
+        if !this.session.building_library {
             // No main function
             this.session.err("main function not found");
             if !this.non_main_fns.is_empty() {

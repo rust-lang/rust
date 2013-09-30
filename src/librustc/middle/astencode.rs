@@ -153,7 +153,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-fn reserve_id_range(sess: Session,
+fn reserve_id_range(sess: &Session,
                     from_id_range: ast_util::id_range) -> ast_util::id_range {
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }

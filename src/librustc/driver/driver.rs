@@ -12,7 +12,7 @@
 use back::link;
 use back::{arm, x86, x86_64, mips};
 use driver::session::{Aggressive};
-use driver::session::{Session, Session_, No, Less, Default};
+use driver::session::{Session, No, Less, Default};
 use driver::session;
 use front;
 use lib::llvm::llvm;
@@ -63,7 +63,7 @@ pub fn source_name(input: &input) -> @str {
     }
 }
 
-pub fn default_configuration(sess: Session) ->
+pub fn default_configuration(sess: &Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
         session::OsWin32 =>   @"win32",
@@ -75,7 +75,7 @@ pub fn default_configuration(sess: Session) ->
 
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
-    let (end,arch,wordsz) = match sess.targ_cfg.arch {
+    let (end, arch, wordsz) = match sess.targ_cfg.arch {
         abi::X86 =>    (@"little", @"x86",    @"32"),
         abi::X86_64 => (@"little", @"x86_64", @"64"),
         abi::Arm =>    (@"little", @"arm",    @"32"),
@@ -99,8 +99,7 @@ pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
     }
 }
 
-pub fn build_configuration(sess: Session) ->
-   ast::CrateConfig {
+pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess);
@@ -113,8 +112,7 @@ pub fn build_configuration(sess: Session) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
-                  -> ast::CrateConfig {
+fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter) -> ast::CrateConfig {
     do cfgspecs.move_iter().map |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
@@ -129,7 +127,7 @@ pub enum input {
     str_input(@str)
 }
 
-pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
+pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &input)
     -> @ast::Crate {
     time(sess.time_passes(), ~"parsing", || {
         match *input {
@@ -151,13 +149,13 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided and injection of a dependency on the
 /// standard library and prelude.
-pub fn phase_2_configure_and_expand(sess: Session,
+pub fn phase_2_configure_and_expand(sess: &mut Session,
                                     cfg: ast::CrateConfig,
                                     mut crate: @ast::Crate) -> @ast::Crate {
     let time_passes = sess.time_passes();
 
-    *sess.building_library = session::building_library(sess.opts.crate_type,
-                                                       crate, sess.opts.test);
+    sess.building_library = session::building_library(sess.opts.crate_type,
+                                                      crate, sess.opts.test);
 
 
     // strip before expansion to allow macros to depend on
@@ -184,13 +182,13 @@ pub fn phase_2_configure_and_expand(sess: Session,
                  front::config::strip_unconfigured_items(crate));
 
     crate = time(time_passes, ~"maybe building test harness", ||
-                 front::test::modify_for_testing(sess, crate));
+                 front::test::modify_for_testing(&*sess, crate));
 
     crate = time(time_passes, ~"std injection", ||
-                 front::std_inject::maybe_inject_libstd_ref(sess, crate));
+                 front::std_inject::maybe_inject_libstd_ref(&*sess, crate));
 
     crate = time(time_passes, ~"assigning node ids", ||
-                 front::assign_node_ids::assign_node_ids(sess, crate));
+                 front::assign_node_ids::assign_node_ids(&*sess, crate));
 
     return crate;
 }
@@ -206,8 +204,7 @@ pub struct CrateAnalysis {
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes(sess: Session,
-                                   crate: @ast::Crate) -> CrateAnalysis {
+pub fn phase_3_run_analysis_passes(sess: &Session, crate: @ast::Crate) -> CrateAnalysis {
 
     let time_passes = sess.time_passes();
 
@@ -242,22 +239,20 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                           middle::region::resolve_crate(sess, def_map, crate));
 
     let rp_set = time(time_passes, ~"region parameterization inference", ||
-                      middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
+                      middle::region::determine_rp_in_crate(sess.cstore, ast_map, def_map, crate));
 
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
                             region_map, rp_set, lang_items);
 
     // passes are timed inside typeck
-    let (method_map, vtable_map) = typeck::check_crate(
-        ty_cx, trait_map, crate);
+    let (method_map, vtable_map) = typeck::check_crate(ty_cx, trait_map, crate);
 
     // These next two const passes can probably be merged
     time(time_passes, ~"const marking", ||
          middle::const_eval::process_crate(crate, ty_cx));
 
     time(time_passes, ~"const checking", ||
-         middle::check_const::check_crate(sess, crate, ast_map, def_map,
-                                          method_map, ty_cx));
+         middle::check_const::check_crate(crate, ast_map, def_map, method_map, ty_cx));
 
     let exported_items =
         time(time_passes, ~"privacy checking", ||
@@ -278,12 +273,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
              middle::moves::compute_moves(ty_cx, method_map, crate));
 
     time(time_passes, ~"match checking", ||
-         middle::check_match::check_crate(ty_cx, method_map,
-                                          moves_map, crate));
+         middle::check_match::check_crate(ty_cx, method_map, moves_map, crate));
 
     time(time_passes, ~"liveness checking", ||
-         middle::liveness::check_crate(ty_cx, method_map,
-                                       capture_map, crate));
+         middle::liveness::check_crate(ty_cx, method_map, capture_map, crate));
 
     let (root_map, write_guard_map) =
         time(time_passes, ~"borrow checking", ||
@@ -324,18 +317,16 @@ pub struct CrateTranslation {
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm(sess: Session,
-                                 crate: @ast::Crate,
+pub fn phase_4_translate_to_llvm(crate: @ast::Crate,
                                  analysis: &CrateAnalysis,
                                  outputs: &OutputFilenames) -> CrateTranslation {
-    time(sess.time_passes(), ~"translation", ||
-         trans::base::trans_crate(sess, crate, analysis,
-                                  &outputs.obj_filename))
+    time(analysis.ty_cx.sess.time_passes(), ~"translation", ||
+         trans::base::trans_crate(crate, analysis, &outputs.obj_filename))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
-pub fn phase_5_run_llvm_passes(sess: Session,
+pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &CrateTranslation,
                                outputs: &OutputFilenames) {
 
@@ -374,7 +365,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
-pub fn phase_6_link_output(sess: Session,
+pub fn phase_6_link_output(sess: &Session,
                            trans: &CrateTranslation,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(), ~"linking", ||
@@ -384,7 +375,7 @@ pub fn phase_6_link_output(sess: Session,
                            trans.link));
 }
 
-pub fn stop_after_phase_3(sess: Session) -> bool {
+pub fn stop_after_phase_3(sess: &Session) -> bool {
    if sess.opts.no_trans {
         debug!("invoked with --no-trans, returning early from compile_input");
         return true;
@@ -392,7 +383,7 @@ pub fn stop_after_phase_3(sess: Session) -> bool {
     return false;
 }
 
-pub fn stop_after_phase_1(sess: Session) -> bool {
+pub fn stop_after_phase_1(sess: &Session) -> bool {
     if sess.opts.parse_only {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
@@ -400,13 +391,13 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
     return false;
 }
 
-pub fn stop_after_phase_5(sess: Session) -> bool {
+pub fn stop_after_phase_5(sess: &Session) -> bool {
     if sess.opts.output_type != link::output_type_exe {
         debug!("not building executable, returning early from compile_input");
         return true;
     }
 
-    if sess.opts.is_static && *sess.building_library {
+    if sess.opts.is_static && sess.building_library {
         debug!("building static library, returning early from compile_input");
         return true;
     }
@@ -419,27 +410,26 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
 }
 
 #[fixed_stack_segment]
-pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
+pub fn compile_input(sess: &mut Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
         let expanded_crate = {
-            let crate = phase_1_parse_input(sess, cfg.clone(), input);
-            if stop_after_phase_1(sess) { return; }
+            let crate = phase_1_parse_input(&*sess, cfg.clone(), input);
+            if stop_after_phase_1(&*sess) { return; }
             phase_2_configure_and_expand(sess, cfg, crate)
         };
-        let analysis = phase_3_run_analysis_passes(sess, expanded_crate);
-        if stop_after_phase_3(sess) { return; }
-        let outputs = build_output_filenames(input, outdir, output, [], sess);
-        let trans = phase_4_translate_to_llvm(sess, expanded_crate,
-                                              &analysis, outputs);
+        let analysis = phase_3_run_analysis_passes(&*sess, expanded_crate);
+        if stop_after_phase_3(&*sess) { return; }
+        let outputs = build_output_filenames(input, outdir, output, [], &*sess);
+        let trans = phase_4_translate_to_llvm(expanded_crate, &analysis, outputs);
         (outputs, trans)
     };
-    phase_5_run_llvm_passes(sess, &trans, outputs);
-    if stop_after_phase_5(sess) { return; }
-    phase_6_link_output(sess, &trans, outputs);
+    phase_5_run_llvm_passes(&*sess, &trans, outputs);
+    if stop_after_phase_5(&*sess) { return; }
+    phase_6_link_output(&*sess, &trans, outputs);
 }
 
 struct IdentifiedAnnotation {
@@ -502,7 +492,7 @@ impl pprust::pp_ann for TypedAnnotation {
     }
 }
 
-pub fn pretty_print_input(sess: Session,
+pub fn pretty_print_input(mut sess: Session,
                           cfg: ast::CrateConfig,
                           input: &input,
                           ppm: PpMode) {
@@ -519,14 +509,17 @@ pub fn pretty_print_input(sess: Session,
         }
     }
 
-    let crate = phase_1_parse_input(sess, cfg.clone(), input);
+    let crate = phase_1_parse_input(&sess, cfg.clone(), input);
 
     let (crate, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
-            (phase_2_configure_and_expand(sess, cfg, crate), true)
+            (phase_2_configure_and_expand(&mut sess, cfg, crate), true)
         }
         _ => (crate, false)
     };
+
+    let codemap = sess.codemap;
+    let span_diag = sess.span_diagnostic;
 
     let annotation = match ppm {
         PpmIdentified | PpmExpandedIdentified => {
@@ -535,7 +528,7 @@ pub fn pretty_print_input(sess: Session,
             } as @pprust::pp_ann
         }
         PpmTyped => {
-            let analysis = phase_3_run_analysis_passes(sess, crate);
+            let analysis = phase_3_run_analysis_passes(&sess, crate);
             @TypedAnnotation {
                 analysis: analysis
             } as @pprust::pp_ann
@@ -543,11 +536,11 @@ pub fn pretty_print_input(sess: Session,
         _ => @pprust::no_ann::new() as @pprust::pp_ann,
     };
 
-    let src = sess.codemap.get_filemap(source_name(input)).src;
+    let src = codemap.get_filemap(source_name(input)).src;
     do io::with_str_reader(src) |rdr| {
-        pprust::print_crate(sess.codemap,
+        pprust::print_crate(codemap,
                             token::get_ident_interner(),
-                            sess.span_diagnostic,
+                            span_diag,
                             crate,
                             source_name(input),
                             rdr,
@@ -591,9 +584,9 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
 
     ("mips",   abi::Mips)];
 
-pub fn build_target_config(sopts: @session::options,
-                           demitter: @diagnostic::Emitter)
-                           -> @session::config {
+pub fn build_target_config(sopts: @session::options, demitter: @diagnostic::Emitter)
+    -> @session::config {
+
     let os = match get_os(sopts.target_triple) {
       Some(os) => os,
       None => early_error(demitter, ~"unknown operating system")
@@ -831,7 +824,7 @@ pub fn build_session_(sopts: @session::options,
         &sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
-    @Session_ {
+    Session {
         targ_cfg: target_cfg,
         opts: sopts,
         cstore: cstore,
@@ -842,14 +835,14 @@ pub fn build_session_(sopts: @session::options,
         entry_type: @mut None,
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
-        building_library: @mut false,
+        building_library: false,
         working_dir: os::getcwd(),
         lints: @mut HashMap::new(),
         node_id: @mut 1
     }
 }
 
-pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
+pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
     match name {
       &"normal" => PpmNormal,
       &"expanded" => PpmExpanded,
@@ -948,14 +941,14 @@ pub fn build_output_filenames(input: &input,
                               odir: &Option<Path>,
                               ofile: &Option<Path>,
                               attrs: &[ast::Attribute],
-                              sess: Session)
+                              sess: &Session)
                            -> ~OutputFilenames {
     let obj_path;
     let out_path;
     let sopts = sess.opts;
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
-            sopts.is_static && *sess.building_library;
+            sopts.is_static && sess.building_library;
 
     let obj_suffix =
         match sopts.output_type {
@@ -998,7 +991,7 @@ pub fn build_output_filenames(input: &input,
               // version
           }
 
-          if *sess.building_library {
+          if sess.building_library {
               out_path = dirpath.push(os::dll_filename(stem));
               obj_path = dirpath.push(stem).with_filetype(obj_suffix);
           } else {
@@ -1015,7 +1008,7 @@ pub fn build_output_filenames(input: &input,
             (*out_file).with_filetype(obj_suffix)
         };
 
-        if *sess.building_library {
+        if sess.building_library {
             sess.warn("ignoring specified output filename for library.");
         }
 
@@ -1036,7 +1029,7 @@ pub fn early_error(emitter: @diagnostic::Emitter, msg: ~str) -> ! {
     fail!();
 }
 
-pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
+pub fn list_metadata(sess: &Session, path: &Path, out: @io::Writer) {
     metadata::loader::list_file_metadata(
         token::get_ident_interner(),
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
@@ -1067,7 +1060,7 @@ mod test {
         let sess = build_session(sessopts,
                                  @diagnostic::DefaultEmitter as
                                     @diagnostic::Emitter);
-        let cfg = build_configuration(sess);
+        let cfg = build_configuration(&sess);
         assert!((attr::contains_name(cfg, "test")));
     }
 
@@ -1089,7 +1082,7 @@ mod test {
         let sess = build_session(sessopts,
                                  @diagnostic::DefaultEmitter as
                                     @diagnostic::Emitter);
-        let cfg = build_configuration(sess);
+        let cfg = build_configuration(&sess);
         let mut test_items = cfg.iter().filter(|m| "test" == m.name());
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());

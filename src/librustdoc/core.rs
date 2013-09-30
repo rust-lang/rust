@@ -49,18 +49,18 @@ fn get_ast_and_resolve(cpath: &Path, libs: ~[Path]) -> DocContext {
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
-    let sess = driver::driver::build_session_(sessopts,
-                                              parsesess.cm,
-                                              @diagnostic::DefaultEmitter as
-                                                @diagnostic::Emitter,
-                                              span_diagnostic_handler);
+    let mut sess = driver::driver::build_session_(sessopts,
+                                                  parsesess.cm,
+                                                  @diagnostic::DefaultEmitter as
+                                                    @diagnostic::Emitter,
+                                                  span_diagnostic_handler);
 
-    let mut cfg = build_configuration(sess);
+    let mut cfg = build_configuration(&sess);
     cfg.push(@dummy_spanned(ast::MetaWord(@"stage2")));
 
-    let mut crate = phase_1_parse_input(sess, cfg.clone(), &input);
-    crate = phase_2_configure_and_expand(sess, cfg, crate);
-    let analysis = phase_3_run_analysis_passes(sess, crate);
+    let mut crate = phase_1_parse_input(&sess, cfg.clone(), &input);
+    crate = phase_2_configure_and_expand(&mut sess, cfg, crate);
+    let analysis = phase_3_run_analysis_passes(&sess, crate);
 
     debug!("crate: %?", crate);
     DocContext { crate: crate, tycx: analysis.ty_cx, sess: sess }

@@ -260,7 +260,7 @@ pub fn trans_static_method_callee(bcx: @mut Block,
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
-            name=%s", method_id, callee_id, ccx.sess.str_of(mname));
+            name=%s", method_id, callee_id, ccx.tcx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get_copy(&callee_id));
@@ -550,7 +550,7 @@ pub fn get_vtable(bcx: @mut Block,
             typeck::vtable_static(id, ref substs, sub_vtables) => {
                 emit_vtable_methods(bcx, id, *substs, sub_vtables)
             }
-            _ => ccx.sess.bug("get_vtable: expected a static origin"),
+            _ => ccx.tcx.sess.bug("get_vtable: expected a static origin"),
         }
     };
 
@@ -598,7 +598,7 @@ fn emit_vtable_methods(bcx: @mut Block,
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
         Some(t_id) => t_id.def_id,
-        None       => ccx.sess.bug("make_impl_vtable: don't know how to \
+        None       => ccx.tcx.sess.bug("make_impl_vtable: don't know how to \
                                     make a vtable for a type impl!")
     };
 

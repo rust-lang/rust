@@ -83,7 +83,7 @@ pub fn type_of_fn_from_ty(cx: &mut CrateContext, fty: ty::t) -> Type {
             }
         }
         _ => {
-            cx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
+            cx.tcx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
         }
     };
 }
@@ -141,7 +141,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
         ty::ty_unboxed_vec(mt) => {
             let sz_ty = sizing_type_of(cx, mt.ty);
-            Type::vec(cx.sess.targ_cfg.arch, &sz_ty)
+            Type::vec(cx.tcx.sess.targ_cfg.arch, &sz_ty)
         }
 
         ty::ty_tup(*) | ty::ty_enum(*) => {
@@ -201,7 +201,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(cx, t),
       ty::ty_estr(ty::vstore_uniq) => {
-        Type::vec(cx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
+        Type::vec(cx.tcx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
       }
       ty::ty_enum(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We
@@ -212,11 +212,11 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         Type::named_struct(llvm_type_name(cx, an_enum, did, substs.tps))
       }
       ty::ty_estr(ty::vstore_box) => {
-        Type::box(cx, &Type::vec(cx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
+        Type::box(cx, &Type::vec(cx.tcx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
       }
       ty::ty_evec(ref mt, ty::vstore_box) => {
           let e_ty = type_of(cx, mt.ty);
-          let v_ty = Type::vec(cx.sess.targ_cfg.arch, &e_ty);
+          let v_ty = Type::vec(cx.tcx.sess.targ_cfg.arch, &e_ty);
           Type::box(cx, &v_ty).ptr_to()
       }
       ty::ty_box(ref mt) => {
@@ -234,7 +234,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       }
       ty::ty_evec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);
-          let ty = Type::vec(cx.sess.targ_cfg.arch, &ty);
+          let ty = Type::vec(cx.tcx.sess.targ_cfg.arch, &ty);
           if ty::type_contents(cx.tcx, mt.ty).contains_managed() {
               Type::unique(cx, &ty).ptr_to()
           } else {
@@ -243,7 +243,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       }
       ty::ty_unboxed_vec(ref mt) => {
           let ty = type_of(cx, mt.ty);
-          Type::vec(cx.sess.targ_cfg.arch, &ty)
+          Type::vec(cx.tcx.sess.targ_cfg.arch, &ty)
       }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
       ty::ty_rptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),

@@ -93,7 +93,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let mut is_static_provided = None;
 
     let map_node = session::expect(
-        ccx.sess,
+        ccx.tcx.sess,
         ccx.tcx.items.find_copy(&fn_id.node),
         || fmt!("While monomorphizing %?, couldn't find it in the item map \
                  (may have attempted to monomorphize an item \
@@ -188,12 +188,12 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     // recursively more than thirty times can probably safely be assumed to be
     // causing an infinite expansion.
     if depth > 30 {
-        ccx.sess.span_fatal(
+        ccx.tcx.sess.span_fatal(
             span, "overly deep expansion of inlined function");
     }
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
-    let (_, elt) = gensym_name(ccx.sess.str_of(name));
+    let (_, elt) = gensym_name(ccx.tcx.sess.str_of(name));
     let mut pt = (*pt).clone();
     pt.push(elt);
     let s = mangle_exported_name(ccx, pt.clone(), mono_ty);
@@ -313,10 +313,10 @@ pub fn make_mono_id(ccx: @mut CrateContext,
       None => substs_iter.map(|subst| (*subst, None::<@~[mono_id]>)).collect()
     };
 
-
     let param_ids = precise_param_ids.iter().map(|x| {
         let (a, b) = *x;
         mono_precise(a, b)
     }).collect();
+
     @mono_id_ {def: item, params: param_ids}
 }

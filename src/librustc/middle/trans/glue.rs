@@ -285,7 +285,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
     let no_lpads =
-        ccx.sess.opts.debugging_opts & session::no_landing_pads != 0;
+        ccx.tcx.sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return; }
 
     let static_glue_fn = match static_ti {
@@ -645,7 +645,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
 
     let llty = type_of(ccx, t);
 
-    if ccx.sess.count_type_sizes() {
+    if ccx.tcx.sess.count_type_sizes() {
         println!("{}\t{}", llsize_of_real(ccx, llty),
                  ppaux::ty_to_str(ccx.tcx, t));
     }

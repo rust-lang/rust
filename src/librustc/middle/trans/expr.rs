@@ -318,7 +318,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
         let (source_store, source_mutbl) = match ty::get(source_datum.ty).sty {
             ty::ty_trait(_, _, s, m, _) => (s, m),
             _ => {
-                bcx.sess().span_bug(
+                bcx.tcx().sess.span_bug(
                     expr.span,
                     fmt!("auto_borrow_trait_obj expected a trait, found %s",
                          source_datum.ty.repr(bcx.tcx())));
@@ -488,7 +488,7 @@ fn trans_lvalue(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
     return match bcx.tcx().adjustments.find(&expr.id) {
         None => trans_lvalue_unadjusted(bcx, expr),
         Some(_) => {
-            bcx.sess().span_bug(
+            bcx.tcx().sess.span_bug(
                 expr.span,
                 fmt!("trans_lvalue() called on an expression \
                       with adjustments"));
@@ -1042,7 +1042,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
                         unsafe {
                             let llty = type_of(bcx.ccx(), const_ty);
                             let symbol = csearch::get_symbol(
-                                bcx.ccx().sess.cstore,
+                                bcx.tcx().sess.cstore,
                                 did);
                             let llval = do symbol.with_c_str |buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
@@ -1091,7 +1091,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
                     }
                 }
                 None => {
-                    bcx.sess().bug(fmt!(
+                    bcx.tcx().sess.bug(fmt!(
                         "trans_local_var: no llval for upvar %? found", nid));
                 }
             }
@@ -1106,7 +1106,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
             let self_info: ValSelfData = match bcx.fcx.llself {
                 Some(ref self_info) => *self_info,
                 None => {
-                    bcx.sess().bug(fmt!(
+                    bcx.tcx().sess.bug(fmt!(
                         "trans_local_var: reference to self \
                          out of context with id %?", nid));
                 }
@@ -1122,7 +1122,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
             }
         }
         _ => {
-            bcx.sess().unimpl(fmt!(
+            bcx.tcx().sess.unimpl(fmt!(
                 "unsupported def type in trans_local_var: %?", def));
         }
     };
@@ -1133,7 +1133,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
         let v = match table.find(&nid) {
             Some(&v) => v,
             None => {
-                bcx.sess().bug(fmt!(
+                bcx.tcx().sess.bug(fmt!(
                     "trans_local_var: no llval for local/arg %? found", nid));
             }
         };
@@ -1383,7 +1383,7 @@ fn trans_unary_datum(bcx: @mut Block,
             trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap)
         }
         ast::UnDeref => {
-            bcx.sess().bug("deref expressions should have been \
+            bcx.tcx().sess.bug("deref expressions should have been \
                             translated using trans_lvalue(), not \
                             trans_unary_datum()")
         }
@@ -1733,13 +1733,13 @@ fn trans_imm_cast(bcx: @mut Block, expr: @ast::Expr,
                                               val_ty(lldiscrim_a),
                                               lldiscrim_a, true),
                     cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                    _ => ccx.sess.bug(fmt!("translating unsupported cast: \
+                    _ => ccx.tcx.sess.bug(fmt!("translating unsupported cast: \
                                            %s (%?) -> %s (%?)",
                                            t_in.repr(ccx.tcx), k_in,
                                            t_out.repr(ccx.tcx), k_out))
                 }
             }
-            _ => ccx.sess.bug(fmt!("translating unsupported cast: \
+            _ => ccx.tcx.sess.bug(fmt!("translating unsupported cast: \
                                    %s (%?) -> %s (%?)",
                                    t_in.repr(ccx.tcx), k_in,
                                    t_out.repr(ccx.tcx), k_out))
@@ -1798,14 +1798,14 @@ pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
 
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
-        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
+        let mut modpath = ~[path_mod(ccx.tcx.sess.ident_of(ccx.link_meta.name))];
         for e in path.iter() {
             match *e {
                 path_mod(_) => { modpath.push(*e) }
                 _ => {}
             }
         }
-        let modname = path_str(ccx.sess, modpath);
+        let modname = path_str(ccx.tcx.sess, modpath);
         (modpath, modname)
     };
 

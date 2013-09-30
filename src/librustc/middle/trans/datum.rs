@@ -731,8 +731,7 @@ impl Datum {
         match self.try_deref(bcx, expr.span, expr.id, derefs, false) {
             (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },
             (None, _) => {
-                bcx.ccx().sess.span_bug(expr.span,
-                                        "Cannot deref this expression");
+                bcx.tcx().sess.span_bug(expr.span, "Cannot deref this expression");
             }
         }
     }
