@@ -16,7 +16,7 @@ struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        fail!("This failure should happen.");
+        fail2!("This failure should happen.");
     }
 }
 

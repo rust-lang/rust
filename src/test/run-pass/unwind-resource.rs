@@ -21,14 +21,14 @@ struct complainer {
 
 impl Drop for complainer {
     fn drop(&mut self) {
-        error!("About to send!");
+        error2!("About to send!");
         self.c.send(true);
-        error!("Sent!");
+        error2!("Sent!");
     }
 }
 
 fn complainer(c: SharedChan<bool>) -> complainer {
-    error!("Hello!");
+    error2!("Hello!");
     complainer {
         c: c
     }
@@ -36,13 +36,13 @@ fn complainer(c: SharedChan<bool>) -> complainer {
 
 fn f(c: SharedChan<bool>) {
     let _c = complainer(c);
-    fail!();
+    fail2!();
 }
 
 pub fn main() {
     let (p, c) = stream();
     let c = SharedChan::new(c);
     task::spawn_unlinked(|| f(c.clone()) );
-    error!("hiiiiiiiii");
+    error2!("hiiiiiiiii");
     assert!(p.recv());
 }

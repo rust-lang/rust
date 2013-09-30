@@ -16,7 +16,7 @@ use std::task;
 pub fn main() {
     let mut i = 10;
     while i > 0 { task::spawn({let i = i; || child(i)}); i = i - 1; }
-    info!("main thread exiting");
+    info2!("main thread exiting");
 }
 
-fn child(x: int) { info!(x); }
+fn child(x: int) { info2!("{}", x); }

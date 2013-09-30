@@ -21,6 +21,6 @@ struct X { vec: &'static [int] }
 static V: &'static [X] = &[X { vec: &[1, 2, 3] }];
 pub fn main() {
     for &v in V.iter() {
-        println(fmt!("%?", v.vec));
+        println!("{:?}", v.vec);
     }
 }

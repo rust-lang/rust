@@ -18,7 +18,7 @@ pub fn main() {
     while z < 50 {
         z += 1;
         while false { x = y; y = z; }
-        info!(y);
+        info2!("{}", y);
     }
     assert!((y == 42 && z == 50));
 }

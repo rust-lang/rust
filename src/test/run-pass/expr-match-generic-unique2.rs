@@ -16,7 +16,7 @@ type compare<'self, T> = &'self fn(T, T) -> bool;
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
     let actual: T = match true {
         true => expected.clone(),
-        _ => fail!("wat")
+        _ => fail2!("wat")
     };
     assert!((eq(expected, actual)));
 }

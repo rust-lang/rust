@@ -15,7 +15,7 @@ fn test1() {
                 assert_eq!(a, ~"a");
                 assert_eq!(b, ~"b");
             },
-            _ => fail!(),
+            _ => fail2!(),
     }
 }
 
@@ -25,7 +25,7 @@ fn test2() {
             assert_eq!(a, 2);
             assert_eq!(b, 3);
         },
-        _ => fail!(),
+        _ => fail2!(),
     }
 }
 
@@ -35,7 +35,7 @@ fn test3() {
             assert_eq!(*a, 2);
             assert_eq!(*b, 3);
         },
-        _ => fail!(),
+        _ => fail2!(),
     }
 }
 
@@ -45,7 +45,7 @@ fn test4() {
             assert_eq!(a, 2);
             assert_eq!(b, 3);
         },
-        _ => fail!(),
+        _ => fail2!(),
     }
 }
 
@@ -55,7 +55,7 @@ fn test5() {
             assert_eq!(*a, 2);
             assert_eq!(*b, 3);
         },
-        _ => fail!(),
+        _ => fail2!(),
     }
 }
 

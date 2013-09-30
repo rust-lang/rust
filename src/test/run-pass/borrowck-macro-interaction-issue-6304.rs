@@ -19,11 +19,11 @@ impl Foo {
     );
     match s {
       ~Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
-      _ => fail!()
+      _ => fail2!()
     }
   }
 
-  fn check_id(&mut self, s: int) { fail!() }
+  fn check_id(&mut self, s: int) { fail2!() }
 }
- 
+
 pub fn main() { }

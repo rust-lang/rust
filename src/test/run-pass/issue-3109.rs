@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    error!(("hi there!", "you"));
+    error2!("{:?}", ("hi there!", "you"));
 }

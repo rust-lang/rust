@@ -9,16 +9,16 @@
 // except according to those terms.
 
 
-fn baz() -> ! { fail!(); }
+fn baz() -> ! { fail2!(); }
 
 fn foo() {
     match Some::<int>(5) {
       Some::<int>(_x) => {
         let mut bar;
         match None::<int> { None::<int> => { bar = 5; } _ => { baz(); } }
-        info!(bar);
+        info2!("{:?}", bar);
       }
-      None::<int> => { info!("hello"); }
+      None::<int> => { info2!("hello"); }
     }
 }
 

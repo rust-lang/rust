@@ -11,7 +11,7 @@
 fn simple() {
     match ~true {
       ~true => { }
-      _ => { fail!(); }
+      _ => { fail2!(); }
     }
 }
 

@@ -23,10 +23,10 @@ fn start(c: &comm::Chan<comm::Chan<~str>>) {
     let mut b;
     a = p.recv();
     assert!(a == ~"A");
-    error!(a);
+    error2!("{:?}", a);
     b = p.recv();
     assert!(b == ~"B");
-    error!(b);
+    error2!("{:?}", b);
 }
 
 pub fn main() {

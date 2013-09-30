@@ -26,7 +26,8 @@ fn check_strs(actual: &str, expected: &str) -> bool
 {
         if actual != expected
         {
-            io::stderr().write_line(fmt!("Found %s, but expected %s", actual, expected));
+            io::stderr().write_line(format!("Found {}, but expected {}", actual,
+                                            expected));
             return false;
         }
         return true;
@@ -39,6 +40,6 @@ pub fn main()
 
         let t = Text(@~"foo");
         let u = Section(@~[~"alpha"], true, @~[t], @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
-        let v = fmt!("%?", u);    // this is the line that causes the seg fault
+        let v = format!("{:?}", u);    // this is the line that causes the seg fault
         assert!(v.len() > 0);
 }

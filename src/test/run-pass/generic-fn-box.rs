@@ -12,4 +12,4 @@
 
 fn f<T>(x: @T) -> @T { return x; }
 
-pub fn main() { let x = f(@3); info!(*x); }
+pub fn main() { let x = f(@3); info2!("{:?}", *x); }

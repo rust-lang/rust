@@ -14,7 +14,7 @@
 fn main() {
     // exits early if debug! evaluates its arguments, otherwise it
     // will hit the fail.
-    debug!({ if true { return; } });
+    debug2!("{:?}", { if true { return; } });
 
-    fail!();
+    fail2!();
 }

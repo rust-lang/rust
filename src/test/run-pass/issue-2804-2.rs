@@ -16,7 +16,7 @@
 use std::hashmap::HashMap;
 
 fn add_interfaces(managed_ip: ~str, device: HashMap<~str, int>)  {
-     error!("%s, %?", managed_ip, device.get(&~"interfaces"));
+     error2!("{}, {:?}", managed_ip, device.get(&~"interfaces"));
 }
 
 pub fn main() {}

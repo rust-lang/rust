@@ -38,11 +38,11 @@ impl<T> cat<T> {
 
     pub fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
-            error!("OM NOM NOM");
+            error2!("OM NOM NOM");
             self.how_hungry -= 2;
             return true;
         } else {
-            error!("Not hungry!");
+            error2!("Not hungry!");
             return false;
         }
     }
@@ -75,7 +75,7 @@ impl<T> MutableMap<int, T> for cat<T> {
         true
     }
 
-    fn find_mut<'a>(&'a mut self, _k: &int) -> Option<&'a mut T> { fail!() }
+    fn find_mut<'a>(&'a mut self, _k: &int) -> Option<&'a mut T> { fail2!() }
 
     fn remove(&mut self, k: &int) -> bool {
         if self.find(k).is_some() {
@@ -85,16 +85,16 @@ impl<T> MutableMap<int, T> for cat<T> {
         }
     }
 
-    fn pop(&mut self, _k: &int) -> Option<T> { fail!() }
+    fn pop(&mut self, _k: &int) -> Option<T> { fail2!() }
 
-    fn swap(&mut self, _k: int, _v: T) -> Option<T> { fail!() }
+    fn swap(&mut self, _k: int, _v: T) -> Option<T> { fail2!() }
 }
 
 impl<T> cat<T> {
     pub fn get<'a>(&'a self, k: &int) -> &'a T {
         match self.find(k) {
           Some(v) => { v }
-          None    => { fail!("epic fail"); }
+          None    => { fail2!("epic fail"); }
         }
     }
 
@@ -106,7 +106,7 @@ impl<T> cat<T> {
 impl<T> cat<T> {
     fn meow(&mut self) {
         self.meows += 1;
-        error!("Meow %d", self.meows);
+        error2!("Meow {}", self.meows);
         if self.meows % 5 == 0 {
             self.how_hungry += 1;
         }

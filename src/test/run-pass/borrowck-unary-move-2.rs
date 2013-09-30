@@ -14,7 +14,7 @@ struct noncopyable {
 
 impl Drop for noncopyable {
     fn drop(&mut self) {
-        error!("dropped");
+        error2!("dropped");
     }
 }
 

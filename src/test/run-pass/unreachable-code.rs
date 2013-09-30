@@ -15,7 +15,7 @@
 fn id(x: bool) -> bool { x }
 
 fn call_id() {
-    let c = fail!();
+    let c = fail2!();
     id(c);
 }
 
