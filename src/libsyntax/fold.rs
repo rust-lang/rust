@@ -16,7 +16,7 @@ use opt_vec::OptVec;
 
 // We may eventually want to be able to fold over type parameters, too.
 pub trait ast_fold {
-    fn fold_crate(&self, c: &Crate) -> Crate {
+    fn fold_crate(&self, c: Crate) -> Crate {
         noop_fold_crate(c, self)
     }
 
@@ -691,7 +691,7 @@ pub fn noop_fold_mod<T:ast_fold>(m: &_mod, folder: &T) -> _mod {
     }
 }
 
-pub fn noop_fold_crate<T:ast_fold>(c: &Crate, folder: &T) -> Crate {
+pub fn noop_fold_crate<T:ast_fold>(c: Crate, folder: &T) -> Crate {
     let fold_meta_item = |x| fold_meta_item_(x, folder);
     let fold_attribute = |x| fold_attribute_(x, folder);
 

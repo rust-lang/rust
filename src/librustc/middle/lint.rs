@@ -135,7 +135,7 @@ pub type LintDict = HashMap<&'static str, LintSpec>;
 enum AttributedNode<'self> {
     Item(@ast::item),
     Method(&'self ast::method),
-    Crate(@ast::Crate),
+    Crate(&'self ast::Crate),
 }
 
 #[deriving(Eq)]
@@ -1565,7 +1565,7 @@ impl Visitor<@mut Context> for LintCheckVisitor {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
+pub fn check_crate(tcx: ty::ctxt, crate: &ast::Crate) {
     let cx = @mut Context {
         dict: @get_lint_dict(),
         curr: SmallIntMap::new(),

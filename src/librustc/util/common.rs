@@ -17,10 +17,10 @@ use syntax::visit::Visitor;
 use std::hashmap::HashSet;
 use extra;
 
-pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
-    if !do_it { return thunk(); }
+pub fn time<T, U>(do_it: bool, what: ~str, u: U, f: &fn(U) -> T) -> T {
+    if !do_it { return f(u); }
     let start = extra::time::precise_time_s();
-    let rv = thunk();
+    let rv = f(u);
     let end = extra::time::precise_time_s();
     println!("time: {:3.3f} s\t{}", end - start, what);
     rv
