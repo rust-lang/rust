@@ -158,7 +158,7 @@ impl VecTypes {
 }
 
 pub fn trans_fixed_vstore(bcx: @mut Block,
-                          vstore_expr: @ast::Expr,
+                          vstore_expr: &ast::Expr,
                           content_expr: &ast::Expr,
                           dest: expr::Dest)
                        -> @mut Block {
@@ -187,8 +187,8 @@ pub fn trans_fixed_vstore(bcx: @mut Block,
 }
 
 pub fn trans_slice_vstore(bcx: @mut Block,
-                          vstore_expr: @ast::Expr,
-                          content_expr: @ast::Expr,
+                          vstore_expr: &ast::Expr,
+                          content_expr: &ast::Expr,
                           dest: expr::Dest)
                        -> @mut Block {
     //!
@@ -246,7 +246,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
 }
 
 pub fn trans_lit_str(bcx: @mut Block,
-                     lit_expr: @ast::Expr,
+                     lit_expr: &ast::Expr,
                      str_lit: @str,
                      dest: Dest)
                   -> @mut Block {
@@ -280,7 +280,7 @@ pub fn trans_lit_str(bcx: @mut Block,
 }
 
 
-pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @ast::Expr,
+pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: &ast::Expr,
                                     content_expr: &ast::Expr) -> DatumBlock {
     //!
     //
@@ -343,7 +343,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @a
 
 pub fn write_content(bcx: @mut Block,
                      vt: &VecTypes,
-                     vstore_expr: @ast::Expr,
+                     vstore_expr: &ast::Expr,
                      content_expr: &ast::Expr,
                      dest: Dest)
                   -> @mut Block {

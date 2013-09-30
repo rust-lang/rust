@@ -1407,7 +1407,10 @@ pub fn cleanup_and_leave(bcx: @mut Block,
     }
     match leave {
       Some(target) => Br(bcx, target),
-      None => { Resume(bcx, Load(bcx, bcx.fcx.personality.unwrap())); }
+      None => {
+          let ll_load = Load(bcx, bcx.fcx.personality.unwrap());
+          Resume(bcx, ll_load);
+      }
     }
 }
 
@@ -2485,7 +2488,7 @@ pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
     ty::item_path(ccx.tcx, ast_util::local_def(*id))
 }
 
-fn exported_name(ccx: @mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
+fn exported_name(ccx: &mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.to_owned(),
@@ -2979,7 +2982,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     return map;
 }
 
-pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
+pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
     let mut subcrates: ~[ValueRef] = ~[];
     let mut i = 1;
     let cstore = ccx.sess.cstore;
@@ -3030,7 +3033,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         }
 }
 
-pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
+pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
     if !*cx.sess.building_library { return; }
 
     let encode_inlined_item: encoder::encode_inlined_item =

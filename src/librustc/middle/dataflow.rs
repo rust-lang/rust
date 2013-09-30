@@ -422,7 +422,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_expr(&mut self,
-                 expr: @ast::Expr,
+                 expr: &ast::Expr,
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         debug!("DataFlowContext::walk_expr(expr=%s, in_out=%s)",
@@ -744,7 +744,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn pop_scopes(&mut self,
-                  from_expr: @ast::Expr,
+                  from_expr: &ast::Expr,
                   to_scope: &mut LoopScope,
                   in_out: &mut [uint]) {
         //! Whenever you have a `break` or a `loop` statement, flow
@@ -778,7 +778,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn break_from_to(&mut self,
-                     from_expr: @ast::Expr,
+                     from_expr: &ast::Expr,
                      to_scope: &mut LoopScope,
                      in_out: &mut [uint]) {
         self.pop_scopes(from_expr, to_scope, in_out);
@@ -811,7 +811,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     fn walk_call(&mut self,
                  _callee_id: ast::NodeId,
                  call_id: ast::NodeId,
-                 arg0: @ast::Expr,
+                 arg0: &ast::Expr,
                  args: &[@ast::Expr],
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
@@ -865,7 +865,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn find_scope<'a>(&self,
-                      expr: @ast::Expr,
+                      expr: &ast::Expr,
                       label: Option<ast::Name>,
                       loop_scopes: &'a mut ~[LoopScope]) -> &'a mut LoopScope {
         let index = match label {
@@ -899,7 +899,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         &mut loop_scopes[index]
     }
 
-    fn is_method_call(&self, expr: @ast::Expr) -> bool {
+    fn is_method_call(&self, expr: &ast::Expr) -> bool {
         self.dfcx.method_map.contains_key(&expr.id)
     }
 
