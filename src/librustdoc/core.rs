@@ -24,7 +24,7 @@ use clean;
 use clean::Clean;
 
 pub struct DocContext {
-    crate: @ast::Crate,
+    crate: ast::Crate,
     tycx: middle::ty::ctxt,
     sess: driver::session::Session
 }
@@ -60,7 +60,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: ~[Path]) -> DocContext {
 
     let mut crate = phase_1_parse_input(sess, cfg.clone(), &input);
     crate = phase_2_configure_and_expand(sess, cfg, crate);
-    let analysis = phase_3_run_analysis_passes(sess, crate);
+    let analysis = phase_3_run_analysis_passes(sess, &crate);
 
     debug!("crate: %?", crate);
     DocContext { crate: crate, tycx: analysis.ty_cx, sess: sess }
@@ -75,7 +75,7 @@ pub fn run_core (libs: ~[Path], path: &Path) -> clean::Crate {
     local_data::set(super::ctxtkey, ctxt);
 
     let v = @mut RustdocVisitor::new();
-    v.visit(ctxt.crate);
+    v.visit(&ctxt.crate);
 
     v.clean()
 }
