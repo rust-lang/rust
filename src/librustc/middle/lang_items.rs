@@ -32,6 +32,8 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::hashmap::HashMap;
+use std::iter::Enumerate;
+use std::vec;
 
 pub enum LangItem {
     FreezeTraitLangItem,               // 0
@@ -92,8 +94,8 @@ impl LanguageItems {
         }
     }
 
-    pub fn each_item(&self, f: &fn(Option<DefId>, uint) -> bool) -> bool {
-        self.items.iter().enumerate().advance(|(i, &item)| f(item, i))
+    pub fn items<'a>(&'a self) -> Enumerate<vec::VecIterator<'a, Option<DefId>>> {
+        self.items.iter().enumerate()
     }
 
     pub fn item_name(index: uint) -> &'static str {
