@@ -128,7 +128,7 @@ fn write_header(header: &str) {
 }
 
 fn write_row(label: &str, value: float) {
-    io::stdout().write_str(fmt!("%30s %f s\n", label, value));
+    io::stdout().write_str(format!("{:30s} {} s\n", label, value));
 }
 
 fn write_results(label: &str, results: &Results) {
