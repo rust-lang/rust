@@ -5363,7 +5363,7 @@ impl Resolver {
     }
 
     pub fn enforce_default_binding_mode(&mut self,
-                                        pat: @Pat,
+                                        pat: &Pat,
                                         pat_binding_mode: BindingMode,
                                         descr: &str) {
         match pat_binding_mode {

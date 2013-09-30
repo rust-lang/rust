@@ -1398,7 +1398,7 @@ fn insert_lllocals(bcx: @mut Block,
 }
 
 fn compile_guard(bcx: @mut Block,
-                     guard_expr: @ast::Expr,
+                     guard_expr: &ast::Expr,
                      data: &ArmData,
                      m: &[Match],
                      vals: &[ValueRef],
@@ -1826,7 +1826,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
 
 pub fn trans_match(bcx: @mut Block,
                    match_expr: &ast::Expr,
-                   discr_expr: @ast::Expr,
+                   discr_expr: &ast::Expr,
                    arms: &[ast::Arm],
                    dest: Dest) -> @mut Block {
     let _icx = push_ctxt("match::trans_match");
@@ -1876,7 +1876,7 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::Pat) -> BindingsMap {
 }
 
 fn trans_match_inner(scope_cx: @mut Block,
-                         discr_expr: @ast::Expr,
+                         discr_expr: &ast::Expr,
                          arms: &[ast::Arm],
                          dest: Dest) -> @mut Block {
     let _icx = push_ctxt("match::trans_match_inner");
