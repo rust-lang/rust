@@ -41,7 +41,16 @@ fn g() {
     assert!(r == 1);
 }
 
+fn h() {
+    let r = match (0,0) {
+        (0, m::aha) => 0,
+        (x, y)      => 1 + x + y,
+    };
+    assert!(r == 1);
+}
+
 fn main () {
     f();
     g();
+    h();
 }
