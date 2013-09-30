@@ -146,7 +146,7 @@ pub fn main_args(args: &[~str]) -> int {
         }
     }
     let ended = time::precise_time_ns();
-    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1000000000f64);
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 
     return 0;
 }
