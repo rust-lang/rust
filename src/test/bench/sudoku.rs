@@ -79,7 +79,7 @@ impl Sudoku {
                 g[row][col] = from_str::<uint>(comps[2]).unwrap() as u8;
             }
             else {
-                fail!("Invalid sudoku file");
+                fail2!("Invalid sudoku file");
             }
         }
         return Sudoku::new(g)
@@ -87,9 +87,9 @@ impl Sudoku {
 
     pub fn write(&self, writer: @io::Writer) {
         for row in range(0u8, 9u8) {
-            writer.write_str(fmt!("%u", self.grid[row][0] as uint));
+            writer.write_str(format!("{}", self.grid[row][0] as uint));
             for col in range(1u8, 9u8) {
-                writer.write_str(fmt!(" %u", self.grid[row][col] as uint));
+                writer.write_str(format!(" {}", self.grid[row][col] as uint));
             }
             writer.write_char('\n');
          }
@@ -117,7 +117,7 @@ impl Sudoku {
                 ptr = ptr + 1u;
             } else {
                 // no: redo this field aft recoloring pred; unless there is none
-                if ptr == 0u { fail!("No solution found for this sudoku"); }
+                if ptr == 0u { fail2!("No solution found for this sudoku"); }
                 ptr = ptr - 1u;
             }
         }

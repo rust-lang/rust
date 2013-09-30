@@ -75,7 +75,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
            let b = str::raw::from_utf8(k);
            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
            // to_ascii_move and to_str_move to not do a unnecessary copy.
-           buffer.push_str(fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
+           buffer.push_str(format!("{} {:0.3f}\n",
+                                   b.to_ascii().to_upper().to_str_ascii(), v));
        }
    }
 
@@ -142,11 +143,11 @@ fn make_sequence_processor(sz: uint,
    let buffer = match sz {
        1u => { sort_and_fmt(&freqs, total) }
        2u => { sort_and_fmt(&freqs, total) }
-       3u => { fmt!("%u\t%s", find(&freqs, ~"GGT"), "GGT") }
-       4u => { fmt!("%u\t%s", find(&freqs, ~"GGTA"), "GGTA") }
-       6u => { fmt!("%u\t%s", find(&freqs, ~"GGTATT"), "GGTATT") }
-      12u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATT"), "GGTATTTTAATT") }
-      18u => { fmt!("%u\t%s", find(&freqs, ~"GGTATTTTAATTTATAGT"), "GGTATTTTAATTTATAGT") }
+       3u => { format!("{}\t{}", find(&freqs, ~"GGT"), "GGT") }
+       4u => { format!("{}\t{}", find(&freqs, ~"GGTA"), "GGTA") }
+       6u => { format!("{}\t{}", find(&freqs, ~"GGTATT"), "GGTATT") }
+      12u => { format!("{}\t{}", find(&freqs, ~"GGTATTTTAATT"), "GGTATTTTAATT") }
+      18u => { format!("{}\t{}", find(&freqs, ~"GGTATTTTAATTTATAGT"), "GGTATTTTAATTTATAGT") }
         _ => { ~"" }
    };
 
