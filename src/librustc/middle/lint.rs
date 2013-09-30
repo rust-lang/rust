@@ -83,6 +83,7 @@ pub enum lint {
     unrecognized_lint,
     non_camel_case_types,
     non_uppercase_statics,
+    non_uppercase_pattern_statics,
     type_limits,
     unused_unsafe,
 
@@ -207,6 +208,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
          lint: non_uppercase_statics,
          desc: "static constants should have uppercase identifiers",
          default: allow
+     }),
+
+    ("non_uppercase_pattern_statics",
+     LintSpec {
+         lint: non_uppercase_pattern_statics,
+         desc: "static constants in match patterns should be uppercased",
+         default: warn
      }),
 
     ("managed_heap_memory",
