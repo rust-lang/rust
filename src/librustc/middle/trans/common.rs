@@ -670,7 +670,7 @@ impl Block {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    pub fn expr_to_str(&self, e: @ast::Expr) -> ~str {
+    pub fn expr_to_str(&self, e: &ast::Expr) -> ~str {
         e.repr(self.tcx())
     }
 
