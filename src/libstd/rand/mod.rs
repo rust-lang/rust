@@ -54,6 +54,7 @@ use u32;
 use u64;
 use uint;
 use vec;
+use os::getenv;
 
 pub use self::isaac::{IsaacRng, Isaac64Rng};
 pub use self::os::OSRng;
@@ -284,7 +285,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~{.rust}
+    /// ```rust
     /// use std::rand::{task_rng, Rng};
     ///
     /// fn main() {
@@ -292,7 +293,7 @@ pub trait Rng {
     ///    task_rng().fill_bytes(v);
     ///    printfln!(v);
     /// }
-    /// ~~~
+    /// ```
     fn fill_bytes(&mut self, mut dest: &mut [u8]) {
         // this relies on the lengths being transferred correctly when
         // transmuting between vectors like this.
@@ -700,12 +701,16 @@ pub struct StdRng { priv rng: IsaacRng }
 pub struct StdRng { priv rng: Isaac64Rng }
 
 impl StdRng {
+    /// Create a randomly seeded instance of `StdRng`. This reads
+    /// randomness from the OS to seed the PRNG.
     #[cfg(not(target_word_size="64"))]
-    fn new() -> StdRng {
+    pub fn new() -> StdRng {
         StdRng { rng: IsaacRng::new() }
     }
+    /// Create a randomly seeded instance of `StdRng`. This reads
+    /// randomness from the OS to seed the PRNG.
     #[cfg(target_word_size="64")]
-    fn new() -> StdRng {
+    pub fn new() -> StdRng {
         StdRng { rng: Isaac64Rng::new() }
     }
 }
@@ -830,25 +835,94 @@ pub unsafe fn seed<T: Clone>(n: uint) -> ~[T] {
     s
 }
 
-// used to make space in TLS for a random number generator
-local_data_key!(tls_rng_state: @mut StdRng)
+/// Controls how the task-local RNG is reseeded.
+enum TaskRngReseeder {
+    /// Reseed using the StdRng::new() function, i.e. reading new
+    /// randomness.
+    WithNew,
+    /// Don't reseed at all, e.g. when it has been explicitly seeded
+    /// by the user.
+    DontReseed
+}
 
-/**
- * Gives back a lazily initialized task-local random number generator,
- * seeded by the system. Intended to be used in method chaining style, ie
- * `task_rng().gen::<int>()`.
- */
-#[inline]
-pub fn task_rng() -> @mut StdRng {
-    let r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
+impl Default for TaskRngReseeder {
+    fn default() -> TaskRngReseeder { WithNew }
+}
+
+impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
+    fn reseed(&mut self, rng: &mut StdRng) {
+        match *self {
+            WithNew => *rng = StdRng::new(),
+            DontReseed => {}
+        }
+    }
+}
+static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
+/// The task-local RNG.
+pub type TaskRng = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
+
+// used to make space in TLS for a random number generator
+local_data_key!(TASK_RNG_KEY: @mut TaskRng)
+
+/// Retrieve the lazily-initialized task-local random number
+/// generator, seeded by the system. Intended to be used in method
+/// chaining style, e.g. `task_rng().gen::<int>()`.
+///
+/// The RNG provided will reseed itself from the operating system
+/// after generating a certain amount of randomness, unless it was
+/// explicitly seeded either by `seed_task_rng` or by setting the
+/// `RUST_SEED` environmental variable to some integer.
+///
+/// The internal RNG used is platform and architecture dependent, so
+/// may yield differing sequences on different computers, even when
+/// explicitly seeded with `seed_task_rng`. If absolute consistency is
+/// required, explicitly select an RNG, e.g. `IsaacRng` or
+/// `Isaac64Rng`.
+pub fn task_rng() -> @mut TaskRng {
+    let r = local_data::get(TASK_RNG_KEY, |k| k.map(|&k| *k));
     match r {
         None => {
-            let rng = @mut StdRng::new();
-            local_data::set(tls_rng_state, rng);
+            // check the environment
+            let (sub_rng, reseeder) = match getenv("RUST_SEED") {
+                None => (StdRng::new(), WithNew),
+
+                Some(s) => match from_str::<uint>(s) {
+                    None => fail2!("`RUST_SEED` is `{}`, should be a positive integer.", s),
+                    // explicitly seeded, so don't overwrite the seed later.
+                    Some(seed) => (SeedableRng::from_seed(&[seed]), DontReseed),
+                }
+            };
+
+            let rng = @mut reseeding::ReseedingRng::new(sub_rng,
+                                                        TASK_RNG_RESEED_THRESHOLD,
+                                                        reseeder);
+            local_data::set(TASK_RNG_KEY, rng);
             rng
         }
         Some(rng) => rng
     }
+}
+
+/// Explicitly seed (or reseed) the task-local random number
+/// generator. This stops the RNG from automatically reseeding itself.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+///
+/// fn main() {
+///     rand::seed_task_rng(&[10u]);
+///     printfln!("Same every time: %u", rand::random::<uint>());
+///
+///     rand::seed_task_rng(&[1u, 2, 3, 4, 5, 6, 7, 8]);
+///     printfln!("Same every time: %f", rand::random::<float>());
+/// }
+/// ```
+pub fn seed_task_rng(seed: &[uint]) {
+    let t_r = task_rng();
+    (*t_r).reseed(seed);
+    t_r.reseeder = DontReseed;
 }
 
 // Allow direct chaining with `task_rng`
@@ -863,10 +937,23 @@ impl<R: Rng> Rng for @mut R {
     }
 }
 
-/**
- * Returns a random value of a Rand type, using the task's random number
- * generator.
- */
+/// Generate a random value using the task-local random number
+/// generator.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand::random;
+///
+/// fn main() {
+///     if random() {
+///         let x = random();
+///         printfln!(2u * x);
+///     } else {
+///         printfln!(random::<float>());
+///     }
+/// }
+/// ```
 #[inline]
 pub fn random<T: Rand>() -> T {
     task_rng().gen()
@@ -1052,6 +1139,16 @@ mod test {
         assert!(small_sample.iter().all(|e| {
             **e >= MIN_VAL && **e <= MAX_VAL
         }));
+    }
+
+    #[test]
+    fn test_seed_task_rng() {
+        seed_task_rng([1]);
+        let first = random::<uint>();
+
+        seed_task_rng([1]);
+        let second = random::<uint>();
+        assert_eq!(first, second);
     }
 }
 
