@@ -1398,7 +1398,7 @@ impl to_str::ToStr for MapError {
 
 #[cfg(unix)]
 impl MemoryMap {
-    pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
+    pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         #[fixed_stack_segment]; #[inline(never)];
 
         use libc::off_t;
@@ -1441,7 +1441,7 @@ impl MemoryMap {
                 code => ErrUnknown(code)
             })
         } else {
-            Ok(~MemoryMap {
+            Ok(MemoryMap {
                data: r as *mut u8,
                len: len,
                kind: if fd == -1 {
@@ -1478,7 +1478,7 @@ impl Drop for MemoryMap {
 
 #[cfg(windows)]
 impl MemoryMap {
-    pub fn new(min_len: uint, options: ~[MapOption]) -> Result<~MemoryMap, MapError> {
+    pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         #[fixed_stack_segment]; #[inline(never)];
 
         use libc::types::os::arch::extra::{LPVOID, DWORD, SIZE_T, HANDLE};
@@ -1524,7 +1524,7 @@ impl MemoryMap {
             };
             match r as uint {
                 0 => Err(ErrVirtualAlloc(errno())),
-                _ => Ok(~MemoryMap {
+                _ => Ok(MemoryMap {
                    data: r as *mut u8,
                    len: len,
                    kind: MapVirtual
@@ -1560,7 +1560,7 @@ impl MemoryMap {
                                             0);
                 match r as uint {
                     0 => Err(ErrMapViewOfFile(errno())),
-                    _ => Ok(~MemoryMap {
+                    _ => Ok(MemoryMap {
                        data: r as *mut u8,
                        len: len,
                        kind: MapFile(mapping as *c_void)
@@ -1996,7 +1996,7 @@ mod tests {
     fn memory_map_rw() {
         use result::{Ok, Err};
 
-        let chunk = match os::MemoryMap::new(16, ~[
+        let chunk = match os::MemoryMap::new(16, [
             os::MapReadable,
             os::MapWritable
         ]) {
@@ -2050,7 +2050,7 @@ mod tests {
             }
             fd
         };
-        let chunk = match MemoryMap::new(size / 2, ~[
+        let chunk = match MemoryMap::new(size / 2, [
             MapReadable,
             MapWritable,
             MapFd(fd),
