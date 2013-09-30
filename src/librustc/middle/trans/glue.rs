@@ -552,12 +552,14 @@ pub fn decr_refcnt_maybe_free(bcx: @mut Block, box_ptr: ValueRef,
     let decr_bcx = sub_block(bcx, "decr");
     let free_bcx = sub_block(decr_bcx, "free");
     let next_bcx = sub_block(bcx, "next");
-    CondBr(bcx, IsNotNull(bcx, box_ptr), decr_bcx.llbb, next_bcx.llbb);
+    let llnotnull = IsNotNull(bcx, box_ptr);
+    CondBr(bcx, llnotnull, decr_bcx.llbb, next_bcx.llbb);
 
     let rc_ptr = GEPi(decr_bcx, box_ptr, [0u, abi::box_field_refcnt]);
     let rc = Sub(decr_bcx, Load(decr_bcx, rc_ptr), C_int(ccx, 1));
     Store(decr_bcx, rc, rc_ptr);
-    CondBr(decr_bcx, IsNull(decr_bcx, rc), free_bcx.llbb, next_bcx.llbb);
+    let llisnull = IsNull(decr_bcx, rc);
+    CondBr(decr_bcx, llisnull, free_bcx.llbb, next_bcx.llbb);
 
     let free_bcx = match box_ptr_ptr {
         Some(p) => free_ty(free_bcx, p, t),
