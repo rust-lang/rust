@@ -11,5 +11,5 @@
 // error-pattern:failed at 'explicit failure'
 
 fn main() {
-    fail!();
+    fail2!();
 }
