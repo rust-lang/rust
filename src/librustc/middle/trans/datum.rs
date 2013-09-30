@@ -197,7 +197,7 @@ pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
 
     if ty::type_is_voidish(ty) {
         ByValue
-    } else if ty::type_is_immediate(tcx, ty) {
+    } else if type_is_immediate(tcx, ty) {
         ByValue
     } else {
         ByRef(RevokeClean)
@@ -667,7 +667,7 @@ impl Datum {
                     ByValue => {
                         // Actually, this case cannot happen right
                         // now, because enums are never immediate.
-                        assert!(ty::type_is_immediate(bcx.tcx(), ty));
+                        assert!(type_is_immediate(bcx.tcx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 };
@@ -699,7 +699,7 @@ impl Datum {
                         )
                     }
                     ByValue => {
-                        assert!(ty::type_is_immediate(bcx.tcx(), ty));
+                        assert!(type_is_immediate(bcx.tcx(), ty));
                         (
                             Some(Datum {
                                 val: ExtractValue(bcx, self.val, 0),
