@@ -77,7 +77,7 @@ pub struct Callee {
     data: CalleeData
 }
 
-pub fn trans(bcx: @mut Block, expr: @ast::Expr) -> Callee {
+pub fn trans(bcx: @mut Block, expr: &ast::Expr) -> Callee {
     let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr=%s)", expr.repr(bcx.tcx()));
 
@@ -92,7 +92,7 @@ pub fn trans(bcx: @mut Block, expr: @ast::Expr) -> Callee {
     // any other expressions are closures:
     return datum_callee(bcx, expr);
 
-    fn datum_callee(bcx: @mut Block, expr: @ast::Expr) -> Callee {
+    fn datum_callee(bcx: @mut Block, expr: &ast::Expr) -> Callee {
         let DatumBlock {bcx, datum} = expr::trans_to_datum(bcx, expr);
         match ty::get(datum.ty).sty {
             ty::ty_bare_fn(*) => {
@@ -115,7 +115,7 @@ pub fn trans(bcx: @mut Block, expr: @ast::Expr) -> Callee {
         return Callee {bcx: bcx, data: Fn(fd)};
     }
 
-    fn trans_def(bcx: @mut Block, def: ast::Def, ref_expr: @ast::Expr) -> Callee {
+    fn trans_def(bcx: @mut Block, def: ast::Def, ref_expr: &ast::Expr) -> Callee {
         match def {
             ast::DefFn(did, _) |
             ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
@@ -447,8 +447,8 @@ pub fn trans_fn_ref_with_vtables(
 // Translating calls
 
 pub fn trans_call(in_cx: @mut Block,
-                  call_ex: @ast::Expr,
-                  f: @ast::Expr,
+                  call_ex: &ast::Expr,
+                  f: &ast::Expr,
                   args: CallArgs,
                   id: ast::NodeId,
                   dest: expr::Dest)
@@ -465,9 +465,9 @@ pub fn trans_call(in_cx: @mut Block,
 }
 
 pub fn trans_method_call(in_cx: @mut Block,
-                         call_ex: @ast::Expr,
+                         call_ex: &ast::Expr,
                          callee_id: ast::NodeId,
-                         rcvr: @ast::Expr,
+                         rcvr: &ast::Expr,
                          args: CallArgs,
                          dest: expr::Dest)
                          -> @mut Block {
@@ -834,7 +834,7 @@ pub enum AutorefArg {
 pub fn trans_arg_expr(bcx: @mut Block,
                       formal_arg_ty: ty::t,
                       self_mode: ty::SelfMode,
-                      arg_expr: @ast::Expr,
+                      arg_expr: &ast::Expr,
                       temp_cleanups: &mut ~[ValueRef],
                       autoref_arg: AutorefArg) -> Result {
     let _icx = push_ctxt("trans_arg_expr");
