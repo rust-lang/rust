@@ -1574,7 +1574,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
 fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_lang_items);
 
-    do ecx.tcx.lang_items.each_item |def_id, i| {
+    for (i, def_id) in ecx.tcx.lang_items.items() {
         for id in def_id.iter() {
             if id.crate == LOCAL_CRATE {
                 ebml_w.start_tag(tag_lang_items_item);
@@ -1590,8 +1590,7 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
                 ebml_w.end_tag();   // tag_lang_items_item
             }
         }
-        true
-    };
+    }
 
     ebml_w.end_tag();   // tag_lang_items
 }
