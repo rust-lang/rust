@@ -121,7 +121,7 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
         for pat in arm.pats.iter() {
 
             // Check that we do not match against a static NaN (#6804)
-            let pat_matches_nan: &fn(@Pat) -> bool = |p| {
+            let pat_matches_nan: &fn(&Pat) -> bool = |p| {
                 match cx.tcx.def_map.find(&p.id) {
                     Some(&DefStatic(did, false)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
@@ -893,7 +893,7 @@ pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         }
     }
 
-    let check_move: &fn(@Pat, Option<@Pat>) = |p, sub| {
+    let check_move: &fn(&Pat, Option<@Pat>) = |p, sub| {
         // check legality of moving out of the enum
 
         // x @ Foo(*) is legal, but x @ Foo(y) isn't.
