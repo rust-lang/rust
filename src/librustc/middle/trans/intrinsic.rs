@@ -30,7 +30,6 @@ use syntax::attr;
 use syntax::opt_vec;
 use util::ppaux::{ty_to_str};
 use middle::trans::machine::llsize_of;
-use middle::trans::type_::Type;
 
 pub fn trans_intrinsic(ccx: @mut CrateContext,
                        decl: ValueRef,
@@ -61,7 +60,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         // convert `i1` to a `bool`, and write to the out parameter
         let val = Call(bcx, llfn, [a, b], []);
         let result = ExtractValue(bcx, val, 0);
-        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool());
+        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), bcx.ccx().types.bool());
         let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
         let ret = Load(bcx, retptr);
         let ret = InsertValue(bcx, ret, result, 0);
@@ -73,19 +72,19 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     fn memcpy_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
-        let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
+        let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
         let size = match sizebits {
-            32 => C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32),
-            64 => C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64),
+            32 => C_i32(ccx, machine::llsize_of_real(ccx, lltp_ty) as i32),
+            64 => C_i64(ccx, machine::llsize_of_real(ccx, lltp_ty) as i64),
             _ => ccx.sess.fatal("Invalid value for sizebits")
         };
 
         let decl = bcx.fcx.llfn;
         let first_real_arg = bcx.fcx.arg_pos(0u);
-        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
-        let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p());
+        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), ccx.types.i8p());
+        let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), ccx.types.i8p());
         let count = get_param(decl, first_real_arg + 2);
-        let volatile = C_i1(false);
+        let volatile = C_i1(ccx, false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
         Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
@@ -94,19 +93,19 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     fn memset_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
-        let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
+        let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
         let size = match sizebits {
-            32 => C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32),
-            64 => C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64),
+            32 => C_i32(ccx, machine::llsize_of_real(ccx, lltp_ty) as i32),
+            64 => C_i64(ccx, machine::llsize_of_real(ccx, lltp_ty) as i64),
             _ => ccx.sess.fatal("Invalid value for sizebits")
         };
 
         let decl = bcx.fcx.llfn;
         let first_real_arg = bcx.fcx.arg_pos(0u);
-        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
+        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), ccx.types.i8p());
         let val = get_param(decl, first_real_arg + 1);
         let count = get_param(decl, first_real_arg + 2);
-        let volatile = C_i1(false);
+        let volatile = C_i1(ccx, false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
         Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
@@ -114,7 +113,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
     fn count_zeros_intrinsic(bcx: @mut Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
-        let y = C_i1(false);
+        let y = C_i1(bcx.ccx(), false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
         Ret(bcx, Call(bcx, llfn, [x, y], []));
     }
@@ -337,8 +336,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                     // code bloat when `transmute` is used on large structural
                     // types.
                     let lldestptr = fcx.llretptr.unwrap();
-                    let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
-                    let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p());
+                    let lldestptr = PointerCast(bcx, lldestptr, ccx.types.i8p());
+                    let llsrcptr = PointerCast(bcx, llsrcval, ccx.types.i8p());
 
                     let llsize = llsize_of(ccx, llintype);
                     call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
@@ -350,23 +349,23 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         }
         "needs_drop" => {
             let tp_ty = substs.tys[0];
-            Ret(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)));
+            Ret(bcx, C_bool(ccx, ty::type_needs_drop(ccx.tcx, tp_ty)));
         }
         "contains_managed" => {
             let tp_ty = substs.tys[0];
-            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).contains_managed()));
+            Ret(bcx, C_bool(ccx, ty::type_contents(ccx.tcx, tp_ty).contains_managed()));
         }
         "visit_tydesc" => {
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
-            let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
+            let td = PointerCast(bcx, td, ccx.types.tydesc().ptr_to());
             glue::call_tydesc_glue_full(bcx, visitor, td,
                                         abi::tydesc_field_visit_glue, None);
             RetVoid(bcx);
         }
         "frame_address" => {
             let frameaddress = ccx.intrinsics.get_copy(& &"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)], []);
+            let frameaddress_val = Call(bcx, frameaddress, [C_i32(ccx, 0i32)], []);
             let star_u8 = ty::mk_imm_ptr(
                 bcx.tcx(),
                 ty::mk_mach_uint(ast::ty_u8));
@@ -398,7 +397,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let llfty = type_of_rust_fn(bcx.ccx(), [], ty::mk_nil());
             let morestack_addr = decl_cdecl_fn(
                 bcx.ccx().llmod, "__morestack", llfty);
-            let morestack_addr = PointerCast(bcx, morestack_addr, Type::nil().ptr_to());
+            let morestack_addr = PointerCast(bcx, morestack_addr, ccx.types.nil().ptr_to());
             Ret(bcx, morestack_addr);
         }
         "offset" => {

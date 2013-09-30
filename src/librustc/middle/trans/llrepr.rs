@@ -25,13 +25,13 @@ impl<'self, T:LlvmRepr> LlvmRepr for &'self [T] {
 
 impl LlvmRepr for Type {
     fn llrepr(&self, ccx: &CrateContext) -> ~str {
-        ccx.tn.type_to_str(*self)
+        ccx.types.type_to_str(*self)
     }
 }
 
 impl LlvmRepr for ValueRef {
     fn llrepr(&self, ccx: &CrateContext) -> ~str {
-        ccx.tn.val_to_str(*self)
+        ccx.types.val_to_str(*self)
     }
 }
 

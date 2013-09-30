@@ -12,7 +12,7 @@
 use back::{upcall};
 use driver::session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
-use lib::llvm::{llvm, TargetData, TypeNames};
+use lib::llvm::{llvm, TargetData};
 use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::astencode;
@@ -25,12 +25,11 @@ use middle::trans::debuginfo;
 use middle::trans::common::{C_i32, C_null};
 use middle::ty;
 
-use middle::trans::type_::Type;
+use middle::trans::type_::{Type, CrateTypes};
 
 use std::c_str::ToCStr;
 use std::hash;
 use std::hashmap::{HashMap, HashSet};
-use std::local_data;
 use std::vec;
 use std::libc::c_uint;
 use syntax::ast;
@@ -43,8 +42,8 @@ pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
      llcx: ContextRef,
+     types: @CrateTypes,
      td: TargetData,
-     tn: TypeNames,
      externs: ExternMap,
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: HashMap<ast::NodeId, ValueRef>,
@@ -107,10 +106,6 @@ pub struct CrateContext {
      maps: astencode::Maps,
      stats: @mut Stats,
      upcalls: @upcall::Upcalls,
-     tydesc_type: Type,
-     int_type: Type,
-     float_type: Type,
-     opaque_vec_type: Type,
      builder: BuilderRef_res,
      crate_map: ValueRef,
      // Set when at least one function uses GC. Needed so that
@@ -134,7 +129,6 @@ impl CrateContext {
                -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
-            set_task_llcx(llcx);
             let llmod = do name.with_c_str |buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             };
@@ -148,30 +142,23 @@ impl CrateContext {
             };
             let targ_cfg = sess.targ_cfg;
 
+            let types = CrateTypes::new(targ_cfg.arch, llcx);
+
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-            let mut tn = TypeNames::new();
 
-            let mut intrinsics = base::declare_intrinsics(llmod);
+            let mut intrinsics = base::declare_intrinsics(llmod, types);
             if sess.opts.extra_debuginfo {
-                base::declare_dbg_intrinsics(llmod, &mut intrinsics);
+                base::declare_dbg_intrinsics(llmod, types, &mut intrinsics);
             }
-            let int_type = Type::int(targ_cfg.arch);
-            let float_type = Type::float(targ_cfg.arch);
-            let tydesc_type = Type::tydesc(targ_cfg.arch);
-            let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
 
-            let mut str_slice_ty = Type::named_struct("str_slice");
-            str_slice_ty.set_struct_body([Type::i8p(), int_type], false);
-
-            tn.associate_type("tydesc", &tydesc_type);
-            tn.associate_type("str_slice", &str_slice_ty);
-
-            let crate_map = decl_crate_map(sess, link_meta, llmod);
+            let crate_map = decl_crate_map(sess, link_meta, llmod, types);
             let dbg_cx = if sess.opts.debuginfo {
                 Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
             } else {
                 None
             };
+
+            let upcalls = upcall::declare_upcalls(types, llmod);
 
             if sess.count_llvm_insns() {
                 base::init_insn_ctxt()
@@ -182,7 +169,7 @@ impl CrateContext {
                   llmod: llmod,
                   llcx: llcx,
                   td: td,
-                  tn: tn,
+                  types: types,
                   externs: HashMap::new(),
                   intrinsics: intrinsics,
                   item_vals: HashMap::new(),
@@ -231,11 +218,7 @@ impl CrateContext {
                     llvm_insns: HashMap::new(),
                     fn_stats: ~[]
                   },
-                  upcalls: upcall::declare_upcalls(targ_cfg, llmod),
-                  tydesc_type: tydesc_type,
-                  int_type: int_type,
-                  float_type: float_type,
-                  opaque_vec_type: opaque_vec_type,
+                  upcalls: upcalls,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   crate_map: crate_map,
                   uses_gc: false,
@@ -253,9 +236,9 @@ impl CrateContext {
                                pointer: ValueRef,
                                indices: &[uint]) -> ValueRef {
         debug!("const_inbounds_gepi: pointer=%s indices=%?",
-               self.tn.val_to_str(pointer), indices);
+               self.types.val_to_str(pointer), indices);
         let v: ~[ValueRef] =
-            indices.iter().map(|i| C_i32(*i as i32)).collect();
+            indices.iter().map(|i| C_i32(self, *i as i32)).collect();
         unsafe {
             llvm::LLVMConstInBoundsGEP(pointer,
                                        vec::raw::to_ptr(v),
@@ -275,7 +258,7 @@ impl CrateContext {
         unsafe {
             let null = C_null(llptr_ty);
             llvm::LLVMConstPtrToInt(self.const_inbounds_gepi(null, indices),
-                                    self.int_type.to_ref())
+                                    self.types.i().to_ref())
         }
     }
 }
@@ -283,21 +266,5 @@ impl CrateContext {
 #[unsafe_destructor]
 impl Drop for CrateContext {
     fn drop(&mut self) {
-        unset_task_llcx();
     }
-}
-
-local_data_key!(task_local_llcx_key: @ContextRef)
-
-pub fn task_llcx() -> ContextRef {
-    let opt = local_data::get(task_local_llcx_key, |k| k.map_move(|k| *k));
-    *opt.expect("task-local LLVMContextRef wasn't ever set!")
-}
-
-fn set_task_llcx(c: ContextRef) {
-    local_data::set(task_local_llcx_key, @c);
-}
-
-fn unset_task_llcx() {
-    local_data::pop(task_local_llcx_key);
 }

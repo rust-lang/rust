@@ -69,7 +69,7 @@ use syntax::parse::token::special_idents;
 // closure".
 //
 // Typically an opaque closure suffices because we only manipulate it
-// by ptr.  The routine Type::opaque_box().ptr_to() returns an
+// by ptr.  The routine ccx.types.opaque_box().ptr_to() returns an
 // appropriate type for such an opaque closure; it allows access to
 // the box fields, but not the closure_data itself.
 //
@@ -426,7 +426,7 @@ pub fn make_closure_glue(
         cx: @mut Block,
         v: ValueRef,
         t: ty::t,
-        glue_fn: &fn(@mut Block, v: ValueRef, t: ty::t) -> @mut Block) -> @mut Block {
+        glue_fn: val_and_ty_fn) -> @mut Block {
     let _icx = push_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();
@@ -439,7 +439,7 @@ pub fn make_closure_glue(
             let box_ptr_v = Load(cx, box_cell_v);
             do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
                 let closure_ty = ty::mk_opaque_closure_ptr(tcx, sigil);
-                glue_fn(bcx, box_cell_v, closure_ty)
+                do glue_fn(bcx, closure_ty) { box_cell_v }
             }
         }
     }
@@ -457,9 +457,9 @@ pub fn make_opaque_cbox_drop_glue(
             bcx.tcx().sess.bug("trying to trans drop glue of @fn")
         }
         ast::OwnedSigil => {
-            glue::free_ty(
-                bcx, cboxptr,
-                ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
+            do glue::free_ty(bcx, ty::mk_opaque_closure_ptr(bcx.tcx(), sigil)) {
+                cboxptr
+            }
         }
     }
 }
@@ -482,7 +482,7 @@ pub fn make_opaque_cbox_free_glue(
     let ccx = bcx.ccx();
     do with_cond(bcx, IsNotNull(bcx, cbox)) |bcx| {
         // Load the type descr found in the cbox
-        let lltydescty = ccx.tydesc_type.ptr_to();
+        let lltydescty = ccx.types.tydesc().ptr_to();
         let cbox = Load(bcx, cbox);
         let tydescptr = GEPi(bcx, cbox, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);

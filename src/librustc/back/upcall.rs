@@ -9,9 +9,8 @@
 // except according to those terms.
 
 
-use driver::session;
 use middle::trans::base;
-use middle::trans::type_::Type;
+use middle::trans::type_::{CrateTypes};
 use lib::llvm::{ModuleRef, ValueRef};
 
 pub struct Upcalls {
@@ -22,30 +21,30 @@ pub struct Upcalls {
 
 macro_rules! upcall (
     (fn $name:ident($($arg:expr),+) -> $ret:expr) => ({
-        let fn_ty = Type::func([ $($arg),* ], &$ret);
+        let fn_ty = CrateTypes::func_([ $($arg),* ], &$ret);
         base::decl_cdecl_fn(llmod, ~"upcall_" + stringify!($name), fn_ty)
     });
     (nothrow fn $name:ident($($arg:expr),+) -> $ret:expr) => ({
-        let fn_ty = Type::func([ $($arg),* ], &$ret);
+        let fn_ty = CrateTypes::func_([ $($arg),* ], &$ret);
         let decl = base::decl_cdecl_fn(llmod, ~"upcall_" + stringify!($name), fn_ty);
         base::set_no_unwind(decl);
         decl
     });
     (nothrow fn $name:ident -> $ret:expr) => ({
-        let fn_ty = Type::func([], &$ret);
+        let fn_ty = CrateTypes::func_([], &$ret);
         let decl = base::decl_cdecl_fn(llmod, ~"upcall_" + stringify!($name), fn_ty);
         base::set_no_unwind(decl);
         decl
     })
 )
 
-pub fn declare_upcalls(targ_cfg: @session::config, llmod: ModuleRef) -> @Upcalls {
-    let opaque_ptr = Type::i8().ptr_to();
-    let int_ty = Type::int(targ_cfg.arch);
+pub fn declare_upcalls(types: &CrateTypes, llmod: ModuleRef) -> @Upcalls {
+    let opaque_ptr = types.i8p();
+    let int_ty = types.i();
 
     @Upcalls {
-        trace: upcall!(fn trace(opaque_ptr, opaque_ptr, int_ty) -> Type::void()),
-        rust_personality: upcall!(nothrow fn rust_personality -> Type::i32()),
-        reset_stack_limit: upcall!(nothrow fn reset_stack_limit -> Type::void())
+        trace: upcall!(fn trace(opaque_ptr, opaque_ptr, int_ty) -> types.void()),
+        rust_personality: upcall!(nothrow fn rust_personality -> types.i32()),
+        reset_stack_limit: upcall!(nothrow fn reset_stack_limit -> types.void())
     }
 }

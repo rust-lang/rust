@@ -450,7 +450,7 @@ impl Builder {
     pub fn atomic_load(&self, ptr: ValueRef, order: AtomicOrdering) -> ValueRef {
         self.count_insn("load.atomic");
         unsafe {
-            let align = llalign_of_min(self.ccx, self.ccx.int_type);
+            let align = llalign_of_min(self.ccx, self.ccx.types.i());
             llvm::LLVMBuildAtomicLoad(self.llbuilder, ptr, noname(), order, align as c_uint)
         }
     }
@@ -477,8 +477,8 @@ impl Builder {
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef) {
         debug!("Store %s -> %s",
-               self.ccx.tn.val_to_str(val),
-               self.ccx.tn.val_to_str(ptr));
+               self.ccx.types.val_to_str(val),
+               self.ccx.types.val_to_str(ptr));
         assert!(is_not_null(self.llbuilder));
         self.count_insn("store");
         unsafe {
@@ -488,10 +488,10 @@ impl Builder {
 
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
         debug!("Store %s -> %s",
-               self.ccx.tn.val_to_str(val),
-               self.ccx.tn.val_to_str(ptr));
+               self.ccx.types.val_to_str(val),
+               self.ccx.types.val_to_str(ptr));
         self.count_insn("store.atomic");
-        let align = llalign_of_min(self.ccx, self.ccx.int_type);
+        let align = llalign_of_min(self.ccx, self.ccx.types.i());
         unsafe {
             llvm::LLVMBuildAtomicStore(self.llbuilder, val, ptr, order, align as c_uint);
         }
@@ -512,13 +512,13 @@ impl Builder {
         // Small vector optimization. This should catch 100% of the cases that
         // we care about.
         if ixs.len() < 16 {
-            let mut small_vec = [ C_i32(0), ..16 ];
+            let mut small_vec = [ C_i32(self.ccx, 0), ..16 ];
             for (small_vec_e, &ix) in small_vec.mut_iter().zip(ixs.iter()) {
-                *small_vec_e = C_i32(ix as i32);
+                *small_vec_e = C_i32(self.ccx, ix as i32);
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = do ixs.iter().map |i| { C_i32(*i as i32) }.collect::<~[ValueRef]>();
+            let v = do ixs.iter().map |i| { C_i32(self.ccx, *i as i32) }.collect::<~[ValueRef]>();
             self.count_insn("gepi");
             self.inbounds_gep(base, v)
         }
@@ -738,8 +738,9 @@ impl Builder {
             self.count_insn("inlineasm");
             let asm = do comment_text.with_c_str |c| {
                 unsafe {
-                    llvm::LLVMConstInlineAsm(Type::func([], &Type::void()).to_ref(),
-                                             c, noname(), False, False)
+                    llvm::LLVMConstInlineAsm(
+                        self.ccx.types.func([], &self.ccx.types.void()).to_ref(),
+                        c, noname(), False, False)
                 }
             };
             self.call(asm, [], []);
@@ -758,12 +759,12 @@ impl Builder {
                          else          { lib::llvm::False };
 
         let argtys = do inputs.map |v| {
-            debug!("Asm Input Type: %?", self.ccx.tn.val_to_str(*v));
+            debug!("Asm Input Type: %?", self.ccx.types.val_to_str(*v));
             val_ty(*v)
         };
 
-        debug!("Asm Output Type: %?", self.ccx.tn.type_to_str(output));
-        let fty = Type::func(argtys, &output);
+        debug!("Asm Output Type: %?", self.ccx.types.type_to_str(output));
+        let fty = self.ccx.types.func(argtys, &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
@@ -830,9 +831,11 @@ impl Builder {
     pub fn vector_splat(&self, num_elts: uint, elt: ValueRef) -> ValueRef {
         unsafe {
             let elt_ty = val_ty(elt);
-            let Undef = llvm::LLVMGetUndef(Type::vector(&elt_ty, num_elts as u64).to_ref());
-            let vec = self.insert_element(Undef, elt, C_i32(0));
-            self.shuffle_vector(vec, Undef, C_null(Type::vector(&Type::i32(), num_elts as u64)))
+            let Undef = llvm::LLVMGetUndef(
+                    self.ccx.types.vector(&elt_ty, num_elts as u64).to_ref());
+            let vec = self.insert_element(Undef, elt, C_i32(self.ccx, 0));
+            self.shuffle_vector(vec, Undef, C_null(self.ccx.types.vector(&self.ccx.types.i32(),
+                                                                         num_elts as u64)))
         }
     }
 

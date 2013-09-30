@@ -317,7 +317,7 @@ impl Datum {
         let mut bcx = bcx;
 
         if action == DROP_EXISTING {
-            bcx = glue::drop_ty(bcx, dst, self.ty);
+            bcx = do glue::drop_ty(bcx, self.ty) { dst };
         }
 
         match self.mode {
@@ -329,7 +329,7 @@ impl Datum {
             }
         }
 
-        return glue::take_ty(bcx, dst, self.ty);
+        return do glue::take_ty(bcx, self.ty) { dst };
     }
 
     // This works like copy_val, except that it deinitializes the source.
@@ -348,7 +348,7 @@ impl Datum {
         }
 
         if action == DROP_EXISTING {
-            bcx = glue::drop_ty(bcx, dst, self.ty);
+            bcx = do glue::drop_ty(bcx, self.ty) { dst };
         }
 
         match self.mode {
@@ -405,7 +405,7 @@ impl Datum {
 
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         fmt!("Datum { val=%s, ty=%s, mode=%? }",
-             ccx.tn.val_to_str(self.val),
+             ccx.types.val_to_str(self.val),
              ty_to_str(ccx.tcx, self.ty),
              self.mode)
     }
@@ -433,7 +433,7 @@ impl Datum {
          * Yields the value itself. */
 
         if ty::type_is_voidish(self.ty) {
-            C_nil()
+            C_nil(bcx.ccx())
         } else {
             match self.mode {
                 ByValue => self.val,
@@ -553,7 +553,7 @@ impl Datum {
         }
 
         return match self.mode {
-            ByRef(_) => glue::drop_ty(bcx, self.val, self.ty),
+            ByRef(_) => do glue::drop_ty(bcx, self.ty) { self.val },
             ByValue => glue::drop_ty_immediate(bcx, self.val, self.ty)
         };
     }

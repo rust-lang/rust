@@ -18,7 +18,6 @@ use lib::llvm::{True, False, Bool};
 use lib::llvm::{llvm};
 use lib;
 use middle::lang_items::LangItem;
-use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
 use middle::trans::glue;
@@ -265,7 +264,9 @@ impl FunctionContext {
 
     pub fn get_llreturn(&mut self) -> BasicBlockRef {
         if self.llreturn.is_none() {
-            self.llreturn = Some(base::mk_return_basic_block(self.llfn));
+            self.llreturn = Some(do "return".with_c_str |buf| {
+                unsafe { llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx, self.llfn, buf) }
+            });
         }
 
         self.llreturn.unwrap()
@@ -310,7 +311,7 @@ pub struct TypeDroppingCleanupFunction {
 
 impl CleanupFunction for TypeDroppingCleanupFunction {
     fn clean(&self, block: @mut Block) -> @mut Block {
-        glue::drop_ty(block, self.val, self.t)
+        do glue::drop_ty(block, self.t) { self.val }
     }
 }
 
@@ -693,11 +694,11 @@ impl Block {
     }
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {
-        self.ccx().tn.val_to_str(val)
+        self.ccx().types.val_to_str(val)
     }
 
     pub fn llty_str(&self, ty: Type) -> ~str {
-        self.ccx().tn.type_to_str(ty)
+        self.ccx().types.type_to_str(ty)
     }
 
     pub fn ty_to_str(&self, t: ty::t) -> ~str {
@@ -815,36 +816,36 @@ pub fn C_floating(s: &str, t: Type) -> ValueRef {
     }
 }
 
-pub fn C_nil() -> ValueRef {
-    return C_struct([]);
+pub fn C_nil(cx: &CrateContext) -> ValueRef {
+    return C_struct(cx, []);
 }
 
-pub fn C_bool(val: bool) -> ValueRef {
-    C_integral(Type::bool(), val as u64, false)
+pub fn C_bool(cx: &CrateContext, val: bool) -> ValueRef {
+    C_integral(cx.types.bool(), val as u64, false)
 }
 
-pub fn C_i1(val: bool) -> ValueRef {
-    C_integral(Type::i1(), val as u64, false)
+pub fn C_i1(cx: &CrateContext, val: bool) -> ValueRef {
+    C_integral(cx.types.i1(), val as u64, false)
 }
 
-pub fn C_i32(i: i32) -> ValueRef {
-    return C_integral(Type::i32(), i as u64, true);
+pub fn C_i32(cx: &CrateContext, i: i32) -> ValueRef {
+    return C_integral(cx.types.i32(), i as u64, true);
 }
 
-pub fn C_i64(i: i64) -> ValueRef {
-    return C_integral(Type::i64(), i as u64, true);
+pub fn C_i64(cx: &CrateContext, i: i64) -> ValueRef {
+    return C_integral(cx.types.i64(), i as u64, true);
 }
 
 pub fn C_int(cx: &CrateContext, i: int) -> ValueRef {
-    return C_integral(cx.int_type, i as u64, true);
+    return C_integral(cx.types.i(), i as u64, true);
 }
 
 pub fn C_uint(cx: &CrateContext, i: uint) -> ValueRef {
-    return C_integral(cx.int_type, i as u64, false);
+    return C_integral(cx.types.i(), i as u64, false);
 }
 
-pub fn C_u8(i: uint) -> ValueRef {
-    return C_integral(Type::i8(), i as u64, false);
+pub fn C_u8(cx: &CrateContext, i: uint) -> ValueRef {
+    return C_integral(cx.types.i8(), i as u64, false);
 }
 
 
@@ -880,33 +881,33 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
 pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
-        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
-        C_struct([cs, C_uint(cx, len)])
+        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), cx.types.i8p().to_ref());
+        C_struct(cx, [cs, C_uint(cx, len)])
     }
 }
 
-pub fn C_zero_byte_arr(size: uint) -> ValueRef {
+pub fn C_zero_byte_arr(cx: &CrateContext, size: uint) -> ValueRef {
     unsafe {
         let mut i = 0u;
         let mut elts: ~[ValueRef] = ~[];
-        while i < size { elts.push(C_u8(0u)); i += 1u; }
-        return llvm::LLVMConstArray(Type::i8().to_ref(),
+        while i < size { elts.push(C_u8(cx, 0u)); i += 1u; }
+        return llvm::LLVMConstArray(cx.types.i8().to_ref(),
                                     vec::raw::to_ptr(elts), elts.len() as c_uint);
     }
 }
 
-pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
+pub fn C_struct(cx: &CrateContext, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do elts.as_imm_buf |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, False)
+            llvm::LLVMConstStructInContext(cx.llcx, ptr, len as c_uint, False)
         }
     }
 }
 
-pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
+pub fn C_packed_struct(cx: &CrateContext, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do elts.as_imm_buf |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, True)
+            llvm::LLVMConstStructInContext(cx.llcx, ptr, len as c_uint, True)
         }
     }
 }
@@ -925,10 +926,10 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_bytes(bytes: &[u8]) -> ValueRef {
+pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = cast::transmute(vec::raw::to_ptr(bytes));
-        return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
+        return llvm::LLVMConstStringInContext(cx.llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 
@@ -946,7 +947,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
         };
 
         debug!("const_get_elt(v=%s, us=%?, r=%s)",
-               cx.tn.val_to_str(v), us, cx.tn.val_to_str(r));
+               cx.types.val_to_str(v), us, cx.types.val_to_str(r));
 
         return r;
     }
@@ -1214,14 +1215,14 @@ pub fn filename_and_line_num_from_span(bcx: @mut Block,
                                        span: Span) -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
-    let filename = build::PointerCast(bcx, filename_cstr, Type::i8p());
+    let filename = build::PointerCast(bcx, filename_cstr, bcx.ccx().types.i8p());
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)
 }
 
 // Casts a Rust bool value to an i1.
 pub fn bool_to_i1(bcx: @mut Block, llval: ValueRef) -> ValueRef {
-    build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
+    build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(bcx.ccx(), false))
 }
 
 pub fn langcall(bcx: @mut Block, span: Option<Span>, msg: &str,

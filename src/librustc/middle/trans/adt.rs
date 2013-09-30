@@ -216,7 +216,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
 
 fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     let lltys = tys.map(|&ty| type_of::sizing_type_of(cx, ty));
-    let llty_rec = Type::struct_(lltys, packed);
+    let llty_rec = cx.types.struct_(lltys, packed);
     Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
@@ -239,7 +239,7 @@ pub fn sizing_fields_of(cx: &mut CrateContext, r: &Repr) -> ~[Type] {
 }
 fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
     match *r {
-        CEnum(*) => ~[Type::enum_discrim(cx)],
+        CEnum(*) => ~[cx.types.enum_discrim()],
         Univariant(ref st, _dtor) => struct_llfields(cx, st, sizing),
         NullablePointer{ nonnull: ref st, _ } => struct_llfields(cx, st, sizing),
         General(ref sts) => {
@@ -265,7 +265,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             let padding = largest_size - most_aligned.size;
 
             struct_llfields(cx, most_aligned, sizing)
-                + &[Type::array(&Type::i8(), padding)]
+                + &[cx.types.array(&cx.types.i8(), padding)]
         }
     }
 }
@@ -310,7 +310,7 @@ pub fn trans_get_discr(bcx: @mut Block, r: &Repr, scrutinee: ValueRef)
         General(ref cases) => load_discr(bcx, scrutinee, 0, (cases.len() - 1) as Disr),
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             ZExt(bcx, nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee),
-                 Type::enum_discrim(bcx.ccx()))
+                 bcx.ccx().types.enum_discrim())
         }
     }
 }
@@ -361,7 +361,7 @@ pub fn trans_case(bcx: @mut Block, r: &Repr, discr: Disr) -> _match::opt_result 
         }
         NullablePointer{ _ } => {
             assert!(discr == 0 || discr == 1);
-            _match::single_result(rslt(bcx, C_i1(discr != 0)))
+            _match::single_result(rslt(bcx, C_i1(bcx.ccx(), discr != 0)))
         }
     }
 }
@@ -379,7 +379,7 @@ pub fn trans_start_init(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr) {
         }
         Univariant(ref st, true) => {
             assert_eq!(discr, 0);
-            Store(bcx, C_bool(true),
+            Store(bcx, C_bool(bcx.ccx(), true),
                   GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
         Univariant(*) => {
@@ -457,7 +457,7 @@ fn struct_field_ptr(bcx: @mut Block, st: &Struct, val: ValueRef, ix: uint,
         let fields = do st.fields.map |&ty| {
             type_of::type_of(ccx, ty)
         };
-        let real_ty = Type::struct_(fields, st.packed);
+        let real_ty = ccx.types.struct_(fields, st.packed);
         PointerCast(bcx, val, real_ty.ptr_to())
     } else {
         val
@@ -505,7 +505,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
         }
         Univariant(ref st, _dro) => {
             assert_eq!(discr, 0);
-            C_struct(build_const_struct(ccx, st, vals))
+            ccx.types.struct_val(build_const_struct(ccx, st, vals))
         }
         General(ref cases) => {
             let case = &cases[discr];
@@ -513,18 +513,18 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
             let discr_ty = C_disr(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
-            C_struct(contents + &[padding(max_sz - case.size)])
+            ccx.types.struct_val(contents + &[padding(ccx, max_sz - case.size)])
         }
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             if discr == nndiscr {
-                C_struct(build_const_struct(ccx, nonnull, vals))
+                ccx.types.struct_val(build_const_struct(ccx, nonnull, vals))
             } else {
                 assert_eq!(vals.len(), 0);
                 let vals = do nonnull.fields.iter().enumerate().map |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
                 }.collect::<~[ValueRef]>();
-                C_struct(build_const_struct(ccx, nonnull, vals))
+                ccx.types.struct_val(build_const_struct(ccx, nonnull, vals))
             }
         }
     }
@@ -555,11 +555,11 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
         let target_offset = roundup(offset, type_align);
         offset = roundup(offset, val_align);
         if (offset != target_offset) {
-            cfields.push(padding(target_offset - offset));
+            cfields.push(padding(ccx, target_offset - offset));
             offset = target_offset;
         }
         let val = if is_undef(vals[i]) {
-            let wrapped = C_struct([vals[i]]);
+            let wrapped = C_struct(ccx, [vals[i]]);
             assert!(!is_undef(wrapped));
             wrapped
         } else {
@@ -572,8 +572,8 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
     return cfields;
 }
 
-fn padding(size: u64) -> ValueRef {
-    C_undef(Type::array(&Type::i8(), size))
+fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
+    C_undef(ccx.types.array(&ccx.types.i8(), size))
 }
 
 // XXX this utility routine should be somewhere more general
@@ -647,5 +647,5 @@ pub fn is_newtypeish(r: &Repr) -> bool {
 }
 
 fn C_disr(cx: &CrateContext, i: Disr) -> ValueRef {
-    return C_integral(cx.int_type, i, false);
+    return C_integral(cx.types.i(), i, false);
 }

@@ -1444,7 +1444,7 @@ fn compile_guard(bcx: @mut Block,
         for (_, &binding_info) in data.bindings_map.iter() {
             match binding_info.trmode {
                 TrByValue(llval) => {
-                    bcx = glue::drop_ty(bcx, llval, binding_info.ty);
+                    bcx = do glue::drop_ty(bcx, binding_info.ty) { llval };
                 }
                 TrByRef => {}
             }

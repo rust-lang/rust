@@ -25,8 +25,9 @@ pub fn make_free_glue(bcx: @mut Block, vptrptr: ValueRef, box_ty: ty::t)
     let not_null = IsNotNull(bcx, box_datum.val);
     do with_cond(bcx, not_null) |bcx| {
         let body_datum = box_datum.box_body(bcx);
-        let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
-                                body_datum.ty);
+        let bcx = do glue::drop_ty(bcx, body_datum.ty) {
+            body_datum.to_ref_llval(bcx)
+        };
         if ty::type_contents(bcx.tcx(), box_ty).contains_managed() {
             glue::trans_free(bcx, box_datum.val)
         } else {

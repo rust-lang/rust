@@ -169,7 +169,7 @@ pub enum Dest {
 impl Dest {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         match *self {
-            SaveIn(v) => fmt!("SaveIn(%s)", ccx.tn.val_to_str(v)),
+            SaveIn(v) => fmt!("SaveIn(%s)", ccx.types.val_to_str(v)),
             Ignore => ~"Ignore"
         }
     }
@@ -395,10 +395,10 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
                 // this value will either be 0 or sizeof(BoxHeader), depending
                 // on the type T.
                 let llopaque =
-                    PointerCast(bcx, source_data, Type::opaque().ptr_to());
+                    PointerCast(bcx, source_data, bcx.ccx().types.opaque().ptr_to());
                 let lltydesc_ptr_ptr =
                     PointerCast(bcx, vtable,
-                                bcx.ccx().tydesc_type.ptr_to().ptr_to());
+                                bcx.ccx().types.tydesc().ptr_to().ptr_to());
                 let lltydesc_ptr =
                     Load(bcx, lltydesc_ptr_ptr);
                 let borrow_offset_ptr =
@@ -557,7 +557,7 @@ fn trans_to_datum_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
     }
 
     fn nil(bcx: @mut Block, ty: ty::t) -> DatumBlock {
-        let datum = immediate_rvalue(C_nil(), ty);
+        let datum = immediate_rvalue(C_nil(bcx.ccx()), ty);
         DatumBlock {bcx: bcx, datum: datum}
     }
 }
@@ -956,14 +956,14 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
         // Rust is less strict than LLVM in this regard.
         let Result {bcx, val: ix_val} = trans_to_datum(bcx, idx).to_result();
         let ix_size = machine::llbitsize_of_real(bcx.ccx(), val_ty(ix_val));
-        let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.int_type);
+        let int_size = machine::llbitsize_of_real(bcx.ccx(), ccx.types.i());
         let ix_val = {
             if ix_size < int_size {
                 if ty::type_is_signed(expr_ty(bcx, idx)) {
-                    SExt(bcx, ix_val, ccx.int_type)
-                } else { ZExt(bcx, ix_val, ccx.int_type) }
+                    SExt(bcx, ix_val, ccx.types.i())
+                } else { ZExt(bcx, ix_val, ccx.types.i()) }
             } else if ix_size > int_size {
-                Trunc(bcx, ix_val, ccx.int_type)
+                Trunc(bcx, ix_val, ccx.types.i())
             } else {
                 ix_val
             }
@@ -1356,8 +1356,8 @@ fn trans_unary_datum(bcx: @mut Block,
                     let llcond = ICmp(bcx,
                                       lib::llvm::IntEQ,
                                       val,
-                                      C_bool(false));
-                    Select(bcx, llcond, C_bool(true), C_bool(false))
+                                      C_bool(bcx.ccx(), false));
+                    Select(bcx, llcond, C_bool(bcx.ccx(), true), C_bool(bcx.ccx(), false))
                 }
                 _ => Not(bcx, val)
             };
@@ -1507,7 +1507,7 @@ fn trans_eager_binop(bcx: @mut Block,
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if ty::type_is_bot(rhs_t) {
-            C_bool(false)
+            C_bool(bcx.ccx(), false)
         } else {
             if !ty::type_is_scalar(rhs_t) {
                 bcx.tcx().sess.span_bug(binop_expr.span,
@@ -1515,7 +1515,7 @@ fn trans_eager_binop(bcx: @mut Block,
             }
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
-            ZExt(bcx, cmpr.val, Type::i8())
+            ZExt(bcx, cmpr.val, bcx.ccx().types.i8())
         }
       }
       _ => {
@@ -1568,7 +1568,7 @@ fn trans_lazy_binop(bcx: @mut Block,
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, Type::bool(), [lhs, rhs], [past_lhs.llbb,
+    let phi = Phi(join, bcx.ccx().types.bool(), [lhs, rhs], [past_lhs.llbb,
                                                past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty);
@@ -1817,10 +1817,10 @@ pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
         let global;
         unsafe {
             global = do s.with_c_str |buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
+                llvm::LLVMAddGlobal(ccx.llmod, ccx.types.i32().to_ref(), buf)
             };
             llvm::LLVMSetGlobalConstant(global, False);
-            llvm::LLVMSetInitializer(global, C_null(Type::i32()));
+            llvm::LLVMSetInitializer(global, C_null(ccx.types.i32()));
             lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
         }
         ccx.module_data.insert(modname, global);

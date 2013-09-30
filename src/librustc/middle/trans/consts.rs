@@ -39,29 +39,29 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     match lit.node {
-      ast::lit_char(i) => C_integral(Type::char(), i as u64, false),
-      ast::lit_int(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
-      ast::lit_uint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
+      ast::lit_char(i) => C_integral(cx.types.char(), i as u64, false),
+      ast::lit_int(i, t) => C_integral(cx.types.int_from_ast_ty(t), i as u64, true),
+      ast::lit_uint(u, t) => C_integral(cx.types.uint_from_ast_ty(t), u, false),
       ast::lit_int_unsuffixed(i) => {
         let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_int_ty).sty {
           ty::ty_int(t) => {
-            C_integral(Type::int_from_ty(cx, t), i as u64, true)
+            C_integral(cx.types.int_from_ast_ty(t), i as u64, true)
           }
           ty::ty_uint(t) => {
-            C_integral(Type::uint_from_ty(cx, t), i as u64, false)
+            C_integral(cx.types.uint_from_ast_ty(t), i as u64, false)
           }
           _ => cx.sess.span_bug(lit.span,
                    fmt!("integer literal has type %s (expected int or uint)",
                         ty_to_str(cx.tcx, lit_int_ty)))
         }
       }
-      ast::lit_float(fs, t) => C_floating(fs, Type::float_from_ty(cx, t)),
+      ast::lit_float(fs, t) => C_floating(fs, cx.types.float_from_ast_ty(t)),
       ast::lit_float_unsuffixed(fs) => {
         let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_float_ty).sty {
           ty::ty_float(t) => {
-            C_floating(fs, Type::float_from_ty(cx, t))
+            C_floating(fs, cx.types.float_from_ast_ty(t))
           }
           _ => {
             cx.sess.span_bug(lit.span,
@@ -69,8 +69,8 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
           }
         }
       }
-      ast::lit_bool(b) => C_bool(b),
-      ast::lit_nil => C_nil(),
+      ast::lit_bool(b) => C_bool(cx, b),
+      ast::lit_nil => C_nil(cx),
       ast::lit_str(s) => C_estr_slice(cx, s)
     }
 }
@@ -94,7 +94,7 @@ pub fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr])
         let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e)));
         // If the vector contains enums, an LLVM array won't work.
         let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-            C_struct(vs)
+            C_struct(cx, vs)
         } else {
             C_array(llunitty, vs)
         };
@@ -186,7 +186,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
     match adjustment {
         None => { }
         Some(@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
-            llconst = C_struct([llconst, C_null(Type::opaque_box(cx).ptr_to())])
+            llconst = C_struct(cx, [llconst, C_null(cx.types.opaque_box().ptr_to())])
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
             cx.sess.span_bug(e.span, fmt!("unexpected static function: \
@@ -227,7 +227,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
                             match ty::get(ty).sty {
                                 ty::ty_evec(_, ty::vstore_fixed(*)) => {
                                     let size = machine::llsize_of(cx, val_ty(llconst));
-                                    llconst = C_struct([llptr, size]);
+                                    llconst = C_struct(cx, [llptr, size]);
                                 }
                                 _ => {}
                             }
@@ -373,9 +373,9 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                     ty::ty_bool => {
                         // Somewhat questionable, but I believe this is
                         // correct.
-                        let te = llvm::LLVMConstTrunc(te, Type::i1().to_ref());
+                        let te = llvm::LLVMConstTrunc(te, cx.types.i1().to_ref());
                         let te = llvm::LLVMConstNot(te);
-                        llvm::LLVMConstZExt(te, Type::bool().to_ref())
+                        llvm::LLVMConstZExt(te, cx.types.bool().to_ref())
                     }
                     _ => llvm::LLVMConstNot(te),
                 }
@@ -471,7 +471,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
               (expr::cast_enum, expr::cast_float)  => {
                 let repr = adt::represent_type(cx, basety);
                 let discr = adt::const_get_discrim(cx, repr, v);
-                let iv = C_integral(cx.int_type, discr, false);
+                let iv = C_integral(cx.types.i(), discr, false);
                 let ety_cast = expr::cast_type_kind(ety);
                 match ety_cast {
                     expr::cast_integral => {
@@ -559,7 +559,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                 llvm::LLVMSetGlobalConstant(gv, True);
                 SetLinkage(gv, PrivateLinkage);
                 let p = const_ptrcast(cx, gv, llunitty);
-                (C_struct([p, sz]), false)
+                (C_struct(cx, [p, sz]), false)
               }
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
@@ -575,7 +575,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
             };
             let vs = vec::from_elem(n, const_expr(cx, elem).first());
             let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-                C_struct(vs)
+                C_struct(cx, vs)
             } else {
                 C_array(llunitty, vs)
             };
