@@ -11,4 +11,4 @@
 // error-pattern:expected `~str` but found `int`
 
 static i: ~str = 10i;
-fn main() { info!(i); }
+fn main() { info2!("{:?}", i); }

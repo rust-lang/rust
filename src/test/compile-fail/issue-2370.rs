@@ -15,5 +15,5 @@ struct cat {
 
 fn main() {
     let nyan = cat { foo: () };
-    error!(*nyan);
+    error2!("{:?}", *nyan);
 }

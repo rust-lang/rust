@@ -3,7 +3,7 @@
 // terms of the binding, not the discriminant.
 
 struct Foo<A> { f: A }
-fn guard(_s: ~str) -> bool {fail!()}
+fn guard(_s: ~str) -> bool {fail2!()}
 fn touch<A>(_a: &A) {}
 
 fn f10() {

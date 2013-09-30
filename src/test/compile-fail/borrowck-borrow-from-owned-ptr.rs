@@ -18,7 +18,7 @@ struct Bar {
   int2: int,
 }
 
-fn make_foo() -> ~Foo { fail!() }
+fn make_foo() -> ~Foo { fail2!() }
 
 fn borrow_same_field_twice_mut_mut() {
     let mut foo = make_foo();

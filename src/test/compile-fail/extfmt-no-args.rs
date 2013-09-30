@@ -10,4 +10,4 @@
 
 // error-pattern:fmt! takes at least 1 argument
 
-fn main() { fmt!(); }
+fn main() { oldfmt!(); }

@@ -24,7 +24,7 @@ fn main() {
                 x = X(Left((0,0))); //~ ERROR cannot assign to `x`
                 (*f)()
             },
-            _ => fail!()
+            _ => fail2!()
         }
     }
 }
