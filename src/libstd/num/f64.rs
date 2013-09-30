@@ -12,6 +12,7 @@
 
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
+#[allow(non_uppercase_pattern_statics)];
 
 use default::Default;
 use libc::c_int;
