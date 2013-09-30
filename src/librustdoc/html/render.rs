@@ -1050,7 +1050,7 @@ fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
 
 fn item_struct(w: &mut io::Writer, it: &clean::Item, s: &clean::Struct) {
     write!(w, "<pre class='struct'>");
-    render_struct(w, it, Some(&s.generics), s.struct_type, s.fields, "");
+    render_struct(w, it, Some(&s.generics), s.struct_type, s.fields, "", true);
     write!(w, "</pre>");
 
     document(w, it);
@@ -1082,8 +1082,10 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
                             write!(w, "),\n");
                         }
                         clean::StructVariant(ref s) => {
+                            write!(w, "    ");
                             render_struct(w, v, None, s.struct_type, s.fields,
-                                          "    ");
+                                          "    ", false);
+                            write!(w, ",\n");
                         }
                     }
                 }
@@ -1102,9 +1104,11 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
                  g: Option<&clean::Generics>,
                  ty: doctree::StructType,
                  fields: &[clean::Item],
-                 tab: &str) {
-    write!(w, "{}struct {}",
+                 tab: &str,
+                 structhead: bool) {
+    write!(w, "{}{}{}",
            VisSpace(it.visibility),
+           if structhead {"struct "} else {""},
            it.name.get_ref().as_slice());
     match g {
         Some(g) => write!(w, "{}", *g),
@@ -1112,7 +1116,7 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
     }
     match ty {
         doctree::Plain => {
-            write!(w, " \\{\n");
+            write!(w, " \\{\n{}", tab);
             for field in fields.iter() {
                 match field.inner {
                     clean::StructFieldItem(ref ty) => {
