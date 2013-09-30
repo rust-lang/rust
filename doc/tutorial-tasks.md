@@ -99,7 +99,6 @@ execution. Like any closure, the function passed to `spawn` may capture
 an environment that it carries across tasks.
 
 ~~~
-# use std::io::println;
 # use std::task::spawn;
 # fn generate_task_number() -> int { 0 }
 // Generate some state locally
@@ -107,7 +106,7 @@ let child_task_number = generate_task_number();
 
 do spawn {
    // Capture it in the remote task
-   println(fmt!("I am child number %d", child_task_number));
+   println!("I am child number {}", child_task_number);
 }
 ~~~
 
@@ -282,7 +281,7 @@ fn fib(n: uint) -> uint {
 
 let mut delayed_fib = extra::future::Future::spawn (|| fib(50) );
 make_a_sandwich();
-println(fmt!("fib(50) = %?", delayed_fib.get()))
+println!("fib(50) = {:?}", delayed_fib.get())
 ~~~
 
 The call to `future::spawn` returns immediately a `future` object regardless of how long it
@@ -310,7 +309,7 @@ fn main() {
     for ft in futures.mut_iter()  {
         final_res += ft.get();
     }
-    println(fmt!("π^2/6 is not far from : %?", final_res));
+    println!("π^2/6 is not far from : {}", final_res);
 }
 ~~~
 
@@ -338,7 +337,7 @@ fn pnorm(nums: &~[float], p: uint) -> float {
 
 fn main() {
     let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
-    println(fmt!("Inf-norm = %?",  *numbers.iter().max().unwrap()));
+    println!("Inf-norm = {}",  *numbers.iter().max().unwrap());
 
     let numbers_arc = Arc::new(numbers);
 
@@ -349,7 +348,7 @@ fn main() {
         do spawn {
             let local_arc : Arc<~[float]> = port.recv();
             let task_numbers = local_arc.get();
-            println(fmt!("%u-norm = %?", num, pnorm(task_numbers, num)));
+            println!("{}-norm = {}", num, pnorm(task_numbers, num));
         }
     }
 }
