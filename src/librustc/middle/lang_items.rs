@@ -32,6 +32,8 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::hashmap::HashMap;
+use std::iter::Enumerate;
+use std::vec;
 
 pub enum LangItem {
     FreezeTraitLangItem,               // 0
@@ -92,8 +94,8 @@ impl LanguageItems {
         }
     }
 
-    pub fn each_item(&self, f: &fn(Option<DefId>, uint) -> bool) -> bool {
-        self.items.iter().enumerate().advance(|(i, &item)| f(item, i))
+    pub fn items<'a>(&'a self) -> Enumerate<vec::VecIterator<'a, Option<DefId>>> {
+        self.items.iter().enumerate()
     }
 
     pub fn item_name(index: uint) -> &'static str {
@@ -298,7 +300,7 @@ struct LanguageItemCollector<'self> {
     crate: &'self Crate,
     session: Session,
 
-    item_refs: HashMap<@str, uint>,
+    item_refs: HashMap<&'static str, uint>,
 }
 
 struct LanguageItemVisitor<'self> {
@@ -327,51 +329,51 @@ impl<'self> LanguageItemCollector<'self> {
                    -> LanguageItemCollector<'a> {
         let mut item_refs = HashMap::new();
 
-        item_refs.insert(@"freeze", FreezeTraitLangItem as uint);
-        item_refs.insert(@"send", SendTraitLangItem as uint);
-        item_refs.insert(@"sized", SizedTraitLangItem as uint);
+        item_refs.insert("freeze", FreezeTraitLangItem as uint);
+        item_refs.insert("send", SendTraitLangItem as uint);
+        item_refs.insert("sized", SizedTraitLangItem as uint);
 
-        item_refs.insert(@"drop", DropTraitLangItem as uint);
+        item_refs.insert("drop", DropTraitLangItem as uint);
 
-        item_refs.insert(@"add", AddTraitLangItem as uint);
-        item_refs.insert(@"sub", SubTraitLangItem as uint);
-        item_refs.insert(@"mul", MulTraitLangItem as uint);
-        item_refs.insert(@"div", DivTraitLangItem as uint);
-        item_refs.insert(@"rem", RemTraitLangItem as uint);
-        item_refs.insert(@"neg", NegTraitLangItem as uint);
-        item_refs.insert(@"not", NotTraitLangItem as uint);
-        item_refs.insert(@"bitxor", BitXorTraitLangItem as uint);
-        item_refs.insert(@"bitand", BitAndTraitLangItem as uint);
-        item_refs.insert(@"bitor", BitOrTraitLangItem as uint);
-        item_refs.insert(@"shl", ShlTraitLangItem as uint);
-        item_refs.insert(@"shr", ShrTraitLangItem as uint);
-        item_refs.insert(@"index", IndexTraitLangItem as uint);
+        item_refs.insert("add", AddTraitLangItem as uint);
+        item_refs.insert("sub", SubTraitLangItem as uint);
+        item_refs.insert("mul", MulTraitLangItem as uint);
+        item_refs.insert("div", DivTraitLangItem as uint);
+        item_refs.insert("rem", RemTraitLangItem as uint);
+        item_refs.insert("neg", NegTraitLangItem as uint);
+        item_refs.insert("not", NotTraitLangItem as uint);
+        item_refs.insert("bitxor", BitXorTraitLangItem as uint);
+        item_refs.insert("bitand", BitAndTraitLangItem as uint);
+        item_refs.insert("bitor", BitOrTraitLangItem as uint);
+        item_refs.insert("shl", ShlTraitLangItem as uint);
+        item_refs.insert("shr", ShrTraitLangItem as uint);
+        item_refs.insert("index", IndexTraitLangItem as uint);
 
-        item_refs.insert(@"eq", EqTraitLangItem as uint);
-        item_refs.insert(@"ord", OrdTraitLangItem as uint);
+        item_refs.insert("eq", EqTraitLangItem as uint);
+        item_refs.insert("ord", OrdTraitLangItem as uint);
 
-        item_refs.insert(@"str_eq", StrEqFnLangItem as uint);
-        item_refs.insert(@"uniq_str_eq", UniqStrEqFnLangItem as uint);
-        item_refs.insert(@"fail_", FailFnLangItem as uint);
-        item_refs.insert(@"fail_bounds_check",
+        item_refs.insert("str_eq", StrEqFnLangItem as uint);
+        item_refs.insert("uniq_str_eq", UniqStrEqFnLangItem as uint);
+        item_refs.insert("fail_", FailFnLangItem as uint);
+        item_refs.insert("fail_bounds_check",
                          FailBoundsCheckFnLangItem as uint);
-        item_refs.insert(@"exchange_malloc", ExchangeMallocFnLangItem as uint);
-        item_refs.insert(@"closure_exchange_malloc", ClosureExchangeMallocFnLangItem as uint);
-        item_refs.insert(@"exchange_free", ExchangeFreeFnLangItem as uint);
-        item_refs.insert(@"malloc", MallocFnLangItem as uint);
-        item_refs.insert(@"free", FreeFnLangItem as uint);
-        item_refs.insert(@"borrow_as_imm", BorrowAsImmFnLangItem as uint);
-        item_refs.insert(@"borrow_as_mut", BorrowAsMutFnLangItem as uint);
-        item_refs.insert(@"return_to_mut", ReturnToMutFnLangItem as uint);
-        item_refs.insert(@"check_not_borrowed",
+        item_refs.insert("exchange_malloc", ExchangeMallocFnLangItem as uint);
+        item_refs.insert("closure_exchange_malloc", ClosureExchangeMallocFnLangItem as uint);
+        item_refs.insert("exchange_free", ExchangeFreeFnLangItem as uint);
+        item_refs.insert("malloc", MallocFnLangItem as uint);
+        item_refs.insert("free", FreeFnLangItem as uint);
+        item_refs.insert("borrow_as_imm", BorrowAsImmFnLangItem as uint);
+        item_refs.insert("borrow_as_mut", BorrowAsMutFnLangItem as uint);
+        item_refs.insert("return_to_mut", ReturnToMutFnLangItem as uint);
+        item_refs.insert("check_not_borrowed",
                          CheckNotBorrowedFnLangItem as uint);
-        item_refs.insert(@"strdup_uniq", StrDupUniqFnLangItem as uint);
-        item_refs.insert(@"record_borrow", RecordBorrowFnLangItem as uint);
-        item_refs.insert(@"unrecord_borrow", UnrecordBorrowFnLangItem as uint);
-        item_refs.insert(@"start", StartFnLangItem as uint);
-        item_refs.insert(@"ty_desc", TyDescStructLangItem as uint);
-        item_refs.insert(@"ty_visitor", TyVisitorTraitLangItem as uint);
-        item_refs.insert(@"opaque", OpaqueStructLangItem as uint);
+        item_refs.insert("strdup_uniq", StrDupUniqFnLangItem as uint);
+        item_refs.insert("record_borrow", RecordBorrowFnLangItem as uint);
+        item_refs.insert("unrecord_borrow", UnrecordBorrowFnLangItem as uint);
+        item_refs.insert("start", StartFnLangItem as uint);
+        item_refs.insert("ty_desc", TyDescStructLangItem as uint);
+        item_refs.insert("ty_visitor", TyVisitorTraitLangItem as uint);
+        item_refs.insert("opaque", OpaqueStructLangItem as uint);
 
         LanguageItemCollector {
             crate: crate,
@@ -416,8 +418,8 @@ impl<'self> LanguageItemCollector<'self> {
             return;    // Didn't match.
         }
 
-        let item_index = self.item_refs.find(&value).map_move(|x| *x);
-        // prevent borrow checker from considering   ^~~~~~~~~~~
+        let item_index = self.item_refs.find_equiv(&value).map_move(|x| *x);
+        // prevent borrow checker from considering         ^~~~~~~~~~~
         // self to be borrowed (annoying)
 
         match item_index {
