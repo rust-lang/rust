@@ -613,7 +613,7 @@ pub fn each_lint(sess: session::Session,
                 ast::MetaList(_, ref metas) => metas,
                 _ => {
                     sess.span_err(meta.span, "malformed lint attribute");
-                    loop;
+                    continue;
                 }
             };
             for meta in metas.iter() {

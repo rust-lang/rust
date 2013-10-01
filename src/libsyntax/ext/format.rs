@@ -108,7 +108,7 @@ impl Context {
                                                         named `{}`", name));
                         self.ecx.parse_sess.span_diagnostic.span_note(
                             prev.span, "previously here");
-                        loop
+                        continue
                     }
                 }
                 self.names.insert(name, e);
@@ -592,7 +592,7 @@ impl Context {
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, &e) in self.args.iter().enumerate() {
-            if self.arg_types[i].is_none() { loop } // error already generated
+            if self.arg_types[i].is_none() { continue } // error already generated
 
             let name = self.ecx.ident_of(format!("__arg{}", i));
             let e = self.ecx.expr_addr_of(e.span, e);
@@ -601,7 +601,7 @@ impl Context {
                                         self.ecx.expr_ident(e.span, name)));
         }
         for (&name, &e) in self.names.iter() {
-            if !self.name_types.contains_key(&name) { loop }
+            if !self.name_types.contains_key(&name) { continue }
 
             let lname = self.ecx.ident_of(format!("__arg{}", name));
             let e = self.ecx.expr_addr_of(e.span, e);

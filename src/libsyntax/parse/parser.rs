@@ -1987,7 +1987,7 @@ impl Parser {
                   }
                   _ => self.unexpected()
                 }
-                loop;
+                continue;
             }
             if self.expr_is_complete(e) { break; }
             match *self.token {

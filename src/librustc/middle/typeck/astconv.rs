@@ -799,7 +799,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
                             ast::DefTrait(trait_did) => {
                                 if ty::try_add_builtin_trait(tcx, trait_did,
                                                              &mut builtin_bounds) {
-                                    loop; // success
+                                    continue; // success
                                 }
                             }
                             _ => { }

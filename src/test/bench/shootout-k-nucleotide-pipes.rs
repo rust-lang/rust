@@ -196,7 +196,7 @@ fn main() {
    while !rdr.eof() {
       let line: ~str = rdr.read_line();
 
-      if line.len() == 0u { loop; }
+      if line.len() == 0u { continue; }
 
       match (line[0] as char, proc_mode) {
 

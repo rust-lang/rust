@@ -200,7 +200,7 @@ impl<'self> FromBase64 for &'self str {
                 '0'..'9' => buf |= val + 0x04,
                 '+'|'-' => buf |= 0x3E,
                 '/'|'_' => buf |= 0x3F,
-                '\r'|'\n' => loop,
+                '\r'|'\n' => continue,
                 '=' => break,
                 _ => return Err(format!("Invalid character '{}' at position {}",
                                      self.char_at(idx), idx))

@@ -225,7 +225,7 @@ fn clean_srcpath(src: &str, f: &fn(&str)) {
     let p = Path(src);
     for c in p.components.iter() {
         if "." == *c {
-            loop
+            continue
         }
         if ".." == *c {
             f("up");
@@ -928,7 +928,7 @@ fn item_module(w: &mut io::Writer, cx: &Context,
             }
 
             _ => {
-                if myitem.name.is_none() { loop }
+                if myitem.name.is_none() { continue }
                 write!(w, "
                     <tr>
                         <td><a class='{class}' href='{href}'
@@ -1276,15 +1276,15 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
         match meth.doc_value() {
             Some(s) => {
                 write!(w, "<div class='docblock'>{}</div>", Markdown(s));
-                loop
+                continue
             }
             None => {}
         }
 
         // No documentation? Attempt to slurp in the trait's documentation
         let trait_id = match trait_id {
-            None => loop,
-            Some(id) if is_local(id) => loop,
+            None => continue,
+            Some(id) if is_local(id) => continue,
             Some(id) => id.node,
         };
         do local_data::get(cache_key) |cache| {
@@ -1369,7 +1369,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
     for item in m.items.iter() {
         let short = shortty(item);
         let myname = match item.name {
-            None => loop,
+            None => continue,
             Some(ref s) => s.to_owned(),
         };
         let v = map.find_or_insert_with(short.to_owned(), |_| ~[]);
