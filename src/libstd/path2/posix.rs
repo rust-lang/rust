@@ -15,7 +15,7 @@ use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::Eq;
 use from_str::FromStr;
-use iterator::{AdditiveIterator, Extendable, Iterator};
+use iter::{AdditiveIterator, Extendable, Iterator};
 use option::{Option, None, Some};
 use str;
 use str::Str;
@@ -303,7 +303,7 @@ impl Path {
 
     /// Converts the Path into an owned string, if possible
     pub fn into_str(self) -> Option<~str> {
-        str::from_bytes_owned_opt(self.repr)
+        str::from_utf8_owned_opt(self.repr)
     }
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
@@ -406,7 +406,7 @@ static dot_dot_static: &'static [u8] = &'static ['.' as u8, '.' as u8];
 mod tests {
     use super::*;
     use option::{Some, None};
-    use iterator::Iterator;
+    use iter::Iterator;
     use str;
     use vec::Vector;
 
@@ -589,7 +589,7 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::from_str($path);
-                    let left = path.$op().map(|&x| str::from_bytes_slice(x));
+                    let left = path.$op().map(|&x| str::from_utf8_slice(x));
                     assert_eq!(left, $exp);
                 }
             );
@@ -1006,7 +1006,7 @@ mod tests {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = $path;
-                    let left = path.chain_ref(|p| p.as_str());
+                    let left = path.and_then_ref(|p| p.as_str());
                     assert_eq!(left, $exp);
                 }
             );
@@ -1083,7 +1083,7 @@ mod tests {
                     let path = Path::from_str($path);
                     let other = Path::from_str($other);
                     let res = path.path_relative_from(&other);
-                    assert_eq!(res.chain_ref(|x| x.as_str()), $exp);
+                    assert_eq!(res.and_then_ref(|x| x.as_str()), $exp);
                 }
             )
         )
