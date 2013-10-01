@@ -1142,6 +1142,26 @@ mod test {
     }
 
     #[test]
+    fn test_std_rng_seeded() {
+        let s = unsafe {seed::<uint>(256)};
+        let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
+        let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
+        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+    }
+
+    #[test]
+    fn test_std_rng_reseed() {
+        let s = unsafe {seed::<uint>(256)};
+        let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
+        let string1 = r.gen_ascii_str(100);
+
+        r.reseed(s);
+
+        let string2 = r.gen_ascii_str(100);
+        assert_eq!(string1, string2);
+    }
+
+    #[test]
     fn test_seed_task_rng() {
         seed_task_rng([1]);
         let first = random::<uint>();
