@@ -1812,9 +1812,11 @@ fn test_rustpkg_test_output() {
     let workspace = create_local_package_with_test(&PkgId::new("foo"));
     let output = command_line_test([~"test", ~"foo"], &workspace);
     let output_str = str::from_utf8(output.output);
-    assert!(output_str.contains("test f ... ok"));
-    assert!(output_str.contains(
-        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured"));
+    // The first two assertions are separate because test output may
+    // contain color codes, which could appear between "test f" and "ok".
+    assert!(output_str.contains("test f"));
+    assert!(output_str.contains("ok"));
+    assert!(output_str.contains("1 passed; 0 failed; 0 ignored; 0 measured"));
 }
 
 #[test]
