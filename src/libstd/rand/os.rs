@@ -20,11 +20,7 @@ use rand::reader::ReaderRng;
 use rt::io::{file, Open, Read};
 
 #[cfg(windows)]
-use ptr;
-#[cfg(windows)]
 use cast;
-#[cfg(windows)]
-use libc::{GetLastError, FALSE};
 
 /// A random number generator that retrieves randomness straight from
 /// the operating system. On Unix-like systems this reads from
@@ -40,9 +36,6 @@ pub struct OSRng {
 /// `/dev/urandom`, on Windows this uses `CryptGenRandom`.
 ///
 /// This does not block.
-///
-/// XXX: it is unlikely that this is threadsafe with the use of
-/// GetLastError.
 #[cfg(windows)]
 pub struct OSRng {
     priv hcryptprov: raw::HCRYPTPROV
@@ -60,12 +53,10 @@ impl OSRng {
 
     /// Create a new `OSRng`.
     #[cfg(windows)]
+    #[fixed_stack_segment] #[inline(never)]
     pub fn new() -> OSRng {
-        let hcp = ptr::mut_null();
-        // TODO these two 0 constants are incorrect!
-        if unsafe { raw::CryptAcquireContext(hcp, ptr::null(), ptr::null(), 0, 0); } == FALSE {
-            fail!("CryptAcquireContext failed with error %u", unsafe {GetLastError()})
-        }
+        let mut hcp = 0;
+        unsafe {raw::rust_win32_rand_acquire(&mut hcp)};
 
         OSRng { hcryptprov: hcp }
     }
@@ -96,9 +87,12 @@ impl Rng for OSRng {
         self.fill_bytes(v);
         unsafe { cast::transmute(v) }
     }
+    #[fixed_stack_segment] #[inline(never)]
     fn fill_bytes(&mut self, v: &mut [u8]) {
-        if unsafe { raw::CryptGenRandom(self.hcryptprov, v.len(), v.unsafe_mut_ref(0)) } == FALSE {
-            fail!("CryptGenRandom failed with error %u", unsafe {GetLastError()})
+        use libc::DWORD;
+
+        do v.as_mut_buf |ptr, len| {
+            unsafe {raw::rust_win32_rand_gen(self.hcryptprov, len as DWORD, ptr)}
         }
     }
 }
@@ -111,27 +105,24 @@ impl Drop for OSRng {
     }
 
     #[cfg(windows)]
+    #[fixed_stack_segment] #[inline(never)]
     fn drop(&mut self) {
-        // TODO this 0 means?
-        if unsafe { raw::CryptReleaseContext(self.hcryptprov, 0)} == FALSE {
-            fail!("CryptReleaseContext failed with error %u", unsafe {GetLastError()})
-        }
+        unsafe {raw::rust_win32_rand_release(self.hcryptprov)}
     }
 }
 
-#[abi = "cdecl"]
 #[cfg(windows)]
 mod raw {
-    use libc::{LPCTSTR, DWORD, BOOL, BYTE};
+    use libc::{c_long, DWORD, BYTE};
 
-    enum HCRYPTPROV_opaque {}
-    pub type HCRYPTPROV = *CRYPTPROV;
+    pub type HCRYPTPROV = c_long;
+
+    // these functions are implemented so that they either succeed or
+    // abort(), so we can just assume they work when we call them.
     extern {
-        pub fn CryptAcquireContext(phProv: *mut HCRYPTPROV,
-                                   pszContainer: LPCTSTR, pszProvider: LPCTSTR,
-                                   dwProvType: DWORD, dwFlags: DWORD) -> BOOL;
-        pub fn CryptGenRandom(hProv: HCRYPTPROV, dwLen: DWORD, pbBuffer: *mut BYTE) -> BOOL;
-        pub fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
+        pub fn rust_win32_rand_acquire(phProv: *mut HCRYPTPROV);
+        pub fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD, pbBuffer: *mut BYTE);
+        pub fn rust_win32_rand_release(hProv: HCRYPTPROV);
     }
 }
 

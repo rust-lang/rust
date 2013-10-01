@@ -26,7 +26,7 @@ use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback};
 use borrow::{to_uint};
 use cell::Cell;
-use rand::{SeedableRng, XorShiftRng, Rng, Rand};
+use rand::{XorShiftRng, Rng, Rand};
 use iter::range;
 use vec::{OwnedVector};
 
@@ -862,6 +862,7 @@ fn new_sched_rng() -> XorShiftRng {
     use ptr::RawPtr;
     use vec::MutableVector;
     use iter::Iterator;
+    use rand::SeedableRng;
 
     // XXX: this could use io::native::file, when it works.
     let file = do "/dev/urandom".with_c_str |name| {

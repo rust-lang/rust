@@ -9,7 +9,6 @@ rust_localtime
 rust_timegm
 rust_mktime
 precise_time_ns
-rand_gen_seed
 rust_path_is_dir
 rust_path_exists
 rust_get_stdin
@@ -23,6 +22,9 @@ rust_log_console_off
 rust_should_log_console
 rust_unset_sigprocmask
 rust_env_pairs
+rust_win32_rand_acquire
+rust_win32_rand_gen
+rust_win32_rand_release
 upcall_rust_personality
 upcall_call_shim_on_c_stack
 upcall_call_shim_on_rust_stack
