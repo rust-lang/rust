@@ -1458,6 +1458,25 @@ mod tests {
     }
 
     #[test]
+    fn test_display() {
+        macro_rules! t(
+            ($path:expr, $exp:expr, $expf:expr) => (
+                {
+                    let path = Path::from_str($path);
+                    let f = format!("{}", path.display());
+                    assert_eq!(f.as_slice(), $exp);
+                    let f = format!("{}", path.filename_display());
+                    assert_eq!(f.as_slice(), $expf);
+                }
+            )
+        )
+
+        t!("foo", "foo", "foo");
+        t!("foo\\bar", "foo\\bar", "bar");
+        t!("\\", "\\", "");
+    }
+
+    #[test]
     fn test_components() {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
