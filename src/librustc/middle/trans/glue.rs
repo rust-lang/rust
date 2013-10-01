@@ -77,19 +77,9 @@ pub fn drop_ty(cx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
 
 pub fn drop_ty_immediate(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
     let _icx = push_ctxt("drop_ty_immediate");
-    match ty::get(t).sty {
-        ty::ty_uniq(_)
-      | ty::ty_evec(_, ty::vstore_uniq)
-      | ty::ty_estr(ty::vstore_uniq) => {
-        free_ty_immediate(bcx, v, t)
-      }
-        ty::ty_box(_) | ty::ty_opaque_box
-      | ty::ty_evec(_, ty::vstore_box)
-      | ty::ty_estr(ty::vstore_box) => {
-        decr_refcnt_maybe_free(bcx, v, None, t)
-      }
-      _ => bcx.tcx().sess.bug("drop_ty_immediate: non-box ty")
-    }
+    let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
+    Store(bcx, v, vp);
+    drop_ty(bcx, vp, t)
 }
 
 pub fn free_ty(cx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
