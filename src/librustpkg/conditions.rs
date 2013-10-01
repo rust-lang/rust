@@ -54,3 +54,9 @@ condition! {
 condition! {
     pub git_checkout_failed: (~str, Path) -> ();
 }
+
+condition! {
+    // str is output of applying the command (first component)
+    // to the args (second component)
+    pub command_failed: (~str, ~[~str], int) -> ~str;
+}

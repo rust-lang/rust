@@ -370,6 +370,7 @@ $(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2)) \
+		$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(2)) \
 		$$(TBIN$(1)_T_$(2)_H_$(3))/rustpkg$$(X_$(2)) \
 		$$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(2))
 	@$$(call E, compile_and_link: $$@)
