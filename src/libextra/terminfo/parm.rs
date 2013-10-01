@@ -278,7 +278,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     'e' => state = SeekIfEnd(0),
                     ';' => (),
 
-                    _ => return Err(fmt!("unrecognized format option %c", cur))
+                    _ => return Err(format!("unrecognized format option {}", cur))
                 }
             },
             PushParam => {
@@ -461,7 +461,7 @@ impl FormatOp {
             'x' => FormatHex,
             'X' => FormatHEX,
             's' => FormatString,
-            _ => fail!("bad FormatOp char")
+            _ => fail2!("bad FormatOp char")
         }
     }
     fn to_char(self) -> char {
@@ -551,7 +551,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                     s
                 }
                 _ => {
-                    return Err(fmt!("non-string on stack with %%%c", op.to_char()))
+                    return Err(format!("non-string on stack with %{}", op.to_char()))
                 }
             }
         }
@@ -606,23 +606,23 @@ mod test {
         for cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
-                    "Op %s succeeded incorrectly with 0 stack entries", *cap);
+                    "Op {} succeeded incorrectly with 0 stack entries", *cap);
             let p = if *cap == "%s" || *cap == "%l" { String(~"foo") } else { Number(97) };
             let res = expand((bytes!("%p1")).to_owned() + cap.as_bytes(), [p], vars);
             assert!(res.is_ok(),
-                    "Op %s failed with 1 stack entry: %s", *cap, res.unwrap_err());
+                    "Op {} failed with 1 stack entry: {}", *cap, res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
-                    "Binop %s succeeded incorrectly with 0 stack entries", *cap);
+                    "Binop {} succeeded incorrectly with 0 stack entries", *cap);
             let res = expand((bytes!("%{1}")).to_owned() + cap.as_bytes(), [], vars);
             assert!(res.is_err(),
-                    "Binop %s succeeded incorrectly with 1 stack entry", *cap);
+                    "Binop {} succeeded incorrectly with 1 stack entry", *cap);
             let res = expand((bytes!("%{1}%{2}")).to_owned() + cap.as_bytes(), [], vars);
             assert!(res.is_ok(),
-                    "Binop %s failed with 2 stack entries: %s", *cap, res.unwrap_err());
+                    "Binop {} failed with 2 stack entries: {}", *cap, res.unwrap_err());
         }
     }
 
@@ -635,15 +635,15 @@ mod test {
     fn test_comparison_ops() {
         let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
         for &(op, bs) in v.iter() {
-            let s = fmt!("%%{1}%%{2}%%%c%%d", op);
+            let s = format!("%\\{1\\}%\\{2\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), ~['0' as u8 + bs[0]]);
-            let s = fmt!("%%{1}%%{1}%%%c%%d", op);
+            let s = format!("%\\{1\\}%\\{1\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), ~['0' as u8 + bs[1]]);
-            let s = fmt!("%%{2}%%{1}%%%c%%d", op);
+            let s = format!("%\\{2\\}%\\{1\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
             assert_eq!(res.unwrap(), ~['0' as u8 + bs[2]]);

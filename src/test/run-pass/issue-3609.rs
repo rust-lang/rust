@@ -18,7 +18,7 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
             |buffer|
             {
                 for i in range(0u, buffer.len()) {
-                    error!("%?: %f", i, buffer[i])
+                    error2!("{}: {}", i, buffer[i])
                 }
             };
         samples_chan.send(GetSamples(name.clone(), callback));

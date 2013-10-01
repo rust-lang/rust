@@ -11,10 +11,10 @@
 // error-pattern:squirrelcupcake
 fn cmp() -> int {
     match (Some('a'), None::<char>) {
-        (Some(_), _) => { fail!("squirrelcupcake"); }
-        (_, Some(_)) => { fail!(); }
-        _                    => { fail!("wat"); }
+        (Some(_), _) => { fail2!("squirrelcupcake"); }
+        (_, Some(_)) => { fail2!(); }
+        _                    => { fail2!("wat"); }
     }
 }
 
-fn main() { error!(cmp()); }
+fn main() { error2!("{}", cmp()); }

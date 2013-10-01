@@ -28,7 +28,7 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
             (*s).clone()
         }
         option::Some(value) => {
-            error!("%s was expected to be a string but is a %?", key, value);
+            error2!("{} was expected to be a string but is a {:?}", key, value);
             default
         }
         option::None => {
@@ -42,12 +42,12 @@ fn add_interface(_store: int, managed_ip: ~str, data: extra::json::Json) -> (~st
     match &data {
         &extra::json::Object(ref interface) => {
             let name = lookup((*interface).clone(), ~"ifDescr", ~"");
-            let label = fmt!("%s-%s", managed_ip, name);
+            let label = format!("{}-{}", managed_ip, name);
 
             (label, bool_value(false))
         }
         _ => {
-            error!("Expected dict for %s interfaces but found %?", managed_ip, data);
+            error2!("Expected dict for {} interfaces but found {:?}", managed_ip, data);
             (~"gnos:missing-interface", bool_value(true))
         }
     }
@@ -65,7 +65,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::jso
         }
         _ =>
         {
-            error!("Expected list for %s interfaces but found %?", managed_ip,
+            error2!("Expected list for {} interfaces but found {:?}", managed_ip,
                    device.get(&~"interfaces"));
             ~[]
         }

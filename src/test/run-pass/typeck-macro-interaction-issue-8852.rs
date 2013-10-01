@@ -9,7 +9,7 @@ macro_rules! test(
             match (a, b) {
                 (A(x), A(y)) => A($e),
                 (B(x), B(y)) => B($e),
-                _ => fail!()
+                _ => fail2!()
             }
         }
     )

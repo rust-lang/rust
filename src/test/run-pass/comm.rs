@@ -15,13 +15,13 @@ pub fn main() {
     let (p, ch) = stream();
     let _t = task::spawn(|| child(&ch) );
     let y = p.recv();
-    error!("received");
-    error!(y);
+    error2!("received");
+    error2!("{:?}", y);
     assert_eq!(y, 10);
 }
 
 fn child(c: &Chan<int>) {
-    error!("sending");
+    error2!("sending");
     c.send(10);
-    error!("value sent");
+    error2!("value sent");
 }

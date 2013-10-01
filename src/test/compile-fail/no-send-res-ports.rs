@@ -33,6 +33,6 @@ fn main() {
 
     do task::spawn {
         let y = x.take();   //~ ERROR does not fulfill `Send`
-        error!(y);
+        error2!("{:?}", y);
     }
 }

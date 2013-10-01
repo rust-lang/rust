@@ -14,5 +14,5 @@ enum opt<T> { none, }
 
 pub fn main() {
     let x = none::<int>;
-    match x { none::<int> => { info!("hello world"); } }
+    match x { none::<int> => { info2!("hello world"); } }
 }

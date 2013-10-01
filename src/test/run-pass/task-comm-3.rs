@@ -16,24 +16,24 @@ use std::comm::SharedChan;
 use std::comm;
 use std::task;
 
-pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
+pub fn main() { info2!("===== WITHOUT THREADS ====="); test00(); }
 
 fn test00_start(ch: &SharedChan<int>, message: int, count: int) {
-    info!("Starting test00_start");
+    info2!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
-        info!("Sending Message");
+        info2!("Sending Message");
         ch.send(message + 0);
         i = i + 1;
     }
-    info!("Ending test00_start");
+    info2!("Ending test00_start");
 }
 
 fn test00() {
     let number_of_tasks: int = 16;
     let number_of_messages: int = 4;
 
-    info!("Creating tasks");
+    info2!("Creating tasks");
 
     let (po, ch) = comm::stream();
     let ch = comm::SharedChan::new(ch);
@@ -67,8 +67,8 @@ fn test00() {
     // Join spawned tasks...
     for r in results.iter() { r.recv(); }
 
-    info!("Completed: Final number is: ");
-    error!(sum);
+    info2!("Completed: Final number is: ");
+    error2!("{:?}", sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
     assert_eq!(sum, 480);

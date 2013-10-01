@@ -239,7 +239,7 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(*) => fail2!("non-desugared expr_for_loop"),
 
             ast::ExprLoop(ref body, _) => {
                 //
@@ -504,13 +504,13 @@ impl CFGBuilder {
                         }
                         self.tcx.sess.span_bug(
                             expr.span,
-                            fmt!("No loop scope for id %?", loop_id));
+                            format!("No loop scope for id {:?}", loop_id));
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            fmt!("Bad entry `%?` in def_map for label", r));
+                            format!("Bad entry `{:?}` in def_map for label", r));
                     }
                 }
             }

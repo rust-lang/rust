@@ -552,13 +552,13 @@ mod test {
 
         let pat = Pattern::new("a[0-9]b");
         for i in range(0, 10) {
-            assert!(pat.matches(fmt!("a%db", i)));
+            assert!(pat.matches(format!("a{}b", i)));
         }
         assert!(!pat.matches("a_b"));
 
         let pat = Pattern::new("a[!0-9]b");
         for i in range(0, 10) {
-            assert!(!pat.matches(fmt!("a%db", i)));
+            assert!(!pat.matches(format!("a{}b", i)));
         }
         assert!(pat.matches("a_b"));
 

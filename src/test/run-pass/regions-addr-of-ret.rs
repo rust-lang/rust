@@ -14,5 +14,5 @@ fn f<'a>(x : &'a int) -> &'a int {
 
 pub fn main() {
     let three = &3;
-    error!(fmt!("%d", *f(three)));
+    error2!("{}", *f(three));
 }

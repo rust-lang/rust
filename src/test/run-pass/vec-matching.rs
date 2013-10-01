@@ -1,14 +1,14 @@
 fn a() {
     let x = ~[1];
     match x {
-        [_, _, _, _, _, .._] => fail!(),
-        [.._, _, _, _, _] => fail!(),
-        [_, .._, _, _] => fail!(),
-        [_, _] => fail!(),
+        [_, _, _, _, _, .._] => fail2!(),
+        [.._, _, _, _, _] => fail2!(),
+        [_, .._, _, _] => fail2!(),
+        [_, _] => fail2!(),
         [a] => {
             assert_eq!(a, 1);
         }
-        [] => fail!()
+        [] => fail2!()
     }
 }
 
@@ -20,7 +20,7 @@ fn b() {
             assert_eq!(b, 2);
             assert_eq!(c, &[3]);
         }
-        _ => fail!()
+        _ => fail2!()
     }
     match x {
         [..a, b, c] => {
@@ -28,7 +28,7 @@ fn b() {
             assert_eq!(b, 2);
             assert_eq!(c, 3);
         }
-        _ => fail!()
+        _ => fail2!()
     }
     match x {
         [a, ..b, c] => {
@@ -36,7 +36,7 @@ fn b() {
             assert_eq!(b, &[2]);
             assert_eq!(c, 3);
         }
-        _ => fail!()
+        _ => fail2!()
     }
     match x {
         [a, b, c] => {
@@ -44,14 +44,14 @@ fn b() {
             assert_eq!(b, 2);
             assert_eq!(c, 3);
         }
-        _ => fail!()
+        _ => fail2!()
     }
 }
 
 fn c() {
     let x = [1];
     match x {
-        [2, .. _] => fail!(),
+        [2, .. _] => fail2!(),
         [.. _] => ()
     }
 }

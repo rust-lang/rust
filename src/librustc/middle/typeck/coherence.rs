@@ -76,7 +76,7 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
 
     match get(resolved_type).sty {
         ty_enum(*) | ty_trait(*) | ty_struct(*) => {
-            debug!("(getting base type) found base type");
+            debug2!("(getting base type) found base type");
             Some(resolved_type)
         }
 
@@ -85,7 +85,7 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
         ty_infer(*) | ty_param(*) | ty_self(*) | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err | ty_box(_) |
         ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
-            debug!("(getting base type) no base type; found %?",
+            debug2!("(getting base type) no base type; found {:?}",
                    get(original_type).sty);
             None
         }
@@ -135,7 +135,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
                     return Some(def_id);
                 }
                 _ => {
-                    fail!("get_base_type() returned a type that wasn't an \
+                    fail2!("get_base_type() returned a type that wasn't an \
                            enum, struct, or trait");
                 }
             }
@@ -160,7 +160,7 @@ struct CoherenceCheckVisitor { cc: CoherenceChecker }
 impl visit::Visitor<()> for CoherenceCheckVisitor {
     fn visit_item(&mut self, item:@item, _:()) {
 
-//                debug!("(checking coherence) item '%s'",
+//                debug2!("(checking coherence) item '{}'",
 //                       self.cc.crate_context.tcx.sess.str_of(item.ident));
 
                 match item.node {
@@ -266,8 +266,8 @@ impl CoherenceChecker {
         // base type.
 
         if associated_traits.len() == 0 {
-            debug!("(checking implementation) no associated traits for item \
-                    '%s'",
+            debug2!("(checking implementation) no associated traits for item \
+                    '{}'",
                    self.crate_context.tcx.sess.str_of(item.ident));
 
             match get_base_type_def_id(self.inference_context,
@@ -290,7 +290,7 @@ impl CoherenceChecker {
         for associated_trait in associated_traits.iter() {
             let trait_ref = ty::node_id_to_trait_ref(
                 self.crate_context.tcx, associated_trait.ref_id);
-            debug!("(checking implementation) adding impl for trait '%s', item '%s'",
+            debug2!("(checking implementation) adding impl for trait '{}', item '{}'",
                    trait_ref.repr(self.crate_context.tcx),
                    self.crate_context.tcx.sess.str_of(item.ident));
 
@@ -325,7 +325,7 @@ impl CoherenceChecker {
                                        trait_ref: &ty::TraitRef,
                                        all_methods: &mut ~[@Method]) {
         let tcx = self.crate_context.tcx;
-        debug!("instantiate_default_methods(impl_id=%?, trait_ref=%s)",
+        debug2!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
 
         let impl_poly_type = ty::lookup_item_type(tcx, impl_id);
@@ -336,7 +336,7 @@ impl CoherenceChecker {
             let new_id = tcx.sess.next_node_id();
             let new_did = local_def(new_id);
 
-            debug!("new_did=%? trait_method=%s", new_did, trait_method.repr(tcx));
+            debug2!("new_did={:?} trait_method={}", new_did, trait_method.repr(tcx));
 
             // Create substitutions for the various trait parameters.
             let new_method_ty =
@@ -348,7 +348,7 @@ impl CoherenceChecker {
                     *trait_method,
                     Some(trait_method.def_id));
 
-            debug!("new_method_ty=%s", new_method_ty.repr(tcx));
+            debug2!("new_method_ty={}", new_method_ty.repr(tcx));
             all_methods.push(new_method_ty);
 
             // construct the polytype for the method based on the method_ty
@@ -364,7 +364,7 @@ impl CoherenceChecker {
                 generics: new_generics,
                 ty: ty::mk_bare_fn(tcx, new_method_ty.fty.clone())
             };
-            debug!("new_polytype=%s", new_polytype.repr(tcx));
+            debug2!("new_polytype={}", new_polytype.repr(tcx));
 
             tcx.tcache.insert(new_did, new_polytype);
             tcx.methods.insert(new_did, new_method_ty);
@@ -440,7 +440,7 @@ impl CoherenceChecker {
                         let session = self.crate_context.tcx.sess;
                         session.span_err(
                             self.span_of_impl(implementation_b),
-                            fmt!("conflicting implementations for trait `%s`",
+                            format!("conflicting implementations for trait `{}`",
                                  ty::item_path_str(self.crate_context.tcx,
                                                    trait_def_id)));
                         session.span_note(self.span_of_impl(implementation_a),
@@ -557,11 +557,11 @@ impl CoherenceChecker {
 
         let r = ty::trait_methods(tcx, trait_did);
         for method in r.iter() {
-            debug!("checking for %s", method.ident.repr(tcx));
+            debug2!("checking for {}", method.ident.repr(tcx));
             if provided_names.contains(&method.ident.name) { loop; }
 
             tcx.sess.span_err(trait_ref_span,
-                              fmt!("missing method `%s`",
+                              format!("missing method `{}`",
                                    tcx.sess.str_of(method.ident)));
         }
     }

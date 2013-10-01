@@ -59,8 +59,8 @@ fn main() {
 
     let maxf = max as float;
 
-    io::stdout().write_str(fmt!("insert(): %? seconds\n", checkf));
-    io::stdout().write_str(fmt!("        : %f op/sec\n", maxf/checkf));
-    io::stdout().write_str(fmt!("get()   : %? seconds\n", appendf));
-    io::stdout().write_str(fmt!("        : %f op/sec\n", maxf/appendf));
+    io::stdout().write_str(format!("insert(): {:?} seconds\n", checkf));
+    io::stdout().write_str(format!("        : {} op/sec\n", maxf/checkf));
+    io::stdout().write_str(format!("get()   : {:?} seconds\n", appendf));
+    io::stdout().write_str(format!("        : {} op/sec\n", maxf/appendf));
 }

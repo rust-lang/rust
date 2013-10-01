@@ -430,7 +430,7 @@ impl Context {
                 return *k;
             }
         }
-        fail!("unregistered lint %?", lint);
+        fail2!("unregistered lint {:?}", lint);
     }
 
     fn span_lint(&self, lint: lint, span: Span, msg: &str) {
@@ -444,9 +444,9 @@ impl Context {
         let mut note = None;
         let msg = match src {
             Default | CommandLine => {
-                fmt!("%s [-%c %s%s]", msg, match level {
+                format!("{} [-{} {}{}]", msg, match level {
                         warn => 'W', deny => 'D', forbid => 'F',
-                        allow => fail!()
+                        allow => fail2!()
                     }, self.lint_to_str(lint).replace("_", "-"),
                     if src == Default { " (default)" } else { "" })
             },
@@ -458,7 +458,7 @@ impl Context {
         match level {
             warn =>          { self.tcx.sess.span_warn(span, msg); }
             deny | forbid => { self.tcx.sess.span_err(span, msg);  }
-            allow => fail!(),
+            allow => fail2!(),
         }
 
         for &span in note.iter() {
@@ -483,7 +483,7 @@ impl Context {
                     self.span_lint(
                         unrecognized_lint,
                         meta.span,
-                        fmt!("unknown `%s` attribute: `%s`",
+                        format!("unknown `{}` attribute: `{}`",
                         level_to_str(level), lintname));
                 }
                 Some(lint) => {
@@ -491,7 +491,7 @@ impl Context {
                     let now = self.get_level(lint);
                     if now == forbid && level != forbid {
                         self.tcx.sess.span_err(meta.span,
-                        fmt!("%s(%s) overruled by outer forbid(%s)",
+                        format!("{}({}) overruled by outer forbid({})",
                         level_to_str(level),
                         lintname, lintname));
                     } else if now != level {
@@ -757,7 +757,7 @@ impl TypeLimitsLintVisitor {
             ast::BiGt => v >= min,
             ast::BiGe => v > min,
             ast::BiEq | ast::BiNe => v >= min && v <= max,
-            _ => fail!()
+            _ => fail2!()
         }
     }
 
@@ -821,7 +821,7 @@ impl TypeLimitsLintVisitor {
                         ast::lit_int_unsuffixed(v) => v,
                         _ => return true
                     },
-                    _ => fail!()
+                    _ => fail2!()
                 };
                 self.is_valid(norm_binop, lit_val, min, max)
             }
@@ -834,7 +834,7 @@ impl TypeLimitsLintVisitor {
                         ast::lit_int_unsuffixed(v) => v as u64,
                         _ => return true
                     },
-                    _ => fail!()
+                    _ => fail2!()
                 };
                 self.is_valid(norm_binop, lit_val, min, max)
             }
@@ -1071,7 +1071,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
         if !is_camel_case(cx.tcx, ident) {
             cx.span_lint(
                 non_camel_case_types, span,
-                fmt!("%s `%s` should have a camel case identifier",
+                format!("{} `{}` should have a camel case identifier",
                     sort, cx.tcx.sess.str_of(ident)));
         }
     }
@@ -1437,7 +1437,7 @@ impl StabilityLintVisitor {
                         None => return
                     }
                 }
-                _ => cx.tcx.sess.bug(fmt!("handle_def: %? not found", id))
+                _ => cx.tcx.sess.bug(format!("handle_def: {:?} not found", id))
             }
         } else {
             // cross-crate
@@ -1466,9 +1466,9 @@ impl StabilityLintVisitor {
 
         let msg = match stability {
             Some(attr::Stability { text: Some(ref s), _ }) => {
-                fmt!("use of %s item: %s", label, *s)
+                format!("use of {} item: {}", label, *s)
             }
-            _ => fmt!("use of %s item", label)
+            _ => format!("use of {} item", label)
         };
 
         cx.span_lint(lint, sp, msg);
@@ -1613,8 +1613,8 @@ pub fn check_crate(tcx: ty::ctxt, crate: &ast::Crate) {
         for t in v.iter() {
             match *t {
                 (lint, span, ref msg) =>
-                    tcx.sess.span_bug(span, fmt!("unprocessed lint %? at %s: \
-                                                  %s",
+                    tcx.sess.span_bug(span, format!("unprocessed lint {:?} at {}: \
+                                                  {}",
                                                  lint,
                                                  ast_map::node_id_to_str(
                                                  tcx.items,

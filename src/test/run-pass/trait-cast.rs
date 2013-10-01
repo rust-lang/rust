@@ -38,7 +38,7 @@ impl to_str for Tree {
     fn to_str_(&self) -> ~str {
         let (l, r) = (self.left, self.right);
         let val = &self.val;
-        fmt!("[%s, %s, %s]", val.to_str_(), l.to_str_(), r.to_str_())
+        format!("[{}, {}, {}]", val.to_str_(), l.to_str_(), r.to_str_())
     }
 }
 

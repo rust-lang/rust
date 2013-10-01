@@ -683,15 +683,15 @@ mod math {
     type complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
-# fail!();
+# fail2!();
     }
     fn cos(f: f64) -> f64 {
         ...
-# fail!();
+# fail2!();
     }
     fn tan(f: f64) -> f64 {
         ...
-# fail!();
+# fail2!();
     }
 }
 ~~~~~~~~
@@ -817,12 +817,14 @@ An example of `use` declarations:
 use std::num::sin;
 use std::option::{Some, None};
 
-fn main() {
-    // Equivalent to 'info!(std::num::sin(1.0));'
-    info!(sin(1.0));
+# fn foo<T>(_: T){}
 
-    // Equivalent to 'info!(~[std::option::Some(1.0), std::option::None]);'
-    info!(~[Some(1.0), None]);
+fn main() {
+    // Equivalent to 'std::num::sin(1.0);'
+    sin(1.0);
+
+    // Equivalent to 'foo(~[std::option::Some(1.0), std::option::None]);'
+    foo(~[Some(1.0), None]);
 }
 ~~~~
 
@@ -1040,8 +1042,8 @@ output slot type would normally be. For example:
 
 ~~~~
 fn my_err(s: &str) -> ! {
-    info!(s);
-    fail!();
+    info2!("{}", s);
+    fail2!();
 }
 ~~~~
 
@@ -1059,7 +1061,7 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: &str) -> ! { fail!() }
+# fn my_err(s: &str) -> ! { fail2!() }
 
 fn f(i: int) -> int {
    if i == 42 {
@@ -2382,7 +2384,7 @@ fn ten_times(f: &fn(int)) {
     }
 }
 
-ten_times(|j| println(fmt!("hello, %d", j)));
+ten_times(|j| println!("hello, {}", j));
 
 ~~~~
 
@@ -2594,9 +2596,9 @@ enum List<X> { Nil, Cons(X, @List<X>) }
 let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    Cons(_, @Nil) => fail!("singleton list"),
+    Cons(_, @Nil) => fail2!("singleton list"),
     Cons(*)       => return,
-    Nil           => fail!("empty list")
+    Nil           => fail2!("empty list")
 }
 ~~~~
 
@@ -2633,7 +2635,7 @@ match x {
         return;
     }
     _ => {
-        fail!();
+        fail2!();
     }
 }
 ~~~~
@@ -2687,7 +2689,7 @@ guard may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
   Some(x) if x < 10 => process_digit(x),
   Some(x) => process_other(x),
-  None => fail!()
+  None => fail2!()
 };
 ~~~~
 
@@ -3472,10 +3474,10 @@ that demonstrates all four of them:
 
 ```rust
 fn main() {
-    error!("This is an error log")
-    warn!("This is a warn log")
-    info!("this is an info log")
-    debug!("This is a debug log")
+    error2!("This is an error log")
+    warn2!("This is a warn log")
+    info2!("this is an info log")
+    debug2!("This is a debug log")
 }
 ```
 
@@ -3483,9 +3485,9 @@ These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
 
 ```bash
 $ RUST_LOG=rust=3 ./rust
-rust: ~"\"This is an error log\""
-rust: ~"\"This is a warn log\""
-rust: ~"\"this is an info log\""
+This is an error log
+This is a warn log
+this is an info log
 ```
 
 # Appendix: Rationales and design tradeoffs

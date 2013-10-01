@@ -32,7 +32,7 @@ impl parser_attr for Parser {
     fn parse_outer_attributes(&self) -> ~[ast::Attribute] {
         let mut attrs: ~[ast::Attribute] = ~[];
         loop {
-            debug!("parse_outer_attributes: self.token=%?",
+            debug2!("parse_outer_attributes: self.token={:?}",
                    self.token);
             match *self.token {
               token::INTERPOLATED(token::nt_attr(*)) => {
@@ -67,7 +67,7 @@ impl parser_attr for Parser {
     // if permit_inner is true, then a trailing `;` indicates an inner
     // attribute
     fn parse_attribute(&self, permit_inner: bool) -> ast::Attribute {
-        debug!("parse_attributes: permit_inner=%? self.token=%?",
+        debug2!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
         let (span, value) = match *self.token {
             INTERPOLATED(token::nt_attr(attr)) => {
@@ -85,8 +85,8 @@ impl parser_attr for Parser {
                 (mk_sp(lo, hi), meta_item)
             }
             _ => {
-                self.fatal(fmt!("expected `#` but found `%s`",
-                                self.this_token_to_str()));
+                self.fatal(format!("expected `\\#` but found `{}`",
+                                   self.this_token_to_str()));
             }
         };
         let style = if permit_inner && *self.token == token::SEMI {

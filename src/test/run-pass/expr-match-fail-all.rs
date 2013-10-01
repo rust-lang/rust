@@ -17,6 +17,6 @@ pub fn main() {
     let _x =
         match true {
           true => { 10 }
-          false => { match true { true => { fail!() } false => { fail!() } } }
+          false => { match true { true => { fail2!() } false => { fail2!() } } }
         };
 }

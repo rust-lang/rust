@@ -26,12 +26,12 @@ fn make_generic_record<A,B>(a: A, b: B) -> Pair<A,B> {
 
 fn test05_start(f: &~fn(v: float, v: ~str) -> Pair<float, ~str>) {
     let p = (*f)(22.22f, ~"Hi");
-    info!(p.clone());
+    info2!("{:?}", p.clone());
     assert!(p.a == 22.22f);
     assert!(p.b == ~"Hi");
 
     let q = (*f)(44.44f, ~"Ho");
-    info!(q.clone());
+    info2!("{:?}", q.clone());
     assert!(q.a == 44.44f);
     assert!(q.b == ~"Ho");
 }

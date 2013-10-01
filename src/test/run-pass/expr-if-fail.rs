@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test_if_fail() { let x = if false { fail!() } else { 10 }; assert!((x == 10)); }
+fn test_if_fail() { let x = if false { fail2!() } else { 10 }; assert!((x == 10)); }
 
 fn test_else_fail() {
-    let x = if true { 10 } else { fail!() };
+    let x = if true { 10 } else { fail2!() };
     assert_eq!(x, 10);
 }
 
 fn test_elseif_fail() {
-    let x = if false { 0 } else if false { fail!() } else { 10 };
+    let x = if false { 0 } else if false { fail2!() } else { 10 };
     assert_eq!(x, 10);
 }
 

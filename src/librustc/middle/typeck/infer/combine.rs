@@ -116,7 +116,7 @@ pub trait Combine {
                 // substs and one of them has a self_ty and one
                 // doesn't...? I could be wrong about this.
                 self.infcx().tcx.sess.bug(
-                                          fmt!("substitution a had a self_ty \
+                                          format!("substitution a had a self_ty \
                                                and substitution b didn't, \
                                                or vice versa"));
             }
@@ -270,7 +270,7 @@ pub trait Combine {
     fn vstores(&self, vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
 
-        debug!("%s.vstores(a=%?, b=%?)", self.tag(), a, b);
+        debug2!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
             (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
@@ -295,7 +295,7 @@ pub trait Combine {
                     b: ty::TraitStore)
                  -> cres<ty::TraitStore> {
 
-        debug!("%s.trait_stores(a=%?, b=%?)", self.tag(), a, b);
+        debug2!("{}.trait_stores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
             (ty::RegionTraitStore(a_r), ty::RegionTraitStore(b_r)) => {
@@ -365,7 +365,7 @@ pub fn eq_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> ures {
 
 pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
                           -> ures {
-    debug!("eq_regions(%s, %s)",
+    debug2!("eq_regions({}, {})",
            a.inf_str(this.infcx()),
            b.inf_str(this.infcx()));
     let sub = this.sub();
@@ -406,8 +406,8 @@ pub fn eq_opt_regions<C:Combine>(
         // consistently have a region parameter or not have a
         // region parameter.
         this.infcx().tcx.sess.bug(
-            fmt!("substitution a had opt_region %s and \
-                  b had opt_region %s",
+            format!("substitution a had opt_region {} and \
+                  b had opt_region {}",
                  a.inf_str(this.infcx()),
                  b.inf_str(this.infcx())));
       }
@@ -446,7 +446,7 @@ pub fn super_tys<C:Combine>(
       (&ty::ty_infer(TyVar(_)), _) |
       (_, &ty::ty_infer(TyVar(_))) => {
         tcx.sess.bug(
-            fmt!("%s: bot and var types should have been handled (%s,%s)",
+            format!("{}: bot and var types should have been handled ({},{})",
                  this.tag(),
                  a.inf_str(this.infcx()),
                  b.inf_str(this.infcx())));

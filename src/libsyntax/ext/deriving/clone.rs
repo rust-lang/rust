@@ -86,10 +86,10 @@ fn cs_clone(
             all_fields = af;
         },
         EnumNonMatching(*) => cx.span_bug(span,
-                                          fmt!("Non-matching enum variants in `deriving(%s)`",
+                                          format!("Non-matching enum variants in `deriving({})`",
                                                name)),
         StaticEnum(*) | StaticStruct(*) => cx.span_bug(span,
-                                                       fmt!("Static method in `deriving(%s)`",
+                                                       format!("Static method in `deriving({})`",
                                                             name))
     }
 
@@ -105,7 +105,7 @@ fn cs_clone(
                 let ident = match o_id {
                     Some(i) => i,
                     None => cx.span_bug(span,
-                                        fmt!("unnamed field in normal struct in `deriving(%s)`",
+                                        format!("unnamed field in normal struct in `deriving({})`",
                                              name))
                 };
                 cx.field_imm(span, ident, subcall(self_f))

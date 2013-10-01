@@ -16,7 +16,7 @@ impl Wrapper {
     }
 
     pub fn say_hi(&self) {
-        println(fmt!("hello %s", **self));
+        println!("hello {}", **self);
     }
 }
 

@@ -16,5 +16,5 @@ fn x(it: &fn(int)) {
 }
 
 fn main() {
-    x(|_x| fail!() );
+    x(|_x| fail2!() );
 }

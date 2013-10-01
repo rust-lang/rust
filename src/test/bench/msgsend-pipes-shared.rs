@@ -42,7 +42,7 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
         match requests.try_recv() {
           Some(get_count) => { responses.send(count.clone()); }
           Some(bytes(b)) => {
-            //error!("server: received %? bytes", b);
+            //error2!("server: received {:?} bytes", b);
             count += b;
           }
           None => { done = true; }
@@ -50,7 +50,7 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
         }
     }
     responses.send(count);
-    //error!("server exiting");
+    //error2!("server exiting");
 }
 
 fn run(args: &[~str]) {
@@ -70,10 +70,10 @@ fn run(args: &[~str]) {
         builder.future_result(|r| worker_results.push(r));
         do builder.spawn {
             for _ in range(0u, size / workers) {
-                //error!("worker %?: sending %? bytes", i, num_bytes);
+                //error2!("worker {:?}: sending {:?} bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
-            //error!("worker %? exiting", i);
+            //error2!("worker {:?} exiting", i);
         }
     }
     do task::spawn || {
@@ -84,16 +84,16 @@ fn run(args: &[~str]) {
         r.recv();
     }
 
-    //error!("sending stop message");
+    //error2!("sending stop message");
     to_child.send(stop);
     move_out(to_child);
     let result = from_child.recv();
     let end = extra::time::precise_time_s();
     let elapsed = end - start;
-    io::stdout().write_str(fmt!("Count is %?\n", result));
-    io::stdout().write_str(fmt!("Test took %? seconds\n", elapsed));
+    io::stdout().write_str(format!("Count is {:?}\n", result));
+    io::stdout().write_str(format!("Test took {:?} seconds\n", elapsed));
     let thruput = ((size / workers * workers) as float) / (elapsed as float);
-    io::stdout().write_str(fmt!("Throughput=%f per sec\n", thruput));
+    io::stdout().write_str(format!("Throughput={} per sec\n", thruput));
     assert_eq!(result, num_bytes * size);
 }
 
@@ -107,6 +107,6 @@ fn main() {
         args.clone()
     };
 
-    info!("%?", args);
+    info2!("{:?}", args);
     run(args);
 }

@@ -19,6 +19,6 @@ use std::io;
 
 fn main() {
     do io::with_str_reader(~"") |rdr| {
-        match rdr.read_char() { '=' => { } _ => { fail!() } }
+        match rdr.read_char() { '=' => { } _ => { fail2!() } }
     }
 }

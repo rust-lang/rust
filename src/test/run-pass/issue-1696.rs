@@ -15,5 +15,5 @@ use std::hashmap::HashMap;
 pub fn main() {
     let mut m = HashMap::new();
     m.insert("foo".as_bytes().to_owned(), "bar".as_bytes().to_owned());
-    error!(m);
+    error2!("{:?}", m);
 }

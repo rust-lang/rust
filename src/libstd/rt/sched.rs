@@ -191,7 +191,7 @@ impl Scheduler {
         // action will have given it away.
         let sched: ~Scheduler = Local::take();
 
-        rtdebug!("starting scheduler %u", sched.sched_id());
+        rtdebug!("starting scheduler {}", sched.sched_id());
         sched.run();
 
         // Close the idle callback.
@@ -207,7 +207,7 @@ impl Scheduler {
         // the cleanup code it runs.
         let mut stask: ~Task = Local::take();
 
-        rtdebug!("stopping scheduler %u", stask.sched.get_ref().sched_id());
+        rtdebug!("stopping scheduler {}", stask.sched.get_ref().sched_id());
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
@@ -999,7 +999,7 @@ mod test {
                                                  Sched(t1_handle)) || {
                 rtassert!(Task::on_appropriate_sched());
             };
-            rtdebug!("task1 id: **%u**", borrow::to_uint(task1));
+            rtdebug!("task1 id: **{}**", borrow::to_uint(task1));
 
             let task2 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
                 rtassert!(Task::on_appropriate_sched());
@@ -1013,7 +1013,7 @@ mod test {
                                                  Sched(t4_handle)) {
                 rtassert!(Task::on_appropriate_sched());
             };
-            rtdebug!("task4 id: **%u**", borrow::to_uint(task4));
+            rtdebug!("task4 id: **{}**", borrow::to_uint(task4));
 
             let task1 = Cell::new(task1);
             let task2 = Cell::new(task2);
@@ -1038,7 +1038,7 @@ mod test {
                 sh.send(Shutdown);
             };
 
-            rtdebug!("normal task: %u", borrow::to_uint(normal_task));
+            rtdebug!("normal task: {}", borrow::to_uint(normal_task));
 
             let special_task = ~do Task::new_root(&mut special_sched.stack_pool, None) {
                 rtdebug!("*about to submit task1*");
@@ -1049,7 +1049,7 @@ mod test {
                 chan.take().send(());
             };
 
-            rtdebug!("special task: %u", borrow::to_uint(special_task));
+            rtdebug!("special task: {}", borrow::to_uint(special_task));
 
             let special_sched = Cell::new(special_sched);
             let normal_sched = Cell::new(normal_sched);
@@ -1238,12 +1238,12 @@ mod test {
             while (true) {
                 match p.recv() {
                     (1, end_chan) => {
-                                        debug!("%d\n", id);
+                                debug2!("{}\n", id);
                                 end_chan.send(());
                                 return;
                     }
                     (token, end_chan) => {
-                        debug!("thread: %d   got token: %d", id, token);
+                        debug2!("thread: {}   got token: {}", id, token);
                         ch.send((token - 1, end_chan));
                         if token <= n_tasks {
                             return;

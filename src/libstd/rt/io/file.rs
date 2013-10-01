@@ -59,7 +59,7 @@ use path::Path;
 ///     }).inside {
 ///         let stream = match open(p, Create, ReadWrite) {
 ///             Some(s) => s,
-///             None => fail!("whoops! I'm sure this raised, anyways..");
+///             None => fail2!("whoops! I'm sure this raised, anyways..");
 ///         }
 ///         // do some stuff with that stream
 ///
@@ -223,7 +223,7 @@ pub fn rmdir<P: PathLike>(path: &P) {
 ///     }).inside {
 ///         let info = match stat(p) {
 ///             Some(s) => s,
-///             None => fail!("whoops! I'm sure this raised, anyways..");
+///             None => fail2!("whoops! I'm sure this raised, anyways..");
 ///         }
 ///         if stat.is_file {
 ///             // just imagine the possibilities ...
@@ -271,7 +271,7 @@ pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
 ///                 else { cb(entry); }
 ///             }
 ///         }
-///         else { fail!("nope"); }
+///         else { fail2!("nope"); }
 ///     }
 ///
 /// # Errors
@@ -596,7 +596,7 @@ impl FileInfo for Path { }
 ///             else { cb(entry); }
 ///         }
 ///     }
-///     else { fail!("nope"); }
+///     else { fail2!("nope"); }
 /// }
 /// ```
 trait DirectoryInfo : FileSystemInfo {
@@ -631,7 +631,8 @@ trait DirectoryInfo : FileSystemInfo {
                     kind: PathAlreadyExists,
                     desc: "Path already exists",
                     detail:
-                        Some(fmt!("%s already exists; can't mkdir it", self.get_path().to_str()))
+                        Some(format!("{} already exists; can't mkdir it",
+                                     self.get_path().to_str()))
                 })
             },
             None => mkdir(self.get_path())
@@ -657,8 +658,8 @@ trait DirectoryInfo : FileSystemInfo {
                         let ioerr = IoError {
                             kind: MismatchedFileTypeForOperation,
                             desc: "Cannot do rmdir() on a non-directory",
-                            detail: Some(fmt!(
-                                "%s is a non-directory; can't rmdir it",
+                            detail: Some(format!(
+                                "{} is a non-directory; can't rmdir it",
                                 self.get_path().to_str()))
                         };
                         io_error::cond.raise(ioerr);
@@ -669,7 +670,8 @@ trait DirectoryInfo : FileSystemInfo {
                 io_error::cond.raise(IoError {
                     kind: PathDoesntExist,
                     desc: "Path doesn't exist",
-                    detail: Some(fmt!("%s doesn't exist; can't rmdir it", self.get_path().to_str()))
+                    detail: Some(format!("{} doesn't exist; can't rmdir it",
+                                         self.get_path().to_str()))
                 })
         }
     }
@@ -707,7 +709,7 @@ mod test {
                 let mut read_stream = open(filename, Open, Read).unwrap();
                 let mut read_buf = [0, .. 1028];
                 let read_str = match read_stream.read(read_buf).unwrap() {
-                    -1|0 => fail!("shouldn't happen"),
+                    -1|0 => fail2!("shouldn't happen"),
                     n => str::from_utf8(read_buf.slice_to(n))
                 };
                 assert!(read_str == message.to_owned());
@@ -875,7 +877,7 @@ mod test {
             }
             let stat_res = match stat(filename) {
                 Some(s) => s,
-                None => fail!("shouldn't happen")
+                None => fail2!("shouldn't happen")
             };
             assert!(stat_res.is_file);
             unlink(filename);
@@ -889,7 +891,7 @@ mod test {
             mkdir(filename);
             let stat_res = match stat(filename) {
                 Some(s) => s,
-                None => fail!("shouldn't happen")
+                None => fail2!("shouldn't happen")
             };
             assert!(stat_res.is_dir);
             rmdir(filename);
@@ -942,7 +944,7 @@ mod test {
             dir.mkdir();
             let prefix = "foo";
             for n in range(0,3) {
-                let f = dir.push(fmt!("%d.txt", n));
+                let f = dir.push(format!("{}.txt", n));
                 let mut w = f.open_writer(Create);
                 let msg_str = (prefix + n.to_str().to_owned()).to_owned();
                 let msg = msg_str.as_bytes();
@@ -959,14 +961,14 @@ mod test {
                             let read_str = str::from_utf8(mem);
                             let expected = match n {
                                 Some(n) => prefix+n,
-                                None => fail!("really shouldn't happen..")
+                                None => fail2!("really shouldn't happen..")
                             };
                             assert!(expected == read_str);
                         }
                         f.unlink();
                     }
                 },
-                None => fail!("shouldn't happen")
+                None => fail2!("shouldn't happen")
             }
             dir.rmdir();
         }

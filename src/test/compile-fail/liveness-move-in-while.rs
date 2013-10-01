@@ -13,7 +13,7 @@ fn main() {
     let y: ~int = ~42;
     let mut x: ~int;
     loop {
-        info!(y); //~ ERROR use of moved value: `y`
+        info2!("{:?}", y); //~ ERROR use of moved value: `y`
         while true { while true { while true { x = y; x.clone(); } } }
         //~^ ERROR use of moved value: `y`
     }

@@ -11,6 +11,6 @@
 
 
 pub fn main() {
-    let i: int = if false { fail!() } else { 5 };
-    info!(i);
+    let i: int = if false { fail2!() } else { 5 };
+    info2!("{:?}", i);
 }

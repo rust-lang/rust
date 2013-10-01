@@ -25,25 +25,25 @@ impl FileDesc {
     ///
     /// The `FileDesc` takes ownership of the file descriptor
     /// and will close it upon destruction.
-    pub fn new(_fd: fd_t) -> FileDesc { fail!() }
+    pub fn new(_fd: fd_t) -> FileDesc { fail2!() }
 }
 
 impl Reader for FileDesc {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail2!() }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { fail2!() }
 }
 
 impl Writer for FileDesc {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) { fail2!() }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail2!() }
 }
 
 impl Seek for FileDesc {
-    fn tell(&self) -> u64 { fail!() }
+    fn tell(&self) -> u64 { fail2!() }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }
 
 pub struct CFile(*FILE);
@@ -53,22 +53,22 @@ impl CFile {
     ///
     /// The `CFile` takes ownership of the file descriptor
     /// and will close it upon destruction.
-    pub fn new(_file: *FILE) -> CFile { fail!() }
+    pub fn new(_file: *FILE) -> CFile { fail2!() }
 }
 
 impl Reader for CFile {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail2!() }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { fail2!() }
 }
 
 impl Writer for CFile {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) { fail2!() }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail2!() }
 }
 
 impl Seek for CFile {
-    fn tell(&self) -> u64 { fail!() }
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn tell(&self) -> u64 { fail2!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }

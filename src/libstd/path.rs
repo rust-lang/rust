@@ -134,8 +134,8 @@ pub trait GenericPath : Clone + Eq + ToStr {
         match (t.len(), self.filestem()) {
             (0, None)        => (*self).clone(),
             (0, Some(ref s)) => self.with_filename(*s),
-            (_, None)        => self.with_filename(fmt!(".%s", t)),
-            (_, Some(ref s)) => self.with_filename(fmt!("%s.%s", *s, t)),
+            (_, None)        => self.with_filename(format!(".{}", t)),
+            (_, Some(ref s)) => self.with_filename(format!("{}.{}", *s, t)),
         }
     }
 
@@ -190,7 +190,7 @@ pub trait GenericPath : Clone + Eq + ToStr {
     /// True if `self` is an ancestor of `other`.
     // See `test_is_ancestor_of` for examples.
     fn is_ancestor_of(&self, other: &Self) -> bool {
-        debug!("%s / %s %? %?", self.to_str(), other.to_str(), self.is_absolute(),
+        debug2!("{} / {} {} {}", self.to_str(), other.to_str(), self.is_absolute(),
                self.components().len());
         self == other ||
             (!other.components().is_empty() &&
@@ -1101,8 +1101,8 @@ mod tests {
             let ss = wp.to_str();
             let sss = s.to_owned();
             if (ss != sss) {
-                debug!("got %s", ss);
-                debug!("expected %s", sss);
+                debug2!("got {}", ss);
+                debug2!("expected {}", sss);
                 assert_eq!(ss, sss);
             }
         }
@@ -1167,8 +1167,8 @@ mod tests {
             let ss = wp.to_str();
             let sss = s.to_owned();
             if (ss != sss) {
-                debug!("got %s", ss);
-                debug!("expected %s", sss);
+                debug2!("got {}", ss);
+                debug2!("expected {}", sss);
                 assert_eq!(ss, sss);
             }
         }
@@ -1230,8 +1230,8 @@ mod tests {
             let ss = wp.to_str();
             let sss = s.to_owned();
             if (ss != sss) {
-                debug!("got %s", ss);
-                debug!("expected %s", sss);
+                debug2!("got {}", ss);
+                debug2!("expected {}", sss);
                 assert_eq!(ss, sss);
             }
         }
@@ -1448,7 +1448,7 @@ mod tests {
         let p2 = PosixPath("/home/brian/Dev/rust/build/stage2/bin/..").push_rel(
             &PosixPath("lib/rustc/i686-unknown-linux-gnu/lib/libstd.so"));
         let res = p1.get_relative_to(&p2);
-        debug!("test_relative_to8: %s vs. %s",
+        debug2!("test_relative_to8: {} vs. {}",
                res.to_str(),
                PosixPath(".").to_str());
         assert_eq!(res, PosixPath("."));
@@ -1458,7 +1458,7 @@ mod tests {
         let p2 = WindowsPath("\\home\\brian\\Dev\\rust\\build\\stage2\\bin\\..").push_rel(
             &WindowsPath("lib\\rustc\\i686-unknown-linux-gnu\\lib\\libstd.so"));
         let res = p1.get_relative_to(&p2);
-        debug!("test_relative_to8: %s vs. %s",
+        debug2!("test_relative_to8: {} vs. {}",
                res.to_str(),
                WindowsPath(".").to_str());
         assert_eq!(res, WindowsPath("."));

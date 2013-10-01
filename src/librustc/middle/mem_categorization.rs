@@ -214,7 +214,7 @@ pub fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
       Some(k) => k,
       None => {
         tcx.sess.bug(
-            fmt!("deref_cat() invoked on non-derefable type %s",
+            format!("deref_cat() invoked on non-derefable type {}",
                  ty_to_str(tcx, t)));
       }
     }
@@ -288,7 +288,7 @@ pub struct mem_categorization_ctxt {
 
 impl ToStr for MutabilityCategory {
     fn to_str(&self) -> ~str {
-        fmt!("%?", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -383,7 +383,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_expr_unadjusted(&self, expr: @ast::Expr) -> cmt {
-        debug!("cat_expr: id=%d expr=%s",
+        debug2!("cat_expr: id={} expr={}",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
         let expr_ty = self.expr_ty(expr);
@@ -436,7 +436,7 @@ impl mem_categorization_ctxt {
             return self.cat_rvalue_node(expr, expr_ty);
           }
 
-          ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop")
+          ast::ExprForLoop(*) => fail2!("non-desugared expr_for_loop")
         }
     }
 
@@ -544,7 +544,7 @@ impl mem_categorization_ctxt {
                   _ => {
                       self.tcx.sess.span_bug(
                           span,
-                          fmt!("Upvar of non-closure %? - %s",
+                          format!("Upvar of non-closure {:?} - {}",
                                fn_node_id, ty.repr(self.tcx)));
                   }
               }
@@ -651,7 +651,7 @@ impl mem_categorization_ctxt {
             None => {
                 self.tcx.sess.span_bug(
                     node.span(),
-                    fmt!("Explicit deref of non-derefable type: %s",
+                    format!("Explicit deref of non-derefable type: {}",
                          ty_to_str(self.tcx, base_cmt.ty)));
             }
         };
@@ -741,7 +741,7 @@ impl mem_categorization_ctxt {
           None => {
             self.tcx.sess.span_bug(
                 elt.span(),
-                fmt!("Explicit index of non-index type `%s`",
+                format!("Explicit index of non-index type `{}`",
                      ty_to_str(self.tcx, base_cmt.ty)));
           }
         };
@@ -872,7 +872,7 @@ impl mem_categorization_ctxt {
         // get the type of the *subpattern* and use that.
 
         let tcx = self.tcx;
-        debug!("cat_pattern: id=%d pat=%s cmt=%s",
+        debug2!("cat_pattern: id={} pat={} cmt={}",
                pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
                cmt.repr(tcx));
         let _i = indenter();
@@ -1020,7 +1020,7 @@ impl mem_categorization_ctxt {
               ~"argument"
           }
           cat_deref(_, _, pk) => {
-              fmt!("dereference of %s pointer", ptr_sigil(pk))
+              format!("dereference of {} pointer", ptr_sigil(pk))
           }
           cat_interior(_, InteriorField(NamedField(_))) => {
               ~"field"
@@ -1177,7 +1177,7 @@ impl cmt_ {
 
 impl Repr for cmt_ {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
-        fmt!("{%s id:%d m:%? ty:%s}",
+        format!("\\{{} id:{} m:{:?} ty:{}\\}",
              self.cat.repr(tcx),
              self.id,
              self.mutbl,
@@ -1194,19 +1194,19 @@ impl Repr for categorization {
             cat_local(*) |
             cat_self(*) |
             cat_arg(*) => {
-                fmt!("%?", *self)
+                format!("{:?}", *self)
             }
             cat_deref(cmt, derefs, ptr) => {
-                fmt!("%s->(%s, %u)", cmt.cat.repr(tcx),
+                format!("{}->({}, {})", cmt.cat.repr(tcx),
                      ptr_sigil(ptr), derefs)
             }
             cat_interior(cmt, interior) => {
-                fmt!("%s.%s",
+                format!("{}.{}",
                      cmt.cat.repr(tcx),
                      interior.repr(tcx))
             }
             cat_downcast(cmt) => {
-                fmt!("%s->(enum)", cmt.cat.repr(tcx))
+                format!("{}->(enum)", cmt.cat.repr(tcx))
             }
             cat_stack_upvar(cmt) |
             cat_discr(cmt, _) => {
@@ -1229,7 +1229,7 @@ impl Repr for InteriorKind {
     fn repr(&self, _tcx: ty::ctxt) -> ~str {
         match *self {
             InteriorField(NamedField(fld)) => token::interner_get(fld).to_owned(),
-            InteriorField(PositionalField(i)) => fmt!("#%?", i),
+            InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
             InteriorElement(_) => ~"[]",
         }
     }

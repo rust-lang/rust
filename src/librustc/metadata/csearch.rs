@@ -210,17 +210,17 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, class_id.crate);
     let all_items = reader::get_doc(reader::Doc(cdata.data), tag_items);
-    debug!("Looking up %?", class_id);
+    debug2!("Looking up {:?}", class_id);
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
-                           || fmt!("get_field_type: class ID %? not found",
+                           || format!("get_field_type: class ID {:?} not found",
                                    class_id) );
-    debug!("looking up %? : %?", def, class_doc);
+    debug2!("looking up {:?} : {:?}", def, class_doc);
     let the_field = expect(tcx.diag,
         decoder::maybe_find_item(def.node, class_doc),
-        || fmt!("get_field_type: in class %?, field ID %? not found",
+        || format!("get_field_type: in class {:?}, field ID {:?} not found",
                  class_id, def) );
-    debug!("got field data %?", the_field);
+    debug2!("got field data {:?}", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: @~[],

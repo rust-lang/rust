@@ -174,7 +174,7 @@ pub fn compile_input(context: &BuildContext,
                      what: OutputType) -> Option<Path> {
     assert!(in_file.components.len() > 1);
     let input = driver::file_input((*in_file).clone());
-    debug!("compile_input: %s / %?", in_file.to_str(), what);
+    debug2!("compile_input: {} / {:?}", in_file.to_str(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
@@ -184,9 +184,9 @@ pub fn compile_input(context: &BuildContext,
 
     let binary = os::args()[0].to_managed();
 
-    debug!("flags: %s", flags.connect(" "));
-    debug!("cfgs: %s", cfgs.connect(" "));
-    debug!("compile_input's sysroot = %s", context.sysroot().to_str());
+    debug2!("flags: {}", flags.connect(" "));
+    debug2!("cfgs: {}", cfgs.connect(" "));
+    debug2!("compile_input's sysroot = {}", context.sysroot().to_str());
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -203,7 +203,7 @@ pub fn compile_input(context: &BuildContext,
                           + context.flag_strs()
                           + cfgs.flat_map(|c| { ~[~"--cfg", (*c).clone()] }),
                           driver::optgroups()).unwrap();
-    debug!("rustc flags: %?", matches);
+    debug2!("rustc flags: {:?}", matches);
 
     // Hack so that rustpkg can run either out of a rustc target dir,
     // or the host dir
@@ -213,8 +213,8 @@ pub fn compile_input(context: &BuildContext,
     else {
         context.sysroot().pop().pop().pop()
     };
-    debug!("compile_input's sysroot = %s", context.sysroot().to_str());
-    debug!("sysroot_to_use = %s", sysroot_to_use.to_str());
+    debug2!("compile_input's sysroot = {}", context.sysroot().to_str());
+    debug2!("sysroot_to_use = {}", sysroot_to_use.to_str());
 
     let output_type = match context.compile_upto() {
         Assemble => link::output_type_assembly,
@@ -262,7 +262,7 @@ pub fn compile_input(context: &BuildContext,
 
     find_and_install_dependencies(context, pkg_id, sess, exec, &crate,
                                   |p| {
-                                      debug!("a dependency: %s", p.to_str());
+                                      debug2!("a dependency: {}", p.to_str());
                                       // Pass the directory containing a dependency
                                       // as an additional lib search path
                                       if !addl_lib_search_paths.contains(&p) {
@@ -275,23 +275,23 @@ pub fn compile_input(context: &BuildContext,
     // Inject the link attributes so we get the right package name and version
     if attr::find_linkage_metas(crate.attrs).is_empty() {
         let name_to_use = match what {
-            Test  => fmt!("%stest", pkg_id.short_name).to_managed(),
-            Bench => fmt!("%sbench", pkg_id.short_name).to_managed(),
+            Test  => format!("{}test", pkg_id.short_name).to_managed(),
+            Bench => format!("{}bench", pkg_id.short_name).to_managed(),
             _     => pkg_id.short_name.to_managed()
         };
-        debug!("Injecting link name: %s", name_to_use);
+        debug2!("Injecting link name: {}", name_to_use);
         let link_options =
             ~[attr::mk_name_value_item_str(@"name", name_to_use),
               attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())] +
             ~[attr::mk_name_value_item_str(@"package_id",
                                            pkg_id.path.to_str().to_managed())];
 
-        debug!("link options: %?", link_options);
+        debug2!("link options: {:?}", link_options);
         crate.attrs = ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))];
     }
 
-    debug!("calling compile_crate_from_input, workspace = %s,
-           building_library = %?", out_dir.to_str(), sess.building_library);
+    debug2!("calling compile_crate_from_input, workspace = {},
+           building_library = {:?}", out_dir.to_str(), sess.building_library);
     let result = compile_crate_from_input(in_file,
                                           exec,
                                           context.compile_upto(),
@@ -305,7 +305,7 @@ pub fn compile_input(context: &BuildContext,
     else {
         result
     };
-    debug!("About to discover output %s", discovered_output.to_str());
+    debug2!("About to discover output {}", discovered_output.to_str());
     for p in discovered_output.iter() {
         if os::path_exists(p) {
             exec.discover_output("binary", p.to_str(), digest_only_date(p));
@@ -330,22 +330,22 @@ pub fn compile_crate_from_input(input: &Path,
 // Returns None if one of the flags that suppresses compilation output was
 // given
                                 crate: ast::Crate) -> Option<Path> {
-    debug!("Calling build_output_filenames with %s, building library? %?",
+    debug2!("Calling build_output_filenames with {}, building library? {:?}",
            out_dir.to_str(), sess.building_library);
 
     // bad copy
-    debug!("out_dir = %s", out_dir.to_str());
+    debug2!("out_dir = {}", out_dir.to_str());
     let outputs = driver::build_output_filenames(&driver::file_input(input.clone()),
                                                  &Some(out_dir.clone()), &None,
                                                  crate.attrs, sess);
 
-    debug!("Outputs are out_filename: %s and obj_filename: %s and output type = %?",
+    debug2!("Outputs are out_filename: {} and obj_filename: {} and output type = {:?}",
            outputs.out_filename.to_str(),
            outputs.obj_filename.to_str(),
            sess.opts.output_type);
-    debug!("additional libraries:");
+    debug2!("additional libraries:");
     for lib in sess.opts.addl_lib_search_paths.iter() {
-        debug!("an additional library: %s", lib.to_str());
+        debug2!("an additional library: {}", lib.to_str());
     }
     let analysis = driver::phase_3_run_analysis_passes(sess, &crate);
     if driver::stop_after_phase_3(sess) { return None; }
@@ -362,7 +362,7 @@ pub fn compile_crate_from_input(input: &Path,
     // Register dependency on the source file
     exec.discover_input("file", input.to_str(), digest_file_with_date(input));
 
-    debug!("Built %s, date = %?", outputs.out_filename.to_str(),
+    debug2!("Built {}, date = {:?}", outputs.out_filename.to_str(),
            datestamp(&outputs.out_filename));
 
     Some(outputs.out_filename)
@@ -384,10 +384,10 @@ pub fn compile_crate(ctxt: &BuildContext,
                      crate: &Path, workspace: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
                      what: OutputType) -> Option<Path> {
-    debug!("compile_crate: crate=%s, workspace=%s", crate.to_str(), workspace.to_str());
-    debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
+    debug2!("compile_crate: crate={}, workspace={}", crate.to_str(), workspace.to_str());
+    debug2!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());
     for fl in flags.iter() {
-        debug!("+++ %s", *fl);
+        debug2!("+++ {}", *fl);
     }
     compile_input(ctxt, exec, pkg_id, crate, workspace, flags, cfgs, opt, what)
 }
@@ -403,7 +403,7 @@ struct ViewItemVisitor<'self> {
 
 impl<'self> Visitor<()> for ViewItemVisitor<'self> {
     fn visit_view_item(&mut self, vi: &ast::view_item, env: ()) {
-        debug!("A view item!");
+        debug2!("A view item!");
         match vi.node {
             // ignore metadata, I guess
             ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
@@ -411,11 +411,11 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                     Some(p) => p,
                     None => self.sess.str_of(lib_ident)
                 };
-                debug!("Finding and installing... %s", lib_name);
+                debug2!("Finding and installing... {}", lib_name);
                 // Check standard Rust library path first
                 match system_library(&self.context.sysroot(), lib_name) {
                     Some(ref installed_path) => {
-                        debug!("It exists: %s", installed_path.to_str());
+                        debug2!("It exists: {}", installed_path.to_str());
                         // Say that [path for c] has a discovered dependency on
                         // installed_path
                         // For binary files, we only hash the datestamp, not the contents.
@@ -428,15 +428,15 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                     }
                     None => {
                         // FIXME #8711: need to parse version out of path_opt
-                        debug!("Trying to install library %s, rebuilding it",
+                        debug2!("Trying to install library {}, rebuilding it",
                                lib_name.to_str());
                         // Try to install it
                         let pkg_id = PkgId::new(lib_name);
                         let workspaces = pkg_parent_workspaces(&self.context.context,
                                                                &pkg_id);
                         let source_workspace = if workspaces.is_empty() {
-                            error(fmt!("Couldn't find package %s \
-                                       in any of the workspaces in the RUST_PATH (%s)",
+                            error(format!("Couldn't find package {} \
+                                       in any of the workspaces in the RUST_PATH ({})",
                                        lib_name,
                                        rust_path().map(|s| s.to_str()).connect(":")));
                             cond.raise((pkg_id.clone(), ~"Dependency not found"))
@@ -452,14 +452,14 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                              pkg_id),
                                                  &JustOne(Path(
                                     lib_crate_filename)));
-                        debug!("Installed %s, returned %? dependencies and \
-                               %? transitive dependencies",
+                        debug2!("Installed {}, returned {:?} dependencies and \
+                               {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
                         // It must have installed *something*...
                         assert!(!outputs_disc.is_empty());
                         let target_workspace = outputs_disc[0].pop();
                         for dep in outputs_disc.iter() {
-                            debug!("Discovering a binary input: %s", dep.to_str());
+                            debug2!("Discovering a binary input: {}", dep.to_str());
                             self.exec.discover_input("binary",
                                                      dep.to_str(),
                                                      digest_only_date(dep));
@@ -476,11 +476,11 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                          digest_only_date(&Path(*dep)));
                             }
                                 else {
-                                fail!("Bad kind: %s", *what);
+                                fail2!("Bad kind: {}", *what);
                             }
                         }
                         // Also, add an additional search path
-                        debug!("Installed %s into %s", lib_name, target_workspace.to_str());
+                        debug2!("Installed {} into {}", lib_name, target_workspace.to_str());
                         (self.save)(target_workspace);
                     }
                 }
@@ -501,7 +501,7 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                                      exec: &mut workcache::Exec,
                                      c: &ast::Crate,
                                      save: &fn(Path)) {
-    debug!("In find_and_install_dependencies...");
+    debug2!("In find_and_install_dependencies...");
     let mut visitor = ViewItemVisitor {
         context: context,
         parent: parent,
@@ -553,8 +553,8 @@ fn debug_flags() -> ~[~str] { ~[] }
 
 /// Returns the last-modified date as an Option
 pub fn datestamp(p: &Path) -> Option<libc::time_t> {
-    debug!("Scrutinizing datestamp for %s - does it exist? %?", p.to_str(), os::path_exists(p));
+    debug2!("Scrutinizing datestamp for {} - does it exist? {:?}", p.to_str(), os::path_exists(p));
     let out = p.stat().map(|stat| stat.st_mtime);
-    debug!("Date = %?", out);
+    debug2!("Date = {:?}", out);
     out.map(|t| { *t as libc::time_t })
 }

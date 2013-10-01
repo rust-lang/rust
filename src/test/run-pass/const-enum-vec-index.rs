@@ -16,10 +16,10 @@ static C1: E = C[1];
 pub fn main() {
     match C0 {
         V0 => (),
-        _ => fail!()
+        _ => fail2!()
     }
     match C1 {
         V1(n) => assert!(n == 0xDEADBEE),
-        _ => fail!()
+        _ => fail2!()
     }
 }

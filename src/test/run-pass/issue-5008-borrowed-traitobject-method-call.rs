@@ -34,7 +34,7 @@ impl Debuggable for Thing {
 
 fn print_name(x: &Debuggable)
 {
-    println(fmt!("debug_name = %s", x.debug_name()));
+    println!("debug_name = {}", x.debug_name());
 }
 
 pub fn main() {

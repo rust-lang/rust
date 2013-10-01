@@ -244,7 +244,7 @@ impl MoveData {
             }
         };
 
-        debug!("move_path(lp=%s, index=%?)",
+        debug2!("move_path(lp={}, index={:?})",
                lp.repr(tcx),
                index);
 
@@ -304,7 +304,7 @@ impl MoveData {
          * location `id` with kind `kind`.
          */
 
-        debug!("add_move(lp=%s, id=%?, kind=%?)",
+        debug2!("add_move(lp={}, id={:?}, kind={:?})",
                lp.repr(tcx),
                id,
                kind);
@@ -334,7 +334,7 @@ impl MoveData {
          * location `id` with the given `span`.
          */
 
-        debug!("add_assignment(lp=%s, assign_id=%?, assignee_id=%?",
+        debug2!("add_assignment(lp={}, assign_id={:?}, assignee_id={:?}",
                lp.repr(tcx), assign_id, assignee_id);
 
         let path_index = self.move_path(tcx, lp);
@@ -348,12 +348,12 @@ impl MoveData {
         };
 
         if self.is_var_path(path_index) {
-            debug!("add_assignment[var](lp=%s, assignment=%u, path_index=%?)",
+            debug2!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
                    lp.repr(tcx), self.var_assignments.len(), path_index);
 
             self.var_assignments.push(assignment);
         } else {
-            debug!("add_assignment[path](lp=%s, path_index=%?)",
+            debug2!("add_assignment[path](lp={}, path_index={:?})",
                    lp.repr(tcx), path_index);
 
             self.path_assignments.push(assignment);

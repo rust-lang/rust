@@ -31,10 +31,10 @@ fn test1() {
                  c: 0xcccc_cccc_cccc_cccc_u64,
                  d: 0xdddd_dddd_dddd_dddd_u64 };
         let qq = rustrt::rust_dbg_abi_1(q);
-        error!("a: %x", qq.a as uint);
-        error!("b: %x", qq.b as uint);
-        error!("c: %x", qq.c as uint);
-        error!("d: %x", qq.d as uint);
+        error2!("a: {:x}", qq.a as uint);
+        error2!("b: {:x}", qq.b as uint);
+        error2!("c: {:x}", qq.c as uint);
+        error2!("d: {:x}", qq.d as uint);
         assert_eq!(qq.a, q.c + 1u64);
         assert_eq!(qq.b, q.d - 1u64);
         assert_eq!(qq.c, q.a + 1u64);
@@ -51,9 +51,9 @@ fn test2() {
                  b: 0b_1010_1010_u8,
                  c: 1.0987654321e-15_f64 };
         let ff = rustrt::rust_dbg_abi_2(f);
-        error!("a: %f", ff.a as float);
-        error!("b: %u", ff.b as uint);
-        error!("c: %f", ff.c as float);
+        error2!("a: {}", ff.a as float);
+        error2!("b: {}", ff.b as uint);
+        error2!("c: {}", ff.c as float);
         assert_eq!(ff.a, f.c + 1.0f64);
         assert_eq!(ff.b, 0xff_u8);
         assert_eq!(ff.c, f.a - 1.0f64);

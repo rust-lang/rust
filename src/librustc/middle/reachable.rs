@@ -400,14 +400,14 @@ impl ReachableContext {
                     let desc = ast_map::node_id_to_str(self.tcx.items,
                                                        search_item,
                                                        ident_interner);
-                    self.tcx.sess.bug(fmt!("found unexpected thingy in \
-                                            worklist: %s",
-                                            desc))
+                    self.tcx.sess.bug(format!("found unexpected thingy in \
+                                               worklist: {}",
+                                               desc))
                 }
                 None => {
-                    self.tcx.sess.bug(fmt!("found unmapped ID in worklist: \
-                                            %d",
-                                           search_item))
+                    self.tcx.sess.bug(format!("found unmapped ID in worklist: \
+                                               {}",
+                                              search_item))
                 }
             }
         }

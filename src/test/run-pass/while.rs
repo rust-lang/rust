@@ -13,10 +13,10 @@
 pub fn main() {
     let mut x: int = 10;
     let mut y: int = 0;
-    while y < x { info!(y); info!("hello"); y = y + 1; }
+    while y < x { info2!("{}", y); info2!("hello"); y = y + 1; }
     while x > 0 {
-        info!("goodbye");
+        info2!("goodbye");
         x = x - 1;
-        info!(x);
+        info2!("{}", x);
     }
 }

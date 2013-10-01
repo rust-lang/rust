@@ -50,7 +50,7 @@ impl Combine for Lub {
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx.tcx;
 
-        debug!("%s.mts(%s, %s)",
+        debug2!("{}.mts({}, {})",
                self.tag(),
                mt_to_str(tcx, a),
                mt_to_str(tcx, b));
@@ -106,7 +106,7 @@ impl Combine for Lub {
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
-        debug!("%s.regions(%?, %?)",
+        debug2!("{}.regions({:?}, {:?})",
                self.tag(),
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
@@ -134,7 +134,7 @@ impl Combine for Lub {
 
         // Collect constraints.
         let sig0 = if_ok!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
-        debug!("sig0 = %s", sig0.inf_str(self.infcx));
+        debug2!("sig0 = {}", sig0.inf_str(self.infcx));
 
         // Generalize the regions appearing in sig0 if possible
         let new_vars =
@@ -154,7 +154,7 @@ impl Combine for Lub {
                              r0: ty::Region) -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
-                debug!("generalize_region(r0=%?): not new variable", r0);
+                debug2!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
 
@@ -164,8 +164,8 @@ impl Combine for Lub {
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
             if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
-                debug!("generalize_region(r0=%?): \
-                        non-new-variables found in %?",
+                debug2!("generalize_region(r0={:?}): \
+                        non-new-variables found in {:?}",
                        r0, tainted);
                 return r0;
             }
@@ -179,8 +179,8 @@ impl Combine for Lub {
             do list::each(a_isr) |pair| {
                 let (a_br, a_r) = *pair;
                 if tainted.iter().any(|x| x == &a_r) {
-                    debug!("generalize_region(r0=%?): \
-                            replacing with %?, tainted=%?",
+                    debug2!("generalize_region(r0={:?}): \
+                            replacing with {:?}, tainted={:?}",
                            r0, a_br, tainted);
                     ret = Some(ty::re_bound(a_br));
                     false
@@ -193,7 +193,7 @@ impl Combine for Lub {
                 Some(x) => x,
                 None => this.infcx.tcx.sess.span_bug(
                             this.trace.origin.span(),
-                            fmt!("Region %? is not associated with \
+                            format!("Region {:?} is not associated with \
                                   any bound region from A!", r0))
             }
         }

@@ -111,8 +111,8 @@ impl PrivacyVisitor {
             // WRONG
             Public
         };
-        debug!("parental_privacy = %?", parental_privacy);
-        debug!("vis = %?, priv = %?",
+        debug2!("parental_privacy = {:?}", parental_privacy);
+        debug2!("vis = {:?}, priv = {:?}",
                variant_info.vis,
                visibility_to_privacy(variant_info.vis))
         // inherited => privacy of the enum item
@@ -175,7 +175,7 @@ impl PrivacyVisitor {
             }
             Some(_) => {
                 self.tcx.sess.span_bug(span,
-                                  fmt!("method_is_private: method was a %s?!",
+                                  format!("method_is_private: method was a {}?!",
                                        ast_map::node_id_to_str(
                                             self.tcx.items,
                                             method_id,
@@ -205,8 +205,8 @@ impl PrivacyVisitor {
                 Some(&node_trait_method(_, trait_did, _)) => f(trait_did.node),
                 Some(_) => {
                     self.tcx.sess.span_bug(span,
-                                      fmt!("local_item_is_private: item was \
-                                            a %s?!",
+                                      format!("local_item_is_private: item was \
+                                            a {}?!",
                                            ast_map::node_id_to_str(
                                                 self.tcx.items,
                                                 item_id,
@@ -227,7 +227,7 @@ impl PrivacyVisitor {
         for field in fields.iter() {
             if field.name != ident.name { loop; }
             if field.vis == private {
-                self.tcx.sess.span_err(span, fmt!("field `%s` is private",
+                self.tcx.sess.span_err(span, format!("field `{}` is private",
                                              token::ident_to_str(&ident)));
             }
             break;
@@ -248,7 +248,7 @@ impl PrivacyVisitor {
                     (container_id.crate != LOCAL_CRATE ||
                      !self.privileged_items.iter().any(|x| x == &(container_id.node))) {
                 self.tcx.sess.span_err(span,
-                                  fmt!("method `%s` is private",
+                                  format!("method `{}` is private",
                                        token::ident_to_str(name)));
             }
         } else {
@@ -256,7 +256,7 @@ impl PrivacyVisitor {
                 csearch::get_item_visibility(self.tcx.sess.cstore, method_id);
             if visibility != public {
                 self.tcx.sess.span_err(span,
-                                  fmt!("method `%s` is private",
+                                  format!("method `{}` is private",
                                        token::ident_to_str(name)));
             }
         }
@@ -264,10 +264,10 @@ impl PrivacyVisitor {
 
     // Checks that a private path is in scope.
     fn check_path(&mut self, span: Span, def: Def, path: &Path) {
-        debug!("checking path");
+        debug2!("checking path");
         match def {
             DefStaticMethod(method_id, _, _) => {
-                debug!("found static method def, checking it");
+                debug2!("found static method def, checking it");
                 self.check_method_common(span,
                                          method_id,
                                          &path.segments.last().identifier)
@@ -277,7 +277,7 @@ impl PrivacyVisitor {
                     if self.local_item_is_private(span, def_id.node) &&
                             !self.privileged_items.iter().any(|x| x == &def_id.node) {
                         self.tcx.sess.span_err(span,
-                                          fmt!("function `%s` is private",
+                                          format!("function `{}` is private",
                                                token::ident_to_str(
                                                 &path.segments
                                                      .last()
@@ -286,7 +286,7 @@ impl PrivacyVisitor {
                 //} else if csearch::get_item_visibility(self.tcx.sess.cstore,
                 //                                       def_id) != public {
                 //    self.tcx.sess.span_err(span,
-                //                      fmt!("function `%s` is private",
+                //                      format!("function `{}` is private",
                 //                           token::ident_to_str(
                 //                                &path.segments
                 //                                     .last()
@@ -333,7 +333,7 @@ impl PrivacyVisitor {
                                              !self.privileged_items.iter()
                                              .any(|x| x == &(trait_id.node)) => {
                                             self.tcx.sess.span_err(span,
-                                                              fmt!("method `%s` is private",
+                                                              format!("method `{}` is private",
                                                                    token::ident_to_str(&method
                                                                                         .ident)));
                                         }
@@ -476,7 +476,7 @@ impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
                         ty_struct(id, _)
                         if id.crate != LOCAL_CRATE || !self.privileged_items.iter()
                                 .any(|x| x == &(id.node)) => {
-                            debug!("(privacy checking) checking field access");
+                            debug2!("(privacy checking) checking field access");
                             self.check_field(expr.span, id, ident);
                         }
                         _ => {}
@@ -497,7 +497,7 @@ impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
                                                        method map");
                                 }
                                 Some(ref entry) => {
-                                    debug!("(privacy checking) checking \
+                                    debug2!("(privacy checking) checking \
                                             impl method");
                                     self.check_method(expr.span, &entry.origin, ident);
                                 }
@@ -515,7 +515,7 @@ impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
                             if id.crate != LOCAL_CRATE ||
                                     !self.privileged_items.iter().any(|x| x == &(id.node)) {
                                 for field in (*fields).iter() {
-                                        debug!("(privacy checking) checking \
+                                        debug2!("(privacy checking) checking \
                                                 field in struct literal");
                                     self.check_field(expr.span, id, field.ident);
                                 }
@@ -527,7 +527,7 @@ impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
                                 match self.tcx.def_map.get_copy(&expr.id) {
                                     DefVariant(_, variant_id, _) => {
                                         for field in (*fields).iter() {
-                                                debug!("(privacy checking) \
+                                                debug2!("(privacy checking) \
                                                         checking field in \
                                                         struct variant \
                                                         literal");
@@ -582,7 +582,7 @@ impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
                             if id.crate != LOCAL_CRATE ||
                                     !self.privileged_items.iter().any(|x| x == &(id.node)) {
                                 for field in fields.iter() {
-                                        debug!("(privacy checking) checking \
+                                        debug2!("(privacy checking) checking \
                                                 struct pattern");
                                     self.check_field(pattern.span, id, field.ident);
                                 }
@@ -594,7 +594,7 @@ impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
                                 match self.tcx.def_map.find(&pattern.id) {
                                     Some(&DefVariant(_, variant_id, _)) => {
                                         for field in fields.iter() {
-                                            debug!("(privacy checking) \
+                                            debug2!("(privacy checking) \
                                                     checking field in \
                                                     struct variant pattern");
                                             self.check_field(pattern.span, variant_id, field.ident);

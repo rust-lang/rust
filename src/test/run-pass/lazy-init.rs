@@ -10,6 +10,6 @@
 
 
 
-fn foo(x: int) { info!(x); }
+fn foo(x: int) { info2!("{}", x); }
 
 pub fn main() { let mut x: int; if 1 > 2 { x = 12; } else { x = 10; } foo(x); }

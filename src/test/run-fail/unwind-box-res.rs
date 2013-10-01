@@ -13,7 +13,7 @@
 use std::cast;
 
 fn failfn() {
-    fail!();
+    fail2!();
 }
 
 struct r {
@@ -41,6 +41,6 @@ fn main() {
         cast::forget(i1);
         let x = @r(i1p);
         failfn();
-        error!(x);
+        error2!("{:?}", x);
     }
 }

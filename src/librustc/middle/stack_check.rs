@@ -123,20 +123,20 @@ fn stack_check_fn<'a>(v: &mut StackCheckVisitor,
         }
     };
     let new_cx = Context {safe_stack: safe_stack};
-    debug!("stack_check_fn(safe_stack=%b, id=%?)", safe_stack, id);
+    debug2!("stack_check_fn(safe_stack={}, id={:?})", safe_stack, id);
     visit::walk_fn(v, fk, decl, body, sp, id, new_cx);
 }
 
 fn stack_check_expr<'a>(v: &mut StackCheckVisitor,
                         expr: @ast::Expr,
                         cx: Context) {
-    debug!("stack_check_expr(safe_stack=%b, expr=%s)",
+    debug2!("stack_check_expr(safe_stack={}, expr={})",
            cx.safe_stack, expr.repr(v.tcx));
     if !cx.safe_stack {
         match expr.node {
             ast::ExprCall(callee, _, _) => {
                 let callee_ty = ty::expr_ty(v.tcx, callee);
-                debug!("callee_ty=%s", callee_ty.repr(v.tcx));
+                debug2!("callee_ty={}", callee_ty.repr(v.tcx));
                 match ty::get(callee_ty).sty {
                     ty::ty_bare_fn(ref fty) => {
                         if !fty.abis.is_rust() && !fty.abis.is_intrinsic() {
@@ -177,6 +177,6 @@ fn call_to_extern_fn(v: &mut StackCheckVisitor, callee: @ast::Expr) {
     v.tcx.sess.add_lint(lint::cstack,
                          callee.id,
                          callee.span,
-                         fmt!("invoking non-Rust fn in fn without \
-                              #[fixed_stack_segment]"));
+                         format!("invoking non-Rust fn in fn without \
+                              \\#[fixed_stack_segment]"));
 }

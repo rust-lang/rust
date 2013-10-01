@@ -225,7 +225,7 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    println(fmt!("count: %?", count));
+    println!("count: {}", count);
     count += 1;
 }
 ~~~~
@@ -388,23 +388,26 @@ assert!(y == 4u);
 but are instead provided by the libraries. To make it clear to the reader when
 a name refers to a syntax extension, the names of all syntax extensions end
 with `!`. The standard library defines a few syntax extensions, the most
-useful of which is `fmt!`, a `sprintf`-style text formatter that you will
-often see in examples.
+useful of which is [`format!`][fmt], a `sprintf`-like text formatter that you
+will often see in examples, and its related family of macros: `print!`,
+`println!`, and `write!`.
 
-`fmt!` supports most of the directives that [printf][pf] supports, but unlike
-printf, will give you a compile-time error when the types of the directives
-don't match the types of the arguments.
+`format!` draws syntax from python, but contains many of the same principles
+that [printf][pf] has. Unlike printf, `format!` will give you a compile-time
+error when the types of the directives don't match the types of the arguments.
 
 ~~~~
 # let mystery_object = ();
 
-println(fmt!("%s is %d", "the answer", 43));
+// {} will print the "default format" of a type
+println!("{} is {}", "the answer", 43);
 
-// %? will conveniently print any type
-println(fmt!("what is this thing: %?", mystery_object));
+// {:?} will conveniently print any type
+println!("what is this thing: {:?}", mystery_object);
 ~~~~
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
+[fmt]: http://static.rust-lang.org/doc/master/std/fmt/index.html
 
 You can define your own syntax extensions with the macro system. For details, see the [macro tutorial][macros].
 
@@ -737,7 +740,7 @@ fn area(sh: Shape) -> float {
     match sh {
         Circle { radius: radius, _ } => float::consts::pi * square(radius),
         Rectangle { top_left: top_left, bottom_right: bottom_right } => {
-            (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y) 
+            (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y)
         }
     }
 }
@@ -753,7 +756,7 @@ unit, `()`, as the empty tuple if you like).
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
 match mytup {
-  (a, b, c) => info!(a + b + (c as int))
+  (a, b, c) => info2!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -769,7 +772,7 @@ For example:
 struct MyTup(int, int, float);
 let mytup: MyTup = MyTup(10, 20, 30.0);
 match mytup {
-  MyTup(a, b, c) => info!(a + b + (c as int))
+  MyTup(a, b, c) => info2!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -1238,7 +1241,7 @@ something silly like
 ~~~
 # struct Point { x: float, y: float }
 let point = &@~Point { x: 10f, y: 20f };
-println(fmt!("%f", point.x));
+println!("{:f}", point.x);
 ~~~
 
 The indexing operator (`[]`) also auto-dereferences.
@@ -1443,7 +1446,7 @@ the enclosing scope.
 fn call_closure_with_ten(b: &fn(int)) { b(10); }
 
 let captured_var = 20;
-let closure = |arg| println(fmt!("captured_var=%d, arg=%d", captured_var, arg));
+let closure = |arg| println!("captured_var={}, arg={}", captured_var, arg);
 
 call_closure_with_ten(closure);
 ~~~~
@@ -1566,7 +1569,7 @@ arguments.
 use std::task::spawn;
 
 do spawn() || {
-    debug!("I'm a task, whatever");
+    debug2!("I'm a task, whatever");
 }
 ~~~~
 
@@ -1578,7 +1581,7 @@ may be omitted from `do` expressions.
 use std::task::spawn;
 
 do spawn {
-   debug!("Kablam!");
+   debug2!("Kablam!");
 }
 ~~~~
 
@@ -1916,7 +1919,7 @@ and `~str`.
 ~~~~
 # trait Printable { fn print(&self); }
 impl Printable for int {
-    fn print(&self) { println(fmt!("%d", *self)) }
+    fn print(&self) { println!("{}", *self) }
 }
 
 impl Printable for ~str {

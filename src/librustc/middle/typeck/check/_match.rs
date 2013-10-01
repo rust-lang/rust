@@ -166,7 +166,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
                     fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                        |expected, actual| {
                                                        expected.map_move_default(~"", |e| {
-                        fmt!("mismatched types: expected `%s` but found %s",
+                        format!("mismatched types: expected `{}` but found {}",
                              e, actual)})},
                              Some(expected), ~"a structure pattern",
                              None);
@@ -215,7 +215,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
             fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                |expected, actual| {
                                                expected.map_move_default(~"", |e| {
-                    fmt!("mismatched types: expected `%s` but found %s",
+                    format!("mismatched types: expected `{}` but found {}",
                          e, actual)})},
                     Some(expected), ~"an enum or structure pattern",
                     None);
@@ -241,7 +241,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
     if arg_len > 0 {
         // N-ary variant.
         if arg_len != subpats_len {
-            let s = fmt!("this pattern has %u field%s, but the corresponding %s has %u field%s",
+            let s = format!("this pattern has {} field{}, but the corresponding {} has {} field{}",
                          subpats_len,
                          if subpats_len == 1u { ~"" } else { ~"s" },
                          kind_name,
@@ -260,7 +260,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
         }
     } else if subpats_len > 0 {
         tcx.sess.span_err(pat.span,
-                          fmt!("this pattern has %u field%s, but the corresponding %s has no \
+                          format!("this pattern has {} field{}, but the corresponding {} has no \
                                 fields",
                                subpats_len,
                                if subpats_len == 1u { "" } else { "s" },
@@ -319,7 +319,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 // up its type won't fail
                 check_pat(pcx, field.pat, ty::mk_err());
                 tcx.sess.span_err(span,
-                    fmt!("struct `%s` does not have a field named `%s`",
+                    format!("struct `{}` does not have a field named `{}`",
                          name,
                          tcx.sess.str_of(field.ident)));
             }
@@ -333,7 +333,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 loop;
             }
             tcx.sess.span_err(span,
-                              fmt!("pattern does not mention field `%s`",
+                              format!("pattern does not mention field `{}`",
                                    token::interner_get(field.name)));
         }
     }
@@ -358,7 +358,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
         Some(&ast::DefStruct(*)) | Some(&ast::DefVariant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
-                              fmt!("mismatched types: expected `%s` but found `%s`",
+                              format!("mismatched types: expected `{}` but found `{}`",
                                    fcx.infcx().ty_to_str(expected),
                                    name));
         }
@@ -396,8 +396,8 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
         Some(&ast::DefStruct(*)) | Some(&ast::DefVariant(*)) => {
             let name = pprust::path_to_str(path, tcx.sess.intr());
             tcx.sess.span_err(span,
-                              fmt!("mismatched types: expected `%s` but \
-                                    found `%s`",
+                              format!("mismatched types: expected `{}` but \
+                                    found `{}`",
                                    fcx.infcx().ty_to_str(expected),
                                    name));
         }
@@ -428,8 +428,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
             fcx.infcx().resolve_type_vars_if_possible(fcx.expr_ty(begin));
         let e_ty =
             fcx.infcx().resolve_type_vars_if_possible(fcx.expr_ty(end));
-        debug!("pat_range beginning type: %?", b_ty);
-        debug!("pat_range ending type: %?", e_ty);
+        debug2!("pat_range beginning type: {:?}", b_ty);
+        debug2!("pat_range ending type: {:?}", e_ty);
         if !require_same_types(
             tcx, Some(fcx.infcx()), false, pat.span, b_ty, e_ty,
             || ~"mismatched types in range")
@@ -488,7 +488,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, typ);
 
-        debug!("(checking match) writing type for pat id %d", pat.id);
+        debug2!("(checking match) writing type for pat id {}", pat.id);
 
         match sub {
           Some(p) => check_pat(pcx, p, expected),
@@ -520,7 +520,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
                fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                                 |expected, actual| {
                             expected.map_move_default(~"", |e| {
-                                    fmt!("mismatched types: expected `%s` but found %s",
+                                    format!("mismatched types: expected `{}` but found {}",
                                          e, actual)})},
                                          Some(expected), ~"a structure pattern",
                                          None);
@@ -567,7 +567,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
                 // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
                 fcx.infcx().type_error_message_str_with_expected(pat.span, |expected, actual| {
                 expected.map_move_default(~"", |e| {
-                    fmt!("mismatched types: expected `%s` but found %s",
+                    format!("mismatched types: expected `{}` but found {}",
                                      e, actual)})}, Some(expected), ~"tuple", Some(&type_error));
                 fcx.write_error(pat.id);
             }
@@ -617,7 +617,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
                   pat.span,
                   |expected, actual| {
                       expected.map_move_default(~"", |e| {
-                          fmt!("mismatched types: expected `%s` but found %s",
+                          format!("mismatched types: expected `{}` but found {}",
                                e, actual)})},
                   Some(expected),
                   ~"a vector pattern",
@@ -676,10 +676,10 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                 span,
                 |expected, actual| {
                     expected.map_move_default(~"", |e| {
-                        fmt!("mismatched types: expected `%s` but found %s",
+                        format!("mismatched types: expected `{}` but found {}",
                              e, actual)})},
                 Some(expected),
-                fmt!("%s pattern", match pointer_kind {
+                format!("{} pattern", match pointer_kind {
                     Managed => "an @-box",
                     Send => "a ~-box",
                     Borrowed => "an &-pointer"

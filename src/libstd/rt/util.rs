@@ -61,7 +61,7 @@ pub fn default_sched_threads() -> uint {
             let opt_n: Option<uint> = FromStr::from_str(nstr);
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => rtabort!("`RUST_THREADS` is `%s`, should be a positive integer", nstr)
+                _ => rtabort!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
             }
         }
         None => {
@@ -127,10 +127,10 @@ which at the time convulsed us with joy, yet which are now partly lost to my
 memory and partly incapable of presentation to others.",
         _ => "You've met with a terrible fate, haven't you?"
     };
-    rterrln!("%s", "");
-    rterrln!("%s", quote);
-    rterrln!("%s", "");
-    rterrln!("fatal runtime error: %s", msg);
+    rterrln!("{}", "");
+    rterrln!("{}", quote);
+    rterrln!("{}", "");
+    rterrln!("fatal runtime error: {}", msg);
 
     abort();
 

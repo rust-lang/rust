@@ -21,6 +21,6 @@ fn coerce(b: &fn()) -> extern fn() {
 
 fn main() {
     let i = 8;
-    let f = coerce(|| error!(i) );
+    let f = coerce(|| error2!("{:?}", i) );
     f();
 }

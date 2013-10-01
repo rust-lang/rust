@@ -63,9 +63,9 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
         io::stdout().write_str("\n\n");
     }
     let testfile = Path(testfile);
-    debug!("running %s", testfile.to_str());
+    debug2!("running {}", testfile.to_str());
     let props = load_props(&testfile);
-    debug!("loaded props");
+    debug2!("loaded props");
     match config.mode {
       mode_compile_fail => run_cfail_test(&config, &props, &testfile),
       mode_run_fail => run_rfail_test(&config, &props, &testfile),
@@ -136,8 +136,8 @@ fn check_correct_failure_status(ProcRes: &ProcRes) {
     static RUST_ERR: int = 101;
     if ProcRes.status != RUST_ERR {
         fatal_ProcRes(
-            fmt!("failure produced the wrong error code: %d",
-                 ProcRes.status),
+            format!("failure produced the wrong error code: {}",
+                    ProcRes.status),
             ProcRes);
     }
 }
@@ -174,11 +174,11 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
 
     let mut round = 0;
     while round < rounds {
-        logv(config, fmt!("pretty-printing round %d", round));
+        logv(config, format!("pretty-printing round {}", round));
         let ProcRes = print_source(config, testfile, srcs[round].clone());
 
         if ProcRes.status != 0 {
-            fatal_ProcRes(fmt!("pretty-printing failed in round %d", round),
+            fatal_ProcRes(format!("pretty-printing failed in round {}", round),
                           &ProcRes);
         }
 
@@ -228,19 +228,19 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         if expected != actual {
             error(~"pretty-printed source does not match expected source");
             let msg =
-                fmt!("\n\
+                format!("\n\
 expected:\n\
 ------------------------------------------\n\
-%s\n\
+{}\n\
 ------------------------------------------\n\
 actual:\n\
 ------------------------------------------\n\
-%s\n\
+{}\n\
 ------------------------------------------\n\
 \n",
                      expected, actual);
             io::stdout().write_str(msg);
-            fail!();
+            fail2!();
         }
     }
 
@@ -285,7 +285,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let script_str = [~"set charset UTF-8",
                       cmds,
                       ~"quit\n"].connect("\n");
-    debug!("script_str = %s", script_str);
+    debug2!("script_str = {}", script_str);
     dump_output_file(config, testfile, script_str, "debugger.script");
 
     // run debugger script with gdb
@@ -318,8 +318,8 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             }
         }
         if i != num_check_lines {
-            fatal_ProcRes(fmt!("line not found in debugger output: %s",
-                               check_lines[i]), &ProcRes);
+            fatal_ProcRes(format!("line not found in debugger output: {}",
+                                  check_lines[i]), &ProcRes);
         }
     }
 }
@@ -340,10 +340,10 @@ fn check_error_patterns(props: &TestProps,
     let mut done = false;
     for line in ProcRes.stderr.line_iter() {
         if line.contains(*next_err_pat) {
-            debug!("found error pattern %s", *next_err_pat);
+            debug2!("found error pattern {}", *next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == props.error_patterns.len() {
-                debug!("found all error patterns");
+                debug2!("found all error patterns");
                 done = true;
                 break;
             }
@@ -355,11 +355,11 @@ fn check_error_patterns(props: &TestProps,
     let missing_patterns =
         props.error_patterns.slice(next_err_idx, props.error_patterns.len());
     if missing_patterns.len() == 1u {
-        fatal_ProcRes(fmt!("error pattern '%s' not found!",
-                           missing_patterns[0]), ProcRes);
+        fatal_ProcRes(format!("error pattern '{}' not found!",
+                              missing_patterns[0]), ProcRes);
     } else {
         for pattern in missing_patterns.iter() {
-            error(fmt!("error pattern '%s' not found!", *pattern));
+            error(format!("error pattern '{}' not found!", *pattern));
         }
         fatal_ProcRes(~"multiple error patterns not found", ProcRes);
     }
@@ -378,7 +378,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        fmt!("%s:%u:", testfile.to_str(), ee.line)
+        format!("{}:{}:", testfile.to_str(), ee.line)
     }).collect::<~[~str]>();
 
     fn to_lower( s : &str ) -> ~str {
@@ -415,7 +415,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         let mut was_expected = false;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
-                debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
+                debug2!("prefix={} ee.kind={} ee.msg={} line={}",
                        prefixes[i], ee.kind, ee.msg, line);
                 if (prefix_matches(line, prefixes[i]) &&
                     line.contains(ee.kind) &&
@@ -433,7 +433,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         if !was_expected && is_compiler_error_or_warning(line) {
-            fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
+            fatal_ProcRes(format!("unexpected compiler error or warning: '{}'",
                                line),
                           ProcRes);
         }
@@ -442,7 +442,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     for (i, &flag) in found_flags.iter().enumerate() {
         if !flag {
             let ee = &expected_errors[i];
-            fatal_ProcRes(fmt!("expected %s on line %u not found: %s",
+            fatal_ProcRes(format!("expected {} on line {} not found: {}",
                                ee.kind, ee.line, ee.msg), ProcRes);
         }
     }
@@ -591,7 +591,7 @@ fn compose_and_run_compiler(
                                      config.compile_lib_path, None);
         if auxres.status != 0 {
             fatal_ProcRes(
-                fmt!("auxiliary build of %s failed to compile: ",
+                format!("auxiliary build of {} failed to compile: ",
                      abs_ab.to_str()),
                 &auxres);
         }
@@ -615,7 +615,7 @@ fn compose_and_run_compiler(
 fn ensure_dir(path: &Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
-        fail!("can't make dir %s", path.to_str());
+        fail2!("can't make dir {}", path.to_str());
     }
 }
 
@@ -678,7 +678,7 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
-            logv(config, fmt!("executing %s", cmdline));
+            logv(config, format!("executing {}", cmdline));
             cmdline
         };
     let procsrv::Result{ out, err, status } =
@@ -695,19 +695,19 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s", prog, args.connect(" "))
+    format!("{} {}", prog, args.connect(" "))
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
+    format!("{} {} {}", lib_path_cmd_prefix(libpath), prog,
          args.connect(" "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
 fn lib_path_cmd_prefix(path: &str) -> ~str {
-    fmt!("%s=\"%s\"", util::lib_path_env_var(), util::make_new_path(path))
+    format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
 }
 
 fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
@@ -744,8 +744,8 @@ fn output_base_name(config: &config, testfile: &Path) -> Path {
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
     if config.verbose {
-        let sep1 = fmt!("------%s------------------------------", "stdout");
-        let sep2 = fmt!("------%s------------------------------", "stderr");
+        let sep1 = format!("------{}------------------------------", "stdout");
+        let sep2 = format!("------{}------------------------------", "stderr");
         let sep3 = ~"------------------------------------------";
         io::stdout().write_line(sep1);
         io::stdout().write_line(out);
@@ -755,27 +755,27 @@ fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
     }
 }
 
-fn error(err: ~str) { io::stdout().write_line(fmt!("\nerror: %s", err)); }
+fn error(err: ~str) { io::stdout().write_line(format!("\nerror: {}", err)); }
 
-fn fatal(err: ~str) -> ! { error(err); fail!(); }
+fn fatal(err: ~str) -> ! { error(err); fail2!(); }
 
 fn fatal_ProcRes(err: ~str, ProcRes: &ProcRes) -> ! {
     let msg =
-        fmt!("\n\
-error: %s\n\
-command: %s\n\
+        format!("\n\
+error: {}\n\
+command: {}\n\
 stdout:\n\
 ------------------------------------------\n\
-%s\n\
+{}\n\
 ------------------------------------------\n\
 stderr:\n\
 ------------------------------------------\n\
-%s\n\
+{}\n\
 ------------------------------------------\n\
 \n",
              err, ProcRes.cmdline, ProcRes.stdout, ProcRes.stderr);
     io::stdout().write_str(msg);
-    fail!();
+    fail2!();
 }
 
 fn _arm_exec_compiled_test(config: &config, props: &TestProps,
@@ -794,23 +794,23 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
         ~[(~"",~"")], Some(~""));
 
     if config.verbose {
-        io::stdout().write_str(fmt!("push (%s) %s %s %s",
+        io::stdout().write_str(format!("push ({}) {} {} {}",
             config.target, args.prog,
             copy_result.out, copy_result.err));
     }
 
-    logv(config, fmt!("executing (%s) %s", config.target, cmdline));
+    logv(config, format!("executing ({}) {}", config.target, cmdline));
 
     let mut runargs = ~[];
 
     // run test via adb_run_wrapper
     runargs.push(~"shell");
     for (key, val) in env.move_iter() {
-        runargs.push(fmt!("%s=%s", key, val));
+        runargs.push(format!("{}={}", key, val));
     }
-    runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
-    runargs.push(fmt!("%s", config.adb_test_dir));
-    runargs.push(fmt!("%s", prog_short));
+    runargs.push(format!("{}/adb_run_wrapper.sh", config.adb_test_dir));
+    runargs.push(format!("{}", config.adb_test_dir));
+    runargs.push(format!("{}", prog_short));
 
     for tv in args.args.iter() {
         runargs.push(tv.to_owned());
@@ -822,7 +822,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs = ~[];
     runargs.push(~"shell");
     runargs.push(~"cat");
-    runargs.push(fmt!("%s/%s.exitcode", config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.exitcode", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
         procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
@@ -841,7 +841,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs = ~[];
     runargs.push(~"shell");
     runargs.push(~"cat");
-    runargs.push(fmt!("%s/%s.stdout", config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.stdout", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stdout_out, err: _, status: _ } =
         procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
@@ -850,7 +850,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs = ~[];
     runargs.push(~"shell");
     runargs.push(~"cat");
-    runargs.push(fmt!("%s/%s.stderr", config.adb_test_dir, prog_short));
+    runargs.push(format!("{}/{}.stderr", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stderr_out, err: _, status: _ } =
         procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
@@ -887,7 +887,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {
-                io::stdout().write_str(fmt!("push (%s) %s %s %s",
+                io::stdout().write_str(format!("push ({}) {} {} {}",
                     config.target, file.to_str(),
                     copy_result.out, copy_result.err));
             }

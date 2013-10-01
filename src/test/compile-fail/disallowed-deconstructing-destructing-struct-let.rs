@@ -14,7 +14,7 @@ struct X {
 
 impl Drop for X {
     fn drop(&mut self) {
-        error!("value: %s", self.x);
+        error2!("value: {}", self.x);
     }
 }
 
@@ -26,5 +26,5 @@ fn unwrap(x: X) -> ~str {
 fn main() {
     let x = X { x: ~"hello" };
     let y = unwrap(x);
-    error!("contents: %s", y);
+    error2!("contents: {}", y);
 }
