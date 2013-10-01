@@ -63,6 +63,7 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitFuncVisibility,
     ObsoleteConstPointer,
     ObsoleteEmptyImpl,
+    ObsoleteLoopAsContinue,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -243,6 +244,11 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteEmptyImpl => (
                 "empty implementation",
                 "instead of `impl A;`, write `impl A {}`"
+            ),
+            ObsoleteLoopAsContinue => (
+                "`loop` instead of `continue`",
+                "`loop` is now only used for loops and `continue` is used for \
+                 skipping iterations"
             ),
         };
 
