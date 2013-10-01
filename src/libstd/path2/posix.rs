@@ -731,6 +731,29 @@ mod tests {
     }
 
     #[test]
+    fn test_display() {
+        macro_rules! t(
+            ($path:expr, $exp:expr, $expf:expr) => (
+                {
+                    let path = Path::from_vec($path);
+                    let f = format!("{}", path.display());
+                    assert_eq!(f.as_slice(), $exp);
+                    let f = format!("{}", path.filename_display());
+                    assert_eq!(f.as_slice(), $expf);
+                }
+            )
+        )
+
+        t!(b!("foo"), "foo", "foo");
+        t!(b!("foo/bar"), "foo/bar", "bar");
+        t!(b!("/"), "/", "");
+        t!(b!("foo", 0xff), "foo\uFFFD", "foo\uFFFD");
+        t!(b!("foo", 0xff, "/bar"), "foo\uFFFD/bar", "bar");
+        t!(b!("foo/", 0xff, "bar"), "foo/\uFFFDbar", "\uFFFDbar");
+        t!(b!(0xff, "foo/bar", 0xff), "\uFFFDfoo/bar\uFFFD", "bar\uFFFD");
+    }
+
+    #[test]
     fn test_components() {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (

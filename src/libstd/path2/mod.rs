@@ -13,6 +13,7 @@
 use container::Container;
 use c_str::CString;
 use clone::Clone;
+use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
@@ -183,6 +184,21 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             }
         }
         s
+    }
+
+    /// Returns an object that implements `fmt::Default` for printing paths
+    ///
+    /// This will print the equivalent of `to_display_str()` when used with a {} format parameter.
+    fn display<'a>(&'a self) -> Display<'a, Self> {
+        Display{ path: self }
+    }
+
+    /// Returns an object that implements `fmt::Default` for printing filenames
+    ///
+    /// This will print the equivalent of `to_filename_display_str()` when used with a {}
+    /// format parameter. If there is no filename, nothing will be printed.
+    fn filename_display<'a>(&'a self) -> FilenameDisplay<'a, Self> {
+        FilenameDisplay{ path: self }
     }
 
     /// Returns the directory component of `self`, as a byte vector (with no trailing separator).
@@ -658,6 +674,31 @@ pub trait GenericPathUnsafe {
     #[inline]
     unsafe fn push_str_unchecked(&mut self, path: &str) {
         self.push_unchecked(path.as_bytes())
+    }
+}
+
+/// Helper struct for printing paths with format!()
+pub struct Display<'self, P> {
+    priv path: &'self P
+}
+/// Helper struct for printing filenames with format!()
+pub struct FilenameDisplay<'self, P> {
+    priv path: &'self P
+}
+
+impl<'self, P: GenericPath> fmt::Default for Display<'self, P> {
+    fn fmt(d: &Display<P>, f: &mut fmt::Formatter) {
+        do d.path.with_display_str |s| {
+            f.pad(s)
+        }
+    }
+}
+
+impl<'self, P: GenericPath> fmt::Default for FilenameDisplay<'self, P> {
+    fn fmt(d: &FilenameDisplay<P>, f: &mut fmt::Formatter) {
+        do d.path.with_filename_display_str |s| {
+            f.pad(s.unwrap_or(""))
+        }
     }
 }
 
