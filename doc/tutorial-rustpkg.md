@@ -35,11 +35,11 @@ This makes sense, as we haven't gotten it from anywhere yet!  Luckily for us,
 used like this:
 
 ~~~ {.notrust}
-$ rustpkg install pkg_id
+$ rustpkg install PKG_ID
 ~~~
 
-This will install a package named 'pkg_id' into your current Rust environment.
-I called it 'pkg_id' in this example because `rustpkg` calls this a 'package
+This will install a package named `PKG_ID` into your current Rust environment.
+I called it `PKG_ID` in this example because `rustpkg` calls this a 'package
 identifier.' When using it with an external package like this, it's often a
 URI fragment.  You see, Rust has no central authority for packages. You can
 build your own `hello` library if you want, and that's fine. We'd both host
