@@ -64,7 +64,7 @@ fn h() {
     assert!(r == 0);
 }
 
-fn main () {
+pub fn main () {
     f();
     g();
     h();
