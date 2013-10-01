@@ -1144,10 +1144,8 @@ intuitive sense: you must wait for a borrowed value to be returned
 (that is, for the borrowed pointer to go out of scope) before you can
 make full use of it again.
 
-For a more in-depth explanation of borrowed pointers, read the
-[borrowed pointer tutorial][borrowtut].
-
-[borrowtut]: tutorial-borrowed-ptr.html
+For a more in-depth explanation of borrowed pointers and lifetimes, read the
+[lifetimes and borrowed pointer tutorial][lifetimes].
 
 ## Freezing
 
@@ -2789,8 +2787,6 @@ but for this tutorial it's only important to know that you can optionally annota
 extern mod rust = "github.com/mozilla/rust"; // pretend Rust is an simple library
 ~~~
 
-[rustpkg]: rustpkg.html
-
 ## Crate metadata and settings
 
 For every crate you can define a number of metadata items, such as link name, version or author.
@@ -2996,7 +2992,8 @@ re-export a bunch of 'officially blessed' crates that get managed with `rustpkg`
 Now that you know the essentials, check out any of the additional
 tutorials on individual topics.
 
-* [Borrowed pointers][borrow]
+* [Pointers][pointers-tutorial]
+* [Lifetimes][lifetimes]
 * [Tasks and communication][tasks]
 * [Macros][macros]
 * [The foreign function interface][ffi]
@@ -3006,11 +3003,12 @@ tutorials on individual topics.
 
 There is further documentation on the [wiki], however those tend to be even more out of date as this document.
 
-[borrow]: tutorial-borrowed-ptr.html
+[lifetimes]: tutorial-lifetimes.html
 [tasks]: tutorial-tasks.html
 [macros]: tutorial-macros.html
 [ffi]: tutorial-ffi.html
 [rustpkg]: tutorial-rustpkg.html
+[pointers-tutorial]: tutorial-pointers.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 
