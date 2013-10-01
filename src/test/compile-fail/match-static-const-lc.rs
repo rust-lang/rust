@@ -28,9 +28,23 @@ mod m {
 }
 
 fn g() {
-    use m::aha;
+    use self::m::aha;
     let r = match (0,0) {
         (0, aha) => 0,
+        //~^ ERROR static constant in pattern should be all caps
+        (x, y)   => 1 + x + y,
+    };
+    assert!(r == 1);
+}
+
+mod n {
+    pub static OKAY : int = 8;
+}
+
+fn h() {
+    use not_okay = self::n::OKAY;
+    let r = match (0,0) {
+        (0, not_okay) => 0,
         //~^ ERROR static constant in pattern should be all caps
         (x, y)   => 1 + x + y,
     };
@@ -40,4 +54,5 @@ fn g() {
 fn main () {
     f();
     g();
+    h();
 }
