@@ -408,12 +408,14 @@ mod test {
     use vec;
 
     #[test]
-    fn test_rng_seeded() {
+    fn test_rng_32_rand_seeded() {
         let s = unsafe {seed::<u32>(256)};
         let mut ra: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: IsaacRng = SeedableRng::from_seed(s.as_slice());
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
-
+    }
+    #[test]
+    fn test_rng_64_rand_seeded() {
         let s = unsafe {seed::<u64>(256)};
         let mut ra: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let mut rb: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
@@ -421,18 +423,41 @@ mod test {
     }
 
     #[test]
-    fn test_rng_seeded_custom_seed() {
-        // much shorter than generated seeds which are 1024 & 2048
-        // bytes resp.
+    fn test_rng_32_seeded() {
         let seed = &[2, 32, 4, 32, 51];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
-
+    }
+    #[test]
+    fn test_rng_64_seeded() {
         let seed = &[2, 32, 4, 32, 51];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+    }
+
+    #[test]
+    fn test_rng_32_reseed() {
+        let s = unsafe {seed::<u32>(256)};
+        let mut r: IsaacRng = SeedableRng::from_seed(s.as_slice());
+        let string1 = r.gen_ascii_str(100);
+
+        r.reseed(s);
+
+        let string2 = r.gen_ascii_str(100);
+        assert_eq!(string1, string2);
+    }
+    #[test]
+    fn test_rng_64_reseed() {
+        let s = unsafe {seed::<u64>(256)};
+        let mut r: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
+        let string1 = r.gen_ascii_str(100);
+
+        r.reseed(s);
+
+        let string2 = r.gen_ascii_str(100);
+        assert_eq!(string1, string2);
     }
 
     #[test]

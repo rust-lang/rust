@@ -108,11 +108,14 @@ impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
         *rng = Default::default();
     }
 }
+impl Default for ReseedWithDefault {
+    fn default() -> ReseedWithDefault { ReseedWithDefault }
+}
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::Rng;
+    use rand::{SeedableRng, Rng};
     use default::Default;
     use iter::range;
     use option::{None, Some};
@@ -133,6 +136,15 @@ mod test {
             Counter { i: 0 }
         }
     }
+    impl SeedableRng<u32> for Counter {
+        fn reseed(&mut self, seed: u32) {
+            self.i = seed;
+        }
+        fn from_seed(seed: u32) -> Counter {
+            Counter { i: seed }
+        }
+    }
+    type MyRng = ReseedingRng<Counter, ReseedWithDefault>;
 
     #[test]
     fn test_reseeding() {
@@ -143,5 +155,23 @@ mod test {
             assert_eq!(rs.next_u32(), i % 100);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_rng_seeded() {
+        let mut ra: MyRng = SeedableRng::from_seed(2);
+        let mut rb: MyRng = SeedableRng::from_seed(2);
+        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+    }
+
+    #[test]
+    fn test_rng_reseed() {
+        let mut r: MyRng = SeedableRng::from_seed(3);
+        let string1 = r.gen_ascii_str(100);
+
+        r.reseed(3);
+
+        let string2 = r.gen_ascii_str(100);
+        assert_eq!(string1, string2);
     }
 }
