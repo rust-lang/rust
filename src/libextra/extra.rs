@@ -67,6 +67,7 @@ pub mod sort;
 
 pub mod dlist;
 pub mod treemap;
+pub mod flatmap;
 
 // Crypto
 #[path="crypto/cryptoutil.rs"]
