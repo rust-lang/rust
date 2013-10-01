@@ -21,11 +21,11 @@ use syntax::ast;
 use syntax::opt_vec;
 
 pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
-    !ty::type_is_immediate(ccx.tcx, arg_ty)
+    !type_is_immediate(ccx.tcx, arg_ty)
 }
 
 pub fn return_uses_outptr(tcx: ty::ctxt, ty: ty::t) -> bool {
-    !ty::type_is_immediate(tcx, ty)
+    !type_is_immediate(tcx, ty)
 }
 
 pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: ty::t) -> Type {
