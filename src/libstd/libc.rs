@@ -421,7 +421,7 @@ pub mod types {
                     st_blocks: blkcnt_t,
                     st_pad5: [c_long, ..14],
                 }
-                impl Default for stat{
+                impl Default for stat {
                     fn default() -> stat {
                         stat {
                             st_dev: 0,
