@@ -1164,7 +1164,7 @@ pub fn last_os_error() -> ~str {
                                          len as DWORD,
                                          ptr::null());
                 if res == 0 {
-                    fail2!("[%?] FormatMessage failure", errno());
+                    fail2!("[{}] FormatMessage failure", errno());
                 }
             }
 
@@ -1596,15 +1596,15 @@ impl Drop for MemoryMap {
                     if libc::VirtualFree(self.data as *mut c_void,
                                          self.len,
                                          libc::MEM_RELEASE) == FALSE {
-                        error!(format!("VirtualFree failed: {}", errno()));
+                        error2!("VirtualFree failed: {}", errno());
                     }
                 },
                 MapFile(mapping) => {
                     if libc::UnmapViewOfFile(self.data as LPCVOID) == FALSE {
-                        error!(format!("UnmapViewOfFile failed: {}", errno()));
+                        error2!("UnmapViewOfFile failed: {}", errno());
                     }
                     if libc::CloseHandle(mapping as HANDLE) == FALSE {
-                        error!(format!("CloseHandle failed: {}", errno()));
+                        error2!("CloseHandle failed: {}", errno());
                     }
                 }
             }
