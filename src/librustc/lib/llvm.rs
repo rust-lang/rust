@@ -2149,7 +2149,8 @@ pub mod llvm {
                                            Model: CodeGenModel,
                                            Reloc: RelocMode,
                                            Level: CodeGenOptLevel,
-                                           EnableSegstk: bool) -> TargetMachineRef;
+                                           EnableSegstk: bool,
+                                           UseSoftFP: bool) -> TargetMachineRef;
         pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
         pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef,
                                          PM: PassManagerRef,

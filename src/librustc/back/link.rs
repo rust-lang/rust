@@ -264,6 +264,7 @@ pub mod write {
               session::Default => lib::llvm::CodeGenLevelDefault,
               session::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
+            let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
 
             let tm = do sess.targ_cfg.target_strs.target_triple.with_c_str |T| {
                 do sess.opts.target_cpu.with_c_str |CPU| {
@@ -273,7 +274,8 @@ pub mod write {
                             lib::llvm::CodeModelDefault,
                             lib::llvm::RelocPIC,
                             OptLevel,
-                            true
+                            true,
+                            use_softfp
                         )
                     }
                 }
