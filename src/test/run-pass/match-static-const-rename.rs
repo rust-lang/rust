@@ -26,6 +26,11 @@ fn f() {
         (x, y) => 1 + x + y,
     };
     assert!(r == 1);
+    let r = match (0,97) {
+        (0, A) => 0,
+        (x, y) => 1 + x + y,
+    };
+    assert!(r == 0);
 }
 
 mod m {
@@ -39,6 +44,11 @@ fn g() {
         (x, y)   => 1 + x + y,
     };
     assert!(r == 1);
+    let r = match (0,7) {
+        (0, AHA) => 0,
+        (x, y)   => 1 + x + y,
+    };
+    assert!(r == 0);
 }
 
 fn h() {
@@ -47,6 +57,11 @@ fn h() {
         (x, y)      => 1 + x + y,
     };
     assert!(r == 1);
+    let r = match (0,7) {
+        (0, m::aha) => 0,
+        (x, y)      => 1 + x + y,
+    };
+    assert!(r == 0);
 }
 
 fn main () {
