@@ -2,18 +2,18 @@ pub trait Number: NumConv {
     fn from<T:Number>(n: T) -> Self;
 }
 
-impl Number for float {
-    fn from<T:Number>(n: T) -> float { n.to_float() }
+impl Number for f64 {
+    fn from<T:Number>(n: T) -> f64 { n.to_float() }
 }
 
 pub trait NumConv {
-    fn to_float(&self) -> float;
+    fn to_float(&self) -> f64;
 }
 
-impl NumConv for float {
-    fn to_float(&self) -> float { *self }
+impl NumConv for f64 {
+    fn to_float(&self) -> f64 { *self }
 }
 
 pub fn main() {
-    let _: float = Number::from(0.0f);
+    let _: f64 = Number::from(0.0f64);
 }

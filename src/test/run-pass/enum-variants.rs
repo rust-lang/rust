@@ -2,8 +2,8 @@
 #[allow(unused_variable)];
 
 enum Animal {
-    Dog (~str, float),
-    Cat { name: ~str, weight: float }
+    Dog (~str, f64),
+    Cat { name: ~str, weight: f64 }
 }
 
 pub fn main() {

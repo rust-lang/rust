@@ -109,7 +109,6 @@ pub struct CrateContext {
      upcalls: @upcall::Upcalls,
      tydesc_type: Type,
      int_type: Type,
-     float_type: Type,
      opaque_vec_type: Type,
      builder: BuilderRef_res,
      crate_map: ValueRef,
@@ -156,7 +155,6 @@ impl CrateContext {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
             let int_type = Type::int(targ_cfg.arch);
-            let float_type = Type::float(targ_cfg.arch);
             let tydesc_type = Type::tydesc(targ_cfg.arch);
             let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
 
@@ -234,7 +232,6 @@ impl CrateContext {
                   upcalls: upcall::declare_upcalls(targ_cfg, llmod),
                   tydesc_type: tydesc_type,
                   int_type: int_type,
-                  float_type: float_type,
                   opaque_vec_type: opaque_vec_type,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   crate_map: crate_map,

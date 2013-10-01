@@ -40,7 +40,7 @@ pub fn main() {
 fn test_color(color: color, val: int, name: ~str) {
     //assert!(unsafe::transmute(color) == val);
     assert_eq!(color as int, val);
-    assert_eq!(color as float, val as float);
+    assert_eq!(color as f64, val as f64);
     assert!(get_color_alt(color) == name);
     assert!(get_color_if(color) == name);
 }

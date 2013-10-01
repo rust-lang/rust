@@ -23,7 +23,7 @@ trait B<T> {
 }
 
 impl<T> B<T> for int { }
-impl B<float> for bool { }
+impl B<f64> for bool { }
 
 
 

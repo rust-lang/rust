@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    static FOO: float = 10.0;
+    static FOO: f64 = 10.0;
 
     match 0.0 {
         0.0 .. FOO => (),

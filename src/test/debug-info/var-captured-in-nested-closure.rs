@@ -50,7 +50,7 @@
 
 struct Struct {
     a: int,
-    b: float,
+    b: f64,
     c: uint
 }
 

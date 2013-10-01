@@ -25,7 +25,6 @@ pub fn main() {
 
   info2!("{}", 1 as int);
   info2!("{}", 1 as uint);
-  info2!("{}", 1 as float);
   info2!("{}", 1 as *libc::FILE);
   info2!("{}", 1 as i8);
   info2!("{}", 1 as i16);
@@ -40,7 +39,6 @@ pub fn main() {
 
   info2!("{}", 1u as int);
   info2!("{}", 1u as uint);
-  info2!("{}", 1u as float);
   info2!("{}", 1u as *libc::FILE);
   info2!("{}", 1u as i8);
   info2!("{}", 1u as i16);
@@ -55,7 +53,6 @@ pub fn main() {
 
   info2!("{}", 1i8 as int);
   info2!("{}", 1i8 as uint);
-  info2!("{}", 1i8 as float);
   info2!("{}", 1i8 as *libc::FILE);
   info2!("{}", 1i8 as i8);
   info2!("{}", 1i8 as i16);
@@ -70,7 +67,6 @@ pub fn main() {
 
   info2!("{}", 1u8 as int);
   info2!("{}", 1u8 as uint);
-  info2!("{}", 1u8 as float);
   info2!("{}", 1u8 as *libc::FILE);
   info2!("{}", 1u8 as i8);
   info2!("{}", 1u8 as i16);
@@ -85,7 +81,6 @@ pub fn main() {
 
   info2!("{}", 1i16 as int);
   info2!("{}", 1i16 as uint);
-  info2!("{}", 1i16 as float);
   info2!("{}", 1i16 as *libc::FILE);
   info2!("{}", 1i16 as i8);
   info2!("{}", 1i16 as i16);
@@ -100,7 +95,6 @@ pub fn main() {
 
   info2!("{}", 1u16 as int);
   info2!("{}", 1u16 as uint);
-  info2!("{}", 1u16 as float);
   info2!("{}", 1u16 as *libc::FILE);
   info2!("{}", 1u16 as i8);
   info2!("{}", 1u16 as i16);
@@ -115,7 +109,6 @@ pub fn main() {
 
   info2!("{}", 1i32 as int);
   info2!("{}", 1i32 as uint);
-  info2!("{}", 1i32 as float);
   info2!("{}", 1i32 as *libc::FILE);
   info2!("{}", 1i32 as i8);
   info2!("{}", 1i32 as i16);
@@ -130,7 +123,6 @@ pub fn main() {
 
   info2!("{}", 1u32 as int);
   info2!("{}", 1u32 as uint);
-  info2!("{}", 1u32 as float);
   info2!("{}", 1u32 as *libc::FILE);
   info2!("{}", 1u32 as i8);
   info2!("{}", 1u32 as i16);
@@ -145,7 +137,6 @@ pub fn main() {
 
   info2!("{}", 1i64 as int);
   info2!("{}", 1i64 as uint);
-  info2!("{}", 1i64 as float);
   info2!("{}", 1i64 as *libc::FILE);
   info2!("{}", 1i64 as i8);
   info2!("{}", 1i64 as i16);
@@ -160,7 +151,6 @@ pub fn main() {
 
   info2!("{}", 1u64 as int);
   info2!("{}", 1u64 as uint);
-  info2!("{}", 1u64 as float);
   info2!("{}", 1u64 as *libc::FILE);
   info2!("{}", 1u64 as i8);
   info2!("{}", 1u64 as i16);
@@ -175,7 +165,6 @@ pub fn main() {
 
   info2!("{}", 1u64 as int);
   info2!("{}", 1u64 as uint);
-  info2!("{}", 1u64 as float);
   info2!("{}", 1u64 as *libc::FILE);
   info2!("{}", 1u64 as i8);
   info2!("{}", 1u64 as i16);
@@ -190,7 +179,6 @@ pub fn main() {
 
   info2!("{}", true as int);
   info2!("{}", true as uint);
-  info2!("{}", true as float);
   info2!("{}", true as *libc::FILE);
   info2!("{}", true as i8);
   info2!("{}", true as i16);
@@ -205,7 +193,6 @@ pub fn main() {
 
   info2!("{}", 1. as int);
   info2!("{}", 1. as uint);
-  info2!("{}", 1. as float);
   info2!("{}", 1. as i8);
   info2!("{}", 1. as i16);
   info2!("{}", 1. as i32);
@@ -219,7 +206,6 @@ pub fn main() {
 
   info2!("{}", 1f32 as int);
   info2!("{}", 1f32 as uint);
-  info2!("{}", 1f32 as float);
   info2!("{}", 1f32 as i8);
   info2!("{}", 1f32 as i16);
   info2!("{}", 1f32 as i32);
@@ -233,7 +219,6 @@ pub fn main() {
 
   info2!("{}", 1f64 as int);
   info2!("{}", 1f64 as uint);
-  info2!("{}", 1f64 as float);
   info2!("{}", 1f64 as i8);
   info2!("{}", 1f64 as i16);
   info2!("{}", 1f64 as i32);

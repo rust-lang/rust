@@ -1035,7 +1035,6 @@ macro_rules! floating(($ty:ident) => {
         }
     }
 })
-floating!(float)
 floating!(f32)
 floating!(f64)
 
@@ -1096,7 +1095,6 @@ delegate!(~str to String)
 delegate!(&'self str to String)
 delegate!(bool to Bool)
 delegate!(char to Char)
-delegate!(float to Float)
 delegate!(f32 to Float)
 delegate!(f64 to Float)
 

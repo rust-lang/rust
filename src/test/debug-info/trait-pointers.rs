@@ -19,7 +19,7 @@ trait Trait {
 
 struct Struct {
     a: int,
-    b: float
+    b: f64
 }
 
 impl Trait for Struct {}

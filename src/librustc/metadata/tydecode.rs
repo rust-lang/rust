@@ -304,7 +304,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       'b' => return ty::mk_bool(),
       'i' => return ty::mk_int(),
       'u' => return ty::mk_uint(),
-      'l' => return ty::mk_float(),
       'M' => {
         match next(st) {
           'b' => return ty::mk_mach_uint(ast::ty_u8),

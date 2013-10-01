@@ -14,5 +14,5 @@
 extern mod foo(name = "xcrate_address_insignificant");
 
 fn main() {
-    assert_eq!(foo::foo::<float>(), foo::bar());
+    assert_eq!(foo::foo::<f64>(), foo::bar());
 }

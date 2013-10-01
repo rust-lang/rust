@@ -19,7 +19,7 @@ use metadata;
 use middle::lint;
 
 use syntax::ast::NodeId;
-use syntax::ast::{int_ty, uint_ty, float_ty};
+use syntax::ast::{int_ty, uint_ty};
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
@@ -47,7 +47,6 @@ pub struct config {
     target_strs: target_strs::t,
     int_type: int_ty,
     uint_type: uint_ty,
-    float_type: float_ty
 }
 
 pub static verbose:                 uint = 1 <<  0;

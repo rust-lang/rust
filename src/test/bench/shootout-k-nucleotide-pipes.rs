@@ -29,8 +29,8 @@ use std::vec;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
-   fn pct(xx: uint, yy: uint) -> float {
-      return (xx as float) * 100f / (yy as float);
+   fn pct(xx: uint, yy: uint) -> f64 {
+      return (xx as f64) * 100.0 / (yy as f64);
    }
 
    fn le_by_val<TT:Clone,

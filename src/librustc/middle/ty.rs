@@ -583,7 +583,6 @@ mod primitives {
     def_prim_ty!(TY_U16,    super::ty_uint(ast::ty_u16),    10)
     def_prim_ty!(TY_U32,    super::ty_uint(ast::ty_u32),    11)
     def_prim_ty!(TY_U64,    super::ty_uint(ast::ty_u64),    12)
-    def_prim_ty!(TY_FLOAT,  super::ty_float(ast::ty_f),     13)
     def_prim_ty!(TY_F32,    super::ty_float(ast::ty_f32),   14)
     def_prim_ty!(TY_F64,    super::ty_float(ast::ty_f64),   15)
 
@@ -1122,9 +1121,6 @@ pub fn mk_i32() -> t { mk_prim_t(&primitives::TY_I32) }
 pub fn mk_i64() -> t { mk_prim_t(&primitives::TY_I64) }
 
 #[inline]
-pub fn mk_float() -> t { mk_prim_t(&primitives::TY_FLOAT) }
-
-#[inline]
 pub fn mk_f32() -> t { mk_prim_t(&primitives::TY_F32) }
 
 #[inline]
@@ -1167,7 +1163,6 @@ pub fn mk_mach_uint(tm: ast::uint_ty) -> t {
 
 pub fn mk_mach_float(tm: ast::float_ty) -> t {
     match tm {
-        ast::ty_f    => mk_float(),
         ast::ty_f32  => mk_f32(),
         ast::ty_f64  => mk_f64(),
     }
@@ -2560,7 +2555,7 @@ pub fn type_is_signed(ty: t) -> bool {
 
 pub fn type_is_machine(ty: t) -> bool {
     match get(ty).sty {
-        ty_int(ast::ty_i) | ty_uint(ast::ty_u) | ty_float(ast::ty_f) => false,
+        ty_int(ast::ty_i) | ty_uint(ast::ty_u) => false,
         ty_int(*) | ty_uint(*) | ty_float(*) => true,
         _ => false
     }

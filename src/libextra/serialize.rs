@@ -41,7 +41,6 @@ pub trait Encoder {
     fn emit_i16(&mut self, v: i16);
     fn emit_i8(&mut self, v: i8);
     fn emit_bool(&mut self, v: bool);
-    fn emit_float(&mut self, v: float);
     fn emit_f64(&mut self, v: f64);
     fn emit_f32(&mut self, v: f32);
     fn emit_char(&mut self, v: char);
@@ -108,7 +107,6 @@ pub trait Decoder {
     fn read_bool(&mut self) -> bool;
     fn read_f64(&mut self) -> f64;
     fn read_f32(&mut self) -> f32;
-    fn read_float(&mut self) -> float;
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> ~str;
 
@@ -323,18 +321,6 @@ impl<S:Encoder> Encodable<S> for @str {
 impl<D:Decoder> Decodable<D> for @str {
     fn decode(d: &mut D) -> @str {
         d.read_str().to_managed()
-    }
-}
-
-impl<S:Encoder> Encodable<S> for float {
-    fn encode(&self, s: &mut S) {
-        s.emit_float(*self)
-    }
-}
-
-impl<D:Decoder> Decodable<D> for float {
-    fn decode(d: &mut D) -> float {
-        d.read_float()
     }
 }
 

@@ -446,7 +446,6 @@ fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_FLOAT(fident, fty) => {
             let s_fty = match fty {
-                ast::ty_f => ~"ty_f",
                 ast::ty_f32 => ~"ty_f32",
                 ast::ty_f64 => ~"ty_f64"
             };

@@ -30,7 +30,6 @@ pub struct Cmplx<T> {
     im: T
 }
 
-pub type Complex = Cmplx<float>;
 pub type Complex32 = Cmplx<f32>;
 pub type Complex64 = Cmplx<f64>;
 
@@ -196,25 +195,25 @@ mod test {
     use super::*;
     use std::num::{Zero,One,Real};
 
-    pub static _0_0i : Complex = Cmplx { re: 0f, im: 0f };
-    pub static _1_0i : Complex = Cmplx { re: 1f, im: 0f };
-    pub static _1_1i : Complex = Cmplx { re: 1f, im: 1f };
-    pub static _0_1i : Complex = Cmplx { re: 0f, im: 1f };
-    pub static _neg1_1i : Complex = Cmplx { re: -1f, im: 1f };
-    pub static _05_05i : Complex = Cmplx { re: 0.5f, im: 0.5f };
-    pub static all_consts : [Complex, .. 5] = [_0_0i, _1_0i, _1_1i, _neg1_1i, _05_05i];
+    pub static _0_0i : Complex64 = Cmplx { re: 0.0, im: 0.0 };
+    pub static _1_0i : Complex64 = Cmplx { re: 1.0, im: 0.0 };
+    pub static _1_1i : Complex64 = Cmplx { re: 1.0, im: 1.0 };
+    pub static _0_1i : Complex64 = Cmplx { re: 0.0, im: 1.0 };
+    pub static _neg1_1i : Complex64 = Cmplx { re: -1.0, im: 1.0 };
+    pub static _05_05i : Complex64 = Cmplx { re: 0.5, im: 0.5 };
+    pub static all_consts : [Complex64, .. 5] = [_0_0i, _1_0i, _1_1i, _neg1_1i, _05_05i];
 
     #[test]
     fn test_consts() {
         // check our constants are what Cmplx::new creates
-        fn test(c : Complex, r : float, i: float) {
+        fn test(c : Complex64, r : f64, i: f64) {
             assert_eq!(c, Cmplx::new(r,i));
         }
-        test(_0_0i, 0f, 0f);
-        test(_1_0i, 1f, 0f);
-        test(_1_1i, 1f, 1f);
-        test(_neg1_1i, -1f, 1f);
-        test(_05_05i, 0.5f, 0.5f);
+        test(_0_0i, 0.0, 0.0);
+        test(_1_0i, 1.0, 0.0);
+        test(_1_1i, 1.0, 1.0);
+        test(_neg1_1i, -1.0, 1.0);
+        test(_05_05i, 0.5, 0.5);
 
         assert_eq!(_0_0i, Zero::zero());
         assert_eq!(_1_0i, One::one());
@@ -224,23 +223,23 @@ mod test {
     #[ignore(cfg(target_arch = "x86"))]
     // FIXME #7158: (maybe?) currently failing on x86.
     fn test_norm() {
-        fn test(c: Complex, ns: float) {
+        fn test(c: Complex64, ns: f64) {
             assert_eq!(c.norm_sqr(), ns);
             assert_eq!(c.norm(), ns.sqrt())
         }
-        test(_0_0i, 0f);
-        test(_1_0i, 1f);
-        test(_1_1i, 2f);
-        test(_neg1_1i, 2f);
-        test(_05_05i, 0.5f);
+        test(_0_0i, 0.0);
+        test(_1_0i, 1.0);
+        test(_1_1i, 2.0);
+        test(_neg1_1i, 2.0);
+        test(_05_05i, 0.5);
     }
 
     #[test]
     fn test_scale_unscale() {
-        assert_eq!(_05_05i.scale(2f), _1_1i);
-        assert_eq!(_1_1i.unscale(2f), _05_05i);
+        assert_eq!(_05_05i.scale(2.0), _1_1i);
+        assert_eq!(_1_1i.unscale(2.0), _05_05i);
         for &c in all_consts.iter() {
-            assert_eq!(c.scale(2f).unscale(2f), c);
+            assert_eq!(c.scale(2.0).unscale(2.0), c);
         }
     }
 
@@ -268,18 +267,18 @@ mod test {
 
     #[test]
     fn test_arg() {
-        fn test(c: Complex, arg: float) {
+        fn test(c: Complex64, arg: f64) {
             assert!(c.arg().approx_eq(&arg))
         }
-        test(_1_0i, 0f);
-        test(_1_1i, 0.25f * Real::pi());
-        test(_neg1_1i, 0.75f * Real::pi());
-        test(_05_05i, 0.25f * Real::pi());
+        test(_1_0i, 0.0);
+        test(_1_1i, 0.25 * Real::pi());
+        test(_neg1_1i, 0.75 * Real::pi());
+        test(_05_05i, 0.25 * Real::pi());
     }
 
     #[test]
     fn test_polar_conv() {
-        fn test(c: Complex) {
+        fn test(c: Complex64) {
             let (r, theta) = c.to_polar();
             assert!((c - Cmplx::from_polar(&r, &theta)).norm() < 1e-6);
         }
@@ -316,7 +315,7 @@ mod test {
 
         #[test]
         fn test_mul() {
-            assert_eq!(_05_05i * _05_05i, _0_1i.unscale(2f));
+            assert_eq!(_05_05i * _05_05i, _0_1i.unscale(2.0));
             assert_eq!(_1_1i * _0_1i, _neg1_1i);
 
             // i^2 & i^4
@@ -349,7 +348,7 @@ mod test {
 
     #[test]
     fn test_to_str() {
-        fn test(c : Complex, s: ~str) {
+        fn test(c : Complex64, s: ~str) {
             assert_eq!(c.to_str(), s);
         }
         test(_0_0i, ~"0+0i");

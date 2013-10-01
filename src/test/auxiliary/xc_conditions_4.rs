@@ -16,7 +16,7 @@ pub enum Color {
 }
 
 condition! {
-    pub oops: (int,float,~str) -> Color;
+    pub oops: (int,f64,~str) -> Color;
 }
 
 pub trait Thunk<T> {

@@ -42,7 +42,7 @@
 #[deriving(Clone)]
 struct Struct {
     a: int,
-    b: float
+    b: f64
 }
 
 fn dup_tup<T0: Clone, T1: Clone>(t0: &T0, t1: &T1) -> ((T0, T1), (T1, T0)) {
