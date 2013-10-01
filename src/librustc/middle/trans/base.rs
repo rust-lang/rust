@@ -3008,7 +3008,7 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         let (mod_map, mod_count, mod_struct_size) = create_module_map(ccx);
 
         llvm::LLVMSetInitializer(map, C_struct(
-            [C_i32(1),
+            [C_i32(2),
              C_struct([
                 p2i(ccx, mod_map),
                 // byte size of the module map array, an entry consists of two integers
