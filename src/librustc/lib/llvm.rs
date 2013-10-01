@@ -1968,7 +1968,8 @@ pub mod llvm {
                                              DerivedFrom: DIType,
                                              Elements: DIArray,
                                              RunTimeLang: c_uint,
-                                             VTableHolder: ValueRef)
+                                             VTableHolder: ValueRef,
+                                             UniqueId: *c_char)
                                              -> DICompositeType;
 
         #[fast_ffi]
