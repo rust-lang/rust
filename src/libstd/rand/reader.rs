@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A wrapper around any Reader to treat it as an RNG.
+
 use option::{Some, None};
 use rt::io::Reader;
 use rt::io::ReaderByteConversions;
@@ -22,12 +24,12 @@ use rand::Rng;
 /// # Example
 ///
 /// ```rust
-/// use std::rand::reader;
+/// use std::rand::{reader, Rng};
 /// use std::rt::io::mem;
 ///
 /// fn main() {
 ///     let mut rng = reader::ReaderRng::new(mem::MemReader::new(~[1,2,3,4,5,6,7,8]));
-///     println!("{}", rng.gen::<uint>());
+///     println!("{:x}", rng.gen::<uint>());
 /// }
 /// ```
 pub struct ReaderRng<R> {

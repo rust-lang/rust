@@ -94,6 +94,31 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default> SeedableRng<S> for Resee
 }
 
 /// Something that can be used to reseed an RNG via `ReseedingRng`.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::{Rng, SeedableRng};
+/// use std::rand::reseeding::{Reseeder, ReseedingRng};
+///
+/// struct TickTockReseeder { tick: bool }
+/// impl Reseeder<rand::StdRng> for TickTockReseeder {
+///     fn reseed(&mut self, rng: &mut rand::StdRng) {
+///         let val = if self.tick {0} else {1};
+///         rng.reseed(&[val]);
+///         self.tick = !self.tick;
+///     }
+/// }
+/// fn main() {
+///     let rsdr = TickTockReseeder { tick: true };
+///     let mut rng = ReseedingRng::new(rand::StdRng::new(), 10, rsdr);
+///
+///     // this will repeat, because it gets reseeded very regularly.
+///     println(rng.gen_ascii_str(100));
+/// }
+///
+/// ```
 pub trait Reseeder<R> {
     /// Reseed the given RNG.
     fn reseed(&mut self, rng: &mut R);
