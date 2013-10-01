@@ -1413,6 +1413,8 @@ pub trait StrSlice<'self> {
 
     fn to_lower_default(&self) -> ~str;
     fn to_upper_default(&self) -> ~str;
+    fn to_lower_full_default(&self) -> ~str;
+    fn to_upper_full_default(&self) -> ~str;
 }
 
 /// Extension methods for strings
@@ -2196,20 +2198,42 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Convert all characters in the string to lowercase
     fn to_lower_default(&self) -> ~str {
-        let mut out: ~str = ~"";
-        out.reserve_at_least(self.len());
+        let mut out = with_capacity(self.len());
         for c in self.iter() {
             out.push_char(c.to_lower_default());
         }
         out
     }
 
+    /// Convert all characters in the string to lowercase using
+    /// full mapping, may increase string length
+    fn to_lower_full_default(&self) -> ~str {
+        let mut out = with_capacity(self.len());
+        for c in self.iter() {
+            let low = c.to_lower_full_default();
+            if low.is_empty(){ out.push_char(c.to_lower_default()); }
+            else { out.push_str(low); }
+        }
+        out
+    }
+
     /// Convert all characters in the string to uppercase
     fn to_upper_default(&self) -> ~str {
-        let mut out: ~str = ~"";
-        out.reserve_at_least(self.len());
+        let mut out = with_capacity(self.len());
         for c in self.iter() {
             out.push_char(c.to_upper_default());
+        }
+        out
+    }
+
+    /// Convert all characters in the string to uppercase using
+    /// full mapping, may increase string length
+    fn to_upper_full_default(&self) -> ~str {
+        let mut out = with_capacity(self.len());
+        for c in self.iter() {
+            let up = c.to_upper_full_default();
+            if up.is_empty(){ out.push_char(c.to_upper_default()); }
+            else { out.push_str(up); }
         }
         out
     }
@@ -3775,6 +3799,16 @@ mod tests {
     #[test]
     fn test_to_upper_default() {
         assert_eq!("ŗƲΣꓔ!".to_upper_default(), ~"ŖƲΣꓔ!" )
+    }
+
+    #[test]
+    fn test_to_lower_full_default() {
+        assert_eq!("İA".to_lower_full_default(), ~"i̇a")
+    }
+
+    #[test]
+    fn test_to_upper_full_default() {
+        assert_eq!("ßa".to_upper_full_default(), ~"SSA")
     }
 
 }

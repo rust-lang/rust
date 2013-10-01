@@ -228,11 +228,25 @@ pub fn to_lower_default(u: char) -> char {
     from_u32( (((u as u32) as i32) + off) as u32 ).unwrap()
 }
 
+/// Returns the lowercase form of a given unicode character
+/// using full mapping, may map to multiple char.
+/// Makes a best-effort attempt without checking locale.
+pub fn to_lower_full_default(u: char) -> ~str {
+    case_changes::lowcase_special(u).to_owned()
+}
+
 /// Returns the uppercase form of a given unicode character.
 /// Makes a best-effort attempt without checking locale.
 pub fn to_upper_default(u: char) -> char {
     let off = case_changes::upcase_offset(u);
     from_u32( (((u as u32) as i32) + off) as u32 ).unwrap()
+}
+
+/// Returns the uppercase form of a given unicode character
+/// using full mapping, may map to multiple char.
+/// Makes a best-effort attempt without checking locale.
+pub fn to_upper_full_default(u: char) -> ~str {
+    case_changes::upcase_special(u).to_owned()
 }
 
 //FIXME #9363: implement to_upper and to_lower which take into acount locale
@@ -386,6 +400,8 @@ pub trait Char {
 
     fn to_lower_default(&self) -> char;
     fn to_upper_default(&self) -> char;
+    fn to_lower_full_default(&self) -> ~str;
+    fn to_upper_full_default(&self) -> ~str;
 }
 
 impl Char for char {
@@ -442,6 +458,8 @@ impl Char for char {
 
     fn to_lower_default(&self) -> char { to_lower_default(*self) }
     fn to_upper_default(&self) -> char { to_upper_default(*self) }
+    fn to_lower_full_default(&self) -> ~str { to_lower_full_default(*self) }
+    fn to_upper_full_default(&self) -> ~str { to_upper_full_default(*self) }
 
 }
 

@@ -119,6 +119,31 @@ def load_unicode_data(f):
 
     return (canon_decomp, compat_decomp, gencats, combines, cases)
 
+def load_special_casing(f):
+    fetch(f)
+    cases=[]
+    sensative=False
+    for line in fileinput.input(f):
+        s="# Language-Sensitive Mappings"
+        if line[:len(s)]==s:
+            sensative=True
+        if sensative: continue
+        if line[0]=="#":
+            continue
+        fields = line.split("; ")
+        if len(fields)< 5:
+            continue
+        [code, lower, title, upper] = fields[:4]
+        code = "'\\u%4.4x'" % int(code,16)
+        lower='"'+"".join([ ("\\u%4.4x" % int(x,16)) for x in lower.strip().split(" ")]) +'"'
+        upper='"'+"".join([ ("\\u%4.4x" % int(x,16)) for x in upper.strip().split(" ")]) +'"'
+        cases.append( (
+            code
+            , lower
+            , upper
+            ) )
+    cases.sort()
+    return cases
 
 def load_derived_core_properties(f):
     fetch(f)
@@ -202,7 +227,7 @@ def emit_property_module(f, mod, tbl):
         f.write("    }\n\n")
     f.write("}\n")
 
-def emit_case_module(f, mod, tbl):
+def emit_case_module(f, mod, tbl, spec):
     f.write("pub mod %s {\n" % mod)
     keys = tbl.keys()
     keys.sort()
@@ -238,6 +263,46 @@ def emit_case_module(f, mod, tbl):
         f.write("    pub fn %s(c: char) -> i32 {\n" % (cat+"_offset") )
         f.write("        bsearch_range_value_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
+
+    f.write("    static %s_table : &'static [(char, &'static str,&'static str)] = &[\n" % "special")
+    ix = 0
+    for tup in special:
+        f.write(ch_prefix(ix))
+        f.write("(%s, %s, %s)" % (tup[0], tup[1], tup[2]))
+        ix += 2
+    f.write("\n    ];\n\n")
+
+    f.write("""
+    pub fn case_special(c:char, case:u8) -> &'static str {
+        use cmp::{Equal, Less, Greater};
+        match special_table.bsearch(|&(code, _, _)| {
+            if c==code { Equal }
+            else if code < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                if case==0 {
+                    let (_, result, _) = special_table[idx];
+                    result
+                }
+                else {
+                    let (_, _, result) = special_table[idx];
+                    result
+                }
+            }
+            None => ""
+        }
+    }\n\n
+""")
+
+    f.write("    pub fn upcase_special(c:char) -> &'static str {\n")
+    f.write("        case_special(c, 1)\n")
+    f.write("    }\n\n")
+
+    f.write("    pub fn lowcase_special(c:char) -> &'static str {\n")
+    f.write("        case_special(c, 0)\n")
+    f.write("    }\n\n")
+
     f.write("}\n")
 
 def emit_property_module_old(f, mod, tbl):
@@ -420,7 +485,7 @@ for i in [r]:
 rf = open(r, "w")
 
 (canon_decomp, compat_decomp, gencats, combines, cases) = load_unicode_data("UnicodeData.txt")
-
+special = load_special_casing("SpecialCasing.txt")
 # Preamble
 rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -441,7 +506,7 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 
 emit_property_module(rf, "general_category", gencats)
 
-emit_case_module(rf, "case_changes", cases)
+emit_case_module(rf, "case_changes", cases, special)
 
 emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
 
