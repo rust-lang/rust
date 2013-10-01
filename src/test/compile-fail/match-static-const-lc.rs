@@ -17,7 +17,7 @@ pub static a : int = 97;
 fn f() {
     let r = match (0,0) {
         (0, a) => 0,
-        //~^ ERROR static constant in pattern should have an uppercase id
+        //~^ ERROR static constant in pattern should be all caps
         (x, y) => 1 + x + y,
     };
     assert!(r == 1);
@@ -31,7 +31,7 @@ fn g() {
     use m::aha;
     let r = match (0,0) {
         (0, aha) => 0,
-        //~^ ERROR static constant in pattern should have an uppercase id
+        //~^ ERROR static constant in pattern should be all caps
         (x, y)   => 1 + x + y,
     };
     assert!(r == 1);

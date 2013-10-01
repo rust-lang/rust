@@ -213,7 +213,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("non_uppercase_pattern_statics",
      LintSpec {
          lint: non_uppercase_pattern_statics,
-         desc: "static constants in match patterns should be uppercased",
+         desc: "static constants in match patterns should be all caps",
          default: warn
      }),
 
