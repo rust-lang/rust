@@ -821,7 +821,7 @@ pub fn std_macros() -> @str {
                 if lvl <= __log_level() {
                     format_args!(|args| {
                         ::std::logging::log(lvl, args)
-                    }, \"{}\", fmt!(\"{:?}\", $arg))
+                    }, \"{}\", fmt!(\"%?\", $arg))
                 }
             });
             ($lvl:expr, $($arg:expr),+) => ({
