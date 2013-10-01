@@ -21,13 +21,15 @@ extern mod syntax;
 extern mod rustc;
 extern mod extra;
 
-use extra::serialize::Encodable;
-use extra::time;
-use extra::getopts::groups;
 use std::cell::Cell;
-use std::rt::io;
 use std::rt::io::Writer;
 use std::rt::io::file::FileInfo;
+use std::rt::io;
+use extra::getopts;
+use extra::getopts::groups;
+use extra::json;
+use extra::serialize::{Decodable, Encodable};
+use extra::time;
 
 pub mod clean;
 pub mod core;
@@ -70,9 +72,7 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
 
 local_data_key!(pub ctxtkey: @core::DocContext)
 
-enum OutputFormat {
-    HTML, JSON
-}
+type Output = (clean::Crate, ~[plugins::PluginJson]);
 
 pub fn main() {
     std::os::set_exit_status(main_args(std::os::args()));
@@ -81,6 +81,12 @@ pub fn main() {
 pub fn opts() -> ~[groups::OptGroup] {
     use extra::getopts::groups::*;
     ~[
+        optflag("h", "help", "show this help message"),
+        optopt("r", "input-format", "the input type of the specified file",
+               "[rust|json]"),
+        optopt("w", "output-format", "the output type to write",
+               "[html|json]"),
+        optopt("o", "output", "where to place the output", "PATH"),
         optmulti("L", "library-path", "directory to add to crate search path",
                  "DIR"),
         optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
@@ -89,32 +95,22 @@ pub fn opts() -> ~[groups::OptGroup] {
                  "PASSES"),
         optmulti("", "plugins", "space separated list of plugins to also load",
                  "PLUGINS"),
-        optflag("h", "help", "show this help message"),
-        optflag("", "nodefaults", "don't run the default passes"),
-        optopt("o", "output", "where to place the output", "PATH"),
+        optflag("", "no-defaults", "don't run the default passes"),
     ]
 }
 
 pub fn usage(argv0: &str) {
-    println(groups::usage(format!("{} [options] [html|json] <crate>",
-                                  argv0), opts()));
+    println(groups::usage(format!("{} [options] <input>", argv0), opts()));
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    //use extra::getopts::groups::*;
-
     let matches = groups::getopts(args.tail(), opts()).unwrap();
-
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(args[0]);
         return 0;
     }
 
-    let mut default_passes = !matches.opt_present("nodefaults");
-    let mut passes = matches.opt_strs("passes");
-    let mut plugins = matches.opt_strs("plugins");
-
-    if passes == ~[~"list"] {
+    if matches.opt_strs("passes") == ~[~"list"] {
         println("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
             println!("{:>20s} - {}", name, description);
@@ -126,25 +122,68 @@ pub fn main_args(args: &[~str]) -> int {
         return 0;
     }
 
-    let (format, cratefile) = match matches.free.clone() {
-        [~"json", crate] => (JSON, crate),
-        [~"html", crate] => (HTML, crate),
-        [s, _] => {
-            println!("Unknown output format: `{}`", s);
-            usage(args[0]);
-            return 1;
-        }
-        [_, .._] => {
-            println!("Expected exactly one crate to process");
-            usage(args[0]);
-            return 1;
-        }
-        _ => {
-            println!("Expected an output format and then one crate");
-            usage(args[0]);
+    let (crate, res) = match acquire_input(&matches) {
+        Ok(pair) => pair,
+        Err(s) => {
+            println!("input error: {}", s);
             return 1;
         }
     };
+
+    info2!("going to format");
+    let started = time::precise_time_ns();
+    let output = matches.opt_str("o").map(|s| Path(*s));
+    match matches.opt_str("w") {
+        Some(~"html") | None => {
+            html::render::run(crate, output.unwrap_or(Path("doc")))
+        }
+        Some(~"json") => {
+            json_output(crate, res, output.unwrap_or(Path("doc.json")))
+        }
+        Some(s) => {
+            println!("unknown output format: {}", s);
+            return 1;
+        }
+    }
+    let ended = time::precise_time_ns();
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
+
+    return 0;
+}
+
+/// Looks inside the command line arguments to extract the relevant input format
+/// and files and then generates the necessary rustdoc output for formatting.
+fn acquire_input(matches: &getopts::Matches) -> Result<Output, ~str> {
+    if matches.free.len() == 0 {
+        return Err(~"expected an input file to act on");
+    } if matches.free.len() > 1 {
+        return Err(~"only one input file may be specified");
+    }
+
+    let input = matches.free[0].as_slice();
+    match matches.opt_str("r") {
+        Some(~"rust") => Ok(rust_input(input, matches)),
+        Some(~"json") => json_input(input),
+        Some(s) => Err("unknown input format: " + s),
+        None => {
+            if input.ends_with(".json") {
+                json_input(input)
+            } else {
+                Ok(rust_input(input, matches))
+            }
+        }
+    }
+}
+
+/// Interprets the input file as a rust source file, passing it through the
+/// compiler all the way through the analysis passes. The rustdoc output is then
+/// generated from the cleaned AST of the crate.
+///
+/// This form of input will run all of the plug/cleaning passes
+fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
+    let mut default_passes = !matches.opt_present("no-defaults");
+    let mut passes = matches.opt_strs("passes");
+    let mut plugins = matches.opt_strs("plugins");
 
     // First, parse the crate and extract all relevant information.
     let libs = Cell::new(matches.opt_strs("L").map(|s| Path(*s)));
@@ -188,7 +227,8 @@ pub fn main_args(args: &[~str]) -> int {
     }
 
     // Load all plugins/passes into a PluginManager
-    let mut pm = plugins::PluginManager::new(Path("/tmp/rustdoc_ng/plugins"));
+    let path = matches.opt_str("plugin-path").unwrap_or(~"/tmp/rustdoc_ng/plugins");
+    let mut pm = plugins::PluginManager::new(Path(path));
     for pass in passes.iter() {
         let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
             Some(i) => PASSES[i].n1(),
@@ -206,45 +246,73 @@ pub fn main_args(args: &[~str]) -> int {
 
     // Run everything!
     info2!("Executing passes/plugins");
-    let (crate, res) = pm.run_plugins(crate);
-
-    info2!("going to format");
-    let started = time::precise_time_ns();
-    let output = matches.opt_str("o").map(|s| Path(*s));
-    match format {
-        HTML => { html::render::run(crate, output.unwrap_or(Path("doc"))) }
-        JSON => { jsonify(crate, res, output.unwrap_or(Path("doc.json"))) }
-    }
-    let ended = time::precise_time_ns();
-    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1000000000f64);
-
-    return 0;
+    return pm.run_plugins(crate);
 }
 
-fn jsonify(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
+/// This input format purely deserializes the json output file. No passes are
+/// run over the deserialized output.
+fn json_input(input: &str) -> Result<Output, ~str> {
+    let input = match ::std::io::file_reader(&Path(input)) {
+        Ok(i) => i,
+        Err(s) => return Err(s),
+    };
+    match json::from_reader(input) {
+        Err(s) => Err(s.to_str()),
+        Ok(json::Object(obj)) => {
+            let mut obj = obj;
+            // Make sure the schema is what we expect
+            match obj.pop(&~"schema") {
+                Some(json::String(version)) => {
+                    if version.as_slice() != SCHEMA_VERSION {
+                        return Err(format!("sorry, but I only understand \
+                                            version {}", SCHEMA_VERSION))
+                    }
+                }
+                Some(*) => return Err(~"malformed json"),
+                None => return Err(~"expected a schema version"),
+            }
+            let crate = match obj.pop(&~"crate") {
+                Some(json) => {
+                    let mut d = json::Decoder(json);
+                    Decodable::decode(&mut d)
+                }
+                None => return Err(~"malformed json"),
+            };
+            // XXX: this should read from the "plugins" field, but currently
+            //      Json doesn't implement decodable...
+            let plugin_output = ~[];
+            Ok((crate, plugin_output))
+        }
+        Ok(*) => Err(~"malformed json input: expected an object at the top"),
+    }
+}
+
+/// Outputs the crate/plugin json as a giant json blob at the specified
+/// destination.
+fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     // {
     //   "schema": version,
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
     let mut json = ~extra::treemap::TreeMap::new();
-    json.insert(~"schema", extra::json::String(SCHEMA_VERSION.to_owned()));
+    json.insert(~"schema", json::String(SCHEMA_VERSION.to_owned()));
     let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
     let crate_json_str = do std::io::with_str_writer |w| {
-        crate.encode(&mut extra::json::Encoder(w));
+        crate.encode(&mut json::Encoder(w));
     };
-    let crate_json = match extra::json::from_str(crate_json_str) {
+    let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,
         Err(_) => fail2!("Rust generated JSON is invalid??")
     };
 
     json.insert(~"crate", crate_json);
-    json.insert(~"plugins", extra::json::Object(plugins_json));
+    json.insert(~"plugins", json::Object(plugins_json));
 
     let mut file = dst.open_writer(io::Create).unwrap();
-    let output = extra::json::Object(json).to_str();
+    let output = json::Object(json).to_str();
     file.write(output.as_bytes());
 }
