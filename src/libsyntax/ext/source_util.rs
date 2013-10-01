@@ -60,6 +60,28 @@ pub fn expand_file(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
+/* func!(): expands to the current function name */
+pub fn expand_function_name(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+    -> base::MacResult {
+    base::check_zero_tts(cx, sp, tts, "func!");
+
+    /* 
+       In order to debug lambdas, and remove any amiguity about which
+       function, in general, we are referring too: we include file:line:col
+       in every func!() output.
+    */
+    let nearest = cx.backtrace().unwrap();
+    let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
+    let filename = loc.file.name;
+    let linestr : ~str = loc.line.to_str();
+    let colstr  : ~str = loc.col.to_str();
+
+    let full_func_path : ~str = cx.func_path().map(|x| cx.str_of(*x)).connect("::");
+    let res = filename + ":" + linestr + ":" + colstr + "|" + full_func_path;
+
+    base::MRExpr(cx.expr_str(sp, res.to_managed()))
+}
+
 pub fn expand_stringify(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let s = pprust::tts_to_str(tts, get_ident_interner());

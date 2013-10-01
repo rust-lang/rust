@@ -305,7 +305,8 @@ macro_rules! with_exts_frame (
 
 static special_block_name : &'static str = " block";
 
-// When we enter a module, record it, for the sake of `module!`
+// When we enter a module, record it, for the sake of 
+// `module_path!` and `func!`
 pub fn expand_item(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    it: @ast::item,
@@ -315,16 +316,48 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
         ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
         ast::item_mod(_) | ast::item_foreign_mod(_) => {
             cx.mod_push(it.ident);
+            cx.func_push(it.ident);
             let macro_escape = contains_macro_escape(it.attrs);
             let result = with_exts_frame!(extsbox,
                                           macro_escape,
                                           noop_fold_item(it, fld));
+            cx.func_pop();
             cx.mod_pop();
+            result
+        },
+          ast::item_fn(_, _, _, _, _) 
+        | ast::item_impl(_, _, _, _) 
+        | ast::item_trait(_, _, _) => {
+            cx.func_push(it.ident);
+            let macro_escape = contains_macro_escape(it.attrs);
+            let result = with_exts_frame!(extsbox,
+                                          macro_escape,
+                                          noop_fold_item(it, fld));
+            cx.func_pop();
             result
         },
         _ => noop_fold_item(it, fld)
     }
 }
+
+/* not needed now, right?
+// When we enter a method, record it, for the sake of `func!`
+pub fn expand_method(extsbox: @mut SyntaxEnv,
+                     cx: @ExtCtxt,
+                     me: @ast::method,
+                     fld: &MacroExpander)
+    -> Option<@ast::method> {
+
+
+    cx.func_push(me.ident);
+    let macro_escape = contains_macro_escape(me.attrs);
+    let result = with_exts_frame!(extsbox,
+                                  macro_escape,
+                                  noop_fold_method(me, fld));
+    cx.func_pop();
+    result
+}
+*/
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {

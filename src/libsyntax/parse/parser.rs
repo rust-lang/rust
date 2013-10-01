@@ -308,6 +308,7 @@ pub fn Parser(sess: @mut ParseSess,
         quote_depth: @mut 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
+        func_path_stack: @mut ~[],
     }
 }
 
@@ -336,6 +337,8 @@ pub struct Parser {
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
+    /// Used to determine the path to function names for func! expansion
+    func_path_stack: @mut ~[@str],
 }
 
 #[unsafe_destructor]
@@ -4111,6 +4114,7 @@ impl Parser {
             (id, m, Some(attrs))
         } else {
             self.push_mod_path(id, outer_attrs);
+            self.push_func_path(id, outer_attrs);
             self.expect(&token::LBRACE);
             let (inner, next) = self.parse_inner_attrs_and_next();
             let m = self.parse_mod_items(token::RBRACE, next);
@@ -4132,6 +4136,20 @@ impl Parser {
 
     fn pop_mod_path(&self) {
         self.mod_path_stack.pop();
+    }
+
+    fn push_func_path(&self, id: Ident, attrs: &[Attribute]) {
+        let default_path = token::interner_get(id.name);
+        let file_path = match ::attr::first_attr_value_str_by_name(attrs,
+                                                                   "path") {
+            Some(d) => d,
+            None => default_path
+        };
+        self.func_path_stack.push(file_path)
+    }
+
+    fn pop_func_path(&self) {
+        self.func_path_stack.pop();
     }
 
     // read a module from a source file.

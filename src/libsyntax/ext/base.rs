@@ -282,6 +282,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"file"),
                             builtin_normal_tt_no_ctxt(
                                     ext::source_util::expand_file));
+    syntax_expanders.insert(intern(&"func"),
+                            builtin_normal_tt_no_ctxt(
+                                    ext::source_util::expand_function_name));
     syntax_expanders.insert(intern(&"stringify"),
                             builtin_normal_tt_no_ctxt(
                                     ext::source_util::expand_stringify));
@@ -317,12 +320,13 @@ pub struct ExtCtxt {
     cfg: ast::CrateConfig,
     backtrace: @mut Option<@ExpnInfo>,
 
-    // These two @mut's should really not be here,
+    // These two (now three) @mut's should really not be here,
     // but the self types for CtxtRepr are all wrong
     // and there are bugs in the code for object
     // types that make this hard to get right at the
     // moment. - nmatsakis
     mod_path: @mut ~[ast::Ident],
+    func_path: @mut ~[ast::Ident],
     trace_mac: @mut bool
 }
 
@@ -334,6 +338,7 @@ impl ExtCtxt {
             cfg: cfg,
             backtrace: @mut None,
             mod_path: @mut ~[],
+            func_path: @mut ~[],
             trace_mac: @mut false
         }
     }
@@ -352,6 +357,9 @@ impl ExtCtxt {
     pub fn mod_push(&self, i: ast::Ident) { self.mod_path.push(i); }
     pub fn mod_pop(&self) { self.mod_path.pop(); }
     pub fn mod_path(&self) -> ~[ast::Ident] { (*self.mod_path).clone() }
+    pub fn func_push(&self, i: ast::Ident) { self.func_path.push(i); }
+    pub fn func_pop(&self) { self.func_path.pop(); }
+    pub fn func_path(&self) -> ~[ast::Ident] { (*self.func_path).clone() }
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {
