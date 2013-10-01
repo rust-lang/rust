@@ -19,6 +19,22 @@ suffice, but sometimes an annotation is required, e.g. `rand::random::<f64>()`.
 See the `distributions` submodule for sampling random numbers from
 distributions like normal and exponential.
 
+# Task-local RNG
+
+There is built-in support for a RNG associated with each task stored
+in task-local storage. This RNG can be accessed via `task_rng`, or
+used implicitly via `random`. This RNG is normally randomly seeded
+from an operating-system source of randomness, e.g. `/dev/urandom` on
+Unix systems, and will automatically reseed itself from this source
+after generating 32 KiB of random data.
+
+It can be explicitly seeded on a per-task basis with `seed_task_rng`;
+this only affects the task-local generator in the task in which it is
+called. It can be seeded globally using the `RUST_SEED` environment
+variable, which should be an integer. Setting `RUST_SEED` will seed
+every task-local RNG with the same seed. Using either of these will
+disable the automatic reseeding.
+
 # Examples
 
 ```rust
@@ -126,7 +142,7 @@ pub trait Rng {
     /// fn main() {
     ///    let mut v = [0u8, .. 13579];
     ///    task_rng().fill_bytes(v);
-    ///    printfln!(v);
+    ///    println!("{:?}", v);
     /// }
     /// ```
     fn fill_bytes(&mut self, mut dest: &mut [u8]) {
@@ -486,7 +502,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///     let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
     ///     println!("{}", rng.gen::<f64>());
     ///     rng.reseed([5, 6, 7, 8]);
     ///     println!("{}", rng.gen::<f64>());
@@ -503,7 +519,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///     let mut rng: rand::XorShiftRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
     ///     println!("{}", rng.gen::<f64>());
     /// }
     /// ```
@@ -748,10 +764,10 @@ pub fn task_rng() -> @mut TaskRng {
 ///
 /// fn main() {
 ///     rand::seed_task_rng(&[10u]);
-///     printfln!("Same every time: %u", rand::random::<uint>());
+///     println!("Same every time: {}", rand::random::<uint>());
 ///
 ///     rand::seed_task_rng(&[1u, 2, 3, 4, 5, 6, 7, 8]);
-///     printfln!("Same every time: %f", rand::random::<float>());
+///     println!("Same every time: {}", rand::random::<float>());
 /// }
 /// ```
 pub fn seed_task_rng(seed: &[uint]) {
@@ -783,9 +799,9 @@ impl<R: Rng> Rng for @mut R {
 /// fn main() {
 ///     if random() {
 ///         let x = random();
-///         printfln!(2u * x);
+///         println!("{}", 2u * x);
 ///     } else {
-///         printfln!(random::<float>());
+///         println!("{}", random::<float>());
 ///     }
 /// }
 /// ```
