@@ -20,6 +20,6 @@ pub fn main() {
     };
     assert_eq!(expected, V as u64);
     assert_eq!(expected, C as u64);
-    assert_eq!(fmt!("%?", V), ~"V");
-    assert_eq!(fmt!("%?", C), ~"V");
+    assert_eq!(format!("{:?}", V), ~"V");
+    assert_eq!(format!("{:?}", C), ~"V");
 }

@@ -24,16 +24,16 @@ fn call_sum(x: &[int]) -> int { x.sum_() }
 pub fn main() {
     let x = ~[1, 2, 3];
     let y = call_sum(x);
-    info!("y==%d", y);
+    info2!("y=={}", y);
     assert_eq!(y, 6);
 
     let x = ~[1, 2, 3];
     let y = x.sum_();
-    info!("y==%d", y);
+    info2!("y=={}", y);
     assert_eq!(y, 6);
 
     let x = ~[1, 2, 3];
     let y = x.sum_();
-    info!("y==%d", y);
+    info2!("y=={}", y);
     assert_eq!(y, 6);
 }

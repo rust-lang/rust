@@ -505,7 +505,7 @@ mod test {
                 let unlink_req = FsRequest::new();
                 let result = unlink_req.unlink_sync(&loop_, &Path(path_str));
                 assert!(result.is_ok());
-            } else { fail!("nread was 0.. wudn't expectin' that."); }
+            } else { fail2!("nread was 0.. wudn't expectin' that."); }
             loop_.close();
         }
     }
@@ -595,7 +595,7 @@ mod test {
                     assert!(uverr.is_none());
                     let loop_ = req.get_loop();
                     let stat = req.get_stat();
-                    naive_print(&loop_, fmt!("%?", stat));
+                    naive_print(&loop_, format!("{:?}", stat));
                     assert!(stat.is_dir());
                     let rmdir_req = FsRequest::new();
                     do rmdir_req.rmdir(&loop_, &path) |req,uverr| {

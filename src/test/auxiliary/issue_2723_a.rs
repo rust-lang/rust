@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub unsafe fn f(xs: ~[int]) {
-    xs.map(|_x| { unsafe fn q() { fail!(); } });
+    xs.map(|_x| { unsafe fn q() { fail2!(); } });
 }

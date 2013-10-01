@@ -50,7 +50,7 @@ pub fn trans_if(bcx: @mut Block,
             els: Option<@ast::Expr>,
             dest: expr::Dest)
          -> @mut Block {
-    debug!("trans_if(bcx=%s, cond=%s, thn=%?, dest=%s)",
+    debug2!("trans_if(bcx={}, cond={}, thn={:?}, dest={})",
            bcx.to_str(), bcx.expr_to_str(cond), thn.id,
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
@@ -119,7 +119,7 @@ pub fn trans_if(bcx: @mut Block,
       }
     };
 
-    debug!("then_bcx_in=%s, else_bcx_in=%s",
+    debug2!("then_bcx_in={}, else_bcx_in={}",
            then_bcx_in.to_str(), else_bcx_in.to_str());
 
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);

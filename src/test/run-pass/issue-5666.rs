@@ -18,7 +18,7 @@ trait Barks {
 
 impl Barks for Dog {
     fn bark(&self) -> ~str {
-        return fmt!("woof! (I'm %s)", self.name);
+        return format!("woof! (I'm {})", self.name);
     }
 }
 
@@ -29,7 +29,7 @@ pub fn main() {
     let barker = [snoopy as ~Barks, bubbles as ~Barks];
 
     for pup in barker.iter() {
-        println(fmt!("%s", pup.bark()));
+        println!("{}", pup.bark());
     }
 }
 

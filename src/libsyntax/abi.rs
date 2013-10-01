@@ -221,7 +221,7 @@ impl AbiSet {
             let data = abi.data();
             for other_abi in abis.slice(0, i).iter() {
                 let other_data = other_abi.data();
-                debug!("abis=(%?,%?) datas=(%?,%?)",
+                debug2!("abis=({:?},{:?}) datas=({:?},{:?})",
                        abi, data.abi_arch,
                        other_abi, other_data.abi_arch);
                 match (&data.abi_arch, &other_data.abi_arch) {
@@ -273,7 +273,7 @@ impl ToStr for AbiSet {
             strs.push(abi.data().name);
             true
         };
-        fmt!("\"%s\"", strs.connect(" "))
+        format!("\"{}\"", strs.connect(" "))
     }
 }
 
@@ -306,7 +306,7 @@ fn cannot_combine(n: Abi, m: Abi) {
                          (m == a && n == b));
         }
         None => {
-            fail!("Invalid match not detected");
+            fail2!("Invalid match not detected");
         }
     }
 }
@@ -318,7 +318,7 @@ fn can_combine(n: Abi, m: Abi) {
     set.add(m);
     match set.check_valid() {
         Some((_, _)) => {
-            fail!("Valid match declared invalid");
+            fail2!("Valid match declared invalid");
         }
         None => {}
     }
@@ -367,7 +367,7 @@ fn abi_to_str_c_aaps() {
     let mut set = AbiSet::empty();
     set.add(Aapcs);
     set.add(C);
-    debug!("set = %s", set.to_str());
+    debug2!("set = {}", set.to_str());
     assert!(set.to_str() == ~"\"aapcs C\"");
 }
 
@@ -375,7 +375,7 @@ fn abi_to_str_c_aaps() {
 fn abi_to_str_rust() {
     let mut set = AbiSet::empty();
     set.add(Rust);
-    debug!("set = %s", set.to_str());
+    debug2!("set = {}", set.to_str());
     assert!(set.to_str() == ~"\"Rust\"");
 }
 

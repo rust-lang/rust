@@ -59,7 +59,7 @@ impl Reader for PipeStream {
         }
     }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { fail2!() }
 }
 
 impl Writer for PipeStream {
@@ -72,5 +72,5 @@ impl Writer for PipeStream {
         }
     }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail2!() }
 }

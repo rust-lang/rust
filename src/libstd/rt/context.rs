@@ -167,9 +167,9 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void,
     unsafe { *sp = 0; }
 
     rtdebug!("creating call frame");
-    rtdebug!("fptr %x", fptr as uint);
-    rtdebug!("arg %x", arg as uint);
-    rtdebug!("sp %x", sp as uint);
+    rtdebug!("fptr {}", fptr as uint);
+    rtdebug!("arg {}", arg as uint);
+    rtdebug!("sp {}", sp as uint);
 
     regs[RUSTRT_ARG0] = arg as uint;
     regs[RUSTRT_RSP] = sp as uint;

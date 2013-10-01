@@ -51,7 +51,7 @@ struct Context {
 
 impl Context {
     /// Parses the arguments from the given list of tokens, returning None if
-    /// there's a parse error so we can continue parsing other fmt! expressions.
+    /// there's a parse error so we can continue parsing other format! expressions.
     fn parse_args(&mut self, sp: Span,
                   tts: &[ast::token_tree]) -> (@ast::Expr, Option<@ast::Expr>) {
         let p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
@@ -92,8 +92,8 @@ impl Context {
                     }
                     _ => {
                         self.ecx.span_err(*p.span,
-                                          fmt!("expected ident for named \
-                                                argument, but found `%s`",
+                                          format!("expected ident for named \
+                                                argument, but found `{}`",
                                                p.this_token_to_str()));
                         return (extra, None);
                     }
@@ -104,8 +104,8 @@ impl Context {
                 match self.names.find(&name) {
                     None => {}
                     Some(prev) => {
-                        self.ecx.span_err(e.span, fmt!("duplicate argument \
-                                                        named `%s`", name));
+                        self.ecx.span_err(e.span, format!("duplicate argument \
+                                                        named `{}`", name));
                         self.ecx.parse_sess.span_diagnostic.span_note(
                             prev.span, "previously here");
                         loop
@@ -207,13 +207,13 @@ impl Context {
                         match arm.selector {
                             Left(name) => {
                                 self.ecx.span_err(self.fmtsp,
-                                                  fmt!("duplicate selector \
-                                                       `%?`", name));
+                                                  format!("duplicate selector \
+                                                           `{:?}`", name));
                             }
                             Right(idx) => {
                                 self.ecx.span_err(self.fmtsp,
-                                                  fmt!("duplicate selector \
-                                                       `=%u`", idx));
+                                                  format!("duplicate selector \
+                                                           `={}`", idx));
                             }
                         }
                     }
@@ -227,7 +227,7 @@ impl Context {
                 for arm in arms.iter() {
                     if !seen_cases.insert(arm.selector) {
                         self.ecx.span_err(self.fmtsp,
-                                          fmt!("duplicate selector `%s`",
+                                          format!("duplicate selector `{}`",
                                                arm.selector));
                     } else if arm.selector == "" {
                         self.ecx.span_err(self.fmtsp,
@@ -245,8 +245,8 @@ impl Context {
         match arg {
             Left(arg) => {
                 if arg < 0 || self.args.len() <= arg {
-                    let msg = fmt!("invalid reference to argument `%u` (there \
-                                    are %u arguments)", arg, self.args.len());
+                    let msg = format!("invalid reference to argument `{}` (there \
+                                    are {} arguments)", arg, self.args.len());
                     self.ecx.span_err(self.fmtsp, msg);
                     return;
                 }
@@ -260,7 +260,7 @@ impl Context {
                 let span = match self.names.find(&name) {
                     Some(e) => e.span,
                     None => {
-                        let msg = fmt!("there is no argument named `%s`", name);
+                        let msg = format!("there is no argument named `{}`", name);
                         self.ecx.span_err(self.fmtsp, msg);
                         return;
                     }
@@ -298,20 +298,20 @@ impl Context {
         match (cur, ty) {
             (Known(cur), Known(ty)) => {
                 self.ecx.span_err(sp,
-                                  fmt!("argument redeclared with type `%s` when \
-                                        it was previously `%s`", ty, cur));
+                                  format!("argument redeclared with type `{}` when \
+                                           it was previously `{}`", ty, cur));
             }
             (Known(cur), _) => {
                 self.ecx.span_err(sp,
-                                  fmt!("argument used to format with `%s` was \
-                                        attempted to not be used for formatting",
-                                        cur));
+                                  format!("argument used to format with `{}` was \
+                                           attempted to not be used for formatting",
+                                           cur));
             }
             (_, Known(ty)) => {
                 self.ecx.span_err(sp,
-                                  fmt!("argument previously used as a format \
-                                        argument attempted to be used as `%s`",
-                                        ty));
+                                  format!("argument previously used as a format \
+                                           argument attempted to be used as `{}`",
+                                           ty));
             }
             (_, _) => {
                 self.ecx.span_err(sp, "argument declared with multiple formats");
@@ -405,7 +405,7 @@ impl Context {
                         }).collect();
                         let (lr, selarg) = match arm.selector {
                             Left(t) => {
-                                let p = ctpath(fmt!("%?", t));
+                                let p = ctpath(format!("{:?}", t));
                                 let p = self.ecx.path_global(sp, p);
                                 (self.ecx.ident_of("Left"),
                                  self.ecx.expr_path(p))
@@ -444,7 +444,7 @@ impl Context {
                 ~[]
             ), None);
             let st = ast::item_static(ty, ast::MutImmutable, method);
-            let static_name = self.ecx.ident_of(fmt!("__static_method_%u",
+            let static_name = self.ecx.ident_of(format!("__static_method_{}",
                                                      self.method_statics.len()));
             // Flag these statics as `address_insignificant` so LLVM can
             // merge duplicate globals as much as possible (which we're
@@ -538,7 +538,7 @@ impl Context {
         }
     }
 
-    /// Actually builds the expression which the ifmt! block will be expanded
+    /// Actually builds the expression which the iformat! block will be expanded
     /// to
     fn to_expr(&self, extra: @ast::Expr) -> @ast::Expr {
         let mut lets = ~[];
@@ -584,13 +584,13 @@ impl Context {
         //      foo(bar(&1))
         // the lifetime of `1` doesn't outlast the call to `bar`, so it's not
         // vald for the call to `foo`. To work around this all arguments to the
-        // fmt! string are shoved into locals. Furthermore, we shove the address
+        // format! string are shoved into locals. Furthermore, we shove the address
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, &e) in self.args.iter().enumerate() {
             if self.arg_types[i].is_none() { loop } // error already generated
 
-            let name = self.ecx.ident_of(fmt!("__arg%u", i));
+            let name = self.ecx.ident_of(format!("__arg{}", i));
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, name, e));
             locals.push(self.format_arg(e.span, Left(i),
@@ -599,7 +599,7 @@ impl Context {
         for (&name, &e) in self.names.iter() {
             if !self.name_types.contains_key(&name) { loop }
 
-            let lname = self.ecx.ident_of(fmt!("__arg%s", name));
+            let lname = self.ecx.ident_of(format!("__arg{}", name));
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, lname, e));
             names[*self.name_positions.get(&name)] =
@@ -662,8 +662,8 @@ impl Context {
                     "x" => "LowerHex",
                     "X" => "UpperHex",
                     _ => {
-                        self.ecx.span_err(sp, fmt!("unknown format trait \
-                                                    `%s`", tyname));
+                        self.ecx.span_err(sp, format!("unknown format trait \
+                                                       `{}`", tyname));
                         "Dummy"
                     }
                 }

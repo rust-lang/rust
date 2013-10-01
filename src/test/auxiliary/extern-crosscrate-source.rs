@@ -28,7 +28,7 @@ pub mod rustrt {
 #[fixed_stack_segment] #[inline(never)]
 pub fn fact(n: uint) -> uint {
     unsafe {
-        info!("n = %?", n);
+        info2!("n = {}", n);
         rustrt::rust_dbg_call(cb, n)
     }
 }

@@ -29,9 +29,9 @@ impl<W: Writer> DeflateWriter<W> {
 }
 
 impl<W: Writer> Writer for DeflateWriter<W> {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) { fail2!() }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail2!() }
 }
 
 impl<W: Writer> Decorator<W> for DeflateWriter<W> {
@@ -68,9 +68,9 @@ impl<R: Reader> InflateReader<R> {
 }
 
 impl<R: Reader> Reader for InflateReader<R> {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail2!() }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { fail2!() }
 }
 
 impl<R: Reader> Decorator<R> for InflateReader<R> {

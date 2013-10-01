@@ -25,13 +25,13 @@ fn testfn(cond: bool) {
         exp = 4;
     }
 
-    info!("*r = %d, exp = %d", *r, exp);
+    info2!("*r = {}, exp = {}", *r, exp);
     assert_eq!(*r, exp);
 
     x = @5;
     y = @6;
 
-    info!("*r = %d, exp = %d", *r, exp);
+    info2!("*r = {}, exp = {}", *r, exp);
     assert_eq!(*r, exp);
     assert_eq!(x, @5);
     assert_eq!(y, @6);

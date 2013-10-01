@@ -41,8 +41,8 @@ fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: Span, typ: ty::t)
             if !fcx.ccx.tcx.sess.has_errors() {
                 fcx.ccx.tcx.sess.span_err(
                     sp,
-                    fmt!("cannot determine a type \
-                          for this expression: %s",
+                    format!("cannot determine a type \
+                          for this expression: {}",
                          infer::fixup_err_to_str(e)))
             }
             return None;
@@ -70,8 +70,8 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
                 for t in r.iter() {
                     let method_map = fcx.ccx.method_map;
                     let new_entry = method_map_entry { self_ty: *t, ..*mme };
-                    debug!("writeback::resolve_method_map_entry(id=%?, \
-                            new_entry=%?)",
+                    debug2!("writeback::resolve_method_map_entry(id={:?}, \
+                            new_entry={:?})",
                            id, new_entry);
                     method_map.insert(id, new_entry);
                 }
@@ -88,7 +88,7 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
             let r_origins = resolve_origins(fcx, sp, *origins);
             let vtable_map = fcx.ccx.vtable_map;
             vtable_map.insert(id, r_origins);
-            debug!("writeback::resolve_vtable_map_entry(id=%d, vtables=%?)",
+            debug2!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
                    id, r_origins.repr(fcx.tcx()));
         }
     }
@@ -128,12 +128,12 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 Err(e) => {
                     // This should not, I think, happen:
                     fcx.ccx.tcx.sess.span_err(
-                        sp, fmt!("cannot resolve bound for closure: %s",
+                        sp, format!("cannot resolve bound for closure: {}",
                                  infer::fixup_err_to_str(e)));
                 }
                 Ok(r1) => {
                     let resolved_adj = @ty::AutoAddEnv(r1, s);
-                    debug!("Adjustments for node %d: %?", id, resolved_adj);
+                    debug2!("Adjustments for node {}: {:?}", id, resolved_adj);
                     fcx.tcx().adjustments.insert(id, resolved_adj);
                 }
             }
@@ -146,7 +146,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                     Err(e) => {
                         // This should not, I think, happen.
                         fcx.ccx.tcx.sess.span_err(
-                            sp, fmt!("cannot resolve scope of borrow: %s",
+                            sp, format!("cannot resolve scope of borrow: {}",
                                      infer::fixup_err_to_str(e)));
                         r
                     }
@@ -162,7 +162,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 autoderefs: adj.autoderefs,
                 autoref: resolved_autoref,
             });
-            debug!("Adjustments for node %d: %?", id, resolved_adj);
+            debug2!("Adjustments for node {}: {:?}", id, resolved_adj);
             fcx.tcx().adjustments.insert(id, resolved_adj);
         }
     }
@@ -176,7 +176,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
       }
 
       Some(t) => {
-        debug!("resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
+        debug2!("resolve_type_vars_for_node(id={}, n_ty={}, t={})",
                id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         let mut ret = Some(t);
@@ -284,7 +284,7 @@ fn visit_pat(p: @ast::Pat, wbcx: &mut WbCtxt) {
     }
 
     resolve_type_vars_for_node(wbcx, p.span, p.id);
-    debug!("Type for pattern binding %s (id %d) resolved to %s",
+    debug2!("Type for pattern binding {} (id {}) resolved to {}",
            pat_to_str(p, wbcx.fcx.ccx.tcx.sess.intr()), p.id,
            wbcx.fcx.infcx().ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
@@ -297,7 +297,7 @@ fn visit_local(l: @ast::Local, wbcx: &mut WbCtxt) {
     let var_ty = wbcx.fcx.local_ty(l.span, l.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
         Ok(lty) => {
-            debug!("Type for local %s (id %d) resolved to %s",
+            debug2!("Type for local {} (id {}) resolved to {}",
                    pat_to_str(l.pat, wbcx.fcx.tcx().sess.intr()),
                    l.id,
                    wbcx.fcx.infcx().ty_to_str(lty));
@@ -306,8 +306,8 @@ fn visit_local(l: @ast::Local, wbcx: &mut WbCtxt) {
         Err(e) => {
             wbcx.fcx.ccx.tcx.sess.span_err(
                 l.span,
-                fmt!("cannot determine a type \
-                      for this local variable: %s",
+                format!("cannot determine a type \
+                      for this local variable: {}",
                      infer::fixup_err_to_str(e)));
             wbcx.success = false;
         }

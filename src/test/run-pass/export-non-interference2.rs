@@ -13,7 +13,7 @@ mod foo {
         pub fn y() { super::super::foo::x(); }
     }
 
-    pub fn x() { info!("x"); }
+    pub fn x() { info2!("x"); }
 }
 
 pub fn main() { self::foo::bar::y(); }

@@ -13,9 +13,9 @@
 #[start]
 fn start(argc: int, argv: **u8) -> int {
     do std::rt::start_on_main_thread(argc, argv) {
-        info!("running on main thread");
+        info2!("running on main thread");
         do spawn {
-            info!("running on another thread");
+            info2!("running on another thread");
         }
     }
 }

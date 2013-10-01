@@ -87,9 +87,9 @@ fn lookup_vtables(vcx: &VtableContext,
                   type_param_defs: &[ty::TypeParameterDef],
                   substs: &ty::substs,
                   is_early: bool) -> vtable_res {
-    debug!("lookup_vtables(location_info=%?, \
-            type_param_defs=%s, \
-            substs=%s",
+    debug2!("lookup_vtables(location_info={:?}, \
+            type_param_defs={}, \
+            substs={}",
            location_info,
            type_param_defs.repr(vcx.tcx()),
            substs.repr(vcx.tcx()));
@@ -108,11 +108,11 @@ fn lookup_vtables(vcx: &VtableContext,
     result.reverse();
 
     assert_eq!(substs.tps.len(), result.len());
-    debug!("lookup_vtables result(\
-            location_info=%?, \
-            type_param_defs=%s, \
-            substs=%s, \
-            result=%s)",
+    debug2!("lookup_vtables result(\
+            location_info={:?}, \
+            type_param_defs={}, \
+            substs={}, \
+            result={})",
            location_info,
            type_param_defs.repr(vcx.tcx()),
            substs.repr(vcx.tcx()),
@@ -142,20 +142,20 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
         // Substitute the values of the type parameters that may
         // appear in the bound.
         let trait_ref = substs.map_default(trait_ref, |substs| {
-            debug!("about to subst: %s, %s",
+            debug2!("about to subst: {}, {}",
                    trait_ref.repr(tcx), substs.repr(tcx));
             trait_ref.subst(tcx, *substs)
         });
 
-        debug!("after subst: %s", trait_ref.repr(tcx));
+        debug2!("after subst: {}", trait_ref.repr(tcx));
 
         match lookup_vtable(vcx, location_info, ty, trait_ref, is_early) {
             Some(vtable) => param_result.push(vtable),
             None => {
                 vcx.tcx().sess.span_fatal(
                     location_info.span,
-                    fmt!("failed to find an implementation of \
-                          trait %s for %s",
+                    format!("failed to find an implementation of \
+                          trait {} for {}",
                          vcx.infcx.trait_ref_to_str(trait_ref),
                          vcx.infcx.ty_to_str(ty)));
             }
@@ -163,11 +163,11 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
         true
     };
 
-    debug!("lookup_vtables_for_param result(\
-            location_info=%?, \
-            type_param_bounds=%s, \
-            ty=%s, \
-            result=%s)",
+    debug2!("lookup_vtables_for_param result(\
+            location_info={:?}, \
+            type_param_bounds={}, \
+            ty={}, \
+            result={})",
            location_info,
            type_param_bounds.repr(vcx.tcx()),
            ty.repr(vcx.tcx()),
@@ -211,7 +211,7 @@ fn relate_trait_refs(vcx: &VtableContext,
                 let tcx = vcx.tcx();
                 tcx.sess.span_err(
                     location_info.span,
-                    fmt!("expected %s, but found %s (%s)",
+                    format!("expected {}, but found {} ({})",
                          ppaux::trait_ref_to_str(tcx, &r_exp_trait_ref),
                          ppaux::trait_ref_to_str(tcx, &r_act_trait_ref),
                          ty::type_err_to_str(tcx, err)));
@@ -228,7 +228,7 @@ fn lookup_vtable(vcx: &VtableContext,
                  is_early: bool)
     -> Option<vtable_origin>
 {
-    debug!("lookup_vtable(ty=%s, trait_ref=%s)",
+    debug2!("lookup_vtable(ty={}, trait_ref={})",
            vcx.infcx.ty_to_str(ty),
            vcx.infcx.trait_ref_to_str(trait_ref));
     let _i = indenter();
@@ -291,7 +291,7 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
     let mut n_bound = 0;
     let mut ret = None;
     do ty::each_bound_trait_and_supertraits(tcx, bounds) |bound_trait_ref| {
-        debug!("checking bounds trait %s",
+        debug2!("checking bounds trait {}",
                bound_trait_ref.repr(vcx.tcx()));
 
         if bound_trait_ref.def_id == trait_ref.def_id {
@@ -300,7 +300,7 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
                               bound_trait_ref,
                               trait_ref);
             let vtable = vtable_param(param, n_bound);
-            debug!("found param vtable: %?",
+            debug2!("found param vtable: {:?}",
                    vtable);
             ret = Some(vtable);
             false
@@ -383,7 +383,7 @@ fn search_for_vtable(vcx: &VtableContext,
 
         // Now, in the previous example, for_ty is bound to
         // the type self_ty, and substs is bound to [T].
-        debug!("The self ty is %s and its substs are %s",
+        debug2!("The self ty is {} and its substs are {}",
                vcx.infcx.ty_to_str(for_ty),
                vcx.infcx.tys_to_str(substs.tps));
 
@@ -397,8 +397,8 @@ fn search_for_vtable(vcx: &VtableContext,
         // some value of U) with some_trait<T>. This would fail if T
         // and U weren't compatible.
 
-        debug!("(checking vtable) @2 relating trait \
-                ty %s to of_trait_ref %s",
+        debug2!("(checking vtable) @2 relating trait \
+                ty {} to of_trait_ref {}",
                vcx.infcx.trait_ref_to_str(trait_ref),
                vcx.infcx.trait_ref_to_str(of_trait_ref));
 
@@ -435,9 +435,9 @@ fn search_for_vtable(vcx: &VtableContext,
             }
         };
 
-        debug!("The fixed-up substs are %s - \
+        debug2!("The fixed-up substs are {} - \
                 they will be unified with the bounds for \
-                the target ty, %s",
+                the target ty, {}",
                vcx.infcx.tys_to_str(substs_f.tps),
                vcx.infcx.trait_ref_to_str(trait_ref));
 
@@ -487,7 +487,7 @@ fn fixup_substs(vcx: &VtableContext,
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
           ty::ty_trait(_, ref substs_f, _, _, _) => (*substs_f).clone(),
-          _ => fail!("t_f should be a trait")
+          _ => fail2!("t_f should be a trait")
         }
     }
 }
@@ -502,8 +502,8 @@ fn fixup_ty(vcx: &VtableContext,
         Err(e) if !is_early => {
             tcx.sess.span_fatal(
                 location_info.span,
-                fmt!("cannot determine a type \
-                      for this bounded type parameter: %s",
+                format!("cannot determine a type \
+                      for this bounded type parameter: {}",
                      fixup_err_to_str(e)))
         }
         Err(_) => {
@@ -533,7 +533,7 @@ fn connect_trait_tps(vcx: &VtableContext,
 fn insert_vtables(fcx: @mut FnCtxt,
                   callee_id: ast::NodeId,
                   vtables: vtable_res) {
-    debug!("insert_vtables(callee_id=%d, vtables=%?)",
+    debug2!("insert_vtables(callee_id={}, vtables={:?})",
            callee_id, vtables.repr(fcx.tcx()));
     fcx.inh.vtable_map.insert(callee_id, vtables);
 }
@@ -554,7 +554,7 @@ pub fn location_info_for_item(item: @ast::item) -> LocationInfo {
 pub fn early_resolve_expr(ex: @ast::Expr,
                           fcx: @mut FnCtxt,
                           is_early: bool) {
-    debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
+    debug2!("vtable: early_resolve_expr() ex with id {:?} (early: {}): {}",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
     let _indent = indenter();
 
@@ -562,15 +562,15 @@ pub fn early_resolve_expr(ex: @ast::Expr,
     match ex.node {
       ast::ExprPath(*) => {
         do fcx.opt_node_ty_substs(ex.id) |substs| {
-            debug!("vtable resolution on parameter bounds for expr %s",
+            debug2!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
             let def = cx.tcx.def_map.get_copy(&ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
-            debug!("early resolve expr: def %? %?, %?, %s", ex.id, did, def,
+            debug2!("early resolve expr: def {:?} {:?}, {:?}, {}", ex.id, did, def,
                    fcx.infcx().ty_to_str(item_ty.ty));
             if has_trait_bounds(*item_ty.generics.type_param_defs) {
-                debug!("early_resolve_expr: looking up vtables for type params %s",
+                debug2!("early_resolve_expr: looking up vtables for type params {}",
                        item_ty.generics.type_param_defs.repr(fcx.tcx()));
                 let vcx = VtableContext { ccx: fcx.ccx, infcx: fcx.infcx() };
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
@@ -596,7 +596,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
       ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
-            debug!("vtable resolution on parameter bounds for method call %s",
+            debug2!("vtable resolution on parameter bounds for method call {}",
                    ex.repr(fcx.tcx()));
             if has_trait_bounds(*type_param_defs) {
                 let substs = fcx.node_ty_substs(callee_id);
@@ -612,7 +612,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
         }
       }
       ast::ExprCast(src, _) => {
-          debug!("vtable resolution on expr %s", ex.repr(fcx.tcx()));
+          debug2!("vtable resolution on expr {}", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
           match ty::get(target_ty).sty {
               // Bounds of type's contents are not checked here, but in kind.rs.
@@ -635,7 +635,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                       (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*))
                         if !mutability_allowed(mt.mutbl, target_mutbl) => {
                           fcx.tcx().sess.span_err(ex.span,
-                                                  fmt!("types differ in mutability"));
+                                                  format!("types differ in mutability"));
                       }
 
                       (&ty::ty_box(mt), ty::BoxTraitStore) |
@@ -691,24 +691,24 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                       (_, ty::UniqTraitStore) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
-                              fmt!("can only cast an ~-pointer \
-                                    to a ~-object, not a %s",
+                              format!("can only cast an ~-pointer \
+                                    to a ~-object, not a {}",
                                    ty::ty_sort_str(fcx.tcx(), ty)));
                       }
 
                       (_, ty::BoxTraitStore) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
-                              fmt!("can only cast an @-pointer \
-                                    to an @-object, not a %s",
+                              format!("can only cast an @-pointer \
+                                    to an @-object, not a {}",
                                    ty::ty_sort_str(fcx.tcx(), ty)));
                       }
 
                       (_, ty::RegionTraitStore(_)) => {
                           fcx.ccx.tcx.sess.span_err(
                               ex.span,
-                              fmt!("can only cast an &-pointer \
-                                    to an &-object, not a %s",
+                              format!("can only cast an &-pointer \
+                                    to an &-object, not a {}",
                                    ty::ty_sort_str(fcx.tcx(), ty)));
                       }
                   }
@@ -753,7 +753,7 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
                 trait_bounds: ~[trait_ref]
             };
             let t = ty::node_id_to_type(ccx.tcx, impl_item.id);
-            debug!("=== Doing a self lookup now.");
+            debug2!("=== Doing a self lookup now.");
             // Right now, we don't have any place to store this.
             // We will need to make one so we can use this information
             // for compiling default methods that refer to supertraits.

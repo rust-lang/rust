@@ -193,11 +193,11 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
         }
         body
       }
-      LIT_STR(ref s) => { fmt!("\"%s\"", ident_to_str(s).escape_default()) }
+      LIT_STR(ref s) => { format!("\"{}\"", ident_to_str(s).escape_default()) }
 
       /* Name components */
       IDENT(s, _) => input.get(s.name).to_owned(),
-      LIFETIME(s) => fmt!("'%s", input.get(s.name)),
+      LIFETIME(s) => format!("'{}", input.get(s.name)),
       UNDERSCORE => ~"_",
 
       /* Other */
@@ -214,8 +214,8 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
                       nt_block(*) => ~"block",
                       nt_stmt(*) => ~"statement",
                       nt_pat(*) => ~"pattern",
-                      nt_attr(*) => fail!("should have been handled"),
-                      nt_expr(*) => fail!("should have been handled above"),
+                      nt_attr(*) => fail2!("should have been handled"),
+                      nt_expr(*) => fail2!("should have been handled above"),
                       nt_ty(*) => ~"type",
                       nt_ident(*) => ~"identifier",
                       nt_path(*) => ~"path",
@@ -269,7 +269,7 @@ pub fn flip_delimiter(t: &token::Token) -> token::Token {
       RPAREN => LPAREN,
       RBRACE => LBRACE,
       RBRACKET => LBRACKET,
-      _ => fail!()
+      _ => fail2!()
     }
 }
 
@@ -553,7 +553,7 @@ pub fn fresh_name(src : &ast::Ident) -> Name {
     // good error messages and uses of struct names in ambiguous could-be-binding
     // locations. Also definitely destroys the guarantee given above about ptr_eq.
     /*let num = rand::rng().gen_uint_range(0,0xffff);
-    gensym(fmt!("%s_%u",ident_to_str(src),num))*/
+    gensym(format!("{}_{}",ident_to_str(src),num))*/
 }
 
 // it looks like there oughta be a str_ptr_eq fn, but no one bothered to implement it?

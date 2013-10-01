@@ -15,7 +15,7 @@ fn lp<T>(s: ~str, f: &fn(~str) -> T) -> T {
         let r = f(s);
         return (r);
     }
-    fail!();
+    fail2!();
 }
 
 fn apply<T>(s: ~str, f: &fn(~str) -> T) -> T {

@@ -111,7 +111,7 @@ impl token {
 
 pub fn tok_str(t: token) -> ~str {
     match t {
-        STRING(s, len) => return fmt!("STR(%s,%d)", s, len),
+        STRING(s, len) => return format!("STR({},{})", s, len),
         BREAK(_) => return ~"BREAK",
         BEGIN(_) => return ~"BEGIN",
         END => return ~"END",
@@ -131,7 +131,7 @@ pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(fmt!("%d=%s", szs[i], tok_str(toks[i])));
+        s.push_str(format!("{}={}", szs[i], tok_str(toks[i])));
         i += 1u;
         i %= n;
     }
@@ -152,7 +152,7 @@ pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
-    debug!("mk_printer %u", linewidth);
+    debug2!("mk_printer {}", linewidth);
     let token: ~[token] = vec::from_elem(n, EOF);
     let size: ~[int] = vec::from_elem(n, 0);
     let scan_stack: ~[uint] = vec::from_elem(n, 0u);
@@ -288,7 +288,7 @@ impl Printer {
         self.token[self.right] = t;
     }
     pub fn pretty_print(&mut self, t: token) {
-        debug!("pp ~[%u,%u]", self.left, self.right);
+        debug2!("pp ~[{},{}]", self.left, self.right);
         match t {
           EOF => {
             if !self.scan_stack_empty {
@@ -305,7 +305,7 @@ impl Printer {
                 self.left = 0u;
                 self.right = 0u;
             } else { self.advance_right(); }
-            debug!("pp BEGIN(%d)/buffer ~[%u,%u]",
+            debug2!("pp BEGIN({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
             self.token[self.right] = t;
             self.size[self.right] = -self.right_total;
@@ -313,10 +313,10 @@ impl Printer {
           }
           END => {
             if self.scan_stack_empty {
-                debug!("pp END/print ~[%u,%u]", self.left, self.right);
+                debug2!("pp END/print ~[{},{}]", self.left, self.right);
                 self.print(t, 0);
             } else {
-                debug!("pp END/buffer ~[%u,%u]", self.left, self.right);
+                debug2!("pp END/buffer ~[{},{}]", self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = t;
                 self.size[self.right] = -1;
@@ -330,7 +330,7 @@ impl Printer {
                 self.left = 0u;
                 self.right = 0u;
             } else { self.advance_right(); }
-            debug!("pp BREAK(%d)/buffer ~[%u,%u]",
+            debug2!("pp BREAK({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
             self.check_stack(0);
             self.scan_push(self.right);
@@ -340,11 +340,11 @@ impl Printer {
           }
           STRING(s, len) => {
             if self.scan_stack_empty {
-                debug!("pp STRING('%s')/print ~[%u,%u]",
+                debug2!("pp STRING('{}')/print ~[{},{}]",
                        s, self.left, self.right);
                 self.print(t, len);
             } else {
-                debug!("pp STRING('%s')/buffer ~[%u,%u]",
+                debug2!("pp STRING('{}')/buffer ~[{},{}]",
                        s, self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = t;
@@ -356,14 +356,14 @@ impl Printer {
         }
     }
     pub fn check_stream(&mut self) {
-        debug!("check_stream ~[%u, %u] with left_total=%d, right_total=%d",
+        debug2!("check_stream ~[{}, {}] with left_total={}, right_total={}",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
-            debug!("scan window is %d, longer than space on line (%d)",
+            debug2!("scan window is {}, longer than space on line ({})",
                    self.right_total - self.left_total, self.space);
             if !self.scan_stack_empty {
                 if self.left == self.scan_stack[self.bottom] {
-                    debug!("setting %u to infinity and popping", self.left);
+                    debug2!("setting {} to infinity and popping", self.left);
                     self.size[self.scan_pop_bottom()] = size_infinity;
                 }
             }
@@ -372,7 +372,7 @@ impl Printer {
         }
     }
     pub fn scan_push(&mut self, x: uint) {
-        debug!("scan_push %u", x);
+        debug2!("scan_push {}", x);
         if self.scan_stack_empty {
             self.scan_stack_empty = false;
         } else {
@@ -408,7 +408,7 @@ impl Printer {
         assert!((self.right != self.left));
     }
     pub fn advance_left(&mut self, x: token, L: int) {
-        debug!("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
+        debug2!("advnce_left ~[{},{}], sizeof({})={}", self.left, self.right,
                self.left, L);
         if L >= 0 {
             self.print(x, L);
@@ -451,13 +451,13 @@ impl Printer {
         }
     }
     pub fn print_newline(&mut self, amount: int) {
-        debug!("NEWLINE %d", amount);
+        debug2!("NEWLINE {}", amount);
         (*self.out).write_str("\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }
     pub fn indent(&mut self, amount: int) {
-        debug!("INDENT %d", amount);
+        debug2!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
     pub fn get_top(&mut self) -> print_stack_elt {
@@ -480,9 +480,9 @@ impl Printer {
         (*self.out).write_str(s);
     }
     pub fn print(&mut self, x: token, L: int) {
-        debug!("print %s %d (remaining line space=%d)", tok_str(x), L,
+        debug2!("print {} {} (remaining line space={})", tok_str(x), L,
                self.space);
-        debug!("%s", buf_str(self.token.clone(),
+        debug2!("{}", buf_str(self.token.clone(),
                              self.size.clone(),
                              self.left,
                              self.right,
@@ -491,13 +491,13 @@ impl Printer {
           BEGIN(b) => {
             if L > self.space {
                 let col = self.margin - self.space + b.offset;
-                debug!("print BEGIN -> push broken block at col %d", col);
+                debug2!("print BEGIN -> push broken block at col {}", col);
                 self.print_stack.push(print_stack_elt {
                     offset: col,
                     pbreak: broken(b.breaks)
                 });
             } else {
-                debug!("print BEGIN -> push fitting block");
+                debug2!("print BEGIN -> push fitting block");
                 self.print_stack.push(print_stack_elt {
                     offset: 0,
                     pbreak: fits
@@ -505,7 +505,7 @@ impl Printer {
             }
           }
           END => {
-            debug!("print END -> pop END");
+            debug2!("print END -> pop END");
             let print_stack = &mut *self.print_stack;
             assert!((print_stack.len() != 0u));
             print_stack.pop();
@@ -514,24 +514,24 @@ impl Printer {
             let top = self.get_top();
             match top.pbreak {
               fits => {
-                debug!("print BREAK(%d) in fitting block", b.blank_space);
+                debug2!("print BREAK({}) in fitting block", b.blank_space);
                 self.space -= b.blank_space;
                 self.indent(b.blank_space);
               }
               broken(consistent) => {
-                debug!("print BREAK(%d+%d) in consistent block",
+                debug2!("print BREAK({}+{}) in consistent block",
                        top.offset, b.offset);
                 self.print_newline(top.offset + b.offset);
                 self.space = self.margin - (top.offset + b.offset);
               }
               broken(inconsistent) => {
                 if L > self.space {
-                    debug!("print BREAK(%d+%d) w/ newline in inconsistent",
+                    debug2!("print BREAK({}+{}) w/ newline in inconsistent",
                            top.offset, b.offset);
                     self.print_newline(top.offset + b.offset);
                     self.space = self.margin - (top.offset + b.offset);
                 } else {
-                    debug!("print BREAK(%d) w/o newline in inconsistent",
+                    debug2!("print BREAK({}) w/o newline in inconsistent",
                            b.blank_space);
                     self.indent(b.blank_space);
                     self.space -= b.blank_space;
@@ -540,7 +540,7 @@ impl Printer {
             }
           }
           STRING(s, len) => {
-            debug!("print STRING(%s)", s);
+            debug2!("print STRING({})", s);
             assert_eq!(L, len);
             // assert!(L <= space);
             self.space -= len;
@@ -548,7 +548,7 @@ impl Printer {
           }
           EOF => {
             // EOF should never get here.
-            fail!();
+            fail2!();
           }
         }
     }

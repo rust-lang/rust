@@ -11,5 +11,5 @@
 // Issue #5062
 
 fn main() {
-    fmt!("%?", None); //~ ERROR cannot determine a type for this expression: unconstrained type
+    None; //~ ERROR cannot determine a type for this expression: unconstrained type
 }

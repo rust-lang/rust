@@ -46,7 +46,8 @@ impl<T, E: ToStr> Result<T, E> {
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
             Ok(ref t) => t,
-            Err(ref e) => fail!("called `Result::get_ref()` on `Err` value: %s", e.to_str()),
+            Err(ref e) => fail2!("called `Result::get_ref()` on `Err` value: {}",
+                                 e.to_str()),
         }
     }
 
@@ -106,7 +107,8 @@ impl<T, E: ToStr> Result<T, E> {
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
-            Err(e) => fail!("called `Result::unwrap()` on `Err` value: %s", e.to_str()),
+            Err(e) => fail2!("called `Result::unwrap()` on `Err` value: {}",
+                             e.to_str()),
         }
     }
 
@@ -123,7 +125,7 @@ impl<T, E: ToStr> Result<T, E> {
     pub fn expect(self, reason: &str) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => fail!(reason.to_owned()),
+            Err(_) => fail2!("{}", reason.to_owned()),
         }
     }
 
@@ -133,7 +135,7 @@ impl<T, E: ToStr> Result<T, E> {
     pub fn expect_err(self, reason: &str) -> E {
         match self {
             Err(e) => e,
-            Ok(_) => fail!(reason.to_owned()),
+            Ok(_) => fail2!("{}", reason.to_owned()),
         }
     }
 
@@ -547,7 +549,7 @@ mod tests {
                    Err(2));
 
         // test that it does not take more elements than it needs
-        let functions = [|| Ok(()), || Err(1), || fail!()];
+        let functions = [|| Ok(()), || Err(1), || fail2!()];
 
         assert_eq!(collect(functions.iter().map(|f| (*f)())),
                    Err(1));
@@ -567,7 +569,7 @@ mod tests {
                    Err(2));
 
         // test that it does not take more elements than it needs
-        let functions = [|| Ok(()), || Err(1), || fail!()];
+        let functions = [|| Ok(()), || Err(1), || fail2!()];
 
         assert_eq!(fold_(functions.iter()
                         .map(|f| (*f)())),

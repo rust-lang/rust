@@ -10,4 +10,4 @@
 
 
 
-pub fn main() { if false { error!(~"foo" + "bar"); } }
+pub fn main() { if false { error2!("{}", ~"foo" + "bar"); } }

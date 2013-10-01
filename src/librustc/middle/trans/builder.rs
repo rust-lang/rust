@@ -476,7 +476,7 @@ impl Builder {
     }
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef) {
-        debug!("Store %s -> %s",
+        debug2!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
         assert!(is_not_null(self.llbuilder));
@@ -487,7 +487,7 @@ impl Builder {
     }
 
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
-        debug!("Store %s -> %s",
+        debug2!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
         self.count_insn("store.atomic");
@@ -725,8 +725,8 @@ impl Builder {
 
     pub fn add_span_comment(&self, sp: Span, text: &str) {
         if self.ccx.sess.asm_comments() {
-            let s = fmt!("%s (%s)", text, self.ccx.sess.codemap.span_to_str(sp));
-            debug!("%s", s);
+            let s = format!("{} ({})", text, self.ccx.sess.codemap.span_to_str(sp));
+            debug2!("{}", s);
             self.add_comment(s);
         }
     }
@@ -734,7 +734,7 @@ impl Builder {
     pub fn add_comment(&self, text: &str) {
         if self.ccx.sess.asm_comments() {
             let sanitized = text.replace("$", "");
-            let comment_text = fmt!("# %s", sanitized.replace("\n", "\n\t# "));
+            let comment_text = format!("\\# {}", sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
             let asm = do comment_text.with_c_str |c| {
                 unsafe {
@@ -758,11 +758,11 @@ impl Builder {
                          else          { lib::llvm::False };
 
         let argtys = do inputs.map |v| {
-            debug!("Asm Input Type: %?", self.ccx.tn.val_to_str(*v));
+            debug2!("Asm Input Type: {:?}", self.ccx.tn.val_to_str(*v));
             val_ty(*v)
         };
 
-        debug!("Asm Output Type: %?", self.ccx.tn.type_to_str(output));
+        debug2!("Asm Output Type: {:?}", self.ccx.tn.type_to_str(output));
         let fty = Type::func(argtys, &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(

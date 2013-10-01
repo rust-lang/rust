@@ -12,5 +12,5 @@
 
 fn main() {
     let a = if true { true };
-    info!(a);
+    info2!("{:?}", a);
 }

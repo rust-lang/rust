@@ -19,13 +19,13 @@ fn main()
 {
 
     let _z = match g(1, 2) {
-      g(x, x) => { info!(x + x); }
+      g(x, x) => { info2!("{:?}", x + x); }
       //~^ ERROR Identifier `x` is bound more than once in the same pattern
     };
 
     let _z = match i(l(1, 2), m(3, 4)) {
       i(l(x, _), m(_, x))  //~ ERROR Identifier `x` is bound more than once in the same pattern
-        => { error!(x + x); }
+        => { error2!("{:?}", x + x); }
     };
 
     let _z = match (1, 2) {

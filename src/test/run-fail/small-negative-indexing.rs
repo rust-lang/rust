@@ -15,5 +15,5 @@ use std::vec;
 fn main() {
     let v = vec::from_fn(1024u, {|n| n});
     // this should trip a bounds check
-    error!(v[-1i8]);
+    error2!("{:?}", v[-1i8]);
 }

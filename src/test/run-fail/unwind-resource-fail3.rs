@@ -20,7 +20,7 @@ fn faily_box(i: @int) -> faily_box { faily_box { i: i } }
 #[unsafe_destructor]
 impl Drop for faily_box {
     fn drop(&mut self) {
-        fail!("quux");
+        fail2!("quux");
     }
 }
 

@@ -103,20 +103,20 @@ impl<O:DataFlowOperator> pprust::pp_ann for DataFlowContext<O> {
 
             let gens = self.gens.slice(start, end);
             let gens_str = if gens.iter().any(|&u| u != 0) {
-                fmt!(" gen: %s", bits_to_str(gens))
+                format!(" gen: {}", bits_to_str(gens))
             } else {
                 ~""
             };
 
             let kills = self.kills.slice(start, end);
             let kills_str = if kills.iter().any(|&u| u != 0) {
-                fmt!(" kill: %s", bits_to_str(kills))
+                format!(" kill: {}", bits_to_str(kills))
             } else {
                 ~""
             };
 
-            let comment_str = fmt!("id %d: %s%s%s",
-                                   id, entry_str, gens_str, kills_str);
+            let comment_str = format!("id {}: {}{}{}",
+                                      id, entry_str, gens_str, kills_str);
             pprust::synth_comment(ps, comment_str);
             pp::space(ps.s);
         }
@@ -131,7 +131,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                bits_per_id: uint) -> DataFlowContext<O> {
         let words_per_id = (bits_per_id + uint::bits - 1) / uint::bits;
 
-        debug!("DataFlowContext::new(id_range=%?, bits_per_id=%?, words_per_id=%?)",
+        debug2!("DataFlowContext::new(id_range={:?}, bits_per_id={:?}, words_per_id={:?})",
                id_range, bits_per_id, words_per_id);
 
         let gens = ~[];
@@ -154,7 +154,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     pub fn add_gen(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` generates `bit`
 
-        debug!("add_gen(id=%?, bit=%?)", id, bit);
+        debug2!("add_gen(id={:?}, bit={:?})", id, bit);
         let (start, end) = self.compute_id_range(id);
         {
             let gens = self.gens.mut_slice(start, end);
@@ -165,7 +165,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     pub fn add_kill(&mut self, id: ast::NodeId, bit: uint) {
         //! Indicates that `id` kills `bit`
 
-        debug!("add_kill(id=%?, bit=%?)", id, bit);
+        debug2!("add_kill(id={:?}, bit={:?})", id, bit);
         let (start, end) = self.compute_id_range(id);
         {
             let kills = self.kills.mut_slice(start, end);
@@ -176,7 +176,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     fn apply_gen_kill(&mut self, id: ast::NodeId, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `id` to `bits`
 
-        debug!("apply_gen_kill(id=%?, bits=%s) [before]",
+        debug2!("apply_gen_kill(id={:?}, bits={}) [before]",
                id, mut_bits_to_str(bits));
         let (start, end) = self.compute_id_range(id);
         let gens = self.gens.slice(start, end);
@@ -184,17 +184,17 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         let kills = self.kills.slice(start, end);
         bitwise(bits, kills, |a, b| a & !b);
 
-        debug!("apply_gen_kill(id=%?, bits=%s) [after]",
+        debug2!("apply_gen_kill(id={:?}, bits={}) [after]",
                id, mut_bits_to_str(bits));
     }
 
     fn apply_kill(&mut self, id: ast::NodeId, bits: &mut [uint]) {
-        debug!("apply_kill(id=%?, bits=%s) [before]",
+        debug2!("apply_kill(id={:?}, bits={}) [before]",
                id, mut_bits_to_str(bits));
         let (start, end) = self.compute_id_range(id);
         let kills = self.kills.slice(start, end);
         bitwise(bits, kills, |a, b| a & !b);
-        debug!("apply_kill(id=%?, bits=%s) [after]",
+        debug2!("apply_kill(id={:?}, bits={}) [after]",
                id, mut_bits_to_str(bits));
     }
 
@@ -242,7 +242,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         }
         let (start, end) = self.compute_id_range_frozen(id);
         let on_entry = self.on_entry.slice(start, end);
-        debug!("each_bit_on_entry_frozen(id=%?, on_entry=%s)",
+        debug2!("each_bit_on_entry_frozen(id={:?}, on_entry={})",
                id, bits_to_str(on_entry));
         self.each_bit(on_entry, f)
     }
@@ -255,7 +255,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
         let (start, end) = self.compute_id_range(id);
         let on_entry = self.on_entry.slice(start, end);
-        debug!("each_bit_on_entry(id=%?, on_entry=%s)",
+        debug2!("each_bit_on_entry(id={:?}, on_entry={})",
                id, bits_to_str(on_entry));
         self.each_bit(on_entry, f)
     }
@@ -267,7 +267,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
         let (start, end) = self.compute_id_range(id);
         let gens = self.gens.slice(start, end);
-        debug!("each_gen_bit(id=%?, gens=%s)",
+        debug2!("each_gen_bit(id={:?}, gens={})",
                id, bits_to_str(gens));
         self.each_bit(gens, f)
     }
@@ -281,7 +281,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         }
         let (start, end) = self.compute_id_range_frozen(id);
         let gens = self.gens.slice(start, end);
-        debug!("each_gen_bit(id=%?, gens=%s)",
+        debug2!("each_gen_bit(id={:?}, gens={})",
                id, bits_to_str(gens));
         self.each_bit(gens, f)
     }
@@ -346,8 +346,8 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
             }
         }
 
-        debug!("Dataflow result:");
-        debug!("%s", {
+        debug2!("Dataflow result:");
+        debug2!("{}", {
             let this = @(*self).clone();
             this.pretty_print_to(io::stderr(), blk);
             ""
@@ -374,7 +374,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                   blk: &ast::Block,
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        debug!("DataFlowContext::walk_block(blk.id=%?, in_out=%s)",
+        debug2!("DataFlowContext::walk_block(blk.id={:?}, in_out={})",
                blk.id, bits_to_str(reslice(in_out)));
 
         self.merge_with_entry_set(blk.id, in_out);
@@ -425,7 +425,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                  expr: &ast::Expr,
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
-        debug!("DataFlowContext::walk_expr(expr=%s, in_out=%s)",
+        debug2!("DataFlowContext::walk_expr(expr={}, in_out={})",
                expr.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
 
         self.merge_with_entry_set(expr.id, in_out);
@@ -569,7 +569,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
-            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(*) => fail2!("non-desugared expr_for_loop"),
 
             ast::ExprLoop(ref blk, _) => {
                 //
@@ -756,7 +756,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         let tcx = self.tcx();
         let region_maps = tcx.region_maps;
 
-        debug!("pop_scopes(from_expr=%s, to_scope=%?, in_out=%s)",
+        debug2!("pop_scopes(from_expr={}, to_scope={:?}, in_out={})",
                from_expr.repr(tcx), to_scope.loop_id,
                bits_to_str(reslice(in_out)));
 
@@ -769,7 +769,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 None => {
                     tcx.sess.span_bug(
                         from_expr.span,
-                        fmt!("pop_scopes(from_expr=%s, to_scope=%?) \
+                        format!("pop_scopes(from_expr={}, to_scope={:?}) \
                               to_scope does not enclose from_expr",
                              from_expr.repr(tcx), to_scope.loop_id));
                 }
@@ -784,7 +784,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         self.pop_scopes(from_expr, to_scope, in_out);
         self.dfcx.apply_kill(from_expr.id, in_out);
         join_bits(&self.dfcx.oper, reslice(in_out), to_scope.break_bits);
-        debug!("break_from_to(from_expr=%s, to_scope=%?) final break_bits=%s",
+        debug2!("break_from_to(from_expr={}, to_scope={:?}) final break_bits={}",
                from_expr.repr(self.tcx()),
                to_scope.loop_id,
                bits_to_str(reslice(in_out)));
@@ -833,11 +833,11 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 pat: @ast::Pat,
                 in_out: &mut [uint],
                 _loop_scopes: &mut ~[LoopScope]) {
-        debug!("DataFlowContext::walk_pat(pat=%s, in_out=%s)",
+        debug2!("DataFlowContext::walk_pat(pat={}, in_out={})",
                pat.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
 
         do ast_util::walk_pat(pat) |p| {
-            debug!("  p.id=%? in_out=%s", p.id, bits_to_str(reslice(in_out)));
+            debug2!("  p.id={:?} in_out={}", p.id, bits_to_str(reslice(in_out)));
             self.merge_with_entry_set(p.id, in_out);
             self.dfcx.apply_gen_kill(p.id, in_out);
             true
@@ -882,7 +882,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                             None => {
                                 self.tcx().sess.span_bug(
                                     expr.span,
-                                    fmt!("No loop scope for id %?", loop_id));
+                                    format!("No loop scope for id {:?}", loop_id));
                             }
                         }
                     }
@@ -890,7 +890,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                     r => {
                         self.tcx().sess.span_bug(
                             expr.span,
-                            fmt!("Bad entry `%?` in def_map for label", r));
+                            format!("Bad entry `{:?}` in def_map for label", r));
                     }
                 }
             }
@@ -909,7 +909,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn add_to_entry_set(&mut self, id: ast::NodeId, pred_bits: &[uint]) {
-        debug!("add_to_entry_set(id=%?, pred_bits=%s)",
+        debug2!("add_to_entry_set(id={:?}, pred_bits={})",
                id, bits_to_str(pred_bits));
         let (start, end) = self.dfcx.compute_id_range(id);
         let changed = { // FIXME(#5074) awkward construction
@@ -917,7 +917,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             join_bits(&self.dfcx.oper, pred_bits, on_entry)
         };
         if changed {
-            debug!("changed entry set for %? to %s",
+            debug2!("changed entry set for {:?} to {}",
                    id, bits_to_str(self.dfcx.on_entry.slice(start, end)));
             self.changed = true;
         }
@@ -926,7 +926,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     fn merge_with_entry_set(&mut self,
                             id: ast::NodeId,
                             pred_bits: &mut [uint]) {
-        debug!("merge_with_entry_set(id=%?, pred_bits=%s)",
+        debug2!("merge_with_entry_set(id={:?}, pred_bits={})",
                id, mut_bits_to_str(pred_bits));
         let (start, end) = self.dfcx.compute_id_range(id);
         let changed = { // FIXME(#5074) awkward construction
@@ -936,7 +936,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             changed
         };
         if changed {
-            debug!("changed entry set for %? to %s",
+            debug2!("changed entry set for {:?} to {}",
                    id, bits_to_str(self.dfcx.on_entry.slice(start, end)));
             self.changed = true;
         }
@@ -957,7 +957,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
         let mut v = word;
         for _ in range(0u, uint::bytes) {
             result.push_char(sep);
-            result.push_str(fmt!("%02x", v & 0xFF));
+            result.push_str(format!("{:02x}", v & 0xFF));
             v >>= 8;
             sep = '-';
         }
@@ -992,12 +992,12 @@ fn bitwise(out_vec: &mut [uint],
 }
 
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
-    debug!("set_bit: words=%s bit=%s",
+    debug2!("set_bit: words={} bit={}",
            mut_bits_to_str(words), bit_str(bit));
     let word = bit / uint::bits;
     let bit_in_word = bit % uint::bits;
     let bit_mask = 1 << bit_in_word;
-    debug!("word=%u bit_in_word=%u bit_mask=%u", word, bit_in_word, word);
+    debug2!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, word);
     let oldv = words[word];
     let newv = oldv | bit_mask;
     words[word] = newv;
@@ -1007,7 +1007,7 @@ fn set_bit(words: &mut [uint], bit: uint) -> bool {
 fn bit_str(bit: uint) -> ~str {
     let byte = bit >> 8;
     let lobits = 1 << (bit & 0xFF);
-    fmt!("[%u:%u-%02x]", bit, byte, lobits)
+    format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 
 fn reslice<'a>(v: &'a mut [uint]) -> &'a [uint] {

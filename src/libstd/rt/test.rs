@@ -114,7 +114,7 @@ mod darwin_fd_limit {
                   to_mut_unsafe_ptr(&mut size),
                   mut_null(), 0) != 0 {
             let err = last_os_error();
-            error!("raise_fd_limit: error calling sysctl: %s", err);
+            error2!("raise_fd_limit: error calling sysctl: {}", err);
             return;
         }
 
@@ -122,7 +122,7 @@ mod darwin_fd_limit {
         let mut rlim = rlimit{rlim_cur: 0, rlim_max: 0};
         if getrlimit(RLIMIT_NOFILE, to_mut_unsafe_ptr(&mut rlim)) != 0 {
             let err = last_os_error();
-            error!("raise_fd_limit: error calling getrlimit: %s", err);
+            error2!("raise_fd_limit: error calling getrlimit: {}", err);
             return;
         }
 
@@ -132,7 +132,7 @@ mod darwin_fd_limit {
         // Set our newly-increased resource limit
         if setrlimit(RLIMIT_NOFILE, to_unsafe_ptr(&rlim)) != 0 {
             let err = last_os_error();
-            error!("raise_fd_limit: error calling setrlimit: %s", err);
+            error2!("raise_fd_limit: error calling setrlimit: {}", err);
             return;
         }
     }

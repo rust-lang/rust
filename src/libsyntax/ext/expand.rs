@@ -51,7 +51,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                     if (pth.segments.len() > 1u) {
                         cx.span_fatal(
                             pth.span,
-                            fmt!("expected macro name without module \
+                            format!("expected macro name without module \
                                   separators"));
                     }
                     let extname = &pth.segments[0].identifier;
@@ -61,7 +61,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                         None => {
                             cx.span_fatal(
                                 pth.span,
-                                fmt!("macro undefined: '%s'", extnamestr))
+                                format!("macro undefined: '{}'", extnamestr))
                         }
                         Some(@SE(NormalTT(expandfun, exp_span))) => {
                             cx.bt_push(ExpnInfo {
@@ -92,8 +92,8 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                     _ => {
                                         cx.span_fatal(
                                             pth.span,
-                                            fmt!(
-                                                "non-expr macro in expr pos: %s",
+                                            format!(
+                                                "non-expr macro in expr pos: {}",
                                                 extnamestr
                                             )
                                         )
@@ -119,7 +119,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                         _ => {
                             cx.span_fatal(
                                 pth.span,
-                                fmt!("'%s' is not a tt-style macro", extnamestr)
+                                format!("'{}' is not a tt-style macro", extnamestr)
                             )
                         }
                     }
@@ -353,13 +353,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
     let fm = fresh_mark();
     let expanded = match (*extsbox).find(&extname.name) {
         None => cx.span_fatal(pth.span,
-                              fmt!("macro undefined: '%s!'", extnamestr)),
+                              format!("macro undefined: '{}!'", extnamestr)),
 
         Some(@SE(NormalTT(expander, span))) => {
             if it.ident.name != parse::token::special_idents::invalid.name {
                 cx.span_fatal(pth.span,
-                              fmt!("macro %s! expects no ident argument, \
-                                    given '%s'", extnamestr,
+                              format!("macro {}! expects no ident argument, \
+                                    given '{}'", extnamestr,
                                    ident_to_str(&it.ident)));
             }
             cx.bt_push(ExpnInfo {
@@ -377,7 +377,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
         Some(@SE(IdentTT(expander, span))) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
                 cx.span_fatal(pth.span,
-                              fmt!("macro %s! expects an ident argument",
+                              format!("macro {}! expects an ident argument",
                                    extnamestr));
             }
             cx.bt_push(ExpnInfo {
@@ -393,7 +393,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
             expander.expand(cx, it.span, it.ident, marked_tts, marked_ctxt)
         }
         _ => cx.span_fatal(
-            it.span, fmt!("%s! is not legal in item position", extnamestr))
+            it.span, format!("{}! is not legal in item position", extnamestr))
     };
 
     let maybe_it = match expanded {
@@ -402,7 +402,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 .and_then(|i| fld.fold_item(i))
         }
         MRExpr(_) => {
-            cx.span_fatal(pth.span, fmt!("expr macro in item position: %s", extnamestr))
+            cx.span_fatal(pth.span, format!("expr macro in item position: {}", extnamestr))
         }
         MRAny(any_macro) => {
             any_macro.make_item()
@@ -429,8 +429,8 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
         match t {
             &@BlockInfo(BlockInfo {macros_escape:false,_}) => true,
             &@BlockInfo(BlockInfo {_}) => false,
-            _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
-                            special_block_name))
+            _ => fail2!("special identifier {:?} was bound to a non-BlockInfo",
+                        special_block_name)
         }
     };
     exts.insert_into_frame(name,transformer,intern(special_block_name),
@@ -463,7 +463,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     let extnamestr = ident_to_str(extname);
     let fully_expanded: @ast::Stmt = match (*extsbox).find(&extname.name) {
         None => {
-            cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", extnamestr))
+            cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
         }
 
         Some(@SE(NormalTT(expandfun, exp_span))) => {
@@ -496,7 +496,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 MRAny(any_macro) => any_macro.make_stmt(),
                 _ => cx.span_fatal(
                     pth.span,
-                    fmt!("non-stmt macro in stmt pos: %s", extnamestr))
+                    format!("non-stmt macro in stmt pos: {}", extnamestr))
             };
             let marked_after = mark_stmt(expanded,fm);
 
@@ -521,7 +521,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
         _ => {
             cx.span_fatal(pth.span,
-                          fmt!("'%s' is not a tt-style macro", extnamestr))
+                          format!("'{}' is not a tt-style macro", extnamestr))
         }
     };
 
@@ -741,7 +741,7 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
 fn mustbesome<T>(val : Option<T>) -> T {
     match val {
         Some(v) => v,
-        None => fail!("rename_fold returned None")
+        None => fail2!("rename_fold returned None")
     }
 }
 
@@ -749,8 +749,8 @@ fn mustbesome<T>(val : Option<T>) -> T {
 fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
     match exts.find_in_topmost_frame(&intern(special_block_name)) {
         Some(@BlockInfo(bi)) => bi,
-        _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
-                       @" block"))
+        _ => fail2!("special identifier {:?} was bound to a non-BlockInfo",
+                    @" block")
     }
 }
 
@@ -782,7 +782,7 @@ pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
 fn apply_pending_renames(folder : @ast_fold, stmt : ast::Stmt) -> @ast::Stmt {
     match folder.fold_stmt(&stmt) {
         Some(s) => s,
-        None => fail!(fmt!("renaming of stmt produced None"))
+        None => fail2!("renaming of stmt produced None")
     }
 }
 
@@ -809,30 +809,49 @@ pub fn std_macros() -> @str {
 
     macro_rules! ignore (($($x:tt)*) => (()))
 
-    macro_rules! log(
-        ($lvl:expr, $arg:expr) => ({
-            let lvl = $lvl;
-            if lvl <= __log_level() {
-                format_args!(|args| {
-                    ::std::logging::log(lvl, args)
-                }, \"{}\", fmt!(\"%?\", $arg))
-            }
-        });
-        ($lvl:expr, $($arg:expr),+) => ({
-            let lvl = $lvl;
-            if lvl <= __log_level() {
-                format_args!(|args| {
-                    ::std::logging::log(lvl, args)
-                }, \"{}\", fmt!($($arg),+))
-            }
-        })
-    )
-    macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
-    macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
-    macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
-    macro_rules! debug( ($($arg:tt)*) => (
-        if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
-    ))
+    #[cfg(not(nofmt))]
+    mod fmt_extension {
+        #[macro_escape];
+
+        macro_rules! fmt(($($arg:tt)*) => (oldformat!($($arg)*)))
+
+        macro_rules! log(
+            ($lvl:expr, $arg:expr) => ({
+                let lvl = $lvl;
+                if lvl <= __log_level() {
+                    format_args!(|args| {
+                        ::std::logging::log(lvl, args)
+                    }, \"{}\", format!(\"{:?}\", $arg))
+                }
+            });
+            ($lvl:expr, $($arg:expr),+) => ({
+                let lvl = $lvl;
+                if lvl <= __log_level() {
+                    format_args!(|args| {
+                        ::std::logging::log(lvl, args)
+                    }, \"{}\", format!($($arg),+))
+                }
+            })
+        )
+        macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
+        macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
+        macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
+        macro_rules! debug( ($($arg:tt)*) => (
+            if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
+        ))
+
+        macro_rules! fail(
+            () => (
+                fail2!(\"explicit failure\")
+            );
+            ($msg:expr) => (
+                ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
+            );
+            ($( $arg:expr ),+) => (
+                ::std::sys::FailWithCause::fail_with(format!( $($arg),+ ), file!(), line!())
+            )
+        )
+    }
 
     macro_rules! log2(
         ($lvl:expr, $($arg:tt)+) => ({
@@ -851,24 +870,15 @@ pub fn std_macros() -> @str {
         if cfg!(not(ndebug)) { log2!(4u32, $($arg)*) }
     ))
 
-    macro_rules! fail(
-        () => (
-            fail!(\"explicit failure\")
-        );
-        ($msg:expr) => (
-            ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
-        );
-        ($( $arg:expr ),+) => (
-            ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
-        )
-    )
-
     macro_rules! fail2(
         () => (
-            fail!(\"explicit failure\")
+            fail2!(\"explicit failure\")
         );
-        ($($arg:tt)*) => (
-            ::std::sys::FailWithCause::fail_with(format!($($arg)*), file!(), line!())
+        ($fmt:expr) => (
+            ::std::sys::FailWithCause::fail_with($fmt, file!(), line!())
+        );
+        ($fmt:expr, $($arg:tt)*) => (
+            ::std::sys::FailWithCause::fail_with(format!($fmt, $($arg)*), file!(), line!())
         )
     )
 
@@ -886,7 +896,7 @@ pub fn std_macros() -> @str {
         };
         ($cond:expr, $( $arg:expr ),+) => {
             if !$cond {
-                ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+                ::std::sys::FailWithCause::fail_with(format!( $($arg),+ ), file!(), line!())
             }
         }
     )
@@ -894,12 +904,14 @@ pub fn std_macros() -> @str {
     macro_rules! assert_eq (
         ($given:expr , $expected:expr) => (
             {
-                let given_val = $given;
-                let expected_val = $expected;
+                let given_val = &($given);
+                let expected_val = &($expected);
                 // check both directions of equality....
-                if !((given_val == expected_val) && (expected_val == given_val)) {
-                    fail!(\"assertion failed: `(left == right) && (right == \
-                    left)` (left: `%?`, right: `%?`)\", given_val, expected_val);
+                if !((*given_val == *expected_val) &&
+                     (*expected_val == *given_val)) {
+                    fail2!(\"assertion failed: `(left == right) && (right == \
+                             left)` (left: `{:?}`, right: `{:?}`)\",
+                           *given_val, *expected_val);
                 }
             }
         )
@@ -917,8 +929,8 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq(&expected_val) &&
                     expected_val.approx_eq(&given_val)
                 ) {
-                    fail!(\"left: %? does not approximately equal right: %?\",
-                          given_val, expected_val);
+                    fail2!(\"left: {:?} does not approximately equal right: {:?}\",
+                           given_val, expected_val);
                 }
             }
         );
@@ -934,7 +946,8 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
                     expected_val.approx_eq_eps(&given_val, &epsilon_val)
                 ) {
-                    fail!(\"left: %? does not approximately equal right: %? with epsilon: %?\",
+                    fail2!(\"left: {:?} does not approximately equal right: \
+                             {:?} with epsilon: {:?}\",
                           given_val, expected_val, epsilon_val);
                 }
             }
@@ -968,7 +981,7 @@ pub fn std_macros() -> @str {
 
     */
     macro_rules! unreachable (() => (
-        fail!(\"internal error: entered unreachable code\");
+        fail2!(\"internal error: entered unreachable code\");
     ))
 
     macro_rules! condition (
@@ -1151,7 +1164,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
                                               ~[],
                                               parse_sess) {
         Some(item) => item,
-        None => fail!("expected core macros to parse correctly")
+        None => fail2!("expected core macros to parse correctly")
     };
 
     let injector = @Injector {
@@ -1409,16 +1422,16 @@ mod test {
     use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
     use visit;
 
-    // make sure that fail! is present
+    // make sure that fail2! is present
     #[test] fn fail_exists_test () {
-        let src = @"fn main() { fail!(\"something appropriately gloomy\");}";
+        let src = @"fn main() { fail2!(\"something appropriately gloomy\");}";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
             @"<test>",
             src,
             ~[],sess);
         let crate_ast = inject_std_macros(sess, ~[], crate_ast);
-        // don't bother with striping, doesn't affect fail!.
+        // don't bother with striping, doesn't affect fail2!.
         expand_crate(sess,~[],crate_ast);
     }
 
@@ -1476,7 +1489,7 @@ mod test {
             cfg,~[],sess);
         match item_ast {
             Some(_) => (), // success
-            None => fail!("expected this to parse")
+            None => fail2!("expected this to parse")
         }
     }
 
@@ -1515,7 +1528,7 @@ mod test {
         let marked_once_ctxt =
             match marked_once[0] {
                 ast::tt_tok(_,token::IDENT(id,_)) => id.ctxt,
-                _ => fail!(fmt!("unexpected shape for marked tts: %?",marked_once[0]))
+                _ => fail2!(format!("unexpected shape for marked tts: {:?}",marked_once[0]))
             };
         assert_eq!(mtwt_marksof(marked_once_ctxt,invalid_name),~[fm]);
         let remarked = mtwt_cancel_outer_mark(marked_once,marked_once_ctxt);
@@ -1523,7 +1536,7 @@ mod test {
         match remarked[0] {
             ast::tt_tok(_,token::IDENT(id,_)) =>
             assert_eq!(mtwt_marksof(id.ctxt,invalid_name),~[]),
-            _ => fail!(fmt!("unexpected shape for marked tts: %?",remarked[0]))
+            _ => fail2!(format!("unexpected shape for marked tts: {:?}",remarked[0]))
         }
     }
 
@@ -1570,7 +1583,7 @@ mod test {
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
         //let expanded_ast = expand_crate_str(crate_str);
-        // std::io::println(fmt!("expanded: %?\n",expanded_ast));
+        // std::io::println(format!("expanded: {:?}\n",expanded_ast));
         //mtwt_resolve_crate(expanded_ast)
     //}
     //fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
@@ -1680,8 +1693,8 @@ mod test {
                                                     invalid_name);
                     if (!(varref_name==binding_name)){
                         std::io::println("uh oh, should match but doesn't:");
-                        std::io::println(fmt!("varref: %?",varref));
-                        std::io::println(fmt!("binding: %?", bindings[binding_idx]));
+                        std::io::println(format!("varref: {:?}",varref));
+                        std::io::println(format!("binding: {:?}", bindings[binding_idx]));
                         ast_util::display_sctable(get_sctable());
                     }
                     assert_eq!(varref_name,binding_name);
@@ -1699,12 +1712,12 @@ mod test {
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
                         println!("uh oh, matches but shouldn't:");
-                        std::io::println(fmt!("varref: %?",varref));
+                        std::io::println(format!("varref: {:?}",varref));
                         // good lord, you can't make a path with 0 segments, can you?
                         println!("varref's first segment's uint: {}, and string: \"{}\"",
                                  varref.segments[0].identifier.name,
                                  ident_to_str(&varref.segments[0].identifier));
-                        std::io::println(fmt!("binding: %?", bindings[binding_idx]));
+                        std::io::println(format!("binding: {:?}", bindings[binding_idx]));
                         ast_util::display_sctable(get_sctable());
                     }
                     assert!(!fail);
@@ -1714,7 +1727,7 @@ mod test {
     }
 
     #[test] fn fmt_in_macro_used_inside_module_macro() {
-        let crate_str = @"macro_rules! fmt_wrap(($b:expr)=>(fmt!(\"left: %?\", $b)))
+        let crate_str = @"macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
 ";
@@ -1726,7 +1739,7 @@ foo_module!()
             bindings.iter().filter(|b|{@"xx" == (ident_to_str(*b))}).collect();
         let cxbind = match cxbinds {
             [b] => b,
-            _ => fail!("expected just one binding for ext_cx")
+            _ => fail2!("expected just one binding for ext_cx")
         };
         let resolved_binding = mtwt_resolve(*cxbind);
         // find all the xx varrefs:
@@ -1738,15 +1751,16 @@ foo_module!()
                                      }).enumerate() {
             if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
                 std::io::println("uh oh, xx binding didn't match xx varref:");
-                std::io::println(fmt!("this is xx varref # %?",idx));
-                std::io::println(fmt!("binding: %?",cxbind));
-                std::io::println(fmt!("resolves to: %?",resolved_binding));
-                std::io::println(fmt!("varref: %?",v.segments[0].identifier));
-                std::io::println(fmt!("resolves to: %?",mtwt_resolve(v.segments[0].identifier)));
+                std::io::println(format!("this is xx varref \\# {:?}",idx));
+                std::io::println(format!("binding: {:?}",cxbind));
+                std::io::println(format!("resolves to: {:?}",resolved_binding));
+                std::io::println(format!("varref: {:?}",v.segments[0].identifier));
+                std::io::println(format!("resolves to: {:?}",
+                                         mtwt_resolve(v.segments[0].identifier)));
                 let table = get_sctable();
                 std::io::println("SC table:");
                 for (idx,val) in table.table.iter().enumerate() {
-                    std::io::println(fmt!("%4u : %?",idx,val));
+                    std::io::println(format!("{:4u} : {:?}",idx,val));
                 }
             }
             assert_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);

@@ -14,7 +14,7 @@ enum bar { u(~int), w(int), }
 pub fn main() {
     assert!(match u(~10) {
       u(a) => {
-        error!(a);
+        error2!("{:?}", a);
         *a
       }
       _ => { 66 }

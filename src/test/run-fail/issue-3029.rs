@@ -16,7 +16,7 @@
 fn main() {
     let mut x = ~[];
     let y = ~[3];
-    fail!("so long");
+    fail2!("so long");
     x.push_all_move(y);
     ~"good" + ~"bye";
 }

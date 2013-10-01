@@ -1022,7 +1022,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Returns the first element of a vector, failing if the vector is empty.
     #[inline]
     fn head(&self) -> &'self T {
-        if self.len() == 0 { fail!("head: empty vector") }
+        if self.len() == 0 { fail2!("head: empty vector") }
         &self[0]
     }
 
@@ -1055,7 +1055,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Returns the last element of a vector, failing if the vector is empty.
     #[inline]
     fn last(&self) -> &'self T {
-        if self.len() == 0 { fail!("last: empty vector") }
+        if self.len() == 0 { fail2!("last: empty vector") }
         &self[self.len() - 1]
     }
 
@@ -1301,7 +1301,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     let alloc = n * sys::nonzero_size_of::<T>();
                     let size = alloc + sys::size_of::<Vec<()>>();
                     if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
-                        fail!("vector size is too large: %u", n);
+                        fail2!("vector size is too large: {}", n);
                     }
                     *ptr = realloc_raw(*ptr as *mut c_void, size)
                            as *mut Vec<()>;
@@ -1343,7 +1343,7 @@ impl<T> OwnedVector<T> for ~[T] {
     fn reserve_additional(&mut self, n: uint) {
         if self.capacity() - self.len() < n {
             match self.len().checked_add(&n) {
-                None => fail!("vec::reserve_additional: `uint` overflow"),
+                None => fail2!("vec::reserve_additional: `uint` overflow"),
                 Some(new_cap) => self.reserve_at_least(new_cap)
             }
         }
@@ -1570,7 +1570,7 @@ impl<T> OwnedVector<T> for ~[T] {
     fn swap_remove(&mut self, index: uint) -> T {
         let ln = self.len();
         if index >= ln {
-            fail!("vec::swap_remove - index %u >= length %u", index, ln);
+            fail2!("vec::swap_remove - index {} >= length {}", index, ln);
         }
         if index < ln - 1 {
             self.swap(index, ln - 1);
@@ -2958,7 +2958,7 @@ mod tests {
                 3 => assert_eq!(v, [2, 3, 1]),
                 4 => assert_eq!(v, [2, 1, 3]),
                 5 => assert_eq!(v, [1, 2, 3]),
-                _ => fail!(),
+                _ => fail2!(),
             }
         }
     }
@@ -3205,7 +3205,7 @@ mod tests {
     #[should_fail]
     fn test_from_fn_fail() {
         do from_fn(100) |v| {
-            if v == 50 { fail!() }
+            if v == 50 { fail2!() }
             (~0, @0)
         };
     }
@@ -3224,7 +3224,7 @@ mod tests {
             fn clone(&self) -> S {
                 let s = unsafe { cast::transmute_mut(self) };
                 s.f += 1;
-                if s.f == 10 { fail!() }
+                if s.f == 10 { fail2!() }
                 S { f: s.f, boxes: s.boxes.clone() }
             }
         }
@@ -3241,7 +3241,7 @@ mod tests {
             push((~0, @0));
             push((~0, @0));
             push((~0, @0));
-            fail!();
+            fail2!();
         };
     }
 
@@ -3251,7 +3251,7 @@ mod tests {
         let mut v = ~[];
         do v.grow_fn(100) |i| {
             if i == 50 {
-                fail!()
+                fail2!()
             }
             (~0, @0)
         }
@@ -3264,7 +3264,7 @@ mod tests {
         let mut i = 0;
         do v.map |_elt| {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
             ~[(~0, @0)]
@@ -3278,7 +3278,7 @@ mod tests {
         let mut i = 0;
         do flat_map(v) |_elt| {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
             ~[(~0, @0)]
@@ -3292,7 +3292,7 @@ mod tests {
         let mut i = 0;
         for _ in v.permutations_iter() {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
         }
@@ -3303,7 +3303,7 @@ mod tests {
     fn test_as_imm_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do v.as_imm_buf |_buf, _i| {
-            fail!()
+            fail2!()
         }
     }
 
@@ -3312,7 +3312,7 @@ mod tests {
     fn test_as_mut_buf_fail() {
         let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do v.as_mut_buf |_buf, _i| {
-            fail!()
+            fail2!()
         }
     }
 
@@ -3702,11 +3702,11 @@ mod tests {
         assert_eq!(cnt, 11);
 
         let xs = ~[Foo, Foo, Foo];
-        assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()),
+        assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
                    ~"~[vec::tests::Foo, vec::tests::Foo]");
 
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
-        assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()),
+        assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
                    ~"~[vec::tests::Foo, vec::tests::Foo]");
         cnt = 0;
         for f in xs.iter() {
@@ -3749,7 +3749,7 @@ mod bench {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.
-            if sum == 0 {fail!()}
+            if sum == 0 {fail2!()}
         }
     }
 

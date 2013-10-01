@@ -56,7 +56,7 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
     let msg = line.slice(idx, len).to_owned();
 
-    debug!("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
+    debug2!("line={} kind={} msg={}", line_num - adjust_line, kind, msg);
 
     return ~[ExpectedError{line: line_num - adjust_line, kind: kind,
                            msg: msg}];

@@ -17,7 +17,7 @@ macro_rules! overly_complicated (
           Some($pat) => {
             $res
           }
-          _ => { fail!(); }
+          _ => { fail2!(); }
         }
     })
 

@@ -885,10 +885,10 @@ pub fn Decoder(json: Json) -> Decoder {
 
 impl serialize::Decoder for Decoder {
     fn read_nil(&mut self) -> () {
-        debug!("read_nil");
+        debug2!("read_nil");
         match self.stack.pop() {
             Null => (),
-            value => fail!("not a null: %?", value)
+            value => fail2!("not a null: {:?}", value)
         }
     }
 
@@ -905,20 +905,20 @@ impl serialize::Decoder for Decoder {
     fn read_int(&mut self) -> int { self.read_float() as int }
 
     fn read_bool(&mut self) -> bool {
-        debug!("read_bool");
+        debug2!("read_bool");
         match self.stack.pop() {
             Boolean(b) => b,
-            value => fail!("not a boolean: %?", value)
+            value => fail2!("not a boolean: {:?}", value)
         }
     }
 
     fn read_f64(&mut self) -> f64 { self.read_float() as f64 }
     fn read_f32(&mut self) -> f32 { self.read_float() as f32 }
     fn read_float(&mut self) -> float {
-        debug!("read_float");
+        debug2!("read_float");
         match self.stack.pop() {
             Number(f) => f,
-            value => fail!("not a number: %?", value)
+            value => fail2!("not a number: {:?}", value)
         }
     }
 
@@ -926,20 +926,20 @@ impl serialize::Decoder for Decoder {
         let mut v = ~[];
         let s = self.read_str();
         for c in s.iter() { v.push(c) }
-        if v.len() != 1 { fail!("string must have one character") }
+        if v.len() != 1 { fail2!("string must have one character") }
         v[0]
     }
 
     fn read_str(&mut self) -> ~str {
-        debug!("read_str");
+        debug2!("read_str");
         match self.stack.pop() {
             String(s) => s,
-            json => fail!("not a string: %?", json)
+            json => fail2!("not a string: {:?}", json)
         }
     }
 
     fn read_enum<T>(&mut self, name: &str, f: &fn(&mut Decoder) -> T) -> T {
-        debug!("read_enum(%s)", name);
+        debug2!("read_enum({})", name);
         f(self)
     }
 
@@ -947,13 +947,13 @@ impl serialize::Decoder for Decoder {
                             names: &[&str],
                             f: &fn(&mut Decoder, uint) -> T)
                             -> T {
-        debug!("read_enum_variant(names=%?)", names);
+        debug2!("read_enum_variant(names={:?})", names);
         let name = match self.stack.pop() {
             String(s) => s,
             Object(o) => {
                 let n = match o.find(&~"variant").expect("invalidly encoded json") {
                     &String(ref s) => s.clone(),
-                    _ => fail!("invalidly encoded json"),
+                    _ => fail2!("invalidly encoded json"),
                 };
                 match o.find(&~"fields").expect("invalidly encoded json") {
                     &List(ref l) => {
@@ -961,15 +961,15 @@ impl serialize::Decoder for Decoder {
                             self.stack.push(field.clone());
                         }
                     },
-                    _ => fail!("invalidly encoded json")
+                    _ => fail2!("invalidly encoded json")
                 }
                 n
             }
-            ref json => fail!("invalid variant: %?", *json),
+            ref json => fail2!("invalid variant: {:?}", *json),
         };
         let idx = match names.iter().position(|n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
-            None => fail!("Unknown variant name: %?", name),
+            None => fail2!("Unknown variant name: {}", name),
         };
         f(self, idx)
     }
@@ -978,7 +978,7 @@ impl serialize::Decoder for Decoder {
                                 idx: uint,
                                 f: &fn(&mut Decoder) -> T)
                                 -> T {
-        debug!("read_enum_variant_arg(idx=%u)", idx);
+        debug2!("read_enum_variant_arg(idx={})", idx);
         f(self)
     }
 
@@ -986,7 +986,7 @@ impl serialize::Decoder for Decoder {
                                    names: &[&str],
                                    f: &fn(&mut Decoder, uint) -> T)
                                    -> T {
-        debug!("read_enum_struct_variant(names=%?)", names);
+        debug2!("read_enum_struct_variant(names={:?})", names);
         self.read_enum_variant(names, f)
     }
 
@@ -996,7 +996,7 @@ impl serialize::Decoder for Decoder {
                                          idx: uint,
                                          f: &fn(&mut Decoder) -> T)
                                          -> T {
-        debug!("read_enum_struct_variant_field(name=%?, idx=%u)", name, idx);
+        debug2!("read_enum_struct_variant_field(name={}, idx={})", name, idx);
         self.read_enum_variant_arg(idx, f)
     }
 
@@ -1005,7 +1005,7 @@ impl serialize::Decoder for Decoder {
                       len: uint,
                       f: &fn(&mut Decoder) -> T)
                       -> T {
-        debug!("read_struct(name=%s, len=%u)", name, len);
+        debug2!("read_struct(name={}, len={})", name, len);
         let value = f(self);
         self.stack.pop();
         value
@@ -1016,12 +1016,12 @@ impl serialize::Decoder for Decoder {
                             idx: uint,
                             f: &fn(&mut Decoder) -> T)
                             -> T {
-        debug!("read_struct_field(name=%?, idx=%u)", name, idx);
+        debug2!("read_struct_field(name={}, idx={})", name, idx);
         match self.stack.pop() {
             Object(obj) => {
                 let mut obj = obj;
                 let value = match obj.pop(&name.to_owned()) {
-                    None => fail!("no such field: %s", name),
+                    None => fail2!("no such field: {}", name),
                     Some(json) => {
                         self.stack.push(json);
                         f(self)
@@ -1030,12 +1030,12 @@ impl serialize::Decoder for Decoder {
                 self.stack.push(Object(obj));
                 value
             }
-            value => fail!("not an object: %?", value)
+            value => fail2!("not an object: {:?}", value)
         }
     }
 
     fn read_tuple<T>(&mut self, f: &fn(&mut Decoder, uint) -> T) -> T {
-        debug!("read_tuple()");
+        debug2!("read_tuple()");
         self.read_seq(f)
     }
 
@@ -1043,7 +1043,7 @@ impl serialize::Decoder for Decoder {
                          idx: uint,
                          f: &fn(&mut Decoder) -> T)
                          -> T {
-        debug!("read_tuple_arg(idx=%u)", idx);
+        debug2!("read_tuple_arg(idx={})", idx);
         self.read_seq_elt(idx, f)
     }
 
@@ -1051,7 +1051,7 @@ impl serialize::Decoder for Decoder {
                             name: &str,
                             f: &fn(&mut Decoder, uint) -> T)
                             -> T {
-        debug!("read_tuple_struct(name=%?)", name);
+        debug2!("read_tuple_struct(name={})", name);
         self.read_tuple(f)
     }
 
@@ -1059,7 +1059,7 @@ impl serialize::Decoder for Decoder {
                                 idx: uint,
                                 f: &fn(&mut Decoder) -> T)
                                 -> T {
-        debug!("read_tuple_struct_arg(idx=%u)", idx);
+        debug2!("read_tuple_struct_arg(idx={})", idx);
         self.read_tuple_arg(idx, f)
     }
 
@@ -1071,7 +1071,7 @@ impl serialize::Decoder for Decoder {
     }
 
     fn read_seq<T>(&mut self, f: &fn(&mut Decoder, uint) -> T) -> T {
-        debug!("read_seq()");
+        debug2!("read_seq()");
         let len = match self.stack.pop() {
             List(list) => {
                 let len = list.len();
@@ -1080,18 +1080,18 @@ impl serialize::Decoder for Decoder {
                 }
                 len
             }
-            _ => fail!("not a list"),
+            _ => fail2!("not a list"),
         };
         f(self, len)
     }
 
     fn read_seq_elt<T>(&mut self, idx: uint, f: &fn(&mut Decoder) -> T) -> T {
-        debug!("read_seq_elt(idx=%u)", idx);
+        debug2!("read_seq_elt(idx={})", idx);
         f(self)
     }
 
     fn read_map<T>(&mut self, f: &fn(&mut Decoder, uint) -> T) -> T {
-        debug!("read_map()");
+        debug2!("read_map()");
         let len = match self.stack.pop() {
             Object(obj) => {
                 let len = obj.len();
@@ -1101,7 +1101,7 @@ impl serialize::Decoder for Decoder {
                 }
                 len
             }
-            json => fail!("not an object: %?", json),
+            json => fail2!("not an object: {:?}", json),
         };
         f(self, len)
     }
@@ -1110,13 +1110,13 @@ impl serialize::Decoder for Decoder {
                            idx: uint,
                            f: &fn(&mut Decoder) -> T)
                            -> T {
-        debug!("read_map_elt_key(idx=%u)", idx);
+        debug2!("read_map_elt_key(idx={})", idx);
         f(self)
     }
 
     fn read_map_elt_val<T>(&mut self, idx: uint, f: &fn(&mut Decoder) -> T)
                            -> T {
-        debug!("read_map_elt_val(idx=%u)", idx);
+        debug2!("read_map_elt_val(idx={})", idx);
         f(self)
     }
 }
@@ -1321,7 +1321,7 @@ impl to_str::ToStr for Json {
 
 impl to_str::ToStr for Error {
     fn to_str(&self) -> ~str {
-        fmt!("%u:%u: %s", self.line, self.col, *self.msg)
+        format!("{}:{}: {}", self.line, self.col, *self.msg)
     }
 }
 

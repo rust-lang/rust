@@ -163,7 +163,7 @@ impl ErrorReporting for InferCtxt {
 
         self.tcx.sess.span_err(
             trace.origin.span(),
-            fmt!("%s: %s (%s)",
+            format!("{}: {} ({})",
                  message_root_str,
                  expected_found_str,
                  ty::type_err_to_str(tcx, terr)));
@@ -173,7 +173,7 @@ impl ErrorReporting for InferCtxt {
 
     fn values_str(@mut self, values: &ValuePairs) -> Option<~str> {
         /*!
-         * Returns a string of the form "expected `%s` but found `%s`",
+         * Returns a string of the form "expected `{}` but found `{}`",
          * or None if this is a derived error.
          */
         match *values {
@@ -201,7 +201,7 @@ impl ErrorReporting for InferCtxt {
             return None;
         }
 
-        Some(fmt!("expected `%s` but found `%s`",
+        Some(format!("expected `{}` but found `{}`",
                   expected.user_string(self.tcx),
                   found.user_string(self.tcx)))
     }
@@ -284,7 +284,7 @@ impl ErrorReporting for InferCtxt {
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_err(
                     span,
-                    fmt!("index of slice outside its lifetime"));
+                    format!("index of slice outside its lifetime"));
                 note_and_explain_region(
                     self.tcx,
                     "the slice is only valid for ",
@@ -375,7 +375,7 @@ impl ErrorReporting for InferCtxt {
             infer::ReferenceOutlivesReferent(ty, span) => {
                 self.tcx.sess.span_err(
                     span,
-                    fmt!("in type `%s`, pointer has a longer lifetime than \
+                    format!("in type `{}`, pointer has a longer lifetime than \
                           the data it references",
                          ty.user_string(self.tcx)));
                 note_and_explain_region(
@@ -400,7 +400,7 @@ impl ErrorReporting for InferCtxt {
                                sup_region: Region) {
         self.tcx.sess.span_err(
             var_origin.span(),
-            fmt!("cannot infer an appropriate lifetime \
+            format!("cannot infer an appropriate lifetime \
                   due to conflicting requirements"));
 
         note_and_explain_region(
@@ -411,7 +411,7 @@ impl ErrorReporting for InferCtxt {
 
         self.tcx.sess.span_note(
             sup_origin.span(),
-            fmt!("...due to the following expression"));
+            format!("...due to the following expression"));
 
         note_and_explain_region(
             self.tcx,
@@ -421,7 +421,7 @@ impl ErrorReporting for InferCtxt {
 
         self.tcx.sess.span_note(
             sub_origin.span(),
-            fmt!("...due to the following expression"));
+            format!("...due to the following expression"));
     }
 
     fn report_sup_sup_conflict(@mut self,
@@ -432,7 +432,7 @@ impl ErrorReporting for InferCtxt {
                                region2: Region) {
         self.tcx.sess.span_err(
             var_origin.span(),
-            fmt!("cannot infer an appropriate lifetime \
+            format!("cannot infer an appropriate lifetime \
                   due to conflicting requirements"));
 
         note_and_explain_region(
@@ -443,7 +443,7 @@ impl ErrorReporting for InferCtxt {
 
         self.tcx.sess.span_note(
             origin1.span(),
-            fmt!("...due to the following expression"));
+            format!("...due to the following expression"));
 
         note_and_explain_region(
             self.tcx,
@@ -453,7 +453,7 @@ impl ErrorReporting for InferCtxt {
 
         self.tcx.sess.span_note(
             origin2.span(),
-            fmt!("...due to the following expression"));
+            format!("...due to the following expression"));
     }
 }
 

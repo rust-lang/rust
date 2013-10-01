@@ -17,9 +17,9 @@ enum color {
 }
 
 pub fn main() {
-    let act = fmt!("%?", red);
+    let act = format!("{:?}", red);
     println(act);
     assert_eq!(~"red", act);
-    assert_eq!(~"green", fmt!("%?", green));
-    assert_eq!(~"white", fmt!("%?", white));
+    assert_eq!(~"green", format!("{:?}", green));
+    assert_eq!(~"white", format!("{:?}", white));
 }

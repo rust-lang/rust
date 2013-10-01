@@ -183,11 +183,11 @@ impl Database {
         assert!(os::path_exists(&self.db_filename));
         let f = io::file_reader(&self.db_filename);
         match f {
-            Err(e) => fail!("Couldn't load workcache database %s: %s",
+            Err(e) => fail2!("Couldn't load workcache database {}: {}",
                             self.db_filename.to_str(), e.to_str()),
             Ok(r) =>
                 match json::from_reader(r) {
-                    Err(e) => fail!("Couldn't parse workcache database (from file %s): %s",
+                    Err(e) => fail2!("Couldn't parse workcache database (from file {}): {}",
                                     self.db_filename.to_str(), e.to_str()),
                     Ok(r) => {
                         let mut decoder = json::Decoder(r);
@@ -264,7 +264,7 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 
 // FIXME(#5121)
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
-    debug!("json decoding: %s", s);
+    debug2!("json decoding: {}", s);
     do io::with_str_reader(s) |rdr| {
         let j = json::from_reader(rdr).unwrap();
         let mut decoder = json::Decoder(j);
@@ -321,7 +321,7 @@ impl Exec {
                           dependency_kind: &str,
                           dependency_name: &str,
                           dependency_val: &str) {
-        debug!("Discovering input %s %s %s", dependency_kind, dependency_name, dependency_val);
+        debug2!("Discovering input {} {} {}", dependency_kind, dependency_name, dependency_val);
         self.discovered_inputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
                                  dependency_val.to_owned());
     }
@@ -329,7 +329,7 @@ impl Exec {
                            dependency_kind: &str,
                            dependency_name: &str,
                            dependency_val: &str) {
-        debug!("Discovering output %s %s %s", dependency_kind, dependency_name, dependency_val);
+        debug2!("Discovering output {} {} {}", dependency_kind, dependency_name, dependency_val);
         self.discovered_outputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
                                  dependency_val.to_owned());
     }
@@ -368,7 +368,7 @@ impl<'self> Prep<'self> {
 
 impl<'self> Prep<'self> {
     pub fn declare_input(&mut self, kind: &str, name: &str, val: &str) {
-        debug!("Declaring input %s %s %s", kind, name, val);
+        debug2!("Declaring input {} {} {}", kind, name, val);
         self.declared_inputs.insert_work_key(WorkKey::new(kind, name),
                                  val.to_owned());
     }
@@ -377,17 +377,17 @@ impl<'self> Prep<'self> {
                 name: &str, val: &str) -> bool {
         let k = kind.to_owned();
         let f = self.ctxt.freshness.get().find(&k);
-        debug!("freshness for: %s/%s/%s/%s", cat, kind, name, val)
+        debug2!("freshness for: {}/{}/{}/{}", cat, kind, name, val)
         let fresh = match f {
-            None => fail!("missing freshness-function for '%s'", kind),
+            None => fail2!("missing freshness-function for '{}'", kind),
             Some(f) => (*f)(name, val)
         };
         do self.ctxt.logger.write |lg| {
             if fresh {
-                lg.info(fmt!("%s %s:%s is fresh",
+                lg.info(format!("{} {}:{} is fresh",
                              cat, kind, name));
             } else {
-                lg.info(fmt!("%s %s:%s is not fresh",
+                lg.info(format!("{} {}:{} is not fresh",
                              cat, kind, name))
             }
         };
@@ -418,7 +418,7 @@ impl<'self> Prep<'self> {
             &'self self, blk: ~fn(&mut Exec) -> T) -> Work<'self, T> {
         let mut bo = Some(blk);
 
-        debug!("exec_work: looking up %s and %?", self.fn_name,
+        debug2!("exec_work: looking up {} and {:?}", self.fn_name,
                self.declared_inputs);
         let cached = do self.ctxt.db.read |db| {
             db.prepare(self.fn_name, &self.declared_inputs)
@@ -429,14 +429,14 @@ impl<'self> Prep<'self> {
             if self.all_fresh("declared input",&self.declared_inputs) &&
                self.all_fresh("discovered input", disc_in) &&
                self.all_fresh("discovered output", disc_out) => {
-                debug!("Cache hit!");
-                debug!("Trying to decode: %? / %? / %?",
+                debug2!("Cache hit!");
+                debug2!("Trying to decode: {:?} / {:?} / {}",
                        disc_in, disc_out, *res);
                 Work::from_value(json_decode(*res))
             }
 
             _ => {
-                debug!("Cache miss!");
+                debug2!("Cache miss!");
                 let (port, chan) = oneshot();
                 let blk = bo.take_unwrap();
                 let chan = Cell::new(chan);

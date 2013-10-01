@@ -147,7 +147,7 @@ impl Terminal {
                 self.out.write(s.unwrap());
                 return true
             } else {
-                warn!("%s", s.unwrap_err());
+                warn2!("{}", s.unwrap_err());
             }
         }
         false
@@ -167,7 +167,7 @@ impl Terminal {
                 self.out.write(s.unwrap());
                 return true
             } else {
-                warn!("%s", s.unwrap_err());
+                warn2!("{}", s.unwrap_err());
             }
         }
         false
@@ -188,7 +188,7 @@ impl Terminal {
                         self.out.write(s.unwrap());
                         return true
                     } else {
-                        warn!("%s", s.unwrap_err());
+                        warn2!("{}", s.unwrap_err());
                     }
                 }
                 false
@@ -226,11 +226,11 @@ impl Terminal {
         if s.is_ok() {
             self.out.write(s.unwrap());
         } else if self.num_colors > 0 {
-            warn!("%s", s.unwrap_err());
+            warn2!("{}", s.unwrap_err());
         } else {
-            // if we support attributes but not color, it would be nice to still warn!()
+            // if we support attributes but not color, it would be nice to still warn2!()
             // but it's not worth testing all known attributes just for this.
-            debug!("%s", s.unwrap_err());
+            debug2!("{}", s.unwrap_err());
         }
     }
 

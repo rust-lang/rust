@@ -559,7 +559,7 @@ impl TyVisitor for my_visitor {
                        _sz: uint, _align: uint) -> bool { true }
     fn visit_rec_field(&mut self, _i: uint, _name: &str,
                        _mtbl: uint, inner: *TyDesc) -> bool {
-        error!("rec field!");
+        error2!("rec field!");
         self.visit_inner(inner)
     }
     fn visit_leave_rec(&mut self, _n_fields: uint,
@@ -577,7 +577,7 @@ impl TyVisitor for my_visitor {
     fn visit_enter_tup(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
     fn visit_tup_field(&mut self, _i: uint, inner: *TyDesc) -> bool {
-        error!("tup field!");
+        error2!("tup field!");
         self.visit_inner(inner)
     }
     fn visit_leave_tup(&mut self, _n_fields: uint,
@@ -641,7 +641,7 @@ pub fn main() {
                                        vals: ~[]});
         let mut v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
-        error!("tydesc sz: %u, align: %u",
+        error2!("tydesc sz: {}, align: {}",
                (*td).size, (*td).align);
         visit_tydesc(td, &mut v as &mut TyVisitor);
 

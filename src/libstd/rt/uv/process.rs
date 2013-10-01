@@ -199,7 +199,7 @@ fn with_env<T>(env: Option<&[(~str, ~str)]>, f: &fn(**libc::c_char) -> T) -> T {
     // As with argv, create some temporary storage and then the actual array
     let mut envp = vec::with_capacity(env.len());
     for &(ref key, ref value) in env.iter() {
-        envp.push(fmt!("%s=%s", *key, *value).to_c_str());
+        envp.push(format!("{}={}", *key, *value).to_c_str());
     }
     let mut c_envp = vec::with_capacity(envp.len() + 1);
     for s in envp.iter() {

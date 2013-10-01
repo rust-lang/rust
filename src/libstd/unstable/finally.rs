@@ -87,7 +87,7 @@ fn test_fail() {
     let mut i = 0;
     do (|| {
         i = 10;
-        fail!();
+        fail2!();
     }).finally {
         assert!(failing());
         assert_eq!(i, 10);

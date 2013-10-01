@@ -62,15 +62,15 @@ fn get_ast_and_resolve(cpath: &Path, libs: ~[Path]) -> DocContext {
     crate = phase_2_configure_and_expand(sess, cfg, crate);
     let analysis = phase_3_run_analysis_passes(sess, &crate);
 
-    debug!("crate: %?", crate);
+    debug2!("crate: {:?}", crate);
     DocContext { crate: crate, tycx: analysis.ty_cx, sess: sess }
 }
 
 pub fn run_core (libs: ~[Path], path: &Path) -> clean::Crate {
     let ctxt = @get_ast_and_resolve(path, libs);
-    debug!("defmap:");
+    debug2!("defmap:");
     for (k, v) in ctxt.tycx.def_map.iter() {
-        debug!("%?: %?", k, v);
+        debug2!("{:?}: {:?}", k, v);
     }
     local_data::set(super::ctxtkey, ctxt);
 

@@ -11,5 +11,5 @@
 
 fn something(f: &fn()) { f(); }
 pub fn main() {
-    something(|| error!("hi!") );
+    something(|| error2!("hi!") );
 }

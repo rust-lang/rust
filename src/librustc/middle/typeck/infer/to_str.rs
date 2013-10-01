@@ -31,7 +31,7 @@ impl InferStr for ty::t {
 
 impl InferStr for FnSig {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
-        fmt!("(%s) -> %s",
+        format!("({}) -> {}",
              self.inputs.map(|a| a.inf_str(cx)).connect(", "),
              self.output.inf_str(cx))
     }
@@ -45,7 +45,7 @@ impl InferStr for ty::mt {
 
 impl InferStr for ty::Region {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
-        fmt!("%?", *self)
+        format!("{:?}", *self)
     }
 }
 
@@ -60,7 +60,7 @@ impl<V:InferStr> InferStr for Bound<V> {
 
 impl<T:InferStr> InferStr for Bounds<T> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
-        fmt!("{%s <: %s}",
+        format!("\\{{} <: {}\\}",
              self.lb.inf_str(cx),
              self.ub.inf_str(cx))
     }
@@ -69,8 +69,8 @@ impl<T:InferStr> InferStr for Bounds<T> {
 impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
-          Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
-          Root(ref pt, rk) => fmt!("Root(%s, %s)", pt.inf_str(cx),
+          Redirect(ref vid) => format!("Redirect({})", vid.to_str()),
+          Root(ref pt, rk) => format!("Root({}, {})", pt.inf_str(cx),
                                rk.to_str_radix(10u))
         }
     }

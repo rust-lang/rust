@@ -2271,7 +2271,7 @@ impl TypeNames {
                 Metadata => ~"Metadata",
                 X86_MMX => ~"X86_MMAX",
                 Integer => {
-                    fmt!("i%d", llvm::LLVMGetIntTypeWidth(ty.to_ref()) as int)
+                    format!("i{}", llvm::LLVMGetIntTypeWidth(ty.to_ref()) as int)
                 }
                 Function => {
                     let out_ty = ty.return_type();
@@ -2279,25 +2279,25 @@ impl TypeNames {
                     let args =
                         args.map(|&ty| self.type_to_str_depth(ty, depth-1)).connect(", ");
                     let out_ty = self.type_to_str_depth(out_ty, depth-1);
-                    fmt!("fn(%s) -> %s", args, out_ty)
+                    format!("fn({}) -> {}", args, out_ty)
                 }
                 Struct => {
                     let tys = ty.field_types();
                     let tys = tys.map(|&ty| self.type_to_str_depth(ty, depth-1)).connect(", ");
-                    fmt!("{%s}", tys)
+                    format!("\\{{}\\}", tys)
                 }
                 Array => {
                     let el_ty = ty.element_type();
                     let el_ty = self.type_to_str_depth(el_ty, depth-1);
                     let len = ty.array_length();
-                    fmt!("[%s x %u]", el_ty, len)
+                    format!("[{} x {}]", el_ty, len)
                 }
                 Pointer => {
                     let el_ty = ty.element_type();
                     let el_ty = self.type_to_str_depth(el_ty, depth-1);
-                    fmt!("*%s", el_ty)
+                    format!("*{}", el_ty)
                 }
-                _ => fail!("Unknown Type Kind (%u)", kind as uint)
+                _ => fail2!("Unknown Type Kind ({})", kind as uint)
             }
         }
     }
@@ -2308,7 +2308,7 @@ impl TypeNames {
 
     pub fn types_to_str(&self, tys: &[Type]) -> ~str {
         let strs = tys.map(|t| self.type_to_str(*t));
-        fmt!("[%s]", strs.connect(","))
+        format!("[{}]", strs.connect(","))
     }
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {

@@ -242,7 +242,7 @@ impl Datum {
                           action: CopyAction,
                           datum: Datum)
                           -> @mut Block {
-        debug!("store_to_datum(self=%s, action=%?, datum=%s)",
+        debug2!("store_to_datum(self={}, action={:?}, datum={})",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert!(datum.mode.is_by_ref());
         self.store_to(bcx, action, datum.val)
@@ -275,7 +275,7 @@ impl Datum {
             return bcx;
         }
 
-        debug!("copy_to(self=%s, action=%?, dst=%s)",
+        debug2!("copy_to(self={}, action={:?}, dst={})",
                self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
         // Watch out for the case where we are writing the copying the
@@ -340,7 +340,7 @@ impl Datum {
         let _icx = push_ctxt("move_to");
         let mut bcx = bcx;
 
-        debug!("move_to(self=%s, action=%?, dst=%s)",
+        debug2!("move_to(self={}, action={:?}, dst={})",
                self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
         if ty::type_is_voidish(self.ty) {
@@ -380,7 +380,7 @@ impl Datum {
             }
             ByRef(ZeroMem) => {
                 bcx.tcx().sess.bug(
-                    fmt!("Cannot add clean to a 'zero-mem' datum"));
+                    format!("Cannot add clean to a 'zero-mem' datum"));
             }
         }
     }
@@ -404,7 +404,7 @@ impl Datum {
     }
 
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
-        fmt!("Datum { val=%s, ty=%s, mode=%? }",
+        format!("Datum \\{ val={}, ty={}, mode={:?} \\}",
              ccx.tn.val_to_str(self.val),
              ty_to_str(ccx.tcx, self.ty),
              self.mode)
@@ -573,8 +573,8 @@ impl Datum {
                 (unboxed_vec_ty, true)
             }
             _ => {
-                bcx.tcx().sess.bug(fmt!(
-                    "box_body() invoked on non-box type %s",
+                bcx.tcx().sess.bug(format!(
+                    "box_body() invoked on non-box type {}",
                     ty_to_str(bcx.tcx(), self.ty)));
             }
         };
@@ -620,7 +620,7 @@ impl Datum {
                      -> (Option<Datum>, @mut Block) {
         let ccx = bcx.ccx();
 
-        debug!("try_deref(expr_id=%?, derefs=%?, is_auto=%b, self=%?)",
+        debug2!("try_deref(expr_id={:?}, derefs={:?}, is_auto={}, self={:?})",
                expr_id, derefs, is_auto, self.to_str(bcx.ccx()));
 
         let bcx =
@@ -745,7 +745,7 @@ impl Datum {
                      -> DatumBlock {
         let _icx = push_ctxt("autoderef");
 
-        debug!("autoderef(expr_id=%d, max=%?, self=%?)",
+        debug2!("autoderef(expr_id={}, max={:?}, self={:?})",
                expr_id, max, self.to_str(bcx.ccx()));
         let _indenter = indenter();
 

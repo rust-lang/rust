@@ -189,7 +189,7 @@ impl<'self> ReprVisitor<'self> {
         } else if mtbl == 1 {
             // skip, this is ast::m_imm
         } else {
-            fail!("invalid mutability value");
+            fail2!("invalid mutability value");
         }
     }
 
@@ -312,7 +312,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
 
     // Type no longer exists, vestigial function.
     fn visit_estr_fixed(&mut self, _n: uint, _sz: uint,
-                        _align: uint) -> bool { fail!(); }
+                        _align: uint) -> bool { fail2!(); }
 
     fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write(['@' as u8]);
@@ -355,7 +355,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
+    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail2!(); }
 
     fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Vec<()>> |this, b| {
@@ -567,7 +567,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
                         _align: uint)
                         -> bool {
         match self.var_stk.pop() {
-            SearchingFor(*) => fail!("enum value matched no variant"),
+            SearchingFor(*) => fail2!("enum value matched no variant"),
             _ => true
         }
     }

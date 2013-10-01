@@ -10,4 +10,4 @@
 
 
 
-pub fn main() { let x = @mut 5; *x = 1000; info!("%?", *x); }
+pub fn main() { let x = @mut 5; *x = 1000; info2!("{:?}", *x); }

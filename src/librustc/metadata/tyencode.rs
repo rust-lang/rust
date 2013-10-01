@@ -86,7 +86,7 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
           let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
           if abbrev_len < len {
               // I.e. it's actually an abbreviation.
-              let s = fmt!("#%x:%x#", pos, len).to_managed();
+              let s = format!("\\#{:x}:{:x}\\#", pos, len).to_managed();
               let a = ty_abbrev { pos: pos, len: len, s: s };
               abbrevs.insert(t, a);
           }
@@ -336,18 +336,18 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
       }
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_struct(def, ref substs) => {
-          debug!("~~~~ %s", "a[");
+          debug2!("~~~~ {}", "a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);
-          debug!("~~~~ %s", s);
+          debug2!("~~~~ {}", s);
           w.write_str(s);
-          debug!("~~~~ %s", "|");
+          debug2!("~~~~ {}", "|");
           w.write_char('|');
           enc_substs(w, cx, substs);
-          debug!("~~~~ %s", "]");
+          debug2!("~~~~ {}", "]");
           w.write_char(']');
       }
-      ty::ty_err => fail!("Shouldn't encode error type")
+      ty::ty_err => fail2!("Shouldn't encode error type")
     }
 }
 

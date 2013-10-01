@@ -84,7 +84,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: Span,
                     } else {
                         let mut fields = vec::with_capacity(n);
                         for i in range(0, n) {
-                            fields.push(getarg(fmt!("_field%u", i).to_managed(), i));
+                            fields.push(getarg(format!("_field{}", i).to_managed(), i));
                         }
                         cx.expr_call_ident(span, substr.type_ident, fields)
                     }

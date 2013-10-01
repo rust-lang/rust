@@ -27,8 +27,8 @@ fn general() {
     a ^= b;
     b ^= a;
     a = a ^ b;
-    info!(a);
-    info!(b);
+    info2!("{}", a);
+    info2!("{}", b);
     assert_eq!(b, 1);
     assert_eq!(a, 2);
     assert_eq!(!0xf0 & 0xff, 0xf);

@@ -3,5 +3,5 @@
 {
     assert!(file!().ends_with("includeme.fragment"));
     assert!(line!() == 5u);
-    fmt!("victory robot %u", line!())
+    format!("victory robot {}", line!())
 }

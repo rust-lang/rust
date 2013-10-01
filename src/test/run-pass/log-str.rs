@@ -14,6 +14,6 @@ pub fn main() {
     let act = sys::log_str(&~[1, 2, 3]);
     assert_eq!(~"~[1, 2, 3]", act);
 
-    let act = fmt!("%?/%6?", ~[1, 2, 3], ~"hi");
-    assert_eq!(act, ~"~[1, 2, 3]/ ~\"hi\"");
+    let act = format!("{:?}/{:6?}", ~[1, 2, 3], ~"hi");
+    assert_eq!(act, ~"~[1, 2, 3]/~\"hi\" ");
 }

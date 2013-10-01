@@ -267,12 +267,12 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
 pub fn write_5_number_summary(w: @io::Writer, s: &Summary) {
     let (q1,q2,q3) = s.quartiles;
-    w.write_str(fmt!("(min=%f, q1=%f, med=%f, q3=%f, max=%f)",
-                     s.min as float,
-                     q1 as float,
-                     q2 as float,
-                     q3 as float,
-                     s.max as float));
+    w.write_str(format!("(min={}, q1={}, med={}, q3={}, max={})",
+                     s.min,
+                     q1,
+                     q2,
+                     q3,
+                     s.max));
 }
 
 /// Render a boxplot to the provided writer. The boxplot shows the min, max and quartiles of the

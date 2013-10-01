@@ -135,7 +135,7 @@ pub fn version(argv0: &str) {
 }
 
 pub fn usage(argv0: &str) {
-    let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
+    let message = format!("Usage: {} [OPTIONS] INPUT", argv0);
     println!("{}\n\
 Additional help:
     -W help             Print 'lint' options and default settings
@@ -388,7 +388,7 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
                 }
             }
             // Fail so the process returns a failure code
-            fail!();
+            fail2!();
         }
     }
 }
