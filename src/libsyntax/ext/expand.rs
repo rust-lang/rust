@@ -813,7 +813,7 @@ pub fn std_macros() -> @str {
     mod fmt_extension {
         #[macro_escape];
 
-        macro_rules! fmt(($($arg:tt)*) => (oldformat!($($arg)*)))
+        macro_rules! fmt(($($arg:tt)*) => (oldfmt!($($arg)*)))
 
         macro_rules! log(
             ($lvl:expr, $arg:expr) => ({
@@ -821,7 +821,7 @@ pub fn std_macros() -> @str {
                 if lvl <= __log_level() {
                     format_args!(|args| {
                         ::std::logging::log(lvl, args)
-                    }, \"{}\", format!(\"{:?}\", $arg))
+                    }, \"{}\", fmt!(\"{:?}\", $arg))
                 }
             });
             ($lvl:expr, $($arg:expr),+) => ({
@@ -829,7 +829,7 @@ pub fn std_macros() -> @str {
                 if lvl <= __log_level() {
                     format_args!(|args| {
                         ::std::logging::log(lvl, args)
-                    }, \"{}\", format!($($arg),+))
+                    }, \"{}\", fmt!($($arg),+))
                 }
             })
         )
@@ -848,7 +848,7 @@ pub fn std_macros() -> @str {
                 ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
             );
             ($( $arg:expr ),+) => (
-                ::std::sys::FailWithCause::fail_with(format!( $($arg),+ ), file!(), line!())
+                ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
             )
         )
     }
