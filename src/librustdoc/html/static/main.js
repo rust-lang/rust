@@ -224,8 +224,8 @@
                 }, 20);
             });
 
-            $(document).off('keyup.searchnav');
-            $(document).on('keyup.searchnav', function (e) {
+            $(document).off('keypress.searchnav');
+            $(document).on('keypress.searchnav', function (e) {
                 var $active = $results.filter('.highlighted');
 
                 if (e.keyCode === 38) { // up
@@ -321,8 +321,8 @@
             output += "</p>";
             $('#main.content').addClass('hidden');
             $('#search.content').removeClass('hidden').html(output);
-            $('.search-results .desc').width($('.content').width() - 40 -
-                    $('.content td:first-child').first().width());
+            $('#search .desc').width($('#search').width() - 40 -
+                    $('#search td:first-child').first().width());
             initSearchNav();
         }
 
