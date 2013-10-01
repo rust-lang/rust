@@ -131,13 +131,13 @@ pub mod jit {
             for cratepath in r.iter() {
                 let path = cratepath.to_str();
 
-                debug!("linking: %s", path);
+                debug2!("linking: {}", path);
 
                 do path.with_c_str |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
-                    debug!("linked: %s", path);
+                    debug2!("linked: {}", path);
                 }
             }
 
@@ -305,7 +305,7 @@ pub mod write {
             for pass in sess.opts.custom_passes.iter() {
                 do pass.with_c_str |s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
-                        sess.warn(fmt!("Unknown pass %s, ignoring", *pass));
+                        sess.warn(format!("Unknown pass {}, ignoring", *pass));
                     }
                 }
             }
@@ -383,9 +383,9 @@ pub mod write {
         let prog = run::process_output(cc_prog, cc_args);
 
         if prog.status != 0 {
-            sess.err(fmt!("building with `%s` failed with code %d",
+            sess.err(format!("building with `{}` failed with code {}",
                         cc_prog, prog.status));
-            sess.note(fmt!("%s arguments: %s",
+            sess.note(format!("{} arguments: {}",
                         cc_prog, cc_args.connect(" ")));
             sess.note(str::from_utf8(prog.error + prog.output));
             sess.abort_if_errors();
@@ -556,7 +556,7 @@ pub fn build_link_meta(sess: Session,
                               dep_hashes: ~[@str],
                               pkg_id: Option<@str>) -> @str {
         fn len_and_str(s: &str) -> ~str {
-            fmt!("%u_%s", s.len(), s)
+            format!("{}_{}", s.len(), s)
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
@@ -601,7 +601,7 @@ pub fn build_link_meta(sess: Session,
 
     fn warn_missing(sess: Session, name: &str, default: &str) {
         if !*sess.building_library { return; }
-        sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
+        sess.warn(format!("missing crate link meta `{}`, using `{}` as default",
                        name, default));
     }
 
@@ -614,7 +614,7 @@ pub fn build_link_meta(sess: Session,
                 // filestem that returned an @str
                 let name = session::expect(sess,
                                            output.filestem(),
-                                           || fmt!("output file name `%s` doesn't\
+                                           || format!("output file name `{}` doesn't\
                                                     appear to have a stem",
                                                    output.to_str())).to_managed();
                 if name.is_empty() {
@@ -764,7 +764,7 @@ pub fn mangle(sess: Session, ss: path,
 
     let push = |s: &str| {
         let sani = sanitize(s);
-        n.push_str(fmt!("%u%s", sani.len(), sani));
+        n.push_str(format!("{}{}", sani.len(), sani));
     };
 
     // First, connect each component with <len, name> pairs.
@@ -876,7 +876,7 @@ pub fn output_dll_filename(os: session::Os, lm: LinkMeta) -> ~str {
         session::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
         session::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
-    fmt!("%s%s-%s-%s%s", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
+    format!("{}{}-{}-{}{}", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
 
 pub fn get_cc_prog(sess: Session) -> ~str {
@@ -892,7 +892,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
             session::OsAndroid =>
                 match &sess.opts.android_cross_path {
                     &Some(ref path) => {
-                        fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
+                        format!("{}/bin/arm-linux-androideabi-gcc", *path)
                     }
                     &None => {
                         sess.fatal("need Android NDK path for linking \
@@ -917,29 +917,29 @@ pub fn link_binary(sess: Session,
 
     let output = if *sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
-        debug!("link_meta.name:  %s", lm.name);
-        debug!("long_libname: %s", long_libname);
-        debug!("out_filename: %s", out_filename.to_str());
-        debug!("dirname(out_filename): %s", out_filename.dir_path().to_str());
+        debug2!("link_meta.name:  {}", lm.name);
+        debug2!("long_libname: {}", long_libname);
+        debug2!("out_filename: {}", out_filename.to_str());
+        debug2!("dirname(out_filename): {}", out_filename.dir_path().to_str());
 
         out_filename.dir_path().push(long_libname)
     } else {
         out_filename.clone()
     };
 
-    debug!("output: %s", output.to_str());
+    debug2!("output: {}", output.to_str());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
-    debug!("%s link args: %s", cc_prog, cc_args.connect(" "));
+    debug2!("{} link args: {}", cc_prog, cc_args.connect(" "));
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
-        io::println(fmt!("%s link args: %s", cc_prog, cc_args.connect(" ")));
+        io::println(format!("{} link args: {}", cc_prog, cc_args.connect(" ")));
     }
 
     // We run 'cc' here
     let prog = run::process_output(cc_prog, cc_args);
     if 0 != prog.status {
-        sess.err(fmt!("linking with `%s` failed with code %d",
+        sess.err(format!("linking with `{}` failed with code {}",
                       cc_prog, prog.status));
-        sess.note(fmt!("%s arguments: %s",
+        sess.note(format!("{} arguments: {}",
                        cc_prog, cc_args.connect(" ")));
         sess.note(str::from_utf8(prog.error + prog.output));
         sess.abort_if_errors();
@@ -953,7 +953,7 @@ pub fn link_binary(sess: Session,
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
         if ! os::remove_file(obj_filename) {
-            sess.warn(fmt!("failed to delete object file `%s`",
+            sess.warn(format!("failed to delete object file `{}`",
                            obj_filename.to_str()));
         }
     }

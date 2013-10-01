@@ -37,6 +37,6 @@ fn main() {
         ~Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns
             ~HTMLImageElement(ref d) if d.image.is_some() => { true }
         },
-        _ => fail!("WAT") //~ ERROR unreachable pattern
+        _ => fail2!("WAT") //~ ERROR unreachable pattern
     };
 }

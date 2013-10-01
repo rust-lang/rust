@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn of<T>() -> &fn(T) { fail!(); }
-fn subtype<T>(x: &fn(T)) { fail!(); }
+fn of<T>() -> &fn(T) { fail2!(); }
+fn subtype<T>(x: &fn(T)) { fail2!(); }
 
 fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // Here, x, y, and z are free.  Other letters

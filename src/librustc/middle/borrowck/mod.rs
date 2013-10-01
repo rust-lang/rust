@@ -117,7 +117,7 @@ pub fn check_crate(
     fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as float;
         let total = bccx.stats.guaranteed_paths as float;
-        fmt!("%u (%.0f%%)", stat  , stat_f * 100f / total)
+        format!("{} ({:.0f}%)", stat  , stat_f * 100f / total)
     }
 }
 
@@ -135,7 +135,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
         &visit::fk_item_fn(*) |
         &visit::fk_method(*) => {
-            debug!("borrowck_fn(id=%?)", id);
+            debug2!("borrowck_fn(id={:?})", id);
 
             // Check the body of fn items.
             let (id_range, all_loans, move_data) =
@@ -561,7 +561,7 @@ impl BorrowckCtxt {
             move_data::Declared => {
                 self.tcx.sess.span_err(
                     use_span,
-                    fmt!("%s of possibly uninitialized value: `%s`",
+                    format!("{} of possibly uninitialized value: `{}`",
                          verb,
                          self.loan_path_to_str(lp)));
             }
@@ -569,7 +569,7 @@ impl BorrowckCtxt {
                 let partially = if lp == moved_lp {""} else {"partially "};
                 self.tcx.sess.span_err(
                     use_span,
-                    fmt!("%s of %smoved value: `%s`",
+                    format!("{} of {}moved value: `{}`",
                          verb,
                          partially,
                          self.loan_path_to_str(lp)));
@@ -585,7 +585,7 @@ impl BorrowckCtxt {
                         "moved by default (use `copy` to override)");
                 self.tcx.sess.span_note(
                     expr.span,
-                    fmt!("`%s` moved here because it has type `%s`, which is %s",
+                    format!("`{}` moved here because it has type `{}`, which is {}",
                          self.loan_path_to_str(moved_lp),
                          expr_ty.user_string(self.tcx), suggestion));
             }
@@ -594,7 +594,7 @@ impl BorrowckCtxt {
                 let pat_ty = ty::node_id_to_type(self.tcx, pat.id);
                 self.tcx.sess.span_note(
                     pat.span,
-                    fmt!("`%s` moved here because it has type `%s`, \
+                    format!("`{}` moved here because it has type `{}`, \
                           which is moved by default (use `ref` to override)",
                          self.loan_path_to_str(moved_lp),
                          pat_ty.user_string(self.tcx)));
@@ -607,8 +607,8 @@ impl BorrowckCtxt {
                          capture that instead to override)");
                 self.tcx.sess.span_note(
                     expr.span,
-                    fmt!("`%s` moved into closure environment here because it \
-                          has type `%s`, which is %s",
+                    format!("`{}` moved into closure environment here because it \
+                          has type `{}`, which is {}",
                          self.loan_path_to_str(moved_lp),
                          expr_ty.user_string(self.tcx), suggestion));
             }
@@ -634,11 +634,11 @@ impl BorrowckCtxt {
                                                 &move_data::Assignment) {
         self.tcx.sess.span_err(
             span,
-            fmt!("re-assignment of immutable variable `%s`",
+            format!("re-assignment of immutable variable `{}`",
                  self.loan_path_to_str(lp)));
         self.tcx.sess.span_note(
             assign.span,
-            fmt!("prior assignment occurs here"));
+            format!("prior assignment occurs here"));
     }
 
     pub fn span_err(&self, s: Span, m: &str) {
@@ -652,23 +652,23 @@ impl BorrowckCtxt {
     pub fn bckerr_to_str(&self, err: BckError) -> ~str {
         match err.code {
             err_mutbl(lk) => {
-                fmt!("cannot borrow %s %s as %s",
+                format!("cannot borrow {} {} as {}",
                      err.cmt.mutbl.to_user_str(),
                      self.cmt_to_str(err.cmt),
                      self.mut_to_str(lk))
             }
             err_out_of_root_scope(*) => {
-                fmt!("cannot root managed value long enough")
+                format!("cannot root managed value long enough")
             }
             err_out_of_scope(*) => {
-                fmt!("borrowed value does not live long enough")
+                format!("borrowed value does not live long enough")
             }
             err_freeze_aliasable_const => {
                 // Means that the user borrowed a ~T or enum value
                 // residing in &const or @const pointer.  Terrible
                 // error message, but then &const and @const are
                 // supposed to be going away.
-                fmt!("unsafe borrow of aliasable, const value")
+                format!("unsafe borrow of aliasable, const value")
             }
         }
     }
@@ -686,19 +686,19 @@ impl BorrowckCtxt {
             mc::AliasableOther => {
                 self.tcx.sess.span_err(
                     span,
-                    fmt!("%s in an aliasable location", prefix));
+                    format!("{} in an aliasable location", prefix));
             }
             mc::AliasableManaged(ast::MutMutable) => {
                 // FIXME(#6269) reborrow @mut to &mut
                 self.tcx.sess.span_err(
                     span,
-                    fmt!("%s in a `@mut` pointer; \
+                    format!("{} in a `@mut` pointer; \
                           try borrowing as `&mut` first", prefix));
             }
             mc::AliasableManaged(m) => {
                 self.tcx.sess.span_err(
                     span,
-                    fmt!("%s in a `@%s` pointer; \
+                    format!("{} in a `@{}` pointer; \
                           try an `@mut` instead",
                          prefix,
                          self.mut_to_keyword(m)));
@@ -706,7 +706,7 @@ impl BorrowckCtxt {
             mc::AliasableBorrowed(m) => {
                 self.tcx.sess.span_err(
                     span,
-                    fmt!("%s in a `&%s` pointer; \
+                    format!("{} in a `&{}` pointer; \
                           try an `&mut` instead",
                          prefix,
                          self.mut_to_keyword(m)));
@@ -774,7 +774,7 @@ impl BorrowckCtxt {
                     }
                     r => {
                         self.tcx.sess.bug(
-                            fmt!("Loan path LpVar(%?) maps to %?, not local",
+                            format!("Loan path LpVar({:?}) maps to {:?}, not local",
                                  id, r));
                     }
                 }
@@ -849,7 +849,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 
 impl Repr for Loan {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
-        fmt!("Loan_%?(%s, %?, %?-%?, %s)",
+        format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
              self.index,
              self.loan_path.repr(tcx),
              self.mutbl,
@@ -861,7 +861,7 @@ impl Repr for Loan {
 
 impl Repr for Restriction {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
-        fmt!("Restriction(%s, %x)",
+        format!("Restriction({}, {:x})",
              self.loan_path.repr(tcx),
              self.set.bits as uint)
     }
@@ -871,15 +871,15 @@ impl Repr for LoanPath {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match self {
             &LpVar(id) => {
-                fmt!("$(%?)", id)
+                format!("$({:?})", id)
             }
 
             &LpExtend(lp, _, LpDeref(_)) => {
-                fmt!("%s.*", lp.repr(tcx))
+                format!("{}.*", lp.repr(tcx))
             }
 
             &LpExtend(lp, _, LpInterior(ref interior)) => {
-                fmt!("%s.%s", lp.repr(tcx), interior.repr(tcx))
+                format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
             }
         }
     }

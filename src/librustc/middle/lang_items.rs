@@ -154,7 +154,7 @@ impl LanguageItems {
     pub fn require(&self, it: LangItem) -> Result<DefId, ~str> {
         match self.items[it as uint] {
             Some(id) => Ok(id),
-            None => Err(fmt!("requires `%s` lang_item",
+            None => Err(format!("requires `{}` lang_item",
                              LanguageItems::item_name(it as uint)))
         }
     }
@@ -398,7 +398,7 @@ impl<'self> LanguageItemCollector<'self> {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
-                self.session.err(fmt!("duplicate entry for `%s`",
+                self.session.err(format!("duplicate entry for `{}`",
                                       LanguageItems::item_name(item_index)));
             }
             Some(_) | None => {

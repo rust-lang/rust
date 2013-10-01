@@ -134,8 +134,8 @@ pub fn from_utf8(vv: &[u8]) -> ~str {
     match from_utf8_opt(vv) {
         None => {
             let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
-            cond.raise(fmt!("from_utf8: input is not UTF-8; first bad byte is %u",
-                            first_bad_byte as uint))
+            cond.raise(format!("from_utf8: input is not UTF-8; first bad \
+                                byte is {}", first_bad_byte))
         }
         Some(s) => s
     }
@@ -161,8 +161,8 @@ pub fn from_utf8_owned(vv: ~[u8]) -> ~str {
 
     if !is_utf8(vv) {
         let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
-        cond.raise(fmt!("from_utf8: input is not UTF-8; first bad byte is %u",
-                        first_bad_byte as uint))
+        cond.raise(format!("from_utf8: input is not UTF-8; first bad byte is {}",
+                           first_bad_byte))
     } else {
         unsafe { raw::from_utf8_owned(vv) }
     }
@@ -1229,7 +1229,7 @@ pub mod raw {
                 match ctr {
                     0 => assert_eq!(x, &~"zero"),
                     1 => assert_eq!(x, &~"one"),
-                    _ => fail!("shouldn't happen!")
+                    _ => fail2!("shouldn't happen!")
                 }
                 ctr += 1;
             }
@@ -2000,8 +2000,8 @@ impl<'self> StrSlice<'self> for &'self str {
         if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
 
         match (begin_byte, end_byte) {
-            (None, _) => fail!("slice_chars: `begin` is beyond end of string"),
-            (_, None) => fail!("slice_chars: `end` is beyond end of string"),
+            (None, _) => fail2!("slice_chars: `begin` is beyond end of string"),
+            (_, None) => fail2!("slice_chars: `end` is beyond end of string"),
             (Some(a), Some(b)) => unsafe { raw::slice_bytes(*self, a, b) }
         }
     }
@@ -2723,12 +2723,12 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let empty = "";
+        let empty = ~"";
         let s: ~str = empty.iter().collect();
-        assert_eq!(empty, s.as_slice());
-        let data = "ประเทศไทย中";
+        assert_eq!(empty, s);
+        let data = ~"ประเทศไทย中";
         let s: ~str = data.iter().collect();
-        assert_eq!(data, s.as_slice());
+        assert_eq!(data, s);
     }
 
     #[test]
@@ -3242,7 +3242,7 @@ mod tests {
         // original problem code path anymore.)
         let s = ~"";
         let _bytes = s.as_bytes();
-        fail!();
+        fail2!();
     }
 
     #[test]
@@ -3300,8 +3300,8 @@ mod tests {
         while i < n1 {
             let a: u8 = s1[i];
             let b: u8 = s2[i];
-            debug!(a);
-            debug!(b);
+            debug2!("{}", a);
+            debug2!("{}", b);
             assert_eq!(a, b);
             i += 1u;
         }

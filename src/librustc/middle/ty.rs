@@ -794,7 +794,7 @@ impl Vid for TyVid {
 }
 
 impl ToStr for TyVid {
-    fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
+    fn to_str(&self) -> ~str { format!("<V{}>", self.to_uint()) }
 }
 
 impl Vid for IntVid {
@@ -802,7 +802,7 @@ impl Vid for IntVid {
 }
 
 impl ToStr for IntVid {
-    fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
+    fn to_str(&self) -> ~str { format!("<VI{}>", self.to_uint()) }
 }
 
 impl Vid for FloatVid {
@@ -810,7 +810,7 @@ impl Vid for FloatVid {
 }
 
 impl ToStr for FloatVid {
-    fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
+    fn to_str(&self) -> ~str { format!("<VF{}>", self.to_uint()) }
 }
 
 impl Vid for RegionVid {
@@ -818,7 +818,7 @@ impl Vid for RegionVid {
 }
 
 impl ToStr for RegionVid {
-    fn to_str(&self) -> ~str { fmt!("%?", self.id) }
+    fn to_str(&self) -> ~str { format!("{:?}", self.id) }
 }
 
 impl ToStr for FnSig {
@@ -1515,7 +1515,7 @@ pub fn fold_regions(
     fldr: &fn(r: Region, in_fn: bool) -> Region) -> t {
     fn do_fold(cx: ctxt, ty: t, in_fn: bool,
                fldr: &fn(Region, bool) -> Region) -> t {
-        debug!("do_fold(ty=%s, in_fn=%b)", ty_to_str(cx, ty), in_fn);
+        debug2!("do_fold(ty={}, in_fn={})", ty_to_str(cx, ty), in_fn);
         if !type_has_regions(ty) { return ty; }
         fold_regions_and_ty(
             cx, ty,
@@ -1656,7 +1656,7 @@ pub fn simd_type(cx: ctxt, ty: t) -> t {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields[0].id, substs)
         }
-        _ => fail!("simd_type called on invalid type")
+        _ => fail2!("simd_type called on invalid type")
     }
 }
 
@@ -1666,14 +1666,14 @@ pub fn simd_size(cx: ctxt, ty: t) -> uint {
             let fields = lookup_struct_fields(cx, did);
             fields.len()
         }
-        _ => fail!("simd_size called on invalid type")
+        _ => fail2!("simd_size called on invalid type")
     }
 }
 
 pub fn get_element_type(ty: t, i: uint) -> t {
     match get(ty).sty {
       ty_tup(ref ts) => return ts[i],
-      _ => fail!("get_element_type called on invalid type")
+      _ => fail2!("get_element_type called on invalid type")
     }
 }
 
@@ -1950,7 +1950,7 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
 
 impl ToStr for TypeContents {
     fn to_str(&self) -> ~str {
-        fmt!("TypeContents(%s)", self.bits.to_str_radix(2))
+        format!("TypeContents({})", self.bits.to_str_radix(2))
     }
 }
 
@@ -2324,7 +2324,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         let mut tc = TC_ALL;
         do each_inherited_builtin_bound(cx, bounds, traits) |bound| {
-            debug!("tc = %s, bound = %?", tc.to_str(), bound);
+            debug2!("tc = {}, bound = {:?}", tc.to_str(), bound);
             tc = tc - match bound {
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundSend => TypeContents::nonsendable(cx),
@@ -2334,7 +2334,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             };
         }
 
-        debug!("result = %s", tc.to_str());
+        debug2!("result = {}", tc.to_str());
         return tc;
 
         // Iterates over all builtin bounds on the type parameter def, including
@@ -2364,7 +2364,7 @@ pub fn type_moves_by_default(cx: ctxt, ty: t) -> bool {
 pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
     fn type_requires(cx: ctxt, seen: &mut ~[DefId],
                      r_ty: t, ty: t) -> bool {
-        debug!("type_requires(%s, %s)?",
+        debug2!("type_requires({}, {})?",
                ::util::ppaux::ty_to_str(cx, r_ty),
                ::util::ppaux::ty_to_str(cx, ty));
 
@@ -2373,7 +2373,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 subtypes_require(cx, seen, r_ty, ty)
         };
 
-        debug!("type_requires(%s, %s)? %b",
+        debug2!("type_requires({}, {})? {}",
                ::util::ppaux::ty_to_str(cx, r_ty),
                ::util::ppaux::ty_to_str(cx, ty),
                r);
@@ -2382,7 +2382,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
     fn subtypes_require(cx: ctxt, seen: &mut ~[DefId],
                         r_ty: t, ty: t) -> bool {
-        debug!("subtypes_require(%s, %s)?",
+        debug2!("subtypes_require({}, {})?",
                ::util::ppaux::ty_to_str(cx, r_ty),
                ::util::ppaux::ty_to_str(cx, ty));
 
@@ -2456,7 +2456,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             }
         };
 
-        debug!("subtypes_require(%s, %s)? %b",
+        debug2!("subtypes_require({}, {})? {}",
                ::util::ppaux::ty_to_str(cx, r_ty),
                ::util::ppaux::ty_to_str(cx, ty),
                r);
@@ -2473,7 +2473,7 @@ pub fn type_structurally_contains(cx: ctxt,
                                   test: &fn(x: &sty) -> bool)
                                -> bool {
     let sty = &get(ty).sty;
-    debug!("type_structurally_contains: %s",
+    debug2!("type_structurally_contains: {}",
            ::util::ppaux::ty_to_str(cx, ty));
     if test(sty) { return true; }
     match *sty {
@@ -2786,18 +2786,18 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
     match cx.trait_refs.find(&id) {
        Some(&t) => t,
        None => cx.sess.bug(
-           fmt!("node_id_to_trait_ref: no trait ref for node `%s`",
+           format!("node_id_to_trait_ref: no trait ref for node `{}`",
                 ast_map::node_id_to_str(cx.items, id,
                                         token::get_ident_interner())))
     }
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
-    //printfln!("%?/%?", id, cx.node_types.len());
+    //printfln!("{:?}/{:?}", id, cx.node_types.len());
     match cx.node_types.find(&(id as uint)) {
        Some(&t) => t,
        None => cx.sess.bug(
-           fmt!("node_id_to_type: no type for node `%s`",
+           format!("node_id_to_type: no type for node `{}`",
                 ast_map::node_id_to_str(cx.items, id,
                                         token::get_ident_interner())))
     }
@@ -2820,7 +2820,7 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
         ty_bare_fn(ref f) => f.sig.clone(),
         ty_closure(ref f) => f.sig.clone(),
         ref s => {
-            fail!("ty_fn_sig() called on non-fn type: %?", s)
+            fail2!("ty_fn_sig() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -2831,7 +2831,7 @@ pub fn ty_fn_args(fty: t) -> ~[t] {
         ty_bare_fn(ref f) => f.sig.inputs.clone(),
         ty_closure(ref f) => f.sig.inputs.clone(),
         ref s => {
-            fail!("ty_fn_args() called on non-fn type: %?", s)
+            fail2!("ty_fn_args() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -2840,7 +2840,7 @@ pub fn ty_closure_sigil(fty: t) -> Sigil {
     match get(fty).sty {
         ty_closure(ref f) => f.sigil,
         ref s => {
-            fail!("ty_closure_sigil() called on non-closure type: %?", s)
+            fail2!("ty_closure_sigil() called on non-closure type: {:?}", s)
         }
     }
 }
@@ -2850,7 +2850,7 @@ pub fn ty_fn_purity(fty: t) -> ast::purity {
         ty_bare_fn(ref f) => f.purity,
         ty_closure(ref f) => f.purity,
         ref s => {
-            fail!("ty_fn_purity() called on non-fn type: %?", s)
+            fail2!("ty_fn_purity() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -2860,7 +2860,7 @@ pub fn ty_fn_ret(fty: t) -> t {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
-            fail!("ty_fn_ret() called on non-fn type: %?", s)
+            fail2!("ty_fn_ret() called on non-fn type: {:?}", s)
         }
     }
 }
@@ -2877,7 +2877,7 @@ pub fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => fail!("ty_vstore() called on invalid sty: %?", s)
+        ref s => fail2!("ty_vstore() called on invalid sty: {:?}", s)
     }
 }
 
@@ -2891,7 +2891,7 @@ pub fn ty_region(tcx: ctxt,
         ref s => {
             tcx.sess.span_bug(
                 span,
-                fmt!("ty_region() invoked on in appropriate ty: %?", s));
+                format!("ty_region() invoked on in appropriate ty: {:?}", s));
         }
     }
 }
@@ -2902,7 +2902,7 @@ pub fn replace_fn_sig(cx: ctxt, fsty: &sty, new_sig: FnSig) -> t {
         ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..*f}),
         ref s => {
             cx.sess.bug(
-                fmt!("ty_fn_sig() called on non-fn type: %?", s));
+                format!("ty_fn_sig() called on non-fn type: {:?}", s));
         }
     }
 }
@@ -2921,8 +2921,8 @@ pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
             })
         }
         _ => {
-            tcx.sess.bug(fmt!(
-                "replace_fn_ret() invoked with non-fn-type: %s",
+            tcx.sess.bug(format!(
+                "replace_fn_ret() invoked with non-fn-type: {}",
                 ty_to_str(tcx, fn_type)));
         }
     }
@@ -3003,7 +3003,7 @@ pub fn adjust_ty(cx: ctxt,
                 }
                 ref b => {
                     cx.sess.bug(
-                        fmt!("add_env adjustment on non-bare-fn: %?", b));
+                        format!("add_env adjustment on non-bare-fn: {:?}", b));
                 }
             }
         }
@@ -3018,7 +3018,7 @@ pub fn adjust_ty(cx: ctxt,
                         None => {
                             cx.sess.span_bug(
                                 span,
-                                fmt!("The %uth autoderef failed: %s",
+                                format!("The {}th autoderef failed: {}",
                                      i, ty_to_str(cx,
                                                   adjusted_ty)));
                         }
@@ -3075,7 +3075,7 @@ pub fn adjust_ty(cx: ctxt,
             ref s => {
                 cx.sess.span_bug(
                     span,
-                    fmt!("borrow-vec associated with bad sty: %?",
+                    format!("borrow-vec associated with bad sty: {:?}",
                          s));
             }
         }
@@ -3094,7 +3094,7 @@ pub fn adjust_ty(cx: ctxt,
             ref s => {
                 cx.sess.span_bug(
                     span,
-                    fmt!("borrow-fn associated with bad sty: %?",
+                    format!("borrow-fn associated with bad sty: {:?}",
                          s));
             }
         }
@@ -3110,7 +3110,7 @@ pub fn adjust_ty(cx: ctxt,
             ref s => {
                 cx.sess.span_bug(
                     span,
-                    fmt!("borrow-trait-obj associated with bad sty: %?",
+                    format!("borrow-trait-obj associated with bad sty: {:?}",
                          s));
             }
         }
@@ -3185,8 +3185,8 @@ pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
     match tcx.def_map.find(&expr.id) {
         Some(&def) => def,
         None => {
-            tcx.sess.span_bug(expr.span, fmt!(
-                "No def-map entry for expr %?", expr.id));
+            tcx.sess.span_bug(expr.span, format!(
+                "No def-map entry for expr {:?}", expr.id));
         }
     }
 }
@@ -3244,8 +3244,8 @@ pub fn expr_kind(tcx: ctxt,
                 ast::DefSelf(*) => LvalueExpr,
 
                 def => {
-                    tcx.sess.span_bug(expr.span, fmt!(
-                        "Uncategorized def for expr %?: %?",
+                    tcx.sess.span_bug(expr.span, format!(
+                        "Uncategorized def for expr {:?}: {:?}",
                         expr.id, def));
                 }
             }
@@ -3311,7 +3311,7 @@ pub fn expr_kind(tcx: ctxt,
             RvalueStmtExpr
         }
 
-        ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+        ast::ExprForLoop(*) => fail2!("non-desugared expr_for_loop"),
 
         ast::ExprLogLevel |
         ast::ExprLit(_) | // Note: lit_str is carved out above
@@ -3339,7 +3339,7 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
       ast::StmtDecl(_, id) | StmtExpr(_, id) | StmtSemi(_, id) => {
         return id;
       }
-      ast::StmtMac(*) => fail!("unexpanded macro in trans")
+      ast::StmtMac(*) => fail2!("unexpanded macro in trans")
     }
 }
 
@@ -3353,8 +3353,8 @@ pub fn field_idx_strict(tcx: ty::ctxt, name: ast::Name, fields: &[field])
                      -> uint {
     let mut i = 0u;
     for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
-    tcx.sess.bug(fmt!(
-        "No field named `%s` found in the list of fields `%?`",
+    tcx.sess.bug(format!(
+        "No field named `{}` found in the list of fields `{:?}`",
         token::interner_get(name),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
@@ -3418,7 +3418,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
         ::util::ppaux::ty_to_str(cx, t)
       }
 
-      ty_enum(id, _) => fmt!("enum %s", item_path_str(cx, id)),
+      ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
       ty_box(_) => ~"@-ptr",
       ty_uniq(_) => ~"~-ptr",
       ty_evec(_, _) => ~"vector",
@@ -3427,8 +3427,8 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_rptr(_, _) => ~"&-ptr",
       ty_bare_fn(_) => ~"extern fn",
       ty_closure(_) => ~"fn",
-      ty_trait(id, _, _, _, _) => fmt!("trait %s", item_path_str(cx, id)),
-      ty_struct(id, _) => fmt!("struct %s", item_path_str(cx, id)),
+      ty_trait(id, _, _, _, _) => format!("trait {}", item_path_str(cx, id)),
+      ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
       ty_tup(_) => ~"tuple",
       ty_infer(TyVar(_)) => ~"inferred type",
       ty_infer(IntVar(_)) => ~"integral variable",
@@ -3461,19 +3461,19 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
     match *err {
         terr_mismatch => ~"types differ",
         terr_purity_mismatch(values) => {
-            fmt!("expected %s fn but found %s fn",
+            format!("expected {} fn but found {} fn",
                  values.expected.to_str(), values.found.to_str())
         }
         terr_abi_mismatch(values) => {
-            fmt!("expected %s fn but found %s fn",
+            format!("expected {} fn but found {} fn",
                  values.expected.to_str(), values.found.to_str())
         }
         terr_onceness_mismatch(values) => {
-            fmt!("expected %s fn but found %s fn",
+            format!("expected {} fn but found {} fn",
                  values.expected.to_str(), values.found.to_str())
         }
         terr_sigil_mismatch(values) => {
-            fmt!("expected %s closure, found %s closure",
+            format!("expected {} closure, found {} closure",
                  values.expected.to_str(),
                  values.found.to_str())
         }
@@ -3483,97 +3483,97 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_ptr_mutability => ~"pointers differ in mutability",
         terr_ref_mutability => ~"references differ in mutability",
         terr_ty_param_size(values) => {
-            fmt!("expected a type with %u type params \
-                  but found one with %u type params",
+            format!("expected a type with {} type params \
+                  but found one with {} type params",
                  values.expected, values.found)
         }
         terr_tuple_size(values) => {
-            fmt!("expected a tuple with %u elements \
-                  but found one with %u elements",
+            format!("expected a tuple with {} elements \
+                  but found one with {} elements",
                  values.expected, values.found)
         }
         terr_record_size(values) => {
-            fmt!("expected a record with %u fields \
-                  but found one with %u fields",
+            format!("expected a record with {} fields \
+                  but found one with {} fields",
                  values.expected, values.found)
         }
         terr_record_mutability => {
             ~"record elements differ in mutability"
         }
         terr_record_fields(values) => {
-            fmt!("expected a record with field `%s` but found one with field \
-                  `%s`",
+            format!("expected a record with field `{}` but found one with field \
+                  `{}`",
                  cx.sess.str_of(values.expected),
                  cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
         terr_regions_does_not_outlive(*) => {
-            fmt!("lifetime mismatch")
+            format!("lifetime mismatch")
         }
         terr_regions_not_same(*) => {
-            fmt!("lifetimes are not the same")
+            format!("lifetimes are not the same")
         }
         terr_regions_no_overlap(*) => {
-            fmt!("lifetimes do not intersect")
+            format!("lifetimes do not intersect")
         }
         terr_regions_insufficiently_polymorphic(br, _) => {
-            fmt!("expected bound lifetime parameter %s, \
+            format!("expected bound lifetime parameter {}, \
                   but found concrete lifetime",
                  bound_region_ptr_to_str(cx, br))
         }
         terr_regions_overly_polymorphic(br, _) => {
-            fmt!("expected concrete lifetime, \
-                  but found bound lifetime parameter %s",
+            format!("expected concrete lifetime, \
+                  but found bound lifetime parameter {}",
                  bound_region_ptr_to_str(cx, br))
         }
         terr_vstores_differ(k, ref values) => {
-            fmt!("%s storage differs: expected %s but found %s",
+            format!("{} storage differs: expected {} but found {}",
                  terr_vstore_kind_to_str(k),
                  vstore_to_str(cx, (*values).expected),
                  vstore_to_str(cx, (*values).found))
         }
         terr_trait_stores_differ(_, ref values) => {
-            fmt!("trait storage differs: expected %s but found %s",
+            format!("trait storage differs: expected {} but found {}",
                  trait_store_to_str(cx, (*values).expected),
                  trait_store_to_str(cx, (*values).found))
         }
         terr_in_field(err, fname) => {
-            fmt!("in field `%s`, %s", cx.sess.str_of(fname),
+            format!("in field `{}`, {}", cx.sess.str_of(fname),
                  type_err_to_str(cx, err))
         }
         terr_sorts(values) => {
-            fmt!("expected %s but found %s",
+            format!("expected {} but found {}",
                  ty_sort_str(cx, values.expected),
                  ty_sort_str(cx, values.found))
         }
         terr_traits(values) => {
-            fmt!("expected trait %s but found trait %s",
+            format!("expected trait {} but found trait {}",
                  item_path_str(cx, values.expected),
                  item_path_str(cx, values.found))
         }
         terr_builtin_bounds(values) => {
             if values.expected.is_empty() {
-                fmt!("expected no bounds but found `%s`",
+                format!("expected no bounds but found `{}`",
                      values.found.user_string(cx))
             } else if values.found.is_empty() {
-                fmt!("expected bounds `%s` but found no bounds",
+                format!("expected bounds `{}` but found no bounds",
                      values.expected.user_string(cx))
             } else {
-                fmt!("expected bounds `%s` but found bounds `%s`",
+                format!("expected bounds `{}` but found bounds `{}`",
                      values.expected.user_string(cx),
                      values.found.user_string(cx))
             }
         }
         terr_integer_as_char => {
-            fmt!("expected an integral type but found char")
+            format!("expected an integral type but found char")
         }
         terr_int_mismatch(ref values) => {
-            fmt!("expected %s but found %s",
+            format!("expected {} but found {}",
                  values.expected.to_str(),
                  values.found.to_str())
         }
         terr_float_mismatch(ref values) => {
-            fmt!("expected %s but found %s",
+            format!("expected {} but found {}",
                  values.expected.to_str(),
                  values.found.to_str())
         }
@@ -3633,7 +3633,7 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
                 match ast_util::split_trait_methods(*ms) {
                    (_, p) => p.map(|m| method(cx, ast_util::local_def(m.id)))
                 },
-            _ => cx.sess.bug(fmt!("provided_trait_methods: %? is not a trait",
+            _ => cx.sess.bug(format!("provided_trait_methods: {:?} is not a trait",
                                   id))
         }
     } else {
@@ -3690,7 +3690,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
     }
 
     if def_id.crate == ast::LOCAL_CRATE {
-        fail!("No def'n found for %? in tcx.%s", def_id, descr);
+        fail2!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v.clone());
@@ -3733,7 +3733,7 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
         None => {}
     }
     let ret = if id.crate == ast::LOCAL_CRATE {
-        debug!("(impl_trait_ref) searching for trait impl %?", id);
+        debug2!("(impl_trait_ref) searching for trait impl {:?}", id);
         match cx.items.find(&id.node) {
             Some(&ast_map::node_item(@ast::item {
                                      node: ast::item_impl(_, ref opt_trait, _, _),
@@ -3979,7 +3979,7 @@ pub fn item_path(cx: ctxt, id: ast::DefId) -> ast_map::path {
           }
 
           ref node => {
-            cx.sess.bug(fmt!("cannot find item_path for node %?", node));
+            cx.sess.bug(format!("cannot find item_path for node {:?}", node));
           }
         }
     }
@@ -4031,7 +4031,7 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
                             cx.sess.span_err(e.span, "expected signed integer constant");
                         }
                         Err(ref err) => {
-                            cx.sess.span_err(e.span, fmt!("expected constant: %s", (*err)));
+                            cx.sess.span_err(e.span, format!("expected constant: {}", (*err)));
                         }
                     },
                     None => {}
@@ -4111,7 +4111,7 @@ pub fn has_attr(tcx: ctxt, did: DefId, attr: &str) -> bool {
                     attrs: ref attrs,
                     _
                 }, _)) => attr::contains_name(*attrs, attr),
-            _ => tcx.sess.bug(fmt!("has_attr: %? is not an item",
+            _ => tcx.sess.bug(format!("has_attr: {:?} is not an item",
                                    did))
         }
     } else {
@@ -4182,7 +4182,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
        }
        _ => {
            cx.sess.bug(
-               fmt!("struct ID not bound to an item: %s",
+               format!("struct ID not bound to an item: {}",
                     ast_map::node_id_to_str(cx.items, did.node,
                                             token::get_ident_interner())));
        }
@@ -4486,7 +4486,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
 
         // Add the given trait ty to the hash map
         while i < trait_refs.len() {
-            debug!("each_bound_trait_and_supertraits(i=%?, trait_ref=%s)",
+            debug2!("each_bound_trait_and_supertraits(i={:?}, trait_ref={})",
                    i, trait_refs[i].repr(tcx));
 
             if !f(trait_refs[i]) {
@@ -4496,7 +4496,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
             // Add supertraits to supertrait_set
             let supertrait_refs = trait_ref_supertraits(tcx, trait_refs[i]);
             for &supertrait_ref in supertrait_refs.iter() {
-                debug!("each_bound_trait_and_supertraits(supertrait_ref=%s)",
+                debug2!("each_bound_trait_and_supertraits(supertrait_ref={})",
                        supertrait_ref.repr(tcx));
 
                 let d_id = supertrait_ref.def_id;

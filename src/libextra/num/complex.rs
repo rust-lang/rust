@@ -172,9 +172,9 @@ impl<T: Clone + Num> One for Cmplx<T> {
 impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
     fn to_str(&self) -> ~str {
         if self.im < Zero::zero() {
-            fmt!("%s-%si", self.re.to_str(), (-self.im).to_str())
+            format!("{}-{}i", self.re.to_str(), (-self.im).to_str())
         } else {
-            fmt!("%s+%si", self.re.to_str(), self.im.to_str())
+            format!("{}+{}i", self.re.to_str(), self.im.to_str())
         }
     }
 }
@@ -182,9 +182,9 @@ impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
 impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
     fn to_str_radix(&self, radix: uint) -> ~str {
         if self.im < Zero::zero() {
-            fmt!("%s-%si", self.re.to_str_radix(radix), (-self.im).to_str_radix(radix))
+            format!("{}-{}i", self.re.to_str_radix(radix), (-self.im).to_str_radix(radix))
         } else {
-            fmt!("%s+%si", self.re.to_str_radix(radix), self.im.to_str_radix(radix))
+            format!("{}+{}i", self.re.to_str_radix(radix), self.im.to_str_radix(radix))
         }
     }
 }

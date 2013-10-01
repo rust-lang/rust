@@ -78,7 +78,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
                     msg.push_str(sep);
                     let filename = str::raw::from_c_str(entry.file);
                     msg.push_str(filename);
-                    msg.push_str(fmt!(":%u", entry.line as uint));
+                    msg.push_str(format!(":{}", entry.line));
                     sep = " and at ";
                 }
             }
@@ -221,7 +221,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
             assert!(!borrow_list.is_empty());
             let br = borrow_list.pop();
             if br.box != a || br.file != file || br.line != line {
-                let err = fmt!("wrong borrow found, br=%?", br);
+                let err = format!("wrong borrow found, br={:?}", br);
                 do err.with_c_str |msg_p| {
                     sys::begin_unwind_(msg_p, file, line)
                 }

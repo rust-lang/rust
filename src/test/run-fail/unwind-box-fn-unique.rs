@@ -11,14 +11,14 @@
 // error-pattern:fail
 
 fn failfn() {
-    fail!();
+    fail2!();
 }
 
 fn main() {
     let y = ~0;
     let x: @~fn() = @(|| {
-        error!(y.clone());
+        error2!("{:?}", y.clone());
     });
     failfn();
-    error!(x);
+    error2!("{:?}", x);
 }

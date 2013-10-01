@@ -28,15 +28,15 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
         let libfiles = os::list_dir(&p.push("lib"));
         for lib in libfiles.iter() {
             let lib = Path(*lib);
-            debug!("Full name: %s", lib.to_str());
+            debug2!("Full name: {}", lib.to_str());
             match has_library(&lib) {
                 Some(basename) => {
-                    debug!("parent = %s, child = %s",
-                           p.push("lib").to_str(), lib.to_str());
+                    debug2!("parent = {}, child = {}",
+                            p.push("lib").to_str(), lib.to_str());
                     let rel_p = p.push("lib/").get_relative_to(&lib);
-                    debug!("Rel: %s", rel_p.to_str());
+                    debug2!("Rel: {}", rel_p.to_str());
                     let rel_path = rel_p.push(basename).to_str();
-                    debug!("Rel name: %s", rel_path);
+                    debug2!("Rel name: {}", rel_path);
                     f(&PkgId::new(rel_path));
                 }
                 None => ()

@@ -66,7 +66,7 @@ use std::int;
 fn main() {
     let pairs = read_int_pairs();
     for &(a,b) in pairs.iter() {
-        println(fmt!("%4.4d, %4.4d", a, b));
+        println!("{:4.4d}, {:4.4d}", a, b);
     }
 }
 
@@ -281,7 +281,7 @@ fn main() {
         // The protected logic.
         let pairs = read_int_pairs();
         for &(a,b) in pairs.iter() {
-            println(fmt!("%4.4d, %4.4d", a, b));
+            println!("{:4.4d}, {:4.4d}", a, b);
         }
 
     };
@@ -387,7 +387,7 @@ condition! {
 fn main() {
     let pairs = read_int_pairs();
     for &(a,b) in pairs.iter() {
-        println(fmt!("%4.4d, %4.4d", a, b));
+        println!("{:4.4d}, {:4.4d}", a, b);
     }
 }
 
@@ -462,7 +462,7 @@ fn main() {
         // The protected logic.
         let pairs = read_int_pairs();
         for &(a,b) in pairs.iter() {
-                println(fmt!("%4.4d, %4.4d", a, b));
+                println!("{:4.4d}, {:4.4d}", a, b);
         }
 
     }
@@ -540,7 +540,7 @@ fn main() {
         // The protected logic.
         let pairs = read_int_pairs();
         for &(a,b) in pairs.iter() {
-            println(fmt!("%4.4d, %4.4d", a, b));
+            println!("{:4.4d}, {:4.4d}", a, b);
         }
 
     }
@@ -636,7 +636,7 @@ fn main() {
         // The protected logic.
         let pairs = read_int_pairs();
         for &(a,b) in pairs.iter() {
-            println(fmt!("%4.4d, %4.4d", a, b));
+            println!("{:4.4d}, {:4.4d}", a, b);
         }
 
     }
@@ -766,7 +766,7 @@ fn main() {
             // The protected logic.
             let pairs = read_int_pairs();
             for &(a,b) in pairs.iter() {
-                println(fmt!("%4.4d, %4.4d", a, b));
+                println!("{:4.4d}, {:4.4d}", a, b);
             }
 
         }

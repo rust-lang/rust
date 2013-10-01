@@ -27,6 +27,6 @@ pub fn main() {
         break;
     }
 
-    error!("%?", x);
+    error2!("{:?}", x);
     assert_eq!(x, 42);
 }

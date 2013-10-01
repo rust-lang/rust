@@ -178,7 +178,8 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
     // Check magic number
     let magic = file.read_le_u16();
     if (magic != 0x011A) {
-        return Err(fmt!("invalid magic number: expected %x but found %x", 0x011A, magic as uint));
+        return Err(format!("invalid magic number: expected {:x} but found {:x}",
+                           0x011A, magic as uint));
     }
 
     let names_bytes          = file.read_le_i16() as int;
@@ -189,26 +190,26 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     assert!(names_bytes          > 0);
 
-    debug!("names_bytes = %?", names_bytes);
-    debug!("bools_bytes = %?", bools_bytes);
-    debug!("numbers_count = %?", numbers_count);
-    debug!("string_offsets_count = %?", string_offsets_count);
-    debug!("string_table_bytes = %?", string_table_bytes);
+    debug2!("names_bytes = {}", names_bytes);
+    debug2!("bools_bytes = {}", bools_bytes);
+    debug2!("numbers_count = {}", numbers_count);
+    debug2!("string_offsets_count = {}", string_offsets_count);
+    debug2!("string_table_bytes = {}", string_table_bytes);
 
     if (bools_bytes as uint) > boolnames.len() {
-        error!("expected bools_bytes to be less than %? but found %?", boolnames.len(),
+        error2!("expected bools_bytes to be less than {} but found {}", boolnames.len(),
                bools_bytes);
         return Err(~"incompatible file: more booleans than expected");
     }
 
     if (numbers_count as uint) > numnames.len() {
-        error!("expected numbers_count to be less than %? but found %?", numnames.len(),
+        error2!("expected numbers_count to be less than {} but found {}", numnames.len(),
                numbers_count);
         return Err(~"incompatible file: more numbers than expected");
     }
 
     if (string_offsets_count as uint) > stringnames.len() {
-        error!("expected string_offsets_count to be less than %? but found %?", stringnames.len(),
+        error2!("expected string_offsets_count to be less than {} but found {}", stringnames.len(),
                string_offsets_count);
         return Err(~"incompatible file: more string offsets than expected");
     }
@@ -218,26 +219,26 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     file.read_byte(); // consume NUL
 
-    debug!("term names: %?", term_names);
+    debug2!("term names: {:?}", term_names);
 
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
         for i in range(0, bools_bytes) {
             let b = file.read_byte();
             if b < 0 {
-                error!("EOF reading bools after %? entries", i);
+                error2!("EOF reading bools after {} entries", i);
                 return Err(~"error: expected more bools but hit EOF");
             } else if b == 1 {
-                debug!("%s set", bnames[i]);
+                debug2!("{} set", bnames[i]);
                 bools_map.insert(bnames[i].to_owned(), true);
             }
         }
     }
 
-    debug!("bools: %?", bools_map);
+    debug2!("bools: {:?}", bools_map);
 
     if (bools_bytes + names_bytes) % 2 == 1 {
-        debug!("adjusting for padding between bools and numbers");
+        debug2!("adjusting for padding between bools and numbers");
         file.read_byte(); // compensate for padding
     }
 
@@ -246,13 +247,13 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
         for i in range(0, numbers_count) {
             let n = file.read_le_u16();
             if n != 0xFFFF {
-                debug!("%s#%?", nnames[i], n);
+                debug2!("{}\\#{}", nnames[i], n);
                 numbers_map.insert(nnames[i].to_owned(), n);
             }
         }
     }
 
-    debug!("numbers: %?", numbers_map);
+    debug2!("numbers: {:?}", numbers_map);
 
     let mut string_map = HashMap::new();
 
@@ -262,12 +263,12 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
             string_offsets.push(file.read_le_u16());
         }
 
-        debug!("offsets: %?", string_offsets);
+        debug2!("offsets: {:?}", string_offsets);
 
         let string_table = file.read_bytes(string_table_bytes as uint);
 
         if string_table.len() != string_table_bytes as uint {
-            error!("EOF reading string table after %? bytes, wanted %?", string_table.len(),
+            error2!("EOF reading string table after {} bytes, wanted {}", string_table.len(),
                    string_table_bytes);
             return Err(~"error: hit EOF before end of string table");
         }

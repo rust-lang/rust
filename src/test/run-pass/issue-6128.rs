@@ -17,7 +17,7 @@ trait Graph<Node, Edge> {
 
 impl<E> Graph<int, E> for HashMap<int, int> {
     fn f(&self, _e: E) {
-        fail!();
+        fail2!();
     }
 }
 

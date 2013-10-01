@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // error-pattern:meep
-fn f(_a: int, _b: int, _c: @int) { fail!("moop"); }
+fn f(_a: int, _b: int, _c: @int) { fail2!("moop"); }
 
-fn main() { f(1, fail!("meep"), @42); }
+fn main() { f(1, fail2!("meep"), @42); }

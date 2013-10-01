@@ -14,4 +14,4 @@ enum quux<T> { bar }
 
 fn foo(c: quux) { assert!((false)); }
 
-fn main() { fail!(); }
+fn main() { fail2!(); }

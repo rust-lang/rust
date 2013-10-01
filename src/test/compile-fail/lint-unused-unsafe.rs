@@ -19,7 +19,7 @@ mod foo {
     }
 }
 
-fn callback<T>(_f: &fn() -> T) -> T { fail!() }
+fn callback<T>(_f: &fn() -> T) -> T { fail2!() }
 unsafe fn unsf() {}
 
 fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block
@@ -49,7 +49,7 @@ fn good2() {
        sure that when purity is inherited that the source of the unsafe-ness
        is tracked correctly */
     unsafe {
-        unsafe fn what() -> ~[~str] { fail!() }
+        unsafe fn what() -> ~[~str] { fail2!() }
 
         do callback {
             what();

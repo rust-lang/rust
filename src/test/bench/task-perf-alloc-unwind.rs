@@ -31,11 +31,11 @@ fn main() {
 
 fn run(repeat: int, depth: int) {
     for _ in range(0, repeat) {
-        info!("starting %.4f", precise_time_s());
+        info2!("starting {:.4f}", precise_time_s());
         do task::try {
             recurse_or_fail(depth, None)
         };
-        info!("stopping %.4f", precise_time_s());
+        info2!("stopping {:.4f}", precise_time_s());
     }
 }
 
@@ -68,8 +68,8 @@ fn r(l: @nillist) -> r {
 
 fn recurse_or_fail(depth: int, st: Option<State>) {
     if depth == 0 {
-        info!("unwinding %.4f", precise_time_s());
-        fail!();
+        info2!("unwinding {:.4f}", precise_time_s());
+        fail2!();
     } else {
         let depth = depth - 1;
 

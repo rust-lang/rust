@@ -34,7 +34,7 @@ fn test_mkdtemp() {
 // to depend on std
 fn recursive_mkdir_rel() {
     let path = Path("frob");
-    debug!("recursive_mkdir_rel: Making: %s in cwd %s [%?]", path.to_str(),
+    debug2!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.to_str(),
            os::getcwd().to_str(),
            os::path_exists(&path));
     assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
@@ -52,13 +52,13 @@ fn recursive_mkdir_dot() {
 
 fn recursive_mkdir_rel_2() {
     let path = Path("./frob/baz");
-    debug!("recursive_mkdir_rel_2: Making: %s in cwd %s [%?]", path.to_str(),
+    debug2!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.to_str(),
            os::getcwd().to_str(), os::path_exists(&path));
     assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
         assert!(os::path_is_dir(&path));
     assert!(os::path_is_dir(&path.pop()));
     let path2 = Path("quux/blat");
-    debug!("recursive_mkdir_rel_2: Making: %s in cwd %s", path2.to_str(),
+    debug2!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.to_str(),
            os::getcwd().to_str());
     assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
         assert!(os::path_is_dir(&path2));
@@ -73,7 +73,7 @@ pub fn test_rmdir_recursive_ok() {
                                         couldn't create temp dir");
     let root = tmpdir.push("foo");
 
-    debug!("making %s", root.to_str());
+    debug2!("making {}", root.to_str());
     assert!(os::make_dir(&root, rwx));
     assert!(os::make_dir(&root.push("foo"), rwx));
     assert!(os::make_dir(&root.push("foo").push("bar"), rwx));

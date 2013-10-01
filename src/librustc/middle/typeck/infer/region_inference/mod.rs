@@ -130,7 +130,7 @@ impl RegionVarBindings {
     }
 
     pub fn start_snapshot(&mut self) -> uint {
-        debug!("RegionVarBindings: snapshot()=%u", self.undo_log.len());
+        debug2!("RegionVarBindings: snapshot()={}", self.undo_log.len());
         if self.in_snapshot() {
             self.undo_log.len()
         } else {
@@ -140,17 +140,17 @@ impl RegionVarBindings {
     }
 
     pub fn commit(&mut self) {
-        debug!("RegionVarBindings: commit()");
+        debug2!("RegionVarBindings: commit()");
         while self.undo_log.len() > 0 {
             self.undo_log.pop();
         }
     }
 
     pub fn rollback_to(&mut self, snapshot: uint) {
-        debug!("RegionVarBindings: rollback_to(%u)", snapshot);
+        debug2!("RegionVarBindings: rollback_to({})", snapshot);
         while self.undo_log.len() > snapshot {
             let undo_item = self.undo_log.pop();
-            debug!("undo_item=%?", undo_item);
+            debug2!("undo_item={:?}", undo_item);
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
@@ -181,7 +181,7 @@ impl RegionVarBindings {
         if self.in_snapshot() {
             self.undo_log.push(AddVar(vid));
         }
-        debug!("created new region variable %? with origin %?",
+        debug2!("created new region variable {:?} with origin {:?}",
                vid, origin.repr(self.tcx));
         return vid;
     }
@@ -218,7 +218,7 @@ impl RegionVarBindings {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
-        debug!("RegionVarBindings: add_constraint(%?)", constraint);
+        debug2!("RegionVarBindings: add_constraint({:?})", constraint);
 
         if self.constraints.insert(constraint, origin) {
             if self.in_snapshot() {
@@ -234,7 +234,7 @@ impl RegionVarBindings {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
-        debug!("RegionVarBindings: make_subregion(%?, %?)", sub, sup);
+        debug2!("RegionVarBindings: make_subregion({:?}, {:?})", sub, sup);
         match (sub, sup) {
           (re_infer(ReVar(sub_id)), re_infer(ReVar(sup_id))) => {
             self.add_constraint(ConstrainVarSubVar(sub_id, sup_id), origin);
@@ -248,12 +248,12 @@ impl RegionVarBindings {
           (re_bound(br), _) => {
             self.tcx.sess.span_bug(
                 origin.span(),
-                fmt!("Cannot relate bound region as subregion: %?", br));
+                format!("Cannot relate bound region as subregion: {:?}", br));
           }
           (_, re_bound(br)) => {
             self.tcx.sess.span_bug(
                 origin.span(),
-                fmt!("Cannot relate bound region as superregion: %?", br));
+                format!("Cannot relate bound region as superregion: {:?}", br));
           }
           _ => {
             self.add_constraint(ConstrainRegSubReg(sub, sup), origin);
@@ -269,7 +269,7 @@ impl RegionVarBindings {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
-        debug!("RegionVarBindings: lub_regions(%?, %?)", a, b);
+        debug2!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
             (re_static, _) | (_, re_static) => {
                 re_static // nothing lives longer than static
@@ -292,7 +292,7 @@ impl RegionVarBindings {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
-        debug!("RegionVarBindings: glb_regions(%?, %?)", a, b);
+        debug2!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
             (re_static, r) | (r, re_static) => {
                 // static lives longer than everything else
@@ -312,12 +312,12 @@ impl RegionVarBindings {
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
                 self.var_origins[rid.to_uint()].span(),
-                fmt!("Attempt to resolve region variable before values have \
+                format!("Attempt to resolve region variable before values have \
                       been computed!"));
         }
 
         let v = self.values.with_ref(|values| values[rid.to_uint()]);
-        debug!("RegionVarBindings: resolve_var(%?=%u)=%?",
+        debug2!("RegionVarBindings: resolve_var({:?}={})={:?}",
                rid, rid.to_uint(), v);
         match v {
             Value(r) => r,
@@ -367,7 +367,7 @@ impl RegionVarBindings {
         }
         relate(self, a, re_infer(ReVar(c)));
         relate(self, b, re_infer(ReVar(c)));
-        debug!("combine_vars() c=%?", c);
+        debug2!("combine_vars() c={:?}", c);
         re_infer(ReVar(c))
     }
 
@@ -390,7 +390,7 @@ impl RegionVarBindings {
          * regions.
          */
 
-        debug!("tainted(snapshot=%u, r0=%?)", snapshot, r0);
+        debug2!("tainted(snapshot={}, r0={:?})", snapshot, r0);
         let _indenter = indenter();
 
         let undo_len = self.undo_log.len();
@@ -404,7 +404,7 @@ impl RegionVarBindings {
             // nb: can't use uint::range() here because result_set grows
             let r = result_set[result_index];
 
-            debug!("result_index=%u, r=%?", result_index, r);
+            debug2!("result_index={}, r={:?}", result_index, r);
 
             let mut undo_index = snapshot;
             while undo_index < undo_len {
@@ -469,7 +469,7 @@ impl RegionVarBindings {
     errors are reported.
     */
     pub fn resolve_regions(&mut self) -> OptVec<RegionResolutionError> {
-        debug!("RegionVarBindings: resolve_regions()");
+        debug2!("RegionVarBindings: resolve_regions()");
         let mut errors = opt_vec::Empty;
         let v = self.infer_variable_values(&mut errors);
         self.values.put_back(v);
@@ -496,8 +496,8 @@ impl RegionVarBindings {
           (re_infer(ReVar(v_id)), _) | (_, re_infer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
                 self.var_origins[v_id.to_uint()].span(),
-                fmt!("lub_concrete_regions invoked with \
-                      non-concrete regions: %?, %?", a, b));
+                format!("lub_concrete_regions invoked with \
+                      non-concrete regions: {:?}, {:?}", a, b));
           }
 
           (f @ re_free(ref fr), re_scope(s_id)) |
@@ -582,7 +582,7 @@ impl RegionVarBindings {
                             a: Region,
                             b: Region)
                          -> cres<Region> {
-        debug!("glb_concrete_regions(%?, %?)", a, b);
+        debug2!("glb_concrete_regions({:?}, {:?})", a, b);
         match (a, b) {
             (re_static, r) | (r, re_static) => {
                 // static lives longer than everything else
@@ -598,8 +598,8 @@ impl RegionVarBindings {
             (_, re_infer(ReVar(v_id))) => {
                 self.tcx.sess.span_bug(
                     self.var_origins[v_id.to_uint()].span(),
-                    fmt!("glb_concrete_regions invoked with \
-                          non-concrete regions: %?, %?", a, b));
+                    format!("glb_concrete_regions invoked with \
+                          non-concrete regions: {:?}, {:?}", a, b));
             }
 
             (re_free(ref fr), s @ re_scope(s_id)) |
@@ -691,7 +691,7 @@ impl RegionVarBindings {
         // scopes or two free regions.  So, if one of
         // these scopes is a subscope of the other, return
         // it.  Otherwise fail.
-        debug!("intersect_scopes(scope_a=%?, scope_b=%?, region_a=%?, region_b=%?)",
+        debug2!("intersect_scopes(scope_a={:?}, scope_b={:?}, region_a={:?}, region_b={:?})",
                scope_a, scope_b, region_a, region_b);
         let rm = self.tcx.region_maps;
         match rm.nearest_common_ancestor(scope_a, scope_b) {
@@ -778,13 +778,13 @@ impl RegionVarBindings {
                    b_vid: RegionVid,
                    b_data: &mut VarData)
                    -> bool {
-        debug!("expand_node(%?, %? == %?)",
+        debug2!("expand_node({:?}, {:?} == {:?})",
                a_region, b_vid, b_data.value);
 
         b_data.classification = Expanding;
         match b_data.value {
           NoValue => {
-            debug!("Setting initial value of %? to %?", b_vid, a_region);
+            debug2!("Setting initial value of {:?} to {:?}", b_vid, a_region);
 
             b_data.value = Value(a_region);
             return true;
@@ -796,7 +796,7 @@ impl RegionVarBindings {
                 return false;
             }
 
-            debug!("Expanding value of %? from %? to %?",
+            debug2!("Expanding value of {:?} from {:?} to {:?}",
                    b_vid, cur_region, lub);
 
             b_data.value = Value(lub);
@@ -843,7 +843,7 @@ impl RegionVarBindings {
                      a_data: &mut VarData,
                      b_region: Region)
                      -> bool {
-        debug!("contract_node(%? == %?/%?, %?)",
+        debug2!("contract_node({:?} == {:?}/{:?}, {:?})",
                a_vid, a_data.value, a_data.classification, b_region);
 
         return match a_data.value {
@@ -876,7 +876,7 @@ impl RegionVarBindings {
                       b_region: Region)
                    -> bool {
             if !this.is_subregion_of(a_region, b_region) {
-                debug!("Setting %? to ErrorValue: %? not subregion of %?",
+                debug2!("Setting {:?} to ErrorValue: {:?} not subregion of {:?}",
                        a_vid, a_region, b_region);
                 a_data.value = ErrorValue;
             }
@@ -894,14 +894,14 @@ impl RegionVarBindings {
                     if glb == a_region {
                         false
                     } else {
-                        debug!("Contracting value of %? from %? to %?",
+                        debug2!("Contracting value of {:?} from {:?} to {:?}",
                                a_vid, a_region, glb);
                         a_data.value = Value(glb);
                         true
                     }
                 }
                 Err(_) => {
-                    debug!("Setting %? to ErrorValue: no glb of %?, %?",
+                    debug2!("Setting {:?} to ErrorValue: no glb of {:?}, {:?}",
                            a_vid, a_region, b_region);
                     a_data.value = ErrorValue;
                     false
@@ -930,7 +930,7 @@ impl RegionVarBindings {
                 loop;
             }
 
-            debug!("ConcreteFailure: !(sub <= sup): sub=%?, sup=%?",
+            debug2!("ConcreteFailure: !(sub <= sup): sub={:?}, sup={:?}",
                    sub, sup);
             let origin = self.constraints.get_copy(constraint);
             errors.push(ConcreteFailure(origin, sub, sup));
@@ -943,7 +943,7 @@ impl RegionVarBindings {
         errors: &mut OptVec<RegionResolutionError>)
         -> ~[VarValue]
     {
-        debug!("extract_values_and_collect_conflicts()");
+        debug2!("extract_values_and_collect_conflicts()");
 
         // This is the best way that I have found to suppress
         // duplicate and related errors. Basically we keep a set of
@@ -1095,8 +1095,8 @@ impl RegionVarBindings {
 
         self.tcx.sess.span_bug(
             self.var_origins[node_idx.to_uint()].span(),
-            fmt!("collect_error_for_expanding_node() could not find error \
-                  for var %?, lower_bounds=%s, upper_bounds=%s",
+            format!("collect_error_for_expanding_node() could not find error \
+                  for var {:?}, lower_bounds={}, upper_bounds={}",
                  node_idx,
                  lower_bounds.map(|x| x.region).repr(self.tcx),
                  upper_bounds.map(|x| x.region).repr(self.tcx)));
@@ -1140,8 +1140,8 @@ impl RegionVarBindings {
 
         self.tcx.sess.span_bug(
             self.var_origins[node_idx.to_uint()].span(),
-            fmt!("collect_error_for_contracting_node() could not find error \
-                  for var %?, upper_bounds=%s",
+            format!("collect_error_for_contracting_node() could not find error \
+                  for var {:?}, upper_bounds={}",
                  node_idx,
                  upper_bounds.map(|x| x.region).repr(self.tcx)));
     }
@@ -1182,8 +1182,8 @@ impl RegionVarBindings {
                 state.dup_found = true;
             }
 
-            debug!("collect_concrete_regions(orig_node_idx=%?, node_idx=%?, \
-                    classification=%?)",
+            debug2!("collect_concrete_regions(orig_node_idx={:?}, node_idx={:?}, \
+                    classification={:?})",
                    orig_node_idx, node_idx, classification);
 
             // figure out the direction from which this node takes its
@@ -1204,7 +1204,7 @@ impl RegionVarBindings {
                          graph: &RegionGraph,
                          source_vid: RegionVid,
                          dir: Direction) {
-            debug!("process_edges(source_vid=%?, dir=%?)", source_vid, dir);
+            debug2!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
             let source_node_index = NodeIndex(source_vid.to_uint());
             do graph.each_adjacent_edge(source_node_index, dir) |_, edge| {
@@ -1240,17 +1240,17 @@ impl RegionVarBindings {
         while changed {
             changed = false;
             iteration += 1;
-            debug!("---- %s Iteration #%u", tag, iteration);
+            debug2!("---- {} Iteration \\#{}", tag, iteration);
             for (constraint, _) in self.constraints.iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
-                    debug!("Updated due to constraint %s",
+                    debug2!("Updated due to constraint {}",
                            constraint.repr(self.tcx));
                     changed = true;
                 }
             }
         }
-        debug!("---- %s Complete after %u iteration(s)", tag, iteration);
+        debug2!("---- {} Complete after {} iteration(s)", tag, iteration);
     }
 
 }
@@ -1258,13 +1258,13 @@ impl RegionVarBindings {
 impl Repr for Constraint {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
-            ConstrainVarSubVar(a, b) => fmt!("ConstrainVarSubVar(%s, %s)",
+            ConstrainVarSubVar(a, b) => format!("ConstrainVarSubVar({}, {})",
                                              a.repr(tcx), b.repr(tcx)),
-            ConstrainRegSubVar(a, b) => fmt!("ConstrainRegSubVar(%s, %s)",
+            ConstrainRegSubVar(a, b) => format!("ConstrainRegSubVar({}, {})",
                                              a.repr(tcx), b.repr(tcx)),
-            ConstrainVarSubReg(a, b) => fmt!("ConstrainVarSubReg(%s, %s)",
+            ConstrainVarSubReg(a, b) => format!("ConstrainVarSubReg({}, {})",
                                              a.repr(tcx), b.repr(tcx)),
-            ConstrainRegSubReg(a, b) => fmt!("ConstrainRegSubReg(%s, %s)",
+            ConstrainRegSubReg(a, b) => format!("ConstrainRegSubReg({}, {})",
                                              a.repr(tcx), b.repr(tcx)),
         }
     }

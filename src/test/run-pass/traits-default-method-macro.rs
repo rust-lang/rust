@@ -11,7 +11,7 @@
 
 trait Foo {
     fn bar(&self) -> ~str {
-        fmt!("test")
+        format!("test")
     }
 }
 

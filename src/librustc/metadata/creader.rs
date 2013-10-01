@@ -74,11 +74,11 @@ struct cache_entry {
 }
 
 fn dump_crates(crate_cache: &[cache_entry]) {
-    debug!("resolved crates:");
+    debug2!("resolved crates:");
     for entry in crate_cache.iter() {
-        debug!("cnum: %?", entry.cnum);
-        debug!("span: %?", entry.span);
-        debug!("hash: %?", entry.hash);
+        debug2!("cnum: {:?}", entry.cnum);
+        debug2!("span: {:?}", entry.span);
+        debug2!("hash: {:?}", entry.hash);
     }
 }
 
@@ -97,7 +97,7 @@ fn warn_if_multiple_versions(e: @mut Env,
 
         if matches.len() != 1u {
             diag.handler().warn(
-                fmt!("using multiple versions of crate `%s`", name));
+                format!("using multiple versions of crate `{}`", name));
             for match_ in matches.iter() {
                 diag.span_note(match_.span, "used here");
                 let attrs = ~[
@@ -154,7 +154,7 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
                   }
             }
           };
-          debug!("resolving extern mod stmt. ident: %?, meta: %?",
+          debug2!("resolving extern mod stmt. ident: {:?}, meta: {:?}",
                  ident, meta_items);
           let cnum = resolve_crate(e,
                                    ident,
@@ -317,7 +317,7 @@ fn resolve_crate(e: @mut Env,
 
 // Go through the crate metadata and load any crates that it references
 fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
-    debug!("resolving deps of external crate");
+    debug2!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let mut cnum_map = HashMap::new();
@@ -326,18 +326,18 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
         let extrn_cnum = dep.cnum;
         let cname_str = token::ident_to_str(&dep.name);
         let cmetas = metas_with(dep.vers, @"vers", ~[]);
-        debug!("resolving dep crate %s ver: %s hash: %s",
+        debug2!("resolving dep crate {} ver: {} hash: {}",
                cname_str, dep.vers, dep.hash);
         match existing_match(e,
                              metas_with_ident(cname_str, cmetas.clone()),
                              dep.hash) {
           Some(local_cnum) => {
-            debug!("already have it");
+            debug2!("already have it");
             // We've already seen this crate
             cnum_map.insert(extrn_cnum, local_cnum);
           }
           None => {
-            debug!("need to load it");
+            debug2!("need to load it");
             // This is a new one so we've got to load it
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.

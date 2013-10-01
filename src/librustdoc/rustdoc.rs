@@ -238,7 +238,7 @@ fn jsonify(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     };
     let crate_json = match extra::json::from_str(crate_json_str) {
         Ok(j) => j,
-        Err(_) => fail!("Rust generated JSON is invalid??")
+        Err(_) => fail2!("Rust generated JSON is invalid??")
     };
 
     json.insert(~"crate", crate_json);

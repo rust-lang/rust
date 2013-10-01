@@ -78,7 +78,7 @@ impl<L, R> Either<L, R> {
     pub fn expect_left(self, reason: &str) -> L {
         match self {
             Left(x) => x,
-            Right(_) => fail!(reason.to_owned())
+            Right(_) => fail2!("{}", reason.to_owned())
         }
     }
 
@@ -94,7 +94,7 @@ impl<L, R> Either<L, R> {
     pub fn expect_right(self, reason: &str) -> R {
         match self {
             Right(x) => x,
-            Left(_) => fail!(reason.to_owned())
+            Left(_) => fail2!("{}", reason.to_owned())
         }
     }
 

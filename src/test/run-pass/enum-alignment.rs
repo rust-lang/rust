@@ -27,7 +27,7 @@ fn is_aligned<T>(ptr: &T) -> bool {
 pub fn main() {
     let x = Some(0u64);
     match x {
-        None => fail!(),
+        None => fail2!(),
         Some(ref y) => assert!(is_aligned(y))
     }
 }

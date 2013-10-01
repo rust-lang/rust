@@ -75,7 +75,7 @@ pub fn getcwd() -> Path {
     do buf.as_mut_buf |buf, len| {
         unsafe {
             if libc::getcwd(buf, len as size_t).is_null() {
-                fail!()
+                fail2!()
             }
 
             Path(str::raw::from_c_str(buf as *c_char))
@@ -182,7 +182,8 @@ pub fn env() -> ~[(~str,~str)] {
             };
             let ch = GetEnvironmentStringsA();
             if (ch as uint == 0) {
-                fail!("os::env() failure getting env string from OS: %s", os::last_os_error());
+                fail2!("os::env() failure getting env string from OS: {}",
+                       os::last_os_error());
             }
             let result = str::raw::from_c_multistring(ch as *libc::c_char, None);
             FreeEnvironmentStringsA(ch);
@@ -197,13 +198,13 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let environ = rust_env_pairs();
             if (environ as uint == 0) {
-                fail!("os::env() failure getting env string from OS: %s", os::last_os_error());
+                fail2!("os::env() failure getting env string from OS: {}",
+                       os::last_os_error());
             }
             let mut result = ~[];
             ptr::array_each(environ, |e| {
                 let env_pair = str::raw::from_c_str(e);
-                debug!("get_env_pairs: %s",
-                       env_pair);
+                debug2!("get_env_pairs: {}", env_pair);
                 result.push(env_pair);
             });
             result
@@ -213,8 +214,7 @@ pub fn env() -> ~[(~str,~str)] {
             let mut pairs = ~[];
             for p in input.iter() {
                 let vs: ~[&str] = p.splitn_iter('=', 1).collect();
-                debug!("splitting: len: %u",
-                    vs.len());
+                debug2!("splitting: len: {}", vs.len());
                 assert_eq!(vs.len(), 2);
                 pairs.push((vs[0].to_owned(), vs[1].to_owned()));
             }
@@ -443,7 +443,7 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 /// Returns the proper dll filename for the given basename of a file.
 pub fn dll_filename(base: &str) -> ~str {
-    fmt!("%s%s%s", DLL_PREFIX, base, DLL_SUFFIX)
+    format!("{}{}{}", DLL_PREFIX, base, DLL_SUFFIX)
 }
 
 /// Optionally returns the filesystem path to the current executable which is
@@ -722,14 +722,14 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
             }
             let mut strings = ~[];
-            debug!("os::list_dir -- BEFORE OPENDIR");
+            debug2!("os::list_dir -- BEFORE OPENDIR");
 
             let dir_ptr = do p.with_c_str |buf| {
                 opendir(buf)
             };
 
             if (dir_ptr as uint != 0) {
-                debug!("os::list_dir -- opendir() SUCCESS");
+                debug2!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     strings.push(str::raw::from_c_str(rust_list_dir_val(
@@ -739,11 +739,9 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 closedir(dir_ptr);
             }
             else {
-                debug!("os::list_dir -- opendir() FAILURE");
+                debug2!("os::list_dir -- opendir() FAILURE");
             }
-            debug!(
-                "os::list_dir -- AFTER -- #: %?",
-                     strings.len());
+            debug2!("os::list_dir -- AFTER -- \\#: {}", strings.len());
             strings
         }
         #[cfg(windows)]
@@ -777,7 +775,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                     while more_files != 0 {
                         let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
                         if fp_buf as uint == 0 {
-                            fail!("os::list_dir() failure: got null ptr from wfd");
+                            fail2!("os::list_dir() failure: got null ptr from wfd");
                         }
                         else {
                             let fp_vec = vec::from_buf(
@@ -1101,7 +1099,7 @@ pub fn last_os_error() -> ~str {
         do buf.as_mut_buf |buf, len| {
             unsafe {
                 if strerror_r(errno() as c_int, buf, len as size_t) < 0 {
-                    fail!("strerror_r failure");
+                    fail2!("strerror_r failure");
                 }
 
                 str::raw::from_c_str(buf as *c_char)
@@ -1166,7 +1164,7 @@ pub fn last_os_error() -> ~str {
                                          len as DWORD,
                                          ptr::null());
                 if res == 0 {
-                    fail!("[%?] FormatMessage failure", errno());
+                    fail2!("[{}] FormatMessage failure", errno());
                 }
             }
 
@@ -1222,7 +1220,7 @@ fn real_args() -> ~[~str] {
 
     match rt::args::clone() {
         Some(args) => args,
-        None => fail!("process arguments not initialized")
+        None => fail2!("process arguments not initialized")
     }
 }
 
@@ -1385,13 +1383,13 @@ impl to_str::ToStr for MapError {
                               negative length or unaligned offset",
             ErrNoMapSupport=> ~"File doesn't support mapping",
             ErrNoMem => ~"Invalid address, or not enough available memory",
-            ErrUnknown(code) => fmt!("Unknown error=%?", code),
+            ErrUnknown(code) => format!("Unknown error={}", code),
             ErrUnsupProt => ~"Protection mode unsupported",
             ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
             ErrAlreadyExists => ~"File mapping for specified file already exists",
-            ErrVirtualAlloc(code) => fmt!("VirtualAlloc failure=%?", code),
-            ErrCreateFileMappingW(code) => fmt!("CreateFileMappingW failure=%?", code),
-            ErrMapViewOfFile(code) => fmt!("MapViewOfFile failure=%?", code)
+            ErrVirtualAlloc(code) => format!("VirtualAlloc failure={}", code),
+            ErrCreateFileMappingW(code) => format!("CreateFileMappingW failure={}", code),
+            ErrMapViewOfFile(code) => format!("MapViewOfFile failure={}", code)
         }
     }
 }
@@ -1466,11 +1464,11 @@ impl Drop for MemoryMap {
         unsafe {
             match libc::munmap(self.data as *c_void, self.len) {
                 0 => (),
-                -1 => error!(match errno() as c_int {
-                    libc::EINVAL => ~"invalid addr or len",
-                    e => fmt!("unknown errno=%?", e)
-                }),
-                r => error!(fmt!("Unexpected result %?", r))
+                -1 => match errno() as c_int {
+                    libc::EINVAL => error2!("invalid addr or len"),
+                    e => error2!("unknown errno={}", e)
+                },
+                r => error2!("Unexpected result {}", r)
             }
         }
     }
@@ -1598,15 +1596,15 @@ impl Drop for MemoryMap {
                     if libc::VirtualFree(self.data as *mut c_void,
                                          self.len,
                                          libc::MEM_RELEASE) == FALSE {
-                        error!(fmt!("VirtualFree failed: %?", errno()));
+                        error2!("VirtualFree failed: {}", errno());
                     }
                 },
                 MapFile(mapping) => {
                     if libc::UnmapViewOfFile(self.data as LPCVOID) == FALSE {
-                        error!(fmt!("UnmapViewOfFile failed: %?", errno()));
+                        error2!("UnmapViewOfFile failed: {}", errno());
                     }
                     if libc::CloseHandle(mapping as HANDLE) == FALSE {
-                        error!(fmt!("CloseHandle failed: %?", errno()));
+                        error2!("CloseHandle failed: {}", errno());
                     }
                 }
             }
@@ -1727,7 +1725,7 @@ mod tests {
 
     #[test]
     pub fn last_os_error() {
-        debug!(os::last_os_error());
+        debug2!("{}", os::last_os_error());
     }
 
     #[test]
@@ -1782,7 +1780,7 @@ mod tests {
         }
         let n = make_rand_name();
         setenv(n, s);
-        debug!(s.clone());
+        debug2!("{}", s.clone());
         assert_eq!(getenv(n), option::Some(s));
     }
 
@@ -1791,7 +1789,7 @@ mod tests {
         let path = os::self_exe_path();
         assert!(path.is_some());
         let path = path.unwrap();
-        debug!(path.clone());
+        debug2!("{:?}", path.clone());
 
         // Hard to test this function
         assert!(path.is_absolute);
@@ -1804,7 +1802,7 @@ mod tests {
         assert!(e.len() > 0u);
         for p in e.iter() {
             let (n, v) = (*p).clone();
-            debug!(n.clone());
+            debug2!("{:?}", n.clone());
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -1829,10 +1827,10 @@ mod tests {
     fn test() {
         assert!((!Path("test-path").is_absolute));
 
-        debug!("Current working directory: %s", getcwd().to_str());
+        debug2!("Current working directory: {}", getcwd().to_str());
 
-        debug!(make_absolute(&Path("test-path")));
-        debug!(make_absolute(&Path("/usr/bin")));
+        debug2!("{:?}", make_absolute(&Path("test-path")));
+        debug2!("{:?}", make_absolute(&Path("/usr/bin")));
     }
 
     #[test]
@@ -1895,7 +1893,7 @@ mod tests {
         assert!(dirs.len() > 0u);
 
         for dir in dirs.iter() {
-            debug!((*dir).clone());
+            debug2!("{:?}", (*dir).clone());
         }
     }
 
@@ -1969,7 +1967,7 @@ mod tests {
             let in_mode = input.get_mode();
             let rs = os::copy_file(&input, &out);
             if (!os::path_exists(&input)) {
-                fail!("%s doesn't exist", input.to_str());
+                fail2!("{} doesn't exist", input.to_str());
             }
             assert!((rs));
             let rslt = run::process_status("diff", [input.to_str(), out.to_str()]);
@@ -2001,7 +1999,7 @@ mod tests {
             os::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail2!(msg.to_str())
         };
         assert!(chunk.len >= 16);
 
@@ -2057,7 +2055,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail2!(msg.to_str())
         };
         assert!(chunk.len > 0);
 

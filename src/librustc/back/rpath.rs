@@ -29,7 +29,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
         return ~[];
     }
 
-    debug!("preparing the RPATH!");
+    debug2!("preparing the RPATH!");
 
     let sysroot = sess.filesearch.sysroot();
     let output = out_filename;
@@ -49,7 +49,7 @@ fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
 }
 
 pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
-    rpaths.iter().map(|rpath| fmt!("-Wl,-rpath,%s",rpath.to_str())).collect()
+    rpaths.iter().map(|rpath| format!("-Wl,-rpath,{}",rpath.to_str())).collect()
 }
 
 fn get_rpaths(os: session::Os,
@@ -57,13 +57,13 @@ fn get_rpaths(os: session::Os,
               output: &Path,
               libs: &[Path],
               target_triple: &str) -> ~[Path] {
-    debug!("sysroot: %s", sysroot.to_str());
-    debug!("output: %s", output.to_str());
-    debug!("libs:");
+    debug2!("sysroot: {}", sysroot.to_str());
+    debug2!("output: {}", output.to_str());
+    debug2!("libs:");
     for libpath in libs.iter() {
-        debug!("    %s", libpath.to_str());
+        debug2!("    {}", libpath.to_str());
     }
-    debug!("target_triple: %s", target_triple);
+    debug2!("target_triple: {}", target_triple);
 
     // Use relative paths to the libraries. Binaries can be moved
     // as long as they maintain the relative relationship to the
@@ -78,9 +78,9 @@ fn get_rpaths(os: session::Os,
     let fallback_rpaths = ~[get_install_prefix_rpath(target_triple)];
 
     fn log_rpaths(desc: &str, rpaths: &[Path]) {
-        debug!("%s rpaths:", desc);
+        debug2!("{} rpaths:", desc);
         for rpath in rpaths.iter() {
-            debug!("    %s", rpath.to_str());
+            debug2!("    {}", rpath.to_str());
         }
     }
 
@@ -172,7 +172,7 @@ mod test {
         let res = get_install_prefix_rpath("triple");
         let d = Path(env!("CFG_PREFIX"))
             .push_rel(&Path("lib/rustc/triple/lib"));
-        debug!("test_prefix_path: %s vs. %s",
+        debug2!("test_prefix_path: {} vs. {}",
                res.to_str(),
                d.to_str());
         assert!(res.to_str().ends_with(d.to_str()));
@@ -233,7 +233,7 @@ mod test {
     #[test]
     fn test_get_absolute_rpath() {
         let res = get_absolute_rpath(&Path("lib/libstd.so"));
-        debug!("test_get_absolute_rpath: %s vs. %s",
+        debug2!("test_get_absolute_rpath: {} vs. {}",
                res.to_str(),
                os::make_absolute(&Path("lib")).to_str());
 

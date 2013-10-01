@@ -66,7 +66,7 @@ fn show_digit(nn: uint) -> ~str {
         7 => {~"seven"}
         8 => {~"eight"}
         9 => {~"nine"}
-        _ => {fail!("expected digits from 0 to 9...")}
+        _ => {fail2!("expected digits from 0 to 9...")}
     }
 }
 
@@ -129,8 +129,8 @@ fn creature(
             }
             option::None => {
                 // log creatures met and evil clones of self
-                let report = fmt!("%u %s",
-                                  creatures_met, show_number(evil_clones_met));
+                let report = format!("{} {}",
+                                     creatures_met, show_number(evil_clones_met));
                 to_rendezvous_log.send(report);
                 break;
             }

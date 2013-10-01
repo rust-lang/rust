@@ -33,7 +33,7 @@ pub fn alist_get<A:Clone + 'static,
             return entry.value.clone();
         }
     }
-    fail!();
+    fail2!();
 }
 
 #[inline]

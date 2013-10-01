@@ -225,7 +225,7 @@ impl Task {
     }
 
     pub fn run(&mut self, f: &fn()) {
-        rtdebug!("run called on task: %u", borrow::to_uint(self));
+        rtdebug!("run called on task: {}", borrow::to_uint(self));
 
         // The only try/catch block in the world. Attempt to run the task's
         // client-specified code and catch any failures.
@@ -329,7 +329,7 @@ impl Task {
 
 impl Drop for Task {
     fn drop(&mut self) {
-        rtdebug!("called drop for a task: %u", borrow::to_uint(self));
+        rtdebug!("called drop for a task: {}", borrow::to_uint(self));
         rtassert!(self.destroyed)
     }
 }
@@ -498,7 +498,7 @@ mod test {
             let result = spawntask_try(||());
             rtdebug!("trying first assert");
             assert!(result.is_ok());
-            let result = spawntask_try(|| fail!());
+            let result = spawntask_try(|| fail2!());
             rtdebug!("trying second assert");
             assert!(result.is_err());
         }
@@ -516,7 +516,7 @@ mod test {
     #[test]
     fn logging() {
         do run_in_newsched_task() {
-            info!("here i am. logging in a newsched task");
+            info2!("here i am. logging in a newsched task");
         }
     }
 
@@ -558,7 +558,7 @@ mod test {
     fn linked_failure() {
         do run_in_newsched_task() {
             let res = do spawntask_try {
-                spawntask_random(|| fail!());
+                spawntask_random(|| fail2!());
             };
             assert!(res.is_err());
         }
@@ -599,7 +599,7 @@ mod test {
             builder.future_result(|r| result = Some(r));
             builder.unlinked();
             do builder.spawn {
-                fail!();
+                fail2!();
             }
             assert_eq!(result.unwrap().recv(), Failure);
         }

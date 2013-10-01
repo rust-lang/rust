@@ -25,12 +25,12 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
             (*sha).input_str(s);
             let st = match path.stat() {
                 Some(st) => st,
-                None => cond1.raise((path.clone(), fmt!("Couldn't get file access time")))
+                None => cond1.raise((path.clone(), format!("Couldn't get file access time")))
             };
             (*sha).input_str(st.st_mtime.to_str());
             (*sha).result_str()
         }
-        Err(e) => cond.raise((path.clone(), fmt!("Couldn't read file: %s", e))).to_str()
+        Err(e) => cond.raise((path.clone(), format!("Couldn't read file: {}", e))).to_str()
     }
 }
 
@@ -41,7 +41,7 @@ pub fn digest_only_date(path: &Path) -> ~str {
     let mut sha = ~Sha1::new();
     let st = match path.stat() {
                 Some(st) => st,
-                None => cond.raise((path.clone(), fmt!("Couldn't get file access time")))
+                None => cond.raise((path.clone(), format!("Couldn't get file access time")))
     };
     (*sha).input_str(st.st_mtime.to_str());
     (*sha).result_str()
@@ -49,9 +49,9 @@ pub fn digest_only_date(path: &Path) -> ~str {
 
 /// Adds multiple discovered outputs
 pub fn discover_outputs(e: &mut workcache::Exec, outputs: ~[Path]) {
-    debug!("Discovering %? outputs", outputs.len());
+    debug2!("Discovering {:?} outputs", outputs.len());
     for p in outputs.iter() {
-        debug!("Discovering output! %s", p.to_str());
+        debug2!("Discovering output! {}", p.to_str());
         // For now, assume that all discovered outputs are binaries
         e.discover_output("binary", p.to_str(), digest_only_date(p));
     }

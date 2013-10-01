@@ -85,7 +85,7 @@ unsafe fn entries(crate_map: *CrateMap) -> *ModEntry {
             return (*v0).entries;
         }
         1 => return (*crate_map).entries,
-        _ => fail!("Unknown crate map version!")
+        _ => fail2!("Unknown crate map version!")
     }
 }
 
@@ -96,7 +96,7 @@ unsafe fn iterator(crate_map: *CrateMap) -> **CrateMap {
             return vec::raw::to_ptr((*v0).children);
         }
         1 => return vec::raw::to_ptr((*crate_map).children),
-        _ => fail!("Unknown crate map version!")
+        _ => fail2!("Unknown crate map version!")
     }
 }
 

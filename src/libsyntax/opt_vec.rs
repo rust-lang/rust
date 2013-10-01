@@ -66,7 +66,7 @@ impl<T> OptVec<T> {
 
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         match *self {
-            Empty => fail!("Invalid index %u", i),
+            Empty => fail2!("Invalid index {}", i),
             Vec(ref v) => &v[i]
         }
     }

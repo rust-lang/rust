@@ -127,7 +127,7 @@ impl EnvAction {
 
 impl EnvValue {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
-        fmt!("%s(%s)", self.action.to_str(), self.datum.to_str(ccx))
+        format!("{}({})", self.action.to_str(), self.datum.to_str(ccx))
     }
 }
 
@@ -151,7 +151,7 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
         }
     });
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
-    debug!("cdata_ty=%s", ty_to_str(tcx, cdata_ty));
+    debug2!("cdata_ty={}", ty_to_str(tcx, cdata_ty));
     return cdata_ty;
 }
 
@@ -224,15 +224,15 @@ pub fn store_environment(bcx: @mut Block,
     let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
 
     let llbox = PointerCast(bcx, llbox, llboxptr_ty);
-    debug!("tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty));
+    debug2!("tuplify_box_ty = {}", ty_to_str(tcx, cbox_ty));
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
     for (i, bv) in bound_values.iter().enumerate() {
-        debug!("Copy %s into closure", bv.to_str(ccx));
+        debug2!("Copy {} into closure", bv.to_str(ccx));
 
         if ccx.sess.asm_comments() {
-            add_comment(bcx, fmt!("Copy %s into closure",
+            add_comment(bcx, format!("Copy {} into closure",
                                   bv.to_str(ccx)));
         }
 
@@ -268,7 +268,7 @@ pub fn build_closure(bcx0: @mut Block,
     // Package up the captured upvars
     let mut env_vals = ~[];
     for cap_var in cap_vars.iter() {
-        debug!("Building closure: captured variable %?", *cap_var);
+        debug2!("Building closure: captured variable {:?}", *cap_var);
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             moves::CapRef => {
@@ -384,7 +384,7 @@ pub fn trans_expr_fn(bcx: @mut Block,
     let fty = node_id_type(bcx, outer_id);
     let f = match ty::get(fty).sty {
         ty::ty_closure(ref f) => f,
-        _ => fail!("expected closure")
+        _ => fail2!("expected closure")
     };
 
     let sub_path = vec::append_one(bcx.fcx.path.clone(),

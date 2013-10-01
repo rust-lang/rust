@@ -66,7 +66,7 @@ impl PkgId {
         if path.components.len() < 1 {
             return cond.raise((path, ~"0-length pkgid"));
         }
-        let short_name = path.filestem().expect(fmt!("Strange path! %s", s));
+        let short_name = path.filestem().expect(format!("Strange path! {}", s));
 
         let version = match given_version {
             Some(v) => v,
@@ -87,13 +87,13 @@ impl PkgId {
     }
 
     pub fn hash(&self) -> ~str {
-        fmt!("%s-%s-%s", self.path.to_str(),
-             hash(self.path.to_str() + self.version.to_str()),
-             self.version.to_str())
+        format!("{}-{}-{}", self.path.to_str(),
+                hash(self.path.to_str() + self.version.to_str()),
+                self.version.to_str())
     }
 
     pub fn short_name_with_version(&self) -> ~str {
-        fmt!("%s%s", self.short_name, self.version.to_str())
+        format!("{}{}", self.short_name, self.version.to_str())
     }
 
     /// True if the ID has multiple components
@@ -112,7 +112,7 @@ impl PkgId {
     // binaries for this package (as opposed to the built ones,
     // which are per-crate).
     pub fn install_tag(&self) -> ~str {
-        fmt!("install(%s)", self.to_str())
+        format!("install({})", self.to_str())
     }
 }
 
@@ -139,7 +139,7 @@ impl Iterator<(Path, Path)> for Prefixes {
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.path.to_str(), self.version.to_str())
+        format!("{}-{}", self.path.to_str(), self.version.to_str())
     }
 }
 

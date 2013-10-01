@@ -12,6 +12,6 @@
 
 pub fn main() {
     let a: int = 10;
-    info!(a);
+    info2!("{}", a);
     assert_eq!(a * (a - 1), 90);
 }

@@ -19,5 +19,5 @@ impl Drop for r {
 fn main() {
     let i = ~r { b: true };
     let _j = i.clone(); //~ ERROR failed to find an implementation
-    info!(i);
+    info2!("{:?}", i);
 }

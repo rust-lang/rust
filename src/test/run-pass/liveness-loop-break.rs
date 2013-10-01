@@ -14,7 +14,7 @@ fn test() {
         v = 3;
         break;
     }
-    info!("%d", v);
+    info2!("{}", v);
 }
 
 pub fn main() {

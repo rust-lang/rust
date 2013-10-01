@@ -25,8 +25,8 @@ pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path)
     let workspaces = pkg_parent_workspaces(cx, pkgid);
     if workspaces.is_empty() {
         // tjc: make this a condition
-        fail!("Package %s not found in any of \
-                    the following workspaces: %s",
+        fail2!("Package {} not found in any of \
+                    the following workspaces: {}",
                    pkgid.path.to_str(),
                    rust_path().to_str());
     }

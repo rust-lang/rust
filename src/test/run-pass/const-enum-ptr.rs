@@ -14,6 +14,6 @@ static C: &'static E = &V0;
 pub fn main() {
     match *C {
         V0 => (),
-        _ => fail!()
+        _ => fail2!()
     }
 }

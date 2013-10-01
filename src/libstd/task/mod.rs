@@ -181,7 +181,7 @@ pub fn task() -> TaskBuilder {
 impl TaskBuilder {
     fn consume(&mut self) -> TaskBuilder {
         if self.consumed {
-            fail!("Cannot copy a task_builder"); // Fake move mode on self
+            fail2!("Cannot copy a task_builder"); // Fake move mode on self
         }
         self.consumed = true;
         let gen_body = self.gen_body.take();
@@ -271,7 +271,7 @@ impl TaskBuilder {
         // sending out messages.
 
         if self.opts.notify_chan.is_some() {
-            fail!("Can't set multiple future_results for one task!");
+            fail2!("Can't set multiple future_results for one task!");
         }
 
         // Construct the future and give it to the caller.
@@ -532,7 +532,7 @@ pub fn with_task_name<U>(blk: &fn(Option<&str>) -> U) -> U {
             }
         }
     } else {
-        fail!("no task name exists in non-green task context")
+        fail2!("no task name exists in non-green task context")
     }
 }
 
@@ -640,7 +640,7 @@ fn test_kill_unkillable_task() {
     do run_in_newsched_task {
         do task::try {
             do task::spawn {
-                fail!();
+                fail2!();
             }
             do task::unkillable { }
         };
@@ -659,7 +659,7 @@ fn test_kill_rekillable_task() {
             do task::unkillable {
                 do task::rekillable {
                     do task::spawn {
-                        fail!();
+                        fail2!();
                     }
                 }
             }
@@ -689,7 +689,7 @@ fn test_rekillable_nested_failure() {
         do unkillable {
             do rekillable {
                 let (port,chan) = comm::stream();
-                do task::spawn { chan.send(()); fail!(); }
+                do task::spawn { chan.send(()); fail2!(); }
                 port.recv(); // wait for child to exist
                 port.recv(); // block forever, expect to get killed.
             }
@@ -733,7 +733,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
                 do 16.times { task::deschedule(); }
                 ch.send(()); // If killed first, grandparent hangs.
             }
-            fail!(); // Shouldn't kill either (grand)parent or (grand)child.
+            fail2!(); // Shouldn't kill either (grand)parent or (grand)child.
         }
         po.recv();
     }
@@ -743,7 +743,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
-        do spawn_unlinked { fail!(); }
+        do spawn_unlinked { fail2!(); }
     }
 }
 #[ignore(reason = "linked failure")]
@@ -751,7 +751,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
-        do spawn_supervised { fail!(); }
+        do spawn_supervised { fail2!(); }
         // Give child a chance to fail-but-not-kill-us.
         do 16.times { task::deschedule(); }
     }
@@ -763,7 +763,7 @@ fn test_spawn_unlinked_sup_fail_down() {
     do run_in_newsched_task {
         let result: Result<(),()> = do try {
             do spawn_supervised { block_forever(); }
-            fail!(); // Shouldn't leave a child hanging around.
+            fail2!(); // Shouldn't leave a child hanging around.
         };
         assert!(result.is_err());
     }
@@ -783,7 +783,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
             b0.opts.supervised = true;
 
             do b0.spawn {
-                fail!();
+                fail2!();
             }
             block_forever(); // We should get punted awake
         };
@@ -802,7 +802,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
             b0.opts.linked = true;
             b0.opts.supervised = true;
             do b0.spawn { block_forever(); }
-            fail!(); // *both* mechanisms would be wrong if this didn't kill the child
+            fail2!(); // *both* mechanisms would be wrong if this didn't kill the child
         };
         assert!(result.is_err());
     }
@@ -814,7 +814,7 @@ fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     do run_in_newsched_task {
         let result: Result<(),()> = do try {
             // Default options are to spawn linked & unsupervised.
-            do spawn { fail!(); }
+            do spawn { fail2!(); }
             block_forever(); // We should get punted awake
         };
         assert!(result.is_err());
@@ -828,7 +828,7 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
         let result: Result<(),()> = do try {
             // Default options are to spawn linked & unsupervised.
             do spawn { block_forever(); }
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
     }
@@ -843,7 +843,7 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
             let mut builder = task();
             builder.linked();
             do builder.spawn { block_forever(); }
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
     }
@@ -863,7 +863,7 @@ fn test_spawn_failure_propagate_grandchild() {
                 do spawn_supervised { block_forever(); }
             }
             do 16.times { task::deschedule(); }
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
     }
@@ -880,7 +880,7 @@ fn test_spawn_failure_propagate_secondborn() {
                 do spawn { block_forever(); } // linked
             }
             do 16.times { task::deschedule(); }
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
     }
@@ -897,7 +897,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
                 do spawn_supervised { block_forever(); }
             }
             do 16.times { task::deschedule(); }
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
     }
@@ -914,7 +914,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
                 do spawn { block_forever(); } // linked
             }
             do 16.times { task::deschedule(); }
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
     }
@@ -994,7 +994,7 @@ fn test_future_result() {
     builder.future_result(|r| result = Some(r));
     builder.unlinked();
     do builder.spawn {
-        fail!();
+        fail2!();
     }
     assert_eq!(result.unwrap().recv(), Failure);
 }
@@ -1012,17 +1012,17 @@ fn test_try_success() {
         ~"Success!"
     } {
         result::Ok(~"Success!") => (),
-        _ => fail!()
+        _ => fail2!()
     }
 }
 
 #[test]
 fn test_try_fail() {
     match do try {
-        fail!()
+        fail2!()
     } {
         result::Err(()) => (),
-        result::Ok(()) => fail!()
+        result::Ok(()) => fail2!()
     }
 }
 
@@ -1212,7 +1212,7 @@ fn test_unkillable() {
         deschedule();
         // We want to fail after the unkillable task
         // blocks on recv
-        fail!();
+        fail2!();
     }
 
     unsafe {
@@ -1247,7 +1247,7 @@ fn test_unkillable_nested() {
         deschedule();
         // We want to fail after the unkillable task
         // blocks on recv
-        fail!();
+        fail2!();
     }
 
     unsafe {
@@ -1312,7 +1312,7 @@ fn test_spawn_watched() {
                 t.watched();
                 do t.spawn {
                     task::deschedule();
-                    fail!();
+                    fail2!();
                 }
             }
         };
@@ -1348,7 +1348,7 @@ fn test_indestructible() {
                 do t.spawn {
                     p3.recv();
                     task::deschedule();
-                    fail!();
+                    fail2!();
                 }
                 c3.send(());
                 p2.recv();

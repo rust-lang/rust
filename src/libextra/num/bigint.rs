@@ -352,7 +352,7 @@ impl Rem<BigUint, BigUint> for BigUint {
 
 impl Neg<BigUint> for BigUint {
     #[inline]
-    fn neg(&self) -> BigUint { fail!() }
+    fn neg(&self) -> BigUint { fail2!() }
 }
 
 impl Integer for BigUint {
@@ -374,7 +374,7 @@ impl Integer for BigUint {
     }
 
     fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
-        if other.is_zero() { fail!() }
+        if other.is_zero() { fail2!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
         if *other == One::one() { return ((*self).clone(), Zero::zero()); }
 
@@ -726,7 +726,7 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
         14 => (1475789056, 8),
         15 => (2562890625, 8),
         16 => (4294967296, 8),
-        _  => fail!()
+        _  => fail2!()
     }
 }
 
@@ -750,7 +750,7 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
         14 => (38416, 4),
         15 => (50625, 4),
         16 => (65536, 4),
-        _  => fail!()
+        _  => fail2!()
     }
 }
 
@@ -1004,7 +1004,7 @@ impl Integer for BigInt {
         let d = BigInt::from_biguint(Plus, d_ui);
         let r = BigInt::from_biguint(Plus, r_ui);
         match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
+            (_,    Zero)   => fail2!(),
             (Plus, Plus)  | (Zero, Plus)  => ( d,  r),
             (Plus, Minus) | (Zero, Minus) => (-d,  r),
             (Minus, Plus)                 => (-d, -r),
@@ -1030,7 +1030,7 @@ impl Integer for BigInt {
         let d = BigInt::from_biguint(Plus, d_ui);
         let m = BigInt::from_biguint(Plus, m_ui);
         match (self.sign, other.sign) {
-            (_,    Zero)   => fail!(),
+            (_,    Zero)   => fail2!(),
             (Plus, Plus)  | (Zero, Plus)  => (d, m),
             (Plus, Minus) | (Zero, Minus) => if m.is_zero() {
                 (-d, Zero::zero())
@@ -1742,7 +1742,7 @@ mod biguint_tests {
              ~"2" +
              str::from_chars(vec::from_elem(bits / 2 - 1, '0')) + "1"),
             (10, match bits {
-                32 => ~"8589934593", 16 => ~"131073", _ => fail!()
+                32 => ~"8589934593", 16 => ~"131073", _ => fail2!()
             }),
             (16,
              ~"2" +
@@ -1759,7 +1759,7 @@ mod biguint_tests {
             (10, match bits {
                 32 => ~"55340232229718589441",
                 16 => ~"12885032961",
-                _ => fail!()
+                _ => fail2!()
             }),
             (16, ~"3" +
              str::from_chars(vec::from_elem(bits / 4 - 1, '0')) + "2" +
@@ -1814,7 +1814,7 @@ mod biguint_tests {
         fn check(n: uint, s: &str) {
             let n = factor(n);
             let ans = match FromStrRadix::from_str_radix(s, 10) {
-                Some(x) => x, None => fail!()
+                Some(x) => x, None => fail2!()
             };
             assert_eq!(n, ans);
         }

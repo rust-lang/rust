@@ -16,9 +16,9 @@ pub fn main() {
     let mut builder = task::task();
     builder.future_result(|r| { result = Some(r); });
     builder.spawn(child);
-    error!("1");
+    error2!("1");
     task::deschedule();
     result.unwrap().recv();
 }
 
-fn child() { error!("2"); }
+fn child() { error2!("2"); }
