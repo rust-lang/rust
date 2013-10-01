@@ -104,7 +104,7 @@ impl ResolveState {
     pub fn resolve_type_chk(&mut self, typ: ty::t) -> fres<ty::t> {
         self.err = None;
 
-        debug!("Resolving %s (modes=%x)",
+        debug2!("Resolving {} (modes={:x})",
                ty_to_str(self.infcx.tcx, typ),
                self.modes);
 
@@ -116,7 +116,7 @@ impl ResolveState {
         assert!(self.v_seen.is_empty());
         match self.err {
           None => {
-            debug!("Resolved to %s + %s (modes=%x)",
+            debug2!("Resolved to {} + {} (modes={:x})",
                    ty_to_str(self.infcx.tcx, rty),
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes);
@@ -137,7 +137,7 @@ impl ResolveState {
     }
 
     pub fn resolve_type(&mut self, typ: ty::t) -> ty::t {
-        debug!("resolve_type(%s)", typ.inf_str(self.infcx));
+        debug2!("resolve_type({})", typ.inf_str(self.infcx));
         let _i = indenter();
 
         if !ty::type_needs_infer(typ) {
@@ -179,7 +179,7 @@ impl ResolveState {
     }
 
     pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
-        debug!("Resolve_region(%s)", orig.inf_str(self.infcx));
+        debug2!("Resolve_region({})", orig.inf_str(self.infcx));
         match orig {
           ty::re_infer(ty::ReVar(rid)) => self.resolve_region_var(rid),
           _ => orig
@@ -269,9 +269,9 @@ impl ResolveState {
           Some(t) => ty::mk_mach_float(t),
           None => {
             if self.should(force_fvar) {
-                // As a last resort, default to float.
-                let ty = ty::mk_float();
-                self.infcx.set(vid, Root(Some(ast::ty_f), node.rank));
+                // As a last resort, default to f64.
+                let ty = ty::mk_f64();
+                self.infcx.set(vid, Root(Some(ast::ty_f64), node.rank));
                 ty
             } else {
                 ty::mk_float_var(self.infcx.tcx, vid)

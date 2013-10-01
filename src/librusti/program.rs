@@ -100,7 +100,7 @@ impl Program {
         // It's easy to initialize things if we don't run things...
         for (name, var) in self.local_vars.iter() {
             let mt = var.mt();
-            code.push_str(fmt!("let%s %s: %s = fail!();\n", mt, *name, var.ty));
+            code.push_str(format!("let{} {}: {} = fail!();\n", mt, *name, var.ty));
             var.alter(*name, &mut code);
         }
         code.push_str("{\n");
@@ -115,7 +115,7 @@ impl Program {
         }
 
         for p in new_locals.iter() {
-            code.push_str(fmt!("assert_encodable(&%s);\n", *p.first_ref()));
+            code.push_str(format!("assert_encodable(&{});\n", *p.first_ref()));
         }
         code.push_str("};}");
         return code;
@@ -138,22 +138,22 @@ impl Program {
         // variables. This works by totally legitimately using the 'code'
         // pointer of the 'tls_key' function as a uint, and then casting it back
         // up to a function
-        code.push_str(fmt!("
-            let __tls_map: @mut ::std::hashmap::HashMap<~str, @~[u8]> = unsafe {
-                let key = ::std::cast::transmute(%u);
+        code.push_str(format!("
+            let __tls_map: @mut ::std::hashmap::HashMap<~str, @~[u8]> = unsafe \\{
+                let key = ::std::cast::transmute({});
                 ::std::local_data::get(key, |k| k.map(|&x| *x)).unwrap()
-            };\n", key as uint));
+            \\};\n", key));
 
         // Using this __tls_map handle, deserialize each variable binding that
         // we know about
         for (name, var) in self.local_vars.iter() {
             let mt = var.mt();
-            code.push_str(fmt!("let%s %s: %s = {
-                let data = __tls_map.get_copy(&~\"%s\");
+            code.push_str(format!("let{} {}: {} = \\{
+                let data = __tls_map.get_copy(&~\"{}\");
                 let doc = ::extra::ebml::reader::Doc(data);
                 let mut decoder = ::extra::ebml::reader::Decoder(doc);
                 ::extra::serialize::Decodable::decode(&mut decoder)
-            };\n", mt, *name, var.ty, *name));
+            \\};\n", mt, *name, var.ty, *name));
             var.alter(*name, &mut code);
         }
 
@@ -162,7 +162,7 @@ impl Program {
         code.push_char('\n');
 
         match *to_print {
-            Some(ref s) => { code.push_str(fmt!("pp({\n%s\n});", *s)); }
+            Some(ref s) => { code.push_str(format!("pp(\\{\n{}\n\\});", *s)); }
             None => {}
         }
 
@@ -174,14 +174,14 @@ impl Program {
         // After the input code is run, we can re-serialize everything back out
         // into tls map (to be read later on by this task)
         for (name, var) in self.local_vars.iter() {
-            code.push_str(fmt!("{
-                let local: %s = %s;
-                let bytes = do ::std::io::with_bytes_writer |io| {
+            code.push_str(format!("\\{
+                let local: {} = {};
+                let bytes = do ::std::io::with_bytes_writer |io| \\{
                     let mut enc = ::extra::ebml::writer::Encoder(io);
                     local.encode(&mut enc);
-                };
-                __tls_map.insert(~\"%s\", @bytes);
-            }\n", var.real_ty(), *name, *name));
+                \\};
+                __tls_map.insert(~\"{}\", @bytes);
+            \\}\n", var.real_ty(), *name, *name));
         }
 
         // Close things up, and we're done.
@@ -193,14 +193,14 @@ impl Program {
     fn program_header(&self) -> ~str {
         // up front, disable lots of annoying lints, then include all global
         // state such as items, view items, and extern mods.
-        let mut code = fmt!("
-            #[allow(warnings)];
+        let mut code = format!("
+            \\#[allow(warnings)];
 
             extern mod extra;
-            %s // extern mods
+            {} // extern mods
 
             use extra::serialize::*;
-            %s // view items
+            {} // view items
         ", self.externs, self.view_items);
         for (_, s) in self.structs.iter() {
             // The structs aren't really useful unless they're encodable
@@ -236,7 +236,7 @@ impl Program {
         for (name, value) in cons_map.move_iter() {
             match self.local_vars.find_mut(&name) {
                 Some(v) => { v.data = (*value).clone(); }
-                None => { fail!("unknown variable %s", name) }
+                None => { fail2!("unknown variable {}", name) }
             }
         }
     }
@@ -272,7 +272,7 @@ impl Program {
     /// Once the types are known, they are inserted into the local_vars map in
     /// this Program (to be deserialized later on
     pub fn register_new_vars(&mut self, blk: &ast::Block, tcx: ty::ctxt) {
-        debug!("looking for new variables");
+        debug2!("looking for new variables");
         let newvars = @mut HashMap::new();
         do each_user_local(blk) |local| {
             let mutable = local.is_mutbl;
@@ -378,7 +378,7 @@ impl Program {
                     _ => {}
                 }
             }
-            fail!("couldn't find user block");
+            fail2!("couldn't find user block");
         }
     }
 }
@@ -389,9 +389,9 @@ impl LocalVariable {
     fn alter(&self, name: &str, code: &mut ~str) {
         match self.alterations {
             Some((ref real_ty, ref prefix)) => {
-                code.push_str(fmt!("let%s %s: %s = %s%s;\n",
-                                   self.mt(), name,
-                                   *real_ty, *prefix, name));
+                code.push_str(format!("let{} {}: {} = {}{};\n",
+                                      self.mt(), name,
+                                      *real_ty, *prefix, name));
             }
             None => {}
         }

@@ -11,7 +11,7 @@
 // rustpkg - a package manager and build system for Rust
 
 #[link(name = "rustpkg",
-       vers = "0.8",
+       vers = "0.9-pre",
        uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
@@ -33,7 +33,7 @@ use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
 use messages::{error, warn, note};
-use path_util::build_pkg_id_in_workspace;
+use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
 use path_util::{U_RWX, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
@@ -44,7 +44,7 @@ use context::{Context, BuildContext,
                        LLVMAssemble, LLVMCompileBitcode};
 use package_id::PkgId;
 use package_source::PkgSrc;
-use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
+use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench, Tests};
 // use workcache_support::{discover_outputs, digest_only_date};
 use workcache_support::digest_only_date;
 use exit_codes::COPY_FAILED_CODE;
@@ -85,7 +85,7 @@ struct PkgScript<'self> {
     /// The config for compiling the custom build script
     cfg: ast::CrateConfig,
     /// The crate for the custom build script
-    crate: @ast::Crate,
+    crate: Option<ast::Crate>,
     /// Directory in which to store build output
     build_dir: Path
 }
@@ -102,7 +102,7 @@ impl<'self> PkgScript<'self> {
         let binary = os::args()[0].to_managed();
         // Build the rustc session data structures to pass
         // to the compiler
-        debug!("pkgscript parse: %s", sysroot.to_str());
+        debug2!("pkgscript parse: {}", sysroot.to_str());
         let options = @session::options {
             binary: binary,
             maybe_sysroot: Some(sysroot),
@@ -118,14 +118,14 @@ impl<'self> PkgScript<'self> {
         let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
-        debug!("Returning package script with id %s", id.to_str());
+        debug2!("Returning package script with id {}", id.to_str());
 
         PkgScript {
             id: id,
             input: script,
             sess: sess,
             cfg: cfg,
-            crate: crate,
+            crate: Some(crate),
             build_dir: work_dir
         }
     }
@@ -134,13 +134,14 @@ impl<'self> PkgScript<'self> {
     /// is the command to pass to it (e.g., "build", "clean", "install")
     /// Returns a pair of an exit code and list of configs (obtained by
     /// calling the package script's configs() function if it exists
-    fn run_custom(&self, exec: &mut workcache::Exec, sysroot: &Path) -> (~[~str], ExitCode) {
+    fn run_custom(&mut self, exec: &mut workcache::Exec,
+                  sysroot: &Path) -> (~[~str], ExitCode) {
         let sess = self.sess;
 
-        debug!("Working directory = %s", self.build_dir.to_str());
+        debug2!("Working directory = {}", self.build_dir.to_str());
         // Collect together any user-defined commands in the package script
-        let crate = util::ready_crate(sess, self.crate);
-        debug!("Building output filenames with script name %s",
+        let crate = util::ready_crate(sess, self.crate.take_unwrap());
+        debug2!("Building output filenames with script name {}",
                driver::source_name(&driver::file_input(self.input.clone())));
         let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
@@ -149,7 +150,7 @@ impl<'self> PkgScript<'self> {
                                        &self.build_dir,
                                        sess,
                                        crate);
-        debug!("Running program: %s %s %s", exe.to_str(),
+        debug2!("Running program: {} {} {}", exe.to_str(),
                sysroot.to_str(), "install");
         // Discover the output
         exec.discover_output("binary", exe.to_str(), digest_only_date(&exe));
@@ -159,7 +160,7 @@ impl<'self> PkgScript<'self> {
             return (~[], status);
         }
         else {
-            debug!("Running program (configs): %s %s %s",
+            debug2!("Running program (configs): {} {} {}",
                    exe.to_str(), sysroot.to_str(), "configs");
             let output = run::process_output(exe.to_str(), [sysroot.to_str(), ~"configs"]);
             // Run the configs() function to get the configs
@@ -177,6 +178,8 @@ impl<'self> PkgScript<'self> {
 pub trait CtxMethods {
     fn run(&self, cmd: &str, args: ~[~str]);
     fn do_cmd(&self, _cmd: &str, _pkgname: &str);
+    /// Returns a pair of the selected package ID, and the destination workspace
+    fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(PkgId, Path)>;
     /// Returns the destination workspace
     fn build(&self, pkg_src: &mut PkgSrc, what: &WhatToBuild) -> Path;
     fn clean(&self, workspace: &Path, id: &PkgId);
@@ -190,43 +193,53 @@ pub trait CtxMethods {
                         target_workspace: &Path,
                         id: &PkgId) -> ~[~str];
     fn prefer(&self, _id: &str, _vers: Option<~str>);
-    fn test(&self);
+    fn test(&self, id: &PkgId, workspace: &Path);
     fn uninstall(&self, _id: &str, _vers: Option<~str>);
     fn unprefer(&self, _id: &str, _vers: Option<~str>);
     fn init(&self);
 }
 
 impl CtxMethods for BuildContext {
+    fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(PkgId, Path)> {
+        if args.len() < 1 {
+            match cwd_to_workspace() {
+                None if self.context.use_rust_path_hack => {
+                    let cwd = os::getcwd();
+                    let pkgid = PkgId::new(cwd.components[cwd.components.len() - 1]);
+                    let mut pkg_src = PkgSrc::new(cwd, true, pkgid);
+                    let dest_ws = self.build(&mut pkg_src, what);
+                    Some((pkg_src.id, dest_ws))
+                }
+                None => { usage::build(); None }
+                Some((ws, pkgid)) => {
+                    let mut pkg_src = PkgSrc::new(ws, false, pkgid);
+                    let dest_ws = self.build(&mut pkg_src, what);
+                    Some((pkg_src.id, dest_ws))
+                }
+            }
+        } else {
+            // The package id is presumed to be the first command-line
+            // argument
+            let pkgid = PkgId::new(args[0].clone());
+            let mut dest_ws = None;
+            do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
+                debug2!("found pkg {} in workspace {}, trying to build",
+                       pkgid.to_str(), workspace.to_str());
+                let mut pkg_src = PkgSrc::new(workspace.clone(), false, pkgid.clone());
+                dest_ws = Some(self.build(&mut pkg_src, what));
+                true
+            };
+            assert!(dest_ws.is_some());
+            // n.b. If this builds multiple packages, it only returns the workspace for
+            // the last one. The whole building-multiple-packages-with-the-same-ID is weird
+            // anyway and there are no tests for it, so maybe take it out
+            Some((pkgid, dest_ws.unwrap()))
+        }
+    }
     fn run(&self, cmd: &str, args: ~[~str]) {
         match cmd {
             "build" => {
-                if args.len() < 1 {
-                    match cwd_to_workspace() {
-                        None if self.context.use_rust_path_hack => {
-                            let cwd = os::getcwd();
-                            let pkgid = PkgId::new(cwd.components[cwd.components.len() - 1]);
-                            let mut pkg_src = PkgSrc::new(cwd, true, pkgid);
-                            self.build(&mut pkg_src, &Everything);
-                        }
-                        None => { usage::build(); return; }
-                        Some((ws, pkgid)) => {
-                            let mut pkg_src = PkgSrc::new(ws, false, pkgid);
-                            self.build(&mut pkg_src, &Everything);
-                        }
-                    }
-                }
-                else {
-                    // The package id is presumed to be the first command-line
-                    // argument
-                    let pkgid = PkgId::new(args[0].clone());
-                    do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
-                        debug!("found pkg %s in workspace %s, trying to build",
-                               pkgid.to_str(), workspace.to_str());
-                        let mut pkg_src = PkgSrc::new(workspace.clone(), false, pkgid.clone());
-                        self.build(&mut pkg_src, &Everything);
-                        true
-                    };
-                }
+                self.build_args(args, &Everything);
             }
             "clean" => {
                 if args.len() < 1 {
@@ -277,7 +290,7 @@ impl CtxMethods for BuildContext {
                     // argument
                     let pkgid = PkgId::new(args[0]);
                     let workspaces = pkg_parent_workspaces(&self.context, &pkgid);
-                    debug!("package ID = %s, found it in %? workspaces",
+                    debug2!("package ID = {}, found it in {:?} workspaces",
                            pkgid.to_str(), workspaces.len());
                     if workspaces.is_empty() {
                         let rp = rust_path();
@@ -310,7 +323,17 @@ impl CtxMethods for BuildContext {
                 self.prefer(args[0], None);
             }
             "test" => {
-                self.test();
+                // Build the test executable
+                let maybe_id_and_workspace = self.build_args(args, &Tests);
+                match maybe_id_and_workspace {
+                    Some((pkg_id, workspace)) => {
+                        // Assuming it's built, run the tests
+                        self.test(&pkg_id, &workspace);
+                    }
+                    None => {
+                        error("Testing failed because building the specified package failed.");
+                    }
+                }
             }
             "init" => {
                 if args.len() != 0 {
@@ -326,7 +349,8 @@ impl CtxMethods for BuildContext {
 
                 let pkgid = PkgId::new(args[0]);
                 if !installed_packages::package_is_installed(&pkgid) {
-                    warn(fmt!("Package %s doesn't seem to be installed! Doing nothing.", args[0]));
+                    warn(format!("Package {} doesn't seem to be installed! \
+                                  Doing nothing.", args[0]));
                     return;
                 }
                 else {
@@ -334,7 +358,7 @@ impl CtxMethods for BuildContext {
                     assert!(!rp.is_empty());
                     do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
                         path_util::uninstall_package_from(workspace, &pkgid);
-                        note(fmt!("Uninstalled package %s (was installed in %s)",
+                        note(format!("Uninstalled package {} (was installed in {})",
                                   pkgid.to_str(), workspace.to_str()));
                         true
                     };
@@ -347,13 +371,13 @@ impl CtxMethods for BuildContext {
 
                 self.unprefer(args[0], None);
             }
-            _ => fail!(fmt!("I don't know the command `%s`", cmd))
+            _ => fail2!("I don't know the command `{}`", cmd)
         }
     }
 
     fn do_cmd(&self, _cmd: &str, _pkgname: &str)  {
         // stub
-        fail!("`do` not yet implemented");
+        fail2!("`do` not yet implemented");
     }
 
     /// Returns the destination workspace
@@ -364,8 +388,8 @@ impl CtxMethods for BuildContext {
         let workspace = pkg_src.workspace.clone();
         let pkgid = pkg_src.id.clone();
 
-        debug!("build: workspace = %s (in Rust path? %? is git dir? %? \
-                pkgid = %s pkgsrc start_dir = %s", workspace.to_str(),
+        debug2!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
+                pkgid = {} pkgsrc start_dir = {}", workspace.to_str(),
                in_rust_path(&workspace), is_git_dir(&workspace.push_rel(&pkgid.path)),
                pkgid.to_str(), pkg_src.start_dir.to_str());
 
@@ -376,16 +400,16 @@ impl CtxMethods for BuildContext {
             source_control::git_clone(&workspace.push_rel(&pkgid.path),
                                       &out_dir, &pkgid.version);
             let default_ws = default_workspace();
-            debug!("Calling build recursively with %? and %?", default_ws.to_str(),
+            debug2!("Calling build recursively with {:?} and {:?}", default_ws.to_str(),
                    pkgid.to_str());
             return self.build(&mut PkgSrc::new(default_ws, false, pkgid.clone()), what_to_build);
         }
 
         // Is there custom build logic? If so, use it
         let mut custom = false;
-        debug!("Package source directory = %s", pkg_src.to_str());
+        debug2!("Package source directory = {}", pkg_src.to_str());
         let opt = pkg_src.package_script_option();
-        debug!("Calling pkg_script_option on %?", opt);
+        debug2!("Calling pkg_script_option on {:?}", opt);
         let cfgs = match pkg_src.package_script_option() {
             Some(package_script_path) => {
                 let sysroot = self.sysroot_to_use();
@@ -397,24 +421,24 @@ impl CtxMethods for BuildContext {
                     let sub_id = pkgid.clone();
                     declare_package_script_dependency(prep, &*pkg_src);
                     do prep.exec |exec| {
-                        let pscript = PkgScript::parse(@sub_sysroot.clone(),
-                                                       package_script_path_clone.clone(),
-                                                       &sub_ws,
-                                                       &sub_id);
+                        let mut pscript = PkgScript::parse(@sub_sysroot.clone(),
+                                                          package_script_path_clone.clone(),
+                                                          &sub_ws,
+                                                          &sub_id);
 
                         pscript.run_custom(exec, &sub_sysroot)
                     }
                 };
-                debug!("Command return code = %?", hook_result);
+                debug2!("Command return code = {:?}", hook_result);
                 if hook_result != 0 {
-                    fail!("Error running custom build command")
+                    fail2!("Error running custom build command")
                 }
                 custom = true;
                 // otherwise, the package script succeeded
                 cfgs
             }
             None => {
-                debug!("No package script, continuing");
+                debug2!("No package script, continuing");
                 ~[]
             }
         } + self.context.cfgs;
@@ -425,11 +449,13 @@ impl CtxMethods for BuildContext {
             match what_to_build {
                 // Find crates inside the workspace
                 &Everything => pkg_src.find_crates(),
+                // Find only tests
+                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path(s)) }),
                 // Don't infer any crates -- just build the one that was requested
                 &JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
-                    debug!("JustOne: p = %s", p.to_str());
+                    debug2!("JustOne: p = {}", p.to_str());
                     assert!(os::path_exists(&pkg_src.start_dir.push_rel(p)));
                     if is_lib(p) {
                         PkgSrc::push_crate(&mut pkg_src.libs, 0, p);
@@ -440,7 +466,7 @@ impl CtxMethods for BuildContext {
                     } else if is_bench(p) {
                         PkgSrc::push_crate(&mut pkg_src.benchs, 0, p);
                     } else {
-                        warn(fmt!("Not building any crates for dependency %s", p.to_str()));
+                        warn(format!("Not building any crates for dependency {}", p.to_str()));
                         return workspace.clone();
                     }
                 }
@@ -461,19 +487,19 @@ impl CtxMethods for BuildContext {
         // Do something reasonable for now
 
         let dir = build_pkg_id_in_workspace(id, workspace);
-        note(fmt!("Cleaning package %s (removing directory %s)",
+        note(format!("Cleaning package {} (removing directory {})",
                         id.to_str(), dir.to_str()));
         if os::path_exists(&dir) {
             os::remove_dir_recursive(&dir);
-            note(fmt!("Removed directory %s", dir.to_str()));
+            note(format!("Removed directory {}", dir.to_str()));
         }
 
-        note(fmt!("Cleaned package %s", id.to_str()));
+        note(format!("Cleaned package {}", id.to_str()));
     }
 
     fn info(&self) {
         // stub
-        fail!("info not yet implemented");
+        fail2!("info not yet implemented");
     }
 
     fn install(&self, mut pkg_src: PkgSrc, what: &WhatToBuild) -> (~[Path], ~[(~str, ~str)]) {
@@ -489,11 +515,11 @@ impl CtxMethods for BuildContext {
 
         let to_do = ~[pkg_src.libs.clone(), pkg_src.mains.clone(),
                       pkg_src.tests.clone(), pkg_src.benchs.clone()];
-        debug!("In declare inputs for %s", id.to_str());
+        debug2!("In declare inputs for {}", id.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
                 let path = pkg_src.start_dir.push_rel(&c.file).normalize();
-                debug!("Recording input: %s", path.to_str());
+                debug2!("Recording input: {}", path.to_str());
                 installed_files.push(path);
             }
         }
@@ -507,15 +533,15 @@ impl CtxMethods for BuildContext {
             else {
             Path(destination_workspace)
         };
-        debug!("install: destination workspace = %s, id = %s, installing to %s",
+        debug2!("install: destination workspace = {}, id = {}, installing to {}",
                destination_workspace, id.to_str(), actual_workspace.to_str());
         let result = self.install_no_build(&Path(destination_workspace),
                                            &actual_workspace,
                                            &id).map(|s| Path(*s));
-        debug!("install: id = %s, about to call discover_outputs, %?",
+        debug2!("install: id = {}, about to call discover_outputs, {:?}",
                id.to_str(), result.to_str());
         installed_files = installed_files + result;
-        note(fmt!("Installed package %s to %s", id.to_str(), actual_workspace.to_str()));
+        note(format!("Installed package {} to {}", id.to_str(), actual_workspace.to_str()));
         (installed_files, inputs)
     }
 
@@ -532,8 +558,8 @@ impl CtxMethods for BuildContext {
         let target_exec = target_executable_in_workspace(id, target_workspace);
         let target_lib = maybe_library.map(|_p| target_library_in_workspace(id, target_workspace));
 
-        debug!("target_exec = %s target_lib = %? \
-               maybe_executable = %? maybe_library = %?",
+        debug2!("target_exec = {} target_lib = {:?} \
+               maybe_executable = {:?} maybe_library = {:?}",
                target_exec.to_str(), target_lib,
                maybe_executable, maybe_library);
 
@@ -557,7 +583,7 @@ impl CtxMethods for BuildContext {
                 let mut outputs = ~[];
 
                 for exec in subex.iter() {
-                    debug!("Copying: %s -> %s", exec.to_str(), sub_target_ex.to_str());
+                    debug2!("Copying: {} -> {}", exec.to_str(), sub_target_ex.to_str());
                     if !(os::mkdir_recursive(&sub_target_ex.dir_path(), U_RWX) &&
                          os::copy_file(exec, &sub_target_ex)) {
                         cond.raise(((*exec).clone(), sub_target_ex.clone()));
@@ -569,11 +595,11 @@ impl CtxMethods for BuildContext {
                 }
                 for lib in sublib.iter() {
                     let target_lib = sub_target_lib
-                        .clone().expect(fmt!("I built %s but apparently \
+                        .clone().expect(format!("I built {} but apparently \
                                              didn't install it!", lib.to_str()));
                     let target_lib = target_lib
                         .pop().push(lib.filename().expect("weird target lib"));
-                    debug!("Copying: %s -> %s", lib.to_str(), sub_target_lib.to_str());
+                    debug2!("Copying: {} -> {}", lib.to_str(), sub_target_lib.to_str());
                     if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                          os::copy_file(lib, &target_lib)) {
                         cond.raise(((*lib).clone(), target_lib.clone()));
@@ -589,12 +615,22 @@ impl CtxMethods for BuildContext {
     }
 
     fn prefer(&self, _id: &str, _vers: Option<~str>)  {
-        fail!("prefer not yet implemented");
+        fail2!("prefer not yet implemented");
     }
 
-    fn test(&self)  {
-        // stub
-        fail!("test not yet implemented");
+    fn test(&self, pkgid: &PkgId, workspace: &Path)  {
+        match built_test_in_workspace(pkgid, workspace) {
+            Some(test_exec) => {
+                debug2!("test: test_exec = {}", test_exec.to_str());
+                let status = run::process_status(test_exec.to_str(), [~"--test"]);
+                os::set_exit_status(status);
+            }
+            None => {
+                error(format!("Internal error: test executable for package ID {} in workspace {} \
+                           wasn't built! Please report this as a bug.",
+                           pkgid.to_str(), workspace.to_str()));
+            }
+        }
     }
 
     fn init(&self) {
@@ -605,11 +641,11 @@ impl CtxMethods for BuildContext {
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
-        fail!("uninstall not yet implemented");
+        fail2!("uninstall not yet implemented");
     }
 
     fn unprefer(&self, _id: &str, _vers: Option<~str>)  {
-        fail!("unprefer not yet implemented");
+        fail2!("unprefer not yet implemented");
     }
 }
 
@@ -642,7 +678,7 @@ pub fn main_args(args: &[~str]) -> int {
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
-            error(fmt!("%s", f.to_err_msg()));
+            error(format!("{}", f.to_err_msg()));
 
             return 1;
         }
@@ -777,8 +813,8 @@ pub fn main_args(args: &[~str]) -> int {
         _ => filesearch::get_or_default_sysroot()
     };
 
-    debug!("Using sysroot: %s", sroot.to_str());
-    debug!("Will store workcache in %s", default_workspace().to_str());
+    debug2!("Using sysroot: {}", sroot.to_str());
+    debug2!("Will store workcache in {}", default_workspace().to_str());
 
     let rm_args = remaining_args.clone();
     let sub_cmd = cmd.clone();

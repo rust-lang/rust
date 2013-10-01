@@ -59,7 +59,7 @@
  */
 
 #[link(name = "rusti",
-       vers = "0.8",
+       vers = "0.9-pre",
        uuid = "7fb5bf52-7d45-4fee-8325-5ad3311149fc",
        url = "https://github.com/mozilla/rust/tree/master/src/rusti")];
 
@@ -156,12 +156,12 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     //
     // Stage 1: parse the input and filter it into the program (as necessary)
     //
-    debug!("parsing: %s", input);
+    debug2!("parsing: {}", input);
     let crate = parse_input(sess, input);
     let mut to_run = ~[];       // statements to run (emitted back into code)
     let new_locals = @mut ~[];  // new locals being defined
     let mut result = None;      // resultant expression (to print via pp)
-    do find_main(crate, sess) |blk| {
+    do find_main(&crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
         for vi in blk.view_items.iter() {
@@ -231,30 +231,30 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // Stage 2: run everything up to typeck to learn the types of the new
     //          variables introduced into the program
     //
-    info!("Learning about the new types in the program");
+    info2!("Learning about the new types in the program");
     program.set_cache(); // before register_new_vars (which changes them)
     let input = to_run.connect("\n");
     let test = program.test_code(input, &result, *new_locals);
-    debug!("testing with ^^^^^^ %?", (||{ println(test) })());
+    debug2!("testing with ^^^^^^ {:?}", (||{ println(test) })());
     let dinput = driver::str_input(test.to_managed());
     let cfg = driver::build_configuration(sess);
 
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &dinput);
     let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
-    let analysis = driver::phase_3_run_analysis_passes(sess, expanded_crate);
+    let analysis = driver::phase_3_run_analysis_passes(sess, &expanded_crate);
 
     // Once we're typechecked, record the types of all local variables defined
     // in this input
-    do find_main(crate, sess) |blk| {
+    do find_main(&expanded_crate, sess) |blk| {
         program.register_new_vars(blk, analysis.ty_cx);
     }
 
     //
     // Stage 3: Actually run the code in the JIT
     //
-    info!("actually running code");
+    info2!("actually running code");
     let code = program.code(input, &result);
-    debug!("actually running ^^^^^^ %?", (||{ println(code) })());
+    debug2!("actually running ^^^^^^ {:?}", (||{ println(code) })());
     let input = driver::str_input(code.to_managed());
     let cfg = driver::build_configuration(sess);
     let outputs = driver::build_output_filenames(&input, &None, &None, [], sess);
@@ -264,7 +264,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
     let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
-    let analysis = driver::phase_3_run_analysis_passes(sess, expanded_crate);
+    let analysis = driver::phase_3_run_analysis_passes(sess, &expanded_crate);
     let trans = driver::phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs);
     driver::phase_5_run_llvm_passes(sess, &trans, outputs);
 
@@ -272,7 +272,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // Stage 4: Inform the program that computation is done so it can update all
     //          local variable bindings.
     //
-    info!("cleaning up after code");
+    info2!("cleaning up after code");
     program.consume_cache();
 
     //
@@ -283,14 +283,14 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     //
     return (program, jit::consume_engine());
 
-    fn parse_input(sess: session::Session, input: &str) -> @ast::Crate {
-        let code = fmt!("fn main() {\n %s \n}", input);
+    fn parse_input(sess: session::Session, input: &str) -> ast::Crate {
+        let code = format!("fn main() \\{\n {} \n\\}", input);
         let input = driver::str_input(code.to_managed());
         let cfg = driver::build_configuration(sess);
         driver::phase_1_parse_input(sess, cfg.clone(), &input)
     }
 
-    fn find_main(crate: @ast::Crate, sess: session::Session,
+    fn find_main(crate: &ast::Crate, sess: session::Session,
                  f: &fn(&ast::Block)) {
         for item in crate.module.items.iter() {
             match item.node {
@@ -302,7 +302,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                 _ => {}
             }
         }
-        fail!("main function was expected somewhere...");
+        fail2!("main function was expected somewhere...");
     }
 }
 
@@ -355,10 +355,10 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             None => { },
         }
         if (should_compile) {
-            println(fmt!("compiling %s...", src_filename));
+            println(format!("compiling {}...", src_filename));
             let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
             let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
-            let analysis = driver::phase_3_run_analysis_passes(sess, expanded_crate);
+            let analysis = driver::phase_3_run_analysis_passes(sess, &expanded_crate);
             let trans = driver::phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs);
             driver::phase_5_run_llvm_passes(sess, &trans, outputs);
             true
@@ -429,7 +429,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for crate in loaded_crates.iter() {
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
-                repl.program.record_extern(fmt!("extern mod %s;", *crate));
+                repl.program.record_extern(format!("extern mod {};", *crate));
                 if !repl.lib_search_paths.iter().any(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
@@ -437,7 +437,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             if loaded_crates.is_empty() {
                 println("no crates loaded");
             } else {
-                printfln!("crates loaded: %s", loaded_crates.connect(", "));
+                println!("crates loaded: {}", loaded_crates.connect(", "));
             }
         }
         ~"{" => {
@@ -445,7 +445,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             let mut end_multiline = false;
             while (!end_multiline) {
                 match get_line(use_rl, "rusti| ") {
-                    None => fail!("unterminated multiline command :{ .. :}"),
+                    None => fail2!("unterminated multiline command :\\{ .. :\\}"),
                     Some(line) => {
                         if line.trim() == ":}" {
                             end_multiline = true;

@@ -20,7 +20,7 @@ fn exec<T: JD>() {
     let doc = json::from_str("").unwrap();
     let mut decoder = json::Decoder(doc);
     let _v: T = Decodable::decode(&mut decoder);
-    fail!()
+    fail2!()
 }
 
 pub fn main() {}

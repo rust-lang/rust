@@ -52,16 +52,16 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
             C_integral(Type::uint_from_ty(cx, t), i as u64, false)
           }
           _ => cx.sess.span_bug(lit.span,
-                   fmt!("integer literal has type %s (expected int or uint)",
+                   format!("integer literal has type {} (expected int or uint)",
                         ty_to_str(cx.tcx, lit_int_ty)))
         }
       }
-      ast::lit_float(fs, t) => C_floating(fs, Type::float_from_ty(cx, t)),
+      ast::lit_float(fs, t) => C_floating(fs, Type::float_from_ty(t)),
       ast::lit_float_unsuffixed(fs) => {
         let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_float_ty).sty {
           ty::ty_float(t) => {
-            C_floating(fs, Type::float_from_ty(cx, t))
+            C_floating(fs, Type::float_from_ty(t))
           }
           _ => {
             cx.sess.span_bug(lit.span,
@@ -144,14 +144,14 @@ fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
                     const_deref_newtype(cx, v, t)
                 }
                 _ => {
-                    cx.sess.bug(fmt!("Unexpected dereferenceable type %s",
+                    cx.sess.bug(format!("Unexpected dereferenceable type {}",
                                      ty_to_str(cx.tcx, t)))
                 }
             };
             (dv, mt.ty)
         }
         None => {
-            cx.sess.bug(fmt!("Can't dereference const of type %s",
+            cx.sess.bug(format!("Can't dereference const of type {}",
                              ty_to_str(cx.tcx, t)))
         }
     }
@@ -177,7 +177,7 @@ pub fn get_const_val(cx: @mut CrateContext,
      !cx.non_inlineable_statics.contains(&def_id.node))
 }
 
-pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
+pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     let (llconst, inlineable) = const_expr_unadjusted(cx, e);
     let mut llconst = llconst;
     let mut inlineable = inlineable;
@@ -189,8 +189,8 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
             llconst = C_struct([llconst, C_null(Type::opaque_box(cx).ptr_to())])
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
-            cx.sess.span_bug(e.span, fmt!("unexpected static function: \
-                                           region %? sigil %?", *r, *s))
+            cx.sess.span_bug(e.span, format!("unexpected static function: \
+                                           region {:?} sigil {:?}", *r, *s))
         }
         Some(@ty::AutoDerefRef(ref adj)) => {
             let mut ty = ety;
@@ -234,8 +234,8 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
                         }
                         _ => {
                             cx.sess.span_bug(e.span,
-                                             fmt!("unimplemented const \
-                                                   autoref %?", autoref))
+                                             format!("unimplemented const \
+                                                   autoref {:?}", autoref))
                         }
                     }
                 }
@@ -253,7 +253,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> (ValueRef, bool) {
             llvm::LLVMDumpValue(llconst);
             llvm::LLVMDumpValue(C_undef(llty));
         }
-        cx.sess.bug(fmt!("const %s of type %s has size %u instead of %u",
+        cx.sess.bug(format!("const {} of type {} has size {} instead of {}",
                          e.repr(cx.tcx), ty_to_str(cx.tcx, ety),
                          csize, tsize));
     }

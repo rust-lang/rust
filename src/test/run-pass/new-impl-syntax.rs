@@ -5,7 +5,7 @@ struct Thingy {
 
 impl ToStr for Thingy {
     fn to_str(&self) -> ~str {
-        fmt!("{ x: %d, y: %d }", self.x, self.y)
+        format!("\\{ x: {}, y: {} \\}", self.x, self.y)
     }
 }
 

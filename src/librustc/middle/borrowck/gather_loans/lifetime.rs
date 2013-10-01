@@ -27,7 +27,7 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
                           loan_mutbl: LoanMutability) {
-    debug!("guarantee_lifetime(cmt=%s, loan_region=%s)",
+    debug2!("guarantee_lifetime(cmt={}, loan_region={})",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
                                          item_scope_id: item_scope_id,
@@ -101,7 +101,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                     // L-Deref-Managed-Mut-Compiler-Root
                     self.check_root(cmt, base, derefs, ptr_mutbl, discr_scope);
                 } else {
-                    debug!("omitting root, base=%s, base_scope=%?",
+                    debug2!("omitting root, base={}, base_scope={:?}",
                            base.repr(self.tcx()), base_scope);
                 }
             }
@@ -189,8 +189,8 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                   derefs: uint,
                   ptr_mutbl: ast::Mutability,
                   discr_scope: Option<ast::NodeId>) {
-        debug!("check_root(cmt_deref=%s, cmt_base=%s, derefs=%?, ptr_mutbl=%?, \
-                discr_scope=%?)",
+        debug2!("check_root(cmt_deref={}, cmt_base={}, derefs={:?}, ptr_mutbl={:?}, \
+                discr_scope={:?})",
                cmt_deref.repr(self.tcx()),
                cmt_base.repr(self.tcx()),
                derefs,
@@ -213,7 +213,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                 // the check above should fail for anything is not re_scope
                 self.bccx.tcx.sess.span_bug(
                     cmt_base.span,
-                    fmt!("Cannot issue root for scope region: %?",
+                    format!("Cannot issue root for scope region: {:?}",
                          self.loan_region));
             }
         };
@@ -247,7 +247,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
         // FIXME(#3511) grow to the nearest cleanup scope---this can
         // cause observable errors if freezing!
         if !self.bccx.tcx.region_maps.is_cleanup_scope(root_scope) {
-            debug!("%? is not a cleanup scope, adjusting", root_scope);
+            debug2!("{:?} is not a cleanup scope, adjusting", root_scope);
 
             let cleanup_scope =
                 self.bccx.tcx.region_maps.cleanup_scope(root_scope);
@@ -255,8 +255,8 @@ impl<'self> GuaranteeLifetimeContext<'self> {
             if opt_dyna.is_some() {
                 self.tcx().sess.span_warn(
                     self.span,
-                    fmt!("Dynamic freeze scope artifically extended \
-                          (see Issue #6248)"));
+                    format!("Dynamic freeze scope artifically extended \
+                          (see Issue \\#6248)"));
                 note_and_explain_region(
                     self.bccx.tcx,
                     "managed value only needs to be frozen for ",
@@ -277,7 +277,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
         let root_info = RootInfo {scope: root_scope, freeze: opt_dyna};
         self.bccx.root_map.insert(rm_key, root_info);
 
-        debug!("root_key: %? root_info: %?", rm_key, root_info);
+        debug2!("root_key: {:?} root_info: {:?}", rm_key, root_info);
     }
 
     fn check_scope(&self, max_scope: ty::Region) {
@@ -310,7 +310,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
             r @ mc::cat_discr(*) => {
                 self.tcx().sess.span_bug(
                     cmt.span,
-                    fmt!("illegal guarantor category: %?", r));
+                    format!("illegal guarantor category: {:?}", r));
             }
         }
     }

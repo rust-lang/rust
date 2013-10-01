@@ -21,7 +21,7 @@ struct t_rec {
 
 pub fn main() {
     let x = t_rec {c8: 22u8, t: a_tag(44u64)};
-    let y = fmt!("%?", x);
-    info!("y = %s", y);
+    let y = format!("{:?}", x);
+    info2!("y = {}", y);
     assert_eq!(y, ~"t_rec{c8: 22u8, t: a_tag(44u64)}");
 }

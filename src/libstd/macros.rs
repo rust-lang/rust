@@ -12,16 +12,16 @@
 #[doc(hidden)];
 
 macro_rules! rterrln (
-    ($( $arg:expr),+) => ( {
-        ::rt::util::dumb_println(fmt!( $($arg),+ ));
+    ($($arg:tt)*) => ( {
+        ::rt::util::dumb_println(format!($($arg)*));
     } )
 )
 
 // Some basic logging. Enabled by passing `--cfg rtdebug` to the libstd build.
 macro_rules! rtdebug (
-    ($( $arg:expr),+) => ( {
+    ($($arg:tt)*) => ( {
         if cfg!(rtdebug) {
-            rterrln!( $($arg),+ )
+            rterrln!($($arg)*)
         }
     })
 )
@@ -30,7 +30,7 @@ macro_rules! rtassert (
     ( $arg:expr ) => ( {
         if ::rt::util::ENFORCE_SANITY {
             if !$arg {
-                rtabort!("assertion failed: %s", stringify!($arg));
+                rtabort!("assertion failed: {}", stringify!($arg));
             }
         }
     } )
@@ -38,13 +38,13 @@ macro_rules! rtassert (
 
 
 macro_rules! rtabort(
-    ($( $msg:expr),+) => ( {
-        ::rt::util::abort(fmt!($($msg),+));
+    ($($msg:tt)*) => ( {
+        ::rt::util::abort(format!($($msg)*));
     } )
 )
 
 macro_rules! assert_once_ever(
-    ($( $msg:expr),+) => ( {
+    ($($msg:tt)+) => ( {
         // FIXME(#8472) extra function should not be needed to hide unsafe
         fn assert_once_ever() {
             unsafe {
@@ -52,7 +52,8 @@ macro_rules! assert_once_ever(
                 // Double-check lock to avoid a swap in the common case.
                 if already_happened != 0 ||
                     ::unstable::intrinsics::atomic_xchg_relaxed(&mut already_happened, 1) != 0 {
-                        fail!(fmt!("assert_once_ever happened twice: %s", fmt!($($msg),+)));
+                        fail2!("assert_once_ever happened twice: {}",
+                               format!($($msg)+));
                 }
             }
         }

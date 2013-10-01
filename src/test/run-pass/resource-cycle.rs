@@ -19,7 +19,7 @@ struct r {
 impl Drop for r {
     fn drop(&mut self) {
         unsafe {
-            info!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
+            info2!("r's dtor: self = {:x}, self.v = {:x}, self.v's value = {:x}",
               cast::transmute::<*mut r, uint>(self),
               cast::transmute::<**int, uint>(&(self.v)),
               cast::transmute::<*int, uint>(self.v));
@@ -54,11 +54,11 @@ pub fn main() {
             next: None,
               r: {
               let rs = r(i1p);
-              info!("r = %x", cast::transmute::<*r, uint>(&rs));
+              info2!("r = {:x}", cast::transmute::<*r, uint>(&rs));
               rs }
         });
 
-        info!("x1 = %x, x1.r = %x",
+        info2!("x1 = {:x}, x1.r = {:x}",
                cast::transmute::<@mut t, uint>(x1),
                cast::transmute::<*r, uint>(&x1.r));
 
@@ -66,12 +66,12 @@ pub fn main() {
             next: None,
               r: {
               let rs = r(i2p);
-              info!("r2 = %x", cast::transmute::<*r, uint>(&rs));
+              info2!("r2 = {:x}", cast::transmute::<*r, uint>(&rs));
               rs
                 }
         });
 
-        info!("x2 = %x, x2.r = %x",
+        info2!("x2 = {:x}, x2.r = {:x}",
                cast::transmute::<@mut t, uint>(x2),
                cast::transmute::<*r, uint>(&(x2.r)));
 

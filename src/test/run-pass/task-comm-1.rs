@@ -12,9 +12,9 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn start() { info!("Started / Finished task."); }
+fn start() { info2!("Started / Finished task."); }
 
 fn test00() {
     task::try(|| start() );
-    info!("Completing.");
+    info2!("Completing.");
 }

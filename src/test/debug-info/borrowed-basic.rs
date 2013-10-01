@@ -51,14 +51,11 @@
 // debugger:print *u64_ref
 // check:$12 = 64
 
-// debugger:print *float_ref
-// check:$13 = 1.5
-
 // debugger:print *f32_ref
-// check:$14 = 2.5
+// check:$13 = 2.5
 
 // debugger:print *f64_ref
-// check:$15 = 3.5
+// check:$14 = 3.5
 
 #[allow(unused_variable)];
 
@@ -98,9 +95,6 @@ fn main() {
 
     let u64_val: u64 = 64;
     let u64_ref: &u64 = &u64_val;
-
-    let float_val: float = 1.5;
-    let float_ref: &float = &float_val;
 
     let f32_val: f32 = 2.5;
     let f32_ref: &f32 = &f32_val;

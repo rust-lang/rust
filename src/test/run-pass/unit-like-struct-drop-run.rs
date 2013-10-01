@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // Make sure the destructor is run for unit-like structs.
-// xfail-fast
 
 use std::task;
 
@@ -17,11 +16,11 @@ struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        fail!("This failure should happen.");
+        fail2!("This failure should happen.");
     }
 }
 
-fn main() {
+pub fn main() {
     let x = do task::try {
         let _b = Foo;
     };

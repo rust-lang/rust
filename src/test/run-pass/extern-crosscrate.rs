@@ -16,13 +16,13 @@ extern mod externcallback(vers = "0.1");
 #[fixed_stack_segment] #[inline(never)]
 fn fact(n: uint) -> uint {
     unsafe {
-        info!("n = %?", n);
+        info2!("n = {}", n);
         externcallback::rustrt::rust_dbg_call(externcallback::cb, n)
     }
 }
 
 pub fn main() {
     let result = fact(10u);
-    info!("result = %?", result);
+    info2!("result = {}", result);
     assert_eq!(result, 3628800u);
 }

@@ -133,7 +133,7 @@ impl reader for TtReader {
     fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
     fn next_token(@mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
-        debug!("TtReader: r=%?", r);
+        debug2!("TtReader: r={:?}", r);
         return r;
     }
     fn fatal(@mut self, m: ~str) -> ! {
@@ -261,7 +261,7 @@ fn hex_digit_val(c: char) -> int {
     if in_range(c, '0', '9') { return (c as int) - ('0' as int); }
     if in_range(c, 'a', 'f') { return (c as int) - ('a' as int) + 10; }
     if in_range(c, 'A', 'F') { return (c as int) - ('A' as int) + 10; }
-    fail!();
+    fail2!();
 }
 
 fn bin_digit_value(c: char) -> int { if c == '0' { return 0; } return 1; }
@@ -530,7 +530,6 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
       None => ()
     }
 
-    let mut is_machine_float = false;
     if rdr.curr == 'f' {
         bump(rdr);
         c = rdr.curr;
@@ -549,14 +548,10 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
         } else {
-            is_float = true;
-            is_machine_float = true;
+            fatal_span(rdr, start_bpos, rdr.last_pos, ~"expected `f32` or `f64` suffix");
         }
     }
     if is_float {
-        if is_machine_float {
-            return token::LIT_FLOAT(str_to_ident(num_str), ast::ty_f);
-        }
         return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
         if num_str.len() == 0u {
@@ -569,8 +564,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
                                ~"int literal is too large")
         };
 
-        debug!("lexing %s as an unsuffixed integer literal",
-               num_str);
+        debug2!("lexing {} as an unsuffixed integer literal", num_str);
         return token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
 }

@@ -116,9 +116,9 @@ fn main() {
     // all done, report stats.
     let num_msgs = num_tasks * msg_per_task;
     let elapsed = (stop - start);
-    let rate = (num_msgs as float) / elapsed;
+    let rate = (num_msgs as f64) / elapsed;
 
-    printfln!("Sent %? messages in %? seconds", num_msgs, elapsed);
-    printfln!("  %? messages / second", rate);
-    printfln!("  %? μs / message", 1000000. / rate);
+    println!("Sent {} messages in {} seconds", num_msgs, elapsed);
+    println!("  {} messages / second", rate);
+    println!("  {} μs / message", 1000000. / rate);
 }

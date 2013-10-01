@@ -268,7 +268,7 @@ impl ReachableContext {
 
     // Step 1: Mark all public symbols, and add all public symbols that might
     // be inlined to a worklist.
-    fn mark_public_symbols(&self, crate: @Crate) {
+    fn mark_public_symbols(&self, crate: &Crate) {
         let reachable_symbols = self.reachable_symbols;
         let worklist = self.worklist;
 
@@ -400,14 +400,14 @@ impl ReachableContext {
                     let desc = ast_map::node_id_to_str(self.tcx.items,
                                                        search_item,
                                                        ident_interner);
-                    self.tcx.sess.bug(fmt!("found unexpected thingy in \
-                                            worklist: %s",
-                                            desc))
+                    self.tcx.sess.bug(format!("found unexpected thingy in \
+                                               worklist: {}",
+                                               desc))
                 }
                 None => {
-                    self.tcx.sess.bug(fmt!("found unmapped ID in worklist: \
-                                            %d",
-                                           search_item))
+                    self.tcx.sess.bug(format!("found unmapped ID in worklist: \
+                                               {}",
+                                              search_item))
                 }
             }
         }
@@ -429,7 +429,7 @@ impl ReachableContext {
 
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
-                      crate: @Crate)
+                      crate: &Crate)
                       -> @mut HashSet<NodeId> {
     // XXX(pcwalton): We only need to mark symbols that are exported. But this
     // is more complicated than just looking at whether the symbol is `pub`,

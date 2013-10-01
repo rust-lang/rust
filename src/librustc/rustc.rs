@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustc",
-       vers = "0.8",
+       vers = "0.9-pre",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -130,13 +130,13 @@ pub fn version(argv0: &str) {
         Some(vers) => vers,
         None => "unknown version"
     };
-    printfln!("%s %s", argv0, vers);
-    printfln!("host: %s", host_triple());
+    println!("{} {}", argv0, vers);
+    println!("host: {}", host_triple());
 }
 
 pub fn usage(argv0: &str) {
-    let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
-    printfln!("%s\n\
+    let message = format!("Usage: {} [OPTIONS] INPUT", argv0);
+    println!("{}\n\
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
@@ -167,16 +167,16 @@ Available lint options:
         str::from_utf8(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
     println("\nAvailable lint checks:\n");
-    printfln!("    %s  %7.7s  %s",
-              padded(max_key, "name"), "default", "meaning");
-    printfln!("    %s  %7.7s  %s\n",
-              padded(max_key, "----"), "-------", "-------");
+    println!("    {}  {:7.7s}  {}",
+             padded(max_key, "name"), "default", "meaning");
+    println!("    {}  {:7.7s}  {}\n",
+             padded(max_key, "----"), "-------", "-------");
     for (spec, name) in lint_dict.move_iter() {
         let name = name.replace("_", "-");
-        printfln!("    %s  %7.7s  %s",
-                  padded(max_key, name),
-                  lint::level_to_str(spec.default),
-                  spec.desc);
+        println!("    {}  {:7.7s}  {}",
+                 padded(max_key, name),
+                 lint::level_to_str(spec.default),
+                 spec.desc);
     }
     io::println("");
 }
@@ -187,7 +187,7 @@ pub fn describe_debug_flags() {
     for tuple in r.iter() {
         match *tuple {
             (ref name, ref desc, _) => {
-                printfln!("    -Z %-20s -- %s", *name, *desc);
+                println!("    -Z {:>20s} -- {}", *name, *desc);
             }
         }
     }
@@ -388,7 +388,7 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
                 }
             }
             // Fail so the process returns a failure code
-            fail!();
+            fail2!();
         }
     }
 }

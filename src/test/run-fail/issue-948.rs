@@ -16,5 +16,5 @@ struct Point { x: int, y: int }
 
 fn main() {
     let origin = Point {x: 0, y: 0};
-    let f: Point = Point {x: (fail!("beep boop")),.. origin};
+    let f: Point = Point {x: (fail2!("beep boop")),.. origin};
 }

@@ -88,7 +88,7 @@ ifneq ($(wildcard $(NON_BUILD_TARGET_TRIPLES)),)
 CFG_INFO := $(info cfg: non-build target triples $(NON_BUILD_TARGET_TRIPLES))
 endif
 
-CFG_RUSTC_FLAGS := $(RUSTFLAGS)
+CFG_RUSTC_FLAGS := $(RUSTFLAGS) --cfg nofmt
 CFG_GCCISH_CFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
@@ -141,11 +141,11 @@ endif
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.8
+CFG_RELEASE = 0.9-pre
 CFG_VERSION = $(CFG_RELEASE)
 # windows exe's need numeric versions - don't use anything but
 # numbers and dots here
-CFG_VERSION_WIN = 0.8
+CFG_VERSION_WIN = 0.9
 
 ifneq ($(wildcard $(CFG_GIT)),)
 ifneq ($(wildcard $(CFG_GIT_DIR)),)
@@ -607,6 +607,10 @@ config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 ######################################################################
 # Primary-target makefiles
 ######################################################################
+
+# Issue #9531: If you change the order of any of the following (or add
+# new definitions), make sure definitions always precede their uses,
+# especially for the dependency lists of recipes.
 
 include $(CFG_SRC_DIR)mk/target.mk
 include $(CFG_SRC_DIR)mk/host.mk

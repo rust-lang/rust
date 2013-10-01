@@ -101,8 +101,8 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                             "Default" => expand!(default::expand_deriving_default),
 
                             ref tname => {
-                                cx.span_err(titem.span, fmt!("unknown \
-                                    `deriving` trait: `%s`", *tname));
+                                cx.span_err(titem.span, format!("unknown \
+                                    `deriving` trait: `{}`", *tname));
                                 in_items
                             }
                         }

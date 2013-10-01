@@ -10,7 +10,6 @@
 
 
 use libc::c_char;
-#[cfg(stage0)] use libc::c_void;
 use ptr;
 use ptr::RawPtr;
 use vec;
@@ -40,17 +39,6 @@ struct CrateMapV0 {
     children: [*CrateMap, ..1]
 }
 
-#[cfg(stage0)]
-struct CrateMap {
-    version: i32,
-    annihilate_fn: *c_void,
-    entries: *ModEntry,
-    /// a dynamically sized struct, where all pointers to children are listed adjacent
-    /// to the struct, terminated with NULL
-    children: [*CrateMap, ..1]
-}
-
-#[cfg(not(stage0))]
 struct CrateMap {
     version: i32,
     entries: *ModEntry,
@@ -97,7 +85,7 @@ unsafe fn entries(crate_map: *CrateMap) -> *ModEntry {
             return (*v0).entries;
         }
         1 => return (*crate_map).entries,
-        _ => fail!("Unknown crate map version!")
+        _ => fail2!("Unknown crate map version!")
     }
 }
 
@@ -108,7 +96,7 @@ unsafe fn iterator(crate_map: *CrateMap) -> **CrateMap {
             return vec::raw::to_ptr((*v0).children);
         }
         1 => return vec::raw::to_ptr((*crate_map).children),
-        _ => fail!("Unknown crate map version!")
+        _ => fail2!("Unknown crate map version!")
     }
 }
 

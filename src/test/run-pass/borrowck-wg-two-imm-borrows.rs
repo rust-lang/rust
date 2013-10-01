@@ -10,5 +10,5 @@ pub fn main()
     let z = @mut [1,2,3];
     let z2 = z;
     add(&z[0], &z2[0]);
-    printfln!("%d", z[0]);
+    println!("{}", z[0]);
 }

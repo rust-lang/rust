@@ -18,7 +18,7 @@ struct Foo {
 
 impl Foo {
     pub fn printme(&mut self) {
-        printfln!("%d", self.x);
+        println!("{}", self.x);
     }
 }
 

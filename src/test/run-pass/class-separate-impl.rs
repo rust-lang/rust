@@ -21,12 +21,12 @@ impl cat {
 
     pub fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
-            error!("OM NOM NOM");
+            error2!("OM NOM NOM");
             self.how_hungry -= 2;
             return true;
         }
         else {
-            error!("Not hungry!");
+            error2!("Not hungry!");
             return false;
         }
     }
@@ -34,7 +34,7 @@ impl cat {
 
 impl cat {
     fn meow(&mut self) {
-        error!("Meow");
+        error2!("Meow");
         self.meows += 1u;
         if self.meows % 5u == 0u {
             self.how_hungry += 1;
@@ -58,7 +58,7 @@ impl ToStr for cat {
 
 fn print_out(thing: @ToStr, expected: ~str) {
   let actual = thing.to_str();
-  info!("%s", actual);
+  info2!("{}", actual);
   assert_eq!(actual, expected);
 }
 

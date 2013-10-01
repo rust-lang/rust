@@ -385,7 +385,6 @@ pub trait NumCast {
 
     fn to_f32(&self) -> f32;
     fn to_f64(&self) -> f64;
-    fn to_float(&self) -> float;
 }
 
 macro_rules! impl_num_cast(
@@ -412,7 +411,6 @@ macro_rules! impl_num_cast(
 
             #[inline] fn to_f32(&self)   -> f32   { *self as f32   }
             #[inline] fn to_f64(&self)   -> f64   { *self as f64   }
-            #[inline] fn to_float(&self) -> float { *self as float }
         }
     )
 )
@@ -429,7 +427,6 @@ impl_num_cast!(i64,   to_i64)
 impl_num_cast!(int,   to_int)
 impl_num_cast!(f32,   to_f32)
 impl_num_cast!(f64,   to_f64)
-impl_num_cast!(float, to_float)
 
 pub trait ToStrRadix {
     fn to_str_radix(&self, radix: uint) -> ~str;
@@ -579,7 +576,6 @@ mod tests {
             assert_eq!(20i16, _20.to_i16());
             assert_eq!(20i32, _20.to_i32());
             assert_eq!(20i64, _20.to_i64());
-            assert_eq!(20f,   _20.to_float());
             assert_eq!(20f32, _20.to_f32());
             assert_eq!(20f64, _20.to_f64());
 
@@ -593,7 +589,6 @@ mod tests {
             assert_eq!(_20, NumCast::from(20i16));
             assert_eq!(_20, NumCast::from(20i32));
             assert_eq!(_20, NumCast::from(20i64));
-            assert_eq!(_20, NumCast::from(20f));
             assert_eq!(_20, NumCast::from(20f32));
             assert_eq!(_20, NumCast::from(20f64));
 
@@ -607,7 +602,6 @@ mod tests {
             assert_eq!(_20, cast(20i16));
             assert_eq!(_20, cast(20i32));
             assert_eq!(_20, cast(20i64));
-            assert_eq!(_20, cast(20f));
             assert_eq!(_20, cast(20f32));
             assert_eq!(_20, cast(20f64));
         })
@@ -625,7 +619,6 @@ mod tests {
     #[test] fn test_int_cast()   { test_cast_20!(20i)   }
     #[test] fn test_f32_cast()   { test_cast_20!(20f32) }
     #[test] fn test_f64_cast()   { test_cast_20!(20f64) }
-    #[test] fn test_float_cast() { test_cast_20!(20f)   }
 
     #[test]
     fn test_saturating_add_uint() {

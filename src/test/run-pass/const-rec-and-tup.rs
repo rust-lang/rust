@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Pair { a: float, b: float }
+struct Pair { a: f64, b: f64 }
 
 struct AnotherPair { x: (i64, i64), y: Pair }
 
@@ -21,5 +21,5 @@ static y : AnotherPair = AnotherPair{ x: (0xf0f0f0f0_f0f0f0f0,
 pub fn main() {
     let (p, _) = y.x;
     assert_eq!(p, - 1085102592571150096);
-    printfln!("0x%x", p as uint);
+    println!("{:#x}", p);
 }

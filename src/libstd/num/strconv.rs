@@ -83,7 +83,6 @@ macro_rules! impl_NumStrConv_Integer (($t:ty) => (
 
 // FIXME: #4955
 // Replace by two generic impls for traits 'Integral' and 'Floating'
-impl_NumStrConv_Floating!(float)
 impl_NumStrConv_Floating!(f32)
 impl_NumStrConv_Floating!(f64)
 
@@ -474,19 +473,19 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => fail!("from_str_bytes_common: radix %? incompatible with \
+          => fail2!("from_str_bytes_common: radix {:?} incompatible with \
                     use of 'e' as decimal exponent", radix),
         ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => fail!("from_str_bytes_common: radix %? incompatible with \
+          => fail2!("from_str_bytes_common: radix {:?} incompatible with \
                     use of 'p' as binary exponent", radix),
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
-          => fail!("from_str_bytes_common: radix %? incompatible with \
+          => fail2!("from_str_bytes_common: radix {:?} incompatible with \
                     special values 'inf' and 'NaN'", radix),
         _ if (radix as int) < 2
-          => fail!("from_str_bytes_common: radix %? to low, \
+          => fail2!("from_str_bytes_common: radix {:?} to low, \
                     must lie in the range [2, 36]", radix),
         _ if (radix as int) > 36
-          => fail!("from_str_bytes_common: radix %? to high, \
+          => fail2!("from_str_bytes_common: radix {:?} to high, \
                     must lie in the range [2, 36]", radix),
         _ => ()
     }
@@ -735,8 +734,8 @@ mod test {
 mod bench {
     use extra::test::BenchHarness;
     use rand::{XorShiftRng, Rng};
-    use float;
     use to_str::ToStr;
+    use f64;
 
     #[bench]
     fn uint_to_str_rand(bh: &mut BenchHarness) {
@@ -750,7 +749,7 @@ mod bench {
     fn float_to_str_rand(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
         do bh.iter {
-            float::to_str(rng.gen());
+            f64::to_str(rng.gen());
         }
     }
 }

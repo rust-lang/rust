@@ -21,11 +21,11 @@ use syntax::ast;
 use syntax::opt_vec;
 
 pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
-    !ty::type_is_immediate(ccx.tcx, arg_ty)
+    !type_is_immediate(ccx.tcx, arg_ty)
 }
 
 pub fn return_uses_outptr(tcx: ty::ctxt, ty: ty::t) -> bool {
-    !ty::type_is_immediate(tcx, ty)
+    !type_is_immediate(tcx, ty)
 }
 
 pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: ty::t) -> Type {
@@ -111,7 +111,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         ty::ty_char => Type::char(),
         ty::ty_int(t) => Type::int_from_ty(cx, t),
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
-        ty::ty_float(t) => Type::float_from_ty(cx, t),
+        ty::ty_float(t) => Type::float_from_ty(t),
 
         ty::ty_estr(ty::vstore_uniq) |
         ty::ty_estr(ty::vstore_box) |
@@ -162,7 +162,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         }
 
         ty::ty_self(_) | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
-            cx.tcx.sess.bug(fmt!("fictitious type %? in sizing_type_of()", ty::get(t).sty))
+            cx.tcx.sess.bug(format!("fictitious type {:?} in sizing_type_of()", ty::get(t).sty))
         }
     };
 
@@ -172,7 +172,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
-    debug!("type_of %?: %?", t, ty::get(t));
+    debug2!("type_of {:?}: {:?}", t, ty::get(t));
 
     // Check the cache.
     match cx.lltypes.find(&t) {
@@ -199,7 +199,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_char => Type::char(),
       ty::ty_int(t) => Type::int_from_ty(cx, t),
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
-      ty::ty_float(t) => Type::float_from_ty(cx, t),
+      ty::ty_float(t) => Type::float_from_ty(t),
       ty::ty_estr(ty::vstore_uniq) => {
         Type::vec(cx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
       }
@@ -335,9 +335,9 @@ pub fn llvm_type_name(cx: &CrateContext,
     let tstr = ppaux::parameterized(cx.tcx, ty::item_path_str(cx.tcx, did),
                                     &ty::NonerasedRegions(opt_vec::Empty), tps);
     if did.crate == 0 {
-        fmt!("%s.%s", name, tstr)
+        format!("{}.{}", name, tstr)
     } else {
-        fmt!("%s.%s[#%d]", name, tstr, did.crate)
+        format!("{}.{}[\\#{}]", name, tstr, did.crate)
     }
 }
 

@@ -20,7 +20,7 @@ struct dog {
 
 impl dog {
     fn bark(&self) -> int {
-      info!("Woof %u %d", *self.barks, *self.volume);
+      info2!("Woof {} {}", *self.barks, *self.volume);
       *self.barks += 1u;
       if *self.barks % 3u == 0u {
           *self.volume += 1;
@@ -28,7 +28,7 @@ impl dog {
       if *self.barks % 10u == 0u {
           *self.volume -= 2;
       }
-      info!("Grrr %u %d", *self.barks, *self.volume);
+      info2!("Grrr {} {}", *self.barks, *self.volume);
       *self.volume
     }
 }
@@ -62,7 +62,7 @@ impl cat {
 
 impl cat {
     fn meow(&self) -> uint {
-      info!("Meow");
+      info2!("Meow");
       *self.meows += 1u;
       if *self.meows % 5u == 0u {
           *self.how_hungry += 1;

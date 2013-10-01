@@ -222,7 +222,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 span: None,
                             } as @SyntaxExpanderTTItemTrait,
                             None)));
-    syntax_expanders.insert(intern(&"fmt"),
+    syntax_expanders.insert(intern(&"oldfmt"),
                             builtin_normal_tt_no_ctxt(
                                 ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern(&"format_args"),
@@ -431,7 +431,7 @@ pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> @str {
 pub fn check_zero_tts(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_fatal(sp, fmt!("%s takes no arguments", name));
+        cx.span_fatal(sp, format!("{} takes no arguments", name));
     }
 }
 
@@ -441,12 +441,12 @@ pub fn get_single_str_from_tts(cx: @ExtCtxt,
                                name: &str)
                                -> @str {
     if tts.len() != 1 {
-        cx.span_fatal(sp, fmt!("%s takes 1 argument.", name));
+        cx.span_fatal(sp, format!("{} takes 1 argument.", name));
     }
 
     match tts[0] {
         ast::tt_tok(_, token::LIT_STR(ident)) => cx.str_of(ident),
-        _ => cx.span_fatal(sp, fmt!("%s requires a string.", name)),
+        _ => cx.span_fatal(sp, format!("{} requires a string.", name)),
     }
 }
 
@@ -547,11 +547,11 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // names? I think not.
     // delaying implementing this....
     pub fn each_key (&self, _f: &fn (&K)->bool) {
-        fail!("unimplemented 2013-02-15T10:01");
+        fail2!("unimplemented 2013-02-15T10:01");
     }
 
     pub fn each_value (&self, _f: &fn (&V) -> bool) {
-        fail!("unimplemented 2013-02-15T10:02");
+        fail2!("unimplemented 2013-02-15T10:02");
     }
 
     // Returns a copy of the value that the name maps to.
@@ -594,7 +594,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
                 if satisfies_pred(map,&n,pred) {
                     map.insert(key,ext);
                 } else {
-                    fail!(~"expected map chain containing satisfying frame")
+                    fail2!("expected map chain containing satisfying frame")
                 }
             },
             ConsMapChain (~ref mut map, rest) => {

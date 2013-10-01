@@ -14,13 +14,13 @@ trait Foo {
 
 impl<T:Foo> Foo for @T {
     fn foo(&self) -> ~str {
-        fmt!("@%s", (**self).foo())
+        format!("@{}", (**self).foo())
     }
 }
 
 impl Foo for uint {
     fn foo(&self) -> ~str {
-        fmt!("%u", *self)
+        format!("{}", *self)
     }
 }
 

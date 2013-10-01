@@ -14,7 +14,7 @@ Random number generation.
 The key functions are `random()` and `Rng::gen()`. These are polymorphic
 and so can be used to generate any type that implements `Rand`. Type inference
 means that often a simple call to `rand::random()` or `rng.gen()` will
-suffice, but sometimes an annotation is required, e.g. `rand::random::<float>()`.
+suffice, but sometimes an annotation is required, e.g. `rand::random::<f64>()`.
 
 See the `distributions` submodule for sampling random numbers from
 distributions like normal and exponential.
@@ -28,7 +28,7 @@ use std::rand::Rng;
 fn main() {
     let mut rng = rand::rng();
     if rng.gen() { // bool
-        printfln!("int: %d, uint: %u", rng.gen(), rng.gen())
+        println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
     }
 }
  ```
@@ -38,7 +38,7 @@ use std::rand;
 
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
-    printfln!(tuple_ptr)
+    println!(tuple_ptr)
 }
  ```
 */
@@ -142,13 +142,6 @@ impl Rand for u64 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> u64 {
         (rng.next() as u64 << 32) | rng.next() as u64
-    }
-}
-
-impl Rand for float {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> float {
-        rng.gen::<f64>() as float
     }
 }
 
@@ -270,8 +263,8 @@ pub trait Rng {
     /// fn main() {
     ///    let rng = rand::task_rng();
     ///    let x: uint = rng.gen();
-    ///    printfln!(x);
-    ///    printfln!(rng.gen::<(float, bool)>());
+    ///    println!("{}", x);
+    ///    println!("{:?}", rng.gen::<(f64, bool)>());
     /// }
     /// ```
     #[inline(always)]
@@ -289,8 +282,8 @@ pub trait Rng {
     /// fn main() {
     ///    let rng = rand::task_rng();
     ///    let x: ~[uint] = rng.gen_vec(10);
-    ///    printfln!(x);
-    ///    printfln!(rng.gen_vec::<(float, bool)>(5));
+    ///    println!("{:?}", x);
+    ///    println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
     /// }
     /// ```
     fn gen_vec<T: Rand>(&mut self, len: uint) -> ~[T] {
@@ -314,9 +307,9 @@ pub trait Rng {
     /// fn main() {
     ///    let rng = rand::task_rng();
     ///    let n: uint = rng.gen_integer_range(0u, 10);
-    ///    printfln!(n);
+    ///    println!("{}", n);
     ///    let m: i16 = rng.gen_integer_range(-40, 400);
-    ///    printfln!(m);
+    ///    println!("{}", m);
     /// }
     /// ```
     fn gen_integer_range<T: Rand + Int>(&mut self, low: T, high: T) -> T {
@@ -341,7 +334,7 @@ pub trait Rng {
     ///
     /// fn main() {
     ///     let mut rng = rand::rng();
-    ///     printfln!("%b", rng.gen_weighted_bool(3));
+    ///     println!("{:b}", rng.gen_weighted_bool(3));
     /// }
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
@@ -385,8 +378,8 @@ pub trait Rng {
     /// use std::rand;
     ///
     /// fn main() {
-    ///     printfln!(rand::task_rng().choose_option([1,2,4,8,16,32]));
-    ///     printfln!(rand::task_rng().choose_option([]));
+    ///     println!("{:?}", rand::task_rng().choose_option([1,2,4,8,16,32]));
+    ///     println!("{:?}", rand::task_rng().choose_option([]));
     /// }
     /// ```
     fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
@@ -411,7 +404,7 @@ pub trait Rng {
     ///     let x = [rand::Weighted {weight: 4, item: 'a'},
     ///              rand::Weighted {weight: 2, item: 'b'},
     ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     printfln!("%c", rng.choose_weighted(x));
+    ///     println!("{}", rng.choose_weighted(x));
     /// }
     /// ```
     fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
@@ -432,7 +425,7 @@ pub trait Rng {
     ///     let x = [rand::Weighted {weight: 4, item: 'a'},
     ///              rand::Weighted {weight: 2, item: 'b'},
     ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     printfln!(rng.choose_weighted_option(x));
+    ///     println!("{:?}", rng.choose_weighted_option(x));
     /// }
     /// ```
     fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
@@ -469,7 +462,7 @@ pub trait Rng {
     ///     let x = [rand::Weighted {weight: 4, item: 'a'},
     ///              rand::Weighted {weight: 2, item: 'b'},
     ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     printfln!(rng.weighted_vec(x));
+    ///     println!("{}", rng.weighted_vec(x));
     /// }
     /// ```
     fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
@@ -490,7 +483,7 @@ pub trait Rng {
     /// use std::rand;
     ///
     /// fn main() {
-    ///     printfln!(rand::task_rng().shuffle(~[1,2,3]));
+    ///     println!("{:?}", rand::task_rng().shuffle(~[1,2,3]));
     /// }
     /// ```
     fn shuffle<T>(&mut self, values: ~[T]) -> ~[T] {
@@ -510,9 +503,9 @@ pub trait Rng {
     ///    let rng = rand::task_rng();
     ///    let mut y = [1,2,3];
     ///    rng.shuffle_mut(y);
-    ///    printfln!(y);
+    ///    println!("{:?}", y);
     ///    rng.shuffle_mut(y);
-    ///    printfln!(y);
+    ///    println!("{:?}", y);
     /// }
     /// ```
     fn shuffle_mut<T>(&mut self, values: &mut [T]) {
@@ -535,7 +528,7 @@ pub trait Rng {
     /// fn main() {
     ///    let rng = rand::task_rng();
     ///    let sample = rng.sample(range(1, 100), 5);
-    ///    printfln!(sample);
+    ///    println!("{:?}", sample);
     /// }
     /// ```
     fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A] {
@@ -897,7 +890,7 @@ mod test {
         let mut ra = IsaacRng::new_seeded(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
-        error!("%?", r);
+        debug2!("{:?}", r);
         assert!(r == 890007737u32 // on x86_64
                      || r == 2935188040u32); // on x86
     }
@@ -936,11 +929,11 @@ mod test {
     }
 
     #[test]
-    fn test_gen_float() {
+    fn test_gen_f64() {
         let mut r = rng();
-        let a = r.gen::<float>();
-        let b = r.gen::<float>();
-        debug!((a, b));
+        let a = r.gen::<f64>();
+        let b = r.gen::<f64>();
+        debug2!("{:?}", (a, b));
     }
 
     #[test]
@@ -953,9 +946,9 @@ mod test {
     #[test]
     fn test_gen_ascii_str() {
         let mut r = rng();
-        debug!(r.gen_ascii_str(10u));
-        debug!(r.gen_ascii_str(10u));
-        debug!(r.gen_ascii_str(10u));
+        debug2!("{}", r.gen_ascii_str(10u));
+        debug2!("{}", r.gen_ascii_str(10u));
+        debug2!("{}", r.gen_ascii_str(10u));
         assert_eq!(r.gen_ascii_str(0u).len(), 0u);
         assert_eq!(r.gen_ascii_str(10u).len(), 10u);
         assert_eq!(r.gen_ascii_str(16u).len(), 16u);
@@ -1049,7 +1042,7 @@ mod test {
         let _many : ((),
                      (~uint, @int, ~Option<~(@u32, ~(@bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
-                     (f32, (f64, (float,)))) = random();
+                     (f32, (f64, (f64,)))) = random();
     }
 
     #[test]

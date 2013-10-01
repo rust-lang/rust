@@ -255,7 +255,7 @@ impl<T:Send> MutexArc<T> {
         let inner = x.unwrap();
         let MutexArcInner { failed: failed, data: data, _ } = inner;
         if failed {
-            fail!(~"Can't unwrap poisoned MutexArc - another task failed inside!");
+            fail2!("Can't unwrap poisoned MutexArc - another task failed inside!");
         }
         data
     }
@@ -300,9 +300,9 @@ impl<T:Freeze + Send> MutexArc<T> {
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
         if is_mutex {
-            fail!("Poisoned MutexArc - another task failed inside!");
+            fail2!("Poisoned MutexArc - another task failed inside!");
         } else {
-            fail!("Poisoned rw_arc - another task failed inside!");
+            fail2!("Poisoned rw_arc - another task failed inside!");
         }
     }
 }
@@ -505,7 +505,7 @@ impl<T:Freeze + Send> RWArc<T> {
         let inner = x.unwrap();
         let RWArcInner { failed: failed, data: data, _ } = inner;
         if failed {
-            fail!(~"Can't unwrap poisoned RWArc - another task failed inside!")
+            fail2!("Can't unwrap poisoned RWArc - another task failed inside!")
         }
         data
     }
@@ -619,7 +619,7 @@ mod tests {
         assert_eq!(arc_v.get()[2], 3);
         assert_eq!(arc_v.get()[4], 5);
 
-        info!(arc_v);
+        info2!("{:?}", arc_v);
     }
 
     #[test]

@@ -1,18 +1,18 @@
 static a: int = -4 + 3;
 static a2: uint = 3 + 3;
-static b: float = 3.0 + 2.7;
+static b: f64 = 3.0 + 2.7;
 
 static c: int = 3 - 4;
 static d: uint = 3 - 3;
-static e: float = 3.0 - 2.7;
+static e: f64 = 3.0 - 2.7;
 
 static e2: int = -3 * 3;
 static f: uint = 3 * 3;
-static g: float = 3.3 * 3.3;
+static g: f64 = 3.3 * 3.3;
 
 static h: int = 3 / -1;
 static i: uint = 3 / 3;
-static j: float = 3.3 / 3.3;
+static j: f64 = 3.3 / 3.3;
 
 static n: bool = true && false;
 

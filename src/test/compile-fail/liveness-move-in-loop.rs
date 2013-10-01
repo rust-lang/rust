@@ -12,7 +12,7 @@ fn main() {
     let y: ~int = ~42;
     let mut x: ~int;
     loop {
-        info!(y);
+        info2!("{:?}", y);
         loop {
             loop {
                 loop {

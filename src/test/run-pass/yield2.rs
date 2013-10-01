@@ -13,5 +13,5 @@ use std::task;
 
 pub fn main() {
     let mut i: int = 0;
-    while i < 100 { i = i + 1; error!(i); task::deschedule(); }
+    while i < 100 { i = i + 1; error2!("{}", i); task::deschedule(); }
 }

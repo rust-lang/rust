@@ -85,8 +85,8 @@ impl UnifyInferCtxtMethods for InferCtxt {
             let var_val = match vb.vals.find(&vid_u) {
                 Some(&ref var_val) => (*var_val).clone(),
                 None => {
-                    tcx.sess.bug(fmt!(
-                        "failed lookup of vid `%u`", vid_u));
+                    tcx.sess.bug(format!(
+                        "failed lookup of vid `{}`", vid_u));
                 }
             };
             match var_val {
@@ -116,7 +116,7 @@ impl UnifyInferCtxtMethods for InferCtxt {
          * Sets the value for `vid` to `new_v`.  `vid` MUST be a root node!
          */
 
-        debug!("Updating variable %s to %s",
+        debug2!("Updating variable {} to {}",
                vid.to_str(), new_v.inf_str(self));
 
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
@@ -134,8 +134,8 @@ impl UnifyInferCtxtMethods for InferCtxt {
         // Rank optimization: if you don't know what it is, check
         // out <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>
 
-        debug!("unify(node_a(id=%?, rank=%?), \
-                node_b(id=%?, rank=%?))",
+        debug2!("unify(node_a(id={:?}, rank={:?}), \
+                node_b(id={:?}, rank={:?}))",
                node_a.root, node_a.rank,
                node_b.root, node_b.rank);
 

@@ -65,8 +65,8 @@ fn main() {
     // format strings because otherwise the "internal pointer of which argument
     // is next" would be invalidated if different cases had different numbers of
     // arguments.
-    format!("{0, select, other{{}}}", "a"); //~ ERROR: cannot use implicit
-    format!("{0, plural, other{{}}}", 1); //~ ERROR: cannot use implicit
+    format!("{1, select, other{{}}}", 1, "a"); //~ ERROR: cannot use implicit
+    format!("{1, plural, other{{}}}", 1, 1); //~ ERROR: cannot use implicit
     format!("{0, plural, other{{1:.*d}}}", 1, 2); //~ ERROR: cannot use implicit
 
     format!("foo } bar"); //~ ERROR: unmatched `}` found

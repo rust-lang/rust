@@ -13,8 +13,8 @@
 // error-pattern:oops
 
 fn bigfail() {
-    while (fail!("oops")) { if (fail!()) {
-        match (fail!()) { () => {
+    while (fail2!("oops")) { if (fail2!()) {
+        match (fail2!()) { () => {
         }
                      }
     }};

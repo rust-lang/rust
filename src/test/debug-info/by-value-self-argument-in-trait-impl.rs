@@ -55,8 +55,8 @@ impl Trait for Struct {
     }
 }
 
-impl Trait for (float, int, int, float) {
-    fn method(self) -> (float, int, int, float) {
+impl Trait for (f64, int, int, f64) {
+    fn method(self) -> (f64, int, int, f64) {
         zzz();
         self
     }

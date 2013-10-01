@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    debug!("%s %s", 3); //~ ERROR: not enough arguments
+#[deny(non_uppercase_statics)];
+
+pub fn main() {
+    println!("I generate statics with {0, select, other{#}}", "weird names");
 }

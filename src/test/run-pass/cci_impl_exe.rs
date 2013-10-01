@@ -19,7 +19,7 @@ pub fn main() {
     //info!("%?", bt0);
 
     do 3u.to(10u) |i| {
-        printfln!("%u", i);
+        println!("{}", i);
 
         //let bt1 = sys::frame_address();
         //info!("%?", bt1);

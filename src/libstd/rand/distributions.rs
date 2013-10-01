@@ -70,7 +70,7 @@ fn ziggurat<R:Rng>(rng: &mut R,
 ///
 /// fn main() {
 ///     let normal = 2.0 + (*rand::random::<StandardNormal>()) * 3.0;
-///     printfln!("%f is from a N(2, 9) distribution", normal)
+///     println!("{} is from a N(2, 9) distribution", normal)
 /// }
 /// ```
 pub struct StandardNormal(f64);
@@ -124,7 +124,7 @@ impl Rand for StandardNormal {
 ///
 /// fn main() {
 ///     let exp2 = (*rand::random::<Exp1>()) * 0.5;
-///     printfln!("%f is from a Exp(2) distribution", exp2);
+///     println!("{} is from a Exp(2) distribution", exp2);
 /// }
 /// ```
 pub struct Exp1(f64);

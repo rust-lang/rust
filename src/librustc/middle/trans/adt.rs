@@ -113,13 +113,13 @@ pub fn represent_node(bcx: @mut Block, node: ast::NodeId) -> @Repr {
 
 /// Decides how to represent a given type.
 pub fn represent_type(cx: &mut CrateContext, t: ty::t) -> @Repr {
-    debug!("Representing: %s", ty_to_str(cx.tcx, t));
+    debug2!("Representing: {}", ty_to_str(cx.tcx, t));
     match cx.adt_reprs.find(&t) {
         Some(repr) => return *repr,
         None => { }
     }
     let repr = @represent_type_uncached(cx, t);
-    debug!("Represented as: %?", repr)
+    debug2!("Represented as: {:?}", repr)
     cx.adt_reprs.insert(t, repr);
     return repr;
 }
@@ -179,7 +179,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             // non-empty body, explicit discriminants should have
             // been rejected by a checker before this point.
             if !cases.iter().enumerate().all(|(i,c)| c.discr == (i as Disr)) {
-                cx.sess.bug(fmt!("non-C-like enum %s with specified \
+                cx.sess.bug(format!("non-C-like enum {} with specified \
                                   discriminants",
                                  ty::item_path_str(cx.tcx, def_id)))
             }

@@ -82,23 +82,23 @@ pub fn parse_config(args: ~[~str]) -> config {
     let argv0 = args[0].clone();
     let args_ = args.tail();
     if args[1] == ~"-h" || args[1] == ~"--help" {
-        let message = fmt!("Usage: %s [OPTIONS] [TESTNAME...]", argv0);
+        let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
         println("");
-        fail!()
+        fail2!()
     }
 
     let matches =
         &match getopts::groups::getopts(args_, groups) {
           Ok(m) => m,
-          Err(f) => fail!(f.to_err_msg())
+          Err(f) => fail2!("{}", f.to_err_msg())
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        let message = fmt!("Usage: %s [OPTIONS]  [TESTNAME...]", argv0);
+        let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
         println("");
-        fail!()
+        fail2!()
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
@@ -152,29 +152,29 @@ pub fn parse_config(args: ~[~str]) -> config {
 
 pub fn log_config(config: &config) {
     let c = config;
-    logv(c, fmt!("configuration:"));
-    logv(c, fmt!("compile_lib_path: %s", config.compile_lib_path));
-    logv(c, fmt!("run_lib_path: %s", config.run_lib_path));
-    logv(c, fmt!("rustc_path: %s", config.rustc_path.to_str()));
-    logv(c, fmt!("src_base: %s", config.src_base.to_str()));
-    logv(c, fmt!("build_base: %s", config.build_base.to_str()));
-    logv(c, fmt!("stage_id: %s", config.stage_id));
-    logv(c, fmt!("mode: %s", mode_str(config.mode)));
-    logv(c, fmt!("run_ignored: %b", config.run_ignored));
-    logv(c, fmt!("filter: %s", opt_str(&config.filter)));
-    logv(c, fmt!("runtool: %s", opt_str(&config.runtool)));
-    logv(c, fmt!("rustcflags: %s", opt_str(&config.rustcflags)));
-    logv(c, fmt!("jit: %b", config.jit));
-    logv(c, fmt!("target: %s", config.target));
-    logv(c, fmt!("adb_path: %s", config.adb_path));
-    logv(c, fmt!("adb_test_dir: %s", config.adb_test_dir));
-    logv(c, fmt!("adb_device_status: %b", config.adb_device_status));
+    logv(c, format!("configuration:"));
+    logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
+    logv(c, format!("run_lib_path: {}", config.run_lib_path));
+    logv(c, format!("rustc_path: {}", config.rustc_path.to_str()));
+    logv(c, format!("src_base: {}", config.src_base.to_str()));
+    logv(c, format!("build_base: {}", config.build_base.to_str()));
+    logv(c, format!("stage_id: {}", config.stage_id));
+    logv(c, format!("mode: {}", mode_str(config.mode)));
+    logv(c, format!("run_ignored: {}", config.run_ignored));
+    logv(c, format!("filter: {}", opt_str(&config.filter)));
+    logv(c, format!("runtool: {}", opt_str(&config.runtool)));
+    logv(c, format!("rustcflags: {}", opt_str(&config.rustcflags)));
+    logv(c, format!("jit: {}", config.jit));
+    logv(c, format!("target: {}", config.target));
+    logv(c, format!("adb_path: {}", config.adb_path));
+    logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
+    logv(c, format!("adb_device_status: {}", config.adb_device_status));
     match config.test_shard {
         None => logv(c, ~"test_shard: (all)"),
-        Some((a,b)) => logv(c, fmt!("test_shard: %u.%u", a, b))
+        Some((a,b)) => logv(c, format!("test_shard: {}.{}", a, b))
     }
-    logv(c, fmt!("verbose: %b", config.verbose));
-    logv(c, fmt!("\n"));
+    logv(c, format!("verbose: {}", config.verbose));
+    logv(c, format!("\n"));
 }
 
 pub fn opt_str<'a>(maybestr: &'a Option<~str>) -> &'a str {
@@ -203,7 +203,7 @@ pub fn str_mode(s: ~str) -> mode {
       ~"pretty" => mode_pretty,
       ~"debug-info" => mode_debug_info,
       ~"codegen" => mode_codegen,
-      _ => fail!("invalid mode")
+      _ => fail2!("invalid mode")
     }
 }
 
@@ -226,7 +226,7 @@ pub fn run_tests(config: &config) {
     // For context, see #8904
     rt::test::prepare_for_lots_of_tests();
     let res = test::run_tests_console(&opts, tests);
-    if !res { fail!("Some tests failed"); }
+    if !res { fail2!("Some tests failed"); }
 }
 
 pub fn test_opts(config: &config) -> test::TestOpts {
@@ -244,13 +244,13 @@ pub fn test_opts(config: &config) -> test::TestOpts {
 }
 
 pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
-    debug!("making tests from %s",
+    debug2!("making tests from {}",
            config.src_base.to_str());
     let mut tests = ~[];
     let dirs = os::list_dir_path(&config.src_base);
     for file in dirs.iter() {
         let file = file.clone();
-        debug!("inspecting file %s", file.to_str());
+        debug2!("inspecting file {}", file.to_str());
         if is_test(config, &file) {
             let t = do make_test(config, &file) {
                 match config.mode {
@@ -306,12 +306,12 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
         let filename = path.filename();
         let p = path.pop();
         let dir = p.filename();
-        fmt!("%s/%s", dir.unwrap_or(""), filename.unwrap_or(""))
+        format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
     }
 
-    test::DynTestName(fmt!("[%s] %s",
-                           mode_str(config.mode),
-                           shorten(testfile)))
+    test::DynTestName(format!("[{}] {}",
+                              mode_str(config.mode),
+                              shorten(testfile)))
 }
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {

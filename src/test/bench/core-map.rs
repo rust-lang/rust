@@ -24,7 +24,7 @@ fn timed(label: &str, f: &fn()) {
     let start = time::precise_time_s();
     f();
     let end = time::precise_time_s();
-    printfln!("  %s: %f", label, end - start);
+    println!("  {}: {}", label, end - start);
 }
 
 fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
@@ -116,7 +116,7 @@ fn main() {
         }
     }
 
-    printfln!("%? keys", n_keys);
+    println!("{} keys", n_keys);
 
     io::println("\nTreeMap:");
 

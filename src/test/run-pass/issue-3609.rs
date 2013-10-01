@@ -3,7 +3,7 @@ extern mod extra;
 use std::comm::Chan;
 use std::task;
 
-type RingBuffer = ~[float];
+type RingBuffer = ~[f64];
 type SamplesFn = ~fn(samples: &RingBuffer);
 
 enum Msg
@@ -18,7 +18,7 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
             |buffer|
             {
                 for i in range(0u, buffer.len()) {
-                    error!("%?: %f", i, buffer[i])
+                    error2!("{}: {}", i, buffer[i])
                 }
             };
         samples_chan.send(GetSamples(name.clone(), callback));

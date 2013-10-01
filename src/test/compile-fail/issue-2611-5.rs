@@ -21,7 +21,7 @@ struct E {
 
 impl A for E {
   // n.b. The error message is awful -- see #3404
-  fn b<F:Clone,G>(&self, _x: G) -> G { fail!() } //~ ERROR method `b` has an incompatible type
+  fn b<F:Clone,G>(&self, _x: G) -> G { fail2!() } //~ ERROR method `b` has an incompatible type
 }
 
 fn main() {}

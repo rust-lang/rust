@@ -19,5 +19,5 @@ fn foo_func<A, B: thing<A>>(x: B) -> Option<A> { x.foo() }
 struct A { a: int }
 
 pub fn main() {
-    let _x: Option<float> = foo_func(0);
+    let _x: Option<f64> = foo_func(0);
 }

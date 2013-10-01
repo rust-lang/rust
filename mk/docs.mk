@@ -217,10 +217,6 @@ endif
 # Rustdoc (libstd/extra)
 ######################################################################
 
-ifeq ($(CFG_PANDOC),)
-  $(info cfg: no pandoc found, omitting library doc build)
-else
-
 # The rustdoc executable
 RUSTDOC = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc$(X_$(CFG_BUILD_TRIPLE))
 
@@ -231,14 +227,13 @@ RUSTDOC = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc$(X_$(CFG_BUILD_TRIPLE))
 define libdoc
 doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
 	@$$(call E, rustdoc: $$@)
-	$(Q)$(RUSTDOC) html $(2)
+	$(Q)$(RUSTDOC) $(2)
 
 DOCS += doc/$(1)/index.html
 endef
 
 $(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD_TRIPLE)))
 $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD_TRIPLE)))
-endif
 
 
 ifdef CFG_DISABLE_DOCS

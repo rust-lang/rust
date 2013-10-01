@@ -39,7 +39,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        substs: @param_substs,
                        attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
-    debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
+    debug2!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
     fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
@@ -49,7 +49,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
         }
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, args.slice(0, num_args), []));
+        let llcall = Call(bcx, llfn, args.slice(0, num_args), []);
+        Ret(bcx, llcall);
     }
 
     fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str) {
@@ -116,7 +117,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, [x, y], []));
+        let llcall = Call(bcx, llfn, [x, y], []);
+        Ret(bcx, llcall);
     }
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
@@ -276,7 +278,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if ty::type_is_immediate(ccx.tcx, retty) && !ty::type_is_nil(retty) {
+            if type_is_immediate(ccx.tcx, retty) && !ty::type_is_nil(retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
@@ -297,13 +299,13 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             if in_type_size != out_type_size {
                 let sp = match ccx.tcx.items.get_copy(&ref_id.unwrap()) {
                     ast_map::node_expr(e) => e.span,
-                    _ => fail!("transmute has non-expr arg"),
+                    _ => fail2!("transmute has non-expr arg"),
                 };
                 let pluralize = |n| if 1u == n { "" } else { "s" };
                 ccx.sess.span_fatal(sp,
-                                    fmt!("transmute called on types with \
-                                          different sizes: %s (%u bit%s) to \
-                                          %s (%u bit%s)",
+                                    format!("transmute called on types with \
+                                          different sizes: {} ({} bit{}) to \
+                                          {} ({} bit{})",
                                          ty_to_str(ccx.tcx, in_type),
                                          in_type_size,
                                          pluralize(in_type_size),
@@ -314,7 +316,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
             if !ty::type_is_voidish(out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
-                if ty::type_is_immediate(ccx.tcx, in_type) {
+                if type_is_immediate(ccx.tcx, in_type) {
                     match fcx.llretptr {
                         Some(llretptr) => {
                             Store(bcx, llsrcval, PointerCast(bcx, llretptr, llintype.ptr_to()));
@@ -324,14 +326,19 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             (Pointer, other) | (other, Pointer) if other != Pointer => {
                                 let tmp = Alloca(bcx, llouttype, "");
                                 Store(bcx, llsrcval, PointerCast(bcx, tmp, llintype.ptr_to()));
-                                Ret(bcx, Load(bcx, tmp));
+                                let ll_load = Load(bcx, tmp);
+                                Ret(bcx, ll_load);
                             }
-                            _ => Ret(bcx, BitCast(bcx, llsrcval, llouttype))
+                            _ => {
+                                let llbitcast = BitCast(bcx, llsrcval, llouttype);
+                                Ret(bcx, llbitcast)
+                            }
                         }
                     }
-                } else if ty::type_is_immediate(ccx.tcx, out_type) {
+                } else if type_is_immediate(ccx.tcx, out_type) {
                     let llsrcptr = PointerCast(bcx, llsrcval, llouttype.ptr_to());
-                    Ret(bcx, Load(bcx, llsrcptr));
+                    let ll_load = Load(bcx, llsrcptr);
+                    Ret(bcx, ll_load);
                 } else {
                     // NB: Do not use a Load and Store here. This causes massive
                     // code bloat when `transmute` is used on large structural
@@ -404,7 +411,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "offset" => {
             let ptr = get_param(decl, first_real_arg);
             let offset = get_param(decl, first_real_arg + 1);
-            Ret(bcx, InBoundsGEP(bcx, ptr, [offset]));
+            let lladdr = InBoundsGEP(bcx, ptr, [offset]);
+            Ret(bcx, lladdr);
         }
         "memcpy32" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i32", substs.tys[0], 32),
         "memcpy64" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i64", substs.tys[0], 64),

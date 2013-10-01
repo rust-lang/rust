@@ -122,7 +122,7 @@ pub struct MatcherPos {
 pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
     match *mpu {
       matcher_pos_up(Some(ref mp)) => (*mp).clone(),
-      _ => fail!()
+      _ => fail2!()
     }
 }
 
@@ -384,14 +384,14 @@ pub fn parse(
                 let nts = bb_eis.map(|ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(ref bind,ref name,_) => {
-                        fmt!("%s ('%s')", ident_to_str(name),
+                        format!("{} ('{}')", ident_to_str(name),
                              ident_to_str(bind))
                       }
-                      _ => fail!()
+                      _ => fail2!()
                     } }).connect(" or ");
-                return error(sp, fmt!(
+                return error(sp, format!(
                     "Local ambiguity: multiple parsing options: \
-                     built-in NTs %s or %u other options.",
+                     built-in NTs {} or {} other options.",
                     nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 return failure(sp, ~"No rules expected the token: "
@@ -412,7 +412,7 @@ pub fn parse(
                         parse_nt(&rust_parser, ident_to_str(name))));
                     ei.idx += 1u;
                   }
-                  _ => fail!()
+                  _ => fail2!()
                 }
                 cur_eis.push(ei);
 

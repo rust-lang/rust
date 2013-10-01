@@ -244,7 +244,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
       cyclic_ty(_) => ~"cyclic type of infinite size",
       unresolved_region(_) => ~"unconstrained region",
       region_var_bound_by_region_var(r1, r2) => {
-        fmt!("region var %? bound by another region var %?; this is \
+        format!("region var {:?} bound by another region var {:?}; this is \
               a bug in rustc", r1, r2)
       }
     }
@@ -285,7 +285,7 @@ pub fn common_supertype(cx: @mut InferCtxt,
      * not possible, reports an error and returns ty::err.
      */
 
-    debug!("common_supertype(%s, %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("common_supertype({}, {})", a.inf_str(cx), b.inf_str(cx));
 
     let trace = TypeTrace {
         origin: origin,
@@ -311,7 +311,7 @@ pub fn mk_subty(cx: @mut InferCtxt,
                 a: ty::t,
                 b: ty::t)
              -> ures {
-    debug!("mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("mk_subty({} <: {})", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             let trace = TypeTrace {
@@ -324,7 +324,7 @@ pub fn mk_subty(cx: @mut InferCtxt,
 }
 
 pub fn can_mk_subty(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("can_mk_subty({} <: {})", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
             let trace = TypeTrace {
@@ -341,7 +341,7 @@ pub fn mk_subr(cx: @mut InferCtxt,
                origin: SubregionOrigin,
                a: ty::Region,
                b: ty::Region) {
-    debug!("mk_subr(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("mk_subr({} <: {})", a.inf_str(cx), b.inf_str(cx));
     cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
     cx.region_vars.commit();
@@ -353,7 +353,7 @@ pub fn mk_eqty(cx: @mut InferCtxt,
                a: ty::t,
                b: ty::t)
             -> ures {
-    debug!("mk_eqty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("mk_eqty({} <: {})", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             let trace = TypeTrace {
@@ -373,7 +373,7 @@ pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
                          b: @ty::TraitRef)
     -> ures
 {
-    debug!("mk_sub_trait_refs(%s <: %s)",
+    debug2!("mk_sub_trait_refs({} <: {})",
            a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -403,7 +403,7 @@ pub fn mk_coercety(cx: @mut InferCtxt,
                    a: ty::t,
                    b: ty::t)
                 -> CoerceResult {
-    debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("mk_coercety({} -> {})", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
             let trace = TypeTrace {
@@ -416,7 +416,7 @@ pub fn mk_coercety(cx: @mut InferCtxt,
 }
 
 pub fn can_mk_coercety(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
+    debug2!("can_mk_coercety({} -> {})", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
             let trace = TypeTrace {
@@ -539,7 +539,7 @@ impl InferCtxt {
     }
 
     pub fn rollback_to(&mut self, snapshot: &Snapshot) {
-        debug!("rollback!");
+        debug2!("rollback!");
         rollback_to(&mut self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
         rollback_to(&mut self.int_var_bindings,
@@ -554,7 +554,7 @@ impl InferCtxt {
     pub fn commit<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
         assert!(!self.in_snapshot());
 
-        debug!("commit()");
+        debug2!("commit()");
         do indent {
             let r = self.try(|| f());
 
@@ -567,7 +567,7 @@ impl InferCtxt {
 
     /// Execute `f`, unroll bindings on failure
     pub fn try<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
-        debug!("try()");
+        debug2!("try()");
         do indent {
             let snapshot = self.start_snapshot();
             let r = f();
@@ -581,7 +581,7 @@ impl InferCtxt {
 
     /// Execute `f` then unroll any bindings it creates
     pub fn probe<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
-        debug!("probe()");
+        debug2!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
             let r = f();
@@ -654,7 +654,7 @@ impl InferCtxt {
 
     pub fn tys_to_str(@mut self, ts: &[ty::t]) -> ~str {
         let tstrs = ts.map(|t| self.ty_to_str(*t));
-        fmt!("(%s)", tstrs.connect(", "))
+        format!("({})", tstrs.connect(", "))
     }
 
     pub fn trait_ref_to_str(@mut self, t: &ty::TraitRef) -> ~str {
@@ -690,8 +690,8 @@ impl InferCtxt {
             }
             _ => {
                 self.tcx.sess.bug(
-                    fmt!("resolve_type_vars_if_possible() yielded %s \
-                          when supplied with %s",
+                    format!("resolve_type_vars_if_possible() yielded {} \
+                          when supplied with {}",
                          self.ty_to_str(dummy0),
                          self.ty_to_str(dummy1)));
             }
@@ -725,10 +725,10 @@ impl InferCtxt {
                                                 expected_ty: Option<ty::t>,
                                                 actual_ty: ~str,
                                                 err: Option<&ty::type_err>) {
-        debug!("hi! expected_ty = %?, actual_ty = %s", expected_ty, actual_ty);
+        debug2!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
         let error_str = do err.map_move_default(~"") |t_err| {
-            fmt!(" (%s)", ty::type_err_to_str(self.tcx, t_err))
+            format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
         };
         let resolved_expected = do expected_ty.map_move |e_ty| {
             self.resolve_type_vars_if_possible(e_ty)
@@ -736,10 +736,10 @@ impl InferCtxt {
         if !resolved_expected.map_move_default(false, |e| { ty::type_is_error(e) }) {
             match resolved_expected {
                 None => self.tcx.sess.span_err(sp,
-                            fmt!("%s%s", mk_msg(None, actual_ty), error_str)),
+                            format!("{}{}", mk_msg(None, actual_ty), error_str)),
                 Some(e) => {
                     self.tcx.sess.span_err(sp,
-                        fmt!("%s%s", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
+                        format!("{}{}", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
                 }
             }
             for err in err.iter() {
@@ -776,7 +776,7 @@ impl InferCtxt {
             _ => {
                 // if I leave out : ~str, it infers &str and complains
                 |actual: ~str| {
-                    fmt!("mismatched types: expected `%s` but found `%s`",
+                    format!("mismatched types: expected `{}` but found `{}`",
                          self.ty_to_str(resolved_expected), actual)
                 }
             }
@@ -792,7 +792,7 @@ impl InferCtxt {
             replace_bound_regions_in_fn_sig(self.tcx, @Nil, None, fsig, |br| {
                 let rvar = self.next_region_var(
                     BoundRegionInFnType(trace.origin.span(), br));
-                debug!("Bound region %s maps to %?",
+                debug2!("Bound region {} maps to {:?}",
                        bound_region_to_str(self.tcx, "", false, br),
                        rvar);
                 rvar
@@ -819,7 +819,7 @@ impl TypeTrace {
 
 impl Repr for TypeTrace {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
-        fmt!("TypeTrace(%s)", self.origin.repr(tcx))
+        format!("TypeTrace({})", self.origin.repr(tcx))
     }
 }
 
@@ -840,13 +840,13 @@ impl TypeOrigin {
 impl Repr for TypeOrigin {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
-            MethodCompatCheck(a) => fmt!("MethodCompatCheck(%s)", a.repr(tcx)),
-            ExprAssignable(a) => fmt!("ExprAssignable(%s)", a.repr(tcx)),
-            Misc(a) => fmt!("Misc(%s)", a.repr(tcx)),
-            RelateTraitRefs(a) => fmt!("RelateTraitRefs(%s)", a.repr(tcx)),
-            RelateSelfType(a) => fmt!("RelateSelfType(%s)", a.repr(tcx)),
-            MatchExpression(a) => fmt!("MatchExpression(%s)", a.repr(tcx)),
-            IfExpression(a) => fmt!("IfExpression(%s)", a.repr(tcx)),
+            MethodCompatCheck(a) => format!("MethodCompatCheck({})", a.repr(tcx)),
+            ExprAssignable(a) => format!("ExprAssignable({})", a.repr(tcx)),
+            Misc(a) => format!("Misc({})", a.repr(tcx)),
+            RelateTraitRefs(a) => format!("RelateTraitRefs({})", a.repr(tcx)),
+            RelateSelfType(a) => format!("RelateSelfType({})", a.repr(tcx)),
+            MatchExpression(a) => format!("MatchExpression({})", a.repr(tcx)),
+            IfExpression(a) => format!("IfExpression({})", a.repr(tcx)),
         }
     }
 }
@@ -876,21 +876,23 @@ impl SubregionOrigin {
 impl Repr for SubregionOrigin {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
-            Subtype(a) => fmt!("Subtype(%s)", a.repr(tcx)),
-            InfStackClosure(a) => fmt!("InfStackClosure(%s)", a.repr(tcx)),
-            InvokeClosure(a) => fmt!("InvokeClosure(%s)", a.repr(tcx)),
-            DerefPointer(a) => fmt!("DerefPointer(%s)", a.repr(tcx)),
-            FreeVariable(a) => fmt!("FreeVariable(%s)", a.repr(tcx)),
-            IndexSlice(a) => fmt!("IndexSlice(%s)", a.repr(tcx)),
-            RelateObjectBound(a) => fmt!("RelateObjectBound(%s)", a.repr(tcx)),
-            Reborrow(a) => fmt!("Reborrow(%s)", a.repr(tcx)),
-            ReferenceOutlivesReferent(_, a) => fmt!("ReferenceOutlivesReferent(%s)", a.repr(tcx)),
-            BindingTypeIsNotValidAtDecl(a) => fmt!("BindingTypeIsNotValidAtDecl(%s)", a.repr(tcx)),
-            CallRcvr(a) => fmt!("CallRcvr(%s)", a.repr(tcx)),
-            CallArg(a) => fmt!("CallArg(%s)", a.repr(tcx)),
-            CallReturn(a) => fmt!("CallReturn(%s)", a.repr(tcx)),
-            AddrOf(a) => fmt!("AddrOf(%s)", a.repr(tcx)),
-            AutoBorrow(a) => fmt!("AutoBorrow(%s)", a.repr(tcx)),
+            Subtype(a) => format!("Subtype({})", a.repr(tcx)),
+            InfStackClosure(a) => format!("InfStackClosure({})", a.repr(tcx)),
+            InvokeClosure(a) => format!("InvokeClosure({})", a.repr(tcx)),
+            DerefPointer(a) => format!("DerefPointer({})", a.repr(tcx)),
+            FreeVariable(a) => format!("FreeVariable({})", a.repr(tcx)),
+            IndexSlice(a) => format!("IndexSlice({})", a.repr(tcx)),
+            RelateObjectBound(a) => format!("RelateObjectBound({})", a.repr(tcx)),
+            Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
+            ReferenceOutlivesReferent(_, a) =>
+                format!("ReferenceOutlivesReferent({})", a.repr(tcx)),
+            BindingTypeIsNotValidAtDecl(a) =>
+                format!("BindingTypeIsNotValidAtDecl({})", a.repr(tcx)),
+            CallRcvr(a) => format!("CallRcvr({})", a.repr(tcx)),
+            CallArg(a) => format!("CallArg({})", a.repr(tcx)),
+            CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
+            AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
+            AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
         }
     }
 }
@@ -916,20 +918,20 @@ impl RegionVariableOrigin {
 impl Repr for RegionVariableOrigin {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
-            MiscVariable(a) => fmt!("MiscVariable(%s)", a.repr(tcx)),
-            PatternRegion(a) => fmt!("PatternRegion(%s)", a.repr(tcx)),
-            AddrOfRegion(a) => fmt!("AddrOfRegion(%s)", a.repr(tcx)),
-            AddrOfSlice(a) => fmt!("AddrOfSlice(%s)", a.repr(tcx)),
-            Autoref(a) => fmt!("Autoref(%s)", a.repr(tcx)),
-            Coercion(a) => fmt!("Coercion(%s)", a.repr(tcx)),
-            BoundRegionInFnCall(a, b) => fmt!("BoundRegionInFnCall(%s,%s)",
+            MiscVariable(a) => format!("MiscVariable({})", a.repr(tcx)),
+            PatternRegion(a) => format!("PatternRegion({})", a.repr(tcx)),
+            AddrOfRegion(a) => format!("AddrOfRegion({})", a.repr(tcx)),
+            AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
+            Autoref(a) => format!("Autoref({})", a.repr(tcx)),
+            Coercion(a) => format!("Coercion({})", a.repr(tcx)),
+            BoundRegionInFnCall(a, b) => format!("BoundRegionInFnCall({},{})",
                                               a.repr(tcx), b.repr(tcx)),
-            BoundRegionInFnType(a, b) => fmt!("BoundRegionInFnType(%s,%s)",
+            BoundRegionInFnType(a, b) => format!("BoundRegionInFnType({},{})",
                                               a.repr(tcx), b.repr(tcx)),
-            BoundRegionInTypeOrImpl(a) => fmt!("BoundRegionInTypeOrImpl(%s)",
+            BoundRegionInTypeOrImpl(a) => format!("BoundRegionInTypeOrImpl({})",
                                                a.repr(tcx)),
-            BoundRegionInCoherence => fmt!("BoundRegionInCoherence"),
-            BoundRegionError(a) => fmt!("BoundRegionError(%s)", a.repr(tcx)),
+            BoundRegionInCoherence => format!("BoundRegionInCoherence"),
+            BoundRegionError(a) => format!("BoundRegionError({})", a.repr(tcx)),
         }
     }
 }

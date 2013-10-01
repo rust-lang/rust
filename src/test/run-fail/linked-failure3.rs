@@ -16,7 +16,7 @@
 use std::comm;
 use std::task;
 
-fn grandchild() { fail!("grandchild dies"); }
+fn grandchild() { fail2!("grandchild dies"); }
 
 fn child() {
     let (p, _c) = comm::stream::<int>();

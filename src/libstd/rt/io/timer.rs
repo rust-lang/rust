@@ -36,7 +36,7 @@ impl Timer {
         match timer {
             Ok(t) => Some(Timer(t)),
             Err(ioerr) => {
-                rtdebug!("Timer::init: failed to init: %?", ioerr);
+                rtdebug!("Timer::init: failed to init: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }

@@ -24,7 +24,7 @@ use messages::*;
 pub fn default_workspace() -> Path {
     let p = rust_path();
     if p.is_empty() {
-        fail!("Empty RUST_PATH");
+        fail2!("Empty RUST_PATH");
     }
     let result = p[0];
     if !os::path_is_dir(&result) {
@@ -88,9 +88,9 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     };
 
     if found.is_some() {
-        debug!("Found %s in %s", pkgid.to_str(), workspace.to_str());
+        debug2!("Found {} in {}", pkgid.to_str(), workspace.to_str());
     } else {
-        debug!("Didn't find %s in %s", pkgid.to_str(), workspace.to_str());
+        debug2!("Didn't find {} in {}", pkgid.to_str(), workspace.to_str());
     }
     found
 }
@@ -119,13 +119,13 @@ fn target_bin_dir(workspace: &Path) -> Path {
 pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = target_build_dir(workspace);
     result = mk_output_path(Main, Build, pkgid, result);
-    debug!("built_executable_in_workspace: checking whether %s exists",
+    debug2!("built_executable_in_workspace: checking whether {} exists",
            result.to_str());
     if os::path_exists(&result) {
         Some(result)
     }
     else {
-        debug!("built_executable_in_workspace: %s does not exist", result.to_str());
+        debug2!("built_executable_in_workspace: {} does not exist", result.to_str());
         None
     }
 }
@@ -146,13 +146,13 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
     let mut result = target_build_dir(workspace);
     // should use a target-specific subdirectory
     result = mk_output_path(what, Build, pkgid, result);
-    debug!("output_in_workspace: checking whether %s exists",
+    debug2!("output_in_workspace: checking whether {} exists",
            result.to_str());
     if os::path_exists(&result) {
         Some(result)
     }
     else {
-        error!(fmt!("output_in_workspace: %s does not exist", result.to_str()));
+        error2!("output_in_workspace: {} does not exist", result.to_str());
         None
     }
 }
@@ -181,14 +181,14 @@ pub fn installed_library_in_workspace(pkg_path: &Path, workspace: &Path) -> Opti
 /// `short_name` is taken as the link name of the library.
 pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
                         workspace: &Path, prefix: &str, version: &Version) -> Option<Path> {
-    debug!("library_in_workspace: checking whether a library named %s exists",
+    debug2!("library_in_workspace: checking whether a library named {} exists",
            short_name);
 
     // We don't know what the hash is, so we have to search through the directory
     // contents
 
-    debug!("short_name = %s where = %? workspace = %s \
-            prefix = %s", short_name, where, workspace.to_str(), prefix);
+    debug2!("short_name = {} where = {:?} workspace = {} \
+            prefix = {}", short_name, where, workspace.to_str(), prefix);
 
     let dir_to_search = match where {
         Build => target_build_dir(workspace).push_rel(path),
@@ -204,14 +204,14 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
-    debug!("Listing directory %s", dir_to_search.to_str());
+    debug2!("Listing directory {}", dir_to_search.to_str());
     let dir_contents = os::list_dir(dir_to_search);
-    debug!("dir has %? entries", dir_contents.len());
+    debug2!("dir has {:?} entries", dir_contents.len());
 
-    let lib_prefix = fmt!("%s%s", os::consts::DLL_PREFIX, short_name);
+    let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
     let lib_filetype = os::consts::DLL_SUFFIX;
 
-    debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
+    debug2!("lib_prefix = {} and lib_filetype = {}", lib_prefix, lib_filetype);
 
     // Find a filename that matches the pattern:
     // (lib_prefix)-hash-(version)(lib_suffix)
@@ -221,7 +221,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
 
     let mut libraries = do paths.filter |p| {
         let extension = p.filetype();
-        debug!("p = %s, p's extension is %?", p.to_str(), extension);
+        debug2!("p = {}, p's extension is {:?}", p.to_str(), extension);
         match extension {
             None => false,
             Some(ref s) => lib_filetype == *s
@@ -242,12 +242,12 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
             if f_name.is_empty() { break; }
             match f_name.rfind('-') {
                 Some(i) => {
-                    debug!("Maybe %s is a version", f_name.slice(i + 1, f_name.len()));
+                    debug2!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
                     match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
                        Some(ref found_vers) if version == found_vers => {
                            match f_name.slice(0, i).rfind('-') {
                                Some(j) => {
-                                   debug!("Maybe %s equals %s", f_name.slice(0, j), lib_prefix);
+                                   debug2!("Maybe {} equals {}", f_name.slice(0, j), lib_prefix);
                                    if f_name.slice(0, j) == lib_prefix {
                                        result_filename = Some(p_path.clone());
                                    }
@@ -265,7 +265,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     } // for
 
     if result_filename.is_none() {
-        debug!("warning: library_in_workspace didn't find a library in %s for %s",
+        debug2!("warning: library_in_workspace didn't find a library in {} for {}",
                   dir_to_search.to_str(), short_name);
     }
 
@@ -273,7 +273,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     // (if result_filename != None)
     let abs_path = do result_filename.map |result_filename| {
         let absolute_path = dir_to_search.push_rel(result_filename);
-        debug!("result_filename = %s", absolute_path.to_str());
+        debug2!("result_filename = {}", absolute_path.to_str());
         absolute_path
     };
 
@@ -295,8 +295,8 @@ pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
     if !os::path_is_dir(workspace) {
         cond.raise(((*workspace).clone(),
-                    fmt!("Workspace supplied to target_library_in_workspace \
-                          is not a directory! %s", workspace.to_str())));
+                    format!("Workspace supplied to target_library_in_workspace \
+                             is not a directory! {}", workspace.to_str())));
     }
     target_file_in_workspace(pkgid, workspace, Lib, Install)
 }
@@ -333,8 +333,8 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
                 (Install, _)    => target_bin_dir(workspace)
     };
     if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
-        cond.raise((result.clone(), fmt!("target_file_in_workspace couldn't \
-            create the %s dir (pkgid=%s, workspace=%s, what=%?, where=%?",
+        cond.raise((result.clone(), format!("target_file_in_workspace couldn't \
+            create the {} dir (pkgid={}, workspace={}, what={:?}, where={:?}",
             subdir, pkgid.to_str(), workspace.to_str(), what, where)));
     }
     mk_output_path(what, where, pkgid, result)
@@ -347,13 +347,13 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 
     let mut result = target_build_dir(workspace);
     result = result.push_rel(&pkgid.path);
-    debug!("Creating build dir %s for package id %s", result.to_str(),
+    debug2!("Creating build dir {} for package id {}", result.to_str(),
            pkgid.to_str());
     if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
     }
     else {
-        cond.raise((result, fmt!("Could not create directory for package %s", pkgid.to_str())))
+        cond.raise((result, format!("Could not create directory for package {}", pkgid.to_str())))
     }
 }
 
@@ -361,8 +361,8 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
                       pkg_id: &PkgId, workspace: Path) -> Path {
-    let short_name_with_version = fmt!("%s-%s", pkg_id.short_name,
-                                       pkg_id.version.to_str());
+    let short_name_with_version = format!("{}-{}", pkg_id.short_name,
+                                          pkg_id.version.to_str());
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = match where {
@@ -371,14 +371,14 @@ pub fn mk_output_path(what: OutputType, where: Target,
         // and if we're just building, it goes in a package-specific subdir
         Build => workspace.push_rel(&pkg_id.path)
     };
-    debug!("[%?:%?] mk_output_path: short_name = %s, path = %s", what, where,
+    debug2!("[{:?}:{:?}] mk_output_path: short_name = {}, path = {}", what, where,
            if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },
            dir.to_str());
     let mut output_path = match what {
         // this code is duplicated from elsewhere; fix this
         Lib => dir.push(os::dll_filename(short_name_with_version)),
         // executable names *aren't* versioned
-        _ => dir.push(fmt!("%s%s%s", pkg_id.short_name,
+        _ => dir.push(format!("{}{}{}", pkg_id.short_name,
                            match what {
                                Test => "test",
                                Bench => "bench",
@@ -389,7 +389,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
     if !output_path.is_absolute() {
         output_path = os::getcwd().push_rel(&output_path).normalize();
     }
-    debug!("mk_output_path: returning %s", output_path.to_str());
+    debug2!("mk_output_path: returning {}", output_path.to_str());
     output_path
 }
 
@@ -407,7 +407,7 @@ pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
         did_something = true;
     }
     if !did_something {
-        warn(fmt!("Warning: there don't seem to be any files for %s installed in %s",
+        warn(format!("Warning: there don't seem to be any files for {} installed in {}",
              pkgid.to_str(), workspace.to_str()));
     }
 
@@ -425,14 +425,14 @@ pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {
         // Note that this only matches if the package ID being searched for
         // has a name that's a single component
         if dir.is_parent_of(&p.path) || dir.is_parent_of(&versionize(&p.path, &p.version)) {
-            debug!("In find_dir_using_rust_path_hack: checking dir %s", dir.to_str());
+            debug2!("In find_dir_using_rust_path_hack: checking dir {}", dir.to_str());
             if dir_has_file(dir, "lib.rs") || dir_has_file(dir, "main.rs")
                 || dir_has_file(dir, "test.rs") || dir_has_file(dir, "bench.rs") {
-                debug!("Did find id %s in dir %s", p.to_str(), dir.to_str());
+                debug2!("Did find id {} in dir {}", p.to_str(), dir.to_str());
                 return Some(dir.clone());
             }
         }
-        debug!("Didn't find id %s in dir %s", p.to_str(), dir.to_str())
+        debug2!("Didn't find id {} in dir {}", p.to_str(), dir.to_str())
     }
     None
 }
@@ -449,7 +449,7 @@ pub fn user_set_rust_path() -> bool {
 /// Append the version string onto the end of the path's filename
 fn versionize(p: &Path, v: &Version) -> Path {
     let q = p.file_path().to_str();
-    p.with_filename(fmt!("%s-%s", q, v.to_str()))
+    p.with_filename(format!("{}-{}", q, v.to_str()))
 }
 
 

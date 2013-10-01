@@ -33,5 +33,5 @@ pub fn main()
     let z = @mut [1,2,3];
     let z2 = z;
     add(z.my_mut_slice(), z2.my_slice());
-    printfln!("%d", z[0]);
+    println!("{}", z[0]);
 }

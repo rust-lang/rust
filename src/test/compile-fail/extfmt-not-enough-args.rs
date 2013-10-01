@@ -12,4 +12,4 @@
 
 extern mod extra;
 
-fn main() { let s = fmt!("%s%s%s", "test", "test"); }
+fn main() { let s = oldfmt!("%s%s%s", "test", "test"); }

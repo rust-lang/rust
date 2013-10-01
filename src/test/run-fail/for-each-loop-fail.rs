@@ -11,4 +11,4 @@
 // error-pattern:moop
 extern mod extra;
 
-fn main() { for _ in range(0u, 10u) { fail!("moop"); } }
+fn main() { for _ in range(0u, 10u) { fail2!("moop"); } }

@@ -19,26 +19,26 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
     assert!(os::path_is_dir(source));
     assert!(is_git_dir(source));
     if !os::path_exists(target) {
-        debug!("Running: git clone %s %s", source.to_str(), target.to_str());
+        debug2!("Running: git clone {} {}", source.to_str(), target.to_str());
         let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
         if outp.status != 0 {
             io::println(str::from_utf8_owned(outp.output.clone()));
             io::println(str::from_utf8_owned(outp.error));
-            fail!("Couldn't `git clone` %s", source.to_str());
+            fail2!("Couldn't `git clone` {}", source.to_str());
         }
         else {
             match v {
                 &ExactRevision(ref s) => {
-                    debug!("`Running: git --work-tree=%s --git-dir=%s checkout %s",
+                    debug2!("`Running: git --work-tree={} --git-dir={} checkout {}",
                            *s, target.to_str(), target.push(".git").to_str());
                     let outp = run::process_output("git",
-                                   [fmt!("--work-tree=%s", target.to_str()),
-                                    fmt!("--git-dir=%s", target.push(".git").to_str()),
-                                    ~"checkout", fmt!("%s", *s)]);
+                                   [format!("--work-tree={}", target.to_str()),
+                                    format!("--git-dir={}", target.push(".git").to_str()),
+                                    ~"checkout", format!("{}", *s)]);
                     if outp.status != 0 {
                         io::println(str::from_utf8_owned(outp.output.clone()));
                         io::println(str::from_utf8_owned(outp.error));
-                        fail!("Couldn't `git checkout %s` in %s",
+                        fail2!("Couldn't `git checkout {}` in {}",
                               *s, target.to_str());
                     }
                 }
@@ -50,11 +50,12 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
         // Check that no version was specified. There's no reason to not handle the
         // case where a version was requested, but I haven't implemented it.
         assert!(*v == NoVersion);
-        debug!("Running: git --work-tree=%s --git-dir=%s pull --no-edit %s",
+        debug2!("Running: git --work-tree={} --git-dir={} pull --no-edit {}",
                target.to_str(), target.push(".git").to_str(), source.to_str());
-        let outp = run::process_output("git", [fmt!("--work-tree=%s", target.to_str()),
-                                               fmt!("--git-dir=%s", target.push(".git").to_str()),
-                                               ~"pull", ~"--no-edit", source.to_str()]);
+        let args = [format!("--work-tree={}", target.to_str()),
+                    format!("--git-dir={}", target.push(".git").to_str()),
+                    ~"pull", ~"--no-edit", source.to_str()];
+        let outp = run::process_output("git", args);
         assert!(outp.status == 0);
     }
 }
@@ -64,18 +65,18 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
 pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
     let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
     if outp.status != 0 {
-         debug!(str::from_utf8_owned(outp.output.clone()));
-         debug!(str::from_utf8_owned(outp.error));
+         debug2!("{}", str::from_utf8_owned(outp.output.clone()));
+         debug2!("{}", str::from_utf8_owned(outp.error));
          false
     }
     else {
         match v {
             &ExactRevision(ref s) | &Tagged(ref s) => {
-                    let outp = process_output_in_cwd("git", [~"checkout", fmt!("%s", *s)],
+                    let outp = process_output_in_cwd("git", [~"checkout", format!("{}", *s)],
                                                          target);
                     if outp.status != 0 {
-                        debug!(str::from_utf8_owned(outp.output.clone()));
-                        debug!(str::from_utf8_owned(outp.error));
+                        debug2!("{}", str::from_utf8_owned(outp.output.clone()));
+                        debug2!("{}", str::from_utf8_owned(outp.error));
                         false
                     }
                     else {

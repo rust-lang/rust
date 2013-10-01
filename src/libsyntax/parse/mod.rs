@@ -73,7 +73,7 @@ pub fn parse_crate_from_file(
     input: &Path,
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
-) -> @ast::Crate {
+) -> ast::Crate {
     new_parser_from_file(sess, /*bad*/ cfg.clone(), input).parse_crate_mod()
     // why is there no p.abort_if_errors here?
 }
@@ -83,7 +83,7 @@ pub fn parse_crate_from_source_str(
     source: @str,
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
-) -> @ast::Crate {
+) -> ast::Crate {
     let p = new_parser_from_source_str(sess,
                                        /*bad*/ cfg.clone(),
                                        name,
@@ -416,18 +416,18 @@ mod test {
                         _ => assert_eq!("wrong 4","correct")
                     },
                     _ => {
-                        error!("failing value 3: %?",first_set);
+                        error2!("failing value 3: {:?}",first_set);
                         assert_eq!("wrong 3","correct")
                     }
                 },
                 _ => {
-                    error!("failing value 2: %?",delim_elts);
+                    error2!("failing value 2: {:?}",delim_elts);
                     assert_eq!("wrong","correct");
                 }
 
             },
             _ => {
-                error!("failing value: %?",tts);
+                error2!("failing value: {:?}",tts);
                 assert_eq!("wrong 1","correct");
             }
         }

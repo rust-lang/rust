@@ -13,7 +13,7 @@ use std::local_data;
 // check that the local data keys are private by default.
 
 mod bar {
-    local_data_key!(baz: float)
+    local_data_key!(baz: f64)
 }
 
 fn main() {

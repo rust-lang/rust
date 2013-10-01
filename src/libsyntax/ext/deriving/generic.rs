@@ -487,7 +487,7 @@ impl<'self> MethodDef<'self> {
 
         for (i, ty) in self.args.iter().enumerate() {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
-            let ident = cx.ident_of(fmt!("__arg_%u", i));
+            let ident = cx.ident_of(format!("__arg_{}", i));
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(span, ident);
@@ -582,7 +582,8 @@ impl<'self> MethodDef<'self> {
         for i in range(0u, self_args.len()) {
             let (pat, ident_expr) = create_struct_pattern(cx, span,
                                                           type_ident, struct_def,
-                                                          fmt!("__self_%u", i), ast::MutImmutable);
+                                                          format!("__self_{}", i),
+                                                          ast::MutImmutable);
             patterns.push(pat);
             raw_fields.push(ident_expr);
         }
@@ -767,7 +768,7 @@ impl<'self> MethodDef<'self> {
             let current_match_str = if match_count == 0 {
                 ~"__self"
             } else {
-                fmt!("__arg_%u", match_count)
+                format!("__arg_{}", match_count)
             };
 
             let mut arms = ~[];
@@ -948,7 +949,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
             }
         };
         let path = cx.path_ident(span,
-                                 cx.ident_of(fmt!("%s_%u", prefix, i)));
+                                 cx.ident_of(format!("{}_{}", prefix, i)));
         paths.push(path.clone());
         ident_expr.push((opt_id, cx.expr_path(path)));
     }
@@ -993,7 +994,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
             let mut ident_expr = ~[];
             for i in range(0u, variant_args.len()) {
                 let path = cx.path_ident(span,
-                                         cx.ident_of(fmt!("%s_%u", prefix, i)));
+                                         cx.ident_of(format!("{}_{}", prefix, i)));
 
                 paths.push(path.clone());
                 ident_expr.push((None, cx.expr_path(path)));

@@ -77,19 +77,9 @@ pub fn drop_ty(cx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
 
 pub fn drop_ty_immediate(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
     let _icx = push_ctxt("drop_ty_immediate");
-    match ty::get(t).sty {
-        ty::ty_uniq(_)
-      | ty::ty_evec(_, ty::vstore_uniq)
-      | ty::ty_estr(ty::vstore_uniq) => {
-        free_ty_immediate(bcx, v, t)
-      }
-        ty::ty_box(_) | ty::ty_opaque_box
-      | ty::ty_evec(_, ty::vstore_box)
-      | ty::ty_estr(ty::vstore_box) => {
-        decr_refcnt_maybe_free(bcx, v, None, t)
-      }
-      _ => bcx.tcx().sess.bug("drop_ty_immediate: non-box ty")
-    }
+    let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
+    Store(bcx, v, vp);
+    drop_ty(bcx, vp, t)
 }
 
 pub fn free_ty(cx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
@@ -223,12 +213,12 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
         match ti.take_glue {
           Some(_) => (),
           None => {
-            debug!("+++ lazily_emit_tydesc_glue TAKE %s",
+            debug2!("+++ lazily_emit_tydesc_glue TAKE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "take");
             ti.take_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_take_glue, "take");
-            debug!("--- lazily_emit_tydesc_glue TAKE %s",
+            debug2!("--- lazily_emit_tydesc_glue TAKE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
@@ -236,12 +226,12 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
         match ti.drop_glue {
           Some(_) => (),
           None => {
-            debug!("+++ lazily_emit_tydesc_glue DROP %s",
+            debug2!("+++ lazily_emit_tydesc_glue DROP {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "drop");
             ti.drop_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_drop_glue, "drop");
-            debug!("--- lazily_emit_tydesc_glue DROP %s",
+            debug2!("--- lazily_emit_tydesc_glue DROP {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
@@ -249,12 +239,12 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
         match ti.free_glue {
           Some(_) => (),
           None => {
-            debug!("+++ lazily_emit_tydesc_glue FREE %s",
+            debug2!("+++ lazily_emit_tydesc_glue FREE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "free");
             ti.free_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_free_glue, "free");
-            debug!("--- lazily_emit_tydesc_glue FREE %s",
+            debug2!("--- lazily_emit_tydesc_glue FREE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
@@ -262,12 +252,12 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
         match ti.visit_glue {
           Some(_) => (),
           None => {
-            debug!("+++ lazily_emit_tydesc_glue VISIT %s",
+            debug2!("+++ lazily_emit_tydesc_glue VISIT {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "visit");
             ti.visit_glue = Some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
-            debug!("--- lazily_emit_tydesc_glue VISIT %s",
+            debug2!("--- lazily_emit_tydesc_glue VISIT {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
@@ -552,12 +542,14 @@ pub fn decr_refcnt_maybe_free(bcx: @mut Block, box_ptr: ValueRef,
     let decr_bcx = sub_block(bcx, "decr");
     let free_bcx = sub_block(decr_bcx, "free");
     let next_bcx = sub_block(bcx, "next");
-    CondBr(bcx, IsNotNull(bcx, box_ptr), decr_bcx.llbb, next_bcx.llbb);
+    let llnotnull = IsNotNull(bcx, box_ptr);
+    CondBr(bcx, llnotnull, decr_bcx.llbb, next_bcx.llbb);
 
     let rc_ptr = GEPi(decr_bcx, box_ptr, [0u, abi::box_field_refcnt]);
     let rc = Sub(decr_bcx, Load(decr_bcx, rc_ptr), C_int(ccx, 1));
     Store(decr_bcx, rc, rc_ptr);
-    CondBr(decr_bcx, IsNull(decr_bcx, rc), free_bcx.llbb, next_bcx.llbb);
+    let llisnull = IsNull(decr_bcx, rc);
+    CondBr(decr_bcx, llisnull, free_bcx.llbb, next_bcx.llbb);
 
     let free_bcx = match box_ptr_ptr {
         Some(p) => free_ty(free_bcx, p, t),
@@ -646,8 +638,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let llty = type_of(ccx, t);
 
     if ccx.sess.count_type_sizes() {
-        printfln!("%u\t%s", llsize_of_real(ccx, llty),
-                  ppaux::ty_to_str(ccx.tcx, t));
+        println!("{}\t{}", llsize_of_real(ccx, llty),
+                 ppaux::ty_to_str(ccx.tcx, t));
     }
 
     let has_header = match ty::get(t).sty {
@@ -666,7 +658,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
     note_unique_llvm_symbol(ccx, name);
-    debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
+    debug2!("+++ declare_tydesc {} {}", ppaux::ty_to_str(ccx.tcx, t), name);
     let gvar = do name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
@@ -687,7 +679,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
         free_glue: None,
         visit_glue: None
     };
-    debug!("--- declare_tydesc %s", ppaux::ty_to_str(ccx.tcx, t));
+    debug2!("--- declare_tydesc {}", ppaux::ty_to_str(ccx.tcx, t));
     return inf;
 }
 
@@ -697,7 +689,7 @@ pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
                             name: &str) -> ValueRef {
     let _icx = push_ctxt("declare_generic_glue");
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
-    debug!("%s is for type %s", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
+    debug2!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(llfn, t);
@@ -738,7 +730,7 @@ pub fn make_generic_glue(ccx: @mut CrateContext,
                          name: &str)
                       -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
-    let glue_name = fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t));
+    let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx, t));
     let _s = StatRecorder::new(ccx, glue_name);
     make_generic_glue_inner(ccx, t, llfn, helper)
 }
@@ -797,8 +789,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               }
             };
 
-        debug!("ti.borrow_offset: %s",
-               ccx.tn.val_to_str(ti.borrow_offset));
+        debug2!("ti.borrow_offset: {}", ccx.tn.val_to_str(ti.borrow_offset));
 
         let tydesc = C_named_struct(ccx.tydesc_type,
                                     [ti.size, // size

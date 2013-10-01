@@ -22,7 +22,7 @@ use vec;
 
 /// Writes to an owned, growable byte vector
 pub struct MemWriter {
-    buf: ~[u8]
+    priv buf: ~[u8]
 }
 
 impl MemWriter {
@@ -40,7 +40,7 @@ impl Writer for MemWriter {
 impl Seek for MemWriter {
     fn tell(&self) -> u64 { self.buf.len() as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }
 
 impl Decorator<~[u8]> for MemWriter {
@@ -66,8 +66,8 @@ impl Decorator<~[u8]> for MemWriter {
 
 /// Reads from an owned byte vector
 pub struct MemReader {
-    buf: ~[u8],
-    pos: uint
+    priv buf: ~[u8],
+    priv pos: uint
 }
 
 impl MemReader {
@@ -102,7 +102,7 @@ impl Reader for MemReader {
 impl Seek for MemReader {
     fn tell(&self) -> u64 { self.pos as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }
 
 impl Decorator<~[u8]> for MemReader {
@@ -129,8 +129,8 @@ impl Decorator<~[u8]> for MemReader {
 
 /// Writes to a fixed-size byte slice
 pub struct BufWriter<'self> {
-    buf: &'self mut [u8],
-    pos: uint
+    priv buf: &'self mut [u8],
+    priv pos: uint
 }
 
 impl<'self> BufWriter<'self> {
@@ -143,22 +143,22 @@ impl<'self> BufWriter<'self> {
 }
 
 impl<'self> Writer for BufWriter<'self> {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) { fail2!() }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail2!() }
 }
 
 impl<'self> Seek for BufWriter<'self> {
-    fn tell(&self) -> u64 { fail!() }
+    fn tell(&self) -> u64 { fail2!() }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }
 
 
 /// Reads from a fixed-size byte slice
 pub struct BufReader<'self> {
-    buf: &'self [u8],
-    pos: uint
+    priv buf: &'self [u8],
+    priv pos: uint
 }
 
 impl<'self> BufReader<'self> {
@@ -193,15 +193,15 @@ impl<'self> Reader for BufReader<'self> {
 impl<'self> Seek for BufReader<'self> {
     fn tell(&self) -> u64 { self.pos as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }
 
 ///Calls a function with a MemWriter and returns
 ///the writer's stored vector.
 pub fn with_mem_writer(writeFn:&fn(&mut MemWriter)) -> ~[u8] {
-  let mut writer = MemWriter::new();
-  writeFn(&mut writer);
-  writer.inner()
+    let mut writer = MemWriter::new();
+    writeFn(&mut writer);
+    writer.inner()
 }
 
 #[cfg(test)]

@@ -12,12 +12,14 @@ use std::cell::Cell;
 use std::comm::{SharedPort, SharedChan};
 use std::comm;
 use std::fmt;
-use std::hashmap::HashMap;
+use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::rt::io::buffered::BufferedWriter;
 use std::rt::io::file::{FileInfo, DirectoryInfo};
 use std::rt::io::file;
 use std::rt::io;
+use std::rt::io::Reader;
+use std::str;
 use std::task;
 use std::unstable::finally::Finally;
 use std::util;
@@ -26,12 +28,16 @@ use std::vec;
 use extra::arc::RWArc;
 use extra::json::ToJson;
 use extra::sort;
+use extra::time;
 
 use syntax::ast;
+use syntax::ast_util::is_local;
+use syntax::attr;
 
 use clean;
 use doctree;
 use fold::DocFolder;
+use html::escape::Escape;
 use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
 use html::markdown::Markdown;
@@ -43,6 +49,7 @@ pub struct Context {
     dst: Path,
     layout: layout::Layout,
     sidebar: HashMap<~str, ~[~str]>,
+    include_sources: bool,
 }
 
 enum Implementor {
@@ -54,7 +61,7 @@ struct Cache {
     // typaram id => name of that typaram
     typarams: HashMap<ast::NodeId, ~str>,
     // type id => all implementations for that type
-    impls: HashMap<ast::NodeId, ~[clean::Impl]>,
+    impls: HashMap<ast::NodeId, ~[(clean::Impl, Option<~str>)]>,
     // path id => (full qualified path, shortty) -- used to generate urls
     paths: HashMap<ast::NodeId, (~[~str], &'static str)>,
     // trait id => method name => dox
@@ -67,6 +74,12 @@ struct Cache {
     priv search_index: ~[IndexItem],
 }
 
+struct SourceCollector<'self> {
+    seen: HashSet<~str>,
+    dst: Path,
+    cx: &'self mut Context,
+}
+
 struct Item<'self> { cx: &'self Context, item: &'self clean::Item, }
 struct Sidebar<'self> { cx: &'self Context, item: &'self clean::Item, }
 
@@ -77,6 +90,8 @@ struct IndexItem {
     desc: ~str,
     parent: Option<ast::NodeId>,
 }
+
+struct Source<'self>(&'self str);
 
 local_data_key!(pub cache_key: RWArc<Cache>)
 local_data_key!(pub current_location_key: ~[~str])
@@ -93,6 +108,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
             favicon: ~"",
             crate: crate.name.clone(),
         },
+        include_sources: true,
     };
     mkdir(&cx.dst);
 
@@ -105,6 +121,9 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
                     }
                     clean::NameValue(~"html_logo_url", ref s) => {
                         cx.layout.logo = s.to_owned();
+                    }
+                    clean::Word(~"html_no_source") => {
+                        cx.include_sources = false;
                     }
                     _ => {}
                 }
@@ -161,8 +180,28 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         w.flush();
     }
 
-    // Now render the whole crate.
+    info2!("emitting source files");
+    let started = time::precise_time_ns();
+    {
+        let dst = cx.dst.push("src");
+        mkdir(&dst);
+        let dst = dst.push(crate.name);
+        mkdir(&dst);
+        let mut folder = SourceCollector {
+            dst: dst,
+            seen: HashSet::new(),
+            cx: &mut cx,
+        };
+        crate = folder.fold_crate(crate);
+    }
+    let ended = time::precise_time_ns();
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
+
+    info2!("rendering the whole crate");
+    let started = time::precise_time_ns();
     cx.crate(crate, cache);
+    let ended = time::precise_time_ns();
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 }
 
 fn write(dst: Path, contents: &str) {
@@ -174,7 +213,7 @@ fn mkdir(path: &Path) {
     do io::io_error::cond.trap(|err| {
         error2!("Couldn't create directory `{}`: {}",
                 path.to_str(), err.desc);
-        fail!()
+        fail2!()
     }).inside {
         if !path.is_dir() {
             file::mkdir(path);
@@ -182,7 +221,99 @@ fn mkdir(path: &Path) {
     }
 }
 
-impl<'self> DocFolder for Cache {
+fn clean_srcpath(src: &str, f: &fn(&str)) {
+    let p = Path(src);
+    for c in p.components.iter() {
+        if "." == *c {
+            loop
+        }
+        if ".." == *c {
+            f("up");
+        } else {
+            f(c.as_slice())
+        }
+    }
+}
+
+impl<'self> DocFolder for SourceCollector<'self> {
+    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        if self.cx.include_sources && !self.seen.contains(&item.source.filename) {
+            // If it turns out that we couldn't read this file, then we probably
+            // can't read any of the files (generating html output from json or
+            // something like that), so just don't include sources for the
+            // entire crate. The other option is maintaining this mapping on a
+            // per-file basis, but that's probably not worth it...
+            self.cx.include_sources = self.emit_source(item.source.filename);
+            self.seen.insert(item.source.filename.clone());
+
+            if !self.cx.include_sources {
+                println!("warning: source code was requested to be rendered, \
+                          but `{}` is a missing source file.",
+                         item.source.filename);
+                println!("         skipping rendering of source code");
+            }
+        }
+        self.fold_item_recur(item)
+    }
+}
+
+impl<'self> SourceCollector<'self> {
+    fn emit_source(&mut self, filename: &str) -> bool {
+        let p = Path(filename);
+
+        // Read the contents of the file
+        let mut contents = ~[];
+        {
+            let mut buf = [0, ..1024];
+            let r = do io::io_error::cond.trap(|_| {}).inside {
+                p.open_reader(io::Open)
+            };
+            // If we couldn't open this file, then just returns because it
+            // probably means that it's some standard library macro thing and we
+            // can't have the source to it anyway.
+            let mut r = match r {
+                Some(r) => r,
+                // eew macro hacks
+                None => return filename == "<std-macros>"
+            };
+
+            // read everything
+            loop {
+                match r.read(buf) {
+                    Some(n) => contents.push_all(buf.slice_to(n)),
+                    None => break
+                }
+            }
+        }
+        let contents = str::from_utf8_owned(contents);
+
+        // Create the intermediate directories
+        let mut cur = self.dst.clone();
+        let mut root_path = ~"../../";
+        do clean_srcpath(p.pop().to_str()) |component| {
+            cur = cur.push(component);
+            mkdir(&cur);
+            root_path.push_str("../");
+        }
+
+        let dst = cur.push(*p.components.last() + ".html");
+        let w = dst.open_writer(io::CreateOrTruncate);
+        let mut w = BufferedWriter::new(w);
+
+        let title = format!("{} -- source", *dst.components.last());
+        let page = layout::Page {
+            title: title,
+            ty: "source",
+            root_path: root_path,
+        };
+        layout::render(&mut w as &mut io::Writer, &self.cx.layout,
+                       &page, &(""), &Source(contents.as_slice()));
+        w.flush();
+        return true;
+    }
+}
+
+impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types
@@ -222,7 +353,8 @@ impl<'self> DocFolder for Cache {
         match item.inner {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
-                    Some(clean::ResolvedPath{ id, _ }) => {
+                    Some(clean::ResolvedPath{ did, _ }) if is_local(did) => {
+                        let id = did.node;
                         let v = do self.implementors.find_or_insert_with(id) |_|{
                             ~[]
                         };
@@ -247,7 +379,9 @@ impl<'self> DocFolder for Cache {
         match item.name {
             Some(ref s) => {
                 let parent = match item.inner {
-                    clean::TyMethodItem(*) | clean::VariantItem(*) => {
+                    clean::TyMethodItem(*) |
+                    clean::StructFieldItem(*) |
+                    clean::VariantItem(*) => {
                         Some((Some(*self.parent_stack.last()),
                               self.stack.slice_to(self.stack.len() - 1)))
 
@@ -256,8 +390,12 @@ impl<'self> DocFolder for Cache {
                         if self.parent_stack.len() == 0 {
                             None
                         } else {
-                            Some((Some(*self.parent_stack.last()),
-                                  self.stack.as_slice()))
+                            let last = self.parent_stack.last();
+                            let amt = match self.paths.find(last) {
+                                Some(&(_, "trait")) => self.stack.len() - 1,
+                                Some(*) | None => self.stack.len(),
+                            };
+                            Some((Some(*last), self.stack.slice_to(amt)))
                         }
                     }
                     _ => Some((None, self.stack.as_slice()))
@@ -298,13 +436,13 @@ impl<'self> DocFolder for Cache {
 
         // Maintain the parent stack
         let parent_pushed = match item.inner {
-            clean::TraitItem(*) | clean::EnumItem(*) => {
+            clean::TraitItem(*) | clean::EnumItem(*) | clean::StructItem(*) => {
                 self.parent_stack.push(item.id); true
             }
             clean::ImplItem(ref i) => {
                 match i.for_ {
-                    clean::ResolvedPath{ id, _ } => {
-                        self.parent_stack.push(id); true
+                    clean::ResolvedPath{ did, _ } if is_local(did) => {
+                        self.parent_stack.push(did.node); true
                     }
                     _ => false
                 }
@@ -316,20 +454,34 @@ impl<'self> DocFolder for Cache {
         // implementations elsewhere
         let ret = match self.fold_item_recur(item) {
             Some(item) => {
-                match item.inner {
-                    clean::ImplItem(i) => {
+                match item {
+                    clean::Item{ attrs, inner: clean::ImplItem(i), _ } => {
                         match i.for_ {
-                            clean::ResolvedPath { id, _ } => {
+                            clean::ResolvedPath { did, _ } if is_local(did) => {
+                                let id = did.node;
                                 let v = do self.impls.find_or_insert_with(id) |_| {
                                     ~[]
                                 };
-                                v.push(i);
+                                // extract relevant documentation for this impl
+                                match attrs.move_iter().find(|a| {
+                                    match *a {
+                                        clean::NameValue(~"doc", _) => true,
+                                        _ => false
+                                    }
+                                }) {
+                                    Some(clean::NameValue(_, dox)) => {
+                                        v.push((i, Some(dox)));
+                                    }
+                                    Some(*) | None => {
+                                        v.push((i, None));
+                                    }
+                                }
                             }
                             _ => {}
                         }
                         None
                     }
-                    _ => Some(item),
+                    i => Some(i),
                 }
             }
             i => i,
@@ -373,7 +525,6 @@ impl Context {
         return ret;
     }
 
-    /// Processes
     fn crate(self, mut crate: clean::Crate, cache: Cache) {
         enum Work {
             Die,
@@ -509,20 +660,6 @@ impl Context {
                 let dst = self.dst.push(item_path(&item));
                 let writer = dst.open_writer(io::CreateOrTruncate);
                 render(writer.unwrap(), self, &item, true);
-
-                // recurse if necessary
-                let name = item.name.get_ref().clone();
-                match item.inner {
-                    clean::EnumItem(e) => {
-                        let mut it = e.variants.move_iter();
-                        do self.recurse(name) |this| {
-                            for item in it {
-                                f(this, item);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
             }
 
             _ => {}
@@ -532,19 +669,21 @@ impl Context {
 
 fn shortty(item: &clean::Item) -> &'static str {
     match item.inner {
-        clean::ModuleItem(*)      => "mod",
-        clean::StructItem(*)      => "struct",
-        clean::EnumItem(*)        => "enum",
-        clean::FunctionItem(*)    => "fn",
-        clean::TypedefItem(*)     => "typedef",
-        clean::StaticItem(*)      => "static",
-        clean::TraitItem(*)       => "trait",
-        clean::ImplItem(*)        => "impl",
-        clean::ViewItemItem(*)    => "viewitem",
-        clean::TyMethodItem(*)    => "tymethod",
-        clean::MethodItem(*)      => "method",
-        clean::StructFieldItem(*) => "structfield",
-        clean::VariantItem(*)     => "variant",
+        clean::ModuleItem(*)          => "mod",
+        clean::StructItem(*)          => "struct",
+        clean::EnumItem(*)            => "enum",
+        clean::FunctionItem(*)        => "fn",
+        clean::TypedefItem(*)         => "typedef",
+        clean::StaticItem(*)          => "static",
+        clean::TraitItem(*)           => "trait",
+        clean::ImplItem(*)            => "impl",
+        clean::ViewItemItem(*)        => "viewitem",
+        clean::TyMethodItem(*)        => "tymethod",
+        clean::MethodItem(*)          => "method",
+        clean::StructFieldItem(*)     => "structfield",
+        clean::VariantItem(*)         => "variant",
+        clean::ForeignFunctionItem(*) => "ffi",
+        clean::ForeignStaticItem(*)   => "ffs",
     }
 }
 
@@ -558,6 +697,32 @@ impl<'self> Item<'self> {
 
 impl<'self> fmt::Default for Item<'self> {
     fn fmt(it: &Item<'self>, fmt: &mut fmt::Formatter) {
+        match attr::find_stability(it.item.attrs.iter()) {
+            Some(stability) => {
+                write!(fmt.buf,
+                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
+                       lvl = stability.level.to_str(),
+                       reason = match stability.text {
+                           Some(s) => s, None => @"",
+                       });
+            }
+            None => {}
+        }
+
+        if it.cx.include_sources {
+            let mut path = ~[];
+            do clean_srcpath(it.item.source.filename) |component| {
+                path.push(component.to_owned());
+            }
+            write!(fmt.buf,
+                   "<a class='source'
+                       href='{root}src/{crate}/{path}.html\\#{line}'>[src]</a>",
+                   root = it.cx.root_path,
+                   crate = it.cx.layout.crate,
+                   path = path.connect("/"),
+                   line = it.item.source.loline);
+        }
+
         // Write the breadcrumb trail header for the top
         write!(fmt.buf, "<h1 class='fqn'>");
         match it.item.inner {
@@ -584,12 +749,12 @@ impl<'self> fmt::Default for Item<'self> {
         match it.item.inner {
             clean::ModuleItem(ref m) => item_module(fmt.buf, it.cx,
                                                     it.item, m.items),
-            clean::FunctionItem(ref f) => item_function(fmt.buf, it.item, f),
+            clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
+                item_function(fmt.buf, it.item, f),
             clean::TraitItem(ref t) => item_trait(fmt.buf, it.item, t),
             clean::StructItem(ref s) => item_struct(fmt.buf, it.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
-            clean::VariantItem(*) => item_variant(fmt.buf, it.cx, it.item),
             _ => {}
         }
     }
@@ -663,6 +828,10 @@ fn item_module(w: &mut io::Writer, cx: &Context,
             (_, &clean::EnumItem(*)) => false,
             (&clean::StaticItem(*), _) => true,
             (_, &clean::StaticItem(*)) => false,
+            (&clean::ForeignFunctionItem(*), _) => true,
+            (_, &clean::ForeignFunctionItem(*)) => false,
+            (&clean::ForeignStaticItem(*), _) => true,
+            (_, &clean::ForeignStaticItem(*)) => false,
             (&clean::TraitItem(*), _) => true,
             (_, &clean::TraitItem(*)) => false,
             (&clean::FunctionItem(*), _) => true,
@@ -690,27 +859,31 @@ fn item_module(w: &mut io::Writer, cx: &Context,
             }
             curty = myty;
             write!(w, "<h2>{}</h2>\n<table>", match myitem.inner {
-                clean::ModuleItem(*)      => "Modules",
-                clean::StructItem(*)      => "Structs",
-                clean::EnumItem(*)        => "Enums",
-                clean::FunctionItem(*)    => "Functions",
-                clean::TypedefItem(*)     => "Type Definitions",
-                clean::StaticItem(*)      => "Statics",
-                clean::TraitItem(*)       => "Traits",
-                clean::ImplItem(*)        => "Implementations",
-                clean::ViewItemItem(*)    => "Reexports",
-                clean::TyMethodItem(*)    => "Type Methods",
-                clean::MethodItem(*)      => "Methods",
-                clean::StructFieldItem(*) => "Struct Fields",
-                clean::VariantItem(*)     => "Variants",
+                clean::ModuleItem(*)          => "Modules",
+                clean::StructItem(*)          => "Structs",
+                clean::EnumItem(*)            => "Enums",
+                clean::FunctionItem(*)        => "Functions",
+                clean::TypedefItem(*)         => "Type Definitions",
+                clean::StaticItem(*)          => "Statics",
+                clean::TraitItem(*)           => "Traits",
+                clean::ImplItem(*)            => "Implementations",
+                clean::ViewItemItem(*)        => "Reexports",
+                clean::TyMethodItem(*)        => "Type Methods",
+                clean::MethodItem(*)          => "Methods",
+                clean::StructFieldItem(*)     => "Struct Fields",
+                clean::VariantItem(*)         => "Variants",
+                clean::ForeignFunctionItem(*) => "Foreign Functions",
+                clean::ForeignStaticItem(*)   => "Foreign Statics",
             });
         }
 
         match myitem.inner {
-            clean::StaticItem(ref s) => {
+            clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
                 struct Initializer<'self>(&'self str);
                 impl<'self> fmt::Default for Initializer<'self> {
                     fn fmt(s: &Initializer<'self>, f: &mut fmt::Formatter) {
+                        if s.len() == 0 { return; }
+                        write!(f.buf, "<code> = </code>");
                         let tag = if s.contains("\n") { "pre" } else { "code" };
                         write!(f.buf, "<{tag}>{}</{tag}>",
                                s.as_slice(), tag=tag);
@@ -719,7 +892,7 @@ fn item_module(w: &mut io::Writer, cx: &Context,
 
                 write!(w, "
                     <tr>
-                        <td><code>{}static {}: {} = </code>{}</td>
+                        <td><code>{}static {}: {}</code>{}</td>
                         <td class='docblock'>{}&nbsp;</td>
                     </tr>
                 ",
@@ -828,7 +1001,8 @@ fn item_trait(w: &mut io::Writer, it: &clean::Item, t: &clean::Trait) {
     document(w, it);
 
     fn meth(w: &mut io::Writer, m: &clean::TraitMethod) {
-        write!(w, "<h3 id='fn.{}' class='method'><code>",
+        write!(w, "<h3 id='{}.{}' class='method'><code>",
+               shortty(m.item()),
                *m.item().name.get_ref());
         render_method(w, m.item(), false);
         write!(w, "</code></h3>");
@@ -889,13 +1063,15 @@ fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
            g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
            withlink: bool) {
         write!(w, "{}fn {withlink, select,
-                            true{<a href='\\#fn.{name}' class='fnname'>{name}</a>}
+                            true{<a href='\\#{ty}.{name}'
+                                    class='fnname'>{name}</a>}
                             other{<span class='fnname'>{name}</span>}
                         }{generics}{decl}",
                match purity {
                    ast::unsafe_fn => "unsafe ",
                    _ => "",
                },
+               ty = shortty(it),
                name = it.name.get_ref().as_slice(),
                generics = *g,
                decl = Method(selfty, d),
@@ -914,10 +1090,24 @@ fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
 
 fn item_struct(w: &mut io::Writer, it: &clean::Item, s: &clean::Struct) {
     write!(w, "<pre class='struct'>");
-    render_struct(w, it, Some(&s.generics), s.struct_type, s.fields, "");
+    render_struct(w, it, Some(&s.generics), s.struct_type, s.fields, "", true);
     write!(w, "</pre>");
 
     document(w, it);
+    match s.struct_type {
+        doctree::Plain => {
+            write!(w, "<h2 class='fields'>Fields</h2>\n<table>");
+            for field in s.fields.iter() {
+                write!(w, "<tr><td id='structfield.{name}'>\
+                                <code>{name}</code></td><td>",
+                       name = field.name.get_ref().as_slice());
+                document(w, field);
+                write!(w, "</td></tr>");
+            }
+            write!(w, "</table>");
+        }
+        _ => {}
+    }
     render_methods(w, it);
 }
 
@@ -931,34 +1121,46 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
     } else {
         write!(w, " \\{\n");
         for v in e.variants.iter() {
-            let name = format!("<a name='variant.{0}'>{0}</a>",
-                               v.name.get_ref().as_slice());
+            write!(w, "    ");
+            let name = v.name.get_ref().as_slice();
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
-                        clean::CLikeVariant => write!(w, "    {},\n", name),
+                        clean::CLikeVariant => write!(w, "{}", name),
                         clean::TupleVariant(ref tys) => {
-                            write!(w, "    {}(", name);
+                            write!(w, "{}(", name);
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 { write!(w, ", ") }
                                 write!(w, "{}", *ty);
                             }
-                            write!(w, "),\n");
+                            write!(w, ")");
                         }
                         clean::StructVariant(ref s) => {
                             render_struct(w, v, None, s.struct_type, s.fields,
-                                          "    ");
+                                          "    ", false);
                         }
                     }
                 }
                 _ => unreachable!()
             }
+            write!(w, ",\n");
         }
         write!(w, "\\}");
     }
     write!(w, "</pre>");
 
     document(w, it);
+    if e.variants.len() > 0 {
+        write!(w, "<h2 class='variants'>Variants</h2>\n<table>");
+        for variant in e.variants.iter() {
+            write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
+                   name = variant.name.get_ref().as_slice());
+            document(w, variant);
+            write!(w, "</td></tr>");
+        }
+        write!(w, "</table>");
+
+    }
     render_methods(w, it);
 }
 
@@ -966,9 +1168,11 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
                  g: Option<&clean::Generics>,
                  ty: doctree::StructType,
                  fields: &[clean::Item],
-                 tab: &str) {
-    write!(w, "{}struct {}",
+                 tab: &str,
+                 structhead: bool) {
+    write!(w, "{}{}{}",
            VisSpace(it.visibility),
+           if structhead {"struct "} else {""},
            it.name.get_ref().as_slice());
     match g {
         Some(g) => write!(w, "{}", *g),
@@ -976,7 +1180,7 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
     }
     match ty {
         doctree::Plain => {
-            write!(w, " \\{\n");
+            write!(w, " \\{\n{}", tab);
             for field in fields.iter() {
                 match field.inner {
                     clean::StructFieldItem(ref ty) => {
@@ -1014,22 +1218,26 @@ fn render_methods(w: &mut io::Writer, it: &clean::Item) {
         do cache.read |c| {
             match c.impls.find(&it.id) {
                 Some(v) => {
-                    let mut non_trait = v.iter().filter(|i| i.trait_.is_none());
+                    let mut non_trait = v.iter().filter(|p| {
+                        p.n0_ref().trait_.is_none()
+                    });
                     let non_trait = non_trait.to_owned_vec();
-                    let mut traits = v.iter().filter(|i| i.trait_.is_some());
+                    let mut traits = v.iter().filter(|p| {
+                        p.n0_ref().trait_.is_some()
+                    });
                     let traits = traits.to_owned_vec();
 
                     if non_trait.len() > 0 {
                         write!(w, "<h2 id='methods'>Methods</h2>");
-                        for &i in non_trait.iter() {
-                            render_impl(w, i);
+                        for &(ref i, ref dox) in non_trait.move_iter() {
+                            render_impl(w, i, dox);
                         }
                     }
                     if traits.len() > 0 {
                         write!(w, "<h2 id='implementations'>Trait \
                                    Implementations</h2>");
-                        for &i in traits.iter() {
-                            render_impl(w, i);
+                        for &(ref i, ref dox) in traits.move_iter() {
+                            render_impl(w, i, dox);
                         }
                     }
                 }
@@ -1039,22 +1247,29 @@ fn render_methods(w: &mut io::Writer, it: &clean::Item) {
     }
 }
 
-fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
+fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
     write!(w, "<h3 class='impl'><code>impl{} ", i.generics);
     let trait_id = match i.trait_ {
         Some(ref ty) => {
             write!(w, "{} for ", *ty);
             match *ty {
-                clean::ResolvedPath { id, _ } => Some(id),
+                clean::ResolvedPath { did, _ } => Some(did),
                 _ => None,
             }
         }
         None => None
     };
     write!(w, "{}</code></h3>", i.for_);
+    match *dox {
+        Some(ref dox) => {
+            write!(w, "<div class='docblock'>{}</div>",
+                   Markdown(dox.as_slice()));
+        }
+        None => {}
+    }
     write!(w, "<div class='methods'>");
     for meth in i.methods.iter() {
-        write!(w, "<h4 id='fn.{}' class='method'><code>",
+        write!(w, "<h4 id='method.{}' class='method'><code>",
                *meth.name.get_ref());
         render_method(w, meth, false);
         write!(w, "</code></h4>\n");
@@ -1067,7 +1282,11 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
         }
 
         // No documentation? Attempt to slurp in the trait's documentation
-        let trait_id = match trait_id { Some(id) => id, None => loop };
+        let trait_id = match trait_id {
+            None => loop,
+            Some(id) if is_local(id) => loop,
+            Some(id) => id.node,
+        };
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
                 let name = meth.name.get_ref().as_slice();
@@ -1124,11 +1343,12 @@ impl<'self> fmt::Default for Sidebar<'self> {
                 write!(w, "<a class='{ty} {class}' href='{curty, select,
                                 mod{../}
                                 other{}
-                           }{ty, select,
+                           }{tysel, select,
                                 mod{{name}/index.html}
                                 other{#.{name}.html}
                            }'>{name}</a><br/>",
                        ty = short,
+                       tysel = short,
                        class = class,
                        curty = shortty(cur),
                        name = item.as_slice());
@@ -1162,11 +1382,22 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
     return map;
 }
 
-fn item_variant(w: &mut io::Writer, cx: &Context, it: &clean::Item) {
-    write!(w, "<DOCTYPE html><html><head>\
-                <meta http-equiv='refresh' content='0; \
-                      url=../enum.{}.html\\#variant.{}'>\
-               </head><body></body></html>",
-           *cx.current.last(),
-           it.name.get_ref().as_slice());
+impl<'self> fmt::Default for Source<'self> {
+    fn fmt(s: &Source<'self>, fmt: &mut fmt::Formatter) {
+        let lines = s.line_iter().len();
+        let mut cols = 0;
+        let mut tmp = lines;
+        while tmp > 0 {
+            cols += 1;
+            tmp /= 10;
+        }
+        write!(fmt.buf, "<pre class='line-numbers'>");
+        for i in range(1, lines + 1) {
+            write!(fmt.buf, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols);
+        }
+        write!(fmt.buf, "</pre>");
+        write!(fmt.buf, "<pre class='rust'>");
+        write!(fmt.buf, "{}", Escape(s.as_slice()));
+        write!(fmt.buf, "</pre>");
+    }
 }

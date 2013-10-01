@@ -13,7 +13,7 @@
 // FIXME #2238 Make run only accept source that emits an executable
 
 #[link(name = "rust",
-       vers = "0.8",
+       vers = "0.9-pre",
        uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
        url = "https://github.com/mozilla/rust/tree/master/src/rust")];
 
@@ -136,13 +136,13 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
         match find_cmd(command_string) {
             Some(command) => {
                 match command.action {
-                    CallMain(prog, _) => printfln!(
-                        "The %s command is an alias for the %s program.",
+                    CallMain(prog, _) => println!(
+                        "The {} command is an alias for the {} program.",
                         command.cmd, prog),
                     _       => ()
                 }
                 match command.usage_full {
-                    UsgStr(msg) => printfln!("%s\n", msg),
+                    UsgStr(msg) => println!("{}\n", msg),
                     UsgCall(f)  => f(),
                 }
                 Valid(0)
@@ -215,7 +215,7 @@ fn usage() {
 
     for command in COMMANDS.iter() {
         let padding = " ".repeat(INDENT - command.cmd.len());
-        printfln!("    %s%s%s", command.cmd, padding, command.usage_line);
+        println!("    {}{}{}", command.cmd, padding, command.usage_line);
     }
 
     io::print(

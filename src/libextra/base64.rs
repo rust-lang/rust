@@ -68,7 +68,7 @@ impl<'self> ToBase64 for &'self [u8] {
      *
      * fn main () {
      *     let str = [52,32].to_base64(standard);
-     *     printfln!("%s", str);
+     *     println!("{}", str);
      * }
      * ```
      */
@@ -141,7 +141,7 @@ impl<'self> ToBase64 for &'self [u8] {
                     v.push('=' as u8);
                 }
             }
-            _ => fail!("Algebra is broken, please alert the math police")
+            _ => fail2!("Algebra is broken, please alert the math police")
         }
 
         unsafe {
@@ -177,11 +177,11 @@ impl<'self> FromBase64 for &'self str {
      *
      * fn main () {
      *     let hello_str = "Hello, World".to_base64(standard);
-     *     printfln!("%s", hello_str);
+     *     println!("{}", hello_str);
      *     let bytes = hello_str.from_base64();
-     *     printfln!("%?", bytes);
+     *     println!("{:?}", bytes);
      *     let result_str = str::from_utf8(bytes);
-     *     printfln!("%s", result_str);
+     *     println!("{}", result_str);
      * }
      * ```
      */
@@ -202,7 +202,7 @@ impl<'self> FromBase64 for &'self str {
                 '/'|'_' => buf |= 0x3F,
                 '\r'|'\n' => loop,
                 '=' => break,
-                _ => return Err(fmt!("Invalid character '%c' at position %u",
+                _ => return Err(format!("Invalid character '{}' at position {}",
                                      self.char_at(idx), idx))
             }
 
@@ -218,7 +218,7 @@ impl<'self> FromBase64 for &'self str {
 
         for (idx, byte) in it {
             if (byte as char) != '=' {
-                return Err(fmt!("Invalid character '%c' at position %u",
+                return Err(format!("Invalid character '{}' at position {}",
                                 self.char_at(idx), idx));
             }
         }

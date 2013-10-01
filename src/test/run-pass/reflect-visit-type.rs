@@ -17,32 +17,32 @@ struct MyVisitor {
 impl TyVisitor for MyVisitor {
     fn visit_bot(&mut self) -> bool {
         self.types.push(~"bot");
-        error!("visited bot type");
+        error2!("visited bot type");
         true
     }
     fn visit_nil(&mut self) -> bool {
         self.types.push(~"nil");
-        error!("visited nil type");
+        error2!("visited nil type");
         true
     }
     fn visit_bool(&mut self) -> bool {
         self.types.push(~"bool");
-        error!("visited bool type");
+        error2!("visited bool type");
         true
     }
     fn visit_int(&mut self) -> bool {
         self.types.push(~"int");
-        error!("visited int type");
+        error2!("visited int type");
         true
     }
     fn visit_i8(&mut self) -> bool {
         self.types.push(~"i8");
-        error!("visited i8 type");
+        error2!("visited i8 type");
         true
     }
     fn visit_i16(&mut self) -> bool {
         self.types.push(~"i16");
-        error!("visited i16 type");
+        error2!("visited i16 type");
         true
     }
     fn visit_i32(&mut self) -> bool { true }
@@ -54,7 +54,6 @@ impl TyVisitor for MyVisitor {
     fn visit_u32(&mut self) -> bool { true }
     fn visit_u64(&mut self) -> bool { true }
 
-    fn visit_float(&mut self) -> bool { true }
     fn visit_f32(&mut self) -> bool { true }
     fn visit_f64(&mut self) -> bool { true }
 
@@ -161,7 +160,7 @@ pub fn main() {
     visit_ty::<~[int]>(&mut v);
 
     for s in v.types.iter() {
-        printfln!("type: %s", (*s).clone());
+        println!("type: {}", (*s).clone());
     }
     assert_eq!((*v.types).clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);
 }

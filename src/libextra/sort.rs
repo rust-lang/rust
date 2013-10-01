@@ -564,7 +564,7 @@ impl<T:Clone + Ord> MergeState<T> {
             shift_vec(array, dest, c2, len2);
             swap(&mut array[dest+len2], &mut tmp[c1]);
         } else if len1 == 0 {
-            fail!("Comparison violates its contract!");
+            fail2!("Comparison violates its contract!");
         } else {
             assert_eq!(len2, 0);
             assert!(len1 > 1);
@@ -683,7 +683,7 @@ impl<T:Clone + Ord> MergeState<T> {
             shift_vec(array, dest+1, c1+1, len1);
             swap(&mut array[dest], &mut tmp[c2]);
         } else if len2 == 0 {
-            fail!("Comparison violates its contract!");
+            fail2!("Comparison violates its contract!");
         } else {
             assert_eq!(len1, 0);
             assert!(len2 != 0);
@@ -790,7 +790,7 @@ mod test_qsort {
         quick_sort::<int>(v1, leual);
         let mut i = 0u;
         while i < len {
-            // debug!(v2[i]);
+            // debug2!(v2[i]);
             assert_eq!(v2[i], v1[i]);
             i += 1;
         }
@@ -833,7 +833,7 @@ mod test_qsort {
         let immut_names = names;
 
         for (&a, &b) in expected.iter().zip(immut_names.iter()) {
-            debug!("%d %d", a, b);
+            debug2!("{} {}", a, b);
             assert_eq!(a, b);
         }
     }
@@ -851,7 +851,7 @@ mod tests {
         let v3 = merge_sort::<int>(v1, f);
         let mut i = 0u;
         while i < len {
-            debug!(v3[i]);
+            debug2!("{:?}", v3[i]);
             assert_eq!(v3[i], v2[i]);
             i += 1;
         }
@@ -915,14 +915,14 @@ mod test_tim_sort {
 
     #[deriving(Clone)]
     struct CVal {
-        val: float,
+        val: f64,
     }
 
     impl Ord for CVal {
         fn lt(&self, other: &CVal) -> bool {
             let mut rng = rand::rng();
-            if rng.gen::<float>() > 0.995 {
-                fail!("It's happening!!!");
+            if rng.gen::<f64>() > 0.995 {
+                fail2!("It's happening!!!");
             }
             (*self).val < other.val
         }
@@ -936,7 +936,7 @@ mod test_tim_sort {
         tim_sort::<int>(v1);
         let mut i = 0u;
         while i < len {
-            // debug!(v2[i]);
+            // debug2!(v2[i]);
             assert_eq!(v2[i], v1[i]);
             i += 1u;
         }
@@ -977,7 +977,7 @@ mod test_tim_sort {
         };
 
         tim_sort(arr);
-        fail!("Guarantee the fail");
+        fail2!("Guarantee the fail");
     }
 
     #[deriving(Clone)]
@@ -1045,7 +1045,7 @@ mod big_tests {
         fn isSorted<T:Ord>(arr: &[T]) {
             for i in range(0u, arr.len() - 1) {
                 if arr[i] > arr[i+1] {
-                    fail!("Array not sorted");
+                    fail2!("Array not sorted");
                 }
             }
         }
@@ -1054,7 +1054,7 @@ mod big_tests {
 
         for i in range(lo, hi) {
             let n = 1 << i;
-            let mut arr: ~[float] = do vec::from_fn(n) |_i| {
+            let mut arr: ~[f64] = do vec::from_fn(n) |_i| {
                 rng.gen()
             };
 
@@ -1106,7 +1106,7 @@ mod big_tests {
             isSorted(arr);
 
             let half = n / 2;
-            let mut arr = makeRange(half).map(|i| *i as float);
+            let mut arr = makeRange(half).map(|i| *i as f64);
             tim_sort(arr); // !sort
             isSorted(arr);
         }
@@ -1116,7 +1116,7 @@ mod big_tests {
         fn isSorted<T:Ord>(arr: &[@T]) {
             for i in range(0u, arr.len() - 1) {
                 if arr[i] > arr[i+1] {
-                    fail!("Array not sorted");
+                    fail2!("Array not sorted");
                 }
             }
         }
@@ -1125,7 +1125,7 @@ mod big_tests {
 
         for i in range(lo, hi) {
             let n = 1 << i;
-            let arr: ~[@float] = do vec::from_fn(n) |_i| {
+            let arr: ~[@f64] = do vec::from_fn(n) |_i| {
                 @rng.gen()
             };
             let mut arr = arr;
@@ -1178,7 +1178,7 @@ mod big_tests {
             isSorted(arr);
 
             let half = n / 2;
-            let mut arr = makeRange(half).map(|i| @(*i as float));
+            let mut arr = makeRange(half).map(|i| @(*i as f64));
             tim_sort(arr); // !sort
             isSorted(arr);
         }

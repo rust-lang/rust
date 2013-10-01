@@ -333,14 +333,14 @@ pub mod ct {
             'f' => TyFloat,
             'p' => TyPointer,
             '?' => TyPoly,
-            _ => err(fmt!("unknown type in conversion: %c", s.char_at(i)))
+            _ => err(format!("unknown type in conversion: {}", s.char_at(i)))
         };
 
         Parsed::new(t, i + 1)
     }
 
     #[cfg(test)]
-    fn die(s: &str) -> ! { fail!(s.to_owned()) }
+    fn die(s: &str) -> ! { fail2!(s.to_owned()) }
 
     #[test]
     fn test_parse_count() {
@@ -480,7 +480,7 @@ pub mod ct {
 #[doc(hidden)]
 #[allow(non_uppercase_statics)]
 pub mod rt {
-    use float;
+    use f64;
     use str;
     use sys;
     use num;
@@ -563,10 +563,10 @@ pub mod rt {
         };
         pad(cv, unpadded, None, PadNozero, buf);
     }
-    pub fn conv_float(cv: Conv, f: float, buf: &mut ~str) {
+    pub fn conv_float(cv: Conv, f: f64, buf: &mut ~str) {
         let (to_str, digits) = match cv.precision {
-              CountIs(c) => (float::to_str_exact, c as uint),
-              CountImplied => (float::to_str_digits, 6u)
+              CountIs(c) => (f64::to_str_exact, c as uint),
+              CountImplied => (f64::to_str_digits, 6u)
         };
         let s = to_str(f, digits);
         let head = if 0.0 <= f {
@@ -698,6 +698,6 @@ mod test {
     #[test]
     fn fmt_slice() {
         let s = "abc";
-        let _s = fmt!("%s", s);
+        let _s = format!("{}", s);
     }
 }

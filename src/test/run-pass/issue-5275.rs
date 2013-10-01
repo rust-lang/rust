@@ -12,14 +12,14 @@
 
 fn foo(self_: &A) -> int {
     if true {
-        fail!()
+        fail2!()
     } else {
         *bar(self_.bar)
     }
 }
 
 fn bar<'r>(_: &'r mut int) -> &'r int {
-    fail!()
+    fail2!()
 }
 
 struct A {

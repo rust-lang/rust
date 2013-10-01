@@ -11,4 +11,4 @@
 #[allow(while_true)];
 
 // error-pattern:quux
-fn main() { let _x: int = { while true { fail!("quux"); } ; 8 } ; }
+fn main() { let _x: int = { while true { fail2!("quux"); } ; 8 } ; }

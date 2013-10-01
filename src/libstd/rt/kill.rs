@@ -306,7 +306,7 @@ impl BlockedTask {
                 match flag.compare_and_swap(KILL_RUNNING, task_ptr, Relaxed) {
                     KILL_RUNNING => Right(Killable(flag_arc)),
                     KILL_KILLED  => Left(revive_task_ptr(task_ptr, Some(flag_arc))),
-                    x            => rtabort!("can't block task! kill flag = %?", x),
+                    x            => rtabort!("can't block task! kill flag = {}", x),
                 }
             }
         }
@@ -403,7 +403,7 @@ impl KillHandle {
         // FIXME(#7544)(bblum): is it really necessary to prohibit double kill?
         match inner.unkillable.compare_and_swap(KILL_RUNNING, KILL_UNKILLABLE, Relaxed) {
             KILL_RUNNING    => { }, // normal case
-            KILL_KILLED     => if !already_failing { fail!(KILLED_MSG) },
+            KILL_KILLED     => if !already_failing { fail2!("{}", KILLED_MSG) },
             _               => rtabort!("inhibit_kill: task already unkillable"),
         }
     }
@@ -416,7 +416,7 @@ impl KillHandle {
         // FIXME(#7544)(bblum): is it really necessary to prohibit double kill?
         match inner.unkillable.compare_and_swap(KILL_UNKILLABLE, KILL_RUNNING, Relaxed) {
             KILL_UNKILLABLE => { }, // normal case
-            KILL_KILLED     => if !already_failing { fail!(KILLED_MSG) },
+            KILL_KILLED     => if !already_failing { fail2!("{}", KILLED_MSG) },
             _               => rtabort!("allow_kill: task already killable"),
         }
     }
@@ -624,7 +624,7 @@ impl Death {
                 // synchronization during unwinding or cleanup (for example,
                 // sending on a notify port). In that case failing won't help.
                 if self.unkillable == 0 && (!already_failing) && kill_handle.killed() {
-                    fail!(KILLED_MSG);
+                    fail2!("{}", KILLED_MSG);
                 },
             // This may happen during task death (see comments in collect_failure).
             None => rtassert!(self.unkillable > 0),
@@ -650,7 +650,7 @@ impl Death {
         if self.unkillable == 0 {
             // we need to decrement the counter before failing.
             self.unkillable -= 1;
-            fail!("Cannot enter a rekillable() block without a surrounding unkillable()");
+            fail2!("Cannot enter a rekillable() block without a surrounding unkillable()");
         }
         self.unkillable -= 1;
         if self.unkillable == 0 {

@@ -22,7 +22,6 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
 use middle::trans::debuginfo;
-use middle::trans::type_use;
 use middle::trans::common::{C_i32, C_null};
 use middle::ty;
 
@@ -73,8 +72,6 @@ pub struct CrateContext {
      // Cache instances of monomorphized functions
      monomorphized: HashMap<mono_id, ValueRef>,
      monomorphizing: HashMap<ast::DefId, uint>,
-     // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: HashMap<ast::DefId, @~[type_use::type_uses]>,
      // Cache generated vtables
      vtables: HashMap<(ty::t, mono_id), ValueRef>,
      // Cache of constant strings,
@@ -112,7 +109,6 @@ pub struct CrateContext {
      upcalls: @upcall::Upcalls,
      tydesc_type: Type,
      int_type: Type,
-     float_type: Type,
      opaque_vec_type: Type,
      builder: BuilderRef_res,
      crate_map: ValueRef,
@@ -159,7 +155,6 @@ impl CrateContext {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
             let int_type = Type::int(targ_cfg.arch);
-            let float_type = Type::float(targ_cfg.arch);
             let tydesc_type = Type::tydesc(targ_cfg.arch);
             let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
 
@@ -204,7 +199,6 @@ impl CrateContext {
                   non_inlineable_statics: HashSet::new(),
                   monomorphized: HashMap::new(),
                   monomorphizing: HashMap::new(),
-                  type_use_cache: HashMap::new(),
                   vtables: HashMap::new(),
                   const_cstr_cache: HashMap::new(),
                   const_globals: HashMap::new(),
@@ -238,7 +232,6 @@ impl CrateContext {
                   upcalls: upcall::declare_upcalls(targ_cfg, llmod),
                   tydesc_type: tydesc_type,
                   int_type: int_type,
-                  float_type: float_type,
                   opaque_vec_type: opaque_vec_type,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   crate_map: crate_map,
@@ -256,7 +249,7 @@ impl CrateContext {
     pub fn const_inbounds_gepi(&self,
                                pointer: ValueRef,
                                indices: &[uint]) -> ValueRef {
-        debug!("const_inbounds_gepi: pointer=%s indices=%?",
+        debug2!("const_inbounds_gepi: pointer={} indices={:?}",
                self.tn.val_to_str(pointer), indices);
         let v: ~[ValueRef] =
             indices.iter().map(|i| C_i32(*i as i32)).collect();

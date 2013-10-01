@@ -93,15 +93,15 @@ impl Reflector {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
-            *self.visitor_methods).expect(fmt!("Couldn't find visit method \
-                                                for %s", ty_name));
+            *self.visitor_methods).expect(format!("Couldn't find visit method \
+                                                for {}", ty_name));
         let mth_ty =
             ty::mk_bare_fn(tcx, self.visitor_methods[mth_idx].fty.clone());
         let v = self.visitor_val;
-        debug!("passing %u args:", args.len());
+        debug2!("passing {} args:", args.len());
         let mut bcx = self.bcx;
         for (i, a) in args.iter().enumerate() {
-            debug!("arg %u: %s", i, bcx.val_to_str(*a));
+            debug2!("arg {}: {}", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
         let result = unpack_result!(bcx, callee::trans_call_inner(
@@ -151,7 +151,7 @@ impl Reflector {
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
         let tcx = bcx.ccx().tcx;
-        debug!("reflect::visit_ty %s", ty_to_str(bcx.ccx().tcx, t));
+        debug2!("reflect::visit_ty {}", ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).sty {
           ty::ty_bot => self.leaf("bot"),
@@ -168,7 +168,6 @@ impl Reflector {
           ty::ty_uint(ast::ty_u16) => self.leaf("u16"),
           ty::ty_uint(ast::ty_u32) => self.leaf("u32"),
           ty::ty_uint(ast::ty_u64) => self.leaf("u64"),
-          ty::ty_float(ast::ty_f) => self.leaf("float"),
           ty::ty_float(ast::ty_f32) => self.leaf("f32"),
           ty::ty_float(ast::ty_f64) => self.leaf("f64"),
 

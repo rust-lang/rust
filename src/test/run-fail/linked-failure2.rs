@@ -16,7 +16,7 @@
 use std::comm;
 use std::task;
 
-fn child() { fail!(); }
+fn child() { fail2!(); }
 
 fn main() {
     let (p, _c) = comm::stream::<()>();

@@ -38,7 +38,6 @@ pub mod foreign;
 pub mod intrinsic;
 pub mod reflect;
 pub mod debuginfo;
-pub mod type_use;
 pub mod machine;
 pub mod adt;
 pub mod asm;

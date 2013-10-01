@@ -78,13 +78,6 @@ int_repr!(u16, "u16")
 int_repr!(u32, "u32")
 int_repr!(u64, "u64")
 
-impl Repr for float {
-    fn write_repr(&self, writer: &mut io::Writer) {
-        let s = self.to_str();
-        writer.write(s.as_bytes());
-    }
-}
-
 macro_rules! num_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
     fn write_repr(&self, writer: &mut io::Writer) {
         let s = self.to_str();
@@ -189,7 +182,7 @@ impl<'self> ReprVisitor<'self> {
         } else if mtbl == 1 {
             // skip, this is ast::m_imm
         } else {
-            fail!("invalid mutability value");
+            fail2!("invalid mutability value");
         }
     }
 
@@ -278,7 +271,8 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     fn visit_u32(&mut self) -> bool { self.write::<u32>() }
     fn visit_u64(&mut self) -> bool { self.write::<u64>() }
 
-    fn visit_float(&mut self) -> bool { self.write::<float>() }
+    #[cfg(stage0)]
+    fn visit_float(&mut self) -> bool { self.write::<f64>() }
     fn visit_f32(&mut self) -> bool { self.write::<f32>() }
     fn visit_f64(&mut self) -> bool { self.write::<f64>() }
 
@@ -312,7 +306,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
 
     // Type no longer exists, vestigial function.
     fn visit_estr_fixed(&mut self, _n: uint, _sz: uint,
-                        _align: uint) -> bool { fail!(); }
+                        _align: uint) -> bool { fail2!(); }
 
     fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write(['@' as u8]);
@@ -355,7 +349,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
+    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail2!(); }
 
     fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Vec<()>> |this, b| {
@@ -567,7 +561,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
                         _align: uint)
                         -> bool {
         match self.var_stk.pop() {
-            SearchingFor(*) => fail!("enum value matched no variant"),
+            SearchingFor(*) => fail2!("enum value matched no variant"),
             _ => true
         }
     }
@@ -632,7 +626,7 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
 }
 
 #[cfg(test)]
-struct P {a: int, b: float}
+struct P {a: int, b: f64}
 
 #[test]
 fn test_repr() {
@@ -653,7 +647,7 @@ fn test_repr() {
     exact_test(&10, "10");
     exact_test(&true, "true");
     exact_test(&false, "false");
-    exact_test(&1.234, "1.234");
+    exact_test(&1.234, "1.234f64");
     exact_test(&(&"hello"), "\"hello\"");
     exact_test(&(@"hello"), "@\"hello\"");
     exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
@@ -682,11 +676,11 @@ fn test_repr() {
     exact_test(&(&["hi", "there"]),
                "&[\"hi\", \"there\"]");
     exact_test(&(P{a:10, b:1.234}),
-               "repr::P{a: 10, b: 1.234}");
+               "repr::P{a: 10, b: 1.234f64}");
     exact_test(&(@P{a:10, b:1.234}),
-               "@repr::P{a: 10, b: 1.234}");
+               "@repr::P{a: 10, b: 1.234f64}");
     exact_test(&(~P{a:10, b:1.234}),
-               "~repr::P{a: 10, b: 1.234}");
+               "~repr::P{a: 10, b: 1.234f64}");
     exact_test(&(10u8, ~"hello"),
                "(10u8, ~\"hello\")");
     exact_test(&(10u16, ~"hello"),

@@ -45,12 +45,12 @@ pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Bl
 }
 
 pub fn trans_if(bcx: @mut Block,
-            cond: @ast::Expr,
+            cond: &ast::Expr,
             thn: &ast::Block,
             els: Option<@ast::Expr>,
             dest: expr::Dest)
          -> @mut Block {
-    debug!("trans_if(bcx=%s, cond=%s, thn=%?, dest=%s)",
+    debug2!("trans_if(bcx={}, cond={}, thn={:?}, dest={})",
            bcx.to_str(), bcx.expr_to_str(cond), thn.id,
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
@@ -119,7 +119,7 @@ pub fn trans_if(bcx: @mut Block,
       }
     };
 
-    debug!("then_bcx_in=%s, else_bcx_in=%s",
+    debug2!("then_bcx_in={}, else_bcx_in={}",
            then_bcx_in.to_str(), else_bcx_in.to_str());
 
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
@@ -158,7 +158,7 @@ pub fn join_blocks(parent_bcx: @mut Block, in_cxs: &[@mut Block]) -> @mut Block 
     return out;
 }
 
-pub fn trans_while(bcx: @mut Block, cond: @ast::Expr, body: &ast::Block) -> @mut Block {
+pub fn trans_while(bcx: @mut Block, cond: &ast::Expr, body: &ast::Block) -> @mut Block {
     let _icx = push_ctxt("trans_while");
     let next_bcx = sub_block(bcx, "while next");
 

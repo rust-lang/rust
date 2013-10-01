@@ -32,6 +32,6 @@ fn main() {
     let foo = Foo { bar: 1, baz: 10 };
     unsafe {
         let oof: Oof = cast::transmute(foo);
-        info!(oof);
+        info2!("{:?}", oof);
     }
 }

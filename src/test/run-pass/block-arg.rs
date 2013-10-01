@@ -10,11 +10,11 @@
 
 // Check usage and precedence of block arguments in expressions:
 pub fn main() {
-    let v = ~[-1f, 0f, 1f, 2f, 3f];
+    let v = ~[-1.0f64, 0.0, 1.0, 2.0, 3.0];
 
     // Statement form does not require parentheses:
     for i in v.iter() {
-        info!("%?", *i);
+        info2!("{:?}", *i);
     }
 
     // Usable at all:
@@ -26,7 +26,7 @@ pub fn main() {
     assert!(any_negative);
 
     // Higher precedence than unary operations:
-    let abs_v = do v.iter().map |e| { e.abs() }.collect::<~[float]>();
+    let abs_v = do v.iter().map |e| { e.abs() }.collect::<~[f64]>();
     assert!(do abs_v.iter().all |e| { e.is_positive() });
     assert!(!do abs_v.iter().any |e| { e.is_negative() });
 
@@ -35,22 +35,22 @@ pub fn main() {
         assert!(false);
     }
     match do v.iter().all |e| { e.is_negative() } {
-        true => { fail!("incorrect answer."); }
+        true => { fail2!("incorrect answer."); }
         false => { }
     }
     match 3 {
       _ if do v.iter().any |e| { e.is_negative() } => {
       }
       _ => {
-        fail!("wrong answer.");
+        fail2!("wrong answer.");
       }
     }
 
 
     // Lower precedence than binary operations:
-    let w = do v.iter().fold(0f) |x, y| { x + *y } + 10f;
-    let y = do v.iter().fold(0f) |x, y| { x + *y } + 10f;
-    let z = 10f + do v.iter().fold(0f) |x, y| { x + *y };
+    let w = do v.iter().fold(0.0) |x, y| { x + *y } + 10.0;
+    let y = do v.iter().fold(0.0) |x, y| { x + *y } + 10.0;
+    let z = 10.0 + do v.iter().fold(0.0) |x, y| { x + *y };
     assert_eq!(w, y);
     assert_eq!(y, z);
 

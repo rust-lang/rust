@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // error-pattern:quux
-fn foo() -> ! { fail!("quux"); }
+fn foo() -> ! { fail2!("quux"); }
 fn main() { foo() == foo(); }

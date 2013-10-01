@@ -105,7 +105,7 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
         mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
             bccx.span_err(
                 cmt0.span,
-                fmt!("cannot move out of %s",
+                format!("cannot move out of {}",
                      bccx.cmt_to_str(cmt)));
             false
         }
@@ -120,7 +120,7 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
             };
             bccx.span_err(
                 cmt0.span,
-                fmt!("cannot move out of %s%s", bccx.cmt_to_str(cmt), once_hint));
+                format!("cannot move out of {}{}", bccx.cmt_to_str(cmt), once_hint));
             false
         }
 
@@ -158,7 +158,7 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
                     if ty::has_dtor(bccx.tcx, did) {
                         bccx.span_err(
                             cmt0.span,
-                            fmt!("cannot move out of type `%s`, \
+                            format!("cannot move out of type `{}`, \
                                   which defines the `Drop` trait",
                                  b.ty.user_string(bccx.tcx)));
                         false

@@ -413,7 +413,7 @@ pub trait Iterator<A> {
     /// use std::iter::count;
     ///
     /// for i in count(0, 10) {
-    ///     printfln!("%d", i);
+    ///     println!("{}", i);
     /// }
     /// ```
     #[inline]
@@ -723,7 +723,7 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
                 Some(x) => {
                     i = match i.checked_sub(&1) {
                         Some(x) => x,
-                        None => fail!("rposition: incorrect ExactSize")
+                        None => fail2!("rposition: incorrect ExactSize")
                     };
                     if predicate(x) {
                         return Some(i)
@@ -2269,12 +2269,12 @@ mod tests {
     #[test]
     fn test_iterator_scan() {
         // test the type inference
-        fn add(old: &mut int, new: &uint) -> Option<float> {
+        fn add(old: &mut int, new: &uint) -> Option<f64> {
             *old += *new as int;
-            Some(*old as float)
+            Some(*old as f64)
         }
         let xs = [0u, 1, 2, 3, 4];
-        let ys = [0f, 1f, 3f, 6f, 10f];
+        let ys = [0f64, 1.0, 3.0, 6.0, 10.0];
 
         let mut it = xs.iter().scan(0, add);
         let mut i = 0;
@@ -2452,7 +2452,7 @@ mod tests {
         assert!(v.iter().all(|&x| x < 10));
         assert!(!v.iter().all(|&x| x.is_even()));
         assert!(!v.iter().all(|&x| x > 100));
-        assert!(v.slice(0, 0).iter().all(|_| fail!()));
+        assert!(v.slice(0, 0).iter().all(|_| fail2!()));
     }
 
     #[test]
@@ -2461,7 +2461,7 @@ mod tests {
         assert!(v.iter().any(|&x| x < 10));
         assert!(v.iter().any(|&x| x.is_even()));
         assert!(!v.iter().any(|&x| x > 100));
-        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
+        assert!(!v.slice(0, 0).iter().any(|_| fail2!()));
     }
 
     #[test]
@@ -2602,7 +2602,7 @@ mod tests {
         let mut i = 0;
         do v.iter().rposition |_elt| {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
             false
@@ -2746,12 +2746,12 @@ mod tests {
     fn test_double_ended_range() {
         assert_eq!(range(11i, 14).invert().collect::<~[int]>(), ~[13i, 12, 11]);
         for _ in range(10i, 0).invert() {
-            fail!("unreachable");
+            fail2!("unreachable");
         }
 
         assert_eq!(range(11u, 14).invert().collect::<~[uint]>(), ~[13u, 12, 11]);
         for _ in range(10u, 0).invert() {
-            fail!("unreachable");
+            fail2!("unreachable");
         }
     }
 

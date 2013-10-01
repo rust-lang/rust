@@ -340,59 +340,36 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     result
 }
 
-/// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat<T:Clone>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
-
-/// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect<T:Clone>(v: &[~[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
-
-/// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat_slices<T:Clone>(v: &[&[T]]) -> ~[T] { v.concat_vec() }
-
-/// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect_slices<T:Clone>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
-
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.
+    /// Flattens a vector of vectors of T into a single vector of T.
     fn concat_vec(&self) -> ~[T];
+
+    /// Concatenate a vector of vectors, placing a given separator between each.
     fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
-impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
+impl<'self, T: Clone, V: Vector<T>> VectorVector<T> for &'self [V] {
     fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|inner| (*inner).clone())
-    }
-
-    /// Concatenate a vector of vectors, placing a given separator between each.
-    fn connect_vec(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for inner in self.iter() {
-            if first { first = false; } else { r.push((*sep).clone()); }
-            r.push_all((*inner).clone());
+        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let mut result = with_capacity(size);
+        for v in self.iter() {
+            result.push_all(v.as_slice())
         }
-        r
-    }
-}
-
-impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
-    fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|&inner| inner.to_owned())
+        result
     }
 
-    /// Concatenate a vector of slices, placing a given separator between each.
     fn connect_vec(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
+        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let mut result = with_capacity(size + self.len());
         let mut first = true;
-        for &inner in self.iter() {
-            if first { first = false; } else { r.push((*sep).clone()); }
-            r.push_all(inner);
+        for v in self.iter() {
+            if first { first = false } else { result.push(sep.clone()) }
+            result.push_all(v.as_slice())
         }
-        r
+        result
     }
 }
 
@@ -932,11 +909,11 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             if sys::size_of::<T>() == 0 {
                 VecIterator{ptr: p,
                             end: (p as uint + self.len()) as *T,
-                            lifetime: cast::transmute(p)}
+                            lifetime: None}
             } else {
                 VecIterator{ptr: p,
                             end: p.offset(self.len() as int),
-                            lifetime: cast::transmute(p)}
+                            lifetime: None}
             }
         }
     }
@@ -1003,7 +980,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ```rust
      * let v = &[1,2,3,4];
      * for win in v.window_iter() {
-     *     printfln!(win);
+     *     println!("{:?}", win);
      * }
      * ```
      *
@@ -1032,7 +1009,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ```rust
      * let v = &[1,2,3,4,5];
      * for win in v.chunk_iter() {
-     *     printfln!(win);
+     *     println!("{:?}", win);
      * }
      * ```
      *
@@ -1045,7 +1022,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Returns the first element of a vector, failing if the vector is empty.
     #[inline]
     fn head(&self) -> &'self T {
-        if self.len() == 0 { fail!("head: empty vector") }
+        if self.len() == 0 { fail2!("head: empty vector") }
         &self[0]
     }
 
@@ -1078,7 +1055,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Returns the last element of a vector, failing if the vector is empty.
     #[inline]
     fn last(&self) -> &'self T {
-        if self.len() == 0 { fail!("last: empty vector") }
+        if self.len() == 0 { fail2!("last: empty vector") }
         &self[self.len() - 1]
     }
 
@@ -1324,7 +1301,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     let alloc = n * sys::nonzero_size_of::<T>();
                     let size = alloc + sys::size_of::<Vec<()>>();
                     if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
-                        fail!("vector size is too large: %u", n);
+                        fail2!("vector size is too large: {}", n);
                     }
                     *ptr = realloc_raw(*ptr as *mut c_void, size)
                            as *mut Vec<()>;
@@ -1366,7 +1343,7 @@ impl<T> OwnedVector<T> for ~[T] {
     fn reserve_additional(&mut self, n: uint) {
         if self.capacity() - self.len() < n {
             match self.len().checked_add(&n) {
-                None => fail!("vec::reserve_additional: `uint` overflow"),
+                None => fail2!("vec::reserve_additional: `uint` overflow"),
                 Some(new_cap) => self.reserve_at_least(new_cap)
             }
         }
@@ -1593,7 +1570,7 @@ impl<T> OwnedVector<T> for ~[T] {
     fn swap_remove(&mut self, index: uint) -> T {
         let ln = self.len();
         if index >= ln {
-            fail!("vec::swap_remove - index %u >= length %u", index, ln);
+            fail2!("vec::swap_remove - index {} >= length {}", index, ln);
         }
         if index < ln - 1 {
             self.swap(index, ln - 1);
@@ -1940,11 +1917,11 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
             if sys::size_of::<T>() == 0 {
                 VecMutIterator{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
-                               lifetime: cast::transmute(p)}
+                               lifetime: None}
             } else {
                 VecMutIterator{ptr: p,
                                end: p.offset(self.len() as int),
-                               lifetime: cast::transmute(p)}
+                               lifetime: None}
             }
         }
     }
@@ -2389,7 +2366,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
 pub struct VecIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
-    priv lifetime: &'self T // FIXME: #5922
+    priv lifetime: Option<&'self ()> // FIXME: #5922
 }
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
@@ -2407,7 +2384,7 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 pub struct VecMutIterator<'self, T> {
     priv ptr: *mut T,
     priv end: *mut T,
-    priv lifetime: &'self mut T // FIXME: #5922
+    priv lifetime: Option<&'self mut ()> // FIXME: #5922
 }
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
@@ -2981,7 +2958,7 @@ mod tests {
                 3 => assert_eq!(v, [2, 3, 1]),
                 4 => assert_eq!(v, [2, 1, 3]),
                 5 => assert_eq!(v, [1, 2, 3]),
-                _ => fail!(),
+                _ => fail2!(),
             }
         }
     }
@@ -3109,24 +3086,21 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        assert_eq!(concat([~[1], ~[2,3]]), ~[1, 2, 3]);
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.concat_vec(), ~[]);
         assert_eq!([~[1], ~[2,3]].concat_vec(), ~[1, 2, 3]);
 
-        assert_eq!(concat_slices([&[1], &[2,3]]), ~[1, 2, 3]);
         assert_eq!([&[1], &[2,3]].concat_vec(), ~[1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        assert_eq!(connect([], &0), ~[]);
-        assert_eq!(connect([~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect([~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.connect_vec(&0), ~[]);
         assert_eq!([~[1], ~[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([~[1], ~[2], ~[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
 
-        assert_eq!(connect_slices([], &0), ~[]);
-        assert_eq!(connect_slices([&[1], &[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect_slices([&[1], &[2], &[3]], &0), ~[1, 0, 2, 0, 3]);
+        assert_eq!(v.connect_vec(&0), ~[]);
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
     }
@@ -3231,7 +3205,7 @@ mod tests {
     #[should_fail]
     fn test_from_fn_fail() {
         do from_fn(100) |v| {
-            if v == 50 { fail!() }
+            if v == 50 { fail2!() }
             (~0, @0)
         };
     }
@@ -3250,7 +3224,7 @@ mod tests {
             fn clone(&self) -> S {
                 let s = unsafe { cast::transmute_mut(self) };
                 s.f += 1;
-                if s.f == 10 { fail!() }
+                if s.f == 10 { fail2!() }
                 S { f: s.f, boxes: s.boxes.clone() }
             }
         }
@@ -3267,7 +3241,7 @@ mod tests {
             push((~0, @0));
             push((~0, @0));
             push((~0, @0));
-            fail!();
+            fail2!();
         };
     }
 
@@ -3277,7 +3251,7 @@ mod tests {
         let mut v = ~[];
         do v.grow_fn(100) |i| {
             if i == 50 {
-                fail!()
+                fail2!()
             }
             (~0, @0)
         }
@@ -3290,7 +3264,7 @@ mod tests {
         let mut i = 0;
         do v.map |_elt| {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
             ~[(~0, @0)]
@@ -3304,7 +3278,7 @@ mod tests {
         let mut i = 0;
         do flat_map(v) |_elt| {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
             ~[(~0, @0)]
@@ -3318,7 +3292,7 @@ mod tests {
         let mut i = 0;
         for _ in v.permutations_iter() {
             if i == 2 {
-                fail!()
+                fail2!()
             }
             i += 1;
         }
@@ -3329,7 +3303,7 @@ mod tests {
     fn test_as_imm_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do v.as_imm_buf |_buf, _i| {
-            fail!()
+            fail2!()
         }
     }
 
@@ -3338,7 +3312,7 @@ mod tests {
     fn test_as_mut_buf_fail() {
         let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do v.as_mut_buf |_buf, _i| {
-            fail!()
+            fail2!()
         }
     }
 
@@ -3728,11 +3702,11 @@ mod tests {
         assert_eq!(cnt, 11);
 
         let xs = ~[Foo, Foo, Foo];
-        assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()),
+        assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
                    ~"~[vec::tests::Foo, vec::tests::Foo]");
 
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
-        assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()),
+        assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
                    ~"~[vec::tests::Foo, vec::tests::Foo]");
         cnt = 0;
         for f in xs.iter() {
@@ -3758,7 +3732,9 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
+    use iter::range;
     use vec;
+    use vec::VectorVector;
     use option::*;
 
     #[bench]
@@ -3773,7 +3749,7 @@ mod bench {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.
-            if sum == 0 {fail!()}
+            if sum == 0 {fail2!()}
         }
     }
 
@@ -3796,6 +3772,22 @@ mod bench {
         let ys: &[int] = [5, ..10];
         do b.iter() {
             xs + ys;
+        }
+    }
+
+    #[bench]
+    fn concat(bh: &mut BenchHarness) {
+        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        do bh.iter {
+            xss.concat_vec();
+        }
+    }
+
+    #[bench]
+    fn connect(bh: &mut BenchHarness) {
+        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        do bh.iter {
+            xss.connect_vec(&0);
         }
     }
 }

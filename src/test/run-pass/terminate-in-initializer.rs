@@ -22,12 +22,12 @@ fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: @int = loop; } }
 fn test_ret() { let _x: @int = return; }
 
 fn test_fail() {
-    fn f() { let _x: @int = fail!(); }
+    fn f() { let _x: @int = fail2!(); }
     task::try(|| f() );
 }
 
 fn test_fail_indirect() {
-    fn f() -> ! { fail!(); }
+    fn f() -> ! { fail2!(); }
     fn g() { let _x: @int = f(); }
     task::try(|| g() );
 }

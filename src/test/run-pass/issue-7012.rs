@@ -23,5 +23,5 @@ static test1: signature<'static> =  signature {
 
 pub fn main() {
   let test = &[0x243f6a88u32,0x85a308d3u32,0x13198a2eu32,0x03707344u32,0xa4093822u32,0x299f31d0u32];
-  println(fmt!("%b",test==test1.pattern));
+  println(format!("{}",test==test1.pattern));
 }

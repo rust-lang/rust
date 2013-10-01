@@ -35,7 +35,7 @@ pub trait SelectPort<T> : SelectPortInner<T> { }
 /// port whose data is ready. (If multiple are ready, returns the lowest index.)
 pub fn select<A: Select>(ports: &mut [A]) -> uint {
     if ports.is_empty() {
-        fail!("can't select on an empty list");
+        fail2!("can't select on an empty list");
     }
 
     for (index, port) in ports.mut_iter().enumerate() {
@@ -116,7 +116,7 @@ pub fn select2<TA, A: SelectPort<TA>, TB, B: SelectPort<TB>>(mut a: A, mut b: B)
     match result {
         0 => Left ((a.recv_ready(), b)),
         1 => Right((a, b.recv_ready())),
-        x => fail!("impossible case in select2: %?", x)
+        x => fail2!("impossible case in select2: {:?}", x)
     }
 }
 
@@ -335,7 +335,7 @@ mod test {
                         let _ = dead_cs;
                     }
                     do task::spawn {
-                        fail!(); // should kill sibling awake
+                        fail2!(); // should kill sibling awake
                     }
 
                     // wait for killed selector to close (NOT send on) its c.

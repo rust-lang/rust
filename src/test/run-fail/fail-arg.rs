@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // error-pattern:woe
-fn f(a: int) { info!(a); }
+fn f(a: int) { info2!("{}", a); }
 
-fn main() { f(fail!("woe")); }
+fn main() { f(fail2!("woe")); }

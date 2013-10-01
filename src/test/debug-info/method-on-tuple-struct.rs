@@ -92,7 +92,7 @@
 // check:$21 = -16
 // debugger:continue
 
-struct TupleStruct(int, float);
+struct TupleStruct(int, f64);
 
 impl TupleStruct {
 
