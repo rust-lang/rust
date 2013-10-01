@@ -3,49 +3,84 @@
 rustdoc \- generate documentation from Rust source code
 .SH SYNOPSIS
 .B rustdoc
-[\fIOPTIONS\fR] \fICRATEFILE\fR
+[\fIOPTIONS\fR] \fIINPUT\fR
 
 .SH DESCRIPTION
 This tool generates API reference documentation by extracting comments from
-source code written in the Rust language, available at <\fBhttps://www.rust-
-lang.org\fR>. It provides several output formats for the generated
-documentation.
+source code written in the Rust language, available at
+<\fBhttps://www.rust-lang.org\fR>. It accepts several input formats and provides
+several output formats for the generated documentation.
 
-.SH COMMANDS
+.SH OPTIONS
 
 .TP
---output-dir <val>
-Put documents here (default: .)
+-r --input-format <val>
+html or json (default: inferred)
 .TP
---output-format <val>
-markdown or html (default: html)
+-w --output-format <val>
+html or json (default: html)
 .TP
---output-style <val>
-doc-per-crate or doc-per-mod (default: doc-per-mod)
+-o --output <val>
+where to place the output (default: doc/ for html, doc.json for json)
 .TP
---pandoc-cmd <val>
-Command for running pandoc
+--passes <val>
+space-separated list of passes to run (default: '')
+.TP
+--no-defaults
+don't run the default passes
+.TP
+--plugins <val>
+space-separated list of plugins to run (default: '')
+.TP
+--plugin-path <val>
+directory to load plugins from (default: /tmp/rustdoc_ng/plugins)
+.TP
+-L --library-path <val>
+directory to add to crate search path
 .TP
 -h, --help
 Print help
 
 .SH "OUTPUT FORMATS"
 
-The rustdoc tool can generate documentation in either the Markdown
-or HTML formats. It requires the pandoc tool
-<\fBhttp://johnmacfarlane.net/pandoc/\fR> for conversion features.
+The rustdoc tool can generate output in either an HTML or JSON format.
+
+If using an HTML format, then the specified output destination will be the root
+directory of an HTML structure for all the documentation. Pages will be placed
+into this directory, and source files will also possibly be rendered into it as
+well.
+
+If using a JSON format, then the specified output destination will have the
+rustdoc output serialized as JSON into it. This output format exists to
+pre-compile documentation for crates, and for usage in non-rustdoc tools. The
+JSON output is the following hash:
+
+    {
+        "schema": VERSION,
+        "crate": ...,
+        "plugins": ...,
+    }
+
+The schema version indicates what the structure of crate/plugins will look
+like. Within a schema version the structure will remain the same. The `crate`
+field will contain all relevant documentation for the source being documented,
+and the `plugins` field will contain the output of the plugins run over the
+crate.
 
 .SH "EXAMPLES"
 
 To generate documentation for the source in the current directory:
     $ rustdoc hello.rs
 
-To build documentation into a subdirectory named 'doc' in the Markdown
-format:
-    $ rustdoc --output-dir doc --output-format markdown hello.rs
+List all available passes that rustdoc has, along with default passes:
+    $ rustdoc --passes list
 
-The generated HTML can be viewed with any standard web browser, while
-the Markdown version is well-suited for conversion into other formats.
+To precompile the documentation for a crate, and then use it to render html at
+a later date:
+    $ rustdoc -w json hello.rs
+    $ rustdoc doc.json
+
+The generated HTML can be viewed with any standard web browser.
 
 .SH "SEE ALSO"
 
