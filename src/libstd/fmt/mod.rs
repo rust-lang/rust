@@ -40,7 +40,7 @@ format!("The number is {:d}", 1)  // => ~"The number is 1"
 format!("{:?}", ~[3, 4])          // => ~"~[3, 4]"
 format!("{value}", value=4)       // => ~"4"
 format!("{} {}", 1, 2)            // => ~"1 2"
- ```
+```
 
 From these, you can see that the first argument is a format string. It is
 required by the compiler for this to be a string literal; it cannot be a
@@ -56,6 +56,21 @@ example, the format string `{} {} {}` would take three parameters, and they
 would be formatted in the same order as they're given. The format string
 `{2} {1} {0}`, however, would format arguments in reverse order.
 
+Things can get a little tricky once you start intermingling the two types of
+positional specifiers. The "next argument" specifier can be thought of as an
+iterator over the argument. Each time a "next argument" specifier is seen, the
+iterator advances. This leads to behavior like this:
+
+```rust
+format!("{1} {} {0} {}", 1, 2) // => ~"2 1 1 2"
+```
+
+The internal iterator over the argument has not been advanced by the time the
+first `{}` is seen, so it prints the first argument. Then upon reaching the
+second `{}`, the iterator has advanced forward to the second argument.
+Essentially, parameters which explicitly name their argument do not affect
+parameters which do not name an argument in terms of positional specifiers.
+
 A format string is required to use all of its arguments, otherwise it is a
 compile-time error. You may refer to the same argument more than once in the
 format string, although it must always be referred to with the same type.
@@ -67,9 +82,17 @@ function, but the `format!` macro is a syntax extension which allows it to
 leverage named parameters. Named parameters are listed at the end of the
 argument list and have the syntax:
 
- ```
+```
 identifier '=' expression
- ```
+```
+
+For example, the following `format!` expressions all use named argument:
+
+```rust
+format!("{argument}", argument = "test")       // => ~"test"
+format!("{name} {}", 1, name = 2)              // => ~"2 1"
+format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3) // => ~"a 3 ()"
+```
 
 It is illegal to put positional parameters (those without names) after arguments
 which have names. Like positional parameters, it is illegal to provided named
@@ -84,9 +107,9 @@ and if all references to one argument do not provide a type, then the format `?`
 is used (the type's rust-representation is printed). For example, this is an
 invalid format string:
 
- ```
+```
 {0:d} {0:s}
- ```
+```
 
 Because the first argument is both referred to as an integer as well as a
 string.
@@ -100,9 +123,9 @@ must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
 illegal to reference an argument as such. For example, this is another invalid
 format string:
 
- ```
+```
 {:.*s} {0:u}
- ```
+```
 
 ### Formatting traits
 
@@ -136,7 +159,7 @@ method of the signature:
 
 ```rust
 fn fmt(value: &T, f: &mut std::fmt::Formatter);
- ```
+```
 
 Your type will be passed by-reference in `value`, and then the function should
 emit output into the `f.buf` stream. It is up to each format trait
@@ -157,7 +180,7 @@ writeln!     // same as write but appends a newline
 print!       // the format string is printed to the standard output
 println!     // same as print but appends a newline
 format_args! // described below.
- ```
+```
 
 
 #### `write!`
@@ -172,7 +195,7 @@ use std::rt::io;
 
 let mut w = io::mem::MemWriter::new();
 write!(&mut w as &mut io::Writer, "Hello {}!", "world");
- ```
+```
 
 #### `print!`
 
@@ -183,7 +206,7 @@ output. Example usage is:
 ```rust
 print!("Hello {}!", "world");
 println!("I have a newline {}", "character at the end");
- ```
+```
 
 #### `format_args!`
 This is a curious macro which is used to safely pass around
@@ -199,7 +222,7 @@ use std::fmt;
 format_args!(fmt::format, "this returns {}", "~str");
 format_args!(|args| { fmt::write(my_writer, args) }, "some {}", "args");
 format_args!(my_fn, "format {}", "string");
- ```
+```
 
 The first argument of the `format_args!` macro is a function (or closure) which
 takes one argument of type `&fmt::Arguments`. This structure can then be
@@ -238,7 +261,7 @@ example:
 
 ```rust
 format!("{0, select, other{#}}", "hello") // => ~"hello"
- ```
+```
 
 This example is the equivalent of `{0:s}` essentially.
 
@@ -247,9 +270,9 @@ This example is the equivalent of `{0:s}` essentially.
 The select method is a switch over a `&str` parameter, and the parameter *must*
 be of the type `&str`. An example of the syntax is:
 
- ```
+```
 {0, select, male{...} female{...} other{...}}
- ```
+```
 
 Breaking this down, the `0`-th argument is selected upon with the `select`
 method, and then a number of cases follow. Each case is preceded by an
@@ -266,9 +289,9 @@ The plural method is a switch statement over a `uint` parameter, and the
 parameter *must* be a `uint`. A plural method in its full glory can be specified
 as:
 
- ```
+```
 {0, plural, offset=1 =1{...} two{...} many{...} other{...}}
- ```
+```
 
 To break this down, the first `0` indicates that this method is selecting over
 the value of the first positional parameter to the format string. Next, the
@@ -294,7 +317,7 @@ should not be too alien. Arguments are formatted with python-like syntax,
 meaning that arguments are surrounded by `{}` instead of the C-like `%`. The
 actual grammar for the formatting syntax is:
 
- ```
+```
 format_string := <text> [ format <text> ] *
 format := '{' [ argument ] [ ':' format_spec ] [ ',' function_spec ] '}'
 argument := integer | identifier
@@ -315,7 +338,7 @@ plural := 'plural' ',' [ 'offset:' integer ] ( selector arm ) *
 selector := '=' integer | keyword
 keyword := 'zero' | 'one' | 'two' | 'few' | 'many' | 'other'
 arm := '{' format_string '}'
- ```
+```
 
 ## Formatting Parameters
 
