@@ -61,7 +61,7 @@ struct Cache {
     // typaram id => name of that typaram
     typarams: HashMap<ast::NodeId, ~str>,
     // type id => all implementations for that type
-    impls: HashMap<ast::NodeId, ~[clean::Impl]>,
+    impls: HashMap<ast::NodeId, ~[(clean::Impl, Option<~str>)]>,
     // path id => (full qualified path, shortty) -- used to generate urls
     paths: HashMap<ast::NodeId, (~[~str], &'static str)>,
     // trait id => method name => dox
@@ -454,21 +454,34 @@ impl DocFolder for Cache {
         // implementations elsewhere
         let ret = match self.fold_item_recur(item) {
             Some(item) => {
-                match item.inner {
-                    clean::ImplItem(i) => {
+                match item {
+                    clean::Item{ attrs, inner: clean::ImplItem(i), _ } => {
                         match i.for_ {
                             clean::ResolvedPath { did, _ } if is_local(did) => {
                                 let id = did.node;
                                 let v = do self.impls.find_or_insert_with(id) |_| {
                                     ~[]
                                 };
-                                v.push(i);
+                                // extract relevant documentation for this impl
+                                match attrs.move_iter().find(|a| {
+                                    match *a {
+                                        clean::NameValue(~"doc", _) => true,
+                                        _ => false
+                                    }
+                                }) {
+                                    Some(clean::NameValue(_, dox)) => {
+                                        v.push((i, Some(dox)));
+                                    }
+                                    Some(*) | None => {
+                                        v.push((i, None));
+                                    }
+                                }
                             }
                             _ => {}
                         }
                         None
                     }
-                    _ => Some(item),
+                    i => Some(i),
                 }
             }
             i => i,
@@ -1205,22 +1218,26 @@ fn render_methods(w: &mut io::Writer, it: &clean::Item) {
         do cache.read |c| {
             match c.impls.find(&it.id) {
                 Some(v) => {
-                    let mut non_trait = v.iter().filter(|i| i.trait_.is_none());
+                    let mut non_trait = v.iter().filter(|p| {
+                        p.n0_ref().trait_.is_none()
+                    });
                     let non_trait = non_trait.to_owned_vec();
-                    let mut traits = v.iter().filter(|i| i.trait_.is_some());
+                    let mut traits = v.iter().filter(|p| {
+                        p.n0_ref().trait_.is_some()
+                    });
                     let traits = traits.to_owned_vec();
 
                     if non_trait.len() > 0 {
                         write!(w, "<h2 id='methods'>Methods</h2>");
-                        for &i in non_trait.iter() {
-                            render_impl(w, i);
+                        for &(ref i, ref dox) in non_trait.move_iter() {
+                            render_impl(w, i, dox);
                         }
                     }
                     if traits.len() > 0 {
                         write!(w, "<h2 id='implementations'>Trait \
                                    Implementations</h2>");
-                        for &i in traits.iter() {
-                            render_impl(w, i);
+                        for &(ref i, ref dox) in traits.move_iter() {
+                            render_impl(w, i, dox);
                         }
                     }
                 }
@@ -1230,7 +1247,7 @@ fn render_methods(w: &mut io::Writer, it: &clean::Item) {
     }
 }
 
-fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
+fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
     write!(w, "<h3 class='impl'><code>impl{} ", i.generics);
     let trait_id = match i.trait_ {
         Some(ref ty) => {
@@ -1243,6 +1260,13 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
         None => None
     };
     write!(w, "{}</code></h3>", i.for_);
+    match *dox {
+        Some(ref dox) => {
+            write!(w, "<div class='docblock'>{}</div>",
+                   Markdown(dox.as_slice()));
+        }
+        None => {}
+    }
     write!(w, "<div class='methods'>");
     for meth in i.methods.iter() {
         write!(w, "<h4 id='method.{}' class='method'><code>",
