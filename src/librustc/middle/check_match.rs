@@ -11,7 +11,6 @@
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_bool, const_float};
-use middle::lint::non_uppercase_pattern_statics;
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
@@ -135,29 +134,11 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 }
             };
 
-            // Lint for constants that look like binding identifiers (#7526)
-            let pat_matches_non_uppercase_static: &fn(@Pat) = |p| {
-                let msg = "static constant in pattern should be all caps";
-                match (&p.node, cx.tcx.def_map.find(&p.id)) {
-                    (&PatIdent(_, ref path, _), Some(&DefStatic(_, false))) => {
-                        // last identifier alone is right choice for this lint.
-                        let ident = path.segments.last().identifier;
-                        let s = cx.tcx.sess.str_of(ident);
-                        if s.iter().any(|c| c.is_lowercase()) {
-                            cx.tcx.sess.add_lint(non_uppercase_pattern_statics,
-                                                 p.id, path.span, msg.to_owned());
-                        }
-                    }
-                    _ => {}
-                }
-            };
-
             do walk_pat(*pat) |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
                                                    use the is_nan method in a guard instead");
                 }
-                pat_matches_non_uppercase_static(p);
                 true
             };
 
