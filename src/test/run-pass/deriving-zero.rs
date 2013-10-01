@@ -26,7 +26,7 @@ struct E { a: int, b: int }
 struct Lots {
     d: u8,
     e: char,
-    f: float,
+    f: f64,
     g: (f32, char),
     h: @mut (int, int),
     i: bool,

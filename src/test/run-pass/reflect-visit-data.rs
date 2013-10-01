@@ -152,13 +152,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_float(&mut self) -> bool {
-        self.align_to::<float>();
-        if ! self.inner.visit_float() { return false; }
-        self.bump_past::<float>();
-        true
-    }
-
     fn visit_f32(&mut self) -> bool {
         self.align_to::<f32>();
         if ! self.inner.visit_f32() { return false; }
@@ -528,7 +521,6 @@ impl TyVisitor for my_visitor {
     fn visit_u32(&mut self) -> bool { true }
     fn visit_u64(&mut self) -> bool { true }
 
-    fn visit_float(&mut self) -> bool { true }
     fn visit_f32(&mut self) -> bool { true }
     fn visit_f64(&mut self) -> bool { true }
 

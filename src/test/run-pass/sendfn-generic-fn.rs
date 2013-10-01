@@ -24,15 +24,15 @@ fn make_generic_record<A,B>(a: A, b: B) -> Pair<A,B> {
     return Pair {a: a, b: b};
 }
 
-fn test05_start(f: &~fn(v: float, v: ~str) -> Pair<float, ~str>) {
-    let p = (*f)(22.22f, ~"Hi");
+fn test05_start(f: &~fn(v: f64, v: ~str) -> Pair<f64, ~str>) {
+    let p = (*f)(22.22, ~"Hi");
     info2!("{:?}", p.clone());
-    assert!(p.a == 22.22f);
+    assert!(p.a == 22.22);
     assert!(p.b == ~"Hi");
 
-    let q = (*f)(44.44f, ~"Ho");
+    let q = (*f)(44.44, ~"Ho");
     info2!("{:?}", q.clone());
-    assert!(q.a == 44.44f);
+    assert!(q.a == 44.44);
     assert!(q.b == ~"Ho");
 }
 
@@ -42,5 +42,5 @@ fn spawn<A,B>(f: extern fn(&~fn(A,B)->Pair<A,B>)) {
 }
 
 fn test05() {
-    spawn::<float,~str>(test05_start);
+    spawn::<f64,~str>(test05_start);
 }

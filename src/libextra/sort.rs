@@ -915,13 +915,13 @@ mod test_tim_sort {
 
     #[deriving(Clone)]
     struct CVal {
-        val: float,
+        val: f64,
     }
 
     impl Ord for CVal {
         fn lt(&self, other: &CVal) -> bool {
             let mut rng = rand::rng();
-            if rng.gen::<float>() > 0.995 {
+            if rng.gen::<f64>() > 0.995 {
                 fail2!("It's happening!!!");
             }
             (*self).val < other.val
@@ -1054,7 +1054,7 @@ mod big_tests {
 
         for i in range(lo, hi) {
             let n = 1 << i;
-            let mut arr: ~[float] = do vec::from_fn(n) |_i| {
+            let mut arr: ~[f64] = do vec::from_fn(n) |_i| {
                 rng.gen()
             };
 
@@ -1106,7 +1106,7 @@ mod big_tests {
             isSorted(arr);
 
             let half = n / 2;
-            let mut arr = makeRange(half).map(|i| *i as float);
+            let mut arr = makeRange(half).map(|i| *i as f64);
             tim_sort(arr); // !sort
             isSorted(arr);
         }
@@ -1125,7 +1125,7 @@ mod big_tests {
 
         for i in range(lo, hi) {
             let n = 1 << i;
-            let arr: ~[@float] = do vec::from_fn(n) |_i| {
+            let arr: ~[@f64] = do vec::from_fn(n) |_i| {
                 @rng.gen()
             };
             let mut arr = arr;
@@ -1178,7 +1178,7 @@ mod big_tests {
             isSorted(arr);
 
             let half = n / 2;
-            let mut arr = makeRange(half).map(|i| @(*i as float));
+            let mut arr = makeRange(half).map(|i| @(*i as f64));
             tim_sort(arr); // !sort
             isSorted(arr);
         }

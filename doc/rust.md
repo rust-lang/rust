@@ -363,19 +363,17 @@ A _floating-point literal_ has one of two forms:
   second decimal literal.
 * A single _decimal literal_ followed by an _exponent_.
 
-By default, a floating-point literal is of type `float`. A
-floating-point literal may be followed (immediately, without any
-spaces) by a _floating-point suffix_, which changes the type of the
-literal. There are three floating-point suffixes: `f` (for the base
-`float` type), `f32`, and `f64` (the 32-bit and 64-bit floating point
-types).
+By default, a floating-point literal has a generic type, but will fall back to
+`f64`. A floating-point literal may be followed (immediately, without any
+spaces) by a _floating-point suffix_, which changes the type of the literal.
+There are two floating-point suffixes: `f32`, and `f64` (the 32-bit and 64-bit
+floating point types).
 
 Examples of floating-point literals of various forms:
 
 ~~~~
-123.0;                             // type float
-0.1;                               // type float
-3f;                                // type float
+123.0;                             // type f64
+0.1;                               // type f64
 0.1f32;                            // type f32
 12E+99_f64;                        // type f64
 ~~~~
@@ -1179,8 +1177,8 @@ a = Cat;
 Enumeration constructors can have either named or unnamed fields:
 ~~~~
 enum Animal {
-    Dog (~str, float),
-    Cat { name: ~str, weight: float }
+    Dog (~str, f64),
+    Cat { name: ~str, weight: f64 }
 }
 
 let mut a: Animal = Dog(~"Cocoa", 37.2);
@@ -1344,17 +1342,17 @@ For example:
 trait Num {
     fn from_int(n: int) -> Self;
 }
-impl Num for float {
-    fn from_int(n: int) -> float { n as float }
+impl Num for f64 {
+    fn from_int(n: int) -> f64 { n as f64 }
 }
-let x: float = Num::from_int(42);
+let x: f64 = Num::from_int(42);
 ~~~~
 
 Traits may inherit from other traits. For example, in
 
 ~~~~
-trait Shape { fn area() -> float; }
-trait Circle : Shape { fn radius() -> float; }
+trait Shape { fn area() -> f64; }
+trait Circle : Shape { fn radius() -> f64; }
 ~~~~
 
 the syntax `Circle : Shape` means that types that implement `Circle` must also have an implementation for `Shape`.
@@ -1367,9 +1365,9 @@ methods of the supertrait may be called on values of subtrait-bound type paramet
 Referring to the previous example of `trait Circle : Shape`:
 
 ~~~
-# trait Shape { fn area(&self) -> float; }
-# trait Circle : Shape { fn radius(&self) -> float; }
-fn radius_times_area<T: Circle>(c: T) -> float {
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+fn radius_times_area<T: Circle>(c: T) -> f64 {
     // `c` is both a Circle and a Shape
     c.radius() * c.area()
 }
@@ -1378,10 +1376,10 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-# trait Shape { fn area(&self) -> float; }
-# trait Circle : Shape { fn radius(&self) -> float; }
-# impl Shape for int { fn area(&self) -> float { 0.0 } }
-# impl Circle for int { fn radius(&self) -> float { 0.0 } }
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+# impl Shape for int { fn area(&self) -> f64 { 0.0 } }
+# impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
 
 let mycircle: Circle = @mycircle as @Circle;
@@ -1395,14 +1393,14 @@ An _implementation_ is an item that implements a [trait](#traits) for a specific
 Implementations are defined with the keyword `impl`.
 
 ~~~~
-# struct Point {x: float, y: float};
+# struct Point {x: f64, y: f64};
 # type Surface = int;
-# struct BoundingBox {x: float, y: float, width: float, height: float};
+# struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
 
 struct Circle {
-    radius: float,
+    radius: f64,
     center: Point,
 }
 
@@ -1970,7 +1968,7 @@ values.
 
 ~~~~~~~~ {.tuple}
 (0,);
-(0f, 4.5f);
+(0.0, 4.5);
 ("a", 4u, true);
 ~~~~~~~~
 
@@ -2002,12 +2000,12 @@ A _unit-like structure expression_ consists only of the [path](#paths) of a [str
 The following are examples of structure expressions:
 
 ~~~~
-# struct Point { x: float, y: float }
-# struct TuplePoint(float, float);
+# struct Point { x: f64, y: f64 }
+# struct TuplePoint(f64, f64);
 # mod game { pub struct User<'self> { name: &'self str, age: uint, score: uint } }
 # struct Cookie; fn some_fn<T>(t: T) {}
-Point {x: 10f, y: 20f};
-TuplePoint(10f, 20f);
+Point {x: 10.0, y: 20.0};
+TuplePoint(10.0, 20.0);
 let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
 ~~~~
@@ -2248,12 +2246,12 @@ Any other cast is unsupported and will fail to compile.
 An example of an `as` expression:
 
 ~~~~
-# fn sum(v: &[float]) -> float { 0.0 }
-# fn len(v: &[float]) -> int { 0 }
+# fn sum(v: &[f64]) -> f64 { 0.0 }
+# fn len(v: &[f64]) -> int { 0 }
 
-fn avg(v: &[float]) -> float {
-  let sum: float = sum(v);
-  let sz: float = len(v) as float;
+fn avg(v: &[f64]) -> f64 {
+  let sum: f64 = sum(v);
+  let sz: f64 = len(v) as f64;
   return sum / sz;
 }
 ~~~~
@@ -2765,19 +2763,6 @@ The Rust type `int`^[A Rust `int` is analogous to a C99 `intptr_t`.] is a
 two's complement signed integer type with target-machine-dependent size. Its
 size, in bits, is equal to the size of the rust type `uint` on the same target
 machine.
-
-
-#### Machine-dependent floating point type
-
-The Rust type `float` is a machine-specific type equal to one of the supported
-Rust floating-point machine types (`f32` or `f64`). It is the largest
-floating-point type that is directly supported by hardware on the target
-machine, or if the target machine has no floating-point hardware support, the
-largest floating-point type supported by the software floating-point library
-used to support the other floating-point machine types.
-
-Note that due to the preference for hardware-supported floating-point, the
-type `float` may not be equal to the largest *supported* floating-point type.
 
 
 ### Textual types

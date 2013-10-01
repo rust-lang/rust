@@ -11,7 +11,7 @@
 #[deriving(Eq)]
 enum Foo {
     Bar(int, int),
-    Baz(float, float)
+    Baz(f64, f64)
 }
 
 pub fn main() {

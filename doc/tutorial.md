@@ -235,13 +235,13 @@ can specify a variable's type by following it with a colon, then the type
 name. Static items, on the other hand, always require a type annotation.
 
 ~~~~
-static MONSTER_FACTOR: float = 57.8;
+static MONSTER_FACTOR: f64 = 57.8;
 let monster_size = MONSTER_FACTOR * 10.0;
 let monster_size: int = 50;
 ~~~~
 
 Local variables may shadow earlier declarations, as in the previous example:
-`monster_size` was first declared as a `float`, and then a second
+`monster_size` was first declared as a `f64`, and then a second
 `monster_size` was declared as an `int`. If you were to actually compile this
 example, though, the compiler would determine that the first `monster_size` is
 unused and issue a warning (because this situation is likely to indicate a
@@ -341,10 +341,10 @@ let c = 100u;    // c is a uint
 let d = 1000i32; // d is an i32
 ~~~~
 
-There are three floating-point types: `float`, `f32`, and `f64`.
+There are two floating-point types: `f32`, and `f64`.
 Floating-point numbers are written `0.0`, `1e6`, or `2.1e-4`.
 Like integers, floating-point literals are inferred to the correct type.
-Suffixes `f`, `f32`, and `f64` can be used to create literals of a specific type.
+Suffixes ``f32`, and `f64` can be used to create literals of a specific type.
 
 The keywords `true` and `false` produce literals of type `bool`.
 
@@ -377,7 +377,7 @@ if a meaningful conversion exists, convert the result of the
 expression to the given type.
 
 ~~~~
-let x: float = 4.0;
+let x: f64 = 4.0;
 let y: uint = x as uint;
 assert!(y == 4u);
 ~~~~
@@ -496,25 +496,25 @@ A powerful application of pattern matching is *destructuring*:
 matching in order to bind names to the contents of data
 types.
 
-> ***Note:*** The following code makes use of tuples (`(float, float)`) which
+> ***Note:*** The following code makes use of tuples (`(f64, f64)`) which
 > are explained in section 5.3. For now you can think of tuples as a list of
 > items.
 
 ~~~~
-use std::float;
+use std::f64;
 use std::num::atan;
-fn angle(vector: (float, float)) -> float {
-    let pi = float::consts::pi;
+fn angle(vector: (f64, f64)) -> f64 {
+    let pi = f64::consts::pi;
     match vector {
-      (0f, y) if y < 0f => 1.5 * pi,
-      (0f, y) => 0.5 * pi,
+      (0.0, y) if y < 0.0 => 1.5 * pi,
+      (0.0, y) => 0.5 * pi,
       (x, y) => atan(y / x)
     }
 }
 ~~~~
 
 A variable name in a pattern matches any value, *and* binds that name
-to the value of the matched value inside of the arm's action. Thus, `(0f,
+to the value of the matched value inside of the arm's action. Thus, `(0.0,
 y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any two-element tuple, and binds both
 elements to variables.
@@ -583,8 +583,8 @@ operator to access struct fields, as in `mypoint.x`.
 
 ~~~~
 struct Point {
-    x: float,
-    y: float
+    x: f64,
+    y: f64
 }
 ~~~~
 
@@ -597,7 +597,7 @@ With a value (say, `mypoint`) of such a type in a mutable location, you can do
 struct without inherited mutability would result in a type error.
 
 ~~~~ {.xfail-test}
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 let mut mypoint = Point { x: 1.0, y: 1.0 };
 let origin = Point { x: 0.0, y: 0.0 };
 
@@ -609,7 +609,7 @@ origin.y += 1.0; // ERROR: assigning to immutable field
 `Name { fieldname: pattern, ... }`:
 
 ~~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
     Point { x: 0.0, y: yy } => { println(yy.to_str());                     }
@@ -625,7 +625,7 @@ Additionally, struct fields have a shorthand matching form that simply
 reuses the field name as the binding name.
 
 ~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
     Point { x, _ } => { println(x.to_str()) }
@@ -638,15 +638,15 @@ Enums are datatypes that have several alternate representations. For
 example, consider the type shown earlier:
 
 ~~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 enum Shape {
-    Circle(Point, float),
+    Circle(Point, f64),
     Rectangle(Point, Point)
 }
 ~~~~
 
 A value of this type is either a `Circle`, in which case it contains a
-`Point` struct and a float, or a `Rectangle`, in which case it contains
+`Point` struct and a f64, or a `Rectangle`, in which case it contains
 two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
 "tagged union" pattern in C, but with better static guarantees.
@@ -654,7 +654,7 @@ includes an identifier of the actual form that it holds, much like the
 The above declaration will define a type `Shape` that can refer to
 such shapes, and two functions, `Circle` and `Rectangle`, which can be
 used to construct values of the type (taking arguments of the
-specified types). So `Circle(Point { x: 0f, y: 0f }, 10f)` is the way to
+specified types). So `Circle(Point { x: 0.0, y: 0.0 }, 10.0)` is the way to
 create a new circle.
 
 Enum variants need not have parameters. This `enum` declaration,
@@ -697,12 +697,12 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
-use std::float;
-# struct Point {x: float, y: float}
-# enum Shape { Circle(Point, float), Rectangle(Point, Point) }
-fn area(sh: Shape) -> float {
+use std::f64;
+# struct Point {x: f64, y: f64}
+# enum Shape { Circle(Point, f64), Rectangle(Point, Point) }
+fn area(sh: Shape) -> f64 {
     match sh {
-        Circle(_, size) => float::consts::pi * size * size,
+        Circle(_, size) => f64::consts::pi * size * size,
         Rectangle(Point { x, y }, Point { x: x2, y: y2 }) => (x2 - x) * (y2 - y)
     }
 }
@@ -714,14 +714,14 @@ introduction form, nullary enum patterns are written without
 parentheses.
 
 ~~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # enum Direction { North, East, South, West }
 fn point_from_direction(dir: Direction) -> Point {
     match dir {
-        North => Point { x:  0f, y:  1f },
-        East  => Point { x:  1f, y:  0f },
-        South => Point { x:  0f, y: -1f },
-        West  => Point { x: -1f, y:  0f }
+        North => Point { x:  0.0, y:  1.0 },
+        East  => Point { x:  1.0, y:  0.0 },
+        South => Point { x:  0.0, y: -1.0 },
+        West  => Point { x: -1.0, y:  0.0 }
     }
 }
 ~~~~
@@ -729,16 +729,16 @@ fn point_from_direction(dir: Direction) -> Point {
 Enum variants may also be structs. For example:
 
 ~~~~
-use std::float;
-# struct Point { x: float, y: float }
-# fn square(x: float) -> float { x * x }
+use std::f64;
+# struct Point { x: f64, y: f64 }
+# fn square(x: f64) -> f64 { x * x }
 enum Shape {
-    Circle { center: Point, radius: float },
+    Circle { center: Point, radius: f64 },
     Rectangle { top_left: Point, bottom_right: Point }
 }
-fn area(sh: Shape) -> float {
+fn area(sh: Shape) -> f64 {
     match sh {
-        Circle { radius: radius, _ } => float::consts::pi * square(radius),
+        Circle { radius: radius, _ } => f64::consts::pi * square(radius),
         Rectangle { top_left: top_left, bottom_right: bottom_right } => {
             (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y)
         }
@@ -754,7 +754,7 @@ Tuples can have any arity except for 0 (though you may consider
 unit, `()`, as the empty tuple if you like).
 
 ~~~~
-let mytup: (int, int, float) = (10, 20, 30.0);
+let mytup: (int, int, f64) = (10, 20, 30.0);
 match mytup {
   (a, b, c) => info2!("{}", a + b + (c as int))
 }
@@ -769,7 +769,7 @@ names.
 
 For example:
 ~~~~
-struct MyTup(int, int, float);
+struct MyTup(int, int, f64);
 let mytup: MyTup = MyTup(10, 20, 30.0);
 match mytup {
   MyTup(a, b, c) => info2!("{}", a + b + (c as int))
@@ -862,7 +862,7 @@ pattern destructuring. Like `let`, argument patterns must be irrefutable,
 as in this example that unpacks the first value from a tuple and returns it.
 
 ~~~
-fn first((value, _): (int, float)) -> int { value }
+fn first((value, _): (int, f64)) -> int { value }
 ~~~
 
 # Destructors
@@ -1074,8 +1074,8 @@ As an example, consider a simple struct type, `Point`:
 
 ~~~
 struct Point {
-    x: float,
-    y: float
+    x: f64,
+    y: f64
 }
 ~~~~
 
@@ -1084,7 +1084,7 @@ ways. For example, in this code, each of these three local variables
 contains a point, but allocated in a different location:
 
 ~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
 let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
@@ -1101,9 +1101,9 @@ bad, but often copies are expensive. So we’d like to define a function
 that takes the points by pointer. We can use borrowed pointers to do this:
 
 ~~~
-# struct Point { x: float, y: float }
-# fn sqrt(f: float) -> float { 0f }
-fn compute_distance(p1: &Point, p2: &Point) -> float {
+# struct Point { x: f64, y: f64 }
+# fn sqrt(f: f64) -> f64 { 0.0 }
+fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
     sqrt(x_d * x_d + y_d * y_d)
@@ -1113,11 +1113,11 @@ fn compute_distance(p1: &Point, p2: &Point) -> float {
 Now we can call `compute_distance()` in various ways:
 
 ~~~
-# struct Point{ x: float, y: float };
+# struct Point{ x: f64, y: f64 };
 # let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
 # let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 # let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
-# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
+# fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&on_the_stack, managed_box);
 compute_distance(managed_box, owned_box);
 ~~~
@@ -1211,11 +1211,11 @@ dot operator used for field and method access. This precedence order
 can sometimes make code awkward and parenthesis-filled.
 
 ~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = @Point { x: 10f, y: 20f };
-let end = ~Point { x: (*start).x + 100f, y: (*start).y + 100f };
+let start = @Point { x: 10.0, y: 20.0 };
+let end = ~Point { x: (*start).x + 100.0, y: (*start).y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = (*rect).area();
 ~~~
@@ -1225,11 +1225,11 @@ dereferencing_ to the receiver (the value on the left-hand side of the
 dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 
 ~~~
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = @Point { x: 10f, y: 20f };
-let end = ~Point { x: start.x + 100f, y: start.y + 100f };
+let start = @Point { x: 10.0, y: 20.0 };
+let end = ~Point { x: start.x + 100.0, y: start.y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = rect.area();
 ~~~
@@ -1239,8 +1239,8 @@ automatically. For example, if you feel inclined, you could write
 something silly like
 
 ~~~
-# struct Point { x: float, y: float }
-let point = &@~Point { x: 10f, y: 20f };
+# struct Point { x: f64, y: f64 }
+let point = &@~Point { x: 10.0, y: 20.0 };
 println!("{:f}", point.x);
 ~~~
 
@@ -1601,15 +1601,15 @@ methods on most Rust types, including structs and enums.
 As an example, let's define a `draw` method on our `Shape` enum.
 
 ~~~
-# fn draw_circle(p: Point, f: float) { }
+# fn draw_circle(p: Point, f: f64) { }
 # fn draw_rectangle(p: Point, p: Point) { }
 struct Point {
-    x: float,
-    y: float
+    x: f64,
+    y: f64
 }
 
 enum Shape {
-    Circle(Point, float),
+    Circle(Point, f64),
     Rectangle(Point, Point)
 }
 
@@ -1622,7 +1622,7 @@ impl Shape {
     }
 }
 
-let s = Circle(Point { x: 1f, y: 2f }, 3f);
+let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 s.draw();
 ~~~
 
@@ -1636,11 +1636,11 @@ or a pointer thereof. As an argument it is written either `self`,
 A caller must in turn have a compatible pointer type to call the method.
 
 ~~~
-# fn draw_circle(p: Point, f: float) { }
+# fn draw_circle(p: Point, f: f64) { }
 # fn draw_rectangle(p: Point, p: Point) { }
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # enum Shape {
-#     Circle(Point, float),
+#     Circle(Point, f64),
 #     Rectangle(Point, Point)
 # }
 impl Shape {
@@ -1650,7 +1650,7 @@ impl Shape {
     fn draw_value(self) { ... }
 }
 
-let s = Circle(Point { x: 1f, y: 2f }, 3f);
+let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 
 (@s).draw_managed();
 (~s).draw_owned();
@@ -1663,11 +1663,11 @@ so the compiler will go to great lengths to convert a callee
 to a borrowed pointer.
 
 ~~~
-# fn draw_circle(p: Point, f: float) { }
+# fn draw_circle(p: Point, f: f64) { }
 # fn draw_rectangle(p: Point, p: Point) { }
-# struct Point { x: float, y: float }
+# struct Point { x: f64, y: f64 }
 # enum Shape {
-#     Circle(Point, float),
+#     Circle(Point, f64),
 #     Rectangle(Point, Point)
 # }
 # impl Shape {
@@ -1676,7 +1676,7 @@ to a borrowed pointer.
 #    fn draw_owned(~self) { ... }
 #    fn draw_value(self) { ... }
 # }
-# let s = Circle(Point { x: 1f, y: 2f }, 3f);
+# let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 // As with typical function arguments, managed and owned pointers
 // are automatically converted to borrowed pointers
 
@@ -1700,18 +1700,18 @@ These methods are the preferred way to define constructor functions.
 
 ~~~~ {.xfail-test}
 impl Circle {
-    fn area(&self) -> float { ... }
-    fn new(area: float) -> Circle { ... }
+    fn area(&self) -> f64 { ... }
+    fn new(area: f64) -> Circle { ... }
 }
 ~~~~
 
 To call such a method, just prefix it with the type name and a double colon:
 
 ~~~~
-use std::float::consts::pi;
-struct Circle { radius: float }
+use std::f64::consts::pi;
+struct Circle { radius: f64 }
 impl Circle {
-    fn new(area: float) -> Circle { Circle { radius: (area / pi).sqrt() } }
+    fn new(area: f64) -> Circle { Circle { radius: (area / pi).sqrt() } }
 }
 let c = Circle::new(42.5);
 ~~~~
@@ -1777,9 +1777,9 @@ combination of arguments of the appropriate types. The usual way is to write
 a function that returns `Option<T>` instead of `T`.
 
 ~~~~
-# struct Point { x: float, y: float }
-# enum Shape { Circle(Point, float), Rectangle(Point, Point) }
-fn radius(shape: Shape) -> Option<float> {
+# struct Point { x: f64, y: f64 }
+# enum Shape { Circle(Point, f64), Rectangle(Point, Point) }
+fn radius(shape: Shape) -> Option<f64> {
     match shape {
         Circle(_, radius) => Some(radius),
         Rectangle(*)      => None
@@ -1986,16 +1986,16 @@ name and a double colon.  The compiler uses type inference to decide which
 implementation to use.
 
 ~~~~
-use std::float::consts::pi;
-trait Shape { fn new(area: float) -> Self; }
-struct Circle { radius: float }
-struct Square { length: float }
+use std::f64::consts::pi;
+trait Shape { fn new(area: f64) -> Self; }
+struct Circle { radius: f64 }
+struct Square { length: f64 }
 
 impl Shape for Circle {
-    fn new(area: float) -> Circle { Circle { radius: (area / pi).sqrt() } }
+    fn new(area: f64) -> Circle { Circle { radius: (area / pi).sqrt() } }
 }
 impl Shape for Square {
-    fn new(area: float) -> Square { Square { length: (area).sqrt() } }
+    fn new(area: f64) -> Square { Square { length: (area).sqrt() } }
 }
 
 let area = 42.5;
@@ -2159,24 +2159,24 @@ For example,
 we can define a `Circle` trait that inherits from `Shape`.
 
 ~~~~
-trait Shape { fn area(&self) -> float; }
-trait Circle : Shape { fn radius(&self) -> float; }
+trait Shape { fn area(&self) -> f64; }
+trait Circle : Shape { fn radius(&self) -> f64; }
 ~~~~
 
 Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
-use std::float::consts::pi;
-# trait Shape { fn area(&self) -> float; }
-# trait Circle : Shape { fn radius(&self) -> float; }
-# struct Point { x: float, y: float }
-# fn square(x: float) -> float { x * x }
-struct CircleStruct { center: Point, radius: float }
+use std::f64::consts::pi;
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+# struct Point { x: f64, y: f64 }
+# fn square(x: f64) -> f64 { x * x }
+struct CircleStruct { center: Point, radius: f64 }
 impl Circle for CircleStruct {
-    fn radius(&self) -> float { (self.area() / pi).sqrt() }
+    fn radius(&self) -> f64 { (self.area() / pi).sqrt() }
 }
 impl Shape for CircleStruct {
-    fn area(&self) -> float { pi * square(self.radius) }
+    fn area(&self) -> f64 { pi * square(self.radius) }
 }
 ~~~~
 
@@ -2190,9 +2190,9 @@ methods of the supertrait may be called on values of subtrait-bound type paramet
 Refering to the previous example of `trait Circle : Shape`:
 
 ~~~
-# trait Shape { fn area(&self) -> float; }
-# trait Circle : Shape { fn radius(&self) -> float; }
-fn radius_times_area<T: Circle>(c: T) -> float {
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+fn radius_times_area<T: Circle>(c: T) -> f64 {
     // `c` is both a Circle and a Shape
     c.radius() * c.area()
 }
@@ -2201,13 +2201,13 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-use std::float::consts::pi;
-# trait Shape { fn area(&self) -> float; }
-# trait Circle : Shape { fn radius(&self) -> float; }
-# struct Point { x: float, y: float }
-# struct CircleStruct { center: Point, radius: float }
-# impl Circle for CircleStruct { fn radius(&self) -> float { (self.area() / pi).sqrt() } }
-# impl Shape for CircleStruct { fn area(&self) -> float { pi * square(self.radius) } }
+use std::f64::consts::pi;
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+# struct Point { x: f64, y: f64 }
+# struct CircleStruct { center: Point, radius: f64 }
+# impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / pi).sqrt() } }
+# impl Shape for CircleStruct { fn area(&self) -> f64 { pi * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
 let mycircle: @Circle = concrete as @Circle;
@@ -2227,7 +2227,7 @@ of type `ABC` can be randomly generated and converted to a string:
 
 ~~~
 #[deriving(Eq)]
-struct Circle { radius: float }
+struct Circle { radius: f64 }
 
 #[deriving(Rand, ToStr)]
 enum ABC { A, B, C }

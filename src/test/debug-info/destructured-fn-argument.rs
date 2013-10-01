@@ -190,7 +190,7 @@ enum Univariant {
     Unit(i32)
 }
 
-struct TupleStruct (float, int);
+struct TupleStruct (f64, int);
 
 
 fn simple_tuple((a, b): (int, bool)) {

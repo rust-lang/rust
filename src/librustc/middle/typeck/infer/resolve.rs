@@ -269,9 +269,9 @@ impl ResolveState {
           Some(t) => ty::mk_mach_float(t),
           None => {
             if self.should(force_fvar) {
-                // As a last resort, default to float.
-                let ty = ty::mk_float();
-                self.infcx.set(vid, Root(Some(ast::ty_f), node.rank));
+                // As a last resort, default to f64.
+                let ty = ty::mk_f64();
+                self.infcx.set(vid, Root(Some(ast::ty_f64), node.rank));
                 ty
             } else {
                 ty::mk_float_var(self.infcx.tcx, vid)

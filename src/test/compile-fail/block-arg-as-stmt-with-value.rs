@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn compute1() -> float {
-    let v = ~[0f, 1f, 2f, 3f];
+fn compute1() -> f64 {
+    let v = ~[0f64, 1.0, 2.0, 3.0];
 
-    do v.iter().fold(0f) |x, y| { x + *y } - 10f
+    do v.iter().fold(0.0) |x, y| { x + *y } - 10.0
     //~^ ERROR mismatched types: expected `()`
 }
 
 fn main() {
     let x = compute1();
     info2!("{:?}", x);
-    assert_eq!(x, -4f);
+    assert_eq!(x, -4f64);
 }

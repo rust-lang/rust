@@ -11,7 +11,7 @@
 // Testing that calling fmt! (via info2!) doesn't complain about impure borrows
 
 struct Big { b: @~str, c: uint, d: int, e: char,
-            f: float, g: bool }
+            f: f64, g: bool }
 
 fn foo() {
     let a = Big {

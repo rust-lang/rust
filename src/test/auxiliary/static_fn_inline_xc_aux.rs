@@ -15,9 +15,9 @@ pub mod num {
     }
 }
 
-pub mod float {
-    impl ::num::Num2 for float {
+pub mod f64 {
+    impl ::num::Num2 for f64 {
         #[inline]
-        fn from_int2(n: int) -> float { return n as float;  }
+        fn from_int2(n: int) -> f64 { return n as f64;  }
     }
 }

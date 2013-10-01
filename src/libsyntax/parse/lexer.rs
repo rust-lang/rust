@@ -530,7 +530,6 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
       None => ()
     }
 
-    let mut is_machine_float = false;
     if rdr.curr == 'f' {
         bump(rdr);
         c = rdr.curr;
@@ -549,14 +548,10 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
         } else {
-            is_float = true;
-            is_machine_float = true;
+            fatal_span(rdr, start_bpos, rdr.last_pos, ~"expected `f32` or `f64` suffix");
         }
     }
     if is_float {
-        if is_machine_float {
-            return token::LIT_FLOAT(str_to_ident(num_str), ast::ty_f);
-        }
         return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
         if num_str.len() == 0u {

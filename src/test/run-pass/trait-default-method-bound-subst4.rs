@@ -20,6 +20,6 @@ fn f<T, V: A<T>>(i: V, j: uint) -> uint {
 }
 
 pub fn main () {
-    assert_eq!(f::<float, int>(0, 2u), 2u);
+    assert_eq!(f::<f64, int>(0, 2u), 2u);
     assert_eq!(f::<uint, int>(0, 2u), 2u);
 }

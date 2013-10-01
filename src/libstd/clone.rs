@@ -89,7 +89,6 @@ clone_impl!(u16)
 clone_impl!(u32)
 clone_impl!(u64)
 
-clone_impl!(float)
 clone_impl!(f32)
 clone_impl!(f64)
 
@@ -169,7 +168,6 @@ deep_clone_impl!(u16)
 deep_clone_impl!(u32)
 deep_clone_impl!(u64)
 
-deep_clone_impl!(float)
 deep_clone_impl!(f32)
 deep_clone_impl!(f64)
 
@@ -241,9 +239,9 @@ fn test_extern_fn_clone() {
     trait Empty {}
     impl Empty for int {}
 
-    fn test_fn_a() -> float { 1.0 }
+    fn test_fn_a() -> f64 { 1.0 }
     fn test_fn_b<T: Empty>(x: T) -> T { x }
-    fn test_fn_c(_: int, _: float, _: ~[int], _: int, _: int, _: int) {}
+    fn test_fn_c(_: int, _: f64, _: ~[int], _: int, _: int, _: int) {}
 
     let _ = test_fn_a.clone();
     let _ = test_fn_b::<int>.clone();

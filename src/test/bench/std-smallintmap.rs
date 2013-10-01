@@ -53,11 +53,11 @@ fn main() {
         check_sequential(0u, max, &map);
         let end = extra::time::precise_time_s();
 
-        checkf += (end - mid) as float;
-        appendf += (mid - start) as float;
+        checkf += (end - mid) as f64;
+        appendf += (mid - start) as f64;
     }
 
-    let maxf = max as float;
+    let maxf = max as f64;
 
     io::stdout().write_str(format!("insert(): {:?} seconds\n", checkf));
     io::stdout().write_str(format!("        : {} op/sec\n", maxf/checkf));
