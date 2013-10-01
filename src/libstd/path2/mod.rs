@@ -13,7 +13,7 @@
 use container::Container;
 use c_str::CString;
 use clone::Clone;
-use iterator::Iterator;
+use iter::Iterator;
 use option::{Option, None, Some};
 use str;
 use str::StrSlice;
@@ -102,7 +102,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If the path is not representable in utf-8, this returns None.
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_bytes_slice_opt(self.as_vec())
+        str::from_utf8_slice_opt(self.as_vec())
     }
 
     /// Returns the path as a byte vector
@@ -115,7 +115,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `dirname` for details.
     #[inline]
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_bytes_slice_opt(self.dirname())
+        str::from_utf8_slice_opt(self.dirname())
     }
     /// Returns the file component of `self`, as a byte vector.
     /// If `self` represents the root of the file hierarchy, returns the empty vector.
@@ -125,7 +125,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `filename` for details.
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_bytes_slice_opt(self.filename())
+        str::from_utf8_slice_opt(self.filename())
     }
     /// Returns the stem of the filename of `self`, as a byte vector.
     /// The stem is the portion of the filename just before the last '.'.
@@ -143,7 +143,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `filestem` for details.
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_bytes_slice_opt(self.filestem())
+        str::from_utf8_slice_opt(self.filestem())
     }
     /// Returns the extension of the filename of `self`, as an optional byte vector.
     /// The extension is the portion of the filename just after the last '.'.
@@ -162,7 +162,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `extension` for details.
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
-        self.extension().chain(|v| str::from_bytes_slice_opt(v))
+        self.extension().and_then(|v| str::from_utf8_slice_opt(v))
     }
 
     /// Replaces the directory portion of the path with the given byte vector.
@@ -447,7 +447,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `pop_opt` for details.
     #[inline]
     fn pop_opt_str(&mut self) -> Option<~str> {
-        self.pop_opt().chain(|v| str::from_bytes_owned_opt(v))
+        self.pop_opt().and_then(|v| str::from_utf8_owned_opt(v))
     }
 
     /// Returns a new Path constructed by joining `self` with the given path (as a byte vector).
