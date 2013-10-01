@@ -319,6 +319,17 @@ impl Context {
         }
     }
 
+    /// These attributes are applied to all statics that this syntax extension
+    /// will generate.
+    fn static_attrs(&self) -> ~[ast::Attribute] {
+        // Flag statics as `address_insignificant` so LLVM can merge duplicate
+        // globals as much as possible (which we're generating a whole lot of).
+        let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
+        let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
+
+        return ~[unnamed];
+    }
+
     /// Translate a `parse::Piece` to a static `rt::Piece`
     fn trans_piece(&mut self, piece: &parse::Piece) -> @ast::Expr {
         let sp = self.fmtsp;
@@ -444,14 +455,9 @@ impl Context {
                 ~[]
             ), None);
             let st = ast::item_static(ty, ast::MutImmutable, method);
-            let static_name = self.ecx.ident_of(format!("__static_method_{}",
+            let static_name = self.ecx.ident_of(format!("__STATIC_METHOD_{}",
                                                      self.method_statics.len()));
-            // Flag these statics as `address_insignificant` so LLVM can
-            // merge duplicate globals as much as possible (which we're
-            // generating a whole lot of).
-            let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
-            let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
-            let item = self.ecx.item(sp, static_name, ~[unnamed], st);
+            let item = self.ecx.item(sp, static_name, self.static_attrs(), st);
             self.method_statics.push(item);
             self.ecx.expr_ident(sp, static_name)
         };
@@ -572,11 +578,9 @@ impl Context {
         );
         let ty = self.ecx.ty(self.fmtsp, ty);
         let st = ast::item_static(ty, ast::MutImmutable, fmt);
-        let static_name = self.ecx.ident_of("__static_fmtstr");
-        // see above comment for `address_insignificant` and why we do it
-        let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
-        let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
-        let item = self.ecx.item(self.fmtsp, static_name, ~[unnamed], st);
+        let static_name = self.ecx.ident_of("__STATIC_FMTSTR");
+        let item = self.ecx.item(self.fmtsp, static_name,
+                                 self.static_attrs(), st);
         let decl = respan(self.fmtsp, ast::DeclItem(item));
         lets.push(@respan(self.fmtsp, ast::StmtDecl(@decl, ast::DUMMY_NODE_ID)));
 
