@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
 struct Wrapper(~str);
 
 impl Wrapper {
@@ -26,7 +24,7 @@ impl Drop for Wrapper {
     fn drop(&mut self) {}
 }
 
-fn main() {
+pub fn main() {
     {
         // This runs without complaint.
         let x = Wrapper::new(~"Bob");
