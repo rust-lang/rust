@@ -417,7 +417,6 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_int(t) => ast_util::int_ty_to_str(t),
       ty_uint(ast::ty_u) => ~"uint",
       ty_uint(t) => ast_util::uint_ty_to_str(t),
-      ty_float(ast::ty_f) => ~"float",
       ty_float(t) => ast_util::float_ty_to_str(t),
       ty_box(ref tm) => ~"@" + mt_to_str(cx, tm),
       ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),

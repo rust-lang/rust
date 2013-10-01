@@ -14,7 +14,7 @@ Random number generation.
 The key functions are `random()` and `Rng::gen()`. These are polymorphic
 and so can be used to generate any type that implements `Rand`. Type inference
 means that often a simple call to `rand::random()` or `rng.gen()` will
-suffice, but sometimes an annotation is required, e.g. `rand::random::<float>()`.
+suffice, but sometimes an annotation is required, e.g. `rand::random::<f64>()`.
 
 See the `distributions` submodule for sampling random numbers from
 distributions like normal and exponential.
@@ -145,13 +145,6 @@ impl Rand for u64 {
     }
 }
 
-impl Rand for float {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> float {
-        rng.gen::<f64>() as float
-    }
-}
-
 impl Rand for f32 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f32 {
@@ -271,7 +264,7 @@ pub trait Rng {
     ///    let rng = rand::task_rng();
     ///    let x: uint = rng.gen();
     ///    println!("{}", x);
-    ///    println!("{:?}", rng.gen::<(float, bool)>());
+    ///    println!("{:?}", rng.gen::<(f64, bool)>());
     /// }
     /// ```
     #[inline(always)]
@@ -290,7 +283,7 @@ pub trait Rng {
     ///    let rng = rand::task_rng();
     ///    let x: ~[uint] = rng.gen_vec(10);
     ///    println!("{:?}", x);
-    ///    println!("{:?}", rng.gen_vec::<(float, bool)>(5));
+    ///    println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
     /// }
     /// ```
     fn gen_vec<T: Rand>(&mut self, len: uint) -> ~[T] {
@@ -936,10 +929,10 @@ mod test {
     }
 
     #[test]
-    fn test_gen_float() {
+    fn test_gen_f64() {
         let mut r = rng();
-        let a = r.gen::<float>();
-        let b = r.gen::<float>();
+        let a = r.gen::<f64>();
+        let b = r.gen::<f64>();
         debug2!("{:?}", (a, b));
     }
 
@@ -1049,7 +1042,7 @@ mod test {
         let _many : ((),
                      (~uint, @int, ~Option<~(@u32, ~(@bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
-                     (f32, (f64, (float,)))) = random();
+                     (f32, (f64, (f64,)))) = random();
     }
 
     #[test]

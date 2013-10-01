@@ -765,7 +765,6 @@ impl ToStr for uint_ty {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum float_ty {
-    ty_f,
     ty_f32,
     ty_f64,
 }

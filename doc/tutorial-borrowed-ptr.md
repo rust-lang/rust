@@ -32,7 +32,7 @@ where you would like to use data for a short time.
 As an example, consider a simple struct type `Point`:
 
 ~~~
-struct Point {x: float, y: float}
+struct Point {x: f64, y: f64}
 ~~~
 
 We can use this simple definition to allocate points in many different ways. For
@@ -40,7 +40,7 @@ example, in this code, each of these three local variables contains a
 point, but allocated in a different place:
 
 ~~~
-# struct Point {x: float, y: float}
+# struct Point {x: f64, y: f64}
 let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};
 let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
 let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
@@ -59,9 +59,9 @@ function that takes the points by pointer. We can use borrowed pointers to do
 this:
 
 ~~~
-# struct Point {x: float, y: float}
-# fn sqrt(f: float) -> float { 0f }
-fn compute_distance(p1: &Point, p2: &Point) -> float {
+# struct Point {x: f64, y: f64}
+# fn sqrt(f: f64) -> f64 { 0.0 }
+fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
     sqrt(x_d * x_d + y_d * y_d)
@@ -71,11 +71,11 @@ fn compute_distance(p1: &Point, p2: &Point) -> float {
 Now we can call `compute_distance()` in various ways:
 
 ~~~
-# struct Point {x: float, y: float}
+# struct Point {x: f64, y: f64}
 # let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};
 # let managed_box  : @Point = @Point{x: 5.0, y: 1.0};
 # let owned_box    : ~Point = ~Point{x: 7.0, y: 9.0};
-# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
+# fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&on_the_stack, managed_box);
 compute_distance(managed_box, owned_box);
 ~~~
@@ -108,7 +108,7 @@ before you can make full use of it again.
 In the previous example, the value `on_the_stack` was defined like so:
 
 ~~~
-# struct Point {x: float, y: float}
+# struct Point {x: f64, y: f64}
 let on_the_stack: Point = Point {x: 3.0, y: 4.0};
 ~~~
 
@@ -118,7 +118,7 @@ functions. As a consequence, we had to explicitly take the address of
 convenient to move the & operator into the definition of `on_the_stack`:
 
 ~~~
-# struct Point {x: float, y: float}
+# struct Point {x: f64, y: f64}
 let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
 ~~~
 
@@ -127,7 +127,7 @@ shorthand for creating a temporary and taking its address. A more verbose
 way to write the same code is:
 
 ~~~
-# struct Point {x: float, y: float}
+# struct Point {x: f64, y: f64}
 let tmp = Point {x: 3.0, y: 4.0};
 let on_the_stack2 : &Point = &tmp;
 ~~~
@@ -140,36 +140,36 @@ individual array elements. For example, consider this type definition
 for `rectangle`:
 
 ~~~
-struct Point {x: float, y: float} // as before
-struct Size {w: float, h: float} // as before
+struct Point {x: f64, y: f64} // as before
+struct Size {w: f64, h: f64} // as before
 struct Rectangle {origin: Point, size: Size}
 ~~~
 
 Now, as before, we can define rectangles in a few different ways:
 
 ~~~
-# struct Point {x: float, y: float}
-# struct Size {w: float, h: float} // as before
+# struct Point {x: f64, y: f64}
+# struct Size {w: f64, h: f64} // as before
 # struct Rectangle {origin: Point, size: Size}
-let rect_stack   = &Rectangle {origin: Point {x: 1f, y: 2f},
-                               size: Size {w: 3f, h: 4f}};
-let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f},
-                               size: Size {w: 3f, h: 4f}};
-let rect_owned   = ~Rectangle {origin: Point {x: 5f, y: 6f},
-                               size: Size {w: 3f, h: 4f}};
+let rect_stack   = &Rectangle {origin: Point {x: 1.0, y: 2.0},
+                               size: Size {w: 3.0, h: 4.0}};
+let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0},
+                               size: Size {w: 3.0, h: 4.0}};
+let rect_owned   = ~Rectangle {origin: Point {x: 5.0, y: 6.0},
+                               size: Size {w: 3.0, h: 4.0}};
 ~~~
 
 In each case, we can extract out individual subcomponents with the `&`
 operator. For example, I could write:
 
 ~~~
-# struct Point {x: float, y: float} // as before
-# struct Size {w: float, h: float} // as before
+# struct Point {x: f64, y: f64} // as before
+# struct Size {w: f64, h: f64} // as before
 # struct Rectangle {origin: Point, size: Size}
-# let rect_stack  = &Rectangle {origin: Point {x: 1f, y: 2f}, size: Size {w: 3f, h: 4f}};
-# let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f}, size: Size {w: 3f, h: 4f}};
-# let rect_owned = ~Rectangle {origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
-# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
+# let rect_stack  = &Rectangle {origin: Point {x: 1.0, y: 2.0}, size: Size {w: 3.0, h: 4.0}};
+# let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0}, size: Size {w: 3.0, h: 4.0}};
+# let rect_owned = ~Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
+# fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&rect_stack.origin, &rect_managed.origin);
 ~~~
 
@@ -375,10 +375,10 @@ As an example, let’s look at the following `shape` type that can
 represent both rectangles and circles:
 
 ~~~
-struct Point {x: float, y: float}; // as before
-struct Size {w: float, h: float}; // as before
+struct Point {x: f64, y: f64}; // as before
+struct Size {w: f64, h: f64}; // as before
 enum Shape {
-    Circle(Point, float),   // origin, radius
+    Circle(Point, f64),   // origin, radius
     Rectangle(Point, Size)  // upper-left, dimensions
 }
 ~~~
@@ -388,14 +388,14 @@ function takes a borrowed pointer to a shape, to avoid the need for
 copying.
 
 ~~~
-# struct Point {x: float, y: float}; // as before
-# struct Size {w: float, h: float}; // as before
+# struct Point {x: f64, y: f64}; // as before
+# struct Size {w: f64, h: f64}; // as before
 # enum Shape {
-#     Circle(Point, float),   // origin, radius
+#     Circle(Point, f64),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# static tau: float = 6.28f;
-fn compute_area(shape: &Shape) -> float {
+# static tau: f64 = 6.28;
+fn compute_area(shape: &Shape) -> f64 {
     match *shape {
         Circle(_, radius) => 0.5 * tau * radius * radius,
         Rectangle(_, ref size) => size.w * size.h
@@ -424,10 +424,10 @@ Stack             Memory
 
 +-------+         +---------------+
 | shape | ------> | rectangle(    |
-+-------+         |   {x: float,  |
-| size  | -+      |    y: float}, |
-+-------+  +----> |   {w: float,  |
-                  |    h: float}) |
++-------+         |   {x: f64,    |
+| size  | -+      |    y: f64},   |
++-------+  +----> |   {w: f64,    |
+                  |    h: f64})   |
                   +---------------+
 ~~~
 
@@ -449,16 +449,16 @@ Stack             Memory
 
 +-------+         +---------------+
 | shape | ------> | circle(       |
-+-------+         |   {x: float,  |
-| size  | -+      |    y: float}, |
-+-------+  +----> |   float)      |
++-------+         |   {x: f64,    |
+| size  | -+      |    y: f64},   |
++-------+  +----> |   f64)        |
                   |               |
                   +---------------+
 ~~~
 
-As you can see, the `size` pointer would be pointing at a `float`
+As you can see, the `size` pointer would be pointing at a `f64`
 instead of a struct. This is not good: dereferencing the second field
-of a `float` as if it were a struct with two fields would be a memory
+of a `f64` as if it were a struct with two fields would be a memory
 safety violation.
 
 So, in fact, for every `ref` binding, the compiler will impose the
@@ -484,13 +484,13 @@ as we'll see, doing so requires some explicit annotation.
 For example, we could write a subroutine like this:
 
 ~~~
-struct Point {x: float, y: float}
-fn get_x<'r>(p: &'r Point) -> &'r float { &p.x }
+struct Point {x: f64, y: f64}
+fn get_x<'r>(p: &'r Point) -> &'r f64 { &p.x }
 ~~~
 
 Here, the function `get_x()` returns a pointer into the structure it
 was given. The type of the parameter (`&'r Point`) and return type
-(`&'r float`) both use a new syntactic form that we have not seen so
+(`&'r f64`) both use a new syntactic form that we have not seen so
 far.  Here the identifier `r` names the lifetime of the pointer
 explicitly. So in effect, this function declares that it takes a
 pointer with lifetime `r` and returns a pointer with that same
@@ -525,8 +525,8 @@ To emphasize this point, let’s look at a variation on the example, this
 time one that does not compile:
 
 ~~~ {.xfail-test}
-struct Point {x: float, y: float}
-fn get_x_sh(p: @Point) -> &float {
+struct Point {x: f64, y: f64}
+fn get_x_sh(p: @Point) -> &f64 {
     &p.x // Error reported here
 }
 ~~~
@@ -564,14 +564,14 @@ for grouping of parameters by lifetime. For example, consider this
 function:
 
 ~~~
-# struct Point {x: float, y: float}; // as before
-# struct Size {w: float, h: float}; // as before
+# struct Point {x: f64, y: f64}; // as before
+# struct Size {w: f64, h: f64}; // as before
 # enum Shape {
-#     Circle(Point, float),   // origin, radius
+#     Circle(Point, f64),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &Shape) -> float { 0f }
-fn select<'r, T>(shape: &'r Shape, threshold: float,
+# fn compute_area(shape: &Shape) -> f64 { 0.0 }
+fn select<'r, T>(shape: &'r Shape, threshold: f64,
                  a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
@@ -584,20 +584,20 @@ region parameters*. This may be overly conservative, as in this
 example:
 
 ~~~
-# struct Point {x: float, y: float}; // as before
-# struct Size {w: float, h: float}; // as before
+# struct Point {x: f64, y: f64}; // as before
+# struct Size {w: f64, h: f64}; // as before
 # enum Shape {
-#     Circle(Point, float),   // origin, radius
+#     Circle(Point, f64),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &Shape) -> float { 0f }
-# fn select<'r, T>(shape: &Shape, threshold: float,
+# fn compute_area(shape: &Shape) -> f64 { 0.0 }
+# fn select<'r, T>(shape: &Shape, threshold: f64,
 #                  a: &'r T, b: &'r T) -> &'r T {
 #     if compute_area(shape) > threshold {a} else {b}
 # }
                                                      // -+ r
 fn select_based_on_unit_circle<'r, T>(               //  |-+ B
-    threshold: float, a: &'r T, b: &'r T) -> &'r T { //  | |
+    threshold: f64, a: &'r T, b: &'r T) -> &'r T { //  | |
                                                      //  | |
     let shape = Circle(Point {x: 0., y: 0.}, 1.);    //  | |
     select(&shape, threshold, a, b)                  //  | |
@@ -621,14 +621,14 @@ the latter two. After all, the first parameter is not being
 returned. Here is how the new `select()` might look:
 
 ~~~
-# struct Point {x: float, y: float}; // as before
-# struct Size {w: float, h: float}; // as before
+# struct Point {x: f64, y: f64}; // as before
+# struct Size {w: f64, h: f64}; // as before
 # enum Shape {
-#     Circle(Point, float),   // origin, radius
+#     Circle(Point, f64),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &Shape) -> float { 0f }
-fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: float,
+# fn compute_area(shape: &Shape) -> f64 { 0.0 }
+fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: f64,
                        a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
@@ -640,14 +640,14 @@ However, since the lifetime `tmp` is not returned, it would be more
 concise to just omit the named lifetime for `shape` altogether:
 
 ~~~
-# struct Point {x: float, y: float}; // as before
-# struct Size {w: float, h: float}; // as before
+# struct Point {x: f64, y: f64}; // as before
+# struct Size {w: f64, h: f64}; // as before
 # enum Shape {
-#     Circle(Point, float),   // origin, radius
+#     Circle(Point, f64),   // origin, radius
 #     Rectangle(Point, Size)  // upper-left, dimensions
 # }
-# fn compute_area(shape: &Shape) -> float { 0f }
-fn select<'r, T>(shape: &Shape, threshold: float,
+# fn compute_area(shape: &Shape) -> f64 { 0.0 }
+fn select<'r, T>(shape: &Shape, threshold: f64,
                  a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }

@@ -13,7 +13,7 @@ use std::local_data;
 local_data_key!(foo: int)
 
 mod bar {
-    local_data_key!(pub baz: float)
+    local_data_key!(pub baz: f64)
 }
 
 pub fn main() {

@@ -485,14 +485,14 @@ impl ConsoleTestState {
                     self.out.write_str(*k);
                     self.out.write_str(": ");
                     self.write_improved();
-                    self.out.write_line(format!(" by {:.2f}%", pct as float))
+                    self.out.write_line(format!(" by {:.2f}%", pct as f64))
                 }
                 Regression(pct) => {
                     regressed += 1;
                     self.out.write_str(*k);
                     self.out.write_str(": ");
                     self.write_regressed();
-                    self.out.write_line(format!(" by {:.2f}%", pct as float))
+                    self.out.write_line(format!(" by {:.2f}%", pct as f64))
                 }
             }
         }
@@ -519,7 +519,7 @@ impl ConsoleTestState {
                     None => (),
                     Some(pct) =>
                     self.out.write_str(format!("with noise-tolerance forced to: {}%%\n",
-                                            pct as float))
+                                            pct as f64))
                 }
                 let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
                 self.write_metric_diff(&diff);
@@ -551,8 +551,8 @@ pub fn fmt_metrics(mm: &MetricMap) -> ~str {
     let v : ~[~str] = mm.iter()
         .map(|(k,v)| format!("{}: {} (+/- {})",
                           *k,
-                          v.value as float,
-                          v.noise as float))
+                          v.value as f64,
+                          v.noise as f64))
         .collect();
     v.connect(", ")
 }
@@ -878,8 +878,8 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
         let mut map = ~TreeMap::new();
-        map.insert(~"value", json::Number(self.value as float));
-        map.insert(~"noise", json::Number(self.noise as float));
+        map.insert(~"value", json::Number(self.value as f64));
+        map.insert(~"noise", json::Number(self.noise as f64));
         json::Object(map)
     }
 }
@@ -1083,9 +1083,9 @@ impl BenchHarness {
 
             debug2!("{} samples, median {}, MAD={}, MADP={}",
                    samples.len(),
-                   summ.median as float,
-                   summ.median_abs_dev as float,
-                   summ.median_abs_dev_pct as float);
+                   summ.median as f64,
+                   summ.median_abs_dev as f64,
+                   summ.median_abs_dev_pct as f64);
 
             let now = precise_time_ns();
             let loop_run = now - loop_start;

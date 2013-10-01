@@ -190,7 +190,7 @@ pub fn uint_ty_max(t: uint_ty) -> u64 {
 }
 
 pub fn float_ty_to_str(t: float_ty) -> ~str {
-    match t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
+    match t { ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
 pub fn is_call_expr(e: @Expr) -> bool {

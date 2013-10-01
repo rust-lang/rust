@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct TwoDoubles {
-    r: float,
-    i: float
+    r: f64,
+    i: f64
 }
 
 extern "C" {

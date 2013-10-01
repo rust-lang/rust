@@ -603,11 +603,11 @@ pub fn build_target_config(sopts: @session::options,
       None => early_error(demitter,
                           ~"unknown architecture: " + sopts.target_triple)
     };
-    let (int_type, uint_type, float_type) = match arch {
-      abi::X86 => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
-      abi::X86_64 => (ast::ty_i64, ast::ty_u64, ast::ty_f64),
-      abi::Arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
-      abi::Mips => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
+    let (int_type, uint_type) = match arch {
+      abi::X86 => (ast::ty_i32, ast::ty_u32),
+      abi::X86_64 => (ast::ty_i64, ast::ty_u64),
+      abi::Arm => (ast::ty_i32, ast::ty_u32),
+      abi::Mips => (ast::ty_i32, ast::ty_u32)
     };
     let target_triple = sopts.target_triple.clone();
     let target_strs = match arch {
@@ -622,7 +622,6 @@ pub fn build_target_config(sopts: @session::options,
         target_strs: target_strs,
         int_type: int_type,
         uint_type: uint_type,
-        float_type: float_type
     };
     return target_cfg;
 }

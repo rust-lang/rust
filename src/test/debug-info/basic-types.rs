@@ -42,12 +42,10 @@
 // check:$11 = 32
 // debugger:print u64
 // check:$12 = 64
-// debugger:print f
-// check:$13 = 1.5
 // debugger:print f32
-// check:$14 = 2.5
+// check:$13 = 2.5
 // debugger:print f64
-// check:$15 = 3.5
+// check:$14 = 3.5
 
 #[allow(unused_variable)];
 
@@ -64,7 +62,6 @@ fn main() {
     let u16: u16 = 16;
     let u32: u32 = 32;
     let u64: u64 = 64;
-    let f: float = 1.5;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
     _zzz();

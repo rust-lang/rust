@@ -10,7 +10,7 @@
 
 pub fn main() {
     fn f(i: uint) -> uint { i }
-    let v = ~[-1f, 0f, 1f, 2f, 3f];
+    let v = ~[-1.0, 0.0, 1.0, 2.0, 3.0];
     let z = do v.iter().fold(f) |x, _y| { x } (22u);
     assert_eq!(z, 22u);
 }

@@ -15,7 +15,7 @@ struct S {
 pub fn main() {
     let x: f32 = 4.0;
     println(x.to_str());
-    let y: float = 64.0;
+    let y: f64 = 64.0;
     println(y.to_str());
     let z = S { z: 1.0 };
     println(z.z.to_str());
