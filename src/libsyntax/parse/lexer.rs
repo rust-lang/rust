@@ -431,7 +431,7 @@ fn scan_digits(rdr: @mut StringReader, radix: uint) -> ~str {
     let mut rslt = ~"";
     loop {
         let c = rdr.curr;
-        if c == '_' { bump(rdr); loop; }
+        if c == '_' { bump(rdr); continue; }
         match char::to_digit(c, radix) {
           Some(_) => {
             rslt.push_char(c);

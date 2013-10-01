@@ -263,8 +263,8 @@ impl<'self> CheckLoanCtxt<'self> {
         debug2!("illegal_if={:?}", illegal_if);
 
         for restr in loan1.restrictions.iter() {
-            if !restr.set.intersects(illegal_if) { loop; }
-            if restr.loan_path != loan2.loan_path { loop; }
+            if !restr.set.intersects(illegal_if) { continue; }
+            if restr.loan_path != loan2.loan_path { continue; }
 
             match (new_loan.mutbl, old_loan.mutbl) {
                 (MutableMutability, MutableMutability) => {

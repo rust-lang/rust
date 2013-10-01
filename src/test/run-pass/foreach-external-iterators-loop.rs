@@ -13,7 +13,7 @@ pub fn main() {
     let mut y = 0;
     for (n,i) in x.iter().enumerate() {
         if n < 10 {
-            loop;
+            continue;
         }
         y += *i;
     }

@@ -992,11 +992,11 @@ impl GenericPath for WindowsPath {
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
     for c in components.iter() {
-        if *c == ~"." && components.len() > 1 { loop; }
-        if *c == ~"" { loop; }
+        if *c == ~"." && components.len() > 1 { continue; }
+        if *c == ~"" { continue; }
         if *c == ~".." && cs.len() != 0 {
             cs.pop();
-            loop;
+            continue;
         }
         cs.push((*c).clone());
     }

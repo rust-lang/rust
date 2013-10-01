@@ -21,7 +21,7 @@ pub fn main() {
                     break 'bar;
                 }
             }
-            loop 'foo;
+            continue 'foo;
         }
         x = 42;
         break;

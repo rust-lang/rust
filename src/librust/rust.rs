@@ -247,7 +247,7 @@ pub fn main() {
                     os::set_exit_status(exit_code);
                     return;
                 }
-                _ => loop
+                _ => {}
             }
         }
     }

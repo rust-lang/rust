@@ -569,7 +569,7 @@ pub fn main_args(args: &[~str]) -> int {
                     if istty {
                         println("()");
                     }
-                    loop;
+                    continue;
                 }
                 run_line(&mut repl, input, out, line, istty);
             }

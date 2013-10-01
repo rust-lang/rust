@@ -199,10 +199,10 @@ impl Combine for Sub {
                 // or new variables:
                 match *tainted_region {
                     ty::re_infer(ty::ReVar(ref vid)) => {
-                        if new_vars.iter().any(|x| x == vid) { loop; }
+                        if new_vars.iter().any(|x| x == vid) { continue; }
                     }
                     _ => {
-                        if *tainted_region == skol { loop; }
+                        if *tainted_region == skol { continue; }
                     }
                 };
 

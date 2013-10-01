@@ -330,7 +330,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     if !etc {
         for (i, field) in class_fields.iter().enumerate() {
             if found_fields.contains(&i) {
-                loop;
+                continue;
             }
             tcx.sess.span_err(span,
                               format!("pattern does not mention field `{}`",

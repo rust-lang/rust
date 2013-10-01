@@ -1406,7 +1406,7 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         }
       }
       ast::ExprAgain(opt_ident) => {
-        word(s.s, "loop");
+        word(s.s, "continue");
         space(s.s);
         for ident in opt_ident.iter() {
             word(s.s, "'");

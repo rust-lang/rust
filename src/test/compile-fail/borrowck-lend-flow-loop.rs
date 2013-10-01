@@ -135,7 +135,7 @@ fn loop_loop_pops_scopes<'r>(_v: &'r mut [uint], f: &fn(&'r mut uint) -> bool) {
             // this borrow is limited to the scope of `r`...
             let r: &'r mut uint = produce();
             if !f(&mut *r) {
-                loop; // ...so it is not live as exit (and re-enter) the `while` loop here
+                continue; // ...so it is not live as exit (and re-enter) the `while` loop here
             }
         }
     }

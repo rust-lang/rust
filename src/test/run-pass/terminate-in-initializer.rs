@@ -17,7 +17,7 @@ use std::task;
 
 fn test_break() { loop { let _x: @int = break; } }
 
-fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: @int = loop; } }
+fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: @int = continue; } }
 
 fn test_ret() { let _x: @int = return; }
 

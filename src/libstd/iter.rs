@@ -1150,7 +1150,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for Filter<'self, A, T> {
             if (self.predicate)(&x) {
                 return Some(x);
             } else {
-                loop
+                continue
             }
         }
         None
@@ -1173,7 +1173,7 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'sel
                     if (self.predicate)(&x) {
                         return Some(x);
                     } else {
-                        loop
+                        continue
                     }
                 }
             }
@@ -1342,7 +1342,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
                     Some(x) => {
                         if (self.predicate)(&x) {
                             next = self.iter.next();
-                            loop
+                            continue
                         } else {
                             self.flag = true;
                             return Some(x)
@@ -1415,7 +1415,7 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
                 match next {
                     Some(_) => {
                         next = self.iter.next();
-                        loop
+                        continue
                     }
                     None => {
                         self.n = 0;
