@@ -788,7 +788,6 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
     }
 
     fn parse_type(ch: char, tm: &Tm) -> ~str {
-        //FIXME (#2350): Implement missing types.
       let die = || format!("strftime: can't understand this format {} ", ch);
         match ch {
           'A' => match tm.tm_wday as int {
@@ -920,10 +919,9 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('b', tm),
                 parse_type('Y', tm))
           }
-          //'W' {}
+          'W' => format!("{:02d}", (tm.tm_yday - (tm.tm_wday - 1 + 7) % 7 + 7)
+                         / 7),
           'w' => (tm.tm_wday as int).to_str(),
-          //'X' {}
-          //'x' {}
           'Y' => (tm.tm_year as int + 1900).to_str(),
           'y' => format!("{:02d}", (tm.tm_year as int + 1900) % 100),
           'Z' => tm.tm_zone.clone(),
@@ -934,7 +932,7 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
             m -= h * 60_i32;
             format!("{}{:02d}{:02d}", sign, h, m)
           }
-          //'+' {}
+          '+' => tm.rfc3339(),
           '%' => ~"%",
           _   => die()
         }
@@ -1297,12 +1295,13 @@ mod tests {
         assert_eq!(local.strftime("%u"), ~"5");
         assert_eq!(local.strftime("%V"), ~"07");
         assert_eq!(local.strftime("%v"), ~"13-Feb-2009");
-        // assert!(local.strftime("%W") == "06");
+        assert_eq!(local.strftime("%W"), ~"06");
         assert_eq!(local.strftime("%w"), ~"5");
-        // handle "%X"
-        // handle "%x"
+        assert_eq!(local.strftime("%X"), ~"15:31:30"); // FIXME (#2350): support locale
+        assert_eq!(local.strftime("%x"), ~"02/13/09"); // FIXME (#2350): support locale
         assert_eq!(local.strftime("%Y"), ~"2009");
         assert_eq!(local.strftime("%y"), ~"09");
+        assert_eq!(local.strftime("%+"), ~"2009-02-13T15:31:30-08:00");
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
