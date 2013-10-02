@@ -440,7 +440,7 @@ pub fn trans_into(bcx: @mut Block, expr: &ast::Expr, dest: Dest) -> @mut Block {
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     let dest = {
-        if ty::type_is_voidish(ty) {
+        if ty::type_is_voidish(bcx.tcx(), ty) {
             Ignore
         } else {
             dest
@@ -531,7 +531,7 @@ fn trans_to_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
         ty::RvalueDpsExpr => {
             let ty = expr_ty(bcx, expr);
-            if ty::type_is_voidish(ty) {
+            if ty::type_is_voidish(bcx.tcx(), ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
                 return nil(bcx, ty);
             } else {
