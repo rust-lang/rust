@@ -660,7 +660,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             }
             Some(expr::SaveIn(dst)) => Some(dst),
             Some(expr::Ignore) => {
-                if !ty::type_is_voidish(ret_ty) {
+                if !ty::type_is_voidish(in_cx.tcx(), ret_ty) {
                     Some(alloc_ty(bcx, ret_ty, "__llret"))
                 } else {
                     unsafe {
@@ -735,7 +735,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             match opt_llretslot {
                 Some(llretslot) => {
                     if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                        !ty::type_is_voidish(ret_ty)
+                        !ty::type_is_voidish(bcx.tcx(), ret_ty)
                     {
                         Store(bcx, llret, llretslot);
                     }
