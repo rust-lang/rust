@@ -16,6 +16,7 @@ use syntax::ast;
 use syntax::ast_util;
 
 use clean;
+use html::render;
 use html::render::{cache_key, current_location_key};
 
 pub struct VisSpace(Option<ast::visibility>);
@@ -97,8 +98,46 @@ impl fmt::Default for clean::Path {
     }
 }
 
-fn resolved_path(w: &mut io::Writer, did: ast::DefId,
-                 path: &clean::Path, print_all: bool) {
+fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
+                 print_all: bool) {
+    path(w, p, print_all,
+        |_cache, loc| {
+            match p.segments[0].name.as_slice() {
+                "super" => Some("../".repeat(loc.len() - 1)),
+                _ => Some("../".repeat(loc.len())),
+            }
+        },
+        |cache| {
+            match cache.paths.find(&id) {
+                None => None,
+                Some(&(ref fqp, shortty)) => Some((fqp.clone(), shortty))
+            }
+        });
+}
+
+fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
+                 fqn: &[~str], kind: clean::TypeKind, crate: ast::CrateNum) {
+    path(w, p, print_all,
+        |cache, loc| {
+            match *cache.extern_locations.get(&crate) {
+                render::Remote(ref s) => Some(s.clone()),
+                render::Local => Some("../".repeat(loc.len())),
+                render::Unknown => None,
+            }
+        },
+        |_cache| {
+            Some((fqn.to_owned(), match kind {
+                clean::TypeStruct => "struct",
+                clean::TypeEnum => "enum",
+                clean::TypeFunction => "fn",
+                clean::TypeTrait => "trait",
+            }))
+        })
+}
+
+fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
+        root: &fn(&render::Cache, &[~str]) -> Option<~str>,
+        info: &fn(&render::Cache) -> Option<(~[~str], &'static str)>) {
     // The generics will get written to both the title and link
     let mut generics = ~"";
     let last = path.segments.last();
@@ -121,50 +160,48 @@ fn resolved_path(w: &mut io::Writer, did: ast::DefId,
     do local_data::get(current_location_key) |loc| {
         let loc = loc.unwrap();
 
-        if print_all {
-            let mut root = match path.segments[0].name.as_slice() {
-                "super" => ~"../",
-                "self" => ~"",
-                _ => "../".repeat(loc.len() - 1),
-            };
-            let amt = path.segments.len() - 1;
-            for seg in path.segments.slice_to(amt).iter() {
-                if "super" == seg.name || "self" == seg.name {
-                    write!(w, "{}::", seg.name);
-                } else {
-                    root.push_str(seg.name);
-                    root.push_str("/");
-                    write!(w, "<a class='mod'
-                                  href='{}index.html'>{}</a>::",
-                           root,
-                           seg.name);
-                }
-            }
-        }
-
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
-                match cache.paths.find(&did.node) {
-                    // This is a documented path, link to it!
-                    // FIXME(#9539): this is_local check should not exist
-                    Some(&(ref fqp, shortty)) if ast_util::is_local(did) => {
-                        let fqn = fqp.connect("::");
-                        let same = loc.iter().zip(fqp.iter())
-                                      .take_while(|&(a, b)| *a == *b).len();
+                let abs_root = root(cache, loc.as_slice());
+                let rel_root = match path.segments[0].name.as_slice() {
+                    "self" => Some(~"./"),
+                    _ => None,
+                };
 
-                        let mut url = ~"";
-                        if "super" == path.segments[0].name {
-                            url.push_str("../");
-                        } else if "self" != path.segments[0].name {
-                            url.push_str("../".repeat(loc.len() - same));
-                        }
-                        if same < fqp.len() {
-                            let remaining = fqp.slice_from(same);
-                            let to_link = remaining.slice_to(remaining.len() - 1);
-                            for component in to_link.iter() {
-                                url.push_str(*component);
-                                url.push_str("/");
+                if print_all {
+                    let amt = path.segments.len() - 1;
+                    match rel_root {
+                        Some(root) => {
+                            let mut root = root;
+                            for seg in path.segments.slice_to(amt).iter() {
+                                if "super" == seg.name || "self" == seg.name {
+                                    write!(w, "{}::", seg.name);
+                                } else {
+                                    root.push_str(seg.name);
+                                    root.push_str("/");
+                                    write!(w, "<a class='mod'
+                                                  href='{}index.html'>{}</a>::",
+                                           root,
+                                           seg.name);
+                                }
                             }
+                        }
+                        None => {
+                            for seg in path.segments.slice_to(amt).iter() {
+                                write!(w, "{}::", seg.name);
+                            }
+                        }
+                    }
+                }
+
+                match info(cache) {
+                    // This is a documented path, link to it!
+                    Some((ref fqp, shortty)) if abs_root.is_some() => {
+                        let mut url = abs_root.unwrap();
+                        let to_link = fqp.slice_to(fqp.len() - 1);
+                        for component in to_link.iter() {
+                            url.push_str(*component);
+                            url.push_str("/");
                         }
                         match shortty {
                             "mod" => {
@@ -178,21 +215,32 @@ fn resolved_path(w: &mut io::Writer, did: ast::DefId,
                                 url.push_str(".html");
                             }
                         }
-                        write!(w, "<a class='{}' href='{}' title='{}'>{}</a>{}",
-                               shortty, url, fqn, last.name, generics);
+
+                        write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
+                               shortty, url, fqp.connect("::"), last.name);
                     }
+
                     _ => {
-                        if print_all {
-                            let amt = path.segments.len() - 1;
-                            for seg in path.segments.iter().take(amt) {
-                                write!(w, "{}::", seg.name);
-                            }
-                        }
-                        write!(w, "{}{}", last.name, generics);
+                        write!(w, "{}", last.name);
                     }
-                };
+                }
+                write!(w, "{}", generics);
             }
         }
+    }
+}
+
+fn typarams(w: &mut io::Writer, typarams: &Option<~[clean::TyParamBound]>) {
+    match *typarams {
+        Some(ref params) => {
+            write!(w, "&lt;");
+            for (i, param) in params.iter().enumerate() {
+                if i > 0 { write!(w, ", "); }
+                write!(w, "{}", *param);
+            }
+            write!(w, "&gt;");
+        }
+        None => {}
     }
 }
 
@@ -206,19 +254,14 @@ impl fmt::Default for clean::Type {
                     }
                 }
             }
-            clean::ResolvedPath{did, typarams: ref typarams, path: ref path} => {
-                resolved_path(f.buf, did, path, false);
-                match *typarams {
-                    Some(ref params) => {
-                        f.buf.write("&lt;".as_bytes());
-                        for (i, param) in params.iter().enumerate() {
-                            if i > 0 { f.buf.write(", ".as_bytes()) }
-                            write!(f.buf, "{}", *param);
-                        }
-                        f.buf.write("&gt;".as_bytes());
-                    }
-                    None => {}
-                }
+            clean::ResolvedPath{id, typarams: ref tp, path: ref path} => {
+                resolved_path(f.buf, id, path, false);
+                typarams(f.buf, tp);
+            }
+            clean::ExternalPath{path: ref path, typarams: ref tp,
+                                fqn: ref fqn, kind, crate} => {
+                external_path(f.buf, path, false, fqn.as_slice(), kind, crate);
+                typarams(f.buf, tp);
             }
             clean::Self(*) => f.buf.write("Self".as_bytes()),
             clean::Primitive(prim) => {
@@ -417,8 +460,9 @@ impl fmt::Default for clean::ViewPath {
 impl fmt::Default for clean::ImportSource {
     fn fmt(v: &clean::ImportSource, f: &mut fmt::Formatter) {
         match v.did {
-            Some(did) => {
-                resolved_path(f.buf, did, &v.path, true);
+            // XXX: shouldn't be restricted to just local imports
+            Some(did) if ast_util::is_local(did) => {
+                resolved_path(f.buf, did.node, &v.path, true);
             }
             _ => {
                 for (i, seg) in v.path.segments.iter().enumerate() {
@@ -433,7 +477,8 @@ impl fmt::Default for clean::ImportSource {
 impl fmt::Default for clean::ViewListIdent {
     fn fmt(v: &clean::ViewListIdent, f: &mut fmt::Formatter) {
         match v.source {
-            Some(did) => {
+            // XXX: shouldn't be limited to just local imports
+            Some(did) if ast_util::is_local(did) => {
                 let path = clean::Path {
                     global: false,
                     segments: ~[clean::PathSegment {
@@ -442,7 +487,7 @@ impl fmt::Default for clean::ViewListIdent {
                         types: ~[],
                     }]
                 };
-                resolved_path(f.buf, did, &path, false);
+                resolved_path(f.buf, did.node, &path, false);
             }
             _ => write!(f.buf, "{}", v.name),
         }
