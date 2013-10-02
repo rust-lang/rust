@@ -242,9 +242,9 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             // make a lambda ident if need be.
             let idt = cx.ident_of("lambda");
             cx.func_path_push(idt);
-            cx.func_only_push(idt);
+            cx.func_enter();
             let res = noop_fold_expr(e, fld);
-            cx.func_only_pop();
+            cx.func_exit();
             cx.func_path_pop();
             res
         }
@@ -354,9 +354,9 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
         
         ast::item_fn(_, _, _, _, _) => {
             cx.func_path_push(it.ident);
-            cx.func_only_push(it.ident);
+            cx.func_enter();
             let result = noop_fold_item(it, fld);
-            cx.func_only_pop();
+            cx.func_exit();
             cx.func_path_pop();
             result
         },
@@ -370,7 +370,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
     }
 }
 
-// When we enter a method, record it, for the sake of `func!`
+// When we enter a method, record it, for the sake of the `func*!` macros
 pub fn expand_method(_extsbox: @mut SyntaxEnv,
                      cx: @ExtCtxt,
                      me: @ast::method,
@@ -378,9 +378,9 @@ pub fn expand_method(_extsbox: @mut SyntaxEnv,
     -> @ast::method {
 
     cx.func_path_push(me.ident);
-    cx.func_only_push(me.ident);
+    cx.func_enter();
     let result = noop_fold_method(me, fld);
-    cx.func_only_pop();
+    cx.func_exit();
     cx.func_path_pop();
     result
 }

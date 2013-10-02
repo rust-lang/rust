@@ -338,10 +338,10 @@ pub struct ExtCtxt {
     // (represented as 'lambda', naturally) down to current function
     func_path: @mut ~[ast::Ident],
 
-    // a stack of only the function names. Used to confirm that
+    // The depth of function nesting. Used to confirm that
     // the funcpathfile!, funcpath!, and func! macros are not used
     // outside of functions.
-    func_only: @mut ~[ast::Ident],
+    func_depth: @mut int,
 
 }
 
@@ -355,7 +355,7 @@ impl ExtCtxt {
             mod_path: @mut ~[],
             trace_mac: @mut false,
             func_path: @mut ~[],
-            func_only: @mut ~[],
+            func_depth: @mut 0,
         }
     }
 
@@ -385,9 +385,12 @@ impl ExtCtxt {
         }
     }
 
-    pub fn func_only_push(&self, i: ast::Ident) { self.func_only.push(i); }
-    pub fn func_only_pop(&self) { self.func_only.pop(); }
-    pub fn func_only(&self) -> ~[ast::Ident] { (*self.func_only).clone() }
+    pub fn func_enter(&self) -> int { *self.func_depth = *self.func_depth + 1; *self.func_depth }
+    pub fn func_exit(&self)  -> int { 
+        *self.func_depth = *self.func_depth - 1; 
+        assert!(*self.func_depth >= 0); // confirm no func_depth tracking errror
+        *self.func_depth }
+    pub fn func_depth(&self) -> int { *self.func_depth }
 
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {

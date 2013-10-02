@@ -67,8 +67,9 @@ pub fn expand_file(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "funcpathfile!");
-    if cx.func_only().len() == 0 {
-        cx.span_fatal(sp, 
+    let depth = cx.func_depth();
+    if depth == 0 {
+        cx.span_err(sp, 
                       format!("funcpathfile!() called when not inside a function"));
     }
 
@@ -93,11 +94,11 @@ pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_funcpath(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "funcpath!");
-    if cx.func_only().len() == 0 {
-        cx.span_fatal(sp, 
+    let depth = cx.func_depth();
+    if depth == 0 {
+        cx.span_err(sp, 
                       format!("funcpath!() called when not inside a function"));
     }
-
     let full_func_path : ~str = cx.func_path().map(|x| cx.str_of(*x)).connect("::");
     base::MRExpr(cx.expr_str(sp, full_func_path.to_managed()))
 }
@@ -107,11 +108,11 @@ pub fn expand_funcpath(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_func(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "func!");
-    if cx.func_only().len() == 0 {
-        cx.span_fatal(sp, 
+    let depth = cx.func_depth();
+    if depth == 0 {
+        cx.span_err(sp, 
                       format!("func!() called when not inside a function"));
     }
-
     let func_shortname = cx.str_of(cx.func_path_last().unwrap());
     base::MRExpr(cx.expr_str(sp, func_shortname))
 }
