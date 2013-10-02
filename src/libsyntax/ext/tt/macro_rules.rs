@@ -21,22 +21,47 @@ use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
-use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
+use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt, EOF};
 use print;
 
 struct ParserAnyMacro {
     parser: @Parser,
 }
 
+impl ParserAnyMacro {
+    /// Make sure we don't have any tokens left to parse, so we don't
+    /// silently drop anything. `allow_semi` is so that "optional"
+    /// semilons at the end of normal expressions aren't complained
+    /// about e.g. the semicolon in `macro_rules! kapow( () => {
+    /// fail!(); } )` doesn't get picked up by .parse_expr(), but it's
+    /// allowed to be there.
+    fn ensure_complete_parse(&self, allow_semi: bool) {
+        if allow_semi && *self.parser.token == SEMI {
+            self.parser.bump()
+        }
+        if *self.parser.token != EOF {
+            let msg = format!("macro expansion ignores token `{}` and any following",
+                              self.parser.this_token_to_str());
+            self.parser.span_err(*self.parser.span, msg);
+        }
+    }
+}
+
 impl AnyMacro for ParserAnyMacro {
     fn make_expr(&self) -> @ast::Expr {
-        self.parser.parse_expr()
+        let ret = self.parser.parse_expr();
+        self.ensure_complete_parse(true);
+        ret
     }
     fn make_item(&self) -> Option<@ast::item> {
-        self.parser.parse_item(~[])     // no attrs
+        let ret = self.parser.parse_item(~[]);     // no attrs
+        self.ensure_complete_parse(false);
+        ret
     }
     fn make_stmt(&self) -> @ast::Stmt {
-        self.parser.parse_stmt(~[])     // no attrs
+        let ret = self.parser.parse_stmt(~[]);     // no attrs
+        self.ensure_complete_parse(true);
+        ret
     }
 }
 
