@@ -196,6 +196,35 @@ This is some more text.  Fee fie fo fum.  Humpty dumpty sat on a wall.
  *very very very long string
  */"))
 
+(ert-deftest fill-paragraph-single-line-style-with-code-before ()
+  (test-fill-paragraph
+   "fn foo() { }
+/// This is my comment.  This is more of my comment.  This is even more."
+   "fn foo() { }
+/// This is my comment.  This is
+/// more of my comment.  This is
+/// even more." 14))
+
+(ert-deftest fill-paragraph-single-line-style-with-code-after ()
+  (test-fill-paragraph
+   "/// This is my comment.  This is more of my comment.  This is even more.
+fn foo() { }"
+   "/// This is my comment.  This is
+/// more of my comment.  This is
+/// even more.
+fn foo() { }" 1 73))
+
+(ert-deftest fill-paragraph-single-line-style-code-before-and-after ()
+  (test-fill-paragraph
+   "fn foo() { }
+/// This is my comment.  This is more of my comment.  This is even more.
+fn bar() { }"
+   "fn foo() { }
+/// This is my comment.  This is
+/// more of my comment.  This is
+/// even more.
+fn bar() { }" 14 67))
+
 (defun test-auto-fill (initial position inserted expected)
   (rust-test-manip-code 
    initial
