@@ -4336,9 +4336,11 @@ impl Resolver {
                             self.record_def(pattern.id, def);
                         }
                         FoundConst(_) => {
-                            self.resolve_error(pattern.span,
-                                                  "only refutable patterns \
-                                                   allowed here");
+                            let msg = format!("only irrefutable patterns \
+                                               allowed here; `{}` is a static \
+                                               constant",
+                                              interner_get(renamed));
+                            self.resolve_error(pattern.span, msg);
                         }
                         BareIdentifierPatternUnresolved => {
                             debug2!("(resolving pattern) binding `{}`",
