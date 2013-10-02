@@ -59,6 +59,7 @@ use util;
  */
 pub type Key<T> = &'static KeyValue<T>;
 
+#[allow(missing_doc)]
 pub enum KeyValue<T> { Key }
 
 trait LocalData {}

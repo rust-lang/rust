@@ -39,6 +39,7 @@ enum FormatState {
 
 /// Types of parameters a capability can use
 #[deriving(Clone)]
+#[allow(missing_doc)]
 pub enum Param {
     String(~str),
     Number(int)

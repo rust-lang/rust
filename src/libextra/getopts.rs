@@ -85,6 +85,7 @@ use std::vec;
 
 /// Name of an option. Either a string or a single char.
 #[deriving(Clone, Eq)]
+#[allow(missing_doc)]
 pub enum Name {
     Long(~str),
     Short(char),
@@ -92,6 +93,7 @@ pub enum Name {
 
 /// Describes whether an option has an argument.
 #[deriving(Clone, Eq)]
+#[allow(missing_doc)]
 pub enum HasArg {
     Yes,
     No,
@@ -100,6 +102,7 @@ pub enum HasArg {
 
 /// Describes how often an option may occur.
 #[deriving(Clone, Eq)]
+#[allow(missing_doc)]
 pub enum Occur {
     Req,
     Optional,
@@ -141,6 +144,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Pass this value to <fail_str> to get an error message.
 #[deriving(Clone, Eq, ToStr)]
+#[allow(missing_doc)]
 pub enum Fail_ {
     ArgumentMissing(~str),
     UnrecognizedOption(~str),
@@ -151,6 +155,7 @@ pub enum Fail_ {
 
 /// The type of failure that occured.
 #[deriving(Eq)]
+#[allow(missing_doc)]
 pub enum FailType {
     ArgumentMissing_,
     UnrecognizedOption_,
