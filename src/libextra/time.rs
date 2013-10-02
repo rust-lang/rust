@@ -734,6 +734,59 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 }
 
 fn do_strftime(format: &str, tm: &Tm) -> ~str {
+    fn days_in_year(year: int) -> i32 {
+        if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))) {
+            366    /* Days in a leap year */
+        } else {
+            365    /* Days in a non-leap year */
+        }
+    }
+
+    fn iso_week_days(yday: i32, wday: i32) -> int {
+        /* The number of days from the first day of the first ISO week of this
+        * year to the year day YDAY with week day WDAY.
+        * ISO weeks start on Monday. The first ISO week has the year's first
+        * Thursday.
+        * YDAY may be as small as yday_minimum.
+        */
+        let yday: int = yday as int;
+        let wday: int = wday as int;
+        let iso_week_start_wday: int = 1;                     /* Monday */
+        let iso_week1_wday: int = 4;                          /* Thursday */
+        let yday_minimum: int = 366;
+        /* Add enough to the first operand of % to make it nonnegative. */
+        let big_enough_multiple_of_7: int = (yday_minimum / 7 + 2) * 7;
+
+        yday - (yday - wday + iso_week1_wday + big_enough_multiple_of_7) % 7
+            + iso_week1_wday - iso_week_start_wday
+    }
+
+    fn iso_week(ch:char, tm: &Tm) -> ~str {
+        let mut year: int = tm.tm_year as int + 1900;
+        let mut days: int = iso_week_days (tm.tm_yday, tm.tm_wday);
+
+        if (days < 0) {
+            /* This ISO week belongs to the previous year. */
+            year -= 1;
+            days = iso_week_days (tm.tm_yday + (days_in_year(year)), tm.tm_wday);
+        } else {
+            let d: int = iso_week_days (tm.tm_yday - (days_in_year(year)),
+                                        tm.tm_wday);
+            if (0 <= d) {
+                /* This ISO week belongs to the next year. */
+                year += 1;
+                days = d;
+            }
+        }
+
+        match ch {
+            'G' => format!("{}", year),
+            'g' => format!("{:02d}", (year % 100 + 100) % 100),
+            'V' => format!("{:02d}", days / 7 + 1),
+            _ => ~""
+        }
+    }
+
     fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || format!("strftime: can't understand this format {} ", ch);
@@ -812,8 +865,8 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('m', tm),
                 parse_type('d', tm))
           }
-          //'G' {}
-          //'g' {}
+          'G' => iso_week('G', tm),
+          'g' => iso_week('g', tm),
           'H' => format!("{:02d}", tm.tm_hour),
           'I' => {
             let mut h = tm.tm_hour;
@@ -855,12 +908,12 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('S', tm))
           }
           't' => ~"\t",
-          //'U' {}
+          'U' => format!("{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
           'u' => {
             let i = tm.tm_wday as int;
             (if i == 0 { 7 } else { i }).to_str()
           }
-          //'V' {}
+          'V' => iso_week('V', tm),
           'v' => {
             format!("{}-{}-{}",
                 parse_type('e', tm),
@@ -1222,8 +1275,8 @@ mod tests {
         assert_eq!(local.strftime("%e"), ~"13");
         assert_eq!(local.strftime("%f"), ~"000054321");
         assert_eq!(local.strftime("%F"), ~"2009-02-13");
-        // assert!(local.strftime("%G") == "2009");
-        // assert!(local.strftime("%g") == "09");
+        assert_eq!(local.strftime("%G"), ~"2009");
+        assert_eq!(local.strftime("%g"), ~"09");
         assert_eq!(local.strftime("%H"), ~"15");
         assert_eq!(local.strftime("%I"), ~"03");
         assert_eq!(local.strftime("%j"), ~"044");
@@ -1240,9 +1293,9 @@ mod tests {
         assert_eq!(local.strftime("%s"), ~"1234567890");
         assert_eq!(local.strftime("%T"), ~"15:31:30");
         assert_eq!(local.strftime("%t"), ~"\t");
-        // assert!(local.strftime("%U") == "06");
+        assert_eq!(local.strftime("%U"), ~"06");
         assert_eq!(local.strftime("%u"), ~"5");
-        // assert!(local.strftime("%V") == "07");
+        assert_eq!(local.strftime("%V"), ~"07");
         assert_eq!(local.strftime("%v"), ~"13-Feb-2009");
         // assert!(local.strftime("%W") == "06");
         assert_eq!(local.strftime("%w"), ~"5");
