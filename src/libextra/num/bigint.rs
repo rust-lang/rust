@@ -506,10 +506,10 @@ impl ToPrimitive for BigUint {
     fn to_i64(&self) -> Option<i64> {
         do self.to_u64().and_then |n| {
             // If top bit of u64 is set, it's too large to convert to i64.
-            if (n >> (2*BigDigit::bits - 1) != 0) {
-                None
-            } else {
+            if n >> 63 == 0 {
                 Some(n as i64)
+            } else {
+                None
             }
         }
     }
@@ -562,10 +562,12 @@ impl ToPrimitive for BigUint {
 impl FromPrimitive for BigUint {
     #[inline]
     fn from_i64(n: i64) -> Option<BigUint> {
-        if (n < 0) {
+        if (n > 0) {
+            FromPrimitive::from_u64(n as u64)
+        } else if (n == 0) {
             Some(Zero::zero())
         } else {
-            FromPrimitive::from_u64(n as u64)
+            None
         }
     }
 
@@ -802,30 +804,6 @@ impl BigUint {
     }
 }
 
-#[cfg(target_word_size = "64")]
-#[inline]
-fn get_radix_base(radix: uint) -> (uint, uint) {
-    assert!(1 < radix && radix <= 16);
-    match radix {
-        2  => (4294967296, 32),
-        3  => (3486784401, 20),
-        4  => (4294967296, 16),
-        5  => (1220703125, 13),
-        6  => (2176782336, 12),
-        7  => (1977326743, 11),
-        8  => (1073741824, 10),
-        9  => (3486784401, 10),
-        10 => (1000000000, 9),
-        11 => (2357947691, 9),
-        12 => (429981696,  8),
-        13 => (815730721,  8),
-        14 => (1475789056, 8),
-        15 => (2562890625, 8),
-        16 => (4294967296, 8),
-        _  => fail2!()
-    }
-}
-
 #[cfg(target_word_size = "32")]
 #[inline]
 fn get_radix_base(radix: uint) -> (uint, uint) {
@@ -846,6 +824,30 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
         14 => (38416, 4),
         15 => (50625, 4),
         16 => (65536, 4),
+        _  => fail2!()
+    }
+}
+
+#[cfg(target_word_size = "64")]
+#[inline]
+fn get_radix_base(radix: uint) -> (uint, uint) {
+    assert!(1 < radix && radix <= 16);
+    match radix {
+        2  => (4294967296, 32),
+        3  => (3486784401, 20),
+        4  => (4294967296, 16),
+        5  => (1220703125, 13),
+        6  => (2176782336, 12),
+        7  => (1977326743, 11),
+        8  => (1073741824, 10),
+        9  => (3486784401, 10),
+        10 => (1000000000, 9),
+        11 => (2357947691, 9),
+        12 => (429981696,  8),
+        13 => (815730721,  8),
+        14 => (1475789056, 8),
+        15 => (2562890625, 8),
+        16 => (4294967296, 8),
         _  => fail2!()
     }
 }
@@ -1181,13 +1183,13 @@ impl ToPrimitive for BigInt {
             Zero  => Some(0),
             Minus => {
                 do self.data.to_u64().and_then |n| {
-                    let m: u64 = 1 << (2*BigDigit::bits-1);
-                    if (n > m) {
-                        None
-                    } else if (n == m) {
+                    let m: u64 = 1 << 63;
+                    if n < m {
+                        Some(-(n as i64))
+                    } else if n == m {
                         Some(i64::min_value)
                     } else {
-                        Some(-(n as i64))
+                        None
                     }
                 }
             }
@@ -1431,16 +1433,15 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-
     use super::*;
 
     use std::cmp::{Less, Equal, Greater};
-    use std::int;
+    use std::i64;
     use std::num::{Zero, One, FromStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::rand::{task_rng};
     use std::str;
-    use std::uint;
+    use std::u64;
     use std::vec;
 
     #[test]
@@ -1612,44 +1613,110 @@ mod biguint_tests {
               "88887777666655554444333322221111");
     }
 
+    #[cfg(target_word_size = "32")]
     #[test]
-    fn test_convert_int() {
-        fn check(v: ~[BigDigit], i: int) {
-            let b1 = BigUint::new(v);
-            let b2: BigUint = FromPrimitive::from_int(i).unwrap();
+    fn test_convert_i64() {
+        fn check(b1: BigUint, i: i64) {
+            let b2: BigUint = FromPrimitive::from_i64(i).unwrap();
             assert!(b1 == b2);
-            assert!(b1.to_int().unwrap() == i);
+            assert!(b1.to_i64().unwrap() == i);
         }
 
-        check(~[], 0);
-        check(~[1], 1);
-        check(~[-1], (uint::max_value >> BigDigit::bits) as int);
-        check(~[ 0,  1], ((uint::max_value >> BigDigit::bits) + 1) as int);
-        check(~[-1, -1 >> 1], int::max_value);
+        check(Zero::zero(), 0);
+        check(One::one(), 1);
+        check(i64::max_value.to_biguint().unwrap(), i64::max_value);
 
-        assert_eq!(BigUint::new(~[0, -1]).to_int(), None);
-        assert_eq!(BigUint::new(~[0, 0, 1]).to_int(), None);
-        assert_eq!(BigUint::new(~[0, 0, -1]).to_int(), None);
+        check(BigUint::new(~[                   ]), 0);
+        check(BigUint::new(~[ 1                 ]), (1 << (0*BigDigit::bits)));
+        check(BigUint::new(~[-1                 ]), (1 << (1*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  1             ]), (1 << (1*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1             ]), (1 << (2*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  0,  1         ]), (1 << (2*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1, -1         ]), (1 << (3*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  0,  0,  1     ]), (1 << (3*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1, -1, -1 >> 1]), i64::max_value);
+
+        assert_eq!(i64::min_value.to_biguint(), None);
+        assert_eq!(BigUint::new(~[-1, -1, -1, -1    ]).to_i64(), None);
+        assert_eq!(BigUint::new(~[ 0,  0,  0,  0,  1]).to_i64(), None);
+        assert_eq!(BigUint::new(~[-1, -1, -1, -1, -1]).to_i64(), None);
     }
 
+    #[cfg(target_word_size = "64")]
     #[test]
-    fn test_convert_uint() {
-        fn check(v: ~[BigDigit], u: uint) {
-            let b1 = BigUint::new(v);
-            let b2: BigUint = FromPrimitive::from_uint(u).unwrap();
+    fn test_convert_i64() {
+        fn check(b1: BigUint, i: i64) {
+            let b2: BigUint = FromPrimitive::from_i64(i).unwrap();
             assert!(b1 == b2);
-            assert!(b1.to_uint().unwrap() == u);
+            assert!(b1.to_i64().unwrap() == i);
         }
 
-        check(~[], 0);
-        check(~[ 1], 1);
-        check(~[-1], uint::max_value >> BigDigit::bits);
-        check(~[ 0,  1], (uint::max_value >> BigDigit::bits) + 1);
-        check(~[ 0, -1], uint::max_value << BigDigit::bits);
-        check(~[-1, -1], uint::max_value);
+        check(Zero::zero(), 0);
+        check(One::one(), 1);
+        check(i64::max_value.to_biguint().unwrap(), i64::max_value);
 
-        assert_eq!(BigUint::new(~[0, 0, 1]).to_uint(), None);
-        assert_eq!(BigUint::new(~[0, 0, -1]).to_uint(), None);
+        check(BigUint::new(~[           ]), 0);
+        check(BigUint::new(~[ 1         ]), (1 << (0*BigDigit::bits)));
+        check(BigUint::new(~[-1         ]), (1 << (1*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  1     ]), (1 << (1*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1 >> 1]), i64::max_value);
+
+        assert_eq!(i64::min_value.to_biguint(), None);
+        assert_eq!(BigUint::new(~[-1, -1    ]).to_i64(), None);
+        assert_eq!(BigUint::new(~[ 0,  0,  1]).to_i64(), None);
+        assert_eq!(BigUint::new(~[-1, -1, -1]).to_i64(), None);
+    }
+
+    #[cfg(target_word_size = "32")]
+    #[test]
+    fn test_convert_u64() {
+        fn check(b1: BigUint, u: u64) {
+            let b2: BigUint = FromPrimitive::from_u64(u).unwrap();
+            assert!(b1 == b2);
+            assert!(b1.to_u64().unwrap() == u);
+        }
+
+        check(Zero::zero(), 0);
+        check(One::one(), 1);
+        check(u64::min_value.to_biguint().unwrap(), u64::min_value);
+        check(u64::max_value.to_biguint().unwrap(), u64::max_value);
+
+        check(BigUint::new(~[              ]), 0);
+        check(BigUint::new(~[ 1            ]), (1 << (0*BigDigit::bits)));
+        check(BigUint::new(~[-1            ]), (1 << (1*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  1        ]), (1 << (1*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1        ]), (1 << (2*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  0,  1    ]), (1 << (2*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1, -1    ]), (1 << (3*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  0,  0,  1]), (1 << (3*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1, -1, -1]), u64::max_value);
+
+        assert_eq!(BigUint::new(~[ 0,  0,  0,  0,  1]).to_u64(), None);
+        assert_eq!(BigUint::new(~[-1, -1, -1, -1, -1]).to_u64(), None);
+    }
+
+    #[cfg(target_word_size = "64")]
+    #[test]
+    fn test_convert_u64() {
+        fn check(b1: BigUint, u: u64) {
+            let b2: BigUint = FromPrimitive::from_u64(u).unwrap();
+            assert!(b1 == b2);
+            assert!(b1.to_u64().unwrap() == u);
+        }
+
+        check(Zero::zero(), 0);
+        check(One::one(), 1);
+        check(u64::min_value.to_biguint().unwrap(), u64::min_value);
+        check(u64::max_value.to_biguint().unwrap(), u64::max_value);
+
+        check(BigUint::new(~[      ]), 0);
+        check(BigUint::new(~[ 1    ]), (1 << (0*BigDigit::bits)));
+        check(BigUint::new(~[-1    ]), (1 << (1*BigDigit::bits)) - 1);
+        check(BigUint::new(~[ 0,  1]), (1 << (1*BigDigit::bits)));
+        check(BigUint::new(~[-1, -1]), u64::max_value);
+
+        assert_eq!(BigUint::new(~[ 0,  0,  1]).to_u64(), None);
+        assert_eq!(BigUint::new(~[-1, -1, -1]).to_u64(), None);
     }
 
     #[test]
@@ -2025,10 +2092,11 @@ mod bigint_tests {
     use super::*;
 
     use std::cmp::{Less, Equal, Greater};
-    use std::{int, i64, uint, u64};
+    use std::i64;
     use std::num::{Zero, One, FromStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::rand::{task_rng};
+    use std::u64;
 
     #[test]
     fn test_from_biguint() {
@@ -2087,59 +2155,6 @@ mod bigint_tests {
     }
 
     #[test]
-    fn test_convert_int() {
-        fn check(b1: BigInt, i: int) {
-            let b2: BigInt = FromPrimitive::from_int(i).unwrap();
-            assert!(b1 == b2);
-            assert!(b1.to_int().unwrap() == i);
-        }
-
-        check(Zero::zero(), 0);
-        check(One::one(), 1);
-        check(BigInt::from_biguint(
-            Plus, FromPrimitive::from_uint(int::max_value as uint).unwrap()
-        ), int::max_value);
-
-        assert_eq!(BigInt::from_biguint(
-            Plus, FromPrimitive::from_uint(int::max_value as uint + 1).unwrap()
-        ).to_int(), None);
-        assert_eq!(BigInt::from_biguint(
-            Plus, BigUint::new(~[1, 2, 3])
-        ).to_int(), None);
-
-        check(BigInt::from_biguint(
-            Minus, BigUint::new(~[0, 1<<(BigDigit::bits-1)])
-        ), int::min_value);
-        assert_eq!(BigInt::from_biguint(
-            Minus, BigUint::new(~[1, 1<<(BigDigit::bits-1)])
-        ).to_int(), None);
-        assert_eq!(BigInt::from_biguint(
-            Minus, BigUint::new(~[1, 2, 3])).to_int(), None);
-    }
-
-    #[test]
-    fn test_convert_uint() {
-        fn check(b1: BigInt, u: uint) {
-            let b2: BigInt = FromPrimitive::from_uint(u).unwrap();
-            assert!(b1 == b2);
-            assert!(b1.to_uint().unwrap() == u);
-        }
-
-        check(Zero::zero(), 0);
-        check(One::one(), 1);
-
-        check(
-            BigInt::from_biguint(Plus, FromPrimitive::from_uint(uint::max_value).unwrap()),
-            uint::max_value);
-        assert_eq!(BigInt::from_biguint(
-            Plus, BigUint::new(~[1, 2, 3])).to_uint(), None);
-
-        let max_value: BigUint = FromPrimitive::from_uint(uint::max_value).unwrap();
-        assert_eq!(BigInt::from_biguint(Minus, max_value).to_uint(), None);
-        assert_eq!(BigInt::from_biguint(Minus, BigUint::new(~[1, 2, 3])).to_uint(), None);
-    }
-
-    #[test]
     fn test_convert_i64() {
         fn check(b1: BigInt, i: i64) {
             let b2: BigInt = FromPrimitive::from_i64(i).unwrap();
@@ -2153,19 +2168,15 @@ mod bigint_tests {
         check(i64::max_value.to_bigint().unwrap(), i64::max_value);
 
         assert_eq!(
-            (i64::max_value as uint + 1).to_bigint().unwrap().to_i64(),
+            (i64::max_value as u64 + 1).to_bigint().unwrap().to_i64(),
             None);
 
         assert_eq!(
-            BigInt::from_biguint(Plus, BigUint::new(~[1, 2, 3, 4, 5])).to_i64(),
+            BigInt::from_biguint(Plus,  BigUint::new(~[1, 2, 3, 4, 5])).to_i64(),
             None);
 
-        check(
-            BigInt::from_biguint(Minus, BigUint::new(~[0, 1<<(BigDigit::bits-1)])),
-            i64::min_value);
-
         assert_eq!(
-            BigInt::from_biguint(Minus, BigUint::new(~[1, 1<<(BigDigit::bits-1)])).to_i64(),
+            BigInt::from_biguint(Minus, BigUint::new(~[1, 0, 0, 1<<(BigDigit::bits-1)])).to_i64(),
             None);
 
         assert_eq!(
@@ -2183,15 +2194,16 @@ mod bigint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
+        check(u64::min_value.to_bigint().unwrap(), u64::min_value);
         check(u64::max_value.to_bigint().unwrap(), u64::max_value);
 
         assert_eq!(
-            BigInt::from_biguint(Plus, BigUint::new(~[1, 2, 3, 4, 5])).to_uint(),
+            BigInt::from_biguint(Plus, BigUint::new(~[1, 2, 3, 4, 5])).to_u64(),
             None);
 
-        let max_value: BigUint = FromPrimitive::from_uint(uint::max_value).unwrap();
+        let max_value: BigUint = FromPrimitive::from_u64(u64::max_value).unwrap();
         assert_eq!(BigInt::from_biguint(Minus, max_value).to_u64(), None);
-        assert_eq!(BigInt::from_biguint(Minus, BigUint::new(~[1, 2, 3])).to_u64(), None);
+        assert_eq!(BigInt::from_biguint(Minus, BigUint::new(~[1, 2, 3, 4, 5])).to_u64(), None);
     }
 
     #[test]
