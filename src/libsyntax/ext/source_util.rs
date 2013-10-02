@@ -79,8 +79,7 @@ pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let linestr : ~str = loc.line.to_str();
     let colstr  : ~str = loc.col.to_str();
 
-    let full_func_path : ~str = cx.func_path().map(|x| cx.str_of(*x)).connect("::");
-    let res = filename + ":" + linestr + ":" + colstr + "|" + full_func_path;
+    let res = filename + ":" + linestr + ":" + colstr + "|" + cx.func_path();
 
     base::MRExpr(cx.expr_str(sp, res.to_managed()))
 }
@@ -99,8 +98,7 @@ pub fn expand_funcpath(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
         cx.span_err(sp, 
                       format!("funcpath!() called when not inside a function"));
     }
-    let full_func_path : ~str = cx.func_path().map(|x| cx.str_of(*x)).connect("::");
-    base::MRExpr(cx.expr_str(sp, full_func_path.to_managed()))
+    base::MRExpr(cx.expr_str(sp, cx.func_path().to_managed()))
 }
 
 /** func!(): expands to the shortname or basename of the current
@@ -113,8 +111,13 @@ pub fn expand_func(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
         cx.span_err(sp, 
                       format!("func!() called when not inside a function"));
     }
-    let func_shortname = cx.str_of(cx.func_path_last().unwrap());
-    base::MRExpr(cx.expr_str(sp, func_shortname))
+    match cx.func_path_last() {
+        None => {
+            // should never get here with the depth check above.
+            cx.span_fatal(sp, format!("func!() called when not inside a function"))
+        }
+        Some(func_shortname) => base::MRExpr(cx.expr_str(sp, cx.str_of(func_shortname)))
+    }
 }
 
 
