@@ -22,6 +22,7 @@ use to_bytes::{IterBytes, Cb};
 /// A SendStr is a string that can hold either a ~str or a &'static str.
 /// This can be useful as an optimization when an allocation is sometimes
 /// needed but the common case is statically known.
+#[allow(missing_doc)]
 pub enum SendStr {
     SendStrOwned(~str),
     SendStrStatic(&'static str)
