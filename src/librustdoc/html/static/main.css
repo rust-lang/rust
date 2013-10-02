@@ -121,6 +121,9 @@ body {
 
 .content pre.line-numbers { float: left; border: none; }
 .line-numbers span { color: #c67e2d; }
+.line-numbers .line-highlighted {
+    background-color: #fff871;
+}
 
 .content .highlighted {
     cursor: pointer;
