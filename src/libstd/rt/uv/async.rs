@@ -24,7 +24,7 @@ impl AsyncWatcher {
         unsafe {
             let handle = uvll::malloc_handle(UV_ASYNC);
             assert!(handle.is_not_null());
-            let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
+            let watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             let data = watcher.get_watcher_data();
             data.async_cb = Some(cb);
@@ -33,7 +33,7 @@ impl AsyncWatcher {
         }
 
         extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
-            let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
+            let watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
             let status = status_to_maybe_uv_error(status);
             let data = watcher.get_watcher_data();
             let cb = data.async_cb.get_ref();
@@ -41,7 +41,7 @@ impl AsyncWatcher {
         }
     }
 
-    pub fn send(&mut self) {
+    pub fn send(&self) {
         unsafe {
             let handle = self.native_handle();
             uvll::async_send(handle);
@@ -49,8 +49,7 @@ impl AsyncWatcher {
     }
 
     pub fn close(self, cb: NullCallback) {
-        let mut this = self;
-        let data = this.get_watcher_data();
+        let data = self.get_watcher_data();
         assert!(data.close_cb.is_none());
         data.close_cb = Some(cb);
 
@@ -59,7 +58,7 @@ impl AsyncWatcher {
         }
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
-            let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
+            let watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
             {
                 let data = watcher.get_watcher_data();
                 data.close_cb.take_unwrap()();
@@ -95,7 +94,7 @@ mod test {
             let watcher = AsyncWatcher::new(&mut loop_, |w, _| w.close(||()) );
             let watcher_cell = Cell::new(watcher);
             let thread = do Thread::start {
-                let mut watcher = watcher_cell.take();
+                let watcher = watcher_cell.take();
                 watcher.send();
             };
             loop_.run();

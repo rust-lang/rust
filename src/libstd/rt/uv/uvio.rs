@@ -202,8 +202,8 @@ impl EventLoop for UvEventLoop {
     }
 
     fn callback(&mut self, f: ~fn()) {
-        let mut idle_watcher =  IdleWatcher::new(self.uvio.uv_loop());
-        do idle_watcher.start |mut idle_watcher, status| {
+        let idle_watcher =  IdleWatcher::new(self.uvio.uv_loop());
+        do idle_watcher.start |idle_watcher, status| {
             assert!(status.is_none());
             idle_watcher.stop();
             idle_watcher.close(||());
@@ -221,7 +221,7 @@ impl EventLoop for UvEventLoop {
     }
 
     fn callback_ms(&mut self, ms: u64, f: ~fn()) {
-        let mut timer =  TimerWatcher::new(self.uvio.uv_loop());
+        let timer =  TimerWatcher::new(self.uvio.uv_loop());
         do timer.start(ms, 0) |timer, status| {
             assert!(status.is_none());
             timer.close(||());
@@ -456,7 +456,7 @@ impl IoFactory for UvIoFactory {
             let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
 
-                let mut tcp = TcpWatcher::new(self.uv_loop());
+                let tcp = TcpWatcher::new(self.uv_loop());
                 let task_cell = Cell::new(task);
 
                 // Wait for a connection
@@ -493,7 +493,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError> {
-        let mut watcher = TcpWatcher::new(self.uv_loop());
+        let watcher = TcpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => {
                 let home = get_handle_to_current_scheduler!();
@@ -516,7 +516,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError> {
-        let mut watcher = UdpWatcher::new(self.uv_loop());
+        let watcher = UdpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => {
                 let home = get_handle_to_current_scheduler!();
@@ -837,9 +837,9 @@ impl RtioSocket for UvTcpListener {
 impl RtioTcpListener for UvTcpListener {
     fn listen(self) -> Result<~RtioTcpAcceptorObject, IoError> {
         do self.home_for_io_consume |self_| {
-            let mut acceptor = ~UvTcpAcceptor::new(self_);
+            let acceptor = ~UvTcpAcceptor::new(self_);
             let incoming = Cell::new(acceptor.incoming.clone());
-            do acceptor.listener.watcher.listen |mut server, status| {
+            do acceptor.listener.watcher.listen |server, status| {
                 do incoming.with_mut_ref |incoming| {
                     let inc = match status {
                         Some(_) => Err(standard_error(OtherIoError)),
@@ -916,7 +916,7 @@ impl RtioTcpAcceptor for UvTcpAcceptor {
     }
 }
 
-fn read_stream(mut watcher: StreamWatcher,
+fn read_stream(watcher: StreamWatcher,
                scheduler: ~Scheduler,
                buf: &mut [u8]) -> Result<uint, IoError> {
     let result_cell = Cell::new_empty();
@@ -956,7 +956,7 @@ fn read_stream(mut watcher: StreamWatcher,
     result_cell.take()
 }
 
-fn write_stream(mut watcher: StreamWatcher,
+fn write_stream(watcher: StreamWatcher,
                 scheduler: ~Scheduler,
                 buf: &[u8]) -> Result<(), IoError> {
     let result_cell = Cell::new_empty();
@@ -1177,7 +1177,7 @@ impl RtioUdpSocket for UvUdpSocket {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
-                do self_.watcher.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
+                do self_.watcher.recv_start(alloc) |watcher, nread, _buf, addr, flags, status| {
                     let _ = flags; // /XXX add handling for partials?
 
                     watcher.recv_stop();
