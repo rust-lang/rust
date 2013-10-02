@@ -101,7 +101,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         let local_path = rp.push_rel(local_path);
         let git_dir = local_path.push(".git");
         if !os::path_is_dir(&git_dir) {
-            loop;
+            continue;
         }
         let outp = run::process_output("git",
                                    [format!("--git-dir={}", git_dir.to_str()), ~"tag", ~"-l"]);
@@ -109,7 +109,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         debug2!("git --git-dir={} tag -l ~~~> {:?}", git_dir.to_str(), outp.status);
 
         if outp.status != 0 {
-            loop;
+            continue;
         }
 
     let mut output = None;

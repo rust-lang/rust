@@ -3333,7 +3333,7 @@ impl Resolver {
             if importresolution.privacy != Public {
                 debug2!("(computing exports) not reexporting private `{}`",
                        interner_get(*name));
-                loop;
+                continue;
             }
             let xs = [TypeNS, ValueNS];
             for ns in xs.iter() {

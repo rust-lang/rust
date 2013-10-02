@@ -338,7 +338,7 @@ fn search_for_vtable(vcx: &VtableContext,
 
         // First, ensure we haven't processed this impl yet.
         if impls_seen.contains(&im.did) {
-            loop;
+            continue;
         }
         impls_seen.insert(im.did);
 
@@ -349,7 +349,7 @@ fn search_for_vtable(vcx: &VtableContext,
         // get all the ty vars sorted out.
         let r = ty::impl_trait_ref(tcx, im.did);
         let of_trait_ref = r.expect("trait_ref missing on trait impl");
-        if of_trait_ref.def_id != trait_ref.def_id { loop; }
+        if of_trait_ref.def_id != trait_ref.def_id { continue; }
 
         // At this point, we know that of_trait_ref is the same trait
         // as trait_ref, but possibly applied to different substs.
@@ -377,7 +377,7 @@ fn search_for_vtable(vcx: &VtableContext,
                                   location_info.span),
                               ty,
                               for_ty) {
-            result::Err(_) => loop,
+            result::Err(_) => continue,
             result::Ok(()) => ()
         }
 

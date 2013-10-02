@@ -359,12 +359,12 @@ pub fn query_to_str(query: &Query) -> ~str {
 pub fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
     for (i,c) in rawurl.iter().enumerate() {
         match c {
-          'A' .. 'Z' | 'a' .. 'z' => loop,
+          'A' .. 'Z' | 'a' .. 'z' => continue,
           '0' .. '9' | '+' | '-' | '.' => {
             if i == 0 {
                 return Err(~"url: Scheme must begin with a letter.");
             }
-            loop;
+            continue;
           }
           ':' => {
             if i == 0 {
@@ -420,7 +420,7 @@ fn get_authority(rawurl: &str) ->
     let mut end = len;
 
     for (i,c) in rawurl.iter().enumerate() {
-        if i < 2 { loop; } // ignore the leading //
+        if i < 2 { continue; } // ignore the leading //
 
         // deal with input class first
         match c {
@@ -558,7 +558,7 @@ fn get_path(rawurl: &str, authority: bool) ->
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
           | '_' | '-' => {
-            loop;
+            continue;
           }
           '?' | '#' => {
             end = i;

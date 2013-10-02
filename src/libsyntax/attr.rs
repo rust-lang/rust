@@ -340,7 +340,7 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It) -> O
             "stable" => Stable,
             "frozen" => Frozen,
             "locked" => Locked,
-            _ => loop // not a stability level
+            _ => continue // not a stability level
         };
 
         return Some(Stability {

@@ -1987,7 +1987,7 @@ impl Parser {
                   }
                   _ => self.unexpected()
                 }
-                loop;
+                continue;
             }
             if self.expr_is_complete(e) { break; }
             match *self.token {
@@ -2597,6 +2597,7 @@ impl Parser {
                               "a label may not be used with a `loop` expression");
             }
 
+            self.obsolete(*self.last_span, ObsoleteLoopAsContinue);
             let lo = self.span.lo;
             let ex = if self.token_is_lifetime(&*self.token) {
                 let lifetime = self.get_lifetime(&*self.token);

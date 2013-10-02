@@ -354,7 +354,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                     }
 
                     // Skip the '.'
-                    if buf[i] == '.' as u8 { i -= 1; loop; }
+                    if buf[i] == '.' as u8 { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.

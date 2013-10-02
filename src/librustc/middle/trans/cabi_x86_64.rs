@@ -319,7 +319,7 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
                 let vec_ty = Type::vector(&Type::f32(), (vec_len * 2u) as u64);
                 tys.push(vec_ty);
                 i += vec_len;
-                loop;
+                continue;
             }
             SSEFs => {
                 tys.push(Type::f32());

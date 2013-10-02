@@ -536,7 +536,7 @@ pub trait Rng {
         for (i, elem) in iter.enumerate() {
             if i < n {
                 reservoir.push(elem);
-                loop
+                continue
             }
 
             let k = self.gen_integer_range(0, i + 1);

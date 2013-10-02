@@ -919,7 +919,7 @@ impl RegionVarBindings {
                 ConstrainVarSubVar(*) |
                 ConstrainRegSubVar(*) |
                 ConstrainVarSubReg(*) => {
-                    loop;
+                    continue;
                 }
                 ConstrainRegSubReg(sub, sup) => {
                     (sub, sup)
@@ -927,7 +927,7 @@ impl RegionVarBindings {
             };
 
             if self.is_subregion_of(sub, sup) {
-                loop;
+                continue;
             }
 
             debug2!("ConcreteFailure: !(sub <= sup): sub={:?}, sup={:?}",

@@ -233,7 +233,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
         // Find a filename that matches the pattern: (lib_prefix)-hash-(version)(lib_suffix)
         // and remember what the hash was
         let mut f_name = match p_path.filestem() {
-            Some(s) => s, None => loop
+            Some(s) => s, None => continue
         };
         // Already checked the filetype above
 

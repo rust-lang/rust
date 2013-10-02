@@ -211,7 +211,7 @@ impl Pattern {
                                 let cs = parse_char_specifiers(chars.slice(i + 2, i + 3 + j));
                                 tokens.push(AnyExcept(cs));
                                 i += j + 4;
-                                loop;
+                                continue;
                             }
                         }
                     }
@@ -222,7 +222,7 @@ impl Pattern {
                                 let cs = parse_char_specifiers(chars.slice(i + 1, i + 2 + j));
                                 tokens.push(AnyWithin(cs));
                                 i += j + 3;
-                                loop;
+                                continue;
                             }
                         }
                     }

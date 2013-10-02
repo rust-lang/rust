@@ -140,7 +140,7 @@ impl<T:Ord> PriorityQueue<T> {
                     let x = replace(&mut self.data[parent], init());
                     move_val_init(&mut self.data[pos], x);
                     pos = parent;
-                    loop
+                    continue
                 }
                 break
             }
