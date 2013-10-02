@@ -300,7 +300,8 @@
         (let
             ((fill-paragraph-function
               (if (not (eq fill-paragraph-function 'rust-fill-paragraph))
-                  fill-paragraph-function)))
+                  fill-paragraph-function))
+             (fill-paragraph-handle-comment t))
           (apply 'fill-paragraph args)
           t))))))
 
