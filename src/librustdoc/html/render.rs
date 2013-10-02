@@ -716,11 +716,12 @@ impl<'self> fmt::Default for Item<'self> {
             }
             write!(fmt.buf,
                    "<a class='source'
-                       href='{root}src/{crate}/{path}.html\\#{line}'>[src]</a>",
+                       href='{root}src/{crate}/{path}.html\\#{linefrom}-{lineto}'>[src]</a>",
                    root = it.cx.root_path,
                    crate = it.cx.layout.crate,
                    path = path.connect("/"),
-                   line = it.item.source.loline);
+                   linefrom = it.item.source.loline,
+                   lineto = it.item.source.hiline);
         }
 
         // Write the breadcrumb trail header for the top
