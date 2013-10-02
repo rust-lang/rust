@@ -39,7 +39,7 @@ pub fn expand_deriving_eq(cx: @ExtCtxt,
                 ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: true,
                 combine_substructure: $f
-            },
+            }
         }
     );
 
