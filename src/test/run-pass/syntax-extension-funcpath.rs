@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// test for the funcpathfile!() macro
+// test for the funcpath!() macro
 
 use m1::m2::*;
 
 pub mod m1 {
     pub mod m2 {
-        pub fn who_am_i() -> ~str { (funcpathfile!()).to_owned() }
+        pub fn who_am_i() -> ~str { (funcpath!()).to_owned() }
 
         pub trait Tr {
             fn defme(&self) -> ~str { 
-                (funcpathfile!()).to_owned()
+                (funcpath!()).to_owned()
             }
             fn must_implement(&self) -> ~str;
         }
@@ -26,10 +26,10 @@ pub mod m1 {
         pub struct St1;
         impl Tr for St1 {
             fn defme(&self) -> ~str { 
-                (funcpathfile!()).to_owned()
+                (funcpath!()).to_owned()
             }
             fn must_implement(&self) -> ~str {
-                (funcpathfile!()).to_owned()
+                (funcpath!()).to_owned()
             }
         }
 
@@ -38,13 +38,13 @@ pub mod m1 {
             // defme() should get named with Tr
 
             fn must_implement(&self) -> ~str {
-                (funcpathfile!()).to_owned()
+                (funcpath!()).to_owned()
             }
         }
 
         pub fn use_lambda() -> ~str {
             let lambda2 = || {
-                "inside a lambda we get: " + funcpathfile!()
+                "inside a lambda we get: " + funcpath!()
             };
             lambda2()
         }
@@ -54,7 +54,7 @@ pub mod m1 {
 } // end m1
 
 //
-//  tests for funcpathfile!() macro : needs to handle all
+//  tests for funcpath!() macro : needs to handle all
 //  the different places where functions can be
 //  defined, include trait default methods, 
 //  implementations, and lambdas.
@@ -64,7 +64,7 @@ pub fn main() {
     info2!("m1::m2::who_am_i() is '{}'", m1::m2::who_am_i());
 
     // The Windows tests are wrapped in an extra module for some reason.
-    // And in funcpathfile!() we include a file location prefix to track 
+    // And in funcpath!() we include a file location prefix to track 
     // lambdas easily, so just use the ends_with() for all verifies:
     assert!(m1::m2::who_am_i().ends_with("m1::m2::who_am_i"));
 
@@ -97,7 +97,7 @@ pub fn main() {
     
     // local lambda
     let lambda = || {
-        "inside a lambda we get: " + funcpathfile!()
+        "inside a lambda we get: " + funcpath!()
     };
     let l1 = lambda();
     info2!("l1 is '{}'", l1);
@@ -109,15 +109,15 @@ pub fn main() {
     assert!(l2.ends_with("m1::m2::use_lambda::lambda"));
 
     // distinguish a::mZ::c from a::mQ::c, where mZ and mQ are modules
-    // This is why the implementation of funcpathfile!() must track module 
+    // This is why the implementation of funcpath!() must track module 
     // namespaces as well.  Getting back a::c just won't do.
     
     fn a() -> (&str, &str) {
         pub mod mZ {
-            pub fn c() -> &str { funcpathfile!() }
+            pub fn c() -> &str { funcpath!() }
         }
         pub mod mQ {
-            pub fn c() -> &str { funcpathfile!() }
+            pub fn c() -> &str { funcpath!() }
         }
         (mZ::c(), mQ::c())
     }
@@ -129,19 +129,19 @@ pub fn main() {
     assert!(cq.ends_with("main::a::mQ::c"));
 
     // and the symmetric case, where mod are duplicated:
-    // If we got back only mod_path!() == "outer::M" and funcpathfile!() == "c"
+    // If we got back only mod_path!() == "outer::M" and funcpath!() == "c"
     //  we would not know whether outer::a::M::c was called,
     //  or outer::b::M::c was called.
     mod outer {
         pub fn a() -> &str {
             pub mod M {
-                pub fn c() -> &str { funcpathfile!() }
+                pub fn c() -> &str { funcpath!() }
             }
             M::c()
         }
         pub fn b() -> &str {
             pub mod M {
-                pub fn c() -> &str { funcpathfile!() }
+                pub fn c() -> &str { funcpath!() }
             }
             M::c()
         }
@@ -159,7 +159,7 @@ pub fn main() {
     // local function wrapper of lambda
     fn use3() -> ~str {
         let lambda3 = || {
-            "inside lambda3 we get: " + funcpathfile!()
+            "inside lambda3 we get: " + funcpath!()
         };
         lambda3()
     }
@@ -171,7 +171,7 @@ pub fn main() {
     // and named functions inside lambdas:
     let lambda4 = || {
         fn embedded() -> ~str {
-            "inside lambda4::embeded we get: " + funcpathfile!()
+            "inside lambda4::embedded we get: " + funcpath!()
         }
         embedded()
     };

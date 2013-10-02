@@ -171,7 +171,7 @@ pub fn main() {
     // and named functions inside lambdas:
     let lambda4 = || {
         fn embedded() -> ~str {
-            "inside lambda4::embeded we get: " + funcpathfile!()
+            "inside lambda4::embedded we get: " + funcpathfile!()
         }
         embedded()
     };
