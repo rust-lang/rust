@@ -62,7 +62,7 @@ pub fn type_of_rust_fn(cx: &mut CrateContext,
     atys.push_all(type_of_explicit_args(cx, inputs));
 
     // Use the output as the actual return value if it's immediate.
-    if !use_out_pointer && !ty::type_is_voidish(output) {
+    if !use_out_pointer && !ty::type_is_voidish(cx.tcx, output) {
         Type::func(atys, &lloutputtype)
     } else {
         Type::func(atys, &Type::void())

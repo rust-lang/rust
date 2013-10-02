@@ -321,7 +321,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                                          pluralize(out_type_size)));
             }
 
-            if !ty::type_is_voidish(out_type) {
+            if !ty::type_is_voidish(ccx.tcx, out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
                 if type_is_immediate(ccx, in_type) {
                     match fcx.llretptr {
