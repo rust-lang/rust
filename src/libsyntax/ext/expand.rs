@@ -28,6 +28,7 @@ use parse::token;
 use parse::token::{fresh_mark, fresh_name, ident_to_str, intern};
 use visit;
 use visit::Visitor;
+use ast_map;
 
 use std::vec;
 
@@ -237,6 +238,16 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             }
         }
 
+        ast::ExprFnBlock(ref _decl, ref _body) => {
+            // make a lambda ident if need be.
+            let idt = cx.ident_of("lambda");
+            cx.func_path_push(idt);
+            cx.func_only_push(idt);
+            let res = noop_fold_expr(e, fld);
+            cx.func_only_pop();
+            cx.func_path_pop();
+            res
+        }
         _ => noop_fold_expr(e, fld)
     }
 }
@@ -306,7 +317,7 @@ macro_rules! with_exts_frame (
 static special_block_name : &'static str = " block";
 
 // When we enter a module, record it, for the sake of 
-// `module_path!` and `func!`
+// `module_path!`, `func!`, `funcpath!`, `funcpathfile!`.
 pub fn expand_item(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    it: @ast::item,
@@ -316,48 +327,63 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
         ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
         ast::item_mod(_) | ast::item_foreign_mod(_) => {
             cx.mod_push(it.ident);
-            cx.func_push(it.ident);
+            cx.func_path_push(it.ident);
             let macro_escape = contains_macro_escape(it.attrs);
             let result = with_exts_frame!(extsbox,
                                           macro_escape,
                                           noop_fold_item(it, fld));
-            cx.func_pop();
+            cx.func_path_pop();
             cx.mod_pop();
             result
         },
-          ast::item_fn(_, _, _, _, _) 
-        | ast::item_impl(_, _, _, _) 
-        | ast::item_trait(_, _, _) => {
-            cx.func_push(it.ident);
-            let macro_escape = contains_macro_escape(it.attrs);
-            let result = with_exts_frame!(extsbox,
-                                          macro_escape,
-                                          noop_fold_item(it, fld));
-            cx.func_pop();
+        ast::item_impl(ref _type_parameters, ref trait_ref, ref typ, ref _methods) => {
+            // borrowing from libsyntax/ast_map.rs:264
+            // Right now the it.ident (ident on impls) is __extensions__ which isn't
+            // very pretty when debugging, so attempt to select a better
+            // name to use; via impl_pretty_name()...
+            let elt : ast_map::path_elt = ast_map::impl_pretty_name(trait_ref, typ, it.ident /*default*/);
+            match elt {
+                ast_map::path_mod(id) 
+                | ast_map::path_name(id)
+                | ast_map::path_pretty_name(id, _) => { cx.func_path_push(id); }
+            };
+            let result = noop_fold_item(it, fld);
+            cx.func_path_pop();
+            result
+        }
+        
+        ast::item_fn(_, _, _, _, _) => {
+            cx.func_path_push(it.ident);
+            cx.func_only_push(it.ident);
+            let result = noop_fold_item(it, fld);
+            cx.func_only_pop();
+            cx.func_path_pop();
+            result
+        },
+        ast::item_trait(_, _, _) => {
+            cx.func_path_push(it.ident);
+            let result = noop_fold_item(it, fld);
+            cx.func_path_pop();
             result
         },
         _ => noop_fold_item(it, fld)
     }
 }
 
-/* not needed now, right?
 // When we enter a method, record it, for the sake of `func!`
-pub fn expand_method(extsbox: @mut SyntaxEnv,
+pub fn expand_method(_extsbox: @mut SyntaxEnv,
                      cx: @ExtCtxt,
                      me: @ast::method,
                      fld: &MacroExpander)
-    -> Option<@ast::method> {
+    -> @ast::method {
 
-
-    cx.func_push(me.ident);
-    let macro_escape = contains_macro_escape(me.attrs);
-    let result = with_exts_frame!(extsbox,
-                                  macro_escape,
-                                  noop_fold_method(me, fld));
-    cx.func_pop();
+    cx.func_path_push(me.ident);
+    cx.func_only_push(me.ident);
+    let result = noop_fold_method(me, fld);
+    cx.func_only_pop();
+    cx.func_path_pop();
     result
 }
-*/
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
@@ -1230,6 +1256,13 @@ impl ast_fold for MacroExpander {
                          self.cx,
                          module,
                          self)
+    }
+
+    fn fold_method(&self, m: @ast::method) -> @ast::method {
+        expand_method(self.extsbox,
+                      self.cx,
+                      m,
+                      self)
     }
 
     fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {

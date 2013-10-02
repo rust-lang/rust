@@ -60,16 +60,18 @@ pub fn expand_file(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
-/* func!(): expands to the current function name */
-pub fn expand_function_name(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+/** funcpathfile!(): expands to the current fully-qualified-function name 
+    plus file path:line:col for lambda disambiguation
+    See also funcpath!() and func!().
+*/
+pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
-    base::check_zero_tts(cx, sp, tts, "func!");
+    base::check_zero_tts(cx, sp, tts, "funcpathfile!");
+    if cx.func_only().len() == 0 {
+        cx.span_fatal(sp, 
+                      format!("funcpathfile!() called when not inside a function"));
+    }
 
-    /* 
-       In order to debug lambdas, and remove any amiguity about which
-       function, in general, we are referring too: we include file:line:col
-       in every func!() output.
-    */
     let nearest = cx.backtrace().unwrap();
     let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
     let filename = loc.file.name;
@@ -81,6 +83,54 @@ pub fn expand_function_name(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 
     base::MRExpr(cx.expr_str(sp, res.to_managed()))
 }
+
+/** funcpath!(): expands to the current fully-qualified-function name.
+   Anonymous functions or lambdas will be ambiguously all named 'lambda'. 
+   Use funcpathfile!() if you require disambiguation (file:line:col details)
+   of lambdas or wish to have exact locations at your fingertips. See also
+   func!() for shortest-possible (basename) function name.
+*/
+pub fn expand_funcpath(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+    -> base::MacResult {
+    base::check_zero_tts(cx, sp, tts, "funcpath!");
+    if cx.func_only().len() == 0 {
+        cx.span_fatal(sp, 
+                      format!("funcpath!() called when not inside a function"));
+    }
+
+    let nearest = cx.backtrace().unwrap();
+    let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
+    let filename = loc.file.name;
+    let linestr : ~str = loc.line.to_str();
+    let colstr  : ~str = loc.col.to_str();
+
+    let full_func_path : ~str = cx.func_path().map(|x| cx.str_of(*x)).connect("::");
+
+    base::MRExpr(cx.expr_str(sp, full_func_path.to_managed()))
+}
+
+/** func!(): expands to the shortname or basename of the current
+   function name. See also funcpath!() and funcpathfile!(). */
+pub fn expand_func(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+    -> base::MacResult {
+    base::check_zero_tts(cx, sp, tts, "func!");
+    if cx.func_only().len() == 0 {
+        cx.span_fatal(sp, 
+                      format!("func!() called when not inside a function"));
+    }
+
+    let nearest = cx.backtrace().unwrap();
+    let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
+    let filename = loc.file.name;
+    let linestr : ~str = loc.line.to_str();
+    let colstr  : ~str = loc.col.to_str();
+
+    let stack = cx.func_path();
+    let func_shortname = cx.str_of(*stack.last());
+
+    base::MRExpr(cx.expr_str(sp, func_shortname))
+}
+
 
 pub fn expand_stringify(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
