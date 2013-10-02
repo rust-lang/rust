@@ -98,14 +98,7 @@ pub fn expand_funcpath(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                       format!("funcpath!() called when not inside a function"));
     }
 
-    let nearest = cx.backtrace().unwrap();
-    let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
-    let filename = loc.file.name;
-    let linestr : ~str = loc.line.to_str();
-    let colstr  : ~str = loc.col.to_str();
-
     let full_func_path : ~str = cx.func_path().map(|x| cx.str_of(*x)).connect("::");
-
     base::MRExpr(cx.expr_str(sp, full_func_path.to_managed()))
 }
 
@@ -119,15 +112,7 @@ pub fn expand_func(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                       format!("func!() called when not inside a function"));
     }
 
-    let nearest = cx.backtrace().unwrap();
-    let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
-    let filename = loc.file.name;
-    let linestr : ~str = loc.line.to_str();
-    let colstr  : ~str = loc.col.to_str();
-
-    let stack = cx.func_path();
-    let func_shortname = cx.str_of(*stack.last());
-
+    let func_shortname = cx.str_of(cx.func_path_last().unwrap());
     base::MRExpr(cx.expr_str(sp, func_shortname))
 }
 

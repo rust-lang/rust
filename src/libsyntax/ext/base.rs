@@ -378,6 +378,12 @@ impl ExtCtxt {
     pub fn func_path_push(&self, i: ast::Ident) { self.func_path.push(i); }
     pub fn func_path_pop(&self) { self.func_path.pop(); }
     pub fn func_path(&self) -> ~[ast::Ident] { (*self.func_path).clone() }
+    pub fn func_path_last(&self) -> Option<ast::Ident> { 
+        match self.func_path.len() {
+            0 => None,
+            _ => Some((*self.func_path).last().clone())
+        }
+    }
 
     pub fn func_only_push(&self, i: ast::Ident) { self.func_only.push(i); }
     pub fn func_only_pop(&self) { self.func_only.pop(); }
