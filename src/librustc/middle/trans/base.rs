@@ -236,7 +236,7 @@ pub fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
         _ => ()
     }
 
-    let uses_outptr = type_of::return_uses_outptr(ccx.tcx, output);
+    let uses_outptr = type_of::return_uses_outptr(ccx, output);
     let offset = if uses_outptr { 2 } else { 1 };
 
     for (i, &arg_ty) in inputs.iter().enumerate() {
@@ -1117,13 +1117,13 @@ pub fn do_spill_noroot(cx: @mut Block, v: ValueRef) -> ValueRef {
 
 pub fn spill_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("spill_if_immediate");
-    if type_is_immediate(cx.tcx(), t) { return do_spill(cx, v, t); }
+    if type_is_immediate(cx.ccx(), t) { return do_spill(cx, v, t); }
     return v;
 }
 
 pub fn load_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
-    if type_is_immediate(cx.tcx(), t) { return Load(cx, v); }
+    if type_is_immediate(cx.ccx(), t) { return Load(cx, v); }
     return v;
 }
 
@@ -1656,7 +1656,7 @@ pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> ValueRef {
     unsafe {
-        if type_of::return_uses_outptr(fcx.ccx.tcx, output_type) {
+        if type_of::return_uses_outptr(fcx.ccx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
@@ -1696,7 +1696,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
             ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
         }
     };
-    let uses_outptr = type_of::return_uses_outptr(ccx.tcx, substd_output_type);
+    let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
     let fcx = @mut FunctionContext {
@@ -1808,7 +1808,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
     match fcx.llself {
         Some(slf) => {
             let self_val = if slf.is_copy
-                    && datum::appropriate_mode(bcx.tcx(), slf.t).is_by_value() {
+                    && datum::appropriate_mode(bcx.ccx(), slf.t).is_by_value() {
                 let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
                 let alloc = alloc_ty(bcx, slf.t, "__self");
                 Store(bcx, tmp, alloc);
@@ -1838,7 +1838,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
         // only by value if immediate:
-        let llarg = if datum::appropriate_mode(bcx.tcx(), arg_ty).is_by_value() {
+        let llarg = if datum::appropriate_mode(bcx.ccx(), arg_ty).is_by_value() {
             let alloc = alloc_ty(bcx, arg_ty, "__arg");
             Store(bcx, raw_llarg, alloc);
             alloc

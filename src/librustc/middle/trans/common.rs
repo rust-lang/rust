@@ -46,23 +46,37 @@ use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
 
-fn type_is_newtype_immediate(cx: ty::ctxt, ty: ty::t) -> bool {
+fn type_is_newtype_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
     match ty::get(ty).sty {
         ty::ty_struct(def_id, ref substs) => {
-            let fields = ty::struct_fields(cx, def_id, substs);
+            let fields = ty::struct_fields(ccx.tcx, def_id, substs);
             fields.len() == 1 &&
                 fields[0].ident.name == token::special_idents::unnamed_field.name &&
-                type_is_immediate(cx, fields[0].mt.ty)
+                type_is_immediate(ccx, fields[0].mt.ty)
         }
         _ => false
     }
 }
 
-pub fn type_is_immediate(cx: ty::ctxt, ty: ty::t) -> bool {
-    ty::type_is_scalar(ty) || ty::type_is_boxed(ty) ||
+pub fn type_is_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
+    use middle::trans::machine::llsize_of_alloc;
+    use middle::trans::type_of::sizing_type_of;
+    let tcx = ccx.tcx;
+    let simple = ty::type_is_scalar(ty) || ty::type_is_boxed(ty) ||
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
-        type_is_newtype_immediate(cx, ty) ||
-        ty::type_is_simd(cx, ty)
+        type_is_newtype_immediate(ccx, ty) ||
+        ty::type_is_simd(tcx, ty);
+    if simple {
+        return true;
+    }
+    match ty::get(ty).sty {
+        // FIXME: #9651: small `ty_struct` and `ty_enum` should also be immediate
+        ty::ty_tup(*) => {
+            let llty = sizing_type_of(ccx, ty);
+            llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
+        }
+        _ => false
+    }
 }
 
 pub fn gensym_name(name: &str) -> (Ident, path_elt) {

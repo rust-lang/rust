@@ -53,7 +53,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         Ret(bcx, llcall);
     }
 
-    fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str) {
+    fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str, t: ty::t) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -63,12 +63,17 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let val = Call(bcx, llfn, [a, b], []);
         let result = ExtractValue(bcx, val, 0);
         let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool());
-        let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
-        let ret = Load(bcx, retptr);
+        let ret = Load(bcx, Alloca(bcx, type_of::type_of(bcx.ccx(), t), ""));
         let ret = InsertValue(bcx, ret, result, 0);
         let ret = InsertValue(bcx, ret, overflow, 1);
-        Store(bcx, ret, retptr);
-        RetVoid(bcx)
+
+        if type_is_immediate(bcx.ccx(), t) {
+            Ret(bcx, ret);
+        } else {
+            let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
+            Store(bcx, ret, retptr);
+            RetVoid(bcx);
+        }
     }
 
     fn memcpy_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
@@ -227,7 +232,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             // intrinsics, there are no argument cleanups to
             // concern ourselves with.
             let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx.tcx, tp_ty);
+            let mode = appropriate_mode(ccx, tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
                              ty: tp_ty, mode: mode};
             bcx = src.move_to(bcx, DROP_EXISTING,
@@ -237,7 +242,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "move_val_init" => {
             // See comments for `"move_val"`.
             let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx.tcx, tp_ty);
+            let mode = appropriate_mode(ccx, tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
                              ty: tp_ty, mode: mode};
             bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
@@ -278,7 +283,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if type_is_immediate(ccx.tcx, retty) && !ty::type_is_nil(retty) {
+            if type_is_immediate(ccx, retty) && !ty::type_is_nil(retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
@@ -316,7 +321,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
             if !ty::type_is_voidish(out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
-                if type_is_immediate(ccx.tcx, in_type) {
+                if type_is_immediate(ccx, in_type) {
                     match fcx.llretptr {
                         Some(llretptr) => {
                             Store(bcx, llsrcval, PointerCast(bcx, llretptr, llintype.ptr_to()));
@@ -335,7 +340,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             }
                         }
                     }
-                } else if type_is_immediate(ccx.tcx, out_type) {
+                } else if type_is_immediate(ccx, out_type) {
                     let llsrcptr = PointerCast(bcx, llsrcval, llouttype.ptr_to());
                     let ll_load = Load(bcx, llsrcptr);
                     Ret(bcx, ll_load);
@@ -466,35 +471,59 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "bswap32" => simple_llvm_intrinsic(bcx, "llvm.bswap.i32", 1),
         "bswap64" => simple_llvm_intrinsic(bcx, "llvm.bswap.i64", 1),
 
-        "i8_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i8"),
-        "i16_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i16"),
-        "i32_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i32"),
-        "i64_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i64"),
+        "i8_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i8", output_type),
+        "i16_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i16", output_type),
+        "i32_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i32", output_type),
+        "i64_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i64", output_type),
 
-        "u8_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i8"),
-        "u16_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i16"),
-        "u32_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i32"),
-        "u64_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i64"),
+        "u8_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i8", output_type),
+        "u16_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i16", output_type),
+        "u32_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i32", output_type),
+        "u64_add_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i64", output_type),
 
-        "i8_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i8"),
-        "i16_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i16"),
-        "i32_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i32"),
-        "i64_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i64"),
+        "i8_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i8", output_type),
+        "i16_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i16", output_type),
+        "i32_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i32", output_type),
+        "i64_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i64", output_type),
 
-        "u8_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i8"),
-        "u16_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i16"),
-        "u32_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i32"),
-        "u64_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i64"),
+        "u8_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i8", output_type),
+        "u16_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i16", output_type),
+        "u32_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i32", output_type),
+        "u64_sub_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i64", output_type),
 
-        "i8_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i8"),
-        "i16_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i16"),
-        "i32_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i32"),
-        "i64_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i64"),
+        "i8_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i8", output_type),
+        "i16_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i16", output_type),
+        "i32_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i32", output_type),
+        "i64_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i64", output_type),
 
-        "u8_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i8"),
-        "u16_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i16"),
-        "u32_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i32"),
-        "u64_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i64"),
+        "u8_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i8", output_type),
+        "u16_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i16", output_type),
+        "u32_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i32", output_type),
+        "u64_mul_with_overflow" =>
+            with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i64", output_type),
 
         _ => {
             // Could we make this an enum rather than a string? does it get

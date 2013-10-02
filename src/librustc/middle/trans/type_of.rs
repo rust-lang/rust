@@ -20,12 +20,12 @@ use middle::trans::type_::Type;
 use syntax::ast;
 use syntax::opt_vec;
 
-pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
-    !type_is_immediate(ccx.tcx, arg_ty)
+pub fn arg_is_indirect(ccx: &mut CrateContext, arg_ty: ty::t) -> bool {
+    !type_is_immediate(ccx, arg_ty)
 }
 
-pub fn return_uses_outptr(tcx: ty::ctxt, ty: ty::t) -> bool {
-    !type_is_immediate(tcx, ty)
+pub fn return_uses_outptr(ccx: &mut CrateContext, ty: ty::t) -> bool {
+    !type_is_immediate(ccx, ty)
 }
 
 pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: ty::t) -> Type {
@@ -49,7 +49,7 @@ pub fn type_of_rust_fn(cx: &mut CrateContext,
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
-    let use_out_pointer = return_uses_outptr(cx.tcx, output);
+    let use_out_pointer = return_uses_outptr(cx, output);
     let lloutputtype = type_of(cx, output);
     if use_out_pointer {
         atys.push(lloutputtype.ptr_to());
