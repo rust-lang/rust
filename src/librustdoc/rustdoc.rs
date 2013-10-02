@@ -234,7 +234,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
             Some(i) => PASSES[i].n1(),
             None => {
                 error2!("unknown pass {}, skipping", *pass);
-                loop
+                continue
             },
         };
         pm.add_plugin(plugin);

@@ -922,7 +922,7 @@ impl<'self> LookupContext<'self> {
 
             if skip {
                 // There are more than one of these and we need only one
-                loop;
+                continue;
             } else {
                 merged.push(candidate_a.clone());
             }

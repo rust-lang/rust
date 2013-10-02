@@ -1068,12 +1068,12 @@ mod test {
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
                     sc = tail;
-                    loop;
+                    continue;
                 },
                 Rename(id,name,tail) => {
                     result.push(R(id,name));
                     sc = tail;
-                    loop;
+                    continue;
                 }
                 IllegalCtxt => fail2!("expected resolvable context, got IllegalCtxt")
             }

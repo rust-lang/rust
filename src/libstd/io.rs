@@ -665,7 +665,7 @@ impl<T:Reader> ReaderUtil for T {
                     unsafe {
                         chars.push(transmute(b0 as u32));
                     }
-                    loop;
+                    continue;
                 }
                 // can't satisfy this char with the existing data
                 if end > bytes_len {

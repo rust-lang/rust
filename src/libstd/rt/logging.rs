@@ -92,14 +92,14 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
                     _ => {
                         dumb_println(format!("warning: invalid logging spec \
                                               '{}', ignoring it", parts[1]));
-                        loop;
+                        continue;
                     }
                 }
             },
             _ => {
                 dumb_println(format!("warning: invalid logging spec '{}',\
                                       ignoring it", s));
-                loop;
+                continue;
             }
         }
         let dir = LogDirective {name: name, level: log_level};

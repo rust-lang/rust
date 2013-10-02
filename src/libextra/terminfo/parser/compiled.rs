@@ -276,7 +276,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
         for (i, v) in string_offsets.iter().enumerate() {
             let offset = *v;
             if offset == 0xFFFF { // non-entry
-                loop;
+                continue;
             }
 
             let name = if snames[i] == "_" {
@@ -289,7 +289,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
                 // undocumented: FFFE indicates cap@, which means the capability is not present
                 // unsure if the handling for this is correct
                 string_map.insert(name.to_owned(), ~[]);
-                loop;
+                continue;
             }
 
 

@@ -303,7 +303,7 @@ impl io::Reader for FileInput {
                     let b = r.read_byte();
 
                     if b < 0 {
-                        loop;
+                        continue;
                     }
 
                     if b == '\n' as int {
