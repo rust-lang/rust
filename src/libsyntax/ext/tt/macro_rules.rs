@@ -21,22 +21,47 @@ use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
-use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
+use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt, EOF};
 use print;
 
 struct ParserAnyMacro {
     parser: @Parser,
 }
 
+impl ParserAnyMacro {
+    /// Make sure we don't have any tokens left to parse, so we don't
+    /// silently drop anything. `allow_semi` is so that "optional"
+    /// semilons at the end of normal expressions aren't complained
+    /// about e.g. the semicolon in `macro_rules! kapow( () => {
+    /// fail!(); } )` doesn't get picked up by .parse_expr(), but it's
+    /// allowed to be there.
+    fn ensure_complete_parse(&self, allow_semi: bool) {
+        if allow_semi && *self.parser.token == SEMI {
+            self.parser.bump()
+        }
+        if *self.parser.token != EOF {
+            let msg = format!("macro expansion ignores token `{}` and any following",
+                              self.parser.this_token_to_str());
+            self.parser.span_err(*self.parser.span, msg);
+        }
+    }
+}
+
 impl AnyMacro for ParserAnyMacro {
     fn make_expr(&self) -> @ast::Expr {
-        self.parser.parse_expr()
+        let ret = self.parser.parse_expr();
+        self.ensure_complete_parse(true);
+        ret
     }
     fn make_item(&self) -> Option<@ast::item> {
-        self.parser.parse_item(~[])     // no attrs
+        let ret = self.parser.parse_item(~[]);     // no attrs
+        self.ensure_complete_parse(false);
+        ret
     }
     fn make_stmt(&self) -> @ast::Stmt {
-        self.parser.parse_stmt(~[])     // no attrs
+        let ret = self.parser.parse_stmt(~[]);     // no attrs
+        self.ensure_complete_parse(true);
+        ret
     }
 }
 
@@ -184,79 +209,6 @@ pub fn add_new_extension(cx: @ExtCtxt,
       @matched_seq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
       _ => cx.span_bug(sp, "wrong-structured rhs")
     };
-
-    // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: @ExtCtxt,
-                         sp: Span,
-                         name: Ident,
-                         arg: &[ast::token_tree],
-                         lhses: &[@named_match],
-                         rhses: &[@named_match])
-                         -> MacResult {
-        if cx.trace_macros() {
-            println!("{}! \\{ {} \\}",
-                      cx.str_of(name),
-                      print::pprust::tt_to_str(
-                          &ast::tt_delim(@mut arg.to_owned()),
-                          get_ident_interner()));
-        }
-
-        // Which arm's failure should we report? (the one furthest along)
-        let mut best_fail_spot = dummy_sp();
-        let mut best_fail_msg = ~"internal error: ran no matchers";
-
-        let s_d = cx.parse_sess().span_diagnostic;
-
-        for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
-            match *lhs {
-              @matched_nonterminal(nt_matchers(ref mtcs)) => {
-                // `none` is because we're not interpolating
-                let arg_rdr = new_tt_reader(
-                    s_d,
-                    None,
-                    arg.to_owned()
-                ) as @mut reader;
-                match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
-                  success(named_matches) => {
-                    let rhs = match rhses[i] {
-                        // okay, what's your transcriber?
-                        @matched_nonterminal(nt_tt(@ref tt)) => {
-                            match (*tt) {
-                                // cut off delimiters; don't parse 'em
-                                tt_delim(ref tts) => {
-                                    (*tts).slice(1u,(*tts).len()-1u).to_owned()
-                                }
-                                _ => cx.span_fatal(
-                                    sp, "macro rhs must be delimited")
-                            }
-                        },
-                        _ => cx.span_bug(sp, "bad thing in rhs")
-                    };
-                    // rhs has holes ( `$id` and `$(...)` that need filled)
-                    let trncbr = new_tt_reader(s_d, Some(named_matches),
-                                               rhs);
-                    let p = @Parser(cx.parse_sess(),
-                                    cx.cfg(),
-                                    trncbr as @mut reader);
-
-                    // Let the context choose how to interpret the result.
-                    // Weird, but useful for X-macros.
-                    return MRAny(@ParserAnyMacro {
-                        parser: p
-                    } as @AnyMacro);
-                  }
-                  failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
-                    best_fail_spot = sp;
-                    best_fail_msg = (*msg).clone();
-                  },
-                  error(sp, ref msg) => cx.span_fatal(sp, (*msg))
-                }
-              }
-              _ => cx.bug("non-matcher found in parsed lhses")
-            }
-        }
-        cx.span_fatal(best_fail_spot, best_fail_msg);
-    }
 
     let exp = @MacroRulesSyntaxExpanderTTFun {
         name: name,
