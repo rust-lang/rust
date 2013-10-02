@@ -1089,6 +1089,6 @@ mod tests {
 
         let input = "\\foo\\bar\\baz";
         let path: WindowsPath = GenericPath::from_c_str(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input);
+        assert_eq!(path.as_str().unwrap(), input.as_slice());
     }
 }

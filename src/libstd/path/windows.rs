@@ -1263,7 +1263,7 @@ mod tests {
                     let exp = $exp;
                     let res = parse_prefix(path);
                     assert!(res == exp,
-                            "parse_prefix(\"%s\"): expected %?, found %?", path, exp, res);
+                            "parse_prefix(\"{}\"): expected {:?}, found {:?}", path, exp, res);
                 }
             )
         )
@@ -1809,11 +1809,11 @@ mod tests {
                     let file = p.pop_str();
                     let left = $left;
                     assert!(p.as_str() == Some(left),
-                        "`%s`.pop() failed; expected remainder `%s`, found `%s`",
+                        "`{}`.pop() failed; expected remainder `{}`, found `{}`",
                         pstr, left, p.as_str().unwrap());
                     let right = $right;
                     let res = file.map(|s| s.as_slice());
-                    assert!(res == right, "`%s`.pop() failed; expected `%?`, found `%?`",
+                    assert!(res == right, "`{}`.pop() failed; expected `{:?}`, found `{:?}`",
                             pstr, right, res);
                 }
             );
@@ -1965,7 +1965,7 @@ mod tests {
                     let res = path.$op(arg);
                     let exp = $res;
                     assert!(res.as_str() == Some(exp),
-                            "`%s`.%s(\"%s\"): Expected `%s`, found `%s`",
+                            "`{}`.{}(\"{}\"): Expected `{}`, found `{}`",
                             pstr, stringify!($op), arg, exp, res.as_str().unwrap());
                 }
             )
@@ -2201,19 +2201,19 @@ mod tests {
                     let path = $path;
                     let filename = $filename;
                     assert!(path.filename_str() == filename,
-                            "`%s`.filename_str(): Expected `%?`, found `%?`",
+                            "`{}`.filename_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), filename, path.filename_str());
                     let dirname = $dirname;
                     assert!(path.dirname_str() == dirname,
-                            "`%s`.dirname_str(): Expected `%?`, found `%?`",
+                            "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), dirname, path.dirname_str());
                     let filestem = $filestem;
                     assert!(path.filestem_str() == filestem,
-                            "`%s`.filestem_str(): Expected `%?`, found `%?`",
+                            "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), filestem, path.filestem_str());
                     let ext = $ext;
                     assert!(path.extension_str() == ext,
-                            "`%s`.extension_str(): Expected `%?`, found `%?`",
+                            "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), ext, path.extension_str());
                 }
             );
@@ -2284,16 +2284,16 @@ mod tests {
                     let path = Path::from_str($path);
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
                     let b = path.is_absolute();
-                    assert!(b == abs, "Path '%s'.is_absolute(): expected %?, found %?",
+                    assert!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), abs, b);
                     let b = path.is_vol_relative();
-                    assert!(b == vol, "Path '%s'.is_vol_relative(): expected %?, found %?",
+                    assert!(b == vol, "Path '{}'.is_vol_relative(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), vol, b);
                     let b = path.is_cwd_relative();
-                    assert!(b == cwd, "Path '%s'.is_cwd_relative(): expected %?, found %?",
+                    assert!(b == cwd, "Path '{}'.is_cwd_relative(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), cwd, b);
                     let b = path.is_relative();
-                    assert!(b == rel, "Path '%s'.is_relativf(): expected %?, found %?",
+                    assert!(b == rel, "Path '{}'.is_relativf(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), rel, b);
                 }
             )
@@ -2326,7 +2326,7 @@ mod tests {
                     let exp = $exp;
                     let res = path.is_ancestor_of(&dest);
                     assert!(res == exp,
-                            "`%s`.is_ancestor_of(`%s`): Expected %?, found %?",
+                            "`{}`.is_ancestor_of(`{}`): Expected {:?}, found {:?}",
                             path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
                 }
             )
@@ -2461,7 +2461,7 @@ mod tests {
                     let res = path.path_relative_from(&other);
                     let exp = $exp;
                     assert!(res.and_then_ref(|x| x.as_str()) == exp,
-                            "`%s`.path_relative_from(`%s`): Expected %?, got %?",
+                            "`{}`.path_relative_from(`{}`): Expected {:?}, got {:?}",
                             path.as_str().unwrap(), other.as_str().unwrap(), exp,
                             res.and_then_ref(|x| x.as_str()));
                 }
@@ -2593,12 +2593,13 @@ mod tests {
                     let path = Path::from_str($path);
                     let comps = path.str_component_iter().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
-                    assert!(comps.as_slice() == exp, "str_component_iter: Expected %?, found %?",
+                    assert!(comps.as_slice() == exp,
+                            "str_component_iter: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_str_component_iter().map(|x|x.unwrap()).to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_str_component_iter: Expected %?, found %?",
+                            "rev_str_component_iter: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             );
@@ -2607,12 +2608,13 @@ mod tests {
                     let path = Path::from_vec(b!($($arg),+));
                     let comps = path.str_component_iter().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
-                    assert!(comps.as_slice() == exp, "str_component_iter: Expected %?, found %?",
+                    assert!(comps.as_slice() == exp,
+                            "str_component_iter: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_str_component_iter().map(|x|x.unwrap()).to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_str_component_iter: Expected %?, found %?",
+                            "rev_str_component_iter: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             )
@@ -2666,11 +2668,12 @@ mod tests {
                     let path = Path::from_str($path);
                     let comps = path.component_iter().to_owned_vec();
                     let exp: &[&[u8]] = $exp;
-                    assert!(comps.as_slice() == exp, "component_iter: Expected %?, found %?",
+                    assert!(comps.as_slice() == exp, "component_iter: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_component_iter().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
-                    assert!(comps.as_slice() == exp, "rev_component_iter: Expected %?, found %?",
+                    assert!(comps.as_slice() == exp,
+                            "rev_component_iter: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             )
