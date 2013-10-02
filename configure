@@ -385,25 +385,24 @@ opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
-valopt build-triple "${DEFAULT_BUILD_TRIPLE}" "LLVM build triple"
-valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
-valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt mingw32-cross-path "" "MinGW32 cross compiler path"
 
-#GNUs ./configure musthave syntax
 valopt build "${DEFAULT_BUILD_TRIPLE}" "GNUs ./configure syntax LLVM build triple"
 valopt host "${CFG_BUILD_TRIPLE}" "GNUs ./configure syntax LLVM host triples"
 valopt target "${CFG_HOST_TRIPLES}" "GNUs ./configure syntax LLVM target triples"
 
-valopt localstatedir "/var/lib" ""
-valopt sysconfdir "/etc" ""
-valopt datadir "/usr/share" ""
-valopt infodir "/usr/share/info" ""
+valopt localstatedir "/var/lib" "local state directory"
+valopt sysconfdir "/etc" "install system configuration files"
+valopt datadir "/usr/share" "install data"
+valopt infodir "/usr/share/info" "install additional info"
 valopt mandir "/usr/share/man" "install man pages in PATH"
+valopt libdir "/usr/lib" "install libraries"
 
-#Using as /usr/lib64 on 64 bit systems
-valopt libdir "/usr/lib" ""
+#Deprecated opts to keep compatibility
+valopt build-triple "${DEFAULT_BUILD_TRIPLE}" "LLVM build triple"
+valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
+valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
