@@ -77,6 +77,43 @@ mod a {
     }
 }
 
+enum Baz {
+    BazA {
+        a: int,
+        priv b: int
+    },
+    BarB
+}
+
+pub enum PubBaz { //~ ERROR: missing documentation
+    PubBazA { //~ ERROR: missing documentation
+        a: int, //~ ERROR: missing documentation
+        priv b: int
+    },
+
+    priv PubBazB
+}
+
+/// dox
+pub enum PubBaz2 {
+    /// dox
+    PubBaz2A {
+        /// dox
+        a: int,
+        priv b: int
+    },
+    priv PubBaz2B
+}
+
+#[allow(missing_doc)]
+pub enum PubBaz3 {
+    PubBaz3A {
+        a: int,
+        priv b: int
+    },
+    priv PubBaz3B
+}
+
 #[doc(hidden)]
 pub fn baz() {}
 

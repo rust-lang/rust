@@ -1351,6 +1351,18 @@ impl MissingDocLintVisitor {
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);
     }
+
+    fn check_struct(&mut self, cx: @mut Context, sdef: @ast::struct_def) {
+                        for field in sdef.fields.iter() {
+        match field.node.kind {
+            ast::named_field(_, vis) if vis != ast::private => {
+                self.check_attrs(cx, field.node.attrs, field.span,
+                        "missing documentation for a field");
+                }
+                ast::unnamed_field | ast::named_field(*) => {}
+            }
+        }
+    }
 }
 
 impl Visitor<@mut Context> for MissingDocLintVisitor {
@@ -1395,33 +1407,47 @@ impl SubitemStoppableVisitor for MissingDocLintVisitor {
     }
 
     fn visit_item_action(&mut self, it:@ast::item, cx:@mut Context) {
+            if it.vis != ast::public {
+                return;
+            }
 
             match it.node {
                 // Go ahead and match the fields here instead of using
                 // visit_struct_field while we have access to the enclosing
                 // struct's visibility
-                ast::item_struct(sdef, _) if it.vis == ast::public => {
+                ast::item_struct(sdef, _) => {
                     self.check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a struct");
-                    for field in sdef.fields.iter() {
-                        match field.node.kind {
-                            ast::named_field(_, vis) if vis != ast::private => {
-                                self.check_attrs(cx, field.node.attrs, field.span,
-                                            "missing documentation for a field");
-                            }
-                            ast::unnamed_field | ast::named_field(*) => {}
-                        }
-                    }
+                    self.check_struct(cx, sdef);
                 }
 
-                ast::item_trait(*) if it.vis == ast::public => {
+                ast::item_trait(*) => {
                     self.check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a trait");
                 }
 
-                ast::item_fn(*) if it.vis == ast::public => {
+                ast::item_fn(*) => {
                     self.check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a function");
+                }
+
+                ast::item_enum(ref edef, _) => {
+                    self.check_attrs(cx, it.attrs, it.span,
+                                "missing documentation for an enum");
+                    for variant in edef.variants.iter() {
+                        if variant.node.vis == ast::private {
+                            continue;
+                        }
+
+                        self.check_attrs(cx, variant.node.attrs, variant.span,
+                                        "missing documentation for a variant");
+                        match variant.node.kind {
+                            ast::struct_variant_kind(sdef) => {
+                                self.check_struct(cx, sdef);
+                            }
+                            _ => ()
+                        }
+                    }
                 }
 
                 _ => {}

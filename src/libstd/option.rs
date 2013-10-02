@@ -56,6 +56,7 @@ use clone::DeepClone;
 
 /// The option type
 #[deriving(Clone, DeepClone, Eq)]
+#[allow(missing_doc)]
 pub enum Option<T> {
     None,
     Some(T),
