@@ -13,12 +13,14 @@
 
 
 #[deriving(Clone, Eq)]
+#[allow(missing_doc)]
 pub enum List<T> {
     Cons(T, @List<T>),
     Nil,
 }
 
 #[deriving(Eq)]
+#[allow(missing_doc)]
 pub enum MutList<T> {
     MutCons(T, @mut MutList<T>),
     MutNil,
