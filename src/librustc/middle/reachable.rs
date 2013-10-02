@@ -359,7 +359,7 @@ impl ReachableContext {
         while self.worklist.len() > 0 {
             let search_item = self.worklist.pop();
             if scanned.contains(&search_item) {
-                loop
+                continue
             }
             scanned.insert(search_item);
             self.reachable_symbols.insert(search_item);

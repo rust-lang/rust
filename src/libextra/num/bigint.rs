@@ -413,7 +413,7 @@ impl Integer for BigUint {
                 }
                 if d0.is_zero() {
                     n = 2;
-                    loop;
+                    continue;
                 }
                 n = 1;
                 // FIXME(#6102): Assignment operator for BigInt causes ICE

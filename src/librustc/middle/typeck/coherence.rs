@@ -558,7 +558,7 @@ impl CoherenceChecker {
         let r = ty::trait_methods(tcx, trait_did);
         for method in r.iter() {
             debug2!("checking for {}", method.ident.repr(tcx));
-            if provided_names.contains(&method.ident.name) { loop; }
+            if provided_names.contains(&method.ident.name) { continue; }
 
             tcx.sess.span_err(trait_ref_span,
                               format!("missing method `{}`",
@@ -730,7 +730,7 @@ impl CoherenceChecker {
         for impl_info in impls.iter() {
             if impl_info.methods.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
-                loop;
+                continue;
             }
             let method_def_id = impl_info.methods[0].def_id;
 

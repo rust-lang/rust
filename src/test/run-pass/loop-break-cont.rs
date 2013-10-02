@@ -27,7 +27,7 @@ pub fn main() {
     is_even = false;
     i += 1u;
     if i % 2u != 0u {
-        loop;
+        continue;
     }
     is_even = true;
   }
@@ -40,7 +40,7 @@ pub fn main() {
     is_even = false;
     i += 1u;
     if i % 2u != 0u {
-        loop;
+        continue;
     }
     is_even = true;
   }

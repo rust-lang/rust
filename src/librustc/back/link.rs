@@ -1004,7 +1004,7 @@ pub fn link_args(sess: Session,
     for cratepath in r.iter() {
         if cratepath.filetype() == Some(".rlib") {
             args.push(cratepath.to_str());
-            loop;
+            continue;
         }
         let dir = cratepath.dirname();
         if dir != ~"" { args.push(~"-L" + dir); }

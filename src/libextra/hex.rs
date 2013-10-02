@@ -100,7 +100,7 @@ impl<'self> FromHex for &'self str {
                 '0'..'9' => buf |= byte - ('0' as u8),
                 ' '|'\r'|'\n'|'\t' => {
                     buf >>= 4;
-                    loop
+                    continue
                 }
                 _ => return Err(format!("Invalid character '{}' at position {}",
                                         self.char_at(idx), idx))

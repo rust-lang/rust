@@ -130,7 +130,7 @@ fn main() {
                        stdout);
 
                 pos = 0;
-                loop;
+                continue;
             }
 
             // Complement other lines.
