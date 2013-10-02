@@ -1,3 +1,5 @@
+#[allow(non_uppercase_pattern_statics)];
+
 // Matching against NaN should result in a warning
 
 use std::f64::NaN;

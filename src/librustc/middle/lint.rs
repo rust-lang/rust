@@ -83,6 +83,7 @@ pub enum lint {
     unrecognized_lint,
     non_camel_case_types,
     non_uppercase_statics,
+    non_uppercase_pattern_statics,
     type_limits,
     unused_unsafe,
 
@@ -207,6 +208,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
          lint: non_uppercase_statics,
          desc: "static constants should have uppercase identifiers",
          default: allow
+     }),
+
+    ("non_uppercase_pattern_statics",
+     LintSpec {
+         lint: non_uppercase_pattern_statics,
+         desc: "static constants in match patterns should be all caps",
+         default: warn
      }),
 
     ("managed_heap_memory",
@@ -1110,6 +1118,22 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
     }
 }
 
+fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
+    // Lint for constants that look like binding identifiers (#7526)
+    match (&p.node, cx.tcx.def_map.find(&p.id)) {
+        (&ast::PatIdent(_, ref path, _), Some(&ast::DefStatic(_, false))) => {
+            // last identifier alone is right choice for this lint.
+            let ident = path.segments.last().identifier;
+            let s = cx.tcx.sess.str_of(ident);
+            if s.iter().any(|c| c.is_lowercase()) {
+                cx.span_lint(non_uppercase_pattern_statics, path.span,
+                             "static constant in pattern should be all caps");
+            }
+        }
+        _ => {}
+    }
+}
+
 struct UnusedUnsafeLintVisitor { stopping_on_items: bool }
 
 impl SubitemStoppableVisitor for UnusedUnsafeLintVisitor {
@@ -1515,6 +1539,11 @@ fn lint_stability() -> @mut OuterLint {
 struct LintCheckVisitor;
 
 impl Visitor<@mut Context> for LintCheckVisitor {
+
+    fn visit_pat(&mut self, p:@ast::Pat, cx: @mut Context) {
+        check_pat_non_uppercase_statics(cx, p);
+        visit::walk_pat(self, p, cx);
+    }
 
     fn visit_item(&mut self, it:@ast::item, cx: @mut Context) {
 
