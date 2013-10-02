@@ -1283,6 +1283,7 @@ impl Parser {
             token::LIT_FLOAT_UNSUFFIXED(s) =>
                 lit_float_unsuffixed(self.id_to_str(s)),
             token::LIT_STR(s) => lit_str(self.id_to_str(s)),
+            token::LIT_STR_RAW(s, _) => lit_str(self.id_to_str(s)),
             token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
             _ => { self.unexpected_last(tok); }
         }
@@ -4345,7 +4346,8 @@ impl Parser {
     // parse a string as an ABI spec on an extern type or module
     fn parse_opt_abis(&self) -> Option<AbiSet> {
         match *self.token {
-            token::LIT_STR(s) => {
+            token::LIT_STR(s)
+            | token::LIT_STR_RAW(s, _) => {
                 self.bump();
                 let the_string = ident_to_str(&s);
                 let mut abis = AbiSet::empty();
@@ -4932,7 +4934,8 @@ impl Parser {
 
     pub fn parse_optional_str(&self) -> Option<@str> {
         match *self.token {
-            token::LIT_STR(s) => {
+            token::LIT_STR(s)
+            | token::LIT_STR_RAW(s, _) => {
                 self.bump();
                 Some(ident_to_str(&s))
             }

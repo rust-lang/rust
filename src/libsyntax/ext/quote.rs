@@ -464,6 +464,13 @@ fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
                                       ~[mk_ident(cx, sp, ident)]);
         }
 
+        LIT_STR_RAW(ident, n) => {
+            return cx.expr_call_ident(sp,
+                                      id_ext("LIT_STR_RAW"),
+                                      ~[mk_ident(cx, sp, ident),
+                                        cx.expr_uint(sp, n)]);
+        }
+
         IDENT(ident, b) => {
             return cx.expr_call_ident(sp,
                                       id_ext("IDENT"),
