@@ -10,18 +10,6 @@
 
 // test for the funcpathfile!() macro
 
-/*
-    NOTE!: these tests check the current filename, line, and position
-           reading accuracy of the funcpathfile!() macro. As such, if
-           you add anything before the "tests for column info, lineinfo, and filename",
-           then you will certainly have to adjust the column and lineinfo.
-           The easiest thing to do is to add tests *after* that one.
-
-    If you copy this file to a file with a new name, you'll have to update
-    the expected filename at the line that does:
-    assert_eq!(filename, "syntax-extension-funcpathfile.rs");
-*/
-
 use m1::m2::*;
 
 pub mod m1 {
@@ -199,16 +187,15 @@ pub fn main() {
     info2!("l5 is '{}', l6 is '{}'", s5, s6);
     assert!(s5 != s6);
 
-    // =============================================
-    // tests for column info, lineinfo, and filename
-    //  WARNING: very sensitive to location in *this* file
-    // =============================================
+    // Normally funcpathfile!() is extra sensitive to its
+    // exact location in this file. Let's try to reduce 
+    // brittleness by just checking against line!() and col!().
 
-    // WARNING: the tests that follow are sensitive to the line location
-    // and column alignment of this next call to funcpathfile!():
-    let coltest = funcpathfile!(); // coltest is syntax-extension-funcpathfile.rs:191:18|main
+    // keep these next two statements on the same file line:
+    let coltest = funcpathfile!(); let line_said = line!() as int;
+    // and keep col!() column aligned with funcpathfile!() on prev line.
+    let col_chk = col!() as int; 
 
-    // Whew. Now we can relax.
     info2!("coltest is '{}'", coltest);
 
     let v: ~[&str] = coltest.split_terminator_iter('|').collect();
@@ -223,13 +210,9 @@ pub fn main() {
     let linenum :int  = from_str(w[1]).unwrap();
     let colnum  :int  = from_str(w[2]).unwrap();
 
-    assert_eq!(filename, "syntax-extension-funcpathfile.rs");
-    assert_eq!(linenum, 209); // WARNING: location sensitive.
-    assert_eq!(colnum, 18);   // WARNING: location sensitive
-
-    // === add new tests below this line ===
-    //
-    //     or else be sure and fix up the linenum and colnum asserts above
+    assert_eq!(filename, file!());
+    assert_eq!(linenum, line_said);
+    assert_eq!(colnum, col_chk);
 
 }
 
