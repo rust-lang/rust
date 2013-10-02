@@ -437,7 +437,8 @@ pub fn get_single_str_from_tts(cx: @ExtCtxt,
     }
 
     match tts[0] {
-        ast::tt_tok(_, token::LIT_STR(ident)) => cx.str_of(ident),
+        ast::tt_tok(_, token::LIT_STR(ident))
+        | ast::tt_tok(_, token::LIT_STR_RAW(ident, _)) => cx.str_of(ident),
         _ => cx.span_fatal(sp, format!("{} requires a string.", name)),
     }
 }

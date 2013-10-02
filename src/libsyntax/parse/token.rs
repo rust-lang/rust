@@ -79,6 +79,7 @@ pub enum Token {
     LIT_FLOAT(ast::Ident, ast::float_ty),
     LIT_FLOAT_UNSUFFIXED(ast::Ident),
     LIT_STR(ast::Ident),
+    LIT_STR_RAW(ast::Ident, uint), /* raw str delimited by n hash symbols */
 
     /* Name components */
     // an identifier contains an "is_mod_name" boolean,
@@ -194,6 +195,10 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
         body
       }
       LIT_STR(ref s) => { format!("\"{}\"", ident_to_str(s).escape_default()) }
+      LIT_STR_RAW(ref s, n) => {
+          format!("r{delim}\"{string}\"{delim}",
+                  delim="#".repeat(n), string=ident_to_str(s))
+      }
 
       /* Name components */
       IDENT(s, _) => input.get(s.name).to_owned(),
@@ -243,6 +248,7 @@ pub fn can_begin_expr(t: &Token) -> bool {
       LIT_FLOAT(_, _) => true,
       LIT_FLOAT_UNSUFFIXED(_) => true,
       LIT_STR(_) => true,
+      LIT_STR_RAW(_, _) => true,
       POUND => true,
       AT => true,
       NOT => true,
@@ -284,6 +290,7 @@ pub fn is_lit(t: &Token) -> bool {
       LIT_FLOAT(_, _) => true,
       LIT_FLOAT_UNSUFFIXED(_) => true,
       LIT_STR(_) => true,
+      LIT_STR_RAW(_, _) => true,
       _ => false
     }
 }
