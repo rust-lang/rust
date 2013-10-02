@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static ILLEGAL: &'static str = func!(); // error: func!() called outside function.
+static ILLEGAL: &'static str = func!(); //~ ERROR func!() called when not inside a function
 
 fn main() {}
 

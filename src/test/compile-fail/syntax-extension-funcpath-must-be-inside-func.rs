@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static ILLEGAL: &'static str = funcpath!();
+static ILLEGAL: &'static str = funcpath!(); //~ ERROR funcpath!() called when not inside a function
 
 fn main() {}
 
