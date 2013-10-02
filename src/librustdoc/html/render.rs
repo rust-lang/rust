@@ -714,13 +714,18 @@ impl<'self> fmt::Default for Item<'self> {
             do clean_srcpath(it.item.source.filename) |component| {
                 path.push(component.to_owned());
             }
+            let href = if it.item.source.loline == it.item.source.hiline {
+                format!("{}", it.item.source.loline)
+            } else {
+                format!("{}-{}", it.item.source.loline, it.item.source.hiline)
+            };
             write!(fmt.buf,
                    "<a class='source'
-                       href='{root}src/{crate}/{path}.html\\#{line}'>[src]</a>",
+                       href='{root}src/{crate}/{path}.html\\#{href}'>[src]</a>",
                    root = it.cx.root_path,
                    crate = it.cx.layout.crate,
                    path = path.connect("/"),
-                   line = it.item.source.loline);
+                   href = href);
         }
 
         // Write the breadcrumb trail header for the top
