@@ -38,6 +38,7 @@ use std::to_str::ToStr;
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
 #[deriving(Clone, Eq)]
+#[allow(missing_doc)]
 pub enum Identifier {
     Numeric(uint),
     AlphaNumeric(~str)
