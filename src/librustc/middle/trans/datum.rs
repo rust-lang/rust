@@ -195,7 +195,7 @@ pub fn appropriate_mode(ccx: &mut CrateContext, ty: ty::t) -> DatumMode {
      * on whether type is immediate or not.
      */
 
-    if ty::type_is_voidish(ty) {
+    if ty::type_is_voidish(ccx.tcx, ty) {
         ByValue
     } else if type_is_immediate(ccx, ty) {
         ByValue
@@ -271,7 +271,7 @@ impl Datum {
 
         let _icx = push_ctxt("copy_to");
 
-        if ty::type_is_voidish(self.ty) {
+        if ty::type_is_voidish(bcx.tcx(), self.ty) {
             return bcx;
         }
 
@@ -343,7 +343,7 @@ impl Datum {
         debug2!("move_to(self={}, action={:?}, dst={})",
                self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
-        if ty::type_is_voidish(self.ty) {
+        if ty::type_is_voidish(bcx.tcx(), self.ty) {
             return bcx;
         }
 
@@ -432,7 +432,7 @@ impl Datum {
          *
          * Yields the value itself. */
 
-        if ty::type_is_voidish(self.ty) {
+        if ty::type_is_voidish(bcx.tcx(), self.ty) {
             C_nil()
         } else {
             match self.mode {
@@ -469,7 +469,7 @@ impl Datum {
         match self.mode {
             ByRef(_) => self.val,
             ByValue => {
-                if ty::type_is_voidish(self.ty) {
+                if ty::type_is_voidish(bcx.tcx(), self.ty) {
                     C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
                     let slot = alloc_ty(bcx, self.ty, "");

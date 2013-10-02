@@ -1733,7 +1733,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
         fcx.alloca_insert_pt = Some(llvm::LLVMGetFirstInstruction(entry_bcx.llbb));
     }
 
-    if !ty::type_is_voidish(substd_output_type) {
+    if !ty::type_is_voidish(ccx.tcx, substd_output_type) {
         // If the function returns nil/bot, there is no real return
         // value, so do not set `llretptr`.
         if !skip_retptr || uses_outptr {
@@ -1964,7 +1964,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.expr.is_none() || ty::type_is_voidish(block_ty) {
+    if body.expr.is_none() || ty::type_is_voidish(bcx.tcx(), block_ty) {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
         let dest = expr::SaveIn(fcx.llretptr.unwrap());
