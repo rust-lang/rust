@@ -290,7 +290,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         debug2!("add_env(closure_ty={})", closure_ty.repr(tcx));
         let scratch = scratch_datum(bcx, closure_ty, "__adjust", false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
-        assert_eq!(datum.appropriate_mode(tcx), ByValue);
+        assert_eq!(datum.appropriate_mode(bcx.ccx()), ByValue);
         Store(bcx, datum.to_appropriate_llval(bcx), llfn);
         let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
         Store(bcx, base::null_env_ptr(bcx.ccx()), llenv);

@@ -492,7 +492,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
 
         // Push Rust return pointer, using null if it will be unused.
         let rust_uses_outptr =
-            type_of::return_uses_outptr(tcx, tys.fn_sig.output);
+            type_of::return_uses_outptr(ccx, tys.fn_sig.output);
         let return_alloca: Option<ValueRef>;
         let llrust_ret_ty = tys.llsig.llret_ty;
         let llrust_retptr_ty = llrust_ret_ty.ptr_to();
@@ -702,7 +702,7 @@ fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig)
     LlvmSignature {
         llarg_tys: llarg_tys,
         llret_ty: llret_ty,
-        sret: type_of::return_uses_outptr(ccx.tcx, fn_sig.output),
+        sret: type_of::return_uses_outptr(ccx, fn_sig.output),
     }
 }
 
