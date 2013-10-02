@@ -855,7 +855,7 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('S', tm))
           }
           't' => ~"\t",
-          //'U' {}
+          'U' => format!("{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
           'u' => {
             let i = tm.tm_wday as int;
             (if i == 0 { 7 } else { i }).to_str()
@@ -1240,7 +1240,7 @@ mod tests {
         assert_eq!(local.strftime("%s"), ~"1234567890");
         assert_eq!(local.strftime("%T"), ~"15:31:30");
         assert_eq!(local.strftime("%t"), ~"\t");
-        // assert!(local.strftime("%U") == "06");
+        assert_eq!(local.strftime("%U"), ~"06");
         assert_eq!(local.strftime("%u"), ~"5");
         // assert!(local.strftime("%V") == "07");
         assert_eq!(local.strftime("%v"), ~"13-Feb-2009");
