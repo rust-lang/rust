@@ -179,5 +179,13 @@ pub fn main() {
     info2!("l4 is '{}'", l4);
     assert!(l4.ends_with("main::lambda::embedded"));
 
+    // column information is needed to distinguish between multiple lambda
+    // on a single line.
+    let l5 = || { funcpathfile!() }; let l6 = || { funcpathfile!() };
+    let s5 = l5();
+    let s6 = l6();
+    info2!("l5 is '{}', l6 is '{}'", s5, s6);
+    assert!(s5 != s6);
+
 }
 
