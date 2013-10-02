@@ -65,7 +65,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let val = Call(bcx, llfn, [a, b], []);
         let result = ExtractValue(bcx, val, 0);
         let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool());
-        let ret = Load(bcx, Alloca(bcx, type_of::type_of(bcx.ccx(), t), ""));
+        let ret = C_undef(type_of::type_of(bcx.ccx(), t));
         let ret = InsertValue(bcx, ret, result, 0);
         let ret = InsertValue(bcx, ret, overflow, 1);
 
