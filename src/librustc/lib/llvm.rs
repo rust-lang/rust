@@ -11,6 +11,7 @@
 // LLVM wrappers are intended to be called from trans,
 // which already runs in a #[fixed_stack_segment]
 #[allow(cstack)];
+#[allow(non_uppercase_pattern_statics)];
 
 use std::c_str::ToCStr;
 use std::hashmap::HashMap;
