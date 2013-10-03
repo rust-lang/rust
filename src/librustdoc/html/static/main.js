@@ -31,6 +31,25 @@
     resizeShortBlocks();
     $(window).on('resize', resizeShortBlocks);
 
+    function highlightSourceLines() {
+        var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
+        if (match) {
+            from = parseInt(match[1], 10);
+            to = Math.min(50000, parseInt(match[2] || match[1], 10));
+            from = Math.min(from, to);
+            if ($('#' + from).length === 0) {
+                return;
+            }
+            $('#' + from)[0].scrollIntoView();
+            $('.line-numbers span').removeClass('line-highlighted');
+            for (i = from; i <= to; i += 1) {
+                $('#' + i).addClass('line-highlighted');
+            }
+        }
+    }
+    highlightSourceLines();
+    $(window).on('hashchange', highlightSourceLines);
+
     $(document).on('keyup', function (e) {
         if (document.activeElement.tagName === 'INPUT') {
             return;

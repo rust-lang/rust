@@ -13,7 +13,6 @@ use std::uint;
 use std::hashmap::HashSet;
 
 use syntax::ast;
-use syntax::ast_util::is_local;
 
 use clean;
 use clean::Item;
@@ -131,8 +130,8 @@ pub fn strip_private(mut crate: clean::Crate) -> plugins::PluginResult {
             match i.inner {
                 clean::ImplItem(ref imp) => {
                     match imp.trait_ {
-                        Some(clean::ResolvedPath{ did, _ }) => {
-                            if is_local(did) && !self.contains(&did.node) {
+                        Some(clean::ResolvedPath{ id, _ }) => {
+                            if !self.contains(&id) {
                                 return None;
                             }
                         }

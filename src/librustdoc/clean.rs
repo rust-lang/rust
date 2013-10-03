@@ -15,11 +15,18 @@ use its = syntax::parse::token::ident_to_str;
 
 use syntax;
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttributeMethods;
 
+use rustc::metadata::cstore;
+use rustc::metadata::csearch;
+use rustc::metadata::decoder;
+
 use std;
+use std::hashmap::HashMap;
+
 use doctree;
 use visit_ast;
 use std::local_data;
@@ -61,19 +68,44 @@ impl<T: Clean<U>, U> Clean<~[U]> for syntax::opt_vec::OptVec<T> {
 pub struct Crate {
     name: ~str,
     module: Option<Item>,
+    externs: HashMap<ast::CrateNum, ExternalCrate>,
 }
 
 impl Clean<Crate> for visit_ast::RustdocVisitor {
     fn clean(&self) -> Crate {
         use syntax::attr::{find_linkage_metas, last_meta_item_value_str_by_name};
-        let maybe_meta = last_meta_item_value_str_by_name(find_linkage_metas(self.attrs), "name");
+        let maybe_meta = last_meta_item_value_str_by_name(
+                                find_linkage_metas(self.attrs), "name");
+        let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
+
+        let mut externs = HashMap::new();
+        do cstore::iter_crate_data(cx.sess.cstore) |n, meta| {
+            externs.insert(n, meta.clean());
+        }
 
         Crate {
             name: match maybe_meta {
                 Some(x) => x.to_owned(),
-                None => fail2!("rustdoc_ng requires a \\#[link(name=\"foo\")] crate attribute"),
+                None => fail2!("rustdoc requires a \\#[link(name=\"foo\")] \
+                                crate attribute"),
             },
             module: Some(self.module.clean()),
+            externs: externs,
+        }
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct ExternalCrate {
+    name: ~str,
+    attrs: ~[Attribute],
+}
+
+impl Clean<ExternalCrate> for cstore::crate_metadata {
+    fn clean(&self) -> ExternalCrate {
+        ExternalCrate {
+            name: self.name.to_owned(),
+            attrs: decoder::get_crate_attributes(self.data).clean()
         }
     }
 }
@@ -542,7 +574,15 @@ pub enum Type {
     ResolvedPath {
         path: Path,
         typarams: Option<~[TyParamBound]>,
-        did: ast::DefId
+        id: ast::NodeId,
+    },
+    /// Same as above, but only external variants
+    ExternalPath {
+        path: Path,
+        typarams: Option<~[TyParamBound]>,
+        fqn: ~[~str],
+        kind: TypeKind,
+        crate: ast::CrateNum,
     },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
@@ -570,6 +610,14 @@ pub enum Type {
     RawPointer(Mutability, ~Type),
     BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: ~Type},
     // region, raw, other boxes, mutable
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub enum TypeKind {
+    TypeStruct,
+    TypeEnum,
+    TypeTrait,
+    TypeFunction,
 }
 
 impl Clean<Type> for ast::Ty {
@@ -1099,26 +1147,12 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
     }
 }
 
-fn remove_comment_tags(s: &str) -> ~str {
-    if s.starts_with("/") {
-        match s.slice(0,3) {
-            &"///" => return s.slice(3, s.len()).trim().to_owned(),
-            &"/**" | &"/*!" => return s.slice(3, s.len() - 2).trim().to_owned(),
-            _ => return s.trim().to_owned()
-        }
-    } else {
-        return s.to_owned();
-    }
-}
-
 /// Given a Type, resolve it using the def_map
 fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
                 id: ast::NodeId) -> Type {
-    use syntax::ast::*;
-
-    let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
+    let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
     debug2!("searching for {:?} in defmap", id);
-    let d = match dm.find(&id) {
+    let d = match cx.tycx.def_map.find(&id) {
         Some(k) => k,
         None => {
             let ctxt = local_data::get(super::ctxtkey, |x| *x.unwrap());
@@ -1128,28 +1162,41 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         }
     };
 
-    let def_id = match *d {
-        DefFn(i, _) => i,
-        DefSelf(i) | DefSelfTy(i) => return Self(i),
-        DefTy(i) => i,
-        DefTrait(i) => {
+    let (def_id, kind) = match *d {
+        ast::DefFn(i, _) => (i, TypeFunction),
+        ast::DefSelf(i) | ast::DefSelfTy(i) => return Self(i),
+        ast::DefTy(i) => (i, TypeEnum),
+        ast::DefTrait(i) => {
             debug2!("saw DefTrait in def_to_id");
-            i
+            (i, TypeTrait)
         },
-        DefPrimTy(p) => match p {
-            ty_str => return String,
-            ty_bool => return Bool,
+        ast::DefPrimTy(p) => match p {
+            ast::ty_str => return String,
+            ast::ty_bool => return Bool,
             _ => return Primitive(p)
         },
-        DefTyParam(i, _) => return Generic(i.node),
-        DefStruct(i) => i,
-        DefTyParamBinder(i) => {
+        ast::DefTyParam(i, _) => return Generic(i.node),
+        ast::DefStruct(i) => (i, TypeStruct),
+        ast::DefTyParamBinder(i) => {
             debug2!("found a typaram_binder, what is it? {}", i);
             return TyParamBinder(i);
         },
         x => fail2!("resolved type maps to a weird def {:?}", x),
     };
-    ResolvedPath{ path: path, typarams: tpbs, did: def_id }
+    if ast_util::is_local(def_id) {
+        ResolvedPath{ path: path, typarams: tpbs, id: def_id.node }
+    } else {
+        let fqn = csearch::get_item_path(cx.tycx, def_id);
+        let fqn = fqn.move_iter().map(|i| {
+            match i {
+                ast_map::path_mod(id) |
+                ast_map::path_name(id) |
+                ast_map::path_pretty_name(id, _) => id.clean()
+            }
+        }).to_owned_vec();
+        ExternalPath{ path: path, typarams: tpbs, fqn: fqn, kind: kind,
+                      crate: def_id.crate }
+    }
 }
 
 fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {

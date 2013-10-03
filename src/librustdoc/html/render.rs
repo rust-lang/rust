@@ -28,10 +28,8 @@ use std::vec;
 use extra::arc::RWArc;
 use extra::json::ToJson;
 use extra::sort;
-use extra::time;
 
 use syntax::ast;
-use syntax::ast_util::is_local;
 use syntax::attr;
 
 use clean;
@@ -52,6 +50,12 @@ pub struct Context {
     include_sources: bool,
 }
 
+pub enum ExternalLocation {
+    Remote(~str),   // remote url root of the documentation
+    Local,          // inside local folder
+    Unknown,        // unknown where the documentation is
+}
+
 enum Implementor {
     PathType(clean::Type),
     OtherType(clean::Generics, /* trait */ clean::Type, /* for */ clean::Type),
@@ -68,6 +72,8 @@ struct Cache {
     traits: HashMap<ast::NodeId, HashMap<~str, ~str>>,
     // trait id => implementors of the trait
     implementors: HashMap<ast::NodeId, ~[Implementor]>,
+    // crate number => where is the crate's dox located at
+    extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
     priv stack: ~[~str],
     priv parent_stack: ~[ast::NodeId],
@@ -142,6 +148,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         stack: ~[],
         parent_stack: ~[],
         search_index: ~[],
+        extern_locations: HashMap::new(),
     };
     cache.stack.push(crate.name.clone());
     crate = cache.fold_crate(crate);
@@ -154,6 +161,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     write(dst.push("main.css"), include_str!("static/main.css"));
     write(dst.push("normalize.css"), include_str!("static/normalize.css"));
 
+    // Publish the search index
     {
         let dst = dst.push("search-index.js");
         let mut w = BufferedWriter::new(dst.open_writer(io::CreateOrTruncate));
@@ -180,9 +188,9 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         w.flush();
     }
 
-    info2!("emitting source files");
-    let started = time::precise_time_ns();
+    // Render all source files (this may turn into a giant no-op)
     {
+        info2!("emitting source files");
         let dst = cx.dst.push("src");
         mkdir(&dst);
         let dst = dst.push(crate.name);
@@ -194,14 +202,13 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         };
         crate = folder.fold_crate(crate);
     }
-    let ended = time::precise_time_ns();
-    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 
-    info2!("rendering the whole crate");
-    let started = time::precise_time_ns();
+    for (&n, e) in crate.externs.iter() {
+        cache.extern_locations.insert(n, extern_location(e, &cx.dst));
+    }
+
+    // And finally render the whole crate's documentation
     cx.crate(crate, cache);
-    let ended = time::precise_time_ns();
-    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 }
 
 fn write(dst: Path, contents: &str) {
@@ -233,6 +240,38 @@ fn clean_srcpath(src: &str, f: &fn(&str)) {
             f(c.as_slice())
         }
     }
+}
+
+fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
+    // See if there's documentation generated into the local directory
+    let local_location = dst.push(e.name);
+    if local_location.is_dir() {
+        return Local;
+    }
+
+    // Failing that, see if there's an attribute specifying where to find this
+    // external crate
+    for attr in e.attrs.iter() {
+        match *attr {
+            clean::List(~"doc", ref list) => {
+                for attr in list.iter() {
+                    match *attr {
+                        clean::NameValue(~"html_root_url", ref s) => {
+                            if s.ends_with("/") {
+                                return Remote(s.to_owned());
+                            }
+                            return Remote(*s + "/");
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Well, at least we tried.
+    return Unknown;
 }
 
 impl<'self> DocFolder for SourceCollector<'self> {
@@ -353,8 +392,7 @@ impl DocFolder for Cache {
         match item.inner {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
-                    Some(clean::ResolvedPath{ did, _ }) if is_local(did) => {
-                        let id = did.node;
+                    Some(clean::ResolvedPath{ id, _ }) => {
                         let v = do self.implementors.find_or_insert_with(id) |_|{
                             ~[]
                         };
@@ -441,8 +479,8 @@ impl DocFolder for Cache {
             }
             clean::ImplItem(ref i) => {
                 match i.for_ {
-                    clean::ResolvedPath{ did, _ } if is_local(did) => {
-                        self.parent_stack.push(did.node); true
+                    clean::ResolvedPath{ id, _ } => {
+                        self.parent_stack.push(id); true
                     }
                     _ => false
                 }
@@ -457,8 +495,7 @@ impl DocFolder for Cache {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), _ } => {
                         match i.for_ {
-                            clean::ResolvedPath { did, _ } if is_local(did) => {
-                                let id = did.node;
+                            clean::ResolvedPath { id, _ } => {
                                 let v = do self.impls.find_or_insert_with(id) |_| {
                                     ~[]
                                 };
@@ -714,13 +751,18 @@ impl<'self> fmt::Default for Item<'self> {
             do clean_srcpath(it.item.source.filename) |component| {
                 path.push(component.to_owned());
             }
+            let href = if it.item.source.loline == it.item.source.hiline {
+                format!("{}", it.item.source.loline)
+            } else {
+                format!("{}-{}", it.item.source.loline, it.item.source.hiline)
+            };
             write!(fmt.buf,
                    "<a class='source'
-                       href='{root}src/{crate}/{path}.html\\#{line}'>[src]</a>",
+                       href='{root}src/{crate}/{path}.html\\#{href}'>[src]</a>",
                    root = it.cx.root_path,
                    crate = it.cx.layout.crate,
                    path = path.connect("/"),
-                   line = it.item.source.loline);
+                   href = href);
         }
 
         // Write the breadcrumb trail header for the top
@@ -1253,7 +1295,7 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
         Some(ref ty) => {
             write!(w, "{} for ", *ty);
             match *ty {
-                clean::ResolvedPath { did, _ } => Some(did),
+                clean::ResolvedPath { id, _ } => Some(id),
                 _ => None,
             }
         }
@@ -1284,8 +1326,7 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
         // No documentation? Attempt to slurp in the trait's documentation
         let trait_id = match trait_id {
             None => continue,
-            Some(id) if is_local(id) => continue,
-            Some(id) => id.node,
+            Some(id) => id,
         };
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
