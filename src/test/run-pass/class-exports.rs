@@ -13,7 +13,7 @@
 /* Test that exporting a class also exports its
    public fields and methods */
 
-use kitty::*;
+use kitty::cat;
 
 mod kitty {
     pub struct cat {

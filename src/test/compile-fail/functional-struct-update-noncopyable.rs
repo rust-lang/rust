@@ -12,7 +12,7 @@
 
 // xfail-fast #7103
 extern mod extra;
-use extra::arc::*;
+use extra::arc::Arc;
 
 struct A { y: Arc<int>, x: Arc<int> }
 

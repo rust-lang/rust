@@ -14,6 +14,8 @@
 // check that cfg correctly chooses between the macro impls (see also
 // cfg-macros-notfoo.rs)
 
+#[feature(macro_rules)];
+
 #[cfg(foo)]
 #[macro_escape]
 mod foo {

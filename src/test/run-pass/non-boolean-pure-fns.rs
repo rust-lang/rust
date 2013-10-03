@@ -12,7 +12,7 @@
 
 extern mod extra;
 
-use extra::list::*;
+use extra::list::{List, Cons, Nil, head, is_empty};
 
 fn pure_length_go<T:Clone>(ls: @List<T>, acc: uint) -> uint {
     match *ls { Nil => { acc } Cons(_, tl) => { pure_length_go(tl, acc + 1u) } }

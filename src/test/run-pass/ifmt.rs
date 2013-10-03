@@ -10,6 +10,7 @@
 
 // xfail-fast: check-fast screws up repr paths
 
+#[feature(macro_rules)];
 #[deny(warnings)];
 
 use std::fmt;

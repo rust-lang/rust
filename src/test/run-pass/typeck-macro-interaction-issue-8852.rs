@@ -1,3 +1,5 @@
+#[feature(macro_rules)];
+
 enum T {
     A(int),
     B(f64)

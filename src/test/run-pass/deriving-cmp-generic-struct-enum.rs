@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(struct_variant)];
+
 #[deriving(Eq, TotalEq, Ord, TotalOrd)]
 enum ES<T> {
     ES1 { x: T },

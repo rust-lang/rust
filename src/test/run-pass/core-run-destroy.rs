@@ -16,7 +16,6 @@
 // instead of in std.
 
 use std::libc;
-use std::run::*;
 use std::run;
 use std::str;
 

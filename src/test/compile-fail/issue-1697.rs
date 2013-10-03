@@ -10,6 +10,8 @@
 
 // Testing that we don't fail abnormally after hitting the errors
 
+#[feature(globs)];
+
 use unresolved::*; //~ ERROR unresolved import. maybe a missing
 //~^ ERROR failed to resolve import
 
