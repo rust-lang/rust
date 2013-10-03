@@ -131,7 +131,7 @@ impl Iterator<Path> for GlobIterator {
                 None => {
                     // FIXME (#9639): How do we handle non-utf8 filenames? Ignore them for now
                     // Ideally we'd still match them against a *
-                    loop;
+                    continue;
                 }
                 Some(x) => x
             }, self.options) {

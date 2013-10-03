@@ -253,7 +253,7 @@ impl GenericPath for Path {
             loop {
                 match (ita.next(), itb.next()) {
                     (None, _) => break,
-                    (Some(a), Some(b)) if a == b => { loop },
+                    (Some(a), Some(b)) if a == b => { continue },
                     (Some(a), _) if a == bytes!("..") => {
                         // if ita contains only .. components, it's an ancestor
                         return ita.all(|x| x == bytes!(".."));
