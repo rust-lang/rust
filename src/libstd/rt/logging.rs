@@ -199,15 +199,25 @@ impl rt::io::Writer for StdErrLogger {
 pub fn init() {
     use os;
 
-    let crate_map = get_crate_map();
-
     let log_spec = os::getenv("RUST_LOG");
-    match log_spec {
-        Some(spec) => {
-            update_log_settings(crate_map, spec);
-        }
-        None => {
-            update_log_settings(crate_map, ~"");
+    match get_crate_map() {
+        Some(crate_map) => {
+            match log_spec {
+                Some(spec) => {
+                    update_log_settings(crate_map, spec);
+                }
+                None => {
+                    update_log_settings(crate_map, ~"");
+                }
+            }
+        },
+        _ => {
+            match log_spec {
+                Some(_) => {
+                    dumb_println("warning: RUST_LOG set, but no crate map found.");
+                },
+                None => {}
+            }
         }
     }
 }
