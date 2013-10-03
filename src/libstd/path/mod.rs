@@ -43,6 +43,10 @@ Option<&str> with `.as_str()`. Similarly, attributes of the path can be queried
 with methods such as `.filename()`. There are also methods that return a new
 path instead of modifying the receiver, such as `.join()` or `.dir_path()`.
 
+Paths are always kept in normalized form. This means that creating the path
+`Path::from_str("a/b/../c")` will return the path `a/c`. Similarly any attempt
+to mutate the path will always leave it in normalized form.
+
 When rendering a path to some form of display, there is a method `.display()`
 which is compatible with the `format!()` parameter `{}`. This will render the
 path as a string, replacing all non-utf8 sequences with the Replacement

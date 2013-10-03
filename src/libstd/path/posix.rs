@@ -349,7 +349,7 @@ impl Path {
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
     /// components, and unnecessary . and .. components.
-    pub fn normalize<V: Vector<u8>+CopyableVector<u8>>(v: V) -> ~[u8] {
+    fn normalize<V: Vector<u8>+CopyableVector<u8>>(v: V) -> ~[u8] {
         // borrowck is being very picky
         let val = {
             let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == sep;
