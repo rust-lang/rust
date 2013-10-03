@@ -959,6 +959,16 @@ pub fn link_binary(sess: Session,
     }
 }
 
+fn is_writeable(p: &Path) -> bool {
+    use std::libc::consts::os::posix88::S_IWUSR;
+
+    !os::path_exists(p) ||
+        (match p.get_mode() {
+            None => false,
+            Some(m) => m & S_IWUSR as uint == S_IWUSR as uint
+        })
+}
+
 pub fn link_args(sess: Session,
                  obj_filename: &Path,
                  out_filename: &Path,
@@ -981,6 +991,21 @@ pub fn link_args(sess: Session,
     } else {
         out_filename.clone()
     };
+
+    // Make sure the output and obj_filename are both writeable.
+    // Mac, FreeBSD, and Windows system linkers check this already --
+    // however, the Linux linker will happily overwrite a read-only file.
+    // We should be consistent.
+    let obj_is_writeable = is_writeable(obj_filename);
+    let out_is_writeable = is_writeable(&output);
+    if !out_is_writeable {
+        sess.fatal(format!("Output file {} is not writeable -- check its permissions.",
+                           output.display()));
+    }
+    else if !obj_is_writeable {
+        sess.fatal(format!("Object file {} is not writeable -- check its permissions.",
+                           obj_filename.display()));
+    }
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.

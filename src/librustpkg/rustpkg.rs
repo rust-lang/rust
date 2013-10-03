@@ -556,7 +556,7 @@ impl CtxMethods for BuildContext {
         debug2!("In declare inputs for {}", id.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
-                let path = pkg_src.start_dir.join(&c.file).normalize();
+                let path = pkg_src.start_dir.join(&c.file);
                 debug2!("Recording input: {}", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 inputs.push((~"file", path.as_str().unwrap().to_owned()));
@@ -623,19 +623,19 @@ impl CtxMethods for BuildContext {
                 // Declare all the *inputs* to the declared input too, as inputs
                 for executable in subex.iter() {
                     exe_thing.discover_input("binary",
-                                             executable.to_str(),
+                                             executable.as_str().unwrap().to_owned(),
                                              workcache_support::digest_only_date(executable));
                 }
                 for library in sublib.iter() {
                     exe_thing.discover_input("binary",
-                                             library.to_str(),
+                                             library.as_str().unwrap().to_owned(),
                                              workcache_support::digest_only_date(library));
                 }
 
                 for transitive_dependency in sub_build_inputs.iter() {
                     exe_thing.discover_input(
                         "file",
-                        transitive_dependency.to_str(),
+                        transitive_dependency.as_str().unwrap().to_owned(),
                         workcache_support::digest_file_with_date(transitive_dependency));
                 }
 

@@ -441,8 +441,8 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         // Now we know that this crate has a discovered dependency on
                         // installed_path
                         // FIXME (#9639): This needs to handle non-utf8 paths
-                        add_dep(self.deps, self.parent_crate.to_str(),
-                                (~"binary", installed_path.to_str()));
+                        add_dep(self.deps, self.parent_crate.as_str().unwrap().to_owned(),
+                                (~"binary", installed_path.as_str().unwrap().to_owned()));
                         self.exec.discover_input("binary",
                                                  installed_path.as_str().unwrap(),
                                                  digest_only_date(installed_path));
@@ -492,6 +492,10 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                             self.exec.discover_input("binary",
                                                      dep.as_str().unwrap(),
                                                      digest_only_date(dep));
+                            add_dep(self.deps,
+                                    self.parent_crate.as_str().unwrap().to_owned(),
+                                    (~"binary", dep.as_str().unwrap().to_owned()));
+
                             // Also, add an additional search path
                             let dep_dir = dep.dir_path();
                             debug2!("Installed {} into {}", dep.display(), dep_dir.display());
@@ -502,41 +506,31 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                 lib_name, outputs_disc.len(), inputs_disc.len());
                         // It must have installed *something*...
                         assert!(!outputs_disc.is_empty());
-                        let target_workspace = outputs_disc[0].pop();
-                        for dep in outputs_disc.iter() {
-                            debug2!("Discovering a binary input: {}", dep.to_str());
-                            self.exec.discover_input("binary", dep.to_str(),
-                                                     digest_only_date(dep));
-                            add_dep(self.deps,
-                                    self.parent_crate.to_str(),
-                                    (~"binary", dep.to_str()));
-                        }
+                        let mut target_workspace = outputs_disc[0].clone();
+                        target_workspace.pop();
                         for &(ref what, ref dep) in inputs_disc.iter() {
                             if *what == ~"file" {
                                 add_dep(self.deps,
-                                        self.parent_crate.to_str(),
-                                        (~"file", dep.to_str()));
-
+                                        self.parent_crate.as_str().unwrap().to_owned(),
+                                        (~"file", dep.clone()));
                                 self.exec.discover_input(*what,
                                                          *dep,
                                                          digest_file_with_date(
                                                              &Path::new(dep.as_slice())));
-                            }
-                                else if *what == ~"binary" {
+                            } else if *what == ~"binary" {
                                 add_dep(self.deps,
-                                        self.parent_crate.to_str(),
-                                        (~"binary", dep.to_str()));
+                                        self.parent_crate.as_str().unwrap().to_owned(),
+                                        (~"binary", dep.clone()));
                                 self.exec.discover_input(*what,
                                                          *dep,
                                                          digest_only_date(
                                                              &Path::new(dep.as_slice())));
-                            }
-                                else {
+                            } else {
                                 fail2!("Bad kind: {}", *what);
                             }
                             // Also, add an additional search path
                             debug2!("Installed {} into {}",
-                                    lib_name, target_workspace.to_str());
+                                    lib_name, target_workspace.as_str().unwrap().to_owned());
                             (self.save)(target_workspace.clone());
                         }
                     }
