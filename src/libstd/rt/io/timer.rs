@@ -15,7 +15,9 @@ use rt::rtio::{IoFactory, IoFactoryObject,
                RtioTimer, RtioTimerObject};
 use rt::local::Local;
 
-pub struct Timer(~RtioTimerObject);
+pub struct Timer {
+    priv obj: ~RtioTimerObject
+}
 
 /// Sleep the current task for `msecs` milliseconds.
 pub fn sleep(msecs: u64) {
@@ -34,7 +36,7 @@ impl Timer {
             (*io).timer_init()
         };
         match timer {
-            Ok(t) => Some(Timer(t)),
+            Ok(t) => Some(Timer { obj: t }),
             Err(ioerr) => {
                 rtdebug!("Timer::init: failed to init: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
@@ -44,7 +46,7 @@ impl Timer {
     }
 
     pub fn sleep(&mut self, msecs: u64) {
-        (**self).sleep(msecs);
+        self.obj.sleep(msecs);
     }
 }
 

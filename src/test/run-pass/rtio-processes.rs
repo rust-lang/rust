@@ -84,7 +84,7 @@ fn read_all(input: &mut Reader) -> ~str {
     let mut buf = [0, ..1024];
     loop {
         match input.read(buf) {
-            None | Some(0) => { break }
+            None => { break }
             Some(n) => { ret = ret + str::from_utf8(buf.slice_to(n)); }
         }
     }
