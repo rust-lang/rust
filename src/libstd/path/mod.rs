@@ -8,7 +8,60 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Cross-platform file path handling (re-write)
+/*!
+
+Cross-platform path support
+
+This module implements support for two flavors of paths. `PosixPath` represents
+a path on any unix-like system, whereas `WindowsPath` represents a path on
+Windows. This module also exposes a typedef `Path` which is equal to the
+appropriate platform-specific path variant.
+
+Both `PosixPath` and `WindowsPath` implement a trait `GenericPath`, which
+contains the set of methods that behave the same for both paths. They each also
+implement some methods that could not be expressed in `GenericPath`, yet behave
+identically for both path flavors, such as `::from_str()` or
+`.component_iter()`.
+
+The three main design goals of this module are 1) to avoid unnecessary
+allocation, 2) to behave the same regardless of which flavor of path is being
+used, and 3) to support paths that cannot be represented in UTF-8 (as Linux has
+no restriction on paths beyond disallowing NUL).
+
+## Usage
+
+Usage of this module is fairly straightforward. Unless writing platform-specific
+code, `Path` should be used to refer to the platform-native path, and methods
+used should be restricted to those defined in `GenericPath`, and those methods
+that are declared identically on both `PosixPath` and `WindowsPath`.
+
+Creation of a path is typically done with either `Path::from_str(some_str)` or
+`Path::from_vec(some_vec)`. This path can be modified with `.push()` and
+`.pop()` (and other setters). The resulting Path can either be passed to another
+API that expects a path, or can be turned into a &[u8] with `.as_vec()` or a
+Option<&str> with `.as_str()`. Similarly, attributes of the path can be queried
+with methods such as `.filename()`. There are also methods that return a new
+path instead of modifying the receiver, such as `.join()` or `.dir_path()`.
+
+When rendering a path to some form of display, there is a method `.display()`
+which is compatible with the `format!()` parameter `{}`. This will render the
+path as a string, replacing all non-utf8 sequences with the Replacement
+Character (U+FFFD). As such it is not suitable for passing to any API that
+actually operates on the path; it is only intended for display.
+
+## Example
+
+```rust
+let mut path = Path::from_str("/tmp/path");
+debug2!("path: {}", path.display());
+path.set_filename_str("foo");
+path.push_str("bar");
+debug2!("new path: {}", path.display());
+let b = std::os::path_exists(&path);
+debug2!("path exists: {}", b);
+```
+
+*/
 
 use container::Container;
 use c_str::CString;
