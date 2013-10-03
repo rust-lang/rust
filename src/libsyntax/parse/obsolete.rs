@@ -17,11 +17,10 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
-use ast::{Expr, ExprLit, lit_nil, Attribute};
-use ast;
+use ast::{Expr, ExprLit, lit_nil};
 use codemap::{Span, respan};
 use parse::parser::Parser;
-use parse::token::{keywords, Token};
+use parse::token::Token;
 use parse::token;
 
 use std::str;
@@ -30,32 +29,9 @@ use std::to_bytes;
 /// The specific types of unsupported syntax
 #[deriving(Eq)]
 pub enum ObsoleteSyntax {
-    ObsoleteLet,
-    ObsoleteFieldTerminator,
-    ObsoleteWith,
-    ObsoleteClassTraits,
-    ObsoletePrivSection,
-    ObsoleteModeInFnType,
-    ObsoleteMoveInit,
-    ObsoleteBinaryMove,
     ObsoleteSwap,
     ObsoleteUnsafeBlock,
-    ObsoleteUnenforcedBound,
-    ObsoleteImplSyntax,
-    ObsoleteMutOwnedPointer,
-    ObsoleteMutVector,
-    ObsoleteRecordType,
-    ObsoleteRecordPattern,
-    ObsoletePostFnTySigil,
     ObsoleteBareFnType,
-    ObsoleteNewtypeEnum,
-    ObsoleteMode,
-    ObsoleteImplicitSelf,
-    ObsoleteLifetimeNotation,
-    ObsoletePurity,
-    ObsoleteStaticMethod,
-    ObsoleteConstItem,
-    ObsoleteFixedLengthVectorType,
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
@@ -87,50 +63,12 @@ pub trait ParserObsoleteMethods {
     fn token_is_obsolete_ident(&self, ident: &str, token: &Token) -> bool;
     fn is_obsolete_ident(&self, ident: &str) -> bool;
     fn eat_obsolete_ident(&self, ident: &str) -> bool;
-    fn try_parse_obsolete_with(&self) -> bool;
-    fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute]) -> bool;
 }
 
 impl ParserObsoleteMethods for Parser {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
-            ObsoleteLet => (
-                "`let` in field declaration",
-                "declare fields as `field: Type`"
-            ),
-            ObsoleteFieldTerminator => (
-                "field declaration terminated with semicolon",
-                "fields are now separated by commas"
-            ),
-            ObsoleteWith => (
-                "with",
-                "record update is done with `..`, e.g. \
-                 `MyStruct { foo: bar, .. baz }`"
-            ),
-            ObsoleteClassTraits => (
-                "class traits",
-                "implemented traits are specified on the impl, as in \
-                 `impl foo : bar {`"
-            ),
-            ObsoletePrivSection => (
-                "private section",
-                "the `priv` keyword is applied to individual items, methods, \
-                 and fields"
-            ),
-            ObsoleteModeInFnType => (
-                "mode without identifier in fn type",
-                "to use a (deprecated) mode in a fn type, you should \
-                 give the argument an explicit name (like `&&v: int`)"
-            ),
-            ObsoleteMoveInit => (
-                "initializer-by-move",
-                "Write `let foo = move bar` instead"
-            ),
-            ObsoleteBinaryMove => (
-                "binary move",
-                "Write `foo = move bar` instead"
-            ),
             ObsoleteSwap => (
                 "swap",
                 "Use std::util::{swap, replace} instead"
@@ -139,78 +77,9 @@ impl ParserObsoleteMethods for Parser {
                 "non-standalone unsafe block",
                 "use an inner `unsafe { ... }` block instead"
             ),
-            ObsoleteUnenforcedBound => (
-                "unenforced type parameter bound",
-                "use trait bounds on the functions that take the type as \
-                 arguments, not on the types themselves"
-            ),
-            ObsoleteImplSyntax => (
-                "colon-separated impl syntax",
-                "write `impl Trait for Type`"
-            ),
-            ObsoleteMutOwnedPointer => (
-                "const or mutable owned pointer",
-                "mutability inherits through `~` pointers; place the `~` box
-                 in a mutable location, like a mutable local variable or an \
-                 `@mut` box"
-            ),
-            ObsoleteMutVector => (
-                "const or mutable vector",
-                "mutability inherits through `~` pointers; place the vector \
-                 in a mutable location, like a mutable local variable or an \
-                 `@mut` box"
-            ),
-            ObsoleteRecordType => (
-                "structural record type",
-                "use a structure instead"
-            ),
-            ObsoleteRecordPattern => (
-                "structural record pattern",
-                "use a structure instead"
-            ),
-            ObsoletePostFnTySigil => (
-                "fn sigil in postfix position",
-                "Rather than `fn@`, `fn~`, or `fn&`, \
-                 write `@fn`, `~fn`, and `&fn` respectively"
-            ),
             ObsoleteBareFnType => (
                 "bare function type",
                 "use `&fn` or `extern fn` instead"
-            ),
-            ObsoleteNewtypeEnum => (
-                "newtype enum",
-                "instead of `enum Foo = int`, write `struct Foo(int)`"
-            ),
-            ObsoleteMode => (
-                "obsolete argument mode",
-                "replace `-` or `++` mode with `+`"
-            ),
-            ObsoleteImplicitSelf => (
-                "implicit self",
-                "use an explicit `self` declaration or declare the method as \
-                 static"
-            ),
-            ObsoleteLifetimeNotation => (
-                "`/` lifetime notation",
-                "instead of `&foo/bar`, write `&'foo bar`; instead of \
-                 `bar/&foo`, write `&bar<'foo>"
-            ),
-            ObsoletePurity => (
-                "pure function",
-                "remove `pure`"
-            ),
-            ObsoleteStaticMethod => (
-                "`static` notation",
-                "`static` is superfluous; remove it"
-            ),
-            ObsoleteConstItem => (
-                "`const` item",
-                "`const` items are now `static` items; replace `const` with \
-                 `static`"
-            ),
-            ObsoleteFixedLengthVectorType => (
-                "fixed-length vector notation",
-                "instead of `[T * N]`, write `[T, ..N]`"
             ),
             ObsoleteNamedExternModule => (
                 "named external module",
@@ -297,37 +166,4 @@ impl ParserObsoleteMethods for Parser {
             false
         }
     }
-
-    fn try_parse_obsolete_with(&self) -> bool {
-        if *self.token == token::COMMA
-            && self.look_ahead(1,
-                               |t| self.token_is_obsolete_ident("with", t)) {
-            self.bump();
-        }
-        if self.eat_obsolete_ident("with") {
-            self.obsolete(*self.last_span, ObsoleteWith);
-            self.parse_expr();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute])
-                                           -> bool {
-        if self.is_keyword(keywords::Priv) &&
-                self.look_ahead(1, |t| *t == token::LBRACE) {
-            self.obsolete(*self.span, ObsoletePrivSection);
-            self.eat_keyword(keywords::Priv);
-            self.bump();
-            while *self.token != token::RBRACE {
-                self.parse_single_struct_field(ast::private, attrs.to_owned());
-            }
-            self.bump();
-            true
-        } else {
-            false
-        }
-    }
-
 }
