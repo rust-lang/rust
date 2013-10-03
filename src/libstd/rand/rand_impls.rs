@@ -14,7 +14,6 @@ use char;
 use int;
 use option::{Option, Some, None};
 use rand::{Rand,Rng};
-use u32;
 use uint;
 
 impl Rand for int {
@@ -96,21 +95,23 @@ impl Rand for u64 {
 }
 
 impl Rand for f32 {
+    /// A random `f32` in the range `[0, 1)`.
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f32 {
-        rng.gen::<f64>() as f32
+        // weird, but this is the easiest way to get 2**32
+        static SCALE: f32 = 2.0 * (1u32 << 31) as f32;
+        rng.next_u32() as f32 / SCALE
     }
 }
 
-static SCALE : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
+    /// A random `f64` in the range `[0, 1)`.
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f64 {
-        let u1 = rng.next_u32() as f64;
-        let u2 = rng.next_u32() as f64;
-        let u3 = rng.next_u32() as f64;
+        // weird, but this is the easiest way to get 2**64
+        static SCALE: f64 = 2.0 * (1u64 << 63) as f64;
 
-        ((u1 / SCALE + u2) / SCALE + u3) / SCALE
+        rng.next_u64() as f64 / SCALE
     }
 }
 
