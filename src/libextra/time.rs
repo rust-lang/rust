@@ -593,7 +593,19 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 .and_then(|pos| parse_char(s, pos, '-'))
                 .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
           }
-          //'W' {}
+          'W' => {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 52_i32) {
+              Some(item) => {
+                let (v, pos) = item;         // If the day of the week has been set,
+                if tm.tm_wday != 7i32 {      // get day of the year with it.
+                  tm.tm_yday = ((7 - tm.tm_wday) % 7 + (v - 1) * 7
+                                + (tm.tm_wday + 7) % 7);
+                }
+                Ok(pos)
+              }
+              None => Err(~"Invalid week number")
+            }
+          }
           'w' => {
             match match_digits_in_range(s, pos, 1u, false, 0_i32, 6_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
@@ -674,7 +686,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             tm_mday: 0_i32,
             tm_mon: 0_i32,
             tm_year: 0_i32,
-            tm_wday: 0_i32,
+            tm_wday: 7_i32,
             tm_yday: 0_i32,
             tm_isdst: 0_i32,
             tm_gmtoff: 0_i32,
@@ -703,6 +715,9 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 }
             }
         }
+
+        // Day of the week wasn't set, so resetting to zero.
+        if tm.tm_wday == 7i32 { tm.tm_wday = 0i32; }
 
         if pos == len && rdr.eof() {
             Ok(Tm {
