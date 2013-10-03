@@ -33,6 +33,8 @@
 
 // debugger:continue
 
+#[feature(struct_variant)];
+
 // If a struct has exactly two variants, one of them is empty, and the other one
 // contains a non-nullable pointer, then this value is used as the discriminator.
 // The test cases in this file make sure that something readable is generated for

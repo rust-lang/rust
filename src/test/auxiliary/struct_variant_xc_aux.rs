@@ -12,6 +12,8 @@
        vers = "0.1")];
 #[crate_type = "lib"];
 
+#[feature(struct_variant)];
+
 pub enum Enum {
     Variant { arg: u8 }
 }

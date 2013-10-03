@@ -1,3 +1,5 @@
+#[feature(macro_rules)];
+
 macro_rules! test ( ($nm:ident,
                      $a:attr,
                      $i:item) => (mod $nm { $a $i }); )

@@ -19,7 +19,7 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::comm::*;
+    use std::comm::{stream, SharedChan};
     use std::hashmap::HashMap;
     use std::str;
     use std::task;

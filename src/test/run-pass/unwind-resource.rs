@@ -12,7 +12,7 @@
 
 extern mod extra;
 
-use std::comm::*;
+use std::comm::{stream, SharedChan};
 use std::task;
 
 struct complainer {

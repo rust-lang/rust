@@ -12,7 +12,7 @@
 // aux-build:issue_2723_a.rs
 
 extern mod issue_2723_a;
-use issue_2723_a::*;
+use issue_2723_a::f;
 
 pub fn main() {
     unsafe {
