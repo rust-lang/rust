@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use extra;
+struct S;
 
-struct Deserializer : extra::serialization::deserializer{ //~ ERROR obsolete syntax: class traits
-    x: ()
+impl S {
+    fn f(~mut self) {} //~ ERROR mutability declaration not allowed here
 }
-
-struct Foo {
-    a: ()
-}
-
-fn deserialize_foo<__D: extra::serialization::deserializer>(__d: __D) {
-}
-
-fn main() { let des = Deserializer(); let foo = deserialize_foo(des); }

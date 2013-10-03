@@ -8,14 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod obsolete_name {
-    //~^ ERROR obsolete syntax: named external module
-    fn bar();
-}
-
-trait A {
-    pub fn foo(); //~ ERROR: visibility not necessary
-    pub fn bar(); //~ ERROR: visibility not necessary
-}
-
-fn main() { }
+type mut_box = ~mut int;
+    //~^  ERROR found `mut` in ident position
+    //~^^ ERROR expected `;` but found `int`

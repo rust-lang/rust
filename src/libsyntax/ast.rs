@@ -531,9 +531,7 @@ pub enum Expr_ {
     ExprWhile(@Expr, Block),
     // FIXME #6993: change to Option<Name>
     ExprForLoop(@Pat, @Expr, Block, Option<Ident>),
-    /* Conditionless loop (can be exited with break, cont, or ret)
-       Same semantics as while(true) { body }, but typestate knows that the
-       (implicit) condition is always true. */
+    // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name>
     ExprLoop(Block, Option<Ident>),
     ExprMatch(@Expr, ~[Arm]),
