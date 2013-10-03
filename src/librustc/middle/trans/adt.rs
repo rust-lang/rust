@@ -326,14 +326,12 @@ fn range_to_inttype(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> In
             attempts = choose_shortest;
         }
     }
-    let mut best = attr::UnsignedInt(ast::ty_u64);
     for &ity in attempts.iter() {
         if bounds_usable(cx, ity, bounds) {
-            best = ity;
-            break;
+            return ity;
         }
     }
-    return best;
+    return attr::UnsignedInt(ast::ty_u64);
 }
 
 pub fn ll_inttype(cx: &mut CrateContext, ity: IntType) -> Type {
