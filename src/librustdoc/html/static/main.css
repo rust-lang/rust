@@ -118,9 +118,16 @@ body {
 .content h1 { margin-top: 0; }
 .content h1, .content h2 { margin-left: -20px; }
 .content pre { padding: 20px; }
-
+.content.source pre.rust {
+    white-space: pre;
+    overflow: auto;
+    padding-left: 0;
+}
 .content pre.line-numbers { float: left; border: none; }
 .line-numbers span { color: #c67e2d; }
+.line-numbers .line-highlighted {
+    background-color: #fff871;
+}
 
 .content .highlighted {
     cursor: pointer;
