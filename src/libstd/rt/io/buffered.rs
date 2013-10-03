@@ -187,25 +187,21 @@ impl<W: Writer> Decorator<W> for BufferedWriter<W> {
     }
 }
 
-// FIXME #9155 this should be a newtype struct
-struct InternalBufferedWriter<W> {
-    inner: BufferedWriter<W>
-}
+struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        self.inner.inner.read(buf)
+        self.inner.read(buf)
     }
 
     fn eof(&mut self) -> bool {
-        self.inner.inner.eof()
+        self.inner.eof()
     }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
 ///
 /// Note that `BufferedStream` will NOT flush its output buffer when dropped.
-// FIXME #9155 this should be a newtype struct
 pub struct BufferedStream<S> {
     priv inner: BufferedReader<InternalBufferedWriter<S>>
 }
@@ -214,7 +210,7 @@ impl<S: Stream> BufferedStream<S> {
     pub fn with_capacities(reader_cap: uint, writer_cap: uint, inner: S)
                            -> BufferedStream<S> {
         let writer = BufferedWriter::with_capacity(writer_cap, inner);
-        let internal_writer = InternalBufferedWriter { inner: writer };
+        let internal_writer = InternalBufferedWriter(writer);
         let reader = BufferedReader::with_capacity(reader_cap,
                                                    internal_writer);
         BufferedStream { inner: reader }
@@ -238,25 +234,25 @@ impl<S: Stream> Reader for BufferedStream<S> {
 
 impl<S: Stream> Writer for BufferedStream<S> {
     fn write(&mut self, buf: &[u8]) {
-        self.inner.inner.inner.write(buf)
+        self.inner.inner.write(buf)
     }
 
     fn flush(&mut self) {
-        self.inner.inner.inner.flush()
+        self.inner.inner.flush()
     }
 }
 
 impl<S: Stream> Decorator<S> for BufferedStream<S> {
     fn inner(self) -> S {
-        self.inner.inner.inner.inner()
+        self.inner.inner.inner()
     }
 
     fn inner_ref<'a>(&'a self) -> &'a S {
-        self.inner.inner.inner.inner_ref()
+        self.inner.inner.inner_ref()
     }
 
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut S {
-        self.inner.inner.inner.inner_mut_ref()
+        self.inner.inner.inner_mut_ref()
     }
 }
 
