@@ -17,8 +17,9 @@ use libc::{c_int, FILE};
 #[allow(non_camel_case_types)]
 pub type fd_t = c_int;
 
-// Make this a newtype so we can't do I/O on arbitrary integers
-pub struct FileDesc(fd_t);
+pub struct FileDesc {
+    priv fd: fd_t
+}
 
 impl FileDesc {
     /// Create a `FileDesc` from an open C file descriptor.
@@ -46,7 +47,9 @@ impl Seek for FileDesc {
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
 }
 
-pub struct CFile(*FILE);
+pub struct CFile {
+    priv file: *FILE
+}
 
 impl CFile {
     /// Create a `CFile` from an open `FILE` pointer.
