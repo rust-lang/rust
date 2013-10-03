@@ -697,13 +697,6 @@ impl Path {
         Some(self.repr)
     }
 
-    /// Returns a normalized string representation of a path, by removing all empty
-    /// components, and unnecessary . and .. components.
-    pub fn normalize<S: Str>(s: S) -> ~str {
-        let (_, path) = Path::normalize_(s);
-        path
-    }
-
     /// Returns an iterator that yields each component of the path in turn as a Option<&str>.
     /// Every component is guaranteed to be Some.
     /// Does not yield the path prefix (including server/share components in UNC paths).
