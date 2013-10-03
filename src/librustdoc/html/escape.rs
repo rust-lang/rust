@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! HTML Escaping
+//!
+//! This module contains one unit-struct which can be used to HTML-escape a
+//! string of text (for use in a format string).
+
 use std::fmt;
 
+/// Wrapper struct which will emit the HTML-escaped version of the contained
+/// string when passed to a format string.
 pub struct Escape<'self>(&'self str);
 
 impl<'self> fmt::Default for Escape<'self> {
