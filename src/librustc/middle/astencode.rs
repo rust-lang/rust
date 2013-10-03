@@ -880,13 +880,13 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
     // Because the ast visitor uses @IdVisitingOperation, I can't pass in
     // ecx directly, but /I/ know that it'll be fine since the lifetime is
     // tied to the CrateContext that lives throughout this entire section.
-    ast_util::visit_ids_for_inlined_item(ii, @SideTableEncodingIdVisitor {
+    ast_util::visit_ids_for_inlined_item(ii, &SideTableEncodingIdVisitor {
         ecx_ptr: unsafe {
             cast::transmute(ecx)
         },
         new_ebml_w: new_ebml_w,
         maps: maps,
-    } as @ast_util::IdVisitingOperation);
+    });
     ebml_w.end_tag();
 }
 
