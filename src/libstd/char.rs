@@ -17,6 +17,7 @@ use str::StrSlice;
 use unicode::{derived_property, general_category, decompose};
 use to_str::ToStr;
 use str;
+use vec::ImmutableVector;
 
 #[cfg(test)] use str::OwnedStr;
 
@@ -77,6 +78,67 @@ pub fn from_u32(i: u32) -> Option<char> {
     } else {
         Some(unsafe { transmute(i) })
     }
+}
+
+/// Something that can be used to compare against a character
+pub trait CharEq {
+    /// Determine if `self` is equal to the given `char`
+    fn matches(&self, char) -> bool;
+    /// Indicate if this is only concerned about ASCII characters,
+    /// which can allow for a faster implementation.
+    fn only_ascii(&self) -> bool;
+}
+
+impl CharEq for char {
+    #[inline]
+    fn matches(&self, c: char) -> bool { *self == c }
+
+    #[inline]
+    fn only_ascii(&self) -> bool { (*self as uint) < 128 }
+}
+
+impl<'self> CharEq for &'self fn(char) -> bool {
+    #[inline]
+    fn matches(&self, c: char) -> bool { (*self)(c) }
+
+    #[inline]
+    fn only_ascii(&self) -> bool { false }
+}
+
+impl CharEq for extern "Rust" fn(char) -> bool {
+    #[inline]
+    fn matches(&self, c: char) -> bool { (*self)(c) }
+
+    #[inline]
+    fn only_ascii(&self) -> bool { false }
+}
+
+impl<'self, C: CharEq> CharEq for &'self [C] {
+    #[inline]
+    fn matches(&self, c: char) -> bool {
+        self.iter().any(|m| m.matches(c))
+    }
+
+    #[inline]
+    fn only_ascii(&self) -> bool {
+        self.iter().all(|m| m.only_ascii())
+    }
+}
+
+/// Trait for converting `self` into an `char`.
+pub trait ToChar {
+    /// Converts self into an `char`.
+    fn to_char(&self) -> char;
+}
+
+impl ToChar for char {
+    #[inline]
+    fn to_char(&self) -> char { *self }
+}
+
+impl ToChar for u8 {
+    #[inline]
+    fn to_char(&self) -> char { *self as char }
 }
 
 /// Returns whether the specified character is considered a unicode alphabetic

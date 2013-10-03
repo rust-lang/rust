@@ -47,7 +47,7 @@ pub use from_str::from_str;
 pub use c_str::ToCStr;
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
-pub use char::Char;
+pub use char::{Char, ToChar};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use hash::Hash;
 pub use num::Times;
