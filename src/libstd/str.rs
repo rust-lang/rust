@@ -105,6 +105,7 @@ use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
+use from_str::FromStr;
 use uint;
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
@@ -204,6 +205,11 @@ impl ToStr for ~str {
     fn to_str(&self) -> ~str { self.to_owned() }
 }
 
+impl FromStr for ~str {
+    #[inline]
+    fn from_str(s: &str) -> Option<~str> { Some(s.to_owned()) }
+}
+
 impl<'self> ToStr for &'self str {
     #[inline]
     fn to_str(&self) -> ~str { self.to_owned() }
@@ -212,6 +218,11 @@ impl<'self> ToStr for &'self str {
 impl ToStr for @str {
     #[inline]
     fn to_str(&self) -> ~str { self.to_owned() }
+}
+
+impl<'self> FromStr for @str {
+    #[inline]
+    fn from_str(s: &str) -> Option<@str> { Some(s.to_managed()) }
 }
 
 /// Convert a byte to a UTF-8 string
@@ -2580,13 +2591,14 @@ impl Default for @str {
 #[cfg(test)]
 mod tests {
     use container::Container;
-    use option::{None, Some};
+    use option::{None, Some, Option};
     use ptr;
     use str::*;
     use vec;
     use vec::{Vector, ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
     use send_str::{SendStrOwned, SendStrStatic};
+    use from_str::from_str;
 
     #[test]
     fn test_eq() {
@@ -3888,6 +3900,14 @@ mod tests {
     fn test_to_send_str() {
         assert_eq!("abcde".to_send_str(), SendStrStatic("abcde"));
         assert_eq!("abcde".to_send_str(), SendStrOwned(~"abcde"));
+    }
+
+    #[test]
+    fn test_from_str() {
+      let owned: Option<~str> = from_str(&"string");
+      assert_eq!(owned, Some(~"string"));
+      let managed: Option<@str> = from_str(&"string");
+      assert_eq!(managed, Some(@"string"));
     }
 }
 
