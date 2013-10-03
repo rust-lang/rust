@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//#[cfg(not(stage0))] use cast::transmute;
 use container::MutableSet;
 use hashmap::HashSet;
-use option::{Some, None};
+use option::{Some, None, Option};
 use vec::ImmutableVector;
 
 /// Imports for old crate map versions
@@ -61,22 +60,23 @@ pub struct ModEntry<'self> {
 pub struct CrateMap<'self> {
     version: i32,
     entries: &'self [ModEntry<'self>],
-    /// a dynamically sized struct, where all pointers to children are listed adjacent
-    /// to the struct, terminated with NULL
     children: &'self [&'self CrateMap<'self>]
 }
 
-
-
 #[cfg(not(windows))]
-pub fn get_crate_map() -> &'static CrateMap<'static> {
-    &'static CRATE_MAP
+pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
+    let ptr: (*CrateMap) = &'static CRATE_MAP;
+    if ptr.is_null() {
+        return None;
+    } else {
+        return Some(&'static CRATE_MAP);
+    }
 }
 
 #[cfg(windows)]
 #[fixed_stack_segment]
 #[inline(never)]
-pub fn get_crate_map() -> &'static CrateMap<'static> {
+pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
     use c_str::ToCStr;
     use unstable::dynamic_lib::dl;
 
@@ -88,7 +88,14 @@ pub fn get_crate_map() -> &'static CrateMap<'static> {
         dl::close(module);
         sym
     };
-    sym
+    let ptr: (*CrateMap) = sym as *CrateMap;
+    if ptr.is_null() {
+        return None;
+    } else {
+        unsafe {
+            return Some(transmute(sym));
+        }
+    }
 }
 
 fn version(crate_map: &CrateMap) -> i32 {
@@ -106,9 +113,9 @@ fn iter_module_map(mod_entries: &[ModEntry], f: &fn(&ModEntry)) {
 }
 
 unsafe fn iter_module_map_v0(entries: *ModEntryV0, f: &fn(&ModEntry)) {
-    let mut curr = entries; 
+    let mut curr = entries;
     while !(*curr).name.is_null() {
-        let mod_entry = ModEntry { name: from_c_str((*curr).name), log_level: (*curr).log_level }; 
+        let mod_entry = ModEntry { name: from_c_str((*curr).name), log_level: (*curr).log_level };
         f(&mod_entry);
         curr = curr.offset(1);
     }
@@ -125,7 +132,7 @@ fn do_iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry),
                     do_iter_crate_map(*child, |x| f(x), visited);
                 }
             },
-            /// code for old crate map versions
+            // code for old crate map versions
             1 => unsafe {
                 let v1: *CrateMapV1 = transmute(crate_map);
                 iter_module_map_v0((*v1).entries, |x| f(x));
@@ -142,7 +149,7 @@ fn do_iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry),
                     do_iter_crate_map(transmute(child), |x| f(x), visited);
                 }
             },
-            _ => fail2!("invalid crate map version")  
+            _ => fail2!("invalid crate map version")
         }
     }
 }
@@ -260,7 +267,9 @@ mod tests {
 
             let root_crate = CrateMapT3 {
                 version: 1,
-                entries: vec::raw::to_ptr([ModEntryV0 { name: ptr::null(), log_level: ptr::mut_null()}]),
+                entries: vec::raw::to_ptr([
+                    ModEntryV0 { name: ptr::null(), log_level: ptr::mut_null()}
+                ]),
                 children: [&child_crate as *CrateMapV1, &child_crate as *CrateMapV1, ptr::null()]
             };
 
