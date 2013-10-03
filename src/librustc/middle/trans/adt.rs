@@ -221,10 +221,10 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
 /// For use in lint or similar, where being sound but slightly incomplete is acceptable.
 pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
     match ty::get(ty::lookup_item_type(tcx, def_id).ty).sty {
-        ty::ty_enum(def_id, ref substs) => {
-            let cases = get_cases(tcx, def_id, substs);
+        ty::ty_enum(def_id, _) => {
+            let variants = ty::enum_variants(tcx, def_id);
             // Univariant => like struct/tuple.
-            if cases.len() <= 2 {
+            if variants.len() <= 1 {
                 return true;
             }
             let hint = ty::lookup_repr_hint(tcx, def_id);
@@ -232,10 +232,10 @@ pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
             if hint.is_ffi_safe() {
                 return true;
             }
-            // Conservative approximation of nullable pointers, for Option<~T> etc.
-            if cases.len() == 2 && hint == attr::ReprAny &&
-                (cases[0].tys.is_empty() && cases[1].find_ptr().is_some() ||
-                 cases[1].tys.is_empty() && cases[0].find_ptr().is_some()) {
+            // Option<~T> and similar are used in FFI.  Rather than try to resolve type parameters
+            // and recognize this case exactly, this overapproximates -- assuming that if a
+            // non-C-like enum is being used in FFI then the user knows what they're doing.
+            if variants.iter().any(|vi| !vi.args.is_empty()) {
                 return true;
             }
             false
