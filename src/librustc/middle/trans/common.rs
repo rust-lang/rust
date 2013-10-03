@@ -69,12 +69,11 @@ pub fn type_is_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
     if simple {
         return true;
     }
-    // FIXME: #9651: C-like enums should also be immediate
-    if ty::type_is_c_like_enum(ccx.tcx, ty) {
-        return false;
-    }
     match ty::get(ty).sty {
         // FIXME: #9651: small `ty_struct` should also be immediate
+        ty::ty_struct(def_id, ref substs) => {
+            ty::struct_fields(tcx, def_id, substs).is_empty()
+        }
         ty::ty_enum(*) | ty::ty_tup(*) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
