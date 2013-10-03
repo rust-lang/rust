@@ -29,7 +29,7 @@ use std::rt::io::pipe::*;
 use std::str;
 
 #[test]
-#[cfg(unix, not(android))]
+#[cfg(unix, not(target_os="android"))]
 fn smoke() {
     let io = ~[];
     let args = ProcessConfig {
@@ -46,7 +46,7 @@ fn smoke() {
 }
 
 #[test]
-#[cfg(unix, not(android))]
+#[cfg(unix, not(target_os="android"))]
 fn smoke_failure() {
     let io = ~[];
     let args = ProcessConfig {
@@ -63,7 +63,7 @@ fn smoke_failure() {
 }
 
 #[test]
-#[cfg(unix, not(android))]
+#[cfg(unix, not(target_os="android"))]
 fn exit_reported_right() {
     let io = ~[];
     let args = ProcessConfig {
@@ -103,7 +103,7 @@ fn run_output(args: ProcessConfig) -> ~str {
 }
 
 #[test]
-#[cfg(unix, not(android))]
+#[cfg(unix, not(target_os="android"))]
 fn stdout_works() {
     let pipe = PipeStream::new().unwrap();
     let io = ~[Ignored, CreatePipe(pipe, false, true)];
@@ -118,7 +118,7 @@ fn stdout_works() {
 }
 
 #[test]
-#[cfg(unix, not(android))]
+#[cfg(unix, not(target_os="android"))]
 fn set_cwd_works() {
     let pipe = PipeStream::new().unwrap();
     let io = ~[Ignored, CreatePipe(pipe, false, true)];
@@ -134,7 +134,7 @@ fn set_cwd_works() {
 }
 
 #[test]
-#[cfg(unix, not(android))]
+#[cfg(unix, not(target_os="android"))]
 fn stdin_works() {
     let input = PipeStream::new().unwrap();
     let output = PipeStream::new().unwrap();
