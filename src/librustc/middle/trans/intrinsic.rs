@@ -12,7 +12,7 @@
 
 use back::{abi};
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
-use lib::llvm::{ValueRef, Pointer};
+use lib::llvm::{ValueRef, Pointer, Array, Struct};
 use lib;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -333,8 +333,12 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                             (Pointer, other) | (other, Pointer) if other != Pointer => {
                                 let tmp = Alloca(bcx, llouttype, "");
                                 Store(bcx, llsrcval, PointerCast(bcx, tmp, llintype.ptr_to()));
-                                let ll_load = Load(bcx, tmp);
-                                Ret(bcx, ll_load);
+                                Ret(bcx, Load(bcx, tmp));
+                            }
+                            (Array, _) | (_, Array) | (Struct, _) | (_, Struct) => {
+                                let tmp = Alloca(bcx, llouttype, "");
+                                Store(bcx, llsrcval, PointerCast(bcx, tmp, llintype.ptr_to()));
+                                Ret(bcx, Load(bcx, tmp));
                             }
                             _ => {
                                 let llbitcast = BitCast(bcx, llsrcval, llouttype);
