@@ -174,15 +174,6 @@ pub fn now() -> Tm {
     at(get_time())
 }
 
-/// Parses the time from the string according to the format string.
-pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
-    do_strptime(s, format)
-}
-
-/// Formats the time according to the format string.
-pub fn strftime(format: &str, tm: &Tm) -> ~str {
-    do_strftime(format, tm)
-}
 
 impl Tm {
     /// Convert time to the seconds from January 1, 1970
@@ -264,7 +255,8 @@ impl Tm {
     }
 }
 
-fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
+/// Parses the time from the string according to the format string.
+pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for ch in needle.byte_iter() {
@@ -733,7 +725,8 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 }
 
-fn do_strftime(format: &str, tm: &Tm) -> ~str {
+/// Formats the time according to the format string.
+pub fn strftime(format: &str, tm: &Tm) -> ~str {
     fn days_in_year(year: int) -> i32 {
         if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))) {
             366    /* Days in a leap year */
