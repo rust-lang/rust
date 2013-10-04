@@ -738,7 +738,20 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 .and_then(|pos| parse_char(s, pos, '-'))
                 .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm, &mut *h))
           }
-          //'W' {}
+          'W' => {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 52_i32) {
+              Some(item) => {
+                  let (v, pos) = item;   // If the day of the weeh has been set,
+                  if h.wday {            // get day of the year with it.
+                      tm.tm_yday = ((7 - tm.tm_wday) % 7 + (v - 1) * 7
+                                + (tm.tm_wday + 7) % 7);
+                      h.yday = true;
+                }
+                Ok(pos)
+              }
+              None => Err(~"Invalid week number")
+            }
+          }
           'w' => {
             match match_digits_in_range(s, pos, 1u, false, 0_i32, 6_i32) {
               Some(item) => {
@@ -1420,6 +1433,7 @@ mod tests {
         // Test for #7256
         assert_eq!(strptime("360", "%Y-%m-%d"), Err(~"Invalid year"));
 
+        assert_eq!(strptime("2009 4 07", "%Y %w %W").unwrap().tm_yday, 49i32);
         assert_eq!(strptime("Friday Sat", "%A %a"), Err(~"Day already set"));
     }
 
