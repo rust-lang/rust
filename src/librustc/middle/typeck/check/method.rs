@@ -1288,7 +1288,13 @@ impl<'self> LookupContext<'self> {
     fn report_candidate(&self, idx: uint, origin: &method_origin) {
         match *origin {
             method_static(impl_did) => {
-                self.report_static_candidate(idx, impl_did)
+                // If it is an instantiated default method, use the original
+                // default method for error reporting.
+                let did = match provided_source(self.tcx(), impl_did) {
+                    None => impl_did,
+                    Some(did) => did
+                };
+                self.report_static_candidate(idx, did)
             }
             method_param(ref mp) => {
                 self.report_param_candidate(idx, (*mp).trait_id)
@@ -1302,7 +1308,8 @@ impl<'self> LookupContext<'self> {
     fn report_static_candidate(&self, idx: uint, did: DefId) {
         let span = if did.crate == ast::LOCAL_CRATE {
             match self.tcx().items.find(&did.node) {
-              Some(&ast_map::node_method(m, _, _)) => m.span,
+              Some(&ast_map::node_method(m, _, _))
+              | Some(&ast_map::node_trait_method(@ast::provided(m), _, _)) => m.span,
               _ => fail2!("report_static_candidate: bad item {:?}", did)
             }
         } else {
