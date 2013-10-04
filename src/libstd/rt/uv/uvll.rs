@@ -53,6 +53,7 @@ pub mod errors {
     pub static EACCES: c_int = -4093;
     pub static ECONNREFUSED: c_int = -4079;
     pub static ECONNRESET: c_int = -4078;
+    pub static ENOTCONN: c_int = -4054;
     pub static EPIPE: c_int = -4048;
 }
 #[cfg(not(windows))]
@@ -63,6 +64,7 @@ pub mod errors {
     pub static EACCES: c_int = -libc::EACCES;
     pub static ECONNREFUSED: c_int = -libc::ECONNREFUSED;
     pub static ECONNRESET: c_int = -libc::ECONNRESET;
+    pub static ENOTCONN: c_int = -libc::ENOTCONN;
     pub static EPIPE: c_int = -libc::EPIPE;
 }
 
