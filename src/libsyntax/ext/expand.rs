@@ -317,7 +317,7 @@ macro_rules! with_exts_frame (
 static special_block_name : &'static str = " block";
 
 // When we enter a module, record it, for the sake of 
-// `module_path!`, `func!`, `funcpath!`, `funcpathfile!`.
+// `module_path!`, `function!`, `function_path!`, `funcpathfile!`.
 pub fn expand_item(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    it: @ast::item,

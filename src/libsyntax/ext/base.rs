@@ -285,12 +285,12 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"funcpathfile"),
                             builtin_normal_tt_no_ctxt(
                                     ext::source_util::expand_funcpathfile));
-    syntax_expanders.insert(intern(&"funcpath"),
+    syntax_expanders.insert(intern(&"function_path"),
                             builtin_normal_tt_no_ctxt(
-                                    ext::source_util::expand_funcpath));
-    syntax_expanders.insert(intern(&"func"),
+                                    ext::source_util::expand_function_path));
+    syntax_expanders.insert(intern(&"function"),
                             builtin_normal_tt_no_ctxt(
-                                    ext::source_util::expand_func));
+                                    ext::source_util::expand_function));
     syntax_expanders.insert(intern(&"stringify"),
                             builtin_normal_tt_no_ctxt(
                                     ext::source_util::expand_stringify));
@@ -339,7 +339,7 @@ pub struct ExtCtxt {
     func_path: @mut ~[ast::Ident],
 
     // The depth of function nesting. Used to confirm that
-    // the funcpathfile!, funcpath!, and func! macros are not used
+    // the funcpathfile!, function_path!, and function! macros are not used
     // outside of functions.
     func_depth: @mut int,
 

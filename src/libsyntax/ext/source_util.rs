@@ -63,6 +63,8 @@ pub fn expand_file(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 /** funcpathfile!(): expands to the current fully-qualified-function name 
     plus file path:line:col for lambda disambiguation
     See also funcpath!() and func!().
+    For performance reasons this needs to end up as a static 
+    string and not a format!-ed heap-allocation.
 */
 pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
@@ -84,37 +86,39 @@ pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     base::MRExpr(cx.expr_str(sp, res.to_managed()))
 }
 
-/** funcpath!(): expands to the current fully-qualified-function name.
+/** function_path!(): expands to the current fully-qualified-function name.
    Anonymous functions or lambdas will be ambiguously all named 'lambda'. 
    Use funcpathfile!() if you require disambiguation (file:line:col details)
    of lambdas or wish to have exact locations at your fingertips. See also
    func!() for shortest-possible (basename) function name.
+   For performance reasons this needs to end up as a static 
+   string and not a format!-ed heap-allocation.
 */
-pub fn expand_funcpath(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_function_path(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
-    base::check_zero_tts(cx, sp, tts, "funcpath!");
+    base::check_zero_tts(cx, sp, tts, "function_path!");
     let depth = cx.func_depth();
     if depth == 0 {
         cx.span_err(sp, 
-                      format!("funcpath!() called when not inside a function"));
+                      format!("function_path!() called when not inside a function"));
     }
     base::MRExpr(cx.expr_str(sp, cx.func_path().to_managed()))
 }
 
 /** func!(): expands to the shortname or basename of the current
    function name. See also funcpath!() and funcpathfile!(). */
-pub fn expand_func(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_function(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
-    base::check_zero_tts(cx, sp, tts, "func!");
+    base::check_zero_tts(cx, sp, tts, "function!");
     let depth = cx.func_depth();
     if depth == 0 {
         cx.span_err(sp, 
-                      format!("func!() called when not inside a function"));
+                      format!("function!() called when not inside a function"));
     }
     match cx.func_path_last() {
         None => {
             // should never get here with the depth check above.
-            cx.span_fatal(sp, format!("func!() called when not inside a function"))
+            cx.span_fatal(sp, format!("function!() called when not inside a function"))
         }
         Some(func_shortname) => base::MRExpr(cx.expr_str(sp, cx.str_of(func_shortname)))
     }

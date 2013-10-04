@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// test for the func!() macro
+// test for the function!() macro
 
 use m1::m2::*;
 
 pub mod m1 {
     pub mod m2 {
-        pub fn who_am_i() -> ~str { (func!()).to_owned() }
+        pub fn who_am_i() -> ~str { (function!()).to_owned() }
 
         pub trait Tr {
             fn defme(&self) -> ~str { 
-                (func!()).to_owned()
+                (function!()).to_owned()
             }
             fn must_implement(&self) -> ~str;
         }
@@ -26,10 +26,10 @@ pub mod m1 {
         pub struct St1;
         impl Tr for St1 {
             fn defme(&self) -> ~str { 
-                (func!()).to_owned()
+                (function!()).to_owned()
             }
             fn must_implement(&self) -> ~str {
-                (func!()).to_owned()
+                (function!()).to_owned()
             }
         }
 
@@ -38,13 +38,13 @@ pub mod m1 {
             // defme() should get named with Tr
 
             fn must_implement(&self) -> ~str {
-                (func!()).to_owned()
+                (function!()).to_owned()
             }
         }
 
         pub fn use_lambda() -> &str {
             let lambda2 = || {
-                func!()
+                function!()
             };
             lambda2()
         }
@@ -54,7 +54,7 @@ pub mod m1 {
 } // end m1
 
 //
-//  tests for func!() macro : needs to handle all
+//  tests for function!() macro : needs to handle all
 //  the different places where functions can be
 //  defined, include trait default methods, 
 //  implementations, and lambdas.
@@ -64,7 +64,7 @@ pub fn main() {
     info2!("m1::m2::who_am_i() is '{}'", m1::m2::who_am_i());
 
     // The Windows tests are wrapped in an extra module for some reason.
-    // And in func!() we include a file location prefix to track 
+    // And in function!() we include a file location prefix to track 
     // lambdas easily, so just use the ends_with() for all verifies:
     assert_eq!(m1::m2::who_am_i(), ~"who_am_i");
 
@@ -97,7 +97,7 @@ pub fn main() {
     
     // local lambda
     let lambda = || {
-        func!()
+        function!()
     };
     let l1 = lambda();
     info2!("l1 is '{}'", l1);
@@ -109,15 +109,15 @@ pub fn main() {
     assert_eq!(l2, "lambda");
 
     // distinguish a::mZ::c from a::mQ::c, where mZ and mQ are modules
-    // This is why the implementation of func!() must track module 
+    // This is why the implementation of function!() must track module 
     // namespaces as well.  Getting back a::c just won't do.
     
     fn a() -> (&str, &str) {
         pub mod mZ {
-            pub fn c() -> &str { func!() }
+            pub fn c() -> &str { function!() }
         }
         pub mod mQ {
-            pub fn c() -> &str { func!() }
+            pub fn c() -> &str { function!() }
         }
         (mZ::c(), mQ::c())
     }
@@ -129,19 +129,19 @@ pub fn main() {
     assert_eq!(cq, "c");
 
     // and the symmetric case, where mod are duplicated:
-    // If we got back only mod_path!() == "outer::M" and func!() == "c"
+    // If we got back only mod_path!() == "outer::M" and function!() == "c"
     //  we would not know whether outer::a::M::c was called,
     //  or outer::b::M::c was called.
     mod outer {
         pub fn a() -> &str {
             pub mod M {
-                pub fn c() -> &str { func!() }
+                pub fn c() -> &str { function!() }
             }
             M::c()
         }
         pub fn b() -> &str {
             pub mod M {
-                pub fn c() -> &str { func!() }
+                pub fn c() -> &str { function!() }
             }
             M::c()
         }
@@ -159,7 +159,7 @@ pub fn main() {
     // local function wrapper of lambda
     fn use3() -> &str {
         let lambda3 = || {
-            func!()
+            function!()
         };
         lambda3()
     }
@@ -171,7 +171,7 @@ pub fn main() {
     // and named functions inside lambdas:
     let lambda4 = || {
         fn embedded() -> &str {
-            func!()
+            function!()
         }
         embedded()
     };
