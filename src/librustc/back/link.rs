@@ -1007,9 +1007,9 @@ pub fn link_args(sess: Session,
             continue;
         }
         let dir = cratepath.dirname();
-        if dir != ~"" { args.push(~"-L" + dir); }
+        if !dir.is_empty() { args.push("-L" + dir); }
         let libarg = unlib(sess.targ_cfg, cratepath.filestem().unwrap().to_owned());
-        args.push(~"-l" + libarg);
+        args.push("-l" + libarg);
     }
 
     let ula = cstore::get_used_link_args(cstore);
@@ -1032,12 +1032,12 @@ pub fn link_args(sess: Session,
     // forces to make sure that library can be found at runtime.
 
     for path in sess.opts.addl_lib_search_paths.iter() {
-        args.push(~"-L" + path.to_str());
+        args.push("-L" + path.to_str());
     }
 
     let rustpath = filesearch::rust_path();
     for path in rustpath.iter() {
-        args.push(~"-L" + path.to_str());
+        args.push("-L" + path.to_str());
     }
 
     // The names of the extern libraries
@@ -1050,7 +1050,7 @@ pub fn link_args(sess: Session,
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::OsMacos {
-            args.push(~"-Wl,-install_name,@rpath/"
+            args.push("-Wl,-install_name,@rpath/"
                       + output.filename().unwrap());
         }
     }
