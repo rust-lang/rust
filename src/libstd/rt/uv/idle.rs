@@ -23,13 +23,13 @@ impl IdleWatcher {
             let handle = uvll::idle_new();
             assert!(handle.is_not_null());
             assert!(0 == uvll::idle_init(loop_.native_handle(), handle));
-            let mut watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+            let watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher
         }
     }
 
-    pub fn start(&mut self, cb: IdleCallback) {
+    pub fn start(&self, cb: IdleCallback) {
         {
             let data = self.get_watcher_data();
             data.idle_cb = Some(cb);
@@ -40,7 +40,7 @@ impl IdleWatcher {
         };
 
         extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+            let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
             let data = idle_watcher.get_watcher_data();
             let cb: &IdleCallback = data.idle_cb.get_ref();
             let status = status_to_maybe_uv_error(status);
@@ -48,13 +48,13 @@ impl IdleWatcher {
         }
     }
 
-    pub fn restart(&mut self) {
+    pub fn restart(&self) {
         unsafe {
             assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
         };
 
         extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+            let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
             let data = idle_watcher.get_watcher_data();
             let cb: &IdleCallback = data.idle_cb.get_ref();
             let status = status_to_maybe_uv_error(status);
@@ -62,7 +62,7 @@ impl IdleWatcher {
         }
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(&self) {
         // NB: Not resetting the Rust idle_cb to None here because `stop` is
         // likely called from *within* the idle callback, causing a use after
         // free
@@ -74,8 +74,7 @@ impl IdleWatcher {
 
     pub fn close(self, cb: NullCallback) {
         {
-            let mut this = self;
-            let data = this.get_watcher_data();
+            let data = self.get_watcher_data();
             assert!(data.close_cb.is_none());
             data.close_cb = Some(cb);
         }
@@ -84,7 +83,7 @@ impl IdleWatcher {
 
         extern fn close_cb(handle: *uvll::uv_idle_t) {
             unsafe {
-                let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
+                let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
                 {
                     let data = idle_watcher.get_watcher_data();
                     data.close_cb.take_unwrap()();
@@ -126,11 +125,10 @@ mod test {
     fn idle_smoke_test() {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
-            let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
+            let idle_watcher = { IdleWatcher::new(&mut loop_) };
             let mut count = 10;
             let count_ptr: *mut int = &mut count;
             do idle_watcher.start |idle_watcher, status| {
-                let mut idle_watcher = idle_watcher;
                 assert!(status.is_none());
                 if unsafe { *count_ptr == 10 } {
                     idle_watcher.stop();
@@ -149,14 +147,14 @@ mod test {
     fn idle_start_stop_start() {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
-            let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
+            let idle_watcher = { IdleWatcher::new(&mut loop_) };
             do idle_watcher.start |idle_watcher, status| {
-                let mut idle_watcher = idle_watcher;
+                let idle_watcher = idle_watcher;
                 assert!(status.is_none());
                 idle_watcher.stop();
                 do idle_watcher.start |idle_watcher, status| {
                     assert!(status.is_none());
-                    let mut idle_watcher = idle_watcher;
+                    let idle_watcher = idle_watcher;
                     idle_watcher.stop();
                     idle_watcher.close(||());
                 }

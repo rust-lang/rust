@@ -157,9 +157,9 @@ struct WatcherData {
 
 pub trait WatcherInterop {
     fn event_loop(&self) -> Loop;
-    fn install_watcher_data(&mut self);
-    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
-    fn drop_watcher_data(&mut self);
+    fn install_watcher_data(&self);
+    fn get_watcher_data<'r>(&'r self) -> &'r mut WatcherData;
+    fn drop_watcher_data(&self);
 }
 
 impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
@@ -172,7 +172,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    fn install_watcher_data(&mut self) {
+    fn install_watcher_data(&self) {
         unsafe {
             let data = ~WatcherData {
                 read_cb: None,
@@ -192,7 +192,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
+    fn get_watcher_data<'r>(&'r self) -> &'r mut WatcherData {
         unsafe {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
             let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
@@ -200,7 +200,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    fn drop_watcher_data(&mut self) {
+    fn drop_watcher_data(&self) {
         unsafe {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
             let _data = transmute::<*c_void, ~WatcherData>(data);

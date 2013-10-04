@@ -140,7 +140,7 @@ pub struct StreamWatcher(*uvll::uv_stream_t);
 impl Watcher for StreamWatcher { }
 
 impl StreamWatcher {
-    pub fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
+    pub fn read_start(&self, alloc: AllocCallback, cb: ReadCallback) {
         {
             let data = self.get_watcher_data();
             data.alloc_cb = Some(alloc);
@@ -150,7 +150,7 @@ impl StreamWatcher {
         unsafe { uvll::read_start(self.native_handle(), alloc_cb, read_cb); }
 
         extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
+            let stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let alloc_cb = stream_watcher.get_watcher_data().alloc_cb.get_ref();
             return (*alloc_cb)(suggested_size as uint);
         }
@@ -158,7 +158,7 @@ impl StreamWatcher {
         extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, buf: Buf) {
             rtdebug!("buf addr: {}", buf.base);
             rtdebug!("buf len: {}", buf.len);
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
+            let stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let cb = stream_watcher.get_watcher_data().read_cb.get_ref();
             let status = status_to_maybe_uv_error(nread as c_int);
             (*cb)(stream_watcher, nread as int, buf, status);
@@ -173,7 +173,7 @@ impl StreamWatcher {
         unsafe { uvll::read_stop(handle); }
     }
 
-    pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
+    pub fn write(&self, buf: Buf, cb: ConnectionCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.write_cb.is_none());
@@ -187,7 +187,7 @@ impl StreamWatcher {
 
         extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);
-            let mut stream_watcher = write_request.stream();
+            let stream_watcher = write_request.stream();
             write_request.delete();
             let cb = stream_watcher.get_watcher_data().write_cb.take_unwrap();
             let status = status_to_maybe_uv_error(status);
@@ -195,7 +195,7 @@ impl StreamWatcher {
         }
     }
 
-    pub fn accept(&mut self, stream: StreamWatcher) {
+    pub fn accept(&self, stream: StreamWatcher) {
         let self_handle = self.native_handle() as *c_void;
         let stream_handle = stream.native_handle() as *c_void;
         assert_eq!(0, unsafe { uvll::accept(self_handle, stream_handle) } );
@@ -203,8 +203,7 @@ impl StreamWatcher {
 
     pub fn close(self, cb: NullCallback) {
         {
-            let mut this = self;
-            let data = this.get_watcher_data();
+            let data = self.get_watcher_data();
             assert!(data.close_cb.is_none());
             data.close_cb = Some(cb);
         }
@@ -212,7 +211,7 @@ impl StreamWatcher {
         unsafe { uvll::close(self.native_handle(), close_cb); }
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
+            let stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             let cb = stream_watcher.get_watcher_data().close_cb.take_unwrap();
             stream_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
@@ -239,13 +238,13 @@ impl TcpWatcher {
             let handle = malloc_handle(UV_TCP);
             assert!(handle.is_not_null());
             assert_eq!(0, uvll::tcp_init(loop_.native_handle(), handle));
-            let mut watcher: TcpWatcher = NativeHandle::from_native_handle(handle);
+            let watcher: TcpWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
         }
     }
 
-    pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
+    pub fn bind(&self, address: SocketAddr) -> Result<(), UvError> {
         do socket_addr_as_uv_socket_addr(address) |addr| {
             let result = unsafe {
                 match addr {
@@ -260,7 +259,7 @@ impl TcpWatcher {
         }
     }
 
-    pub fn connect(&mut self, address: SocketAddr, cb: ConnectionCallback) {
+    pub fn connect(&self, address: SocketAddr, cb: ConnectionCallback) {
         unsafe {
             assert!(self.get_watcher_data().connect_cb.is_none());
             self.get_watcher_data().connect_cb = Some(cb);
@@ -280,7 +279,7 @@ impl TcpWatcher {
             extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
                 rtdebug!("connect_t: {}", req);
                 let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
-                let mut stream_watcher = connect_request.stream();
+                let stream_watcher = connect_request.stream();
                 connect_request.delete();
                 let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
                 let status = status_to_maybe_uv_error(status);
@@ -289,7 +288,7 @@ impl TcpWatcher {
         }
     }
 
-    pub fn listen(&mut self, cb: ConnectionCallback) {
+    pub fn listen(&self, cb: ConnectionCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.connect_cb.is_none());
@@ -304,7 +303,7 @@ impl TcpWatcher {
 
         extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
             rtdebug!("connection_cb");
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
+            let stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
             let status = status_to_maybe_uv_error(status);
             (*cb)(stream_watcher, status);
@@ -334,13 +333,13 @@ impl UdpWatcher {
             let handle = malloc_handle(UV_UDP);
             assert!(handle.is_not_null());
             assert_eq!(0, uvll::udp_init(loop_.native_handle(), handle));
-            let mut watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
+            let watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
         }
     }
 
-    pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
+    pub fn bind(&self, address: SocketAddr) -> Result<(), UvError> {
         do socket_addr_as_uv_socket_addr(address) |addr| {
             let result = unsafe {
                 match addr {
@@ -355,7 +354,7 @@ impl UdpWatcher {
         }
     }
 
-    pub fn recv_start(&mut self, alloc: AllocCallback, cb: UdpReceiveCallback) {
+    pub fn recv_start(&self, alloc: AllocCallback, cb: UdpReceiveCallback) {
         {
             let data = self.get_watcher_data();
             data.alloc_cb = Some(alloc);
@@ -365,7 +364,7 @@ impl UdpWatcher {
         unsafe { uvll::udp_recv_start(self.native_handle(), alloc_cb, recv_cb); }
 
         extern fn alloc_cb(handle: *uvll::uv_udp_t, suggested_size: size_t) -> Buf {
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
+            let udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let alloc_cb = udp_watcher.get_watcher_data().alloc_cb.get_ref();
             return (*alloc_cb)(suggested_size as uint);
         }
@@ -381,7 +380,7 @@ impl UdpWatcher {
 
             rtdebug!("buf addr: {}", buf.base);
             rtdebug!("buf len: {}", buf.len);
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
+            let udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
             let status = status_to_maybe_uv_error(nread as c_int);
             let addr = uv_socket_addr_to_socket_addr(sockaddr_to_UvSocketAddr(addr));
@@ -389,11 +388,11 @@ impl UdpWatcher {
         }
     }
 
-    pub fn recv_stop(&mut self) {
+    pub fn recv_stop(&self) {
         unsafe { uvll::udp_recv_stop(self.native_handle()); }
     }
 
-    pub fn send(&mut self, buf: Buf, address: SocketAddr, cb: UdpSendCallback) {
+    pub fn send(&self, buf: Buf, address: SocketAddr, cb: UdpSendCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.udp_send_cb.is_none());
@@ -415,7 +414,7 @@ impl UdpWatcher {
 
         extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
             let send_request: UdpSendRequest = NativeHandle::from_native_handle(req);
-            let mut udp_watcher = send_request.handle();
+            let udp_watcher = send_request.handle();
             send_request.delete();
             let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
             let status = status_to_maybe_uv_error(status);
@@ -423,10 +422,9 @@ impl UdpWatcher {
         }
     }
 
-    pub fn close(self, cb: NullCallback) {
+    pub fn close(&self, cb: NullCallback) {
         {
-            let mut this = self;
-            let data = this.get_watcher_data();
+            let data = self.get_watcher_data();
             assert!(data.close_cb.is_none());
             data.close_cb = Some(cb);
         }
@@ -434,7 +432,7 @@ impl UdpWatcher {
         unsafe { uvll::close(self.native_handle(), close_cb); }
 
         extern fn close_cb(handle: *uvll::uv_udp_t) {
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
+            let udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().close_cb.take_unwrap();
             udp_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
@@ -565,7 +563,7 @@ mod test {
     fn connect_close_ip4() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
-            let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            let tcp_watcher = { TcpWatcher::new(&mut loop_) };
             // Connect to a port where nobody is listening
             let addr = next_test_ip4();
             do tcp_watcher.connect(addr) |stream_watcher, status| {
@@ -583,7 +581,7 @@ mod test {
     fn connect_close_ip6() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
-            let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            let tcp_watcher = { TcpWatcher::new(&mut loop_) };
             // Connect to a port where nobody is listening
             let addr = next_test_ip6();
             do tcp_watcher.connect(addr) |stream_watcher, status| {
@@ -601,7 +599,7 @@ mod test {
     fn udp_bind_close_ip4() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
-            let mut udp_watcher = { UdpWatcher::new(&mut loop_) };
+            let udp_watcher = { UdpWatcher::new(&mut loop_) };
             let addr = next_test_ip4();
             udp_watcher.bind(addr);
             udp_watcher.close(||());
@@ -614,7 +612,7 @@ mod test {
     fn udp_bind_close_ip6() {
         do run_in_bare_thread() {
             let mut loop_ = Loop::new();
-            let mut udp_watcher = { UdpWatcher::new(&mut loop_) };
+            let udp_watcher = { UdpWatcher::new(&mut loop_) };
             let addr = next_test_ip6();
             udp_watcher.bind(addr);
             udp_watcher.close(||());
@@ -628,17 +626,17 @@ mod test {
         do run_in_bare_thread() {
             static MAX: int = 10;
             let mut loop_ = Loop::new();
-            let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            let server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
             let addr = next_test_ip4();
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+            do server_tcp_watcher.listen |server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
                 let mut loop_ = loop_;
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                let mut client_tcp_watcher = client_tcp_watcher.as_stream();
+                let client_tcp_watcher = client_tcp_watcher.as_stream();
                 server_stream_watcher.accept(client_tcp_watcher);
                 let count_cell = Cell::new(0);
                 let server_stream_watcher = server_stream_watcher;
@@ -672,8 +670,8 @@ mod test {
             let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
                 let mut loop_ = Loop::new();
-                let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-                do tcp_watcher.connect(addr) |mut stream_watcher, status| {
+                let tcp_watcher = { TcpWatcher::new(&mut loop_) };
+                do tcp_watcher.connect(addr) |stream_watcher, status| {
                     rtdebug!("connecting");
                     assert!(status.is_none());
                     let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
@@ -702,17 +700,17 @@ mod test {
         do run_in_bare_thread() {
             static MAX: int = 10;
             let mut loop_ = Loop::new();
-            let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            let server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
             let addr = next_test_ip6();
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+            do server_tcp_watcher.listen |server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
                 let mut loop_ = loop_;
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                let mut client_tcp_watcher = client_tcp_watcher.as_stream();
+                let client_tcp_watcher = client_tcp_watcher.as_stream();
                 server_stream_watcher.accept(client_tcp_watcher);
                 let count_cell = Cell::new(0);
                 let server_stream_watcher = server_stream_watcher;
@@ -748,8 +746,8 @@ mod test {
             let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
                 let mut loop_ = Loop::new();
-                let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-                do tcp_watcher.connect(addr) |mut stream_watcher, status| {
+                let tcp_watcher = { TcpWatcher::new(&mut loop_) };
+                do tcp_watcher.connect(addr) |stream_watcher, status| {
                     rtdebug!("connecting");
                     assert!(status.is_none());
                     let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
@@ -781,7 +779,7 @@ mod test {
             let server_addr = next_test_ip4();
             let client_addr = next_test_ip4();
 
-            let mut server = UdpWatcher::new(&loop_);
+            let server = UdpWatcher::new(&loop_);
             assert!(server.bind(server_addr).is_ok());
 
             rtdebug!("starting read");
@@ -789,7 +787,7 @@ mod test {
                 vec_to_uv_buf(vec::from_elem(size, 0u8))
             };
 
-            do server.recv_start(alloc) |mut server, nread, buf, src, flags, status| {
+            do server.recv_start(alloc) |server, nread, buf, src, flags, status| {
                 server.recv_stop();
                 rtdebug!("i'm reading!");
                 assert!(status.is_none());
@@ -813,7 +811,7 @@ mod test {
 
             let thread = do Thread::start {
                 let mut loop_ = Loop::new();
-                let mut client = UdpWatcher::new(&loop_);
+                let client = UdpWatcher::new(&loop_);
                 assert!(client.bind(client_addr).is_ok());
                 let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
                 let buf = slice_to_uv_buf(msg);
@@ -841,7 +839,7 @@ mod test {
             let server_addr = next_test_ip6();
             let client_addr = next_test_ip6();
 
-            let mut server = UdpWatcher::new(&loop_);
+            let server = UdpWatcher::new(&loop_);
             assert!(server.bind(server_addr).is_ok());
 
             rtdebug!("starting read");
@@ -849,7 +847,7 @@ mod test {
                 vec_to_uv_buf(vec::from_elem(size, 0u8))
             };
 
-            do server.recv_start(alloc) |mut server, nread, buf, src, flags, status| {
+            do server.recv_start(alloc) |server, nread, buf, src, flags, status| {
                 server.recv_stop();
                 rtdebug!("i'm reading!");
                 assert!(status.is_none());
@@ -873,7 +871,7 @@ mod test {
 
             let thread = do Thread::start {
                 let mut loop_ = Loop::new();
-                let mut client = UdpWatcher::new(&loop_);
+                let client = UdpWatcher::new(&loop_);
                 assert!(client.bind(client_addr).is_ok());
                 let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
                 let buf = slice_to_uv_buf(msg);

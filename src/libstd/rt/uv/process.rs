@@ -30,7 +30,7 @@ impl Process {
     pub fn new() -> Process {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_PROCESS) };
         assert!(handle.is_not_null());
-        let mut ret: Process = uv::NativeHandle::from_native_handle(handle);
+        let ret: Process = uv::NativeHandle::from_native_handle(handle);
         ret.install_watcher_data();
         return ret;
     }
@@ -42,7 +42,7 @@ impl Process {
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(&mut self, loop_: &uv::Loop, mut config: ProcessConfig,
+    pub fn spawn(&self, loop_: &uv::Loop, mut config: ProcessConfig,
                  exit_cb: uv::ExitCallback)
                     -> Result<~[Option<UvPipeStream>], uv::UvError>
     {
@@ -51,7 +51,7 @@ impl Process {
         extern fn on_exit(p: *uvll::uv_process_t,
                           exit_status: libc::c_int,
                           term_signal: libc::c_int) {
-            let mut p: Process = uv::NativeHandle::from_native_handle(p);
+            let p: Process = uv::NativeHandle::from_native_handle(p);
             let err = match exit_status {
                 0 => None,
                 _ => uv::status_to_maybe_uv_error(-1)
@@ -125,17 +125,14 @@ impl Process {
 
     /// Closes this handle, invoking the specified callback once closed
     pub fn close(self, cb: uv::NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
+        let data = self.get_watcher_data();
+        assert!(data.close_cb.is_none());
+        data.close_cb = Some(cb);
 
         unsafe { uvll::close(self.native_handle(), close_cb); }
 
         extern fn close_cb(handle: *uvll::uv_process_t) {
-            let mut process: Process = uv::NativeHandle::from_native_handle(handle);
+            let process: Process = uv::NativeHandle::from_native_handle(handle);
             process.get_watcher_data().close_cb.take_unwrap()();
             process.drop_watcher_data();
             unsafe { uvll::free_handle(handle as *libc::c_void) }
