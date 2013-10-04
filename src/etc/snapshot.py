@@ -55,6 +55,10 @@ snapshot_files = {
                 "lib/librustllvm.so"]
     }
 
+winnt_runtime_deps = ["libgcc_s_dw2-1.dll",
+                      "libstdc++-6.dll",
+                      "libpthread-2.dll"]
+
 def parse_line(n, line):
   global snapshotfile
 
@@ -155,6 +159,19 @@ def hash_file(x):
     h.update(open(x, "rb").read())
     return scrub(h.hexdigest())
 
+# Returns a list of paths of Rust's system runtime dependencies
+def get_winnt_runtime_deps():
+    runtime_deps = []
+    path_dirs = os.environ["PATH"].split(';')
+    for name in winnt_runtime_deps:
+      for dir in path_dirs:
+        matches = glob.glob(os.path.join(dir, name))
+        if matches:
+          runtime_deps.append(matches[0])
+          break
+      else:
+        raise Exception("Could not find runtime dependency: %s" % name)
+    return runtime_deps
 
 def make_snapshot(stage, triple):
     kernel = get_kernel(triple)
@@ -170,6 +187,7 @@ def make_snapshot(stage, triple):
         return os.sep.join(cs[-2:])
 
     tar = tarfile.open(file0, "w:bz2")
+
     for name in snapshot_files[kernel]:
       dir = stage
       if stage == "stage1" and re.match(r"^lib/(lib)?std.*", name):
@@ -181,8 +199,15 @@ def make_snapshot(stage, triple):
       if len(matches) == 1:
         tar.add(matches[0], "rust-stage0/" + in_tar_name(matches[0]))
       else:
-        raise Exception("Found stale files: \n  %s\n\
-Please make a clean build." % "\n  ".join(matches))
+        raise Exception("Found stale files: \n  %s\n"
+                        "Please make a clean build." % "\n  ".join(matches))
+
+    if kernel=="winnt":
+      for path in get_winnt_runtime_deps():
+        tar.add(path, "rust-stage0/bin/" + os.path.basename(path))
+      tar.add(os.path.join(os.path.dirname(__file__), "third-party"),
+              "rust-stage0/bin/third-party")
+
     tar.close()
 
     h = hash_file(file0)

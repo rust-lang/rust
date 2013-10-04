@@ -19,7 +19,7 @@ DisableStartupPrompt=true
 
 OutputDir=.\
 SourceDir=.\
-OutputBaseFilename=rust-{#CFG_VERSION}-install
+OutputBaseFilename=rust-{#CFG_VERSION_WIN}-install
 DefaultDirName={pf32}\Rust
 
 Compression=lzma2/ultra
