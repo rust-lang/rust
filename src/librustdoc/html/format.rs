@@ -8,6 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! HTML formatting module
+//!
+//! This module contains a large number of `fmt::Default` implementations for
+//! various types in `rustdoc::clean`. These implementations all currently
+//! assume that HTML output is desired, although it may be possible to redesign
+//! them in the future to instead emit any format desired.
+
 use std::fmt;
 use std::local_data;
 use std::rt::io;
@@ -19,8 +26,13 @@ use clean;
 use html::render;
 use html::render::{cache_key, current_location_key};
 
+/// Helper to render an optional visibility with a space after it (if the
+/// visibility is preset)
 pub struct VisSpace(Option<ast::visibility>);
+/// Similarly to VisSpace, this structure is used to render a purity with a
+/// space after it.
 pub struct PuritySpace(ast::purity);
+/// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'self>(&'self clean::SelfTy, &'self clean::FnDecl);
 
 impl fmt::Default for clean::Generics {
@@ -98,6 +110,8 @@ impl fmt::Default for clean::Path {
     }
 }
 
+/// Used when rendering a `ResolvedPath` structure. This invokes the `path`
+/// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
                  print_all: bool) {
     path(w, p, print_all,
@@ -115,6 +129,8 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
         });
 }
 
+/// Used when rendering an `ExternalPath` structure. Like `resolved_path` this
+/// will invoke `path` with proper linking-style arguments.
 fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
                  fqn: &[~str], kind: clean::TypeKind, crate: ast::CrateNum) {
     path(w, p, print_all,
@@ -230,6 +246,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
     }
 }
 
+/// Helper to render type parameters
 fn typarams(w: &mut io::Writer, typarams: &Option<~[clean::TyParamBound]>) {
     match *typarams {
         Some(ref params) => {
