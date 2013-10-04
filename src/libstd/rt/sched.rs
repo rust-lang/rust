@@ -19,7 +19,7 @@ use super::stack::{StackPool};
 use super::rtio::{EventLoop, EventLoopObject, RemoteCallbackObject};
 use super::context::Context;
 use super::task::{Task, AnySched, Sched};
-use super::message_queue::MessageQueue;
+use super::mpsc_queue::Queue;
 use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
@@ -47,7 +47,7 @@ pub struct Scheduler {
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
-    priv message_queue: MessageQueue<SchedMessage>,
+    priv message_queue: Queue<SchedMessage>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
     sleeper_list: SleeperList,
@@ -129,7 +129,7 @@ impl Scheduler {
 
         let mut sched = Scheduler {
             sleeper_list: sleeper_list,
-            message_queue: MessageQueue::new(),
+            message_queue: Queue::new(),
             sleepy: false,
             no_sleep: false,
             event_loop: event_loop,
@@ -794,7 +794,7 @@ pub enum SchedMessage {
 
 pub struct SchedHandle {
     priv remote: ~RemoteCallbackObject,
-    priv queue: MessageQueue<SchedMessage>,
+    priv queue: Queue<SchedMessage>,
     sched_id: uint
 }
 
