@@ -271,8 +271,6 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     fn visit_u32(&mut self) -> bool { self.write::<u32>() }
     fn visit_u64(&mut self) -> bool { self.write::<u64>() }
 
-    #[cfg(stage0)]
-    fn visit_float(&mut self) -> bool { self.write::<f64>() }
     fn visit_f32(&mut self) -> bool { self.write::<f32>() }
     fn visit_f64(&mut self) -> bool { self.write::<f64>() }
 
