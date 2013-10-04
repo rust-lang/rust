@@ -8,6 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Rustdoc's HTML Rendering module
+//!
+//! This modules contains the bulk of the logic necessary for rendering a
+//! rustdoc `clean::Crate` instance to a set of static HTML pages. This
+//! rendering process is largely driven by the `format!` syntax extension to
+//! perform all I/O into files and streams.
+//!
+//! The rendering process is largely driven by the `Context` and `Cache`
+//! structures. The cache is pre-populated by crawling the crate in question,
+//! and then it is shared among the various rendering tasks. The cache is meant
+//! to be a fairly large structure not implementing `Clone` (because it's shared
+//! among tasks). The context, however, should be a lightweight structure. This
+//! is cloned per-task and contains information about what is currently being
+//! rendered.
+//!
+//! In order to speed up rendering (mostly because of markdown rendering), the
+//! rendering process has been parallelized. This parallelization is only
+//! exposed through the `crate` method on the context, and then also from the
+//! fact that the shared cache is stored in TLS (and must be accessed as such).
+//!
+//! In addition to rendering the crate itself, this module is also responsible
+//! for creating the corresponding search index and source file renderings.
+//! These tasks are not parallelized (they haven't been a bottleneck yet), and
+//! both occur before the crate is rendered.
+
 use std::cell::Cell;
 use std::comm::{SharedPort, SharedChan};
 use std::comm;
@@ -40,55 +65,132 @@ use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
 use html::markdown::Markdown;
 
+/// Major driving force in all rustdoc rendering. This contains information
+/// about where in the tree-like hierarchy rendering is occurring and controls
+/// how the current page is being rendered.
+///
+/// It is intended that this context is a lightweight object which can be fairly
+/// easily cloned because it is cloned per work-job (about once per item in the
+/// rustdoc tree).
 #[deriving(Clone)]
 pub struct Context {
+    /// Current hierarchy of components leading down to what's currently being
+    /// rendered
     current: ~[~str],
+    /// String representation of how to get back to the root path of the 'doc/'
+    /// folder in terms of a relative URL.
     root_path: ~str,
+    /// The current destination folder of where HTML artifacts should be placed.
+    /// This changes as the context descends into the module hierarchy.
     dst: Path,
+    /// This describes the layout of each page, and is not modified after
+    /// creation of the context (contains info like the favicon)
     layout: layout::Layout,
+    /// This map is a list of what should be displayed on the sidebar of the
+    /// current page. The key is the section header (traits, modules,
+    /// functions), and the value is the list of containers belonging to this
+    /// header. This map will change depending on the surrounding context of the
+    /// page.
     sidebar: HashMap<~str, ~[~str]>,
+    /// This flag indicates whether [src] links should be generated or not. If
+    /// the source files are present in the html rendering, then this will be
+    /// `true`.
     include_sources: bool,
 }
 
+/// Indicates where an external crate can be found.
 pub enum ExternalLocation {
-    Remote(~str),   // remote url root of the documentation
-    Local,          // inside local folder
-    Unknown,        // unknown where the documentation is
+    /// Remote URL root of the external crate
+    Remote(~str),
+    /// This external crate can be found in the local doc/ folder
+    Local,
+    /// The external crate could not be found.
+    Unknown,
 }
 
+/// Different ways an implementor of a trait can be rendered.
 enum Implementor {
+    /// Paths are displayed specially by omitting the `impl XX for` cruft
     PathType(clean::Type),
+    /// This is the generic representation of an trait implementor, used for
+    /// primitive types and otherwise non-path types.
     OtherType(clean::Generics, /* trait */ clean::Type, /* for */ clean::Type),
 }
 
+/// This cache is used to store information about the `clean::Crate` being
+/// rendered in order to provide more useful documentation. This contains
+/// information like all implementors of a trait, all traits a type implements,
+/// documentation for all known traits, etc.
+///
+/// This structure purposefully does not implement `Clone` because it's intended
+/// to be a fairly large and expensive structure to clone. Instead this adheres
+/// to both `Send` and `Freeze` so it may be stored in a `RWArc` instance and
+/// shared among the various rendering tasks.
 struct Cache {
-    // typaram id => name of that typaram
+    /// Mapping of typaram ids to the name of the type parameter. This is used
+    /// when pretty-printing a type (so pretty printing doesn't have to
+    /// painfully maintain a context like this)
     typarams: HashMap<ast::NodeId, ~str>,
-    // type id => all implementations for that type
+
+    /// Maps a type id to all known implementations for that type. This is only
+    /// recognized for intra-crate `ResolvedPath` types, and is used to print
+    /// out extra documentation on the page of an enum/struct.
+    ///
+    /// The values of the map are a list of implementations and documentation
+    /// found on that implementation.
     impls: HashMap<ast::NodeId, ~[(clean::Impl, Option<~str>)]>,
-    // path id => (full qualified path, shortty) -- used to generate urls
+
+    /// Maintains a mapping of local crate node ids to the fully qualified name
+    /// and "short type description" of that node. This is used when generating
+    /// URLs when a type is being linked to. External paths are not located in
+    /// this map because the `External` type itself has all the information
+    /// necessary.
     paths: HashMap<ast::NodeId, (~[~str], &'static str)>,
-    // trait id => method name => dox
+
+    /// This map contains information about all known traits of this crate.
+    /// Implementations of a crate should inherit the documentation of the
+    /// parent trait if no extra documentation is specified, and this map is
+    /// keyed on trait id with a value of a 'method name => documentation'
+    /// mapping.
     traits: HashMap<ast::NodeId, HashMap<~str, ~str>>,
-    // trait id => implementors of the trait
+
+    /// When rendering traits, it's often useful to be able to list all
+    /// implementors of the trait, and this mapping is exactly, that: a mapping
+    /// of trait ids to the list of known implementors of the trait
     implementors: HashMap<ast::NodeId, ~[Implementor]>,
-    // crate number => where is the crate's dox located at
+
+    /// Cache of where external crate documentation can be found.
     extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
+
+    // Private fields only used when initially crawling a crate to build a cache
 
     priv stack: ~[~str],
     priv parent_stack: ~[ast::NodeId],
     priv search_index: ~[IndexItem],
 }
 
+/// Helper struct to render all source code to HTML pages
 struct SourceCollector<'self> {
-    seen: HashSet<~str>,
-    dst: Path,
     cx: &'self mut Context,
+
+    /// Processed source-file paths
+    seen: HashSet<~str>,
+    /// Root destination to place all HTML output into
+    dst: Path,
 }
+
+/// Wrapper struct to render the source code of a file. This will do things like
+/// adding line numbers to the left-hand side.
+struct Source<'self>(&'self str);
+
+// Helper structs for rendering items/sidebars and carrying along contextual
+// information
 
 struct Item<'self> { cx: &'self Context, item: &'self clean::Item, }
 struct Sidebar<'self> { cx: &'self Context, item: &'self clean::Item, }
 
+/// Struct representing one entry in the JS search index. These are all emitted
+/// by hand to a large JS file at the end of cache-creation.
 struct IndexItem {
     ty: &'static str,
     name: ~str,
@@ -97,7 +199,7 @@ struct IndexItem {
     parent: Option<ast::NodeId>,
 }
 
-struct Source<'self>(&'self str);
+// TLS keys used to carry information around during rendering.
 
 local_data_key!(pub cache_key: RWArc<Cache>)
 local_data_key!(pub current_location_key: ~[~str])
@@ -211,11 +313,15 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     cx.crate(crate, cache);
 }
 
+/// Writes the entire contents of a string to a destination, not attempting to
+/// catch any errors.
 fn write(dst: Path, contents: &str) {
     let mut w = dst.open_writer(io::CreateOrTruncate);
     w.write(contents.as_bytes());
 }
 
+/// Makes a directory on the filesystem, failing the task if an error occurs and
+/// skipping if the directory already exists.
 fn mkdir(path: &Path) {
     do io::io_error::cond.trap(|err| {
         error2!("Couldn't create directory `{}`: {}",
@@ -228,6 +334,9 @@ fn mkdir(path: &Path) {
     }
 }
 
+/// Takes a path to a source file and cleans the path to it. This canonicalizes
+/// things like "." and ".." to components which preserve the "top down"
+/// hierarchy of a static HTML tree.
 fn clean_srcpath(src: &str, f: &fn(&str)) {
     let p = Path(src);
     for c in p.components.iter() {
@@ -242,6 +351,8 @@ fn clean_srcpath(src: &str, f: &fn(&str)) {
     }
 }
 
+/// Attempts to find where an external crate is located, given that we're
+/// rendering in to the specified source destination.
 fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
     // See if there's documentation generated into the local directory
     let local_location = dst.push(e.name);
@@ -276,7 +387,10 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 
 impl<'self> DocFolder for SourceCollector<'self> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        // If we're including source files, and we haven't seen this file yet,
+        // then we need to render it out to the filesystem
         if self.cx.include_sources && !self.seen.contains(&item.source.filename) {
+
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the
@@ -292,11 +406,13 @@ impl<'self> DocFolder for SourceCollector<'self> {
                 println!("         skipping rendering of source code");
             }
         }
+
         self.fold_item_recur(item)
     }
 }
 
 impl<'self> SourceCollector<'self> {
+    /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> bool {
         let p = Path(filename);
 
@@ -539,9 +655,9 @@ impl<'self> Cache {
 }
 
 impl Context {
+    /// Recurse in the directory structure and change the "root path" to make
+    /// sure it always points to the top (relatively)
     fn recurse<T>(&mut self, s: ~str, f: &fn(&mut Context) -> T) -> T {
-        // Recurse in the directory structure and change the "root path" to make
-        // sure it always points to the top (relatively)
         if s.len() == 0 {
             fail2!("what {:?}", self);
         }
@@ -562,6 +678,9 @@ impl Context {
         return ret;
     }
 
+    /// Main method for rendering a crate. This parallelizes the task of
+    /// rendering a crate, and requires ownership of the crate in order to break
+    /// it up into its separate components.
     fn crate(self, mut crate: clean::Crate, cache: Cache) {
         enum Work {
             Die,
@@ -583,6 +702,11 @@ impl Context {
         let prog_chan = SharedChan::new(prog_chan);
         let cache = RWArc::new(cache);
 
+        // Each worker thread receives work from a shared port and publishes
+        // new work onto the corresponding shared port. All of the workers are
+        // using the same channel/port. Through this, the crate is recursed on
+        // in a hierarchical fashion, and parallelization is only achieved if
+        // one node in the hierarchy has more than one child (very common).
         for i in range(0, WORKERS) {
             let port = port.clone();
             let chan = chan.clone();
@@ -623,8 +747,12 @@ impl Context {
             }
         }
 
+        // Send off the initial job
         chan.send(Process(self, item));
         let mut jobs = 1;
+
+        // Keep track of the number of jobs active in the system and kill
+        // everything once there are no more jobs remaining.
         loop {
             match prog_port.recv() {
                 JobNew => jobs += 1,
@@ -639,6 +767,11 @@ impl Context {
         }
     }
 
+    /// Non-parellelized version of rendering an item. This will take the input
+    /// item, render its contents, and then invoke the specified closure with
+    /// all sub-items which need to be rendered.
+    ///
+    /// The rendering driver uses this closure to queue up more work.
     fn item(&mut self, item: clean::Item, f: &fn(&mut Context, clean::Item)) {
         fn render(w: io::file::FileWriter, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {

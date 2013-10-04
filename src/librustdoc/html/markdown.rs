@@ -10,11 +10,28 @@
 
 #[allow(cstack)]; // each rendering task runs on a fixed stack segment.
 
+//! Markdown formatting for rustdoc
+//!
+//! This module implements markdown formatting through the sundown C-library
+//! (bundled into the rust runtime). This module self-contains the C bindings
+//! and necessary legwork to render markdown, and exposes all of the
+//! functionality through a unit-struct, `Markdown`, which has an implementation
+//! of `fmt::Default`. Example usage:
+//!
+//! ```rust
+//! let s = "My *markdown* _text_";
+//! let html = format!("{}", Markdown(s));
+//! // ... something using html
+//! ```
+
 use std::fmt;
 use std::libc;
 use std::rt::io;
 use std::vec;
 
+/// A unit struct which has the `fmt::Default` trait implemented. When
+/// formatted, this struct will emit the HTML corresponding to the rendered
+/// version of the contained markdown string.
 pub struct Markdown<'self>(&'self str);
 
 static OUTPUT_UNIT: libc::size_t = 64;
@@ -110,7 +127,6 @@ impl<'self> fmt::Default for Markdown<'self> {
     fn fmt(md: &Markdown<'self>, fmt: &mut fmt::Formatter) {
         // This is actually common enough to special-case
         if md.len() == 0 { return; }
-
         render(fmt.buf, md.as_slice());
     }
 }
