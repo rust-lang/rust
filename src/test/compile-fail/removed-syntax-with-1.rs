@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod obsolete_name {
-    //~^ ERROR obsolete syntax: named external module
-    fn bar();
-}
+fn removed_with() {
+    struct S {
+        foo: (),
+        bar: (),
+    }
 
-trait A {
-    pub fn foo(); //~ ERROR: visibility not necessary
-    pub fn bar(); //~ ERROR: visibility not necessary
+    let a = S { foo: (), bar: () };
+    let b = S { foo: () with a };
+    //~^ ERROR expected one of `,`, `}` but found `with`
 }
-
-fn main() { }
