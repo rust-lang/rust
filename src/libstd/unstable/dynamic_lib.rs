@@ -12,7 +12,7 @@
 
 Dynamic library facilities.
 
-A simple wrapper over the platforms dynamic library facilities
+A simple wrapper over the platform's dynamic library facilities
 
 */
 use c_str::ToCStr;
@@ -22,6 +22,9 @@ use libc;
 use ops::*;
 use option::*;
 use result::*;
+use unstable::atomics::{AtomicFlag, INIT_ATOMIC_FLAG, Acquire, Release};
+
+static mut SPIN_LOCK_FLAG: AtomicFlag = INIT_ATOMIC_FLAG;
 
 pub struct DynamicLibrary { priv handle: *libc::c_void }
 
@@ -90,8 +93,6 @@ mod test {
     use libc;
 
     #[test]
-    // #[ignore(cfg(windows))] // FIXME #8818
-    #[ignore] // FIXME #9137 this library isn't thread-safe
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in
@@ -100,8 +101,6 @@ mod test {
             Ok(libm) => libm
         };
 
-        // Unfortunately due to issue #6194 it is not possible to call
-        // this as a C function
         let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
             match libm.symbol("cos") {
                 Err(error) => fail2!("Could not load function cos: {}", error),
@@ -122,7 +121,6 @@ mod test {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    #[ignore] // FIXME #9137 this library isn't thread-safe
     fn test_errors_do_not_crash() {
         // Open /dev/null as a library to get an error, and make sure
         // that only causes an error, and not a crash.
@@ -132,6 +130,17 @@ mod test {
             Ok(_) => fail2!("Successfully opened the empty library.")
         }
     }
+}
+
+// Only public for the dl modules :(
+pub unsafe fn with_spin_lock<T>(blk: &fn() -> T) -> T {
+    while SPIN_LOCK_FLAG.test_and_set(Acquire) {
+        // It'd be nice to at least be able to yield in here :(
+    }
+
+    let ret = blk();
+    SPIN_LOCK_FLAG.clear(Release);
+    ret
 }
 
 #[cfg(target_os = "linux")]
@@ -146,6 +155,7 @@ pub mod dl {
     use str;
     use unstable::sync::atomically;
     use result::*;
+    use super::with_spin_lock;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
         #[fixed_stack_segment]; #[inline(never)];
@@ -165,15 +175,17 @@ pub mod dl {
 
         unsafe {
             do atomically {
-                let _old_error = dlerror();
+                do with_spin_lock {
+                    let _old_error = dlerror();
 
-                let result = f();
+                    let result = f();
 
-                let last_error = dlerror();
-                if ptr::null() == last_error {
-                    Ok(result)
-                } else {
-                    Err(str::raw::from_c_str(last_error))
+                    let last_error = dlerror();
+                    if ptr::null() == last_error {
+                        Ok(result)
+                    } else {
+                        Err(str::raw::from_c_str(last_error))
+                    }
                 }
             }
         }
@@ -214,6 +226,7 @@ pub mod dl {
     use ptr;
     use unstable::sync::atomically;
     use result::*;
+    use super::with_spin_lock;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
         #[fixed_stack_segment]; #[inline(never)];
@@ -233,19 +246,22 @@ pub mod dl {
         #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do atomically {
-                SetLastError(0);
+                do with_spin_lock {
+                    SetLastError(0);
 
-                let result = f();
+                    let result = f();
 
-                let error = os::errno();
-                if 0 == error {
-                    Ok(result)
-                } else {
-                    Err(format!("Error code {}", error))
+                    let error = os::errno();
+                    if 0 == error {
+                        Ok(result)
+                    } else {
+                        Err(format!("Error code {}", error))
+                    }
                 }
             }
         }
     }
+
     pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
         #[fixed_stack_segment]; #[inline(never)];
         GetProcAddress(handle, symbol)
