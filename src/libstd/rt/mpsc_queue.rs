@@ -56,9 +56,13 @@ impl<T> Default for Node<T> {
 }
 
 struct State<T> {
-    stub: Node<T>,
+    pad0: [u8, ..64],
     head: AtomicPtr<Node<T>>,
+    pad1: [u8, ..64],
+    stub: Node<T>,
+    pad2: [u8, ..64],
     tail: *mut Node<T>,
+    pad3: [u8, ..64],
 }
 
 struct Queue<T> {
@@ -82,9 +86,13 @@ impl<T: Send> fmt::Default for Queue<T> {
 impl<T: Send> Queue<T> {
     pub fn new() -> Queue<T> {
         let mut q = Queue{state: UnsafeArc::new(State {
-            stub: Default::default(),
+            pad0: [0, ..64],
             head: AtomicPtr::new(mut_null()),
+            pad1: [0, ..64],
+            stub: Default::default(),
+            pad2: [0, ..64],
             tail: mut_null(),
+            pad3: [0, ..64],
         })};
         let stub = q.get_stub_unsafe();
         q.get_head().store(stub, Relaxed);
@@ -102,7 +110,7 @@ impl<T: Send> Queue<T> {
     fn push_node(&mut self, node: *mut Node<T>) {
         unsafe {
             (*node).next.store(mut_null(), Release);
-            let prev = (*self.state.get()).head.swap(node, Relaxed);
+            let prev = self.get_head().swap(node, Relaxed);
             (*prev).next.store(node, Release);
         }
     }
@@ -167,7 +175,6 @@ mod tests {
     use option::*;
     use task;
     use comm;
-    use fmt;
     use super::Queue;
 
     #[test]
