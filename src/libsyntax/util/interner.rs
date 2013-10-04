@@ -134,9 +134,6 @@ impl StrInterner {
         new_idx
     }
 
-    // this isn't "pure" in the traditional sense, because it can go from
-    // failing to returning a value as items are interned. But for typestate,
-    // where we first check a pred and then rely on it, ceasing to fail is ok.
     pub fn get(&self, idx: uint) -> @str { self.vect[idx] }
 
     pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
