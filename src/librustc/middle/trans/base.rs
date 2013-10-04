@@ -92,17 +92,19 @@ use syntax::visit::Visitor;
 
 pub use middle::trans::context::task_llcx;
 
-local_data_key!(task_local_insn_key: @~[&'static str])
+local_data_key!(task_local_insn_key: ~[&'static str])
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
-    let opt = local_data::get(task_local_insn_key, |k| k.map_move(|k| *k));
-    if opt.is_some() {
-        blk(*opt.unwrap());
+    do local_data::get(task_local_insn_key) |c| {
+        match c {
+            Some(ctx) => blk(*ctx),
+            None => ()
+        }
     }
 }
 
 pub fn init_insn_ctxt() {
-    local_data::set(task_local_insn_key, @~[]);
+    local_data::set(task_local_insn_key, ~[]);
 }
 
 pub struct _InsnCtxt { _x: () }
@@ -111,10 +113,9 @@ pub struct _InsnCtxt { _x: () }
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
         do local_data::modify(task_local_insn_key) |c| {
-            do c.map_move |ctx| {
-                let mut ctx = (*ctx).clone();
+            do c.map_move |mut ctx| {
                 ctx.pop();
-                @ctx
+                ctx
             }
         }
     }
@@ -123,10 +124,9 @@ impl Drop for _InsnCtxt {
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug2!("new InsnCtxt: {}", s);
     do local_data::modify(task_local_insn_key) |c| {
-        do c.map_move |ctx| {
-            let mut ctx = (*ctx).clone();
+        do c.map_move |mut ctx| {
             ctx.push(s);
-            @ctx
+            ctx
         }
     }
     _InsnCtxt { _x: () }
