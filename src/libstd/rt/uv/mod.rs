@@ -267,6 +267,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             EACCES => PermissionDenied,
             ECONNREFUSED => ConnectionRefused,
             ECONNRESET => ConnectionReset,
+            ENOTCONN => NotConnected,
             EPIPE => BrokenPipe,
             err => {
                 rtdebug!("uverr.code {}", err as int);
