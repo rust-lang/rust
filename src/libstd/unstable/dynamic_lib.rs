@@ -12,7 +12,7 @@
 
 Dynamic library facilities.
 
-A simple wrapper over the platforms dynamic library facilities
+A simple wrapper over the platform's dynamic library facilities
 
 */
 use c_str::ToCStr;
@@ -80,7 +80,6 @@ impl DynamicLibrary {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -90,8 +89,7 @@ mod test {
     use libc;
 
     #[test]
-    // #[ignore(cfg(windows))] // FIXME #8818
-    #[ignore] // FIXME #9137 this library isn't thread-safe
+    #[ignore(cfg(windows))] // FIXME #8818
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in
@@ -100,8 +98,6 @@ mod test {
             Ok(libm) => libm
         };
 
-        // Unfortunately due to issue #6194 it is not possible to call
-        // this as a C function
         let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
             match libm.symbol("cos") {
                 Err(error) => fail2!("Could not load function cos: {}", error),
@@ -114,7 +110,7 @@ mod test {
         let result = cosine(argument);
         if result != expected_result {
             fail2!("cos({:?}) != {:?} but equaled {:?} instead", argument,
-                  expected_result, result)
+                   expected_result, result)
         }
     }
 
@@ -122,7 +118,6 @@ mod test {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    #[ignore] // FIXME #9137 this library isn't thread-safe
     fn test_errors_do_not_crash() {
         // Open /dev/null as a library to get an error, and make sure
         // that only causes an error, and not a crash.
@@ -164,17 +159,25 @@ pub mod dl {
         #[fixed_stack_segment]; #[inline(never)];
 
         unsafe {
+            // dlerror isn't thread safe, so we need to lock around this entire
+            // sequence. `atomically` asserts that we don't do anything that
+            // would cause this task to be descheduled, which could deadlock
+            // the scheduler if it happens while the lock is held.
+            // FIXME #9105 use a Rust mutex instead of C++ mutexes.
             do atomically {
+                rust_take_dlerror_lock();
                 let _old_error = dlerror();
 
                 let result = f();
 
                 let last_error = dlerror();
-                if ptr::null() == last_error {
+                let ret = if ptr::null() == last_error {
                     Ok(result)
                 } else {
                     Err(str::raw::from_c_str(last_error))
-                }
+                };
+                rust_drop_dlerror_lock();
+                ret
             }
         }
     }
@@ -195,6 +198,11 @@ pub mod dl {
         Now = 2,
         Global = 256,
         Local = 0,
+    }
+
+    extern {
+        fn rust_take_dlerror_lock();
+        fn rust_drop_dlerror_lock();
     }
 
     #[link_name = "dl"]
@@ -246,6 +254,7 @@ pub mod dl {
             }
         }
     }
+
     pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
         #[fixed_stack_segment]; #[inline(never)];
         GetProcAddress(handle, symbol)
