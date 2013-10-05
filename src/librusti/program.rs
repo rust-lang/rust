@@ -24,7 +24,7 @@ use utils::*;
 /// This structure keeps track of the state of the world for the code being
 /// executed in rusti.
 #[deriving(Clone)]
-struct Program {
+pub struct Program {
     /// All known local variables
     local_vars: HashMap<~str, LocalVariable>,
     /// New variables which will be present (learned from typechecking)

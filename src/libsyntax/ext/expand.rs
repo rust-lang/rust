@@ -1551,7 +1551,8 @@ mod test {
         let varrefs = @mut ~[];
         visit::walk_crate(&mut new_path_finder(varrefs), &renamed_ast, ());
         match varrefs {
-            @[Path{segments:[ref seg],_}] => assert_eq!(mtwt_resolve(seg.identifier),a2_name),
+            @[ast::Path{segments:[ref seg],_}] =>
+                assert_eq!(mtwt_resolve(seg.identifier),a2_name),
             _ => assert_eq!(0,1)
         }
 
@@ -1565,7 +1566,8 @@ mod test {
         let varrefs = @mut ~[];
         visit::walk_crate(&mut new_path_finder(varrefs), &double_renamed, ());
         match varrefs {
-            @[Path{segments:[ref seg],_}] => assert_eq!(mtwt_resolve(seg.identifier),a3_name),
+            @[ast::Path{segments:[ref seg],_}] =>
+                assert_eq!(mtwt_resolve(seg.identifier),a3_name),
             _ => assert_eq!(0,1)
         }
     }

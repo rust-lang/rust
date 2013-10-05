@@ -40,7 +40,7 @@ pub trait Deque<T> : Mutable {
 }
 
 #[cfg(test)]
-mod bench {
+pub mod bench {
     use std::container::MutableMap;
     use std::{vec, rand};
     use std::rand::Rng;
