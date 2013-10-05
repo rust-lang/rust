@@ -137,6 +137,9 @@ and builds it in any workspace(s) where it finds one.
 Supposing such packages are found in workspaces X, Y, and Z,
 the command leaves behind files in `X`'s, `Y`'s, and `Z`'s `build` directories,
 but not in their `lib` or `bin` directories.
+(The exception is when rustpkg fetches a package `foo`'s sources from a remote repository.
+In that case, it stores both the sources *and* the build artifacts for `foo`
+in the workspace that `foo` will install to (see ##install below)).
 
 ## clean
 
@@ -148,7 +151,11 @@ but not in their `lib` or `bin` directories.
 If `RUST_PATH` is declared as an environment variable, then rustpkg installs the
 libraries and executables into the `lib` and `bin` subdirectories
 of the first entry in `RUST_PATH`.
-Otherwise, it installs them into `foo`'s `lib` and `bin` directories.
+Otherwise, if the current working directory CWD is a workspace,
+it installs them into CWD's `lib` and `bin` subdirectories.
+Otherwise, if the current working directory is CWD,
+it installs them into the .rust/lib and .rust/bin subdirectories of CWD
+(creating them if necessary). 
 
 ## test
 
