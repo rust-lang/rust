@@ -64,6 +64,11 @@ impl IntoSendStr for &'static str {
     fn into_send_str(self) -> SendStr { SendStrStatic(self) }
 }
 
+impl IntoSendStr for SendStr {
+    #[inline]
+    fn into_send_str(self) -> SendStr { self }
+}
+
 /*
 Section: String trait impls.
 `SendStr` should behave like a normal string, so we don't derive.
