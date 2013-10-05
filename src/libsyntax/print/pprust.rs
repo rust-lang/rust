@@ -1895,7 +1895,9 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
             head(s, "extern mod");
             print_ident(s, id);
             for p in optional_path.iter() {
+                space(s.s);
                 word(s.s, "=");
+                space(s.s);
                 print_string(s, *p);
             }
             if !mta.is_empty() {
