@@ -346,7 +346,7 @@ impl <T: FixedBuffer> StandardPadding for T {
 
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use std::rand::{IsaacRng, Rng};
     use std::vec;
 

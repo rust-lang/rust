@@ -964,7 +964,7 @@ mod test {
     use super::*;
     use std::io;
     use opt_vec;
-    use std::hash::HashMap;
+    use std::hashmap::HashMap;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment{identifier:id.clone(), lifetime: None, types: opt_vec::Empty}

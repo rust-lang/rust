@@ -17,24 +17,24 @@ extern mod extra;
 mod rusti {
     #[abi = "rust-intrinsic"]
     extern "rust-intrinsic" {
-        fn ctpop8(x: i8) -> i8;
-        fn ctpop16(x: i16) -> i16;
-        fn ctpop32(x: i32) -> i32;
-        fn ctpop64(x: i64) -> i64;
+        pub fn ctpop8(x: i8) -> i8;
+        pub fn ctpop16(x: i16) -> i16;
+        pub fn ctpop32(x: i32) -> i32;
+        pub fn ctpop64(x: i64) -> i64;
 
-        fn ctlz8(x: i8) -> i8;
-        fn ctlz16(x: i16) -> i16;
-        fn ctlz32(x: i32) -> i32;
-        fn ctlz64(x: i64) -> i64;
+        pub fn ctlz8(x: i8) -> i8;
+        pub fn ctlz16(x: i16) -> i16;
+        pub fn ctlz32(x: i32) -> i32;
+        pub fn ctlz64(x: i64) -> i64;
 
-        fn cttz8(x: i8) -> i8;
-        fn cttz16(x: i16) -> i16;
-        fn cttz32(x: i32) -> i32;
-        fn cttz64(x: i64) -> i64;
+        pub fn cttz8(x: i8) -> i8;
+        pub fn cttz16(x: i16) -> i16;
+        pub fn cttz32(x: i32) -> i32;
+        pub fn cttz64(x: i64) -> i64;
 
-        fn bswap16(x: i16) -> i16;
-        fn bswap32(x: i32) -> i32;
-        fn bswap64(x: i64) -> i64;
+        pub fn bswap16(x: i16) -> i16;
+        pub fn bswap32(x: i32) -> i32;
+        pub fn bswap64(x: i64) -> i64;
     }
 }
 

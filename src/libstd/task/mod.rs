@@ -551,7 +551,7 @@ pub fn deschedule() {
     //! Yield control to the task scheduler
 
     use rt::local::Local;
-    use rt::sched::Scheduler;
+    use rt::shouldnt_be_public::Scheduler;
 
     // FIXME(#7544): Optimize this, since we know we won't block.
     let sched: ~Scheduler = Local::take();

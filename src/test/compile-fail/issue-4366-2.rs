@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+// ensures that 'use foo:*' doesn't import non-public item
+
+use m1::*;
+
+mod foo {
+    pub fn foo() {}
+}
 mod a {
-    fn f() {}
+    pub mod b {
+        use foo::foo;
+        type bar = int;
+    }
+    pub mod sub {
+        use a::b::*;
+        fn sub() -> bar { 1 }
+        //~^ ERROR: undeclared type name
+    }
+}
+
+mod m1 {
+    fn foo() {}
 }
 
 fn main() {
-    a::f(); //~ ERROR function `f` is private
+    foo(); //~ ERROR: unresolved name
 }
+
