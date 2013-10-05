@@ -1151,6 +1151,7 @@ pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
              enum_nonmatch_f,
              cx, span, substructure)
 }
+
 /// cs_binop with binop == and
 #[inline]
 pub fn cs_and(enum_nonmatch_f: EnumNonMatchFunc,

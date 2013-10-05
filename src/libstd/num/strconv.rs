@@ -140,7 +140,7 @@ pub fn int_to_str_bytes_common<T:NumCast+Zero+Eq+Ord+Integer+
     let _0: T = Zero::zero();
 
     let neg = num < _0;
-    let radix_gen: T = cast(radix);
+    let radix_gen: T = cast(radix).unwrap();
 
     let mut deccum = num;
     // This is just for integral types, the largest of which is a u64. The
@@ -163,7 +163,7 @@ pub fn int_to_str_bytes_common<T:NumCast+Zero+Eq+Ord+Integer+
         } else {
             current_digit_signed
         };
-        buf[cur] = match current_digit.to_u8() {
+        buf[cur] = match current_digit.to_u8().unwrap() {
             i @ 0..9 => '0' as u8 + i,
             i        => 'a' as u8 + (i - 10),
         };
@@ -247,7 +247,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
 
     let neg = num < _0 || (negative_zero && _1 / num == Float::neg_infinity());
     let mut buf: ~[u8] = ~[];
-    let radix_gen: T   = cast(radix as int);
+    let radix_gen: T   = cast(radix as int).unwrap();
 
     // First emit the non-fractional part, looping at least once to make
     // sure at least a `0` gets emitted.
@@ -265,7 +265,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        buf.push(char::from_digit(current_digit.to_int() as uint, radix)
+        buf.push(char::from_digit(current_digit.to_int().unwrap() as uint, radix)
              .unwrap() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
@@ -322,7 +322,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
             let current_digit = deccum.trunc().abs();
 
             buf.push(char::from_digit(
-                current_digit.to_int() as uint, radix).unwrap() as u8);
+                current_digit.to_int().unwrap() as uint, radix).unwrap() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
@@ -492,7 +492,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
 
     let _0: T = Zero::zero();
     let _1: T = One::one();
-    let radix_gen: T = cast(radix as int);
+    let radix_gen: T = cast(radix as int).unwrap();
 
     let len = buf.len();
 
@@ -543,9 +543,9 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
-                    accum = accum + cast(digit as int);
+                    accum = accum + cast(digit as int).unwrap();
                 } else {
-                    accum = accum - cast(digit as int);
+                    accum = accum - cast(digit as int).unwrap();
                 }
 
                 // Detect overflow by comparing to last value, except
@@ -556,11 +556,11 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
 
                     // Detect overflow by reversing the shift-and-add proccess
                     if accum_positive &&
-                        (last_accum != ((accum - cast(digit as int))/radix_gen.clone())) {
+                        (last_accum != ((accum - cast(digit as int).unwrap())/radix_gen.clone())) {
                         return NumStrConv::inf();
                     }
                     if !accum_positive &&
-                        (last_accum != ((accum + cast(digit as int))/radix_gen.clone())) {
+                        (last_accum != ((accum + cast(digit as int).unwrap())/radix_gen.clone())) {
                         return NumStrConv::neg_inf();
                     }
                 }
@@ -596,7 +596,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
                     // Decrease power one order of magnitude
                     power = power / radix_gen;
 
-                    let digit_t: T = cast(digit);
+                    let digit_t: T = cast(digit).unwrap();
 
                     // add/subtract current digit depending on sign
                     if accum_positive {
@@ -654,9 +654,9 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
         match exp {
             Some(exp_pow) => {
                 multiplier = if exp_pow < 0 {
-                    _1 / pow_with_uint::<T>(base, (-exp_pow.to_int()) as uint)
+                    _1 / pow_with_uint::<T>(base, (-exp_pow.to_int().unwrap()) as uint)
                 } else {
-                    pow_with_uint::<T>(base, exp_pow.to_int() as uint)
+                    pow_with_uint::<T>(base, exp_pow.to_int().unwrap() as uint)
                 }
             }
             None => return None // invalid exponent -> invalid number
