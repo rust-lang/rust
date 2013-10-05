@@ -33,6 +33,7 @@ use rt::context::Context;
 use unstable::finally::Finally;
 use task::spawn::Taskgroup;
 use cell::Cell;
+use send_str::SendStr;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -49,8 +50,7 @@ pub struct Task {
     taskgroup: Option<Taskgroup>,
     death: Death,
     destroyed: bool,
-    // FIXME(#6874/#7599) use StringRef to save on allocations
-    name: Option<~str>,
+    name: Option<SendStr>,
     coroutine: Option<Coroutine>,
     sched: Option<~Scheduler>,
     task_type: TaskType,
