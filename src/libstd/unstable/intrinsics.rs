@@ -94,8 +94,6 @@ pub trait TyVisitor {
     fn visit_u32(&mut self) -> bool;
     fn visit_u64(&mut self) -> bool;
 
-    #[cfg(stage0)]
-    fn visit_float(&mut self) -> bool;
     fn visit_f32(&mut self) -> bool;
     fn visit_f64(&mut self) -> bool;
 
