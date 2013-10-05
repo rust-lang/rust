@@ -26,6 +26,8 @@ def unpack_snapshot(triple, dl_path):
     print("extracting " + p)
     tar.extract(p, download_unpack_base)
     tp = os.path.join(download_unpack_base, p)
+    if os.path.isdir(tp) and os.path.exists(fp):
+        continue
     shutil.move(tp, fp)
   tar.close()
   shutil.rmtree(download_unpack_base)
