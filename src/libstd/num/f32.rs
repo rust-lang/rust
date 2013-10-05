@@ -590,6 +590,9 @@ impl Primitive for f32 {
 
     #[inline]
     fn bytes(_: Option<f32>) -> uint { Primitive::bits(Some(0f32)) / 8 }
+
+    #[inline]
+    fn is_signed(_: Option<f32>) -> bool { true }
 }
 
 impl Float for f32 {

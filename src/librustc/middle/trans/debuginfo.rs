@@ -107,7 +107,7 @@ use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::vec;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec, visit};
 use syntax::parse::token;
 use syntax::parse::token::special_idents;

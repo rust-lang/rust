@@ -306,6 +306,9 @@ impl Primitive for $T {
 
     #[inline]
     fn bytes(_: Option<$T>) -> uint { bits / 8 }
+
+    #[inline]
+    fn is_signed(_: Option<$T>) -> bool { false }
 }
 
 impl BitCount for $T {

@@ -26,7 +26,7 @@ use middle::ty;
 use middle::typeck;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
