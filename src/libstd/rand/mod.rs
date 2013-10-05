@@ -317,12 +317,12 @@ pub trait Rng {
     /// ```
     fn gen_integer_range<T: Rand + Int>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "RNG.gen_integer_range called with low >= high");
-        let range = (high - low).to_u64();
+        let range = (high - low).to_u64().unwrap();
         let accept_zone = u64::max_value - u64::max_value % range;
         loop {
             let rand = self.gen::<u64>();
             if rand < accept_zone {
-                return low + NumCast::from(rand % range);
+                return low + NumCast::from(rand % range).unwrap();
             }
         }
     }

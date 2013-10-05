@@ -22,7 +22,7 @@ trait Num {
 pub trait NumExt: Num + NumCast { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    n.gt(&NumCast::from(1))
+    n.gt(&NumCast::from(1).unwrap())
 }
 
 pub fn main() {}

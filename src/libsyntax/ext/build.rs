@@ -113,6 +113,7 @@ pub trait AstBuilder {
                         expr: @ast::Expr, ident: ast::Ident,
                         args: ~[@ast::Expr]) -> @ast::Expr;
     fn expr_block(&self, b: ast::Block) -> @ast::Expr;
+    fn expr_cast(&self, sp: Span, expr: @ast::Expr, ty: ast::Ty) -> @ast::Expr;
 
     fn field_imm(&self, span: Span, name: Ident, e: @ast::Expr) -> ast::Field;
     fn expr_struct(&self, span: Span, path: ast::Path, fields: ~[ast::Field]) -> @ast::Expr;
@@ -132,6 +133,10 @@ pub trait AstBuilder {
     fn expr_str(&self, sp: Span, s: @str) -> @ast::Expr;
     fn expr_str_uniq(&self, sp: Span, s: @str) -> @ast::Expr;
 
+    fn expr_some(&self, sp: Span, expr: @ast::Expr) -> @ast::Expr;
+    fn expr_none(&self, sp: Span) -> @ast::Expr;
+
+    fn expr_fail(&self, span: Span, msg: @str) -> @ast::Expr;
     fn expr_unreachable(&self, span: Span) -> @ast::Expr;
 
     fn pat(&self, span: Span, pat: ast::Pat_) -> @ast::Pat;
@@ -564,7 +569,30 @@ impl AstBuilder for @ExtCtxt {
     }
 
 
-    fn expr_unreachable(&self, span: Span) -> @ast::Expr {
+    fn expr_cast(&self, sp: Span, expr: @ast::Expr, ty: ast::Ty) -> @ast::Expr {
+        self.expr(sp, ast::ExprCast(expr, ty))
+    }
+
+
+    fn expr_some(&self, sp: Span, expr: @ast::Expr) -> @ast::Expr {
+        let some = ~[
+            self.ident_of("std"),
+            self.ident_of("option"),
+            self.ident_of("Some"),
+        ];
+        self.expr_call_global(sp, some, ~[expr])
+    }
+
+    fn expr_none(&self, sp: Span) -> @ast::Expr {
+        let none = self.path_global(sp, ~[
+            self.ident_of("std"),
+            self.ident_of("option"),
+            self.ident_of("None"),
+        ]);
+        self.expr_path(none)
+    }
+
+    fn expr_fail(&self, span: Span, msg: @str) -> @ast::Expr {
         let loc = self.codemap().lookup_char_pos(span.lo);
         self.expr_call_global(
             span,
@@ -575,10 +603,14 @@ impl AstBuilder for @ExtCtxt {
                 self.ident_of("fail_with"),
             ],
             ~[
-                self.expr_str(span, @"internal error: entered unreachable code"),
+                self.expr_str(span, msg),
                 self.expr_str(span, loc.file.name),
                 self.expr_uint(span, loc.line),
             ])
+    }
+
+    fn expr_unreachable(&self, span: Span) -> @ast::Expr {
+        self.expr_fail(span, @"internal error: entered unreachable code")
     }
 
 

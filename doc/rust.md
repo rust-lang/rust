@@ -1775,6 +1775,7 @@ Supported traits for `deriving` are:
   `obj.to_str()` has similar output as `fmt!("%?", obj)`, but it differs in that
   each constituent field of the type must also implement `ToStr` and will have
   `field.to_str()` invoked to build up the result.
+* `FromPrimitive`, to create an instance from a numeric primitve.
 
 ### Stability
 One can indicate the stability of an API using the following attributes:
