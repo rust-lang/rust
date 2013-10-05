@@ -702,32 +702,6 @@ pub fn struct_def_is_tuple_like(struct_def: &ast::struct_def) -> bool {
     struct_def.ctor_id.is_some()
 }
 
-pub fn visibility_to_privacy(visibility: visibility) -> Privacy {
-    match visibility {
-        public => Public,
-        inherited | private => Private
-    }
-}
-
-pub fn variant_visibility_to_privacy(visibility: visibility,
-                                     enclosing_is_public: bool)
-                                  -> Privacy {
-    if enclosing_is_public {
-        match visibility {
-            public | inherited => Public,
-            private => Private
-        }
-    } else {
-        visibility_to_privacy(visibility)
-    }
-}
-
-#[deriving(Eq)]
-pub enum Privacy {
-    Private,
-    Public
-}
-
 /// Returns true if the given pattern consists solely of an identifier
 /// and false otherwise.
 pub fn pat_is_ident(pat: @ast::Pat) -> bool {
