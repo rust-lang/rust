@@ -63,6 +63,7 @@ use rt::in_green_task_context;
 use rt::local::Local;
 use unstable::finally::Finally;
 use util;
+use send_str::{SendStr, IntoSendStr};
 
 #[cfg(test)] use cast;
 #[cfg(test)] use comm::SharedChan;
@@ -148,7 +149,7 @@ pub struct TaskOpts {
     watched: bool,
     indestructible: bool,
     notify_chan: Option<Chan<TaskResult>>,
-    name: Option<~str>,
+    name: Option<SendStr>,
     sched: SchedOpts,
     stack_size: Option<uint>
 }
@@ -295,8 +296,8 @@ impl TaskBuilder {
 
     /// Name the task-to-be. Currently the name is used for identification
     /// only in failure messages.
-    pub fn name(&mut self, name: ~str) {
-        self.opts.name = Some(name);
+    pub fn name<S: IntoSendStr>(&mut self, name: S) {
+        self.opts.name = Some(name.into_send_str());
     }
 
     /// Configure a custom scheduler mode for the task.
@@ -944,12 +945,42 @@ fn test_unnamed_task() {
 }
 
 #[test]
-fn test_named_task() {
+fn test_owned_named_task() {
     use rt::test::run_in_newsched_task;
 
     do run_in_newsched_task {
         let mut t = task();
         t.name(~"ada lovelace");
+        do t.spawn {
+            do with_task_name |name| {
+                assert!(name.unwrap() == "ada lovelace");
+            }
+        }
+    }
+}
+
+#[test]
+fn test_static_named_task() {
+    use rt::test::run_in_newsched_task;
+
+    do run_in_newsched_task {
+        let mut t = task();
+        t.name("ada lovelace");
+        do t.spawn {
+            do with_task_name |name| {
+                assert!(name.unwrap() == "ada lovelace");
+            }
+        }
+    }
+}
+
+#[test]
+fn test_send_named_task() {
+    use rt::test::run_in_newsched_task;
+
+    do run_in_newsched_task {
+        let mut t = task();
+        t.name("ada lovelace".into_send_str());
         do t.spawn {
             do with_task_name |name| {
                 assert!(name.unwrap() == "ada lovelace");
