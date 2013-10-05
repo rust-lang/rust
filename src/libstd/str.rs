@@ -26,7 +26,7 @@ there are three common kinds of strings in rust:
 
 * `@str` - This is a managed string. Similarly to `@T`, this type can be
            implicitly copied, and each implicit copy will increment the
-           reference count to the string. This means that there is not "true
+           reference count to the string. This means that there is no "true
            owner" of the string, and the string will be deallocated when the
            reference count reaches 0.
 
