@@ -975,6 +975,21 @@ fn test_static_named_task() {
 }
 
 #[test]
+fn test_send_named_task() {
+    use rt::test::run_in_newsched_task;
+
+    do run_in_newsched_task {
+        let mut t = task();
+        t.name("ada lovelace".into_send_str());
+        do t.spawn {
+            do with_task_name |name| {
+                assert!(name.unwrap() == "ada lovelace");
+            }
+        }
+    }
+}
+
+#[test]
 fn test_run_basic() {
     let (po, ch) = stream::<()>();
     let mut builder = task();
