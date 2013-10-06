@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use container::Container;
+use fmt;
 use from_str::FromStr;
 use libc;
 use option::{Some, None, Option};
@@ -74,10 +75,11 @@ pub fn default_sched_threads() -> uint {
     }
 }
 
-pub fn dumb_println(s: &str) {
-    use io::WriterUtil;
-    let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-    dbg.write_str(s + "\n");
+pub fn dumb_println(args: &fmt::Arguments) {
+    use rt::io::native::stdio::stderr;
+    use rt::io::Writer;
+    let mut out = stderr();
+    fmt::writeln(&mut out as &mut Writer, args);
 }
 
 pub fn abort(msg: &str) -> ! {
