@@ -3992,20 +3992,20 @@ impl Parser {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::item_, ~[ast::Attribute]) {
-        let mut prefix = Path::from_str(self.sess.cm.span_to_filename(*self.span));
+        let mut prefix = Path::new(self.sess.cm.span_to_filename(*self.span));
         prefix.pop();
         let mod_path_stack = &*self.mod_path_stack;
-        let mod_path = Path::from_str(".").join_many_str(*mod_path_stack);
+        let mod_path = Path::new(".").join_many(*mod_path_stack);
         let dir_path = prefix.join_path(&mod_path);
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
-            Some(d) => dir_path.join_str(d),
+            Some(d) => dir_path.join(d),
             None => {
                 let mod_name = token::interner_get(id.name).to_owned();
                 let default_path_str = mod_name + ".rs";
                 let secondary_path_str = mod_name + "/mod.rs";
-                let default_path = dir_path.join_str(default_path_str);
-                let secondary_path = dir_path.join_str(secondary_path_str);
+                let default_path = dir_path.join(default_path_str.as_slice());
+                let secondary_path = dir_path.join(secondary_path_str.as_slice());
                 let default_exists = default_path.exists();
                 let secondary_exists = secondary_path.exists();
                 match (default_exists, secondary_exists) {

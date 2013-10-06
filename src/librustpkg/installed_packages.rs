@@ -17,7 +17,7 @@ use std::os;
 pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     let workspaces = rust_path();
     for p in workspaces.iter() {
-        let binfiles = os::list_dir(&p.join_str("bin"));
+        let binfiles = os::list_dir(&p.join("bin"));
         for exec in binfiles.iter() {
             // FIXME (#9639): This needs to handle non-utf8 paths
             match exec.filestem_str() {
@@ -29,17 +29,17 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
                 }
             }
         }
-        let libfiles = os::list_dir(&p.join_str("lib"));
+        let libfiles = os::list_dir(&p.join("lib"));
         for lib in libfiles.iter() {
             debug2!("Full name: {}", lib.display());
             match has_library(lib) {
                 Some(basename) => {
-                    let parent = p.join_str("lib");
+                    let parent = p.join("lib");
                     debug2!("parent = {}, child = {}",
                             parent.display(), lib.display());
                     let rel_p = lib.path_relative_from(&parent).unwrap();
                     debug2!("Rel: {}", rel_p.display());
-                    let rel_path = rel_p.join_str(basename);
+                    let rel_path = rel_p.join(basename);
                     do rel_path.with_display_str |s| {
                         debug2!("Rel name: {}", s);
                         f(&PkgId::new(s));

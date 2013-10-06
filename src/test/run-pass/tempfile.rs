@@ -28,7 +28,7 @@ use std::cell::Cell;
 
 fn test_tempdir() {
     let path = {
-        let p = TempDir::new_in(&Path::from_str("."), "foobar").unwrap();
+        let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
         let p = p.path();
         assert!(ends_with(p.as_vec(), bytes!("foobar")));
         p.clone()
@@ -84,7 +84,7 @@ fn test_rm_tempdir() {
 // Ideally these would be in std::os but then core would need
 // to depend on std
 fn recursive_mkdir_rel() {
-    let path = Path::from_str("frob");
+    let path = Path::new("frob");
     let cwd = os::getcwd();
     debug2!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), os::path_exists(&path));
@@ -95,21 +95,21 @@ fn recursive_mkdir_rel() {
 }
 
 fn recursive_mkdir_dot() {
-    let dot = Path::from_str(".");
+    let dot = Path::new(".");
     assert!(os::mkdir_recursive(&dot,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-    let dotdot = Path::from_str("..");
+    let dotdot = Path::new("..");
     assert!(os::mkdir_recursive(&dotdot,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
 }
 
 fn recursive_mkdir_rel_2() {
-    let path = Path::from_str("./frob/baz");
+    let path = Path::new("./frob/baz");
     let cwd = os::getcwd();
     debug2!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), os::path_exists(&path));
     assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
         assert!(os::path_is_dir(&path));
     assert!(os::path_is_dir(&path.dir_path()));
-    let path2 = Path::from_str("quux/blat");
+    let path2 = Path::new("quux/blat");
     debug2!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
     assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
@@ -124,17 +124,17 @@ pub fn test_rmdir_recursive_ok() {
     let tmpdir = TempDir::new("test").expect("test_rmdir_recursive_ok: \
                                               couldn't create temp dir");
     let tmpdir = tmpdir.path();
-    let root = tmpdir.join_str("foo");
+    let root = tmpdir.join("foo");
 
     debug2!("making {}", root.display());
     assert!(os::make_dir(&root, rwx));
-    assert!(os::make_dir(&root.join_str("foo"), rwx));
-    assert!(os::make_dir(&root.join_str("foo").join_str("bar"), rwx));
-    assert!(os::make_dir(&root.join_str("foo").join_str("bar").join_str("blat"), rwx));
+    assert!(os::make_dir(&root.join("foo"), rwx));
+    assert!(os::make_dir(&root.join("foo").join("bar"), rwx));
+    assert!(os::make_dir(&root.join("foo").join("bar").join("blat"), rwx));
     assert!(os::remove_dir_recursive(&root));
     assert!(!os::path_exists(&root));
-    assert!(!os::path_exists(&root.join_str("bar")));
-    assert!(!os::path_exists(&root.join_str("bar").join_str("blat")));
+    assert!(!os::path_exists(&root.join("bar")));
+    assert!(!os::path_exists(&root.join("bar").join("blat")));
 }
 
 fn in_tmpdir(f: &fn()) {

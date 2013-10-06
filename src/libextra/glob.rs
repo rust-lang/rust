@@ -91,7 +91,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
 
     // calculate root this way to handle volume-relative Windows paths correctly
     let mut root = os::getcwd();
-    let pat_root = Path::from_str(pattern).root_path();
+    let pat_root = Path::new(pattern).root_path();
     if pat_root.is_some() {
         if check_windows_verbatim(pat_root.get_ref()) {
             // XXX: How do we want to handle verbatim paths? I'm inclined to return nothing,
@@ -548,7 +548,7 @@ mod test {
         assert!(glob("//").next().is_none());
 
         // check windows absolute paths with host/device components
-        let root_with_device = os::getcwd().root_path().unwrap().join_str("*");
+        let root_with_device = os::getcwd().root_path().unwrap().join("*");
         // FIXME (#9639): This needs to handle non-utf8 paths
         assert!(glob(root_with_device.as_str().unwrap()).next().is_some());
     }
@@ -772,9 +772,9 @@ mod test {
 
     #[test]
     fn test_matches_path() {
-        // on windows, (Path::from_str("a/b").as_str().unwrap() == "a\\b"), so this
+        // on windows, (Path::new("a/b").as_str().unwrap() == "a\\b"), so this
         // tests that / and \ are considered equivalent on windows
-        assert!(Pattern::new("a/b").matches_path(&Path::from_str("a/b")));
+        assert!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
     }
 }
 

@@ -73,8 +73,8 @@ fn read_line() {
     use std::rt::io::file::FileInfo;
     use std::rt::io::buffered::BufferedReader;
 
-    let path = Path::from_str(env!("CFG_SRC_DIR"))
-        .join_str("src/test/bench/shootout-k-nucleotide.data");
+    let mut path = Path::new(env!("CFG_SRC_DIR"));
+    path.push("src/test/bench/shootout-k-nucleotide.data");
 
     for _ in range(0, 3) {
         let mut reader = BufferedReader::new(path.open_reader(Open).unwrap());

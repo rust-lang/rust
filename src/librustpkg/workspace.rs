@@ -52,7 +52,7 @@ pub fn pkg_parent_workspaces(cx: &Context, pkgid: &PkgId) -> ~[Path] {
 }
 
 pub fn is_workspace(p: &Path) -> bool {
-    os::path_is_dir(&p.join_str("src"))
+    os::path_is_dir(&p.join("src"))
 }
 
 /// Construct a workspace and package-ID name based on the current directory.
@@ -60,7 +60,7 @@ pub fn is_workspace(p: &Path) -> bool {
 pub fn cwd_to_workspace() -> Option<(Path, PkgId)> {
     let cwd = os::getcwd();
     for path in rust_path().move_iter() {
-        let srcpath = path.join_str("src");
+        let srcpath = path.join("src");
         if srcpath.is_ancestor_of(&cwd) {
             let rel = cwd.path_relative_from(&srcpath);
             let rel_s = rel.and_then_ref(|p|p.as_str());

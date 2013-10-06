@@ -579,7 +579,7 @@ mod tests {
 
         let output = str::from_utf8(prog.finish_with_output().output);
         let parent_dir = os::getcwd();
-        let child_dir = Path::from_str(output.trim());
+        let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
@@ -596,7 +596,7 @@ mod tests {
         let mut prog = run_pwd(Some(&parent_dir));
 
         let output = str::from_utf8(prog.finish_with_output().output);
-        let child_dir = Path::from_str(output.trim());
+        let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();

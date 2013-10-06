@@ -353,7 +353,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
         (sess.opts.output_type == link::output_type_object ||
          sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
-        let asm_filename = outputs.obj_filename.with_extension_str("s");
+        let asm_filename = outputs.obj_filename.with_extension("s");
 
         time(sess.time_passes(), "LLVM passes", (), |_|
             link::write::run_passes(sess,
@@ -722,7 +722,7 @@ pub fn build_session_options(binary: @str,
         } else if matches.opt_present("emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::from_str(m));
+    let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::new(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
     let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
     let target_feature = matches.opt_str("target-feature").unwrap_or(~"");
@@ -755,7 +755,7 @@ pub fn build_session_options(binary: @str,
 
     let statik = debugging_opts & session::statik != 0;
 
-    let addl_lib_search_paths = matches.opt_strs("L").map(|s| Path::from_str(*s));
+    let addl_lib_search_paths = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
         a.split_iter(' ').map(|arg| arg.to_owned()).collect()
@@ -1005,15 +1005,15 @@ pub fn build_output_filenames(input: &input,
           }
 
           if *sess.building_library {
-              out_path = dirpath.join_str(os::dll_filename(stem));
+              out_path = dirpath.join(os::dll_filename(stem));
               obj_path = {
-                  let mut p = dirpath.join_str(stem);
-                  p.set_extension_str(obj_suffix);
+                  let mut p = dirpath.join(stem);
+                  p.set_extension(obj_suffix);
                   p
               };
           } else {
-              out_path = dirpath.join_str(stem);
-              obj_path = out_path.with_extension_str(obj_suffix);
+              out_path = dirpath.join(stem);
+              obj_path = out_path.with_extension(obj_suffix);
           }
       }
 
@@ -1022,7 +1022,7 @@ pub fn build_output_filenames(input: &input,
         obj_path = if stop_after_codegen {
             out_file.clone()
         } else {
-            out_file.with_extension_str(obj_suffix)
+            out_file.with_extension(obj_suffix)
         };
 
         if *sess.building_library {

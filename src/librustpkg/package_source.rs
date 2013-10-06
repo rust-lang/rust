@@ -94,20 +94,20 @@ impl PkgSrc {
         } else {
             // We search for sources under both src/ and build/ , because build/ is where
             // automatically-checked-out sources go.
-            let mut result = source_workspace.join_str("src");
+            let mut result = source_workspace.join("src");
             result.push_path(&id.path.dir_path());
-            result.push_str(format!("{}-{}", id.short_name, id.version.to_str()));
+            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
             to_try.push(result);
-            let mut result = source_workspace.join_str("src");
+            let mut result = source_workspace.join("src");
             result.push_path(&id.path);
             to_try.push(result);
 
-            let mut result = build_dir.join_str("src");
+            let mut result = build_dir.join("src");
             result.push_path(&id.path.dir_path());
             result.push_str(format!("{}-{}", id.short_name, id.version.to_str()));
             to_try.push(result.clone());
             output_names.push(result);
-            let mut other_result = build_dir.join_str("src");
+            let mut other_result = build_dir.join("src");
             other_result.push_path(&id.path);
             to_try.push(other_result.clone());
             output_names.push(other_result);
@@ -129,7 +129,7 @@ impl PkgSrc {
                 // That is, is this a package ID that points into the middle of a workspace?
                 for (prefix, suffix) in id.prefixes_iter() {
                     let package_id = PkgId::new(prefix.as_str().unwrap());
-                    let path = build_dir.join_path(&package_id.path);
+                    let path = build_dir.join(&package_id.path);
                     debug2!("in loop: checking if {} is a directory", path.display());
                     if os::path_is_dir(&path) {
                         let ps = PkgSrc::new(source_workspace,
@@ -260,6 +260,7 @@ impl PkgSrc {
                     return None;
                 }
 
+                // FIXME (#9639): This needs to handle non-utf8 paths
                 let url = format!("https://{}", pkgid.path.as_str().unwrap());
                 debug2!("Fetching package: git clone {} {} [version={}]",
                         url, clone_target.display(), pkgid.version.to_str());
@@ -289,7 +290,7 @@ impl PkgSrc {
     // If a file named "pkg.rs" in the start directory exists,
     // return the path for it. Otherwise, None
     pub fn package_script_option(&self) -> Option<Path> {
-        let maybe_path = self.start_dir.join_str("pkg.rs");
+        let maybe_path = self.start_dir.join("pkg.rs");
         debug2!("package_script_option: checking whether {} exists", maybe_path.display());
         if os::path_exists(&maybe_path) {
             Some(maybe_path)
@@ -309,7 +310,7 @@ impl PkgSrc {
             it.nth(prefix-1); // skip elements
         }
         assert!(it.peek().is_some());
-        let mut sub = Path::from_str(".");
+        let mut sub = Path::new(".");
         for c in it {
             sub.push(c);
         }

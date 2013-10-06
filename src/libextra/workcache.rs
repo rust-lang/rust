@@ -498,7 +498,7 @@ fn test() {
     // Create a path to a new file 'filename' in the directory in which
     // this test is running.
     fn make_path(filename: ~str) -> Path {
-        let pth = os::self_exe_path().expect("workcache::test failed").with_filename_str(filename);
+        let pth = os::self_exe_path().expect("workcache::test failed").with_filename(filename);
         if os::path_exists(&pth) {
             os::remove_file(&pth);
         }

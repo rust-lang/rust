@@ -59,7 +59,7 @@ impl PkgId {
             }
         };
 
-        let path = Path::from_str(s);
+        let path = Path::new(s);
         if !path.is_relative() {
             return cond.raise((path, ~"absolute pkgid"));
         }
@@ -137,8 +137,8 @@ impl Iterator<(Path, Path)> for Prefixes {
             let last = self.components.pop();
             self.remaining.unshift(last);
             // converting to str and then back is a little unfortunate
-            Some((Path::from_str(self.components.connect("/")),
-                  Path::from_str(self.remaining.connect("/"))))
+            Some((Path::new(self.components.connect("/")),
+                  Path::new(self.remaining.connect("/"))))
         }
     }
 }

@@ -255,16 +255,16 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     crate = cache.fold_crate(crate);
 
     // Add all the static files
-    let mut dst = cx.dst.join_str(crate.name);
+    let mut dst = cx.dst.join(crate.name.as_slice());
     mkdir(&dst);
-    write(dst.join_str("jquery.js"), include_str!("static/jquery-2.0.3.min.js"));
-    write(dst.join_str("main.js"), include_str!("static/main.js"));
-    write(dst.join_str("main.css"), include_str!("static/main.css"));
-    write(dst.join_str("normalize.css"), include_str!("static/normalize.css"));
+    write(dst.join("jquery.js"), include_str!("static/jquery-2.0.3.min.js"));
+    write(dst.join("main.js"), include_str!("static/main.js"));
+    write(dst.join("main.css"), include_str!("static/main.css"));
+    write(dst.join("normalize.css"), include_str!("static/normalize.css"));
 
     // Publish the search index
     {
-        dst.push_str("search-index.js");
+        dst.push("search-index.js");
         let mut w = BufferedWriter::new(dst.open_writer(io::CreateOrTruncate));
         let w = &mut w as &mut io::Writer;
         write!(w, "var searchIndex = [");
@@ -292,9 +292,9 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     // Render all source files (this may turn into a giant no-op)
     {
         info2!("emitting source files");
-        let dst = cx.dst.join_str("src");
+        let dst = cx.dst.join("src");
         mkdir(&dst);
-        let dst = dst.join_str(crate.name);
+        let dst = dst.join(crate.name.as_slice());
         mkdir(&dst);
         let mut folder = SourceCollector {
             dst: dst,
@@ -338,7 +338,7 @@ fn mkdir(path: &Path) {
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
 fn clean_srcpath(src: &[u8], f: &fn(&str)) {
-    let p = Path::from_vec(src);
+    let p = Path::new(src);
     if p.as_vec() != bytes!(".") {
         for c in p.str_component_iter().map(|x|x.unwrap()) {
             if ".." == c {
@@ -354,7 +354,7 @@ fn clean_srcpath(src: &[u8], f: &fn(&str)) {
 /// rendering in to the specified source destination.
 fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
     // See if there's documentation generated into the local directory
-    let local_location = dst.join_str(e.name);
+    let local_location = dst.join(e.name.as_slice());
     if local_location.is_dir() {
         return Local;
     }
@@ -413,7 +413,7 @@ impl<'self> DocFolder for SourceCollector<'self> {
 impl<'self> SourceCollector<'self> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> bool {
-        let p = Path::from_str(filename);
+        let p = Path::new(filename);
 
         // Read the contents of the file
         let mut contents = ~[];
@@ -445,7 +445,7 @@ impl<'self> SourceCollector<'self> {
         let mut cur = self.dst.clone();
         let mut root_path = ~"../../";
         do clean_srcpath(p.dirname()) |component| {
-            cur.push_str(component);
+            cur.push(component);
             mkdir(&cur);
             root_path.push_str("../");
         }
@@ -661,7 +661,7 @@ impl Context {
             fail2!("what {:?}", self);
         }
         let prev = self.dst.clone();
-        self.dst.push_str(s);
+        self.dst.push(s.as_slice());
         self.root_path.push_str("../");
         self.current.push(s);
 
@@ -808,7 +808,7 @@ impl Context {
                 let item = Cell::new(item);
                 do self.recurse(name) |this| {
                     let item = item.take();
-                    let dst = this.dst.join_str("index.html");
+                    let dst = this.dst.join("index.html");
                     let writer = dst.open_writer(io::CreateOrTruncate);
                     render(writer.unwrap(), this, &item, false);
 
@@ -826,7 +826,7 @@ impl Context {
             // Things which don't have names (like impls) don't get special
             // pages dedicated to them.
             _ if item.name.is_some() => {
-                let dst = self.dst.join_str(item_path(&item));
+                let dst = self.dst.join(item_path(&item));
                 let writer = dst.open_writer(io::CreateOrTruncate);
                 render(writer.unwrap(), self, &item, true);
             }

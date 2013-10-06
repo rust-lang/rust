@@ -20,8 +20,7 @@ appropriate platform-specific path variant.
 Both `PosixPath` and `WindowsPath` implement a trait `GenericPath`, which
 contains the set of methods that behave the same for both paths. They each also
 implement some methods that could not be expressed in `GenericPath`, yet behave
-identically for both path flavors, such as `::from_str()` or
-`.component_iter()`.
+identically for both path flavors, such as `.component_iter()`.
 
 The three main design goals of this module are 1) to avoid unnecessary
 allocation, 2) to behave the same regardless of which flavor of path is being
@@ -35,8 +34,8 @@ code, `Path` should be used to refer to the platform-native path, and methods
 used should be restricted to those defined in `GenericPath`, and those methods
 that are declared identically on both `PosixPath` and `WindowsPath`.
 
-Creation of a path is typically done with either `Path::from_str(some_str)` or
-`Path::from_vec(some_vec)`. This path can be modified with `.push()` and
+Creation of a path is typically done with either `Path::new(some_str)` or
+`Path::new(some_vec)`. This path can be modified with `.push()` and
 `.pop()` (and other setters). The resulting Path can either be passed to another
 API that expects a path, or can be turned into a &[u8] with `.as_vec()` or a
 Option<&str> with `.as_str()`. Similarly, attributes of the path can be queried
@@ -44,10 +43,10 @@ with methods such as `.filename()`. There are also methods that return a new
 path instead of modifying the receiver, such as `.join()` or `.dir_path()`.
 
 Paths are always kept in normalized form. This means that creating the path
-`Path::from_str("a/b/../c")` will return the path `a/c`. Similarly any attempt
+`Path::new("a/b/../c")` will return the path `a/c`. Similarly any attempt
 to mutate the path will always leave it in normalized form.
 
-When rendering a path to some form of display, there is a method `.display()`
+When rendering a path to some form of output, there is a method `.display()`
 which is compatible with the `format!()` parameter `{}`. This will render the
 path as a string, replacing all non-utf8 sequences with the Replacement
 Character (U+FFFD). As such it is not suitable for passing to any API that
@@ -56,10 +55,10 @@ actually operates on the path; it is only intended for display.
 ## Example
 
 ```rust
-let mut path = Path::from_str("/tmp/path");
+let mut path = Path::new("/tmp/path");
 debug2!("path: {}", path.display());
-path.set_filename_str("foo");
-path.push_str("bar");
+path.set_filename("foo");
+path.push("bar");
 debug2!("new path: {}", path.display());
 let b = std::os::path_exists(&path);
 debug2!("path exists: {}", b);
@@ -70,6 +69,7 @@ debug2!("path exists: {}", b);
 use container::Container;
 use c_str::CString;
 use clone::Clone;
+use either::{Left, Right};
 use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
@@ -131,7 +131,7 @@ condition! {
 
 /// A trait that represents the generic operations available on paths
 pub trait GenericPath: Clone + GenericPathUnsafe {
-    /// Creates a new Path from a byte vector.
+    /// Creates a new Path from a byte vector or string.
     /// The resulting Path will always be normalized.
     ///
     /// # Failure
@@ -140,52 +140,24 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// See individual Path impls for additional restrictions.
     #[inline]
-    fn from_vec(path: &[u8]) -> Self {
-        if contains_nul(path) {
-            let path = self::null_byte::cond.raise(path.to_owned());
+    fn new<T: BytesContainer>(path: T) -> Self {
+        if contains_nul(path.container_as_bytes()) {
+            let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
             assert!(!contains_nul(path));
-            unsafe { GenericPathUnsafe::from_vec_unchecked(path) }
+            unsafe { GenericPathUnsafe::new_unchecked(path) }
         } else {
-            unsafe { GenericPathUnsafe::from_vec_unchecked(path) }
+            unsafe { GenericPathUnsafe::new_unchecked(path) }
         }
     }
 
-    /// Creates a new Path from a byte vector, if possible.
+    /// Creates a new Path from a byte vector or string, if possible.
     /// The resulting Path will always be normalized.
     #[inline]
-    fn from_vec_opt(path: &[u8]) -> Option<Self> {
-        if contains_nul(path) {
+    fn new_opt<T: BytesContainer>(path: T) -> Option<Self> {
+        if contains_nul(path.container_as_bytes()) {
             None
         } else {
-            Some(unsafe { GenericPathUnsafe::from_vec_unchecked(path) })
-        }
-    }
-
-    /// Creates a new Path from a string.
-    /// The resulting Path will always be normalized.
-    ///
-    /// # Failure
-    ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
-    #[inline]
-    fn from_str(path: &str) -> Self {
-        let v = path.as_bytes();
-        if contains_nul(v) {
-            GenericPath::from_vec(path.as_bytes()) // let from_vec handle the condition
-        } else {
-            unsafe { GenericPathUnsafe::from_str_unchecked(path) }
-        }
-    }
-
-    /// Creates a new Path from a string, if possible.
-    /// The resulting Path will always be normalized.
-    #[inline]
-    fn from_str_opt(path: &str) -> Option<Self> {
-        let v = path.as_bytes();
-        if contains_nul(v) {
-            None
-        } else {
-            Some(unsafe { GenericPathUnsafe::from_str_unchecked(path) })
+            Some(unsafe { GenericPathUnsafe::new_unchecked(path) })
         }
     }
 
@@ -199,7 +171,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         let v = path.as_bytes();
         // v is NUL-terminated. Strip it off
         let v = v.slice_to(v.len()-1);
-        unsafe { GenericPathUnsafe::from_vec_unchecked(v) }
+        unsafe { GenericPathUnsafe::new_unchecked(v) }
     }
 
     /// Returns the path as a string, if possible.
@@ -209,8 +181,14 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         str::from_utf8_slice_opt(self.as_vec())
     }
 
+    /// Converts the Path into an owned string, if possible
+    fn into_str(self) -> Option<~str>;
+
     /// Returns the path as a byte vector
     fn as_vec<'a>(&'a self) -> &'a [u8];
+
+    /// Converts the Path into an owned byte vector
+    fn into_vec(self) -> ~[u8];
 
     /// Provides the path as a string
     ///
@@ -345,115 +323,91 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         self.extension().and_then(str::from_utf8_slice_opt)
     }
 
-    /// Replaces the directory portion of the path with the given byte vector.
+    /// Replaces the directory portion of the path with the given byte vector or string.
     /// If `self` represents the root of the filesystem hierarchy, the last path component
-    /// of the given byte vector becomes the filename.
+    /// of the argument becomes the filename.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the dirname contains a NUL.
     #[inline]
-    fn set_dirname(&mut self, dirname: &[u8]) {
-        if contains_nul(dirname) {
-            let dirname = self::null_byte::cond.raise(dirname.to_owned());
+    fn set_dirname<T: BytesContainer>(&mut self, dirname: T) {
+        if contains_nul(dirname.container_as_bytes()) {
+            let dirname = self::null_byte::cond.raise(dirname.container_into_owned_bytes());
             assert!(!contains_nul(dirname));
             unsafe { self.set_dirname_unchecked(dirname) }
         } else {
             unsafe { self.set_dirname_unchecked(dirname) }
         }
     }
-    /// Replaces the directory portion of the path with the given string.
-    /// See `set_dirname` for details.
-    #[inline]
-    fn set_dirname_str(&mut self, dirname: &str) {
-        if contains_nul(dirname.as_bytes()) {
-            self.set_dirname(dirname.as_bytes()) // triggers null_byte condition
-        } else {
-            unsafe { self.set_dirname_str_unchecked(dirname) }
-        }
-    }
-    /// Replaces the filename portion of the path with the given byte vector.
+    /// Replaces the filename portion of the path with the given byte vector or string.
     /// If the replacement name is [], this is equivalent to popping the path.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the filename contains a NUL.
     #[inline]
-    fn set_filename(&mut self, filename: &[u8]) {
-        if contains_nul(filename) {
-            let filename = self::null_byte::cond.raise(filename.to_owned());
+    fn set_filename<T: BytesContainer>(&mut self, filename: T) {
+        if contains_nul(filename.container_as_bytes()) {
+            let filename = self::null_byte::cond.raise(filename.container_into_owned_bytes());
             assert!(!contains_nul(filename));
             unsafe { self.set_filename_unchecked(filename) }
         } else {
             unsafe { self.set_filename_unchecked(filename) }
         }
     }
-    /// Replaces the filename portion of the path with the given string.
-    /// See `set_filename` for details.
-    #[inline]
-    fn set_filename_str(&mut self, filename: &str) {
-        if contains_nul(filename.as_bytes()) {
-            self.set_filename(filename.as_bytes()) // triggers null_byte condition
-        } else {
-            unsafe { self.set_filename_str_unchecked(filename) }
-        }
-    }
-    /// Replaces the filestem with the given byte vector.
+    /// Replaces the filestem with the given byte vector or string.
     /// If there is no extension in `self` (or `self` has no filename), this is equivalent
-    /// to `set_filename`. Otherwise, if the given byte vector is [], the extension (including
+    /// to `set_filename`. Otherwise, if the argument is [] or "", the extension (including
     /// the preceding '.') becomes the new filename.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the filestem contains a NUL.
-    fn set_filestem(&mut self, filestem: &[u8]) {
+    fn set_filestem<T: BytesContainer>(&mut self, filestem: T) {
         // borrowck is being a pain here
         let val = {
             match self.filename() {
-                None => None,
+                None => Left(filestem),
                 Some(name) => {
                     let dot = '.' as u8;
                     match name.rposition_elem(&dot) {
-                        None | Some(0) => None,
+                        None | Some(0) => Left(filestem),
                         Some(idx) => {
                             let mut v;
-                            if contains_nul(filestem) {
-                                let filestem = self::null_byte::cond.raise(filestem.to_owned());
+                            if contains_nul(filestem.container_as_bytes()) {
+                                let filestem = filestem.container_into_owned_bytes();
+                                let filestem = self::null_byte::cond.raise(filestem);
                                 assert!(!contains_nul(filestem));
                                 v = filestem;
                                 let n = v.len();
                                 v.reserve(n + name.len() - idx);
                             } else {
+                                let filestem = filestem.container_as_bytes();
                                 v = vec::with_capacity(filestem.len() + name.len() - idx);
                                 v.push_all(filestem);
                             }
                             v.push_all(name.slice_from(idx));
-                            Some(v)
+                            Right(v)
                         }
                     }
                 }
             }
         };
         match val {
-            None => self.set_filename(filestem),
-            Some(v) => unsafe { self.set_filename_unchecked(v) }
+            Left(v)  => self.set_filename(v),
+            Right(v) => unsafe { self.set_filename_unchecked(v) }
         }
     }
-    /// Replaces the filestem with the given string.
-    /// See `set_filestem` for details.
-    #[inline]
-    fn set_filestem_str(&mut self, filestem: &str) {
-        self.set_filestem(filestem.as_bytes())
-    }
-    /// Replaces the extension with the given byte vector.
+    /// Replaces the extension with the given byte vector or string.
     /// If there is no extension in `self`, this adds one.
-    /// If the given byte vector is [], this removes the extension.
+    /// If the argument is [] or "", this removes the extension.
     /// If `self` has no filename, this is a no-op.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the extension contains a NUL.
-    fn set_extension(&mut self, extension: &[u8]) {
+    fn set_extension<T: BytesContainer>(&mut self, extension: T) {
         // borrowck causes problems here too
         let val = {
             match self.filename() {
@@ -462,12 +416,12 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                     let dot = '.' as u8;
                     match name.rposition_elem(&dot) {
                         None | Some(0) => {
-                            if extension.is_empty() {
+                            if extension.container_as_bytes().is_empty() {
                                 None
                             } else {
                                 let mut v;
-                                if contains_nul(extension) {
-                                    let ext = extension.to_owned();
+                                if contains_nul(extension.container_as_bytes()) {
+                                    let ext = extension.container_into_owned_bytes();
                                     let extension = self::null_byte::cond.raise(ext);
                                     assert!(!contains_nul(extension));
                                     v = vec::with_capacity(name.len() + extension.len() + 1);
@@ -475,6 +429,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                     v.push(dot);
                                     v.push_all(extension);
                                 } else {
+                                    let extension = extension.container_as_bytes();
                                     v = vec::with_capacity(name.len() + extension.len() + 1);
                                     v.push_all(name);
                                     v.push(dot);
@@ -484,18 +439,19 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                             }
                         }
                         Some(idx) => {
-                            if extension.is_empty() {
+                            if extension.container_as_bytes().is_empty() {
                                 Some(name.slice_to(idx).to_owned())
                             } else {
                                 let mut v;
-                                if contains_nul(extension) {
-                                    let ext = extension.to_owned();
+                                if contains_nul(extension.container_as_bytes()) {
+                                    let ext = extension.container_into_owned_bytes();
                                     let extension = self::null_byte::cond.raise(ext);
                                     assert!(!contains_nul(extension));
                                     v = vec::with_capacity(idx + extension.len() + 1);
                                     v.push_all(name.slice_to(idx+1));
                                     v.push_all(extension);
                                 } else {
+                                    let extension = extension.container_as_bytes();
                                     v = vec::with_capacity(idx + extension.len() + 1);
                                     v.push_all(name.slice_to(idx+1));
                                     v.push_all(extension);
@@ -512,31 +468,25 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             Some(v) => unsafe { self.set_filename_unchecked(v) }
         }
     }
-    /// Replaces the extension with the given string.
-    /// See `set_extension` for details.
-    #[inline]
-    fn set_extension_str(&mut self, extension: &str) {
-        self.set_extension(extension.as_bytes())
-    }
-    /// Adds the given extension (as a byte vector) to the file.
+    /// Adds the given extension (as a byte vector or string) to the file.
     /// This does not remove any existing extension.
     /// `foo.bar`.add_extension(`baz`) becomes `foo.bar.baz`.
     /// If `self` has no filename, this is a no-op.
-    /// If the given byte vector is [], this is a no-op.
+    /// If the argument is [] or "", this is a no-op.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the extension contains a NUL.
-    fn add_extension(&mut self, extension: &[u8]) {
-        if extension.is_empty() { return; }
+    fn add_extension<T: BytesContainer>(&mut self, extension: T) {
+        if extension.container_as_bytes().is_empty() { return; }
         // appease borrowck
         let val = {
             match self.filename() {
                 None => None,
                 Some(name) => {
                     let mut v;
-                    if contains_nul(extension) {
-                        let ext = extension.to_owned();
+                    if contains_nul(extension.container_as_bytes()) {
+                        let ext = extension.container_into_owned_bytes();
                         let extension = self::null_byte::cond.raise(ext);
                         assert!(!contains_nul(extension));
                         v = vec::with_capacity(name.len() + 1 + extension.len());
@@ -544,6 +494,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                         v.push('.' as u8);
                         v.push_all(extension);
                     } else {
+                        let extension = extension.container_as_bytes();
                         v = vec::with_capacity(name.len() + 1 + extension.len());
                         v.push_all(name);
                         v.push('.' as u8);
@@ -558,91 +509,57 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             Some(v) => unsafe { self.set_filename_unchecked(v) }
         }
     }
-    /// Adds the given extension (as a string) to the file.
-    /// See `add_extension` for details.
-    #[inline]
-    fn add_extension_str(&mut self, extension: &str) {
-        self.add_extension(extension.as_bytes())
-    }
 
-    /// Returns a new Path constructed by replacing the dirname with the given byte vector.
+    /// Returns a new Path constructed by replacing the dirname with the given
+    /// byte vector or string.
     /// See `set_dirname` for details.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the dirname contains a NUL.
     #[inline]
-    fn with_dirname(&self, dirname: &[u8]) -> Self {
+    fn with_dirname<T: BytesContainer>(&self, dirname: T) -> Self {
         let mut p = self.clone();
         p.set_dirname(dirname);
         p
     }
-    /// Returns a new Path constructed by replacing the dirname with the given string.
-    /// See `set_dirname` for details.
-    #[inline]
-    fn with_dirname_str(&self, dirname: &str) -> Self {
-        let mut p = self.clone();
-        p.set_dirname_str(dirname);
-        p
-    }
-    /// Returns a new Path constructed by replacing the filename with the given byte vector.
+    /// Returns a new Path constructed by replacing the filename with the given
+    /// byte vector or string.
     /// See `set_filename` for details.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the filename contains a NUL.
     #[inline]
-    fn with_filename(&self, filename: &[u8]) -> Self {
+    fn with_filename<T: BytesContainer>(&self, filename: T) -> Self {
         let mut p = self.clone();
         p.set_filename(filename);
         p
     }
-    /// Returns a new Path constructed by replacing the filename with the given string.
-    /// See `set_filename` for details.
-    #[inline]
-    fn with_filename_str(&self, filename: &str) -> Self {
-        let mut p = self.clone();
-        p.set_filename_str(filename);
-        p
-    }
-    /// Returns a new Path constructed by setting the filestem to the given byte vector.
+    /// Returns a new Path constructed by setting the filestem to the given
+    /// byte vector or string.
     /// See `set_filestem` for details.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the filestem contains a NUL.
     #[inline]
-    fn with_filestem(&self, filestem: &[u8]) -> Self {
+    fn with_filestem<T: BytesContainer>(&self, filestem: T) -> Self {
         let mut p = self.clone();
         p.set_filestem(filestem);
         p
     }
-    /// Returns a new Path constructed by setting the filestem to the given string.
-    /// See `set_filestem` for details.
-    #[inline]
-    fn with_filestem_str(&self, filestem: &str) -> Self {
-        let mut p = self.clone();
-        p.set_filestem_str(filestem);
-        p
-    }
-    /// Returns a new Path constructed by setting the extension to the given byte vector.
+    /// Returns a new Path constructed by setting the extension to the given
+    /// byte vector or string.
     /// See `set_extension` for details.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the extension contains a NUL.
     #[inline]
-    fn with_extension(&self, extension: &[u8]) -> Self {
+    fn with_extension<T: BytesContainer>(&self, extension: T) -> Self {
         let mut p = self.clone();
         p.set_extension(extension);
-        p
-    }
-    /// Returns a new Path constructed by setting the extension to the given string.
-    /// See `set_extension` for details.
-    #[inline]
-    fn with_extension_str(&self, extension: &str) -> Self {
-        let mut p = self.clone();
-        p.set_extension_str(extension);
         p
     }
 
@@ -650,13 +567,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If `self` represents the root of the filesystem hierarchy, returns `self`.
     fn dir_path(&self) -> Self {
         // self.dirname() returns a NUL-free vector
-        unsafe { GenericPathUnsafe::from_vec_unchecked(self.dirname()) }
+        unsafe { GenericPathUnsafe::new_unchecked(self.dirname()) }
     }
     /// Returns the file component of `self`, as a relative Path.
     /// If `self` represents the root of the filesystem hierarchy, returns None.
     fn file_path(&self) -> Option<Self> {
         // self.filename() returns a NUL-free vector
-        self.filename().map_move(|v| unsafe { GenericPathUnsafe::from_vec_unchecked(v) })
+        self.filename().map_move(|v| unsafe { GenericPathUnsafe::new_unchecked(v) })
     }
 
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
@@ -664,30 +581,20 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If `self` is not absolute, or vol-relative in the case of Windows, this returns None.
     fn root_path(&self) -> Option<Self>;
 
-    /// Pushes a path (as a byte vector) onto `self`.
+    /// Pushes a path (as a byte vector or string) onto `self`.
     /// If the argument represents an absolute path, it replaces `self`.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the path contains a NUL.
     #[inline]
-    fn push(&mut self, path: &[u8]) {
-        if contains_nul(path) {
-            let path = self::null_byte::cond.raise(path.to_owned());
+    fn push<T: BytesContainer>(&mut self, path: T) {
+        if contains_nul(path.container_as_bytes()) {
+            let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
             assert!(!contains_nul(path));
             unsafe { self.push_unchecked(path) }
         } else {
             unsafe { self.push_unchecked(path) }
-        }
-    }
-    /// Pushes a path (as a string) onto `self.
-    /// See `push` for details.
-    #[inline]
-    fn push_str(&mut self, path: &str) {
-        if contains_nul(path.as_bytes()) {
-            self.push(path.as_bytes()) // triggers null_byte condition
-        } else {
-            unsafe { self.push_str_unchecked(path) }
         }
     }
     /// Pushes a Path onto `self`.
@@ -696,19 +603,19 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn push_path(&mut self, path: &Self) {
         self.push(path.as_vec())
     }
-    /// Pushes multiple paths (as byte vectors) onto `self`.
+    /// Pushes multiple paths (as byte vectors or strings) onto `self`.
     /// See `push` for details.
     #[inline]
-    fn push_many<V: Vector<u8>>(&mut self, paths: &[V]) {
-        for p in paths.iter() {
-            self.push(p.as_slice());
-        }
-    }
-    /// Pushes multiple paths (as strings) onto `self`.
-    #[inline]
-    fn push_many_str<S: Str>(&mut self, paths: &[S]) {
-        for p in paths.iter() {
-            self.push_str(p.as_slice());
+    fn push_many<T: BytesContainer>(&mut self, paths: &[T]) {
+        let t: Option<T> = None;
+        if BytesContainer::is_str(t) {
+            for p in paths.iter() {
+                self.push(p.container_as_str())
+            }
+        } else {
+            for p in paths.iter() {
+                self.push(p.container_as_bytes())
+            }
         }
     }
     /// Pops the last path component off of `self` and returns it.
@@ -722,24 +629,17 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         self.pop().and_then(|v| str::from_utf8_owned_opt(v))
     }
 
-    /// Returns a new Path constructed by joining `self` with the given path (as a byte vector).
+    /// Returns a new Path constructed by joining `self` with the given path
+    /// (as a byte vector or string).
     /// If the given path is absolute, the new Path will represent just that.
     ///
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the path contains a NUL.
     #[inline]
-    fn join(&self, path: &[u8]) -> Self {
+    fn join<T: BytesContainer>(&self, path: T) -> Self {
         let mut p = self.clone();
         p.push(path);
-        p
-    }
-    /// Returns a new Path constructed by joining `self` with the given path (as a string).
-    /// See `join` for details.
-    #[inline]
-    fn join_str(&self, path: &str) -> Self {
-        let mut p = self.clone();
-        p.push_str(path);
         p
     }
     /// Returns a new Path constructed by joining `self` with the given path.
@@ -750,20 +650,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         p.push_path(path);
         p
     }
-    /// Returns a new Path constructed by joining `self` with the given paths (as byte vectors).
+    /// Returns a new Path constructed by joining `self` with the given paths
+    /// (as byte vectors or strings).
     /// See `join` for details.
     #[inline]
-    fn join_many<V: Vector<u8>>(&self, paths: &[V]) -> Self {
+    fn join_many<T: BytesContainer>(&self, paths: &[T]) -> Self {
         let mut p = self.clone();
         p.push_many(paths);
-        p
-    }
-    /// Returns a new Path constructed by joining `self` with the given paths (as strings).
-    /// See `join` for details.
-    #[inline]
-    fn join_many_str<S: Str>(&self, paths: &[S]) -> Self {
-        let mut p = self.clone();
-        p.push_many_str(paths);
         p
     }
 
@@ -805,57 +698,59 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         }
         true
     }
+
+    /// Returns whether the relative path `child` is a suffix of `self`.
+    fn ends_with_path(&self, child: &Self) -> bool;
+}
+
+/// A trait that represents something bytes-like (e.g. a &[u8] or a &str)
+pub trait BytesContainer {
+    /// Returns a &[u8] representing the receiver
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8];
+    /// Consumes the receiver and converts it into ~[u8]
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.container_as_bytes().to_owned()
+    }
+    /// Returns the receiver interpreted as a utf-8 string
+    ///
+    /// # Failure
+    ///
+    /// Raises `str::null_byte` if not utf-8
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> &'a str {
+        str::from_utf8_slice(self.container_as_bytes())
+    }
+    /// Returns the receiver interpreted as a utf-8 string, if possible
+    #[inline]
+    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+        str::from_utf8_slice_opt(self.container_as_bytes())
+    }
+    /// Returns whether the concrete receiver is a string type
+    // FIXME (#8888): Remove unused arg once ::<for T> works
+    #[inline]
+    fn is_str(_: Option<Self>) -> bool { false }
 }
 
 /// A trait that represents the unsafe operations on GenericPaths
 pub trait GenericPathUnsafe {
-    /// Creates a new Path from a byte vector without checking for null bytes.
+    /// Creates a new Path without checking for null bytes.
     /// The resulting Path will always be normalized.
-    unsafe fn from_vec_unchecked(path: &[u8]) -> Self;
+    unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Self;
 
-    /// Creates a new Path from a str without checking for null bytes.
-    /// The resulting Path will always be normalized.
-    #[inline]
-    unsafe fn from_str_unchecked(path: &str) -> Self {
-        GenericPathUnsafe::from_vec_unchecked(path.as_bytes())
-    }
-
-    /// Replaces the directory portion of the path with the given byte vector without
-    /// checking for null bytes.
+    /// Replaces the directory portion of the path without checking for null
+    /// bytes.
     /// See `set_dirname` for details.
-    unsafe fn set_dirname_unchecked(&mut self, dirname: &[u8]);
+    unsafe fn set_dirname_unchecked<T: BytesContainer>(&mut self, dirname: T);
 
-    /// Replaces the directory portion of the path with the given str without
-    /// checking for null bytes.
-    /// See `set_dirname_str` for details.
-    #[inline]
-    unsafe fn set_dirname_str_unchecked(&mut self, dirname: &str) {
-        self.set_dirname_unchecked(dirname.as_bytes())
-    }
-
-    /// Replaces the filename portion of the path with the given byte vector without
-    /// checking for null bytes.
+    /// Replaces the filename portion of the path without checking for null
+    /// bytes.
     /// See `set_filename` for details.
-    unsafe fn set_filename_unchecked(&mut self, filename: &[u8]);
+    unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T);
 
-    /// Replaces the filename portion of the path with the given str without
-    /// checking for null bytes.
-    /// See `set_filename_str` for details.
-    #[inline]
-    unsafe fn set_filename_str_unchecked(&mut self, filename: &str) {
-        self.set_filename_unchecked(filename.as_bytes())
-    }
-
-    /// Pushes a byte vector onto `self` without checking for null bytes.
+    /// Pushes a path onto `self` without checking for null bytes.
     /// See `push` for details.
-    unsafe fn push_unchecked(&mut self, path: &[u8]);
-
-    /// Pushes a str onto `self` without checking for null bytes.
-    /// See `push_str` for details.
-    #[inline]
-    unsafe fn push_str_unchecked(&mut self, path: &str) {
-        self.push_unchecked(path.as_bytes())
-    }
+    unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T);
 }
 
 /// Helper struct for printing paths with format!()
@@ -880,6 +775,86 @@ impl<'self, P: GenericPath> fmt::Default for FilenameDisplay<'self, P> {
         do d.path.with_filename_display_str |s| {
             f.pad(s.unwrap_or(""))
         }
+    }
+}
+
+impl<'self> BytesContainer for &'self str {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> &'a str {
+        *self
+    }
+    #[inline]
+    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+        Some(*self)
+    }
+    #[inline]
+    fn is_str(_: Option<&'self str>) -> bool { true }
+}
+
+impl BytesContainer for ~str {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.into_bytes()
+    }
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> &'a str {
+        self.as_slice()
+    }
+    #[inline]
+    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<~str>) -> bool { true }
+}
+
+impl BytesContainer for @str {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> &'a str {
+        self.as_slice()
+    }
+    #[inline]
+    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<@str>) -> bool { true }
+}
+
+impl<'self> BytesContainer for &'self [u8] {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        *self
+    }
+}
+
+impl BytesContainer for ~[u8] {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self
+    }
+}
+
+impl BytesContainer for @[u8] {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
     }
 }
 

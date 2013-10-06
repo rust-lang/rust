@@ -146,7 +146,7 @@ impl<'self> PkgScript<'self> {
         let crate = util::ready_crate(sess, self.crate.take_unwrap());
         debug2!("Building output filenames with script name {}",
                driver::source_name(&driver::file_input(self.input.clone())));
-        let exe = self.build_dir.join_str("pkg" + util::exe_suffix());
+        let exe = self.build_dir.join("pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
                                        exec,
                                        Nothing,
@@ -422,7 +422,7 @@ impl CtxMethods for BuildContext {
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
         if !in_rust_path(&workspace) && is_git_dir(&workspace.join_path(&pkgid.path)) {
-            let mut out_dir = default_workspace().join_str("src");
+            let mut out_dir = default_workspace().join("src");
             out_dir.push_path(&pkgid.path);
             let git_result = source_control::safe_git_clone(&workspace.join_path(&pkgid.path),
                                                             &pkgid.version,
@@ -488,7 +488,7 @@ impl CtxMethods for BuildContext {
                 // Find crates inside the workspace
                 &Everything => pkg_src.find_crates(),
                 // Find only tests
-                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::from_str(s)) }),
+                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::new(s)) }),
                 // Don't infer any crates -- just build the one that was requested
                 &JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
@@ -562,7 +562,7 @@ impl CtxMethods for BuildContext {
 
         let result = self.install_no_build(pkg_src.build_workspace(),
                                            &pkg_src.destination_workspace,
-                                           &id).map(|s| Path::from_str(*s));
+                                           &id).map(|s| Path::new(*s));
         debug2!("install: id = {}, about to call discover_outputs, {:?}",
                id.to_str(), result.map(|p| p.to_display_str()));
         installed_files = installed_files + result;
@@ -669,10 +669,10 @@ impl CtxMethods for BuildContext {
     }
 
     fn init(&self) {
-        os::mkdir_recursive(&Path::from_str("src"),   U_RWX);
-        os::mkdir_recursive(&Path::from_str("lib"),   U_RWX);
-        os::mkdir_recursive(&Path::from_str("bin"),   U_RWX);
-        os::mkdir_recursive(&Path::from_str("build"), U_RWX);
+        os::mkdir_recursive(&Path::new("src"),   U_RWX);
+        os::mkdir_recursive(&Path::new("lib"),   U_RWX);
+        os::mkdir_recursive(&Path::new("bin"),   U_RWX);
+        os::mkdir_recursive(&Path::new("build"), U_RWX);
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
@@ -852,7 +852,7 @@ pub fn main_args(args: &[~str]) -> int {
     let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
     remaining_args.shift();
     let sroot = match supplied_sysroot {
-        Some(getopts::Val(s)) => Path::from_str(s),
+        Some(getopts::Val(s)) => Path::new(s),
         _ => filesearch::get_or_default_sysroot()
     };
 

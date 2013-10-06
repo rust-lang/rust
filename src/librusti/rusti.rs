@@ -142,7 +142,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let options = @session::options {
         crate_type: session::unknown_crate,
         binary: binary,
-        addl_lib_search_paths: @mut lib_search_paths.map(|p| Path::from_str(*p)),
+        addl_lib_search_paths: @mut lib_search_paths.map(|p| Path::new(p.as_slice())),
         jit: true,
         .. (*session::basic_options()).clone()
     };
@@ -328,7 +328,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         }
     }
     match do task::try {
-        let src_path = Path::from_str(src_filename);
+        let src_path = Path::new(src_filename.as_slice());
         let binary = binary.to_managed();
         let options = @session::options {
             binary: binary,
@@ -441,7 +441,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 }
             }
             for crate in loaded_crates.iter() {
-                let crate_path = Path::from_str(*crate);
+                let crate_path = Path::new(crate.as_slice());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let crate_dir = crate_path.dirname_str().unwrap();
                 repl.program.record_extern(format!("extern mod {};", *crate));

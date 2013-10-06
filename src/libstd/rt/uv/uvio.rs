@@ -18,6 +18,7 @@ use ops::Drop;
 use option::*;
 use ptr;
 use str;
+use str::Str;
 use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
@@ -631,7 +632,7 @@ impl IoFactory for UvIoFactory {
                         None => {
                             let stat = req.get_stat();
                             Ok(FileStat {
-                                path: Path::from_str(path_str),
+                                path: Path::new(path_str.as_slice()),
                                 is_file: stat.is_file(),
                                 is_dir: stat.is_dir(),
                                 size: stat.st_size,
@@ -720,8 +721,8 @@ impl IoFactory for UvIoFactory {
                             let rel_paths = req.get_paths();
                             let mut paths = ~[];
                             for r in rel_paths.iter() {
-                                let mut p = Path::from_str(path_str);
-                                p.push_str(*r);
+                                let mut p = Path::new(path_str.as_slice());
+                                p.push(r.as_slice());
                                 paths.push(p);
                             }
                             Ok(paths)
@@ -2179,20 +2180,20 @@ fn file_test_uvio_full_simple_impl() {
         {
             let create_fm = Create;
             let create_fa = ReadWrite;
-            let mut fd = (*io).fs_open(&Path::from_str(path), create_fm, create_fa).unwrap();
+            let mut fd = (*io).fs_open(&Path::new(path), create_fm, create_fa).unwrap();
             let write_buf = write_val.as_bytes();
             fd.write(write_buf);
         }
         {
             let ro_fm = Open;
             let ro_fa = Read;
-            let mut fd = (*io).fs_open(&Path::from_str(path), ro_fm, ro_fa).unwrap();
+            let mut fd = (*io).fs_open(&Path::new(path), ro_fm, ro_fa).unwrap();
             let mut read_vec = [0, .. 1028];
             let nread = fd.read(read_vec).unwrap();
             let read_val = str::from_utf8(read_vec.slice(0, nread as uint));
             assert!(read_val == write_val.to_owned());
         }
-        (*io).fs_unlink(&Path::from_str(path));
+        (*io).fs_unlink(&Path::new(path));
     }
 }
 

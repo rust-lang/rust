@@ -1893,7 +1893,7 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let tmpfile = &Path::from_str("tmp/lib-io-test-simple.tmp");
+        let tmpfile = &Path::new("tmp/lib-io-test-simple.tmp");
         debug2!("{}", tmpfile.display());
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
@@ -1911,7 +1911,7 @@ mod tests {
     #[test]
     fn test_each_byte_each_char_file() {
         // Issue #5056 -- shouldn't include trailing EOF.
-        let path = Path::from_str("tmp/lib-io-test-each-byte-each-char-file.tmp");
+        let path = Path::new("tmp/lib-io-test-each-byte-each-char-file.tmp");
 
         {
             // create empty, enough to reproduce a problem
@@ -2011,7 +2011,7 @@ mod tests {
 
     #[test]
     fn file_reader_not_exist() {
-        match io::file_reader(&Path::from_str("not a file")) {
+        match io::file_reader(&Path::new("not a file")) {
           Err(e) => {
             assert_eq!(e, ~"error opening not a file");
           }
@@ -2022,7 +2022,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_read_buffer_too_small() {
-        let path = &Path::from_str("tmp/lib-io-test-read-buffer-too-small.tmp");
+        let path = &Path::new("tmp/lib-io-test-read-buffer-too-small.tmp");
         // ensure the file exists
         io::file_writer(path, [io::Create]).unwrap();
 
@@ -2033,7 +2033,7 @@ mod tests {
 
     #[test]
     fn test_read_buffer_big_enough() {
-        let path = &Path::from_str("tmp/lib-io-test-read-buffer-big-enough.tmp");
+        let path = &Path::new("tmp/lib-io-test-read-buffer-big-enough.tmp");
         // ensure the file exists
         io::file_writer(path, [io::Create]).unwrap();
 
@@ -2044,14 +2044,14 @@ mod tests {
 
     #[test]
     fn test_write_empty() {
-        let file = io::file_writer(&Path::from_str("tmp/lib-io-test-write-empty.tmp"),
+        let file = io::file_writer(&Path::new("tmp/lib-io-test-write-empty.tmp"),
                                    [io::Create]).unwrap();
         file.write([]);
     }
 
     #[test]
     fn file_writer_bad_name() {
-        match io::file_writer(&Path("?/?"), []) {
+        match io::file_writer(&Path::new("?/?"), []) {
           Err(e) => {
             assert!(e.starts_with("error opening"));
           }
@@ -2076,7 +2076,7 @@ mod tests {
 
     #[test]
     fn test_read_write_le() {
-        let path = Path::from_str("tmp/lib-io-test-read-write-le.tmp");
+        let path = Path::new("tmp/lib-io-test-read-write-le.tmp");
         let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
 
         // write the ints to the file
@@ -2098,7 +2098,7 @@ mod tests {
 
     #[test]
     fn test_read_write_be() {
-        let path = Path::from_str("tmp/lib-io-test-read-write-be.tmp");
+        let path = Path::new("tmp/lib-io-test-read-write-be.tmp");
         let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
 
         // write the ints to the file
@@ -2120,7 +2120,7 @@ mod tests {
 
     #[test]
     fn test_read_be_int_n() {
-        let path = Path::from_str("tmp/lib-io-test-read-be-int-n.tmp");
+        let path = Path::new("tmp/lib-io-test-read-be-int-n.tmp");
         let ints = [i32::min_value, -123456, -42, -5, 0, 1, i32::max_value];
 
         // write the ints to the file
@@ -2144,7 +2144,7 @@ mod tests {
 
     #[test]
     fn test_read_f32() {
-        let path = Path::from_str("tmp/lib-io-test-read-f32.tmp");
+        let path = Path::new("tmp/lib-io-test-read-f32.tmp");
         //big-endian floating-point 8.1250
         let buf = ~[0x41, 0x02, 0x00, 0x00];
 
@@ -2162,7 +2162,7 @@ mod tests {
 
     #[test]
     fn test_read_write_f32() {
-        let path = Path::from_str("tmp/lib-io-test-read-write-f32.tmp");
+        let path = Path::new("tmp/lib-io-test-read-write-f32.tmp");
         let f:f32 = 8.1250;
 
         {
