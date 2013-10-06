@@ -57,7 +57,7 @@ pub fn run(lib_path: &str,
     });
 
     for input in input.iter() {
-        proc.input().write_str(*input);
+        proc.input().write(input.as_bytes());
     }
     let output = proc.finish_with_output();
 
