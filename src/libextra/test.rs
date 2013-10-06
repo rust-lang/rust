@@ -271,20 +271,20 @@ pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let run_ignored = matches.opt_present("ignored");
 
     let logfile = matches.opt_str("logfile");
-    let logfile = logfile.map(|s| Path::from_str(s));
+    let logfile = logfile.map(|s| Path::new(s));
 
     let run_benchmarks = matches.opt_present("bench");
     let run_tests = ! run_benchmarks ||
         matches.opt_present("test");
 
     let ratchet_metrics = matches.opt_str("ratchet-metrics");
-    let ratchet_metrics = ratchet_metrics.map(|s| Path::from_str(s));
+    let ratchet_metrics = ratchet_metrics.map(|s| Path::new(s));
 
     let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
     let ratchet_noise_percent = ratchet_noise_percent.map(|s| from_str::<f64>(s).unwrap());
 
     let save_metrics = matches.opt_str("save-metrics");
-    let save_metrics = save_metrics.map(|s| Path::from_str(s));
+    let save_metrics = save_metrics.map(|s| Path::new(s));
 
     let test_shard = matches.opt_str("test-shard");
     let test_shard = opt_shard(test_shard);
@@ -1440,7 +1440,7 @@ mod tests {
     pub fn ratchet_test() {
 
         let dpth = TempDir::new("test-ratchet").expect("missing test for ratchet");
-        let pth = dpth.path().join_str("ratchet.json");
+        let pth = dpth.path().join("ratchet.json");
 
         let mut m1 = MetricMap::new();
         m1.insert_metric("runtime", 1000.0, 2.0);

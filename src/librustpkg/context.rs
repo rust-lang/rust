@@ -156,7 +156,7 @@ impl Context {
 pub fn in_target(sysroot: &Path) -> bool {
     debug2!("Checking whether {} is in target", sysroot.display());
     let mut p = sysroot.dir_path();
-    p.set_filename_str("rustc");
+    p.set_filename("rustc");
     os::path_is_dir(&p)
 }
 

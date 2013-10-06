@@ -467,8 +467,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                   self.context.context.use_rust_path_hack,
                                                   pkg_id);
                         let (outputs_disc, inputs_disc) =
-                            self.context.install(pkg_src,
-                                                 &JustOne(Path::from_str(lib_crate_filename)));
+                            self.context.install(pkg_src, &JustOne(Path::new(lib_crate_filename)));
                         debug2!("Installed {}, returned {:?} dependencies and \
                                {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
@@ -492,12 +491,13 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                 self.exec.discover_input(*what,
                                                          *dep,
                                                          digest_file_with_date(
-                                                             &Path::from_str(*dep)));
+                                                             &Path::new(dep.as_slice())));
                             }
                                 else if *what == ~"binary" {
                                 self.exec.discover_input(*what,
                                                          *dep,
-                                                         digest_only_date(&Path::from_str(*dep)));
+                                                         digest_only_date(
+                                                             &Path::new(dep.as_slice())));
                             }
                                 else {
                                 fail2!("Bad kind: {}", *what);

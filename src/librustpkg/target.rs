@@ -56,7 +56,7 @@ fn file_is(p: &Path, stem: &str) -> bool {
 }
 
 pub fn lib_name_of(p: &Path) -> Path {
-    p.join_str("lib.rs")
+    p.join("lib.rs")
 }
 
 pub static lib_crate_filename: &'static str = "lib.rs";

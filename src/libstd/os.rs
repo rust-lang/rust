@@ -513,7 +513,7 @@ pub fn self_exe_path() -> Option<Path> {
         }
     }
 
-    load_self().and_then(|path| Path::from_vec_opt(path).map(|p| p.dir_path()))
+    load_self().and_then(|path| Path::new_opt(path).map(|p| { p.pop(); p }))
 }
 
 
@@ -538,7 +538,7 @@ pub fn self_exe_path() -> Option<Path> {
 pub fn homedir() -> Option<Path> {
     // FIXME (#7188): getenv needs a ~[u8] variant
     return match getenv("HOME") {
-        Some(ref p) if !p.is_empty() => Path::from_str_opt(*p),
+        Some(ref p) if !p.is_empty() => Path::new_opt(p.as_slice()),
         _ => secondary()
     };
 
@@ -551,7 +551,7 @@ pub fn homedir() -> Option<Path> {
     fn secondary() -> Option<Path> {
         do getenv("USERPROFILE").and_then |p| {
             if !p.is_empty() {
-                Path::from_str_opt(p)
+                Path::new_opt(p)
             } else {
                 None
             }
@@ -580,7 +580,7 @@ pub fn tmpdir() -> Path {
                 if x.is_empty() {
                     None
                 } else {
-                    Path::from_str_opt(x)
+                    Path::new_opt(x)
                 },
             _ => None
         }
@@ -589,9 +589,9 @@ pub fn tmpdir() -> Path {
     #[cfg(unix)]
     fn lookup() -> Path {
         if cfg!(target_os = "android") {
-            Path::from_str("/data/tmp")
+            Path::new("/data/tmp")
         } else {
-            getenv_nonempty("TMPDIR").unwrap_or(Path::from_str("/tmp"))
+            getenv_nonempty("TMPDIR").unwrap_or(Path::new("/tmp"))
         }
     }
 
@@ -600,7 +600,7 @@ pub fn tmpdir() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
                 getenv_nonempty("USERPROFILE").or(
-                   getenv_nonempty("WINDIR")))).unwrap_or(Path::from_str("C:\\Windows"))
+                   getenv_nonempty("WINDIR")))).unwrap_or(Path::new("C:\\Windows"))
     }
 }
 
@@ -762,7 +762,7 @@ pub fn list_dir(p: &Path) -> ~[Path] {
                 fn rust_list_dir_wfd_size() -> libc::size_t;
                 fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void) -> *u16;
             }
-            let star = p.join_str("*");
+            let star = p.join("*");
             do as_utf16_p(star.as_str().unwrap()) |path_ptr| {
                 let mut paths = ~[];
                 let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
@@ -778,7 +778,7 @@ pub fn list_dir(p: &Path) -> ~[Path] {
                             let fp_vec = vec::from_buf(
                                 fp_buf, wcslen(fp_buf) as uint);
                             let fp_str = str::from_utf16(fp_vec);
-                            paths.push(Path::from_str(fp_str));
+                            paths.push(Path::new(fp_str));
                         }
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
@@ -1830,13 +1830,13 @@ mod tests {
 
     #[test]
     fn test() {
-        assert!((!Path::from_str("test-path").is_absolute()));
+        assert!((!Path::new("test-path").is_absolute()));
 
         let cwd = getcwd();
         debug2!("Current working directory: {}", cwd.display());
 
-        debug2!("{:?}", make_absolute(&Path::from_str("test-path")));
-        debug2!("{:?}", make_absolute(&Path::from_str("/usr/bin")));
+        debug2!("{:?}", make_absolute(&Path::new("test-path")));
+        debug2!("{:?}", make_absolute(&Path::new("/usr/bin")));
     }
 
     #[test]
@@ -1845,7 +1845,7 @@ mod tests {
         let oldhome = getenv("HOME");
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::from_str("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
         assert!(os::homedir().is_none());
@@ -1866,16 +1866,16 @@ mod tests {
         assert!(os::homedir().is_none());
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::from_str("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
 
         setenv("USERPROFILE", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::from_str("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "/home/MountainView");
         setenv("USERPROFILE", "/home/PaloAlto");
-        assert_eq!(os::homedir(), Some(Path::from_str("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         for s in oldhome.iter() { setenv("HOME", *s) }
         for s in olduserprofile.iter() { setenv("USERPROFILE", *s) }
@@ -1891,12 +1891,12 @@ mod tests {
     // Issue #712
     #[test]
     fn test_list_dir_no_invalid_memory_access() {
-        os::list_dir(&Path::from_str("."));
+        os::list_dir(&Path::new("."));
     }
 
     #[test]
     fn list_dir() {
-        let dirs = os::list_dir(&Path::from_str("."));
+        let dirs = os::list_dir(&Path::new("."));
         // Just assuming that we've got some contents in the current directory
         assert!(dirs.len() > 0u);
 
@@ -1908,35 +1908,35 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn list_dir_root() {
-        let dirs = os::list_dir(&Path::from_str("/"));
+        let dirs = os::list_dir(&Path::new("/"));
         assert!(dirs.len() > 1);
     }
     #[test]
     #[cfg(windows)]
     fn list_dir_root() {
-        let dirs = os::list_dir(&Path::from_str("C:\\"));
+        let dirs = os::list_dir(&Path::new("C:\\"));
         assert!(dirs.len() > 1);
     }
 
 
     #[test]
     fn path_is_dir() {
-        assert!((os::path_is_dir(&Path::from_str("."))));
-        assert!((!os::path_is_dir(&Path::from_str("test/stdtest/fs.rs"))));
+        assert!((os::path_is_dir(&Path::new("."))));
+        assert!((!os::path_is_dir(&Path::new("test/stdtest/fs.rs"))));
     }
 
     #[test]
     fn path_exists() {
-        assert!((os::path_exists(&Path::from_str("."))));
-        assert!((!os::path_exists(&Path::from_str(
+        assert!((os::path_exists(&Path::new("."))));
+        assert!((!os::path_exists(&Path::new(
                      "test/nonexistent-bogus-path"))));
     }
 
     #[test]
     fn copy_file_does_not_exist() {
-      assert!(!os::copy_file(&Path::from_str("test/nonexistent-bogus-path"),
-                            &Path::from_str("test/other-bogus-path")));
-      assert!(!os::path_exists(&Path::from_str("test/other-bogus-path")));
+      assert!(!os::copy_file(&Path::new("test/nonexistent-bogus-path"),
+                            &Path::new("test/other-bogus-path")));
+      assert!(!os::path_exists(&Path::new("test/other-bogus-path")));
     }
 
     #[test]
@@ -1946,8 +1946,8 @@ mod tests {
         unsafe {
             let tempdir = getcwd(); // would like to use $TMPDIR,
                                     // doesn't seem to work on Linux
-            let input = tempdir.join_str("in.txt");
-            let out = tempdir.join_str("out.txt");
+            let input = tempdir.join("in.txt");
+            let out = tempdir.join("out.txt");
 
             /* Write the temp input file */
             let ostream = do input.with_c_str |fromp| {
@@ -1983,7 +1983,7 @@ mod tests {
 
     #[test]
     fn recursive_mkdir_slash() {
-        let path = Path::from_str("/");
+        let path = Path::new("/");
         assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     }
 
@@ -2032,7 +2032,7 @@ mod tests {
         }
 
         let mut path = tmpdir();
-        path.push_str("mmap_file.tmp");
+        path.push("mmap_file.tmp");
         let size = MemoryMap::granularity() * 2;
         remove_file(&path);
 

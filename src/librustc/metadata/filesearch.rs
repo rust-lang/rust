@@ -138,11 +138,11 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
     let dir = libdir();
-    let mut p = Path::from_str(dir);
+    let mut p = Path::new(dir.as_slice());
     assert!(p.is_relative());
-    p.push_str("rustc");
-    p.push_str(target_triple);
-    p.push_str(dir);
+    p.push("rustc");
+    p.push(target_triple);
+    p.push(dir);
     p
 }
 
@@ -153,8 +153,8 @@ fn make_target_lib_path(sysroot: &Path,
 
 fn make_rustpkg_target_lib_path(dir: &Path,
                         target_triple: &str) -> Path {
-    let mut p = dir.join_str(libdir());
-    p.push_str(target_triple);
+    let mut p = dir.join(libdir());
+    p.push(target_triple);
     p
 }
 
@@ -192,13 +192,13 @@ pub fn rust_path() -> ~[Path] {
         Some(env_path) => {
             let env_path_components: ~[&str] =
                 env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
-            env_path_components.map(|&s| Path::from_str(s))
+            env_path_components.map(|&s| Path::new(s))
         }
         None => ~[]
     };
     let cwd = os::getcwd();
     // now add in default entries
-    let cwd_dot_rust = cwd.join_str(".rust");
+    let cwd_dot_rust = cwd.join(".rust");
     if !env_rust_path.contains(&cwd_dot_rust) {
         env_rust_path.push(cwd_dot_rust);
     }
@@ -206,14 +206,14 @@ pub fn rust_path() -> ~[Path] {
         env_rust_path.push(cwd.clone());
     }
     do cwd.each_parent() |p| {
-        if !env_rust_path.contains(&p.join_str(".rust")) {
+        if !env_rust_path.contains(&p.join(".rust")) {
             push_if_exists(&mut env_rust_path, p);
         }
         true
     };
     let h = os::homedir();
     for h in h.iter() {
-        if !env_rust_path.contains(&h.join_str(".rust")) {
+        if !env_rust_path.contains(&h.join(".rust")) {
             push_if_exists(&mut env_rust_path, h);
         }
     }
@@ -223,7 +223,7 @@ pub fn rust_path() -> ~[Path] {
 
 /// Adds p/.rust into vec, only if it exists
 fn push_if_exists(vec: &mut ~[Path], p: &Path) {
-    let maybe_dir = p.join_str(".rust");
+    let maybe_dir = p.join(".rust");
     if os::path_exists(&maybe_dir) {
         vec.push(maybe_dir);
     }

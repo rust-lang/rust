@@ -81,7 +81,7 @@ pub fn expand_include(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
     let p = parse::new_sub_parser_from_file(
         cx.parse_sess(), cx.cfg(),
-        &res_rel_file(cx, sp, &Path::from_str(file)), sp);
+        &res_rel_file(cx, sp, &Path::new(file)), sp);
     base::MRExpr(p.parse_expr())
 }
 
@@ -89,7 +89,7 @@ pub fn expand_include(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
-    let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path::from_str(file)));
+    let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path::new(file)));
     match res {
       result::Ok(res) => {
           base::MRExpr(cx.expr_str(sp, res.to_managed()))
@@ -103,7 +103,7 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
-    match io::read_whole_file(&res_rel_file(cx, sp, &Path::from_str(file))) {
+    match io::read_whole_file(&res_rel_file(cx, sp, &Path::new(file))) {
       result::Ok(src) => {
         let u8_exprs: ~[@ast::Expr] = src.iter().map(|char| cx.expr_u8(sp, *char)).collect();
         base::MRExpr(cx.expr_vec(sp, u8_exprs))
@@ -145,7 +145,7 @@ fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
 fn res_rel_file(cx: @ExtCtxt, sp: codemap::Span, arg: &Path) -> Path {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
-        let mut cu = Path::from_str(cx.codemap().span_to_filename(sp));
+        let mut cu = Path::new(cx.codemap().span_to_filename(sp));
         cu.pop();
         cu.push_path(arg);
         cu

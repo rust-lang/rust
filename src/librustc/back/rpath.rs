@@ -46,7 +46,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
 fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
     let r = filesearch::relative_target_lib_path(sess.opts.target_triple);
     let mut p = sess.filesearch.sysroot().join_path(&r);
-    p.push_str(os::dll_filename("rustrt"));
+    p.push(os::dll_filename("rustrt"));
     p
 }
 
@@ -147,7 +147,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> ~str {
     let install_prefix = env!("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(target_triple);
-    let mut path = Path::from_str(install_prefix);
+    let mut path = Path::new(install_prefix);
     path.push_path(&tlib);
     let path = os::make_absolute(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
@@ -186,8 +186,8 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let res = get_install_prefix_rpath("triple");
-        let mut d = Path::from_str(env!("CFG_PREFIX"));
-        d.push_str("lib/rustc/triple/lib");
+        let mut d = Path::new(env!("CFG_PREFIX"));
+        d.push("lib/rustc/triple/lib");
         debug2!("test_prefix_path: {} vs. {}",
                res.to_str(),
                d.display());
@@ -200,7 +200,7 @@ mod test {
     #[test]
     fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("triple");
-        assert!(Path::from_str(res).is_absolute());
+        assert!(Path::new(res).is_absolute());
     }
 
     #[test]
@@ -224,7 +224,7 @@ mod test {
     fn test_rpath_relative() {
       let o = session::OsLinux;
       let res = get_rpath_relative_to_output(o,
-            &Path::from_str("bin/rustc"), &Path::from_str("lib/libstd.so"));
+            &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
       assert_eq!(res.as_slice(), "$ORIGIN/../lib");
     }
 
@@ -233,7 +233,7 @@ mod test {
     fn test_rpath_relative() {
         let o = session::OsFreebsd;
         let res = get_rpath_relative_to_output(o,
-            &Path::from_str("bin/rustc"), &Path::from_str("lib/libstd.so"));
+            &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
         assert_eq!(res.as_slice(), "$ORIGIN/../lib");
     }
 
@@ -242,15 +242,15 @@ mod test {
     fn test_rpath_relative() {
         let o = session::OsMacos;
         let res = get_rpath_relative_to_output(o,
-                                               &Path::from_str("bin/rustc"),
-                                               &Path::from_str("lib/libstd.so"));
+                                               &Path::new("bin/rustc"),
+                                               &Path::new("lib/libstd.so"));
         assert_eq!(res.as_slice(), "@executable_path/../lib");
     }
 
     #[test]
     fn test_get_absolute_rpath() {
-        let res = get_absolute_rpath(&Path::from_str("lib/libstd.so"));
-        let lib = os::make_absolute(&Path::from_str("lib"));
+        let res = get_absolute_rpath(&Path::new("lib/libstd.so"));
+        let lib = os::make_absolute(&Path::new("lib"));
         debug2!("test_get_absolute_rpath: {} vs. {}",
                res.to_str(), lib.display());
 

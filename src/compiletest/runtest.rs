@@ -62,7 +62,7 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
     }
-    let testfile = Path::from_str(testfile);
+    let testfile = Path::new(testfile);
     debug2!("running {}", testfile.display());
     let props = load_props(&testfile);
     debug2!("loaded props");
@@ -594,7 +594,7 @@ fn compose_and_run_compiler(
     let extra_link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
 
     for rel_ab in props.aux_builds.iter() {
-        let abs_ab = config.aux_base.join_str(*rel_ab);
+        let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_args =
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
@@ -662,7 +662,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    f.add_extension_str(os::EXE_EXTENSION);
+    f.add_extension(os::EXE_EXTENSION);
     f
 }
 
@@ -742,23 +742,23 @@ fn dump_output_file(config: &config, testfile: &Path,
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
-    output_base_name(config, testfile).with_extension_str(extension)
+    output_base_name(config, testfile).with_extension(extension)
 }
 
 fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    f.add_extension_str("libaux");
+    f.add_extension("libaux");
     f
 }
 
 fn output_testname(testfile: &Path) -> Path {
-    Path::from_vec(testfile.filestem().unwrap())
+    Path::new(testfile.filestem().unwrap())
 }
 
 fn output_base_name(config: &config, testfile: &Path) -> Path {
     config.build_base
         .join_path(&output_testname(testfile))
-        .with_extension_str(config.stage_id)
+        .with_extension(config.stage_id.as_slice())
 }
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
@@ -916,7 +916,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
 // codegen tests (vs. clang)
 
 fn make_o_name(config: &config, testfile: &Path) -> Path {
-    output_base_name(config, testfile).with_extension_str("o")
+    output_base_name(config, testfile).with_extension("o")
 }
 
 fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
@@ -942,9 +942,9 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
 
 fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
                                           testfile: &Path) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension_str("bc");
+    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
-    let testcc = testfile.with_extension_str("cc");
+    let testcc = testfile.with_extension("cc");
     let ProcArgs = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: config.clang_path.get_ref().as_str().unwrap().to_owned(),
@@ -959,10 +959,10 @@ fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
 fn extract_function_from_bitcode(config: &config, _props: &TestProps,
                                  fname: &str, testfile: &Path,
                                  suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension_str("bc");
+    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let prog = config.llvm_bin_path.get_ref().join_str("llvm-extract");
+    let prog = config.llvm_bin_path.get_ref().join("llvm-extract");
     let ProcArgs = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.as_str().unwrap().to_owned(),
@@ -975,11 +975,11 @@ fn extract_function_from_bitcode(config: &config, _props: &TestProps,
 
 fn disassemble_extract(config: &config, _props: &TestProps,
                        testfile: &Path, suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_extension_str("bc");
+    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let extracted_ll = extracted_bc.with_extension_str("ll");
-    let prog = config.llvm_bin_path.get_ref().join_str("llvm-dis");
+    let extracted_ll = extracted_bc.with_extension("ll");
+    let prog = config.llvm_bin_path.get_ref().join("llvm-dis");
     let ProcArgs = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.as_str().unwrap().to_owned(),
@@ -991,7 +991,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = io::read_whole_file_str(&p.with_extension_str("ll")).unwrap();
+    let x = io::read_whole_file_str(&p.with_extension("ll")).unwrap();
     x.line_iter().len()
 }
 

@@ -35,7 +35,7 @@ mod test {
     #[test]
     fn path_like_smoke_test() {
         let expected = if cfg!(unix) { "/home" } else { "C:\\" };
-        let path = Path::from_str(expected);
+        let path = Path::new(expected);
         path.path_as_str(|p| assert!(p == expected));
         path.path_as_str(|p| assert!(p == expected));
     }

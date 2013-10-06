@@ -43,7 +43,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                 else {
                 match v {
                     &ExactRevision(ref s) => {
-                        let git_dir = target.join_str(".git");
+                        let git_dir = target.join(".git");
                         debug2!("`Running: git --work-tree={} --git-dir={} checkout {}",
                                 *s, target.display(), git_dir.display());
                         // FIXME (#9639: This needs to handle non-utf8 paths
@@ -64,7 +64,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             // Check that no version was specified. There's no reason to not handle the
             // case where a version was requested, but I haven't implemented it.
             assert!(*v == NoVersion);
-            let git_dir = target.join_str(".git");
+            let git_dir = target.join(".git");
             debug2!("Running: git --work-tree={} --git-dir={} pull --no-edit {}",
                     target.display(), git_dir.display(), source.display());
             // FIXME (#9639: This needs to handle non-utf8 paths
@@ -80,7 +80,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
 
         let scratch_dir = TempDir::new("rustpkg");
         let clone_target = match scratch_dir {
-            Some(d) => d.unwrap().join_str("rustpkg_temp"),
+            Some(d) => d.unwrap().join("rustpkg_temp"),
             None    => cond.raise(~"Failed to create temporary directory for fetching git sources")
         };
 
@@ -136,5 +136,5 @@ fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput
 }
 
 pub fn is_git_dir(p: &Path) -> bool {
-    os::path_is_dir(&p.join_str(".git"))
+    os::path_is_dir(&p.join(".git"))
 }

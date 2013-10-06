@@ -53,7 +53,7 @@ pub fn make_dir_rwx_recursive(p: &Path) -> bool { os::mkdir_recursive(p, U_RWX) 
 /// True if there's a directory in <workspace> with
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
-    workspace_contains_package_id_(pkgid, workspace, |p| p.join_str("src")).is_some()
+    workspace_contains_package_id_(pkgid, workspace, |p| p.join("src")).is_some()
 }
 
 pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
@@ -98,16 +98,16 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
 /// Return the target-specific build subdirectory, pushed onto `base`;
 /// doesn't check that it exists or create it
 pub fn target_build_dir(workspace: &Path) -> Path {
-    let mut dir = workspace.join_str("build");
-    dir.push_str(host_triple());
+    let mut dir = workspace.join("build");
+    dir.push(host_triple());
     dir
 }
 
 /// Return the target-specific lib subdirectory, pushed onto `base`;
 /// doesn't check that it exists or create it
 fn target_lib_dir(workspace: &Path) -> Path {
-    let mut dir = workspace.join_str("lib");
-    dir.push_str(host_triple());
+    let mut dir = workspace.join("lib");
+    dir.push(host_triple());
     dir
 }
 
@@ -115,7 +115,7 @@ fn target_lib_dir(workspace: &Path) -> Path {
 /// doesn't check that it exists or create it
 /// note: this isn't target-specific
 fn target_bin_dir(workspace: &Path) -> Path {
-    workspace.join_str("bin")
+    workspace.join("bin")
 }
 
 /// Figure out what the executable name for <pkgid> in <workspace>'s build
@@ -205,7 +205,7 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
 
 // rustc doesn't use target-specific subdirectories
 pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
-    library_in(lib_name, &NoVersion, &sysroot.join_str("lib"))
+    library_in(lib_name, &NoVersion, &sysroot.join("lib"))
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
@@ -377,9 +377,9 @@ pub fn mk_output_path(what: OutputType, where: Target,
            dir.display());
     let mut output_path = match what {
         // this code is duplicated from elsewhere; fix this
-        Lib => dir.join_str(os::dll_filename(short_name_with_version)),
+        Lib => dir.join(os::dll_filename(short_name_with_version)),
         // executable names *aren't* versioned
-        _ => dir.join_str(format!("{}{}{}", pkg_id.short_name,
+        _ => dir.join(format!("{}{}{}", pkg_id.short_name,
                            match what {
                                Test => "test",
                                Bench => "bench",
@@ -416,7 +416,7 @@ pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
 
 fn dir_has_file(dir: &Path, file: &str) -> bool {
     assert!(dir.is_absolute());
-    os::path_exists(&dir.join_str(file))
+    os::path_exists(&dir.join(file))
 }
 
 pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {

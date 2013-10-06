@@ -99,7 +99,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
     let rustpath = rust_path();
     for rp in rustpath.iter() {
         let local_path = rp.join_path(local_path);
-        let git_dir = local_path.join_str(".git");
+        let git_dir = local_path.join(".git");
         if !os::path_is_dir(&git_dir) {
             continue;
         }
@@ -148,7 +148,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
                    str::from_utf8(outp.output),
                    str::from_utf8(outp.error));
             let mut output = None;
-            let git_dir = tmp_dir.join_str(".git");
+            let git_dir = tmp_dir.join(".git");
             debug2!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
                    git_dir.display());
             // FIXME (#9639): This needs to handle non-utf8 paths

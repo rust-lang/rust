@@ -249,7 +249,7 @@ pub mod write {
             llvm::LLVMInitializeMipsAsmParser();
 
             if sess.opts.save_temps {
-                do output.with_extension_str("no-opt.bc").with_c_str |buf| {
+                do output.with_extension("no-opt.bc").with_c_str |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }
@@ -317,7 +317,7 @@ pub mod write {
             llvm::LLVMDisposePassManager(mpm);
 
             if sess.opts.save_temps {
-                do output.with_extension_str("bc").with_c_str |buf| {
+                do output.with_extension("bc").with_c_str |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }
@@ -921,7 +921,7 @@ pub fn link_binary(sess: Session,
         let out_dirname = out_filename.dir_path();
         debug2!("dirname(out_filename): {}", out_dirname.display());
 
-        out_filename.with_filename_str(long_libname)
+        out_filename.with_filename(long_libname)
     } else {
         out_filename.clone()
     };
@@ -977,7 +977,7 @@ pub fn link_args(sess: Session,
 
     let output = if *sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
-        out_filename.with_filename_str(long_libname)
+        out_filename.with_filename(long_libname)
     } else {
         out_filename.clone()
     };
