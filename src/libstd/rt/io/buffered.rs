@@ -89,14 +89,14 @@ impl<R: Reader> BufferedReader<R> {
     /// Reads the next line of input, interpreted as a sequence of utf-8
     /// encoded unicode codepoints. If a newline is encountered, then the
     /// newline is contained in the returned string.
-    pub fn read_line(&mut self) -> ~str {
-        str::from_utf8_owned(self.read_until('\n' as u8))
+    pub fn read_line(&mut self) -> Option<~str> {
+        self.read_until('\n' as u8).map(str::from_utf8_owned)
     }
 
     /// Reads a sequence of bytes leading up to a specified delimeter. Once the
     /// specified byte is encountered, reading ceases and the bytes up to and
     /// including the delimiter are returned.
-    pub fn read_until(&mut self, byte: u8) -> ~[u8] {
+    pub fn read_until(&mut self, byte: u8) -> Option<~[u8]> {
         let mut res = ~[];
         let mut used;
         loop {
@@ -120,7 +120,7 @@ impl<R: Reader> BufferedReader<R> {
             self.pos += used;
         }
         self.pos += used;
-        return res;
+        return if res.len() == 0 {None} else {Some(res)};
     }
 
     fn fill_buffer<'a>(&'a mut self) -> &'a [u8] {
