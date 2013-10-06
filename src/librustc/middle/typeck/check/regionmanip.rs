@@ -32,10 +32,6 @@ pub fn replace_bound_regions_in_fn_sig(
 {
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
-    for &self_ty in opt_self_ty.iter() {
-        all_tys.push(self_ty);
-    }
-
     for &t in opt_self_ty.iter() { all_tys.push(t) }
 
     debug2!("replace_bound_regions_in_fn_sig(self_ty={:?}, fn_sig={}, \
