@@ -1083,7 +1083,7 @@ struct NoOpFolder {
 
 impl ast_fold for NoOpFolder {}
 
-struct MacroExpander {
+pub struct MacroExpander {
     extsbox: @mut SyntaxEnv,
     cx: @ExtCtxt,
 }
