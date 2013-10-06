@@ -27,10 +27,8 @@ use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
-use path_util::{installed_library_in_workspace, U_RWX, rust_path, system_library, target_build_dir};
-use messages::error;
-use conditions::nonexistent_package::cond;
-
+use path_util::{installed_library_in_workspace, U_RWX, system_library, target_build_dir};
+use path_util::default_workspace;
 pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
 use workcache_support::{digest_file_with_date, digest_only_date};
 
@@ -432,26 +430,26 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                lib_name.to_str());
                         // Try to install it
                         let pkg_id = PkgId::new(lib_name);
+                        // Find all the workspaces in the RUST_PATH that contain this package.
                         let workspaces = pkg_parent_workspaces(&self.context.context,
                                                                &pkg_id);
-                        let source_workspace = if workspaces.is_empty() {
-                            error(format!("Couldn't find package {} \
-                                       in any of the workspaces in the RUST_PATH ({})",
-                                       lib_name,
-                                       rust_path().map(|s| s.to_str()).connect(":")));
-                            cond.raise((pkg_id.clone(), ~"Dependency not found"))
-                        }
-                            else {
-                            workspaces[0]
-                        };
+                        // Two cases:
+                        // (a) `workspaces` is empty. That means there's no local source
+                        // for this package. In that case, we pass the default workspace
+                        // into `PkgSrc::new`, so that if it exists as a remote repository,
+                        // its sources will be fetched into it.
+                        // (b) `workspaces` is non-empty -- we found a local source for this
+                        // package.
+                        let dest_workspace = if workspaces.is_empty() {
+                            default_workspace()
+                        } else { workspaces[0] };
+                        let pkg_src = PkgSrc::new(dest_workspace,
+                        // Use the rust_path_hack to search for dependencies iff
+                        // we were already using it
+                                                  self.context.context.use_rust_path_hack,
+                                                  pkg_id);
                         let (outputs_disc, inputs_disc) =
-                            self.context.install(PkgSrc::new(source_workspace.clone(),
-                            // Use the rust_path_hack to search for dependencies iff
-                            // we were already using it
-                            self.context.context.use_rust_path_hack,
-                                                             pkg_id),
-                                                 &JustOne(Path(
-                                    lib_crate_filename)));
+                            self.context.install(pkg_src, &JustOne(Path(lib_crate_filename)));
                         debug2!("Installed {}, returned {:?} dependencies and \
                                {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
