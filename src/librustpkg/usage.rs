@@ -141,9 +141,9 @@ information.");
 pub fn test() {
     io::println("rustpkg [options..] test
 
-Build all targets described in the package script in the current directory
-with the test flag. The test bootstraps will be run afterwards and the output
-and exit code will be redirected.
+Build all test crates in the current directory with the test flag.
+Then, run all the resulting test executables, redirecting the output
+and exit code.
 
 Options:
     -c, --cfg      Pass a cfg flag to the package script");
