@@ -3054,7 +3054,8 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             },
           Some(e) => {
             if any_bot && !warned {
-                fcx.ccx.tcx.sess.span_warn(e.span, "unreachable expression");
+                fcx.ccx.tcx.sess.add_lint(unreachable_code, e.id, e.span,
+                                          ~"unreachable expression");
             }
             check_expr_with_opt_hint(fcx, e, expected);
               let ety = fcx.expr_ty(e);
