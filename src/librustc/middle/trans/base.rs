@@ -54,7 +54,7 @@ use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::llrepr::LlvmRepr;
 use middle::trans::machine;
-use middle::trans::machine::{llalign_of_min, llsize_of};
+use middle::trans::machine::{llalign_of_min, llsize_of, llsize_of_alloc};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::tvec;
@@ -2911,9 +2911,10 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     }
 }
 
-pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
-    let elttype = Type::struct_([ccx.int_type, ccx.int_type], false);
-    let maptype = Type::array(&elttype, (ccx.module_data.len() + 1) as u64);
+pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint, uint) {
+    let str_slice_type = Type::struct_([Type::i8p(), ccx.int_type], false);
+    let elttype = Type::struct_([str_slice_type, ccx.int_type], false);
+    let maptype = Type::array(&elttype, ccx.module_data.len() as u64);
     let map = do "_rust_mod_map".with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
@@ -2931,19 +2932,18 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
     }
 
     for key in keys.iter() {
-        let val = *ccx.module_data.find_equiv(key).unwrap();
-        let s_const = C_cstr(ccx, *key);
-        let s_ptr = p2i(ccx, s_const);
-        let v_ptr = p2i(ccx, val);
-        let elt = C_struct([s_ptr, v_ptr]);
-        elts.push(elt);
+            let val = *ccx.module_data.find_equiv(key).unwrap();
+            let v_ptr = p2i(ccx, val);
+            let elt = C_struct([
+                C_estr_slice(ccx, *key),
+                v_ptr
+            ]);
+            elts.push(elt);
     }
-    let term = C_struct([C_int(ccx, 0), C_int(ccx, 0)]);
-    elts.push(term);
     unsafe {
         llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     }
-    return map;
+    return (map, keys.len(), llsize_of_alloc(ccx, elttype));
 }
 
 
@@ -2959,9 +2959,10 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     } else {
         ~"toplevel"
     };
+
     let sym_name = ~"_rust_crate_map_" + mapname;
-    let arrtype = Type::array(&int_type, n_subcrates as u64);
-    let maptype = Type::struct_([Type::i32(), int_type, arrtype], false);
+    let slicetype = Type::struct_([int_type, int_type], false);
+    let maptype = Type::struct_([Type::i32(), slicetype, slicetype], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -2996,14 +2997,29 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         subcrates.push(p2i(ccx, cr));
         i += 1;
     }
-    subcrates.push(C_int(ccx, 0));
-
     unsafe {
-        let mod_map = create_module_map(ccx);
+        let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
+        let vec_elements = do "_crate_map_child_vectors".with_c_str |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
+        };
+        lib::llvm::SetLinkage(vec_elements, lib::llvm::InternalLinkage);
+
+        llvm::LLVMSetInitializer(vec_elements, C_array(ccx.int_type, subcrates));
+        let (mod_map, mod_count, mod_struct_size) = create_module_map(ccx);
+
         llvm::LLVMSetInitializer(map, C_struct(
-            [C_i32(1),
-             p2i(ccx, mod_map),
-             C_array(ccx.int_type, subcrates)]));
+            [C_i32(2),
+             C_struct([
+                p2i(ccx, mod_map),
+                // byte size of the module map array, an entry consists of two integers
+                C_int(ccx, ((mod_count * mod_struct_size) as int))
+             ]),
+             C_struct([
+                p2i(ccx, vec_elements),
+                // byte size of the subcrates array, an entry consists of an integer
+                C_int(ccx, (subcrates.len() * llsize_of_alloc(ccx, ccx.int_type)) as int)
+             ])
+        ]));
     }
 }
 
