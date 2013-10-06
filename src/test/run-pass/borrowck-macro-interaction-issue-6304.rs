@@ -1,6 +1,8 @@
 // Check that we do not ICE when compiling this
 // macro, which reuses the expression `$id`
 
+#[feature(macro_rules)];
+
 struct Foo {
   a: int
 }

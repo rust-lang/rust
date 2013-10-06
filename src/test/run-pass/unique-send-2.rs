@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::*;
+use std::comm::{SharedChan, stream};
 use std::task;
 
 fn child(c: &SharedChan<~uint>, i: uint) {

@@ -1,3 +1,5 @@
+#[feature(struct_variant)];
+
 #[deriving(Eq)]
 enum S {
     X { x: int, y: int },

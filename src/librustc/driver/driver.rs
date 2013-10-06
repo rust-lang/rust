@@ -159,6 +159,8 @@ pub fn phase_2_configure_and_expand(sess: Session,
     *sess.building_library = session::building_library(sess.opts.crate_type,
                                                        &crate, sess.opts.test);
 
+    time(time_passes, "gated feature checking", (), |_|
+         front::feature_gate::check_crate(sess, &crate));
 
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in

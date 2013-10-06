@@ -1833,6 +1833,58 @@ fn main() {
 > individual functions, structs, methods and enum variants, *not* to
 > entire modules, traits, impls or enums themselves.
 
+### Compiler Features
+
+Certain aspects of Rust may be implemented in the compiler, but they're not
+necessarily ready for every-day use. These features are often of "prototype
+quality" or "almost production ready", but may not be stable enough to be
+considered a full-fleged language feature.
+
+For this reason, rust recognizes a special crate-level attribute of the form:
+
+~~~ {.xfail-test}
+#[feature(feature1, feature2, feature3)]
+~~~
+
+This directive informs the compiler that the feature list: `feature1`,
+`feature2`, and `feature3` should all be enabled. This is only recognized at a
+crate-level, not at a module-level. Without this directive, all features are
+considered off, and using the features will result in a compiler error.
+
+The currently implemented features of the compiler are:
+
+* `macro_rules` - The definition of new macros. This does not encompass
+                  macro-invocation, that is always enabled by default, this only
+                  covers the definition of new macros. There are currently
+                  various problems with invoking macros, how they interact with
+                  their environment, and possibly how they are used outside of
+                  location in which they are defined. Macro definitions are
+                  likely to change slightly in the future, so they are currently
+                  hidden behind this feature.
+
+* `globs` - Importing everything in a module through `*`. This is currently a
+            large source of bugs in name resolution for Rust, and it's not clear
+            whether this will continue as a feature or not. For these reasons,
+            the glob import statement has been hidden behind this feature flag.
+
+* `struct_variant` - Structural enum variants (those with named fields). It is
+                     currently unknown whether this style of enum variant is as
+                     fully supported as the tuple-forms, and it's not certain
+                     that this style of variant should remain in the language.
+                     For now this style of variant is hidden behind a feature
+                     flag.
+
+If a feature is promoted to a language feature, then all existing programs will
+start to receive compilation warnings about #[feature] directives which enabled
+the new feature (because the directive is no longer necessary). However, if
+a feature is decided to be removed from the language, errors will be issued (if
+there isn't a parser error first). The directive in this case is no longer
+necessary, and it's likely that existing code will break if the feature isn't
+removed.
+
+If a unknown feature is found in a directive, it results in a compiler error. An
+unknown feature is one which has never been recognized by the compiler.
+
 # Statements and expressions
 
 Rust is _primarily_ an expression language. This means that most forms of

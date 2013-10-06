@@ -17,6 +17,8 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[feature(macro_rules, globs, struct_variant)];
+
 // Rustc tasks always run on a fixed_stack_segment, so code in this
 // module can call C functions (in particular, LLVM functions) with
 // impunity.
@@ -83,6 +85,7 @@ pub mod front {
     pub mod test;
     pub mod std_inject;
     pub mod assign_node_ids;
+    pub mod feature_gate;
 }
 
 pub mod back {

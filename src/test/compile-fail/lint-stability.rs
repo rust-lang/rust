@@ -11,6 +11,7 @@
 // xfail-fast aux-build
 // aux-build:lint_stability.rs
 
+#[feature(globs)];
 #[deny(unstable)];
 #[deny(deprecated)];
 #[deny(experimental)];

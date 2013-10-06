@@ -11,6 +11,7 @@
 // xfail-fast
 // aux-build:issue-2526.rs
 
+#[feature(globs)];
 #[allow(unused_imports)];
 
 extern mod issue_2526;

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(struct_variant)];
+enum A { B { foo: int } }
+//~^ ERROR: enum struct variants are experimental
 
-enum A {
-    B { x: Option<int> },
-    C
-}
+fn main() {}
 
-fn main() {
-    let x = B { x: Some(3) };
-    match x {   //~ ERROR non-exhaustive patterns
-        C => {}
-        B { x: None } => {}
-    }
-}

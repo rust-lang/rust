@@ -1,4 +1,8 @@
-macro_rules! e( //~ ERROR unknown macro variable `nonexistent`
+#[feature(macro_rules)];
+
+// error-pattern: unknown macro variable `nonexistent`
+
+macro_rules! e(
     ($inp:ident) => (
         $nonexistent
     );

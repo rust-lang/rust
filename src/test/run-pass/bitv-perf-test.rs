@@ -11,7 +11,7 @@
 // except according to those terms.
 
 extern mod extra;
-use extra::bitv::*;
+use extra::bitv::Bitv;
 
 fn bitv_test() {
     let mut v1 = ~Bitv::new(31, false);

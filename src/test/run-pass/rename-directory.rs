@@ -17,12 +17,11 @@ extern mod extra;
 use extra::tempfile::mkdtemp;
 use std::os;
 use std::libc;
-use std::libc::*;
 
 fn rename_directory() {
     #[fixed_stack_segment];
     unsafe {
-        static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
+        static U_RWX: i32 = (libc::S_IRUSR | libc::S_IWUSR | libc::S_IXUSR) as i32;
 
         let tmpdir = mkdtemp(&os::tmpdir(), "rename_directory").expect("rename_directory failed");
         let old_path = tmpdir.push_many(["foo", "bar", "baz"]);
@@ -38,13 +37,13 @@ fn rename_directory() {
         assert!((ostream as uint != 0u));
         let s = ~"hello";
         do "hello".with_c_str |buf| {
-            let write_len = libc::fwrite(buf as *c_void,
-                                         1u as size_t,
-                                         (s.len() + 1u) as size_t,
+            let write_len = libc::fwrite(buf as *libc::c_void,
+                                         1u as libc::size_t,
+                                         (s.len() + 1u) as libc::size_t,
                                          ostream);
-            assert_eq!(write_len, (s.len() + 1) as size_t)
+            assert_eq!(write_len, (s.len() + 1) as libc::size_t)
         }
-        assert_eq!(libc::fclose(ostream), (0u as c_int));
+        assert_eq!(libc::fclose(ostream), (0u as libc::c_int));
 
         let new_path = tmpdir.push_many(["quux", "blat"]);
         assert!(os::mkdir_recursive(&new_path, U_RWX));

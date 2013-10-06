@@ -8,21 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(struct_variant)];
+#[feature(
+    foo_bar_baz,
+    foo(bar),
+    foo = "baz"
+)];
+//~^^^^ ERROR: unknown feature
+//~^^^^ ERROR: malformed feature
+//~^^^^ ERROR: malformed feature
 
-enum E {
-    Foo{f : int},
-    Bar
-}
+#[feature]; //~ ERROR: malformed feature
+#[feature = "foo"]; //~ ERROR: malformed feature
 
-pub fn main() {
-    let e = Foo{f: 1};
-    match e {
-        Foo{_} => (),
-        _ => fail2!(),
-    }
-    match e {
-        Foo{f: _f} => (),
-        _ => fail2!(),
-    }
-}
+#[feature(test_removed_feature)]; //~ ERROR: feature has been removed
+#[feature(test_accepted_feature)]; //~ WARNING: feature has added

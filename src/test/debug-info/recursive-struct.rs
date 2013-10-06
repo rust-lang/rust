@@ -99,6 +99,7 @@
 // debugger:continue
 
 #[allow(unused_variable)];
+#[feature(struct_variant)];
 
 enum Opt<T> {
     Empty,

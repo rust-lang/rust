@@ -13,7 +13,7 @@
 
 extern mod req;
 
-use req::*;
+use req::request;
 use std::hashmap::HashMap;
 
 pub fn main() {
