@@ -307,7 +307,6 @@ pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
 
 #[cfg(test)]
 mod tests {
-    use io;
     use libc::c_int;
     use option::{Option, None, Some};
     use os;
@@ -315,6 +314,8 @@ mod tests {
     use run;
     use str;
     use unstable::running_on_valgrind;
+    use rt::io::native::file;
+    use rt::io::{Writer, Reader};
 
     #[test]
     #[cfg(not(target_os="android"))]
@@ -412,21 +413,21 @@ mod tests {
     }
 
     fn writeclose(fd: c_int, s: &str) {
-        let writer = io::fd_writer(fd, false);
-        writer.write_str(s);
-        os::close(fd);
+        let mut writer = file::FileDesc::new(fd);
+        writer.write(s.as_bytes());
     }
 
     fn readclose(fd: c_int) -> ~str {
-        #[fixed_stack_segment]; #[inline(never)];
-
-        unsafe {
-            let file = os::fdopen(fd);
-            let reader = io::FILE_reader(file, false);
-            let buf = reader.read_whole_stream();
-            os::fclose(file);
-            str::from_utf8(buf)
+        let mut res = ~[];
+        let mut reader = file::FileDesc::new(fd);
+        let mut buf = [0, ..1024];
+        loop {
+            match reader.read(buf) {
+                Some(n) => { res.push_all(buf.slice_to(n)); }
+                None => break
+            }
         }
+        str::from_utf8_owned(res)
     }
 
     #[test]
