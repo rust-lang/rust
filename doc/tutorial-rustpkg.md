@@ -206,6 +206,54 @@ note: Installed package github.com/YOUR_USERNAME/hello-0.1 to /home/yourusername
 
 That's it!
 
+# Testing your Package
+
+Testing your package is simple as well. First, let's change `src/hello/lib.rs` to contain
+a function that can be sensibly tested:
+
+~~~
+#[desc = "A Rust package for determining whether unsigned integers are even."];
+#[license = "MIT"];
+
+pub fn is_even(i: uint) -> bool {
+	i % 2 == 0
+}
+~~~
+
+Once you've edited `lib.rs`, you can create a second crate file, `src/hello/test.rs`,
+to put tests in:
+
+~~~
+#[license = "MIT"];
+extern mod hello;
+use hello::is_even;
+
+#[test]
+fn test_is_even() {
+   assert!(is_even(0));
+   assert!(!is_even(1));
+   assert!(is_even(2));	
+}
+~~~
+
+Note that you have to import the crate you just created in `lib.rs` with the
+`extern mod hello` directive. That's because you're putting the tests in a different
+crate from the main library that you created.
+
+Now, you can use the `rustpkg test` command to build this test crate (and anything else
+it depends on) and run the tests, all in one step:
+
+~~~ {.notrust}
+$ rustpkg test hello
+WARNING: The Rust package manager is experimental and may be unstable
+note: Installed package hello-0.1 to /Users/tjc/.rust
+
+running 1 test
+test test_is_even ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+~~~
+
 # More resources
 
 There's a lot more going on with `rustpkg`, this is just to get you started.
