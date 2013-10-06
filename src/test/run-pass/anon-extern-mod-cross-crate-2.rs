@@ -12,7 +12,7 @@
 // aux-build:anon-extern-mod-cross-crate-1.rs
 extern mod anonexternmod;
 
-use anonexternmod::*;
+use anonexternmod::rust_get_test_int;
 
 #[fixed_stack_segment]
 pub fn main() {

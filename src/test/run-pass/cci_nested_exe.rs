@@ -11,6 +11,8 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_nested_lib.rs
 
+#[feature(globs)];
+
 extern mod cci_nested_lib;
 use cci_nested_lib::*;
 

@@ -12,7 +12,7 @@
 
 extern mod extra;
 
-use extra::glob::*;
+use extra::glob::glob;
 use extra::tempfile;
 use std::unstable::finally::Finally;
 use std::{io, os, unstable};

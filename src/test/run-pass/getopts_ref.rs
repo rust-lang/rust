@@ -12,7 +12,7 @@
 
 extern mod extra;
 
-use extra::getopts::*;
+use extra::getopts::{optopt, getopts};
 
 pub fn main() {
     let args = ~[];

@@ -11,7 +11,7 @@
 // xfail-fast
 // aux-build:cci_class_3.rs
 extern mod cci_class_3;
-use cci_class_3::kitties::*;
+use cci_class_3::kitties::cat;
 
 pub fn main() {
     let mut nyan : cat = cat(52u, 99);

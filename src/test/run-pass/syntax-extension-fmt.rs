@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(macro_rules)];
+
 // compile-flags: --cfg nofmt
 
 extern mod extra;

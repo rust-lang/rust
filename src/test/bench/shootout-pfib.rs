@@ -22,7 +22,7 @@
 extern mod extra;
 
 use extra::{time, getopts};
-use std::comm::*;
+use std::comm::{stream, SharedChan};
 use std::io::WriterUtil;
 use std::io;
 use std::os;
