@@ -216,8 +216,8 @@ impl visit::Visitor<()> for PrivilegedScopeVisitor {
                             if trait_def_id.crate != LOCAL_CRATE {
                                 let session = self.cc.crate_context.tcx.sess;
                                 session.span_err(item.span,
-                                                 "cannot provide an extension implementation \
-                                                  for a trait not defined in this crate");
+                                        "cannot provide an extension implementation \
+                                        where both trait and type are not defined in this crate");
                             }
                         }
 
