@@ -1233,14 +1233,6 @@ impl Writer for *libc::FILE {
     }
 }
 
-pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
-    if cleanup {
-        @Wrapper { base: f, cleanup: FILERes::new(f) } as @Writer
-    } else {
-        @f as @Writer
-    }
-}
-
 impl Writer for fd_t {
     fn write(&self, v: &[u8]) {
         #[fixed_stack_segment]; #[inline(never)];
@@ -1616,25 +1608,6 @@ impl<T:Writer> WriterUtil for T {
 
 pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
     mk_file_writer(path, flags).and_then(|w| Ok(w))
-}
-
-
-// FIXME: fileflags // #2004
-pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        let f = do path.with_c_str |pathbuf| {
-            do "w".with_c_str |modebuf| {
-                libc::fopen(pathbuf, modebuf)
-            }
-        };
-        return if f as uint == 0u {
-            Err(~"error opening " + path.to_str())
-        } else {
-            Ok(FILE_writer(f, true))
-        }
-    }
 }
 
 // FIXME (#2004) it would be great if this could be a const
@@ -2079,16 +2052,6 @@ mod tests {
     #[test]
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), []) {
-          Err(e) => {
-            assert!(e.starts_with("error opening"));
-          }
-          Ok(_) => fail2!()
-        }
-    }
-
-    #[test]
-    fn buffered_file_writer_bad_name() {
-        match io::buffered_file_writer(&Path("?/?")) {
           Err(e) => {
             assert!(e.starts_with("error opening"));
           }
