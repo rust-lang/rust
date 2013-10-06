@@ -13,7 +13,7 @@
 
 macro_rules! rterrln (
     ($($arg:tt)*) => ( {
-        ::rt::util::dumb_println(format!($($arg)*));
+        format_args!(::rt::util::dumb_println, $($arg)*)
     } )
 )
 

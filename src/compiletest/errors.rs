@@ -26,6 +26,7 @@ pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
 }
 
 fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
+    let line = line.trim();
     let error_tag = ~"//~";
     let mut idx;
     match line.find_str(error_tag) {

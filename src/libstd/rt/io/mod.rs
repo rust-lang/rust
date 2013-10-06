@@ -313,8 +313,11 @@ pub mod buffered;
 pub mod native {
     /// Posix file I/O
     pub mod file;
-    /// # XXX - implement this
-    pub mod stdio { }
+    /// Process spawning and child management
+    pub mod process;
+    /// Posix stdio
+    pub mod stdio;
+
     /// Sockets
     /// # XXX - implement this
     pub mod net {
