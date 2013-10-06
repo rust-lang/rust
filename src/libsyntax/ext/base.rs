@@ -282,6 +282,15 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"file"),
                             builtin_normal_tt_no_ctxt(
                                     ext::source_util::expand_file));
+    syntax_expanders.insert(intern(&"funcpathfile"),
+                            builtin_normal_tt_no_ctxt(
+                                    ext::source_util::expand_funcpathfile));
+    syntax_expanders.insert(intern(&"function_path"),
+                            builtin_normal_tt_no_ctxt(
+                                    ext::source_util::expand_function_path));
+    syntax_expanders.insert(intern(&"function"),
+                            builtin_normal_tt_no_ctxt(
+                                    ext::source_util::expand_function));
     syntax_expanders.insert(intern(&"stringify"),
                             builtin_normal_tt_no_ctxt(
                                     ext::source_util::expand_stringify));
@@ -317,13 +326,23 @@ pub struct ExtCtxt {
     cfg: ast::CrateConfig,
     backtrace: @mut Option<@ExpnInfo>,
 
-    // These two @mut's should really not be here,
+    // These four @mut's should really not be here,
     // but the self types for CtxtRepr are all wrong
     // and there are bugs in the code for object
     // types that make this hard to get right at the
     // moment. - nmatsakis
     mod_path: @mut ~[ast::Ident],
-    trace_mac: @mut bool
+    trace_mac: @mut bool,
+
+    // a stack tracing the full path, including modules, and lambdas
+    // (represented as 'lambda', naturally) down to current function
+    func_path: @mut ~[ast::Ident],
+
+    // The depth of function nesting. Used to confirm that
+    // the funcpathfile!, function_path!, and function! macros are not used
+    // outside of functions.
+    func_depth: @mut int,
+
 }
 
 impl ExtCtxt {
@@ -334,7 +353,9 @@ impl ExtCtxt {
             cfg: cfg,
             backtrace: @mut None,
             mod_path: @mut ~[],
-            trace_mac: @mut false
+            trace_mac: @mut false,
+            func_path: @mut ~[],
+            func_depth: @mut 0,
         }
     }
 
@@ -349,9 +370,29 @@ impl ExtCtxt {
     }
     pub fn print_backtrace(&self) { }
     pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
+
     pub fn mod_push(&self, i: ast::Ident) { self.mod_path.push(i); }
     pub fn mod_pop(&self) { self.mod_path.pop(); }
     pub fn mod_path(&self) -> ~[ast::Ident] { (*self.mod_path).clone() }
+
+    pub fn func_path_push(&self, i: ast::Ident) { self.func_path.push(i); }
+    pub fn func_path_pop(&self) { self.func_path.pop(); }
+    pub fn func_path(&self) -> ~str { self.func_path.map(|x| self.str_of(*x)).connect("::") }
+    pub fn func_path_last(&self) -> Option<ast::Ident> {
+        match self.func_path.len() {
+            0 => None,
+            // len() is uint, so must be positive:
+            _ => Some((*self.func_path).last().clone())
+        }
+    }
+
+    pub fn func_enter(&self) -> int { *self.func_depth = *self.func_depth + 1; *self.func_depth }
+    pub fn func_exit(&self)  -> int { 
+        *self.func_depth = *self.func_depth - 1; 
+        assert!(*self.func_depth >= 0); // confirm no func_depth tracking errror
+        *self.func_depth }
+    pub fn func_depth(&self) -> int { *self.func_depth }
+
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {

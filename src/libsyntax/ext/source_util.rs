@@ -60,6 +60,71 @@ pub fn expand_file(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
+/** funcpathfile!(): expands to the current fully-qualified-function name 
+    plus file path:line:col for lambda disambiguation
+    See also funcpath!() and func!().
+    For performance reasons this needs to end up as a static 
+    string and not a format!-ed heap-allocation.
+*/
+pub fn expand_funcpathfile(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+    -> base::MacResult {
+    base::check_zero_tts(cx, sp, tts, "funcpathfile!");
+    let depth = cx.func_depth();
+    if depth == 0 {
+        cx.span_err(sp, 
+                      format!("funcpathfile!() called when not inside a function"));
+    }
+
+    let nearest = cx.backtrace().unwrap();
+    let loc = cx.codemap().lookup_char_pos(nearest.call_site.lo);
+    let filename = loc.file.name;
+    let linestr : ~str = loc.line.to_str();
+    let colstr  : ~str = loc.col.to_str();
+
+    let res = filename + ":" + linestr + ":" + colstr + "|" + cx.func_path();
+
+    base::MRExpr(cx.expr_str(sp, res.to_managed()))
+}
+
+/** function_path!(): expands to the current fully-qualified-function name.
+   Anonymous functions or lambdas will be ambiguously all named 'lambda'. 
+   Use funcpathfile!() if you require disambiguation (file:line:col details)
+   of lambdas or wish to have exact locations at your fingertips. See also
+   func!() for shortest-possible (basename) function name.
+   For performance reasons this needs to end up as a static 
+   string and not a format!-ed heap-allocation.
+*/
+pub fn expand_function_path(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+    -> base::MacResult {
+    base::check_zero_tts(cx, sp, tts, "function_path!");
+    let depth = cx.func_depth();
+    if depth == 0 {
+        cx.span_err(sp, 
+                      format!("function_path!() called when not inside a function"));
+    }
+    base::MRExpr(cx.expr_str(sp, cx.func_path().to_managed()))
+}
+
+/** func!(): expands to the shortname or basename of the current
+   function name. See also funcpath!() and funcpathfile!(). */
+pub fn expand_function(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+    -> base::MacResult {
+    base::check_zero_tts(cx, sp, tts, "function!");
+    let depth = cx.func_depth();
+    if depth == 0 {
+        cx.span_err(sp, 
+                      format!("function!() called when not inside a function"));
+    }
+    match cx.func_path_last() {
+        None => {
+            // should never get here with the depth check above.
+            cx.span_fatal(sp, format!("function!() called when not inside a function"))
+        }
+        Some(func_shortname) => base::MRExpr(cx.expr_str(sp, cx.str_of(func_shortname)))
+    }
+}
+
+
 pub fn expand_stringify(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let s = pprust::tts_to_str(tts, get_ident_interner());

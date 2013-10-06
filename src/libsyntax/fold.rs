@@ -139,19 +139,7 @@ pub trait ast_fold {
     }
 
     fn fold_method(&self, m: @method) -> @method {
-        @ast::method {
-            ident: self.fold_ident(m.ident),
-            attrs: m.attrs.map(|a| fold_attribute_(*a, self)),
-            generics: fold_generics(&m.generics, self),
-            explicit_self: m.explicit_self,
-            purity: m.purity,
-            decl: fold_fn_decl(&m.decl, self),
-            body: self.fold_block(&m.body),
-            id: self.new_id(m.id),
-            span: self.new_span(m.span),
-            self_id: self.new_id(m.self_id),
-            vis: m.vis,
-        }
+        noop_fold_method(m, self)
     }
 
     fn fold_block(&self, b: &Block) -> Block {
@@ -666,6 +654,23 @@ pub fn noop_fold_item_underscore<T:ast_fold>(i: &item_, folder: &T) -> item_ {
         }
         item_mac(ref m) => item_mac(folder.fold_mac(m)),
     }
+}
+
+pub fn noop_fold_method<T:ast_fold>(m: &method, fld: &T)
+                                    -> @method {
+    @ast::method {
+        ident: fld.fold_ident(m.ident),
+        attrs: m.attrs.map(|a| fold_attribute_(*a, fld)),
+        generics: fold_generics(&m.generics, fld),
+        explicit_self: m.explicit_self,
+        purity: m.purity,
+        decl: fold_fn_decl(&m.decl, fld),
+        body: fld.fold_block(&m.body),
+        id: fld.new_id(m.id),
+        span: fld.new_span(m.span),
+        self_id: fld.new_id(m.self_id),
+        vis: m.vis,
+   }
 }
 
 pub fn noop_fold_type_method<T:ast_fold>(m: &TypeMethod, fld: &T)
