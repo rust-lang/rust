@@ -10,6 +10,7 @@
 
 // A test of the macro system. Can we do HTML literals?
 
+#[feature(macro_rules)];
 
 /*
 

@@ -22,7 +22,7 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 
-use std::comm::*;
+use std::comm::{stream, SharedChan};
 use std::os;
 use std::result;
 use std::task;

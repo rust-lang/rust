@@ -18,6 +18,8 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[feature(globs)];
+
 extern mod extra;
 extern mod rustc;
 extern mod syntax;

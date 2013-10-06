@@ -26,6 +26,8 @@
 // debugger:print univariant
 // check:$4 = {a = -1}
 
+#[feature(struct_variant)];
+
 // NOTE: This is a copy of the non-generic test case. The `Txx` type parameters have to be
 // substituted with something of size `xx` bits and the same alignment as an integer type of the
 // same size.

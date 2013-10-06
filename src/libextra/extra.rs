@@ -33,6 +33,8 @@ Rust extras are part of the standard Rust distribution.
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[feature(macro_rules, globs)];
+
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 

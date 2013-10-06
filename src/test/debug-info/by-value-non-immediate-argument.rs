@@ -41,6 +41,8 @@
 // check:$7 = {{Case1, x = 0, y = 8970181431921507452}, {Case1, 0, 2088533116, 2088533116}}
 // debugger:continue
 
+#[feature(struct_variant)];
+
 #[deriving(Clone)]
 struct Struct {
     a: int,

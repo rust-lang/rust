@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[allow(unused_imports)];
+#[feature(globs)];
 
 extern mod issue_2316_a;
 

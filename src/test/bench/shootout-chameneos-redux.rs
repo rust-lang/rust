@@ -13,7 +13,7 @@
 extern mod extra;
 
 use std::cell::Cell;
-use std::comm::*;
+use std::comm::{stream, SharedChan};
 use std::io;
 use std::option;
 use std::os;

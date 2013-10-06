@@ -10,6 +10,8 @@
 
 // xfail-pretty - token trees can't pretty print
 
+#[feature(macro_rules)];
+
 macro_rules! myfn(
     ( $f:ident, ( $( $x:ident ),* ), $body:block ) => (
         fn $f( $( $x : int),* ) -> int $body

@@ -13,11 +13,13 @@
 
 // xfail-fast
 
+#[feature(struct_variant)];
+
 extern mod extra;
 
 use std::io;
 use std::rand::{random, Rand};
-use extra::serialize::*;
+use extra::serialize::{Encodable, Decodable};
 use extra::ebml;
 use extra::ebml::writer::Encoder;
 use extra::ebml::reader::Decoder;

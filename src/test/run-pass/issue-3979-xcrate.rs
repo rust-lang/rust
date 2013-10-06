@@ -11,7 +11,7 @@
 // xfail-fast
 // aux-build:issue_3979_traits.rs
 extern mod issue_3979_traits;
-use issue_3979_traits::*;
+use issue_3979_traits::{Positioned, Movable};
 
 struct Point { x: int, y: int }
 
