@@ -462,6 +462,16 @@ pub trait Reader {
     fn eof(&mut self) -> bool;
 }
 
+impl Reader for ~Reader {
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
+    fn eof(&mut self) -> bool { self.eof() }
+}
+
+impl<'self> Reader for &'self mut Reader {
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
+    fn eof(&mut self) -> bool { self.eof() }
+}
+
 pub trait Writer {
     /// Write the given buffer
     ///
@@ -472,6 +482,16 @@ pub trait Writer {
 
     /// Flush output
     fn flush(&mut self);
+}
+
+impl Writer for ~Writer {
+    fn write(&mut self, buf: &[u8]) { self.write(buf) }
+    fn flush(&mut self) { self.flush() }
+}
+
+impl<'self> Writer for &'self mut Writer {
+    fn write(&mut self, buf: &[u8]) { self.write(buf) }
+    fn flush(&mut self) { self.flush() }
 }
 
 pub trait Stream: Reader + Writer { }
