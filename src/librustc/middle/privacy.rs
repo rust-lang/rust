@@ -64,18 +64,25 @@ impl<'self> Visitor<()> for ParentVisitor<'self> {
                     }
                 }
             }
+
+            // Trait methods are always considered "public", but if the trait is
+            // private then we need some private item in the chain from the
+            // method to the root. In this case, if the trait is private, then
+            // parent all the methods to the trait to indicate that they're
+            // private.
+            ast::item_trait(_, _, ref methods) if item.vis != ast::public => {
+                for m in methods.iter() {
+                    match *m {
+                        ast::provided(ref m) => self.parents.insert(m.id, item.id),
+                        ast::required(ref m) => self.parents.insert(m.id, item.id),
+                    };
+                }
+            }
+
             _ => {}
         }
         visit::walk_item(self, item, ());
         self.curparent = prev;
-    }
-
-    fn visit_trait_method(&mut self, m: &ast::trait_method, _: ()) {
-        match *m {
-            ast::provided(ref m) => self.parents.insert(m.id, self.curparent),
-            ast::required(ref m) => self.parents.insert(m.id, self.curparent),
-        };
-        visit::walk_trait_method(self, m, ());
     }
 
     fn visit_foreign_item(&mut self, a: @ast::foreign_item, _: ()) {
@@ -85,7 +92,12 @@ impl<'self> Visitor<()> for ParentVisitor<'self> {
 
     fn visit_fn(&mut self, a: &visit::fn_kind, b: &ast::fn_decl,
                 c: &ast::Block, d: Span, id: ast::NodeId, _: ()) {
-        self.parents.insert(id, self.curparent);
+        // We already took care of some trait methods above, otherwise things
+        // like impl methods and pub trait methods are parented to the
+        // containing module, not the containing trait.
+        if !self.parents.contains_key(&id) {
+            self.parents.insert(id, self.curparent);
+        }
         visit::walk_fn(self, a, b, c, d, id, ());
     }
 

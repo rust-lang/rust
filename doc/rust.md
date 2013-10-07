@@ -1624,6 +1624,8 @@ pub mod submodule {
         }
     }
 }
+
+# fn main() {}
 ~~~
 
 For a rust program to pass the privacy checking pass, all paths must be valid
@@ -1643,6 +1645,8 @@ pub use api = self::implementation;
 mod implementation {
     pub fn f() {}
 }
+
+# fn main() {}
 ~~~
 
 This means that any external crate referencing `implementation::f` would receive

@@ -16,7 +16,6 @@ use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::astencode;
-use middle::privacy;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;

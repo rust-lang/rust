@@ -1649,7 +1649,15 @@ impl Resolver {
                 external crate) building external def, priv {:?}",
                vis);
         let is_public = vis == ast::public;
-        if is_public {
+        let is_exported = is_public && match new_parent {
+            ModuleReducedGraphParent(module) => {
+                match module.def_id {
+                    None => true,
+                    Some(did) => self.external_exports.contains(&did)
+                }
+            }
+        };
+        if is_exported {
             self.external_exports.insert(def_id_of_def(def));
         }
         match def {
@@ -1725,7 +1733,7 @@ impl Resolver {
                   if explicit_self != sty_static {
                       interned_method_names.insert(method_name.name);
                   }
-                  if is_public {
+                  if is_exported {
                       self.external_exports.insert(method_def_id);
                   }
               }
@@ -1952,7 +1960,7 @@ impl Resolver {
     /// Builds the reduced graph rooted at the 'use' directive for an external
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self,
-                                                  root: @mut Module) {
+                                              root: @mut Module) {
         do csearch::each_top_level_item_of_crate(self.session.cstore,
                                                  root.def_id.unwrap().crate)
                 |def_like, ident, visibility| {

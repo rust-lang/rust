@@ -8,26 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(globs)];
-#[no_std]; // makes debugging this test *a lot* easier (during resolve)
+pub mod test2 {
+    // This used to generate an ICE (make sure that default functions are
+    // parented to their trait to find the first private thing as the trait).
 
-// Test to make sure that private items imported through globs remain private
-// when  they're used.
+    struct B;
+    trait A { fn foo(&self) {} }
+    impl A for B {}
 
-mod bar {
-    pub use self::glob::*;
-
-    mod glob {
-        fn gpriv() {}
+    mod tests {
+        use super::A;
+        fn foo() {
+            let a = super::B;
+            a.foo();
+        }
     }
 }
 
-pub fn foo() {}
 
-fn test1() {
-    use bar::gpriv; //~ ERROR: unresolved import
-    //~^ ERROR: failed to resolve
-    gpriv();
-}
-
-#[start] fn main(_: int, _: **u8) -> int { 3 }
+pub fn main() {}

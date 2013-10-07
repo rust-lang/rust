@@ -1069,7 +1069,7 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    do Local::borrow |sched: &mut ::rt::sched::Scheduler| {
+    do Local::borrow |sched: &mut ::rt::shouldnt_be_public::Scheduler| {
         sched.sched_id() as int
     }
 }
