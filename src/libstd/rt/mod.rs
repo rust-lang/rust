@@ -109,6 +109,9 @@ mod message_queue;
 /// A mostly lock-free multi-producer, single consumer queue.
 mod mpsc_queue;
 
+/// A lock-free multi-producer, multi-consumer bounded queue.
+mod mpmc_bounded_queue;
+
 /// A parallel data structure for tracking sleeping schedulers.
 mod sleeper_list;
 
