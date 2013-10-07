@@ -595,23 +595,6 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
           bcx
       }
       ty::ty_opaque_closure_ptr(_) => bcx,
-      ty::ty_struct(did, _) => {
-        let tcx = bcx.tcx();
-        let bcx = iter_structural_ty(bcx, v, t, take_ty);
-
-        match ty::ty_dtor(tcx, did) {
-          ty::TraitDtor(_, false) => {
-            // Zero out the struct
-            unsafe {
-                let ty = Type::from_ref(llvm::LLVMTypeOf(v));
-                memzero(&B(bcx), v, ty);
-            }
-
-          }
-          _ => { }
-        }
-        bcx
-      }
       _ if ty::type_is_structural(t) => {
         iter_structural_ty(bcx, v, t, take_ty)
       }
