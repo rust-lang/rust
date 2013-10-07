@@ -34,9 +34,7 @@ use ptr::{mut_null, to_mut_unsafe_ptr};
 use cast;
 use option::*;
 use clone::Clone;
-use default::Default;
 use kinds::Send;
-use fmt;
 
 struct Node<T> {
     next: AtomicPtr<Node<T>>,
@@ -44,14 +42,12 @@ struct Node<T> {
 }
 
 impl<T> Node<T> {
-    fn new(value: T) -> Node<T> {
-        Node{next: AtomicPtr::new(mut_null()), value: Some(value)}
-    }
-}
-
-impl<T> Default for Node<T> {
-    fn default() -> Node<T> {
+    fn empty() -> Node<T> {
         Node{next: AtomicPtr::new(mut_null()), value: None}
+    }
+
+    fn with_value(value: T) -> Node<T> {
+        Node{next: AtomicPtr::new(mut_null()), value: Some(value)}
     }
 }
 
@@ -77,27 +73,23 @@ impl<T: Send> Clone for Queue<T> {
     }
 }
 
-impl<T: Send> fmt::Default for Queue<T> {
-    fn fmt(value: &Queue<T>, f: &mut fmt::Formatter) {
-        write!(f.buf, "Queue({})", value.state.get());
-    }
-}
-
 impl<T: Send> State<T> {
     pub fn new() -> State<T> {
-        let mut state = State {
+        State{
             pad0: [0, ..64],
             head: AtomicPtr::new(mut_null()),
             pad1: [0, ..64],
-            stub: Default::default(),
+            stub: Node::<T>::empty(),
             pad2: [0, ..64],
             tail: mut_null(),
             pad3: [0, ..64],
-        };
-        let stub = state.get_stub_unsafe();
-        state.head.store(stub, Relaxed);
-        state.tail = stub;
-        state
+        }
+    }
+
+    fn init(&mut self) {
+        let stub = self.get_stub_unsafe();
+        self.head.store(stub, Relaxed);
+        self.tail = stub;
     }
 
     fn get_stub_unsafe(&mut self) -> *mut Node<T> {
@@ -106,7 +98,7 @@ impl<T: Send> State<T> {
 
     fn push(&mut self, value: T) {
         unsafe {
-            let node = cast::transmute(~Node::new(value));
+            let node = cast::transmute(~Node::with_value(value));
             self.push_node(node);
         }
     }
@@ -155,7 +147,11 @@ impl<T: Send> State<T> {
 
 impl<T: Send> Queue<T> {
     pub fn new() -> Queue<T> {
-        Queue{state: UnsafeArc::new(State::new())}
+        unsafe {
+            let mut q = Queue{state: UnsafeArc::new(State::new())};
+            (*q.state.get()).init();
+            q
+        }
     }
 
     pub fn push(&mut self, value: T) {
