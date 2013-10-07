@@ -93,7 +93,7 @@ impl<T: Send> State<T> {
     }
 
     fn get_stub_unsafe(&mut self) -> *mut Node<T> {
-        unsafe { to_mut_unsafe_ptr(&mut self.stub) }
+        to_mut_unsafe_ptr(&mut self.stub)
     }
 
     fn push(&mut self, value: T) {
@@ -148,7 +148,7 @@ impl<T: Send> State<T> {
 impl<T: Send> Queue<T> {
     pub fn new() -> Queue<T> {
         unsafe {
-            let mut q = Queue{state: UnsafeArc::new(State::new())};
+            let q = Queue{state: UnsafeArc::new(State::new())};
             (*q.state.get()).init();
             q
         }
