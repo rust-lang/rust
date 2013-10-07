@@ -92,6 +92,8 @@
 // check:$21 = -16
 // debugger:continue
 
+#[feature(struct_variant)];
+
 enum Enum {
     Variant1 { x: u16, y: u16 },
     Variant2 (u32)

@@ -166,14 +166,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_float(&mut self) -> bool {
-        self.align_to::<float>();
-        if ! self.inner.visit_float() { return false; }
-        self.bump_past::<float>();
-        true
-    }
-
     fn visit_f32(&mut self) -> bool {
         self.align_to::<f32>();
         if ! self.inner.visit_f32() { return false; }

@@ -600,8 +600,6 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
               None => Err(~"Invalid day of week")
             }
           }
-          //'X' {}
-          //'x' {}
           'Y' => {
             match match_digits(s, pos, 4u, false) {
               Some(item) => {

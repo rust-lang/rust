@@ -14,7 +14,7 @@ use std::os;
 use std::uint;
 use std::rt::test::spawntask_later;
 use std::cell::Cell;
-use std::comm::*;
+use std::comm::oneshot;
 
 // A simple implementation of parfib. One subtree is found in a new
 // task and communicated over a oneshot pipe, the other is found

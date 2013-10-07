@@ -746,6 +746,10 @@ fn area(sh: Shape) -> f64 {
 }
 ~~~~
 
+> ***Note:*** This feature of the compiler is currently gated behind the
+> `#[feature(struct_variant)]` directive. More about these directives can be
+> found in the manual.
+
 ## Tuples
 
 Tuples in Rust behave exactly like structs, except that their fields
@@ -2664,6 +2668,10 @@ use farm::*;
 # }
 # fn main() { cow(); chicken() }
 ~~~
+
+> ***Note:*** This feature of the compiler is currently gated behind the
+> `#[feature(globs)]` directive. More about these directives can be found in
+> the manual.
 
 However, that's not all. You can also rename an item while you're bringing it into scope:
 

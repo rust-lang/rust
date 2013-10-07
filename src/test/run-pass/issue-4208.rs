@@ -12,7 +12,7 @@
 // xfail-fast - Windows hates cross-crate tests
 
 extern mod numeric;
-use numeric::*;
+use numeric::{sin, Angle};
 
 fn foo<T, A:Angle<T>>(theta: A) -> T { sin(&theta) }
 

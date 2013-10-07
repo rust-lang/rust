@@ -13,6 +13,8 @@
 // ensures that 'use foo:*' doesn't import non-public 'use' statements in the
 // module 'foo'
 
+#[feature(globs)];
+
 use m1::*;
 
 mod foo {

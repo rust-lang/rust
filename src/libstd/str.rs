@@ -16,7 +16,7 @@ String manipulation
 
 Rust's string type is one of the core primitive types of the language. While
 represented by the name `str`, the name `str` is not actually a valid type in
-Rust. Each string must also be decorated with how its ownership. This means that
+Rust. Each string must also be decorated with its ownership. This means that
 there are three common kinds of strings in rust:
 
 * `~str` - This is an owned string. This type obeys all of the normal semantics
@@ -26,7 +26,7 @@ there are three common kinds of strings in rust:
 
 * `@str` - This is a managed string. Similarly to `@T`, this type can be
            implicitly copied, and each implicit copy will increment the
-           reference count to the string. This means that there is not "true
+           reference count to the string. This means that there is no "true
            owner" of the string, and the string will be deallocated when the
            reference count reaches 0.
 

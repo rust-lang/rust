@@ -20,6 +20,8 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[feature(macro_rules, globs)];
+
 extern mod extra;
 
 pub mod util {

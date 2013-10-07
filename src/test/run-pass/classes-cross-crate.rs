@@ -11,7 +11,7 @@
 // xfail-fast
 // aux-build:cci_class_4.rs
 extern mod cci_class_4;
-use cci_class_4::kitties::*;
+use cci_class_4::kitties::cat;
 
 pub fn main() {
     let mut nyan = cat(0u, 2, ~"nyan");

@@ -10,6 +10,8 @@
 
 // Microbenchmarks for various functions in std and extra
 
+#[feature(macro_rules)];
+
 extern mod extra;
 
 use extra::time::precise_time_s;

@@ -259,9 +259,10 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///    let rng = rand::task_rng();
+    ///    let mut rng = rand::task_rng();
     ///    let x: uint = rng.gen();
     ///    println!("{}", x);
     ///    println!("{:?}", rng.gen::<(f64, bool)>());
@@ -278,9 +279,10 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///    let rng = rand::task_rng();
+    ///    let mut rng = rand::task_rng();
     ///    let x: ~[uint] = rng.gen_vec(10);
     ///    println!("{:?}", x);
     ///    println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
@@ -303,23 +305,24 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///    let rng = rand::task_rng();
+    ///    let mut rng = rand::task_rng();
     ///    let n: uint = rng.gen_integer_range(0u, 10);
     ///    println!("{}", n);
-    ///    let m: i16 = rng.gen_integer_range(-40, 400);
+    ///    let m: int = rng.gen_integer_range(-40, 400);
     ///    println!("{}", m);
     /// }
     /// ```
     fn gen_integer_range<T: Rand + Int>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "RNG.gen_integer_range called with low >= high");
-        let range = (high - low).to_u64();
+        let range = (high - low).to_u64().unwrap();
         let accept_zone = u64::max_value - u64::max_value % range;
         loop {
             let rand = self.gen::<u64>();
             if rand < accept_zone {
-                return low + NumCast::from(rand % range);
+                return low + NumCast::from(rand % range).unwrap();
             }
         }
     }
@@ -348,6 +351,7 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
     ///    println(rand::task_rng().gen_ascii_str(10));
@@ -376,6 +380,7 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
     ///     println!("{:?}", rand::task_rng().choose_option([1,2,4,8,16,32]));
@@ -481,6 +486,7 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
     ///     println!("{:?}", rand::task_rng().shuffle(~[1,2,3]));
@@ -498,9 +504,10 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///    let rng = rand::task_rng();
+    ///    let mut rng = rand::task_rng();
     ///    let mut y = [1,2,3];
     ///    rng.shuffle_mut(y);
     ///    println!("{:?}", y);
@@ -524,9 +531,10 @@ pub trait Rng {
     ///
     /// ```rust
     /// use std::rand;
+    /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///    let rng = rand::task_rng();
+    ///    let mut rng = rand::task_rng();
     ///    let sample = rng.sample(range(1, 100), 5);
     ///    println!("{:?}", sample);
     /// }

@@ -10,6 +10,8 @@
 
 // error-pattern: unresolved name
 
+#[feature(globs)];
+
 use module_of_many_things::*;
 
 mod module_of_many_things {

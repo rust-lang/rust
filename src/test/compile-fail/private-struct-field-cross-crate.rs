@@ -10,7 +10,7 @@
 
 // aux-build:cci_class.rs
 extern mod cci_class;
-use cci_class::kitties::*;
+use cci_class::kitties::cat;
 
 fn main() {
   let nyan : cat = cat(52u, 99);
