@@ -114,7 +114,7 @@ impl PkgSrc {
 
         }
 
-        debug2!("Checking dirs: {:?}", to_try.map(|p| p.to_display_str()).connect(":"));
+        debug2!("Checking dirs: {:?}", to_try.map(|p| p.display().to_str()).connect(":"));
 
         let path = to_try.iter().find(|&d| os::path_exists(d));
 

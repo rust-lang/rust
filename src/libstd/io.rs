@@ -65,6 +65,7 @@ use ptr;
 use result::{Result, Ok, Err};
 use str::{StrSlice, OwnedStr};
 use str;
+use to_str::ToStr;
 use uint;
 use vec::{MutableVector, ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
 use vec;
@@ -1068,7 +1069,7 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
     };
 
     if f as uint == 0u {
-        do path.with_display_str |p| {
+        do path.display().with_str |p| {
             Err(~"error opening " + p)
         }
     } else {
@@ -1753,7 +1754,7 @@ pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
         if str::is_utf8(bytes) {
             Ok(str::from_utf8(bytes))
         } else {
-            Err(file.to_display_str() + " is not UTF-8")
+            Err(file.display().to_str() + " is not UTF-8")
         }
     }
 }

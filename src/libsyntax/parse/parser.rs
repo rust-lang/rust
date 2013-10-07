@@ -4038,12 +4038,12 @@ impl Parser {
                 let stack = &self.sess.included_mod_stack;
                 let mut err = ~"circular modules: ";
                 for p in stack.slice(i, stack.len()).iter() {
-                    do p.with_display_str |s| {
+                    do p.display().with_str |s| {
                         err.push_str(s);
                     }
                     err.push_str(" -> ");
                 }
-                do path.with_display_str |s| {
+                do path.display().with_str |s| {
                     err.push_str(s);
                 }
                 self.span_fatal(id_sp, err);

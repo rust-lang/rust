@@ -454,7 +454,7 @@ impl<'self> SourceCollector<'self> {
         let w = cur.open_writer(io::CreateOrTruncate);
         let mut w = BufferedWriter::new(w);
 
-        let title = cur.with_filename_display_str(|s| format!("{} -- source", s.unwrap()));
+        let title = cur.filename_display().with_str(|s| format!("{} -- source", s));
         let page = layout::Page {
             title: title,
             ty: "source",
