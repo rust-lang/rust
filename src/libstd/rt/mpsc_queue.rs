@@ -83,9 +83,9 @@ impl<T: Send> fmt::Default for Queue<T> {
     }
 }
 
-impl<T: Send> Queue<T> {
-    pub fn new() -> Queue<T> {
-        let mut q = Queue{state: UnsafeArc::new(State {
+impl<T: Send> State<T> {
+    pub fn new() -> State<T> {
+        let mut state = State {
             pad0: [0, ..64],
             head: AtomicPtr::new(mut_null()),
             pad1: [0, ..64],
@@ -93,14 +93,18 @@ impl<T: Send> Queue<T> {
             pad2: [0, ..64],
             tail: mut_null(),
             pad3: [0, ..64],
-        })};
-        let stub = q.get_stub_unsafe();
-        q.get_head().store(stub, Relaxed);
-        q.set_tail(stub);
-        q
+        };
+        let stub = state.get_stub_unsafe();
+        state.head.store(stub, Relaxed);
+        state.tail = stub;
+        state
     }
 
-    pub fn push(&mut self, value: T) {
+    fn get_stub_unsafe(&mut self) -> *mut Node<T> {
+        unsafe { to_mut_unsafe_ptr(&mut self.stub) }
+    }
+
+    fn push(&mut self, value: T) {
         unsafe {
             let node = cast::transmute(~Node::new(value));
             self.push_node(node);
@@ -110,50 +114,30 @@ impl<T: Send> Queue<T> {
     fn push_node(&mut self, node: *mut Node<T>) {
         unsafe {
             (*node).next.store(mut_null(), Release);
-            let prev = self.get_head().swap(node, Relaxed);
+            let prev = self.head.swap(node, Relaxed);
             (*prev).next.store(node, Release);
         }
     }
 
-    fn get_stub_unsafe(&mut self) -> *mut Node<T> {
-        unsafe { to_mut_unsafe_ptr(&mut (*self.state.get()).stub) }
-    }
-
-    fn get_head(&mut self) -> &mut AtomicPtr<Node<T>> {
-        unsafe { &mut (*self.state.get()).head }
-    }
-
-    fn get_tail(&mut self) -> *mut Node<T> {
-        unsafe { (*self.state.get()).tail }
-    }
-
-    fn set_tail(&mut self, tail: *mut Node<T>) {
-        unsafe { (*self.state.get()).tail = tail }
-    }
-
-    pub fn casual_pop(&mut self) -> Option<T> {
-        self.pop()
-    }
-
-    pub fn pop(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         unsafe {
-            let mut tail = self.get_tail();
+            let mut tail = self.tail;
             let mut next = (*tail).next.load(Acquire);
             let stub = self.get_stub_unsafe();
             if tail == stub {
                 if mut_null() == next {
                     return None
                 }
-                self.set_tail(next);
+                self.tail = next;
                 tail = next;
                 next = (*next).next.load(Acquire);
             }
             if next != mut_null() {
                 let tail: ~Node<T> = cast::transmute(tail);
-                self.set_tail(next);
+                self.tail = next;
                 return tail.value
             }
-            let head = self.get_head().load(Relaxed);
+            let head = self.head.load(Relaxed);
             if tail != head {
                 return None
             }
@@ -161,11 +145,29 @@ impl<T: Send> Queue<T> {
             next = (*tail).next.load(Acquire);
             if next != mut_null() {
                 let tail: ~Node<T> = cast::transmute(tail);
-                self.set_tail(next);
+                self.tail = next;
                 return tail.value
             }
         }
         None
+    }
+}
+
+impl<T: Send> Queue<T> {
+    pub fn new() -> Queue<T> {
+        Queue{state: UnsafeArc::new(State::new())}
+    }
+
+    pub fn push(&mut self, value: T) {
+        unsafe { (*self.state.get()).push(value) }
+    }
+
+    pub fn casual_pop(&mut self) -> Option<T> {
+        unsafe { (*self.state.get()).pop() }
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        unsafe{ (*self.state.get()).pop() }
     }
 }
 
