@@ -40,10 +40,14 @@ struct Node<T> {
 }
 
 struct State<T> {
+    pad0: [u8, ..64],
     buffer: ~[Node<T>],
     mask: uint,
+    pad1: [u8, ..64],
     enqueue_pos: AtomicUint,
+    pad2: [u8, ..64],
     dequeue_pos: AtomicUint,
+    pad3: [u8, ..64],
 }
 
 struct Queue<T> {
@@ -62,10 +66,14 @@ impl<T: Send> State<T> {
             Node{sequence:AtomicUint::new(i),value:None}
         };
         State{
+            pad0: [0, ..64],
             buffer: buffer,
             mask: capacity-1,
+            pad1: [0, ..64],
             enqueue_pos: AtomicUint::new(0),
+            pad2: [0, ..64],
             dequeue_pos: AtomicUint::new(0),
+            pad3: [0, ..64],
         }
     }
 
