@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() { //~ NOTE Did you mean to close this delimiter?
-  match Some(x) {
-      Some(y) { fail!(); }
-      None    { fail!(); }
-}
+static foo: int = 2; } //~ ERROR incorrect close delimiter:
 
-fn bar() {
-    let mut i = 0;
-    while (i < 1000) {}
-}
-
-fn main() {} //~ ERROR This file contains an un-closed delimiter
