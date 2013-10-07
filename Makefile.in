@@ -147,11 +147,17 @@ CFG_VERSION = $(CFG_RELEASE)
 # numbers and dots here
 CFG_VERSION_WIN = 0.9
 
-ifneq ($(wildcard $(CFG_GIT)),)
-ifneq ($(wildcard $(CFG_GIT_DIR)),)
-    CFG_VERSION += $(shell git --git-dir=$(CFG_GIT_DIR) log -1 \
+# since $(CFG_GIT) may contain spaces (especially on Windows),
+# we need to escape them. (" " to r"\ ")
+# Note that $(subst ...) ignores space after `subst`,
+# so we use a hack: define $(SPACE) which contains space character.
+SPACE :=
+SPACE +=
+ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT))),)
+ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
+    CFG_VERSION += $(shell git --git-dir='$(CFG_GIT_DIR)' log -1 \
                      --pretty=format:'(%h %ci)')
-    CFG_VER_HASH = $(shell git --git-dir=$(CFG_GIT_DIR) rev-parse HEAD)
+    CFG_VER_HASH = $(shell git --git-dir='$(CFG_GIT_DIR)' rev-parse HEAD)
 endif
 endif
 
