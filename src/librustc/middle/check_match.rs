@@ -662,15 +662,14 @@ fn specialize(cx: &MatchCheckCtxt,
                     _ => None
                 }
             }
-            PatStruct(_, ref flds, _) => {
+            PatStruct(_, ref pattern_fields, _) => {
                 // Is this a struct or an enum variant?
                 match cx.tcx.def_map.get_copy(&pat_id) {
                     DefVariant(_, variant_id, _) => {
                         if variant(variant_id) == *ctor_id {
-                            // FIXME #4731: Is this right? --pcw
-                            let args = flds.map(|ty_field| {
-                                match flds.iter().find(|f|
-                                                f.ident == ty_field.ident) {
+                            let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
+                            let args = struct_fields.map(|sf| {
+                                match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
                                     Some(f) => f.pat,
                                     _ => wild()
                                 }
@@ -700,7 +699,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             }
                         }
                         let args = class_fields.iter().map(|class_field| {
-                            match flds.iter().find(|f|
+                            match pattern_fields.iter().find(|f|
                                             f.ident.name == class_field.name) {
                                 Some(f) => f.pat,
                                 _ => wild()
