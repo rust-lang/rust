@@ -423,7 +423,6 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
-        Store(bcx, C_u8(0), drop_flag);
         bcx
     }
 }
