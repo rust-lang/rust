@@ -337,7 +337,7 @@ impl CtxMethods for BuildContext {
             "list" => {
                 io::println("Installed packages:");
                 do installed_packages::list_installed_packages |pkg_id| {
-                    do pkg_id.path.with_display_str |s| {
+                    do pkg_id.path.display().with_str |s| {
                         println(s);
                     }
                     true
@@ -564,7 +564,7 @@ impl CtxMethods for BuildContext {
                                            &pkg_src.destination_workspace,
                                            &id).map(|s| Path::new(*s));
         debug2!("install: id = {}, about to call discover_outputs, {:?}",
-               id.to_str(), result.map(|p| p.to_display_str()));
+               id.to_str(), result.map(|p| p.display().to_str()));
         installed_files = installed_files + result;
         note(format!("Installed package {} to {}",
                      id.to_str(),

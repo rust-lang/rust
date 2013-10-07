@@ -334,7 +334,7 @@ fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
                         ProcRes: &ProcRes) {
     if props.error_patterns.is_empty() {
-        do testfile.with_display_str |s| {
+        do testfile.display().with_str |s| {
             fatal(~"no error pattern specified in " + s);
         }
     }

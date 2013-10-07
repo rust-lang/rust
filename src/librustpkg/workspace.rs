@@ -27,7 +27,7 @@ pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path)
         fail2!("Package {} not found in any of \
                     the following workspaces: {}",
                    pkgid.path.display(),
-                   rust_path().map(|p| p.to_display_str()).to_str());
+                   rust_path().map(|p| p.display().to_str()).to_str());
     }
     for ws in workspaces.iter() {
         if action(ws) {

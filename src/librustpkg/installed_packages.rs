@@ -40,7 +40,7 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
                     let rel_p = lib.path_relative_from(&parent).unwrap();
                     debug2!("Rel: {}", rel_p.display());
                     let rel_path = rel_p.join(basename);
-                    do rel_path.with_display_str |s| {
+                    do rel_path.display().with_str |s| {
                         debug2!("Rel name: {}", s);
                         f(&PkgId::new(s));
                     }

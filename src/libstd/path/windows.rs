@@ -351,16 +351,6 @@ impl GenericPath for Path {
     }
 
     #[inline]
-    fn with_display_str<T>(&self, f: &fn(&str) -> T) -> T {
-        f(self.repr.as_slice())
-    }
-
-    #[inline]
-    fn to_display_str(&self) -> ~str {
-        self.repr.clone()
-    }
-
-    #[inline]
     fn dirname<'a>(&'a self) -> &'a [u8] {
         self.dirname_str().unwrap().as_bytes()
     }
@@ -1462,18 +1452,22 @@ mod tests {
 
     #[test]
     fn test_display_str() {
-        assert_eq!(Path::new("foo").to_display_str(), ~"foo");
-        assert_eq!(Path::new(b!("\\")).to_filename_display_str(), None);
+        let path = Path::new("foo");
+        assert_eq!(path.display().to_str(), ~"foo");
+        let path = Path::new(b!("\\"));
+        assert_eq!(path.filename_display().to_str(), ~"");
 
         let mut called = false;
-        do Path::new("foo").with_display_str |s| {
+        let path = Path::new("foo");
+        do path.display().with_str |s| {
             assert_eq!(s, "foo");
             called = true;
         };
         assert!(called);
         called = false;
-        do Path::new(b!("\\")).with_filename_display_str |s| {
-            assert!(s.is_none());
+        let path = Path::new(b!("\\"));
+        do path.filename_display().with_str |s| {
+            assert_eq!(s, "");
             called = true;
         }
         assert!(called);

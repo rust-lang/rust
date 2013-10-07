@@ -75,6 +75,7 @@ use iter::Iterator;
 use option::{Option, None, Some};
 use str;
 use str::{OwnedStr, Str, StrSlice};
+use to_str::ToStr;
 use vec;
 use vec::{CopyableVector, OwnedCopyableVector, OwnedVector, Vector};
 use vec::{ImmutableEqVector, ImmutableVector};
@@ -189,59 +190,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Converts the Path into an owned byte vector
     fn into_vec(self) -> ~[u8];
-
-    /// Provides the path as a string
-    ///
-    /// If the path is not UTF-8, invalid sequences will be replaced with the unicode
-    /// replacement char. This involves allocation.
-    #[inline]
-    fn with_display_str<T>(&self, f: &fn(&str) -> T) -> T {
-        match self.as_str() {
-            Some(s) => f(s),
-            None => {
-                let s = self.to_display_str();
-                f(s.as_slice())
-            }
-        }
-    }
-
-    /// Returns the path as a string
-    ///
-    /// If the path is not UTF-8, invalid sequences will be replaced with the unicode
-    /// replacement char. This involves allocation.
-    ///
-    /// This is similar to `with_display_str()` except it will always allocate a new ~str.
-    fn to_display_str(&self) -> ~str {
-        from_utf8_with_replacement(self.as_vec())
-    }
-
-    /// Provides the filename as a string
-    ///
-    /// If the filename is not UTF-8, invalid sequences will be replaced with the unicode
-    /// replacement char. This involves allocation.
-    #[inline]
-    fn with_filename_display_str<T>(&self, f: &fn(Option<&str>) -> T) -> T {
-        match self.filename_str() {
-            s@Some(_) => f(s),
-            None => {
-                let o = self.to_filename_display_str();
-                f(o.map(|s|s.as_slice()))
-            }
-        }
-    }
-
-    /// Returns the filename as a string
-    ///
-    /// If the filename is not UTF-8, invalid sequences will be replaced with the unicode
-    /// replacement char. This involves allocation.
-    ///
-    /// This is similar to `to_filename_display_str` except it will always allocate a new ~str.
-    fn to_filename_display_str(&self) -> Option<~str> {
-        match self.filename() {
-            None => None,
-            Some(v) => Some(from_utf8_with_replacement(v))
-        }
-    }
 
     /// Returns an object that implements `fmt::Default` for printing paths
     ///
@@ -764,16 +712,75 @@ pub struct FilenameDisplay<'self, P> {
 
 impl<'self, P: GenericPath> fmt::Default for Display<'self, P> {
     fn fmt(d: &Display<P>, f: &mut fmt::Formatter) {
-        do d.path.with_display_str |s| {
+        do d.with_str |s| {
             f.pad(s)
+        }
+    }
+}
+
+impl<'self, P: GenericPath> ToStr for Display<'self, P> {
+    /// Returns the path as a string
+    ///
+    /// If the path is not UTF-8, invalid sequences with be replaced with the
+    /// unicode replacement char. This involves allocation.
+    fn to_str(&self) -> ~str {
+        from_utf8_with_replacement(self.path.as_vec())
+    }
+}
+
+impl<'self, P: GenericPath> Display<'self, P> {
+    /// Provides the path as a string to a closure
+    ///
+    /// If the path is not UTF-8, invalid sequences will be replaced with the
+    /// unicode replacement char. This involves allocation.
+    #[inline]
+    pub fn with_str<T>(&self, f: &fn(&str) -> T) -> T {
+        match self.path.as_str() {
+            Some(s) => f(s),
+            None => {
+                let s = self.to_str();
+                f(s.as_slice())
+            }
         }
     }
 }
 
 impl<'self, P: GenericPath> fmt::Default for FilenameDisplay<'self, P> {
     fn fmt(d: &FilenameDisplay<P>, f: &mut fmt::Formatter) {
-        do d.path.with_filename_display_str |s| {
-            f.pad(s.unwrap_or(""))
+        do d.with_str |s| {
+            f.pad(s)
+        }
+    }
+}
+
+impl<'self, P: GenericPath> ToStr for FilenameDisplay<'self, P> {
+    /// Returns the filename as a string. If there is no filename, ~"" will be
+    /// returned.
+    ///
+    /// If the filename is not UTF-8, invalid sequences will be replaced with
+    /// the unicode replacement char. This involves allocation.
+    fn to_str(&self) -> ~str {
+        match self.path.filename() {
+            None => ~"",
+            Some(v) => from_utf8_with_replacement(v)
+        }
+    }
+}
+
+impl<'self, P: GenericPath> FilenameDisplay<'self, P> {
+    /// Provides the filename as a string to a closure. If there is no
+    /// filename, "" will be provided.
+    ///
+    /// If the filename is not UTF-8, invalid sequences will be replaced with
+    /// the unicode replacement char. This involves allocation.
+    #[inline]
+    pub fn with_str<T>(&self, f: &fn(&str) -> T) -> T {
+        match self.path.filename_str() {
+            Some(s) => f(s),
+            None => {
+                let s = self.to_str();
+                f(s.as_slice())
+            }
         }
     }
 }

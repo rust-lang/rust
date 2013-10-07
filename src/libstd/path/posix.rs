@@ -745,50 +745,53 @@ mod tests {
 
     #[test]
     fn test_display_str() {
-        assert_eq!(Path::new("foo").to_display_str(), ~"foo");
-        assert_eq!(Path::new(b!("foo", 0x80)).to_display_str(), ~"foo\uFFFD");
-        assert_eq!(Path::new(b!("foo", 0xff, "bar")).to_display_str(), ~"foo\uFFFDbar");
-        assert_eq!(Path::new(b!("foo", 0xff, "/bar")).to_filename_display_str(), Some(~"bar"));
-        assert_eq!(Path::new(b!("foo/", 0xff, "bar")).to_filename_display_str(),
-                   Some(~"\uFFFDbar"));
-        assert_eq!(Path::new(b!("/")).to_filename_display_str(), None);
+        macro_rules! t(
+            ($path:expr, $disp:ident, $exp:expr) => (
+                {
+                    let path = Path::new($path);
+                    assert_eq!(path.$disp().to_str(), ~$exp);
+                }
+            )
+        )
+        t!("foo", display, "foo");
+        t!(b!("foo", 0x80), display, "foo\uFFFD");
+        t!(b!("foo", 0xff, "bar"), display, "foo\uFFFDbar");
+        t!(b!("foo", 0xff, "/bar"), filename_display, "bar");
+        t!(b!("foo/", 0xff, "bar"), filename_display, "\uFFFDbar");
+        t!(b!("/"), filename_display, "");
 
-        let mut called = false;
-        do Path::new("foo").with_display_str |s| {
-            assert_eq!(s, "foo");
-            called = true;
-        };
-        assert!(called);
-        called = false;
-        do Path::new(b!("foo", 0x80)).with_display_str |s| {
-            assert_eq!(s, "foo\uFFFD");
-            called = true;
-        };
-        assert!(called);
-        called = false;
-        do Path::new(b!("foo", 0xff, "bar")).with_display_str |s| {
-            assert_eq!(s, "foo\uFFFDbar");
-            called = true;
-        };
-        assert!(called);
-        called = false;
-        do Path::new(b!("foo", 0xff, "/bar")).with_filename_display_str |s| {
-            assert_eq!(s, Some("bar"));
-            called = true;
-        }
-        assert!(called);
-        called = false;
-        do Path::new(b!("foo/", 0xff, "bar")).with_filename_display_str |s| {
-            assert_eq!(s, Some("\uFFFDbar"));
-            called = true;
-        }
-        assert!(called);
-        called = false;
-        do Path::new(b!("/")).with_filename_display_str |s| {
-            assert!(s.is_none());
-            called = true;
-        }
-        assert!(called);
+        macro_rules! t(
+            ($path:expr, $exp:expr) => (
+                {
+                    let mut called = false;
+                    let path = Path::new($path);
+                    do path.display().with_str |s| {
+                        assert_eq!(s, $exp);
+                        called = true;
+                    };
+                    assert!(called);
+                }
+            );
+            ($path:expr, $exp:expr, filename) => (
+                {
+                    let mut called = false;
+                    let path = Path::new($path);
+                    do path.filename_display().with_str |s| {
+                        assert_eq!(s, $exp);
+                        called = true;
+
+                    };
+                    assert!(called);
+                }
+            )
+        )
+
+        t!("foo", "foo");
+        t!(b!("foo", 0x80), "foo\uFFFD");
+        t!(b!("foo", 0xff, "bar"), "foo\uFFFDbar");
+        t!(b!("foo", 0xff, "/bar"), "bar", filename);
+        t!(b!("foo/", 0xff, "bar"), "\uFFFDbar", filename);
+        t!(b!("/"), "", filename);
     }
 
     #[test]
