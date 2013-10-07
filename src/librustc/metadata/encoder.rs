@@ -623,6 +623,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     }
 
     encode_path(ecx, ebml_w, path, ast_map::path_mod(name));
+    encode_visibility(ebml_w, vis);
 
     // Encode the reexports of this module, if this module is public.
     if vis == public {
