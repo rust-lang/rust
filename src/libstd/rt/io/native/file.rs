@@ -223,6 +223,7 @@ mod tests {
     use super::*;
 
     #[test] #[fixed_stack_segment]
+    #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with
         // opening or closing files.
@@ -258,7 +259,7 @@ mod tests {
     }
 
     #[test] #[fixed_stack_segment]
-    #[ignore(windows)] // apparently windows doesn't like tmpfile
+    #[ignore(cfg(windows))] // apparently windows doesn't like tmpfile
     fn test_cfile() {
         unsafe {
             let f = libc::tmpfile();
