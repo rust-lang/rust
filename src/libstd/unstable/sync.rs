@@ -26,7 +26,7 @@ use vec;
 /// An atomically reference counted pointer.
 ///
 /// Enforces no shared-memory safety.
-#[unsafe_no_drop_flag]
+//#[unsafe_no_drop_flag] FIXME: #9758
 pub struct UnsafeArc<T> {
     data: *mut ArcData<T>,
 }
@@ -427,6 +427,8 @@ mod tests {
     use util;
     use sys::size_of;
 
+    //#[unsafe_no_drop_flag] FIXME: #9758
+    #[ignore]
     #[test]
     fn test_size() {
         assert_eq!(size_of::<UnsafeArc<[int, ..10]>>(), size_of::<*[int, ..10]>());
