@@ -762,8 +762,7 @@ pub fn task_rng() -> @mut TaskRng {
 /// ```
 pub fn seed_task_rng(seed: &[uint]) {
     let t_r = task_rng();
-    (*t_r).reseed(seed);
-    t_r.reseeder = DontReseed;
+    (*t_r).reseed((DontReseed, seed));
 }
 
 // Allow direct chaining with `task_rng`

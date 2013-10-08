@@ -76,19 +76,21 @@ impl<R: Rng, Rsdr: Reseeder<R>> Rng for ReseedingRng<R, Rsdr> {
     }
 }
 
-impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default> SeedableRng<S> for ReseedingRng<R, Rsdr> {
-    fn reseed(&mut self, seed: S) {
+impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
+     SeedableRng<(Rsdr, S)> for ReseedingRng<R, Rsdr> {
+    fn reseed(&mut self, (rsdr, seed): (Rsdr, S)) {
         self.rng.reseed(seed);
+        self.reseeder = rsdr;
         self.bytes_generated = 0;
     }
-    /// Create a new `ReseedingRng` from the given seed. This uses
-    /// default values for both `generation_threshold` and `reseeder`.
-    fn from_seed(seed: S) -> ReseedingRng<R, Rsdr> {
+    /// Create a new `ReseedingRng` from the given reseeder and
+    /// seed. This uses a default value for `generation_threshold`.
+    fn from_seed((rsdr, seed): (Rsdr, S)) -> ReseedingRng<R, Rsdr> {
         ReseedingRng {
             rng: SeedableRng::from_seed(seed),
             generation_threshold: DEFAULT_GENERATION_THRESHOLD,
             bytes_generated: 0,
-            reseeder: Default::default()
+            reseeder: rsdr
         }
     }
 }
@@ -184,17 +186,17 @@ mod test {
 
     #[test]
     fn test_rng_seeded() {
-        let mut ra: MyRng = SeedableRng::from_seed(2);
-        let mut rb: MyRng = SeedableRng::from_seed(2);
+        let mut ra: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
+        let mut rb: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
 
     #[test]
     fn test_rng_reseed() {
-        let mut r: MyRng = SeedableRng::from_seed(3);
+        let mut r: MyRng = SeedableRng::from_seed((ReseedWithDefault, 3));
         let string1 = r.gen_ascii_str(100);
 
-        r.reseed(3);
+        r.reseed((ReseedWithDefault, 3));
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
