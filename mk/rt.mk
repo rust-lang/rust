@@ -46,6 +46,21 @@ define DEF_LIBUV_ARCH_VAR
 endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_LIBUV_ARCH_VAR,$(t))))
 
+ifdef CFG_ENABLE_FAST_MAKE
+LIBUV_DEPS := $(S)/.gitmodules
+else
+LIBUV_DEPS := $(wildcard \
+              $(S)src/libuv/* \
+              $(S)src/libuv/*/* \
+              $(S)src/libuv/*/*/* \
+              $(S)src/libuv/*/*/*/*)
+endif
+
+LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
+		uv_dtrace_header.target.mk uv_dtrace_provider.target.mk
+
+export PYTHONPATH := $(PYTHONPATH):$(S)src/gyp/pylib
+
 define DEF_RUNTIME_TARGETS
 
 ######################################################################
@@ -97,30 +112,7 @@ RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/ccall.S \
 			rt/arch/$$(HOST_$(1))/record_sp.S
 
-RT_OUTPUT_DIR_$(1) := $(1)/rt
 RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
-
-ifeq ($$(CFG_WINDOWSY_$(1)), 1)
-  LIBUV_OSTYPE_$(1)_$(2) := win
-  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/jemalloc.lib
-else ifeq ($(OSTYPE_$(1)), apple-darwin)
-  LIBUV_OSTYPE_$(1)_$(2) := mac
-  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
-else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
-  LIBUV_OSTYPE_$(1)_$(2) := freebsd
-  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
-else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-  LIBUV_OSTYPE_$(1)_$(2) := android
-  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
-else
-  LIBUV_OSTYPE_$(1)_$(2) := linux
-  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
-endif
 
 RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
@@ -157,98 +149,11 @@ $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$
 	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
 $$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
-                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)_$(2)) $$(JEMALLOC_LIB_$(1)_$(2))
+                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)) $$(JEMALLOC_LIB_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
-	  $$(JEMALLOC_LIB_$(1)_$(2)) $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(LIBUV_LIB_$(1)_$(2)) \
-	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
-
-# FIXME: For some reason libuv's makefiles can't figure out the
-# correct definition of CC on the mingw I'm using, so we are
-# explicitly using gcc. Also, we have to list environment variables
-# first on windows... mysterious
-
-ifdef CFG_ENABLE_FAST_MAKE
-LIBUV_DEPS := $$(S)/.gitmodules
-else
-LIBUV_DEPS := $$(wildcard \
-              $$(S)src/libuv/* \
-              $$(S)src/libuv/*/* \
-              $$(S)src/libuv/*/*/* \
-              $$(S)src/libuv/*/*/*/*)
-endif
-
-LIBUV_MAKEFILE_$(1)_$(2) := $$(CFG_BUILD_DIR)$$(RT_BUILD_DIR_$(1)_$(2))/libuv/Makefile
-LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
-		uv_dtrace_header.target.mk uv_dtrace_provider.target.mk
-
-export PYTHONPATH := $(PYTHONPATH):$$(S)src/gyp/pylib
-
-$$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_DEPS)
-	(cd $(S)src/libuv/ && \
-	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja \
-	   -DOS=$$(LIBUV_OSTYPE_$(1)_$(2)) \
-	   -Goutput_dir=$$(@D) --generator-output $$(@D))
-
-# XXX: Shouldn't need platform-specific conditions here
-ifdef CFG_WINDOWSY_$(1)
-$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
-	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		AR="$$(AR_$(1))" \
-		V=$$(VERBOSE)
-	$$(Q)cp $$(S)src/libuv/libuv.a $$@
-else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)_$(2))
-	$$(Q)$$(MAKE) -C $$(@D) \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CC_$(1))" \
-		CXX="$$(CXX_$(1))" \
-	 	LINK="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))" \
-		PLATFORM=android \
-		host=android OS=linux \
-		builddir="." \
-		BUILDTYPE=Release \
-		NO_LOAD="$$(LIBUV_NO_LOAD)" \
-		V=$$(VERBOSE)
-else
-$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)_$(2))
-	$$(Q)$$(MAKE) -C $$(@D) \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CC_$(1))" \
-		CXX="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))" \
-		builddir="." \
-		BUILDTYPE=Release \
-		NO_LOAD="$$(LIBUV_NO_LOAD)" \
-		V=$$(VERBOSE)
-endif
-
-ifeq ($(OSTYPE_$(1)), linux-androideabi)
-$$(JEMALLOC_LIB_$(1)_$(2)):
-	cd $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc; $(S)src/rt/jemalloc/configure \
-		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) --disable-tls \
-		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CC_$(1))" \
-		CXX="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))"
-	$$(Q)$$(MAKE) -C $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc
-else
-$$(JEMALLOC_LIB_$(1)_$(2)):
-	cd $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc; $(S)src/rt/jemalloc/configure \
-		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) \
-		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CC_$(1))" \
-		CXX="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))"
-	$$(Q)$$(MAKE) -C $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc
-endif
-
+	    $$(JEMALLOC_LIB_$(1)) $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(LIBUV_LIB_$(1)) \
+	    $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
@@ -283,7 +188,90 @@ $(1)/%.mingw32.def:	%.def.in $$(MKFILE_DEPS)
 
 endef
 
-# Instantiate template for all stages
+
+######################################################################
+# Runtime third party targets (libuv, jemalloc, etc.)
+#
+# These targets do not need to be built once per stage, so these
+# rules just build them once and then we're done with them.
+######################################################################
+
+define DEF_THIRD_PARTY_TARGETS
+
+# $(1) is the target triple
+
+RT_OUTPUT_DIR_$(1) := $(1)/rt
+JEMALLOC_TARGET_$(1) := jemalloc_pic
+
+ifeq ($$(CFG_WINDOWSY_$(1)), 1)
+  LIBUV_OSTYPE_$(1) := win
+  JEMALLOC_TARGET_$(1) := jemalloc
+else ifeq ($(OSTYPE_$(1)), apple-darwin)
+  LIBUV_OSTYPE_$(1) := mac
+else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
+  LIBUV_OSTYPE_$(1) := freebsd
+else ifeq ($(OSTYPE_$(1)), linux-androideabi)
+  LIBUV_OSTYPE_$(1) := android
+  JEMALLOC_ARGS_$(1) := --disable-tls
+  LIBUV_ARGS_$(1) := PLATFORM=android host=android OS=linux
+else
+  LIBUV_OSTYPE_$(1) := linux
+endif
+
+LIBUV_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv)
+LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv/$$(LIBUV_NAME_$(1))
+JEMALLOC_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$$(JEMALLOC_TARGET_$(1)))
+JEMALLOC_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/jemalloc/lib/$$(JEMALLOC_NAME_$(1))
+
+LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
+
+$$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
+	(cd $(S)src/libuv/ && \
+	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
+	   -D ninja \
+	   -DOS=$$(LIBUV_OSTYPE_$(1)) \
+	   -Goutput_dir=$$(@D) --generator-output $$(@D))
+
+# Windows has a completely different build system for libuv because of mingw. In
+# theory when we support msvc then we should be using gyp's msvc output instead
+# of mingw's makefile for windows
+ifdef CFG_WINDOWSY_$(1)
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
+	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		AR="$$(AR_$(1))" \
+		V=$$(VERBOSE)
+	$$(Q)cp $$(S)src/libuv/libuv.a $$@
+else
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
+	$$(Q)$$(MAKE) -C $$(@D) \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))" \
+		$$(LIBUV_ARGS_$(1)) \
+		builddir="." \
+		BUILDTYPE=Release \
+		NO_LOAD="$$(LIBUV_NO_LOAD)" \
+		V=$$(VERBOSE)
+endif
+
+$$(JEMALLOC_LIB_$(1)):
+	cd $$(RT_OUTPUT_DIR_$(1))/jemalloc; $(S)src/rt/jemalloc/configure \
+		$$(JEMALLOC_ARGS_$(1)) \
+		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) \
+		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))"
+	$$(Q)$$(MAKE) -C $$(RT_OUTPUT_DIR_$(1))/jemalloc build_lib_static
+
+endef
+
+# Instantiate template for all stages/targets
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+     $(eval $(call DEF_THIRD_PARTY_TARGETS,$(target))))
 $(foreach stage,$(STAGES), \
-	$(foreach target,$(CFG_TARGET_TRIPLES), \
+    $(foreach target,$(CFG_TARGET_TRIPLES), \
 	 $(eval $(call DEF_RUNTIME_TARGETS,$(target),$(stage)))))
