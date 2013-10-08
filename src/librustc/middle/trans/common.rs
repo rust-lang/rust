@@ -70,11 +70,7 @@ pub fn type_is_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
         return true;
     }
     match ty::get(ty).sty {
-        // FIXME: #9651: small `ty_struct` should also be immediate
-        ty::ty_struct(def_id, ref substs) => {
-            ty::struct_fields(tcx, def_id, substs).is_empty()
-        }
-        ty::ty_enum(*) | ty::ty_tup(*) => {
+        ty::ty_struct(*) | ty::ty_enum(*) | ty::ty_tup(*) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
         }
