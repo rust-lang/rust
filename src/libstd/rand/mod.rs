@@ -535,8 +535,9 @@ pub trait SeedableRng<Seed>: Rng {
 ///
 /// This is a very expensive operation as it has to read randomness
 /// from the operating system and use this in an expensive seeding
-/// operation. If one does not require high performance, `task_rng`
-/// and/or `random` may be more appropriate.
+/// operation. If one does not require high performance generation of
+/// random numbers, `task_rng` and/or `random` may be more
+/// appropriate.
 pub fn rng() -> StdRng {
     StdRng::new()
 }
@@ -596,6 +597,9 @@ impl<'self> SeedableRng<&'self [uint]> for StdRng {
 /// consideration for cryptography or security. If you require a specifically
 /// seeded `Rng` for consistency over time you should pick one algorithm and
 /// create the `Rng` yourself.
+///
+/// This will read randomness from the operating system to seed the
+/// generator.
 pub fn weak_rng() -> XorShiftRng {
     XorShiftRng::new()
 }
@@ -667,8 +671,8 @@ impl XorShiftRng {
                 break;
             }
         }
-        let s: &[u32, ..4] = unsafe { cast::transmute(&s) };
-        SeedableRng::from_seed(*s)
+        let s: [u32, ..4] = unsafe { cast::transmute(s) };
+        SeedableRng::from_seed(s)
     }
 }
 
