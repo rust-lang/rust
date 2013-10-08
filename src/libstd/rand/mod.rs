@@ -672,20 +672,6 @@ impl XorShiftRng {
     }
 }
 
-/// Create a new random seed of length `n`. This should only be used
-/// to create types for which *any* bit pattern is valid.
-pub unsafe fn seed<T: Clone>(n: uint) -> ~[T] {
-    use unstable::intrinsics;
-    let mut s = vec::from_elem(n, intrinsics::init());
-    let mut r = OSRng::new();
-
-    {
-        let s_u8 = cast::transmute::<&mut [T], &mut [u8]>(s);
-        r.fill_bytes(s_u8);
-    }
-    s
-}
-
 /// Controls how the task-local RNG is reseeded.
 enum TaskRngReseeder {
     /// Reseed using the StdRng::new() function, i.e. reading new
@@ -994,7 +980,7 @@ mod test {
 
     #[test]
     fn test_std_rng_seeded() {
-        let s = unsafe {seed::<uint>(256)};
+        let s = OSRng::new().gen_vec::<uint>(256);
         let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
@@ -1002,7 +988,7 @@ mod test {
 
     #[test]
     fn test_std_rng_reseed() {
-        let s = unsafe {seed::<uint>(256)};
+        let s = OSRng::new().gen_vec::<uint>(256);
         let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
