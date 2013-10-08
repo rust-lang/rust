@@ -170,7 +170,6 @@ pub trait TyVisitor {
     fn visit_closure_ptr(&mut self, ck: uint) -> bool;
 }
 
-#[abi = "rust-intrinsic"]
 extern "rust-intrinsic" {
 
     /// Atomic compare and exchange, sequentially consistent.
