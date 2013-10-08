@@ -95,23 +95,28 @@ impl Rand for u64 {
 }
 
 impl Rand for f32 {
-    /// A random `f32` in the range `[0, 1)`.
+    /// A random `f32` in the range `[0, 1)`, using 24 bits of
+    /// precision.
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f32 {
-        // weird, but this is the easiest way to get 2**32
-        static SCALE: f32 = 2.0 * (1u32 << 31) as f32;
-        rng.next_u32() as f32 / SCALE
+        // using any more than 24 bits will cause (e.g.) 0xffff_ffff
+        // to correspond to 1 exactly, so we need to drop 8 to
+        // guarantee the open end.
+
+        static SCALE: f32 = (1u32 << 24) as f32;
+        (rng.next_u32() >> 8) as f32 / SCALE
     }
 }
 
 impl Rand for f64 {
-    /// A random `f64` in the range `[0, 1)`.
+    /// A random `f64` in the range `[0, 1)`, using 53 bits of
+    /// precision.
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f64 {
-        // weird, but this is the easiest way to get 2**64
-        static SCALE: f64 = 2.0 * (1u64 << 63) as f64;
+        // as for f32, but using more bits.
 
-        rng.next_u64() as f64 / SCALE
+        static SCALE: f64 = (1u64 << 53) as f64;
+        (rng.next_u64() >> 11) as f64 / SCALE
     }
 }
 
@@ -197,4 +202,20 @@ impl<T: Rand> Rand for ~T {
 impl<T: Rand + 'static> Rand for @T {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> @T { @rng.gen() }
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::Rng;
+    struct ConstantRng(u64);
+    impl Rng for ConstantRng {
+        fn next_u64(&mut self) -> u64 {
+            **self
+        }
+    }
+    fn floating_point_edge_cases() {
+        // the test for exact equality is correct here.
+        assert!(ConstantRng(0xffff_ffff).gen::<f32>() != 1.0)
+        assert!(ConstantRng(0xffff_ffff_ffff_ffff).gen::<f64>() != 1.0)
+    }
 }
