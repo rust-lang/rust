@@ -803,6 +803,12 @@ impl SchedHandle {
         self.queue.push(msg);
         self.remote.fire();
     }
+    pub fn send_task_from_friend(&mut self, friend: ~Task) {
+        self.send(TaskFromFriend(friend));
+    }
+    pub fn send_shutdown(&mut self) {
+        self.send(Shutdown);
+    }
 }
 
 struct CleanupJob {

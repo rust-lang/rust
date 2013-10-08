@@ -1026,7 +1026,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                         // which may not be equal to the enum's type for
                         // non-C-like enums.
                         let val = base::get_item_val(bcx.ccx(), did.node);
-                        let pty = type_of(bcx.ccx(), const_ty).ptr_to();
+                        let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                         PointerCast(bcx, val, pty)
                     } else {
                         {
@@ -1040,7 +1040,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                         }
 
                         unsafe {
-                            let llty = type_of(bcx.ccx(), const_ty);
+                            let llty = type_of::type_of(bcx.ccx(), const_ty);
                             let symbol = csearch::get_symbol(
                                 bcx.ccx().sess.cstore,
                                 did);
@@ -1396,7 +1396,7 @@ fn trans_unary_datum(bcx: @mut Block,
                         heap: heap) -> DatumBlock {
         let _icx = push_ctxt("trans_boxed_expr");
         if heap == heap_exchange {
-            let llty = type_of(bcx.ccx(), contents_ty);
+            let llty = type_of::type_of(bcx.ccx(), contents_ty);
             let size = llsize_of(bcx.ccx(), llty);
             let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
                                                                heap_exchange, size);

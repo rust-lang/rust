@@ -8,33 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:static_priv_by_default.rs
+#[feature(globs)];
+#[no_std]; // makes debugging this test *a lot* easier (during resolve)
 
-extern mod static_priv_by_default;
+// Test to make sure that globs don't leak in regular `use` statements.
 
-mod child {
-    pub mod childs_child {
-        static private: int = 0;
-        pub static public: int = 0;
+mod bar {
+    pub use self::glob::*;
+
+    mod glob {
+        use foo;
     }
 }
 
-fn foo<T>(_: T) {}
+pub fn foo() {}
 
 fn test1() {
-    use child::childs_child::private;
-    //~^ ERROR: static `private` is private
-    use child::childs_child::public;
-
-    foo(private);
+    use bar::foo; //~ ERROR: unresolved import
+    //~^ ERROR: failed to resolve
 }
 
 fn test2() {
-    use static_priv_by_default::private;
-    //~^ ERROR: static `private` is private
-    use static_priv_by_default::public;
-
-    foo(private);
+    use bar::glob::foo;
+    //~^ ERROR: there is no
+    //~^^ ERROR: failed to resolve
 }
 
-fn main() {}
+#[start] fn main(_: int, _: **u8) -> int { 3 }
+

@@ -581,7 +581,7 @@ impl Datum {
 
         if !header && !ty::type_contents(bcx.tcx(), content_ty).contains_managed() {
             let ptr = self.to_value_llval(bcx);
-            let ty = type_of(bcx.ccx(), content_ty);
+            let ty = type_of::type_of(bcx.ccx(), content_ty);
             let body = PointerCast(bcx, ptr, ty.ptr_to());
             Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
         } else { // has a header

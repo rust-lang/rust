@@ -335,14 +335,15 @@ mod test {
     // newtype struct autoderef weirdness
     #[test]
     fn test_buffered_stream() {
+        use rt;
         struct S;
 
-        impl Writer for S {
+        impl rt::io::Writer for S {
             fn write(&mut self, _: &[u8]) {}
             fn flush(&mut self) {}
         }
 
-        impl Reader for S {
+        impl rt::io::Reader for S {
             fn read(&mut self, _: &mut [u8]) -> Option<uint> { None }
             fn eof(&mut self) -> bool { true }
         }

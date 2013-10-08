@@ -31,8 +31,8 @@ use syntax::ast_util::id_range;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::visit;
-use syntax::visit::Visitor;
-use syntax::ast::{Expr, fn_kind, fn_decl, Block, NodeId, Stmt, Pat, Local};
+use syntax::visit::{Visitor, fn_kind};
+use syntax::ast::{Expr, fn_decl, Block, NodeId, Stmt, Pat, Local};
 
 mod lifetime;
 mod restrictions;

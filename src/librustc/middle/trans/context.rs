@@ -16,7 +16,6 @@ use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::astencode;
-use middle::privacy;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
@@ -49,7 +48,6 @@ pub struct CrateContext {
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: HashMap<ast::NodeId, ValueRef>,
      exp_map2: resolve::ExportMap2,
-     exported_items: @privacy::ExportedItems,
      reachable: @mut HashSet<ast::NodeId>,
      item_symbols: HashMap<ast::NodeId, ~str>,
      link_meta: LinkMeta,
@@ -125,7 +123,6 @@ impl CrateContext {
                name: &str,
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
-               exported_items: @privacy::ExportedItems,
                maps: astencode::Maps,
                symbol_hasher: hash::State,
                link_meta: LinkMeta,
@@ -185,7 +182,6 @@ impl CrateContext {
                   intrinsics: intrinsics,
                   item_vals: HashMap::new(),
                   exp_map2: emap2,
-                  exported_items: exported_items,
                   reachable: reachable,
                   item_symbols: HashMap::new(),
                   link_meta: link_meta,

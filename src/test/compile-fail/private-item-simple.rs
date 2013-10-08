@@ -13,5 +13,5 @@ mod a {
 }
 
 fn main() {
-    a::f(); //~ ERROR unresolved name
+    a::f(); //~ ERROR function `f` is private
 }

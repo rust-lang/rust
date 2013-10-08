@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name
-
 mod foo {
     pub fn x() { }
 
     enum y { y1, }
 }
 
-fn main() { let z = foo::y1; }
+fn main() { let z = foo::y1; } //~ ERROR: is private
