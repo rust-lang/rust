@@ -326,7 +326,7 @@ pub mod special_idents {
     pub static unary_minus_fn : Ident = Ident { name: 6, ctxt: 0}; // apparently unused?
     pub static clownshoes_extensions : Ident = Ident { name: 7, ctxt: 0};
 
-    pub static self_ : Ident = Ident { name: 8, ctxt: 0}; // 'self'
+    pub static self_ : Ident = Ident { name: super::SELF_KEYWORD_NAME, ctxt: 0}; // 'self'
 
     /* for matcher NTs */
     // none of these appear to be used, but perhaps references to
@@ -352,7 +352,7 @@ pub mod special_idents {
     pub static main : Ident = Ident { name: 24, ctxt: 0};
     pub static opaque : Ident = Ident { name: 25, ctxt: 0};
     pub static blk : Ident = Ident { name: 26, ctxt: 0};
-    pub static statik : Ident = Ident { name: 27, ctxt: 0};
+    pub static statik : Ident = Ident { name: super::STATIC_KEYWORD_NAME, ctxt: 0};
     pub static clownshoes_foreign_mod: Ident = Ident { name: 28, ctxt: 0};
     pub static unnamed_field: Ident = Ident { name: 29, ctxt: 0};
     pub static c_abi: Ident = Ident { name: 30, ctxt: 0}; // apparently unused?
@@ -414,8 +414,9 @@ pub type ident_interner = StrInterner;
 
 // return a fresh interner, preloaded with special identifiers.
 fn mk_fresh_ident_interner() -> @ident_interner {
-    // the indices here must correspond to the numbers in
-    // special_idents.
+    // The indices here must correspond to the numbers in
+    // special_idents, in Keyword to_ident(), and in static
+    // constants below.
     let init_vec = ~[
         "_",                  // 0
         "anon",               // 1
@@ -473,8 +474,8 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "pub",                // 52
         "ref",                // 53
         "return",             // 54
-        "static",             // 27 -- also a special ident
-        "self",               //  8 -- also a special ident
+        "static",             // 27 -- also a special ident (prefill de-dupes)
+        "self",               //  8 -- also a special ident (prefill de-dupes)
         "struct",             // 55
         "super",              // 56
         "true",               // 57
@@ -497,6 +498,32 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 
     @interner::StrInterner::prefill(init_vec)
 }
+
+// NOTE remove stage0 pub'ed special cases after next snapshot.
+#[cfg(stage0)]
+pub static SELF_KEYWORD_NAME: uint = 8;
+#[cfg(not(stage0))]
+static SELF_KEYWORD_NAME: uint = 8;
+#[cfg(stage0)]
+pub static STATIC_KEYWORD_NAME: uint = 27;
+#[cfg(not(stage0))]
+static STATIC_KEYWORD_NAME: uint = 27;
+#[cfg(stage0)]
+pub static STRICT_KEYWORD_START: uint = 32;
+#[cfg(not(stage0))]
+static STRICT_KEYWORD_START: uint = 32;
+#[cfg(stage0)]
+pub static STRICT_KEYWORD_FINAL: uint = 64;
+#[cfg(not(stage0))]
+static STRICT_KEYWORD_FINAL: uint = 64;
+#[cfg(stage0)]
+pub static RESERVED_KEYWORD_START: uint = 65;
+#[cfg(not(stage0))]
+static RESERVED_KEYWORD_START: uint = 65;
+#[cfg(stage0)]
+pub static RESERVED_KEYWORD_FINAL: uint = 71;
+#[cfg(not(stage0))]
+static RESERVED_KEYWORD_FINAL: uint = 71;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
@@ -675,8 +702,8 @@ pub mod keywords {
                 Pub => Ident { name: 52, ctxt: 0 },
                 Ref => Ident { name: 53, ctxt: 0 },
                 Return => Ident { name: 54, ctxt: 0 },
-                Static => Ident { name: 27, ctxt: 0 },
-                Self => Ident { name: 8, ctxt: 0 },
+                Static => Ident { name: super::STATIC_KEYWORD_NAME, ctxt: 0 },
+                Self => Ident { name: super::SELF_KEYWORD_NAME, ctxt: 0 },
                 Struct => Ident { name: 55, ctxt: 0 },
                 Super => Ident { name: 56, ctxt: 0 },
                 True => Ident { name: 57, ctxt: 0 },
@@ -709,7 +736,8 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 70 => true,
+            SELF_KEYWORD_NAME | STATIC_KEYWORD_NAME |
+            STRICT_KEYWORD_START .. RESERVED_KEYWORD_FINAL => true,
             _ => false,
         },
         _ => false
@@ -719,7 +747,8 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 64 => true,
+            SELF_KEYWORD_NAME | STATIC_KEYWORD_NAME |
+            STRICT_KEYWORD_START .. STRICT_KEYWORD_FINAL => true,
             _ => false,
         },
         _ => false,
@@ -729,7 +758,7 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            65 .. 71 => true,
+            RESERVED_KEYWORD_START .. RESERVED_KEYWORD_FINAL => true,
             _ => false,
         },
         _ => false,
