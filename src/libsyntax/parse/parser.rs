@@ -309,6 +309,7 @@ pub fn Parser(sess: @mut ParseSess,
         quote_depth: @mut 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
+        open_braces: @mut ~[]
     }
 }
 
@@ -337,6 +338,8 @@ pub struct Parser {
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
+    /// Stack of spans of open delimiters. Used for error message.
+    open_braces: @mut ~[Span]
 }
 
 #[unsafe_destructor]
@@ -2024,12 +2027,18 @@ impl Parser {
 
         match *self.token {
             token::EOF => {
-                self.fatal("file ended with unbalanced delimiters");
+                for sp in self.open_braces.iter() {
+                    self.span_note(*sp, "Did you mean to close this delimiter?");
+                }
+                // There shouldn't really be a span, but it's easier for the test runner
+                // if we give it one
+                self.fatal("This file contains an un-closed delimiter ");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&*self.token);
 
                 // Parse the open delimiter.
+                (*self.open_braces).push(*self.span);
                 let mut result = ~[parse_any_tt_tok(self)];
 
                 let trees =
@@ -2040,6 +2049,7 @@ impl Parser {
 
                 // Parse the close delimiter.
                 result.push(parse_any_tt_tok(self));
+                self.open_braces.pop();
 
                 tt_delim(@mut result)
             }
