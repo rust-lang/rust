@@ -21,6 +21,13 @@ use rt::io::{file, Open, Read};
 
 #[cfg(windows)]
 use cast;
+#[cfg(windows)]
+use libc::{c_long, DWORD, BYTE};
+#[cfg(windows)]
+type HCRYPTPROV = c_long;
+// the extern functions imported from the runtime on Windows are
+// implemented so that they either succeed or abort(), so we can just
+// assume they work when we call them.
 
 /// A random number generator that retrieves randomness straight from
 /// the operating system. On Unix-like systems this reads from
@@ -38,7 +45,7 @@ pub struct OSRng {
 /// This does not block.
 #[cfg(windows)]
 pub struct OSRng {
-    priv hcryptprov: raw::HCRYPTPROV
+    priv hcryptprov: HCRYPTPROV
 }
 
 impl OSRng {
@@ -53,10 +60,11 @@ impl OSRng {
 
     /// Create a new `OSRng`.
     #[cfg(windows)]
-    #[fixed_stack_segment] #[inline(never)]
     pub fn new() -> OSRng {
+        externfn!(fn rust_win32_rand_acquire(phProv: *mut HCRYPTPROV))
+
         let mut hcp = 0;
-        unsafe {raw::rust_win32_rand_acquire(&mut hcp)};
+        unsafe {rust_win32_rand_acquire(&mut hcp)};
 
         OSRng { hcryptprov: hcp }
     }
@@ -87,12 +95,11 @@ impl Rng for OSRng {
         self.fill_bytes(v);
         unsafe { cast::transmute(v) }
     }
-    #[fixed_stack_segment] #[inline(never)]
     fn fill_bytes(&mut self, v: &mut [u8]) {
-        use libc::DWORD;
+        externfn!(fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD, pbBuffer: *mut BYTE))
 
         do v.as_mut_buf |ptr, len| {
-            unsafe {raw::rust_win32_rand_gen(self.hcryptprov, len as DWORD, ptr)}
+            unsafe {rust_win32_rand_gen(self.hcryptprov, len as DWORD, ptr)}
         }
     }
 }
@@ -105,26 +112,13 @@ impl Drop for OSRng {
     }
 
     #[cfg(windows)]
-    #[fixed_stack_segment] #[inline(never)]
     fn drop(&mut self) {
-        unsafe {raw::rust_win32_rand_release(self.hcryptprov)}
+        externfn!(fn rust_win32_rand_release(hProv: HCRYPTPROV))
+
+        unsafe {rust_win32_rand_release(self.hcryptprov)}
     }
 }
 
-#[cfg(windows)]
-mod raw {
-    use libc::{c_long, DWORD, BYTE};
-
-    pub type HCRYPTPROV = c_long;
-
-    // these functions are implemented so that they either succeed or
-    // abort(), so we can just assume they work when we call them.
-    extern {
-        pub fn rust_win32_rand_acquire(phProv: *mut HCRYPTPROV);
-        pub fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD, pbBuffer: *mut BYTE);
-        pub fn rust_win32_rand_release(hProv: HCRYPTPROV);
-    }
-}
 
 #[cfg(test)]
 mod test {
