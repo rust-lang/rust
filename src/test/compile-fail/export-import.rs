@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: import
-
 use m::unexported;
+//~^ ERROR: is private
 
 mod m {
     pub fn exported() { }

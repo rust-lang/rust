@@ -8,15 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// aux-build:xc_private_method_lib.rs
+#[feature(globs)];
+#[no_std]; // makes debugging this test *a lot* easier (during resolve)
 
-extern mod xc_private_method_lib;
+// Test to make sure that private items imported through globs remain private
+// when  they're used.
 
-fn main() {
-    let _ = xc_private_method_lib::Struct::static_meth_struct();
-    //~^ ERROR: method `static_meth_struct` is private
+mod bar {
+    pub use self::glob::*;
 
-    let _ = xc_private_method_lib::Enum::static_meth_enum();
-    //~^ ERROR: method `static_meth_enum` is private
+    mod glob {
+        fn gpriv() {}
+    }
 }
+
+pub fn foo() {}
+
+fn test2() {
+    use bar::glob::gpriv; //~ ERROR: function `gpriv` is private
+    gpriv();
+}
+
+#[start] fn main(_: int, _: **u8) -> int { 3 }

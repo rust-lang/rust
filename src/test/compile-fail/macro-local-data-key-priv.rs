@@ -18,5 +18,5 @@ mod bar {
 
 fn main() {
     local_data::set(bar::baz, -10.0);
-    //~^ ERROR unresolved name `bar::baz`
+    //~^ ERROR static `baz` is private
 }

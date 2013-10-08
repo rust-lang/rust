@@ -126,7 +126,7 @@ enum Implementor {
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to both `Send` and `Freeze` so it may be stored in a `RWArc` instance and
 /// shared among the various rendering tasks.
-struct Cache {
+pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
     /// painfully maintain a context like this)

@@ -90,10 +90,10 @@ mod tests {
     use super::*;
 
     use clone::Clone;
+    use ops::Drop;
     use option::{None, Some};
     use either::{Either, Left, Right};
     use sys::size_of;
-    use kinds::Drop;
 
     #[test]
     fn identity_crisis() {
