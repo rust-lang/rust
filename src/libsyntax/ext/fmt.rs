@@ -30,7 +30,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     if args.len() == 0 {
         cx.span_fatal(sp, "fmt! takes at least 1 argument.");
     }
-    let fmt =
+    let (fmt, _fmt_str_style) =
         expr_to_str(cx, args[0],
                     "first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;

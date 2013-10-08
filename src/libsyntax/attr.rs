@@ -67,7 +67,7 @@ impl AttrMetaMethods for MetaItem {
         match self.node {
             MetaNameValue(_, ref v) => {
                 match v.node {
-                    ast::lit_str(s) => Some(s),
+                    ast::lit_str(s, _) => Some(s),
                     _ => None,
                 }
             },
@@ -127,7 +127,7 @@ impl AttributeMethods for Attribute {
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: @str, value: @str) -> @MetaItem {
-    let value_lit = dummy_spanned(ast::lit_str(value));
+    let value_lit = dummy_spanned(ast::lit_str(value, ast::CookedStr));
     mk_name_value_item(name, value_lit)
 }
 
@@ -153,7 +153,7 @@ pub fn mk_attr(item: @MetaItem) -> Attribute {
 
 pub fn mk_sugared_doc_attr(text: @str, lo: BytePos, hi: BytePos) -> Attribute {
     let style = doc_comment_style(text);
-    let lit = spanned(lo, hi, ast::lit_str(text));
+    let lit = spanned(lo, hi, ast::lit_str(text, ast::CookedStr));
     let attr = Attribute_ {
         style: style,
         value: @spanned(lo, hi, MetaNameValue(@"doc", lit)),

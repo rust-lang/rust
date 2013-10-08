@@ -27,8 +27,7 @@ mod a {
     }
     pub mod sub {
         use a::b::*;
-        fn sub() -> bar { foo(); 1 } //~ ERROR: unresolved name `foo`
-        //~^ ERROR: use of undeclared type name `bar`
+        fn sub() -> int { foo(); 1 } //~ ERROR: unresolved name `foo`
     }
 }
 
@@ -36,6 +35,4 @@ mod m1 {
     fn foo() {}
 }
 
-fn main() {
-    foo(); //~ ERROR: unresolved name `foo`
-}
+fn main() {}

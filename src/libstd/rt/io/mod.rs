@@ -300,7 +300,8 @@ pub mod comm_adapters;
 mod extensions;
 
 /// Non-I/O things needed by the I/O module
-mod support;
+// XXX: shouldn this really be pub?
+pub mod support;
 
 /// Basic Timer
 pub mod timer;

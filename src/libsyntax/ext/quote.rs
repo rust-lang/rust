@@ -118,7 +118,7 @@ pub mod rt {
 
     impl<'self> ToSource for &'self str {
         fn to_source(&self) -> @str {
-            let lit = dummy_spanned(ast::lit_str(self.to_managed()));
+            let lit = dummy_spanned(ast::lit_str(self.to_managed(), ast::CookedStr));
             pprust::lit_to_str(@lit).to_managed()
         }
     }
@@ -462,6 +462,13 @@ fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
             return cx.expr_call_ident(sp,
                                       id_ext("LIT_STR"),
                                       ~[mk_ident(cx, sp, ident)]);
+        }
+
+        LIT_STR_RAW(ident, n) => {
+            return cx.expr_call_ident(sp,
+                                      id_ext("LIT_STR_RAW"),
+                                      ~[mk_ident(cx, sp, ident),
+                                        cx.expr_uint(sp, n)]);
         }
 
         IDENT(ident, b) => {

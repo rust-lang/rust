@@ -71,7 +71,7 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
       }
       ast::lit_bool(b) => C_bool(b),
       ast::lit_nil => C_nil(),
-      ast::lit_str(s) => C_estr_slice(cx, s)
+      ast::lit_str(s, _) => C_estr_slice(cx, s)
     }
 }
 

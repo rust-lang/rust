@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use zoo::fly; //~ ERROR failed to resolve import
-              //~^ ERROR unresolved import: found `fly` in `zoo` but it is private
+use zoo::fly; //~ ERROR: function `fly` is private
 
 mod zoo {
-    type fly = ();
     fn fly() {}
 }
 
 
-fn main() {}
+fn main() {
+    fly();
+}

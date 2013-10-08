@@ -199,7 +199,6 @@ pub fn phase_2_configure_and_expand(sess: Session,
 
 pub struct CrateAnalysis {
     exp_map2: middle::resolve::ExportMap2,
-    exported_items: @middle::privacy::ExportedItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
     reachable: @mut HashSet<ast::NodeId>
@@ -229,7 +228,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let middle::resolve::CrateMap {
         def_map: def_map,
         exp_map2: exp_map2,
-        trait_map: trait_map
+        trait_map: trait_map,
+        external_exports: external_exports,
+        last_private_map: last_private_map
     } =
         time(time_passes, "resolution", (), |_|
              middle::resolve::resolve_crate(sess, lang_items, crate));
@@ -261,9 +262,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
          middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                           method_map, ty_cx));
 
-    let exported_items =
-        time(time_passes, "privacy checking", (), |_|
-             middle::privacy::check_crate(ty_cx, &method_map, &exp_map2, crate));
+    let maps = (external_exports, last_private_map);
+    time(time_passes, "privacy checking", maps, |(a, b)|
+         middle::privacy::check_crate(ty_cx, &method_map, &exp_map2,
+                                      a, b, crate));
 
     time(time_passes, "effect checking", (), |_|
          middle::effect::check_crate(ty_cx, method_map, crate));
@@ -305,7 +307,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     CrateAnalysis {
         exp_map2: exp_map2,
-        exported_items: @exported_items,
         ty_cx: ty_cx,
         maps: astencode::Maps {
             root_map: root_map,

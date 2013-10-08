@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod foo {
-    mod bar {
+    pub mod bar {
         pub fn y() { super::super::foo::x(); }
     }
 

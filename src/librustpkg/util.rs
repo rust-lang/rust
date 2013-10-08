@@ -406,7 +406,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
             // ignore metadata, I guess
             ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
                 let lib_name = match path_opt {
-                    Some(p) => p,
+                    Some((p, _)) => p,
                     None => self.sess.str_of(lib_ident)
                 };
                 debug2!("Finding and installing... {}", lib_name);
@@ -513,7 +513,7 @@ pub fn find_and_install_dependencies(context: &BuildContext,
 
 pub fn mk_string_lit(s: @str) -> ast::lit {
     Spanned {
-        node: ast::lit_str(s),
+        node: ast::lit_str(s, ast::CookedStr),
         span: dummy_sp()
     }
 }

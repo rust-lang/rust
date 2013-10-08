@@ -142,7 +142,7 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
           let ident = token::ident_to_str(&ident);
           let meta_items = match path_opt {
               None => meta_items.clone(),
-              Some(p) => {
+              Some((p, _path_str_style)) => {
                   let p_path = Path(p);
                   match p_path.filestem() {
                       Some(s) =>

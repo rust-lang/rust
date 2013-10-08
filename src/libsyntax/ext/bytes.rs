@@ -28,7 +28,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> bas
             // expression is a literal
             ast::ExprLit(lit) => match lit.node {
                 // string literal, push each byte to vector expression
-                ast::lit_str(s) => {
+                ast::lit_str(s, _) => {
                     for byte in s.byte_iter() {
                         bytes.push(cx.expr_u8(expr.span, byte));
                     }

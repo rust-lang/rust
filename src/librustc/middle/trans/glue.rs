@@ -203,7 +203,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
-    let llfnty = Type::glue_fn(type_of::type_of(ccx, ti.ty).ptr_to());
+    let llfnty = Type::glue_fn(type_of(ccx, ti.ty).ptr_to());
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -345,7 +345,7 @@ pub fn make_visit_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
                 bcx.tcx().sess.fatal(s);
             }
         };
-        let v = PointerCast(bcx, v, type_of::type_of(bcx.ccx(), object_ty).ptr_to());
+        let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());
         bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
         // The visitor is a boxed object and needs to be dropped
         add_clean(bcx, v, object_ty);
@@ -423,7 +423,6 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
-        Store(bcx, C_u8(0), drop_flag);
         bcx
     }
 }
@@ -595,23 +594,6 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
           bcx
       }
       ty::ty_opaque_closure_ptr(_) => bcx,
-      ty::ty_struct(did, _) => {
-        let tcx = bcx.tcx();
-        let bcx = iter_structural_ty(bcx, v, t, take_ty);
-
-        match ty::ty_dtor(tcx, did) {
-          ty::TraitDtor(_, false) => {
-            // Zero out the struct
-            unsafe {
-                let ty = Type::from_ref(llvm::LLVMTypeOf(v));
-                memzero(&B(bcx), v, ty);
-            }
-
-          }
-          _ => { }
-        }
-        bcx
-      }
       _ if ty::type_is_structural(t) => {
         iter_structural_ty(bcx, v, t, take_ty)
       }

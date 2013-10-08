@@ -67,13 +67,26 @@ use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
 use rt::task::{Task, SchedTask, GreenTask, Sched};
-use rt::thread::Thread;
-use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
 use unstable::atomics::{AtomicInt, SeqCst};
 use unstable::sync::UnsafeArc;
 use vec;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
+
+use self::thread::Thread;
+use self::work_queue::WorkQueue;
+
+// XXX: these probably shouldn't be public...
+#[doc(hidden)]
+pub mod shouldnt_be_public {
+    pub use super::sched::Scheduler;
+    pub use super::kill::KillHandle;
+    pub use super::thread::Thread;
+    pub use super::work_queue::WorkQueue;
+    pub use super::select::SelectInner;
+    pub use super::rtio::EventLoop;
+    pub use super::select::{SelectInner, SelectPortInner};
+}
 
 /// The global (exchange) heap.
 pub mod global_heap;

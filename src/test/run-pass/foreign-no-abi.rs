@@ -14,7 +14,7 @@ mod rustrt {
     use std::libc;
 
     extern {
-        fn rust_get_test_int() -> libc::intptr_t;
+        pub fn rust_get_test_int() -> libc::intptr_t;
     }
 }
 

@@ -44,6 +44,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                                        tts.to_owned());
 
     let mut asm = @"";
+    let mut asm_str_style = None;
     let mut outputs = ~[];
     let mut inputs = ~[];
     let mut cons = ~"";
@@ -58,8 +59,11 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     while continue_ {
         match state {
             Asm => {
-                asm = expr_to_str(cx, p.parse_expr(),
-                                  "inline assembly must be a string literal.");
+                let (s, style) =
+                    expr_to_str(cx, p.parse_expr(),
+                                "inline assembly must be a string literal.");
+                asm = s;
+                asm_str_style = Some(style);
             }
             Outputs => {
                 while *p.token != token::EOF &&
@@ -70,7 +74,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                         p.eat(&token::COMMA);
                     }
 
-                    let constraint = p.parse_str();
+                    let (constraint, _str_style) = p.parse_str();
                     p.expect(&token::LPAREN);
                     let out = p.parse_expr();
                     p.expect(&token::RPAREN);
@@ -93,7 +97,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                         p.eat(&token::COMMA);
                     }
 
-                    let constraint = p.parse_str();
+                    let (constraint, _str_style) = p.parse_str();
                     p.expect(&token::LPAREN);
                     let input = p.parse_expr();
                     p.expect(&token::RPAREN);
@@ -111,14 +115,15 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                         p.eat(&token::COMMA);
                     }
 
-                    let clob = format!("~\\{{}\\}", p.parse_str());
+                    let (s, _str_style) = p.parse_str();
+                    let clob = format!("~\\{{}\\}", s);
                     clobs.push(clob);
                 }
 
                 cons = clobs.connect(",");
             }
             Options => {
-                let option = p.parse_str();
+                let (option, _str_style) = p.parse_str();
 
                 if "volatile" == option {
                     volatile = true;
@@ -175,6 +180,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::inline_asm {
             asm: asm,
+            asm_str_style: asm_str_style.unwrap(),
             clobbers: cons.to_managed(),
             inputs: inputs,
             outputs: outputs,

@@ -25,8 +25,6 @@ use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
-use syntax::ast_util::{Privacy, Public, Private};
-use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::parse::token::{ident_interner, interner_get};
@@ -69,6 +67,27 @@ pub struct Export2 {
     name: @str,        // The name of the target.
     def_id: DefId,     // The definition of the target.
     reexport: bool,     // Whether this is a reexport.
+}
+
+// This set contains all exported definitions from external crates. The set does
+// not contain any entries from local crates.
+pub type ExternalExports = HashSet<DefId>;
+
+// XXX: dox
+pub type LastPrivateMap = HashMap<NodeId, LastPrivate>;
+
+pub enum LastPrivate {
+    AllPublic,
+    DependsOn(DefId),
+}
+
+impl LastPrivate {
+    fn or(self, other: LastPrivate) -> LastPrivate {
+        match (self, other) {
+            (me, AllPublic) => me,
+            (_, other) => other,
+        }
+    }
 }
 
 #[deriving(Eq)]
@@ -119,8 +138,8 @@ impl NamespaceResult {
 
 enum NameDefinition {
     NoNameDefinition,           //< The name was unbound.
-    ChildNameDefinition(Def),   //< The name identifies an immediate child.
-    ImportNameDefinition(Def)   //< The name identifies an import.
+    ChildNameDefinition(Def, LastPrivate), //< The name identifies an immediate child.
+    ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
 #[deriving(Eq)]
@@ -275,21 +294,13 @@ enum NameSearchType {
     ImportSearch,
 
     /// We're doing a name search in order to resolve a path type, a path
-    /// expression, or a path pattern. We can select public or private
-    /// names.
-    ///
-    /// XXX: This should be ripped out of resolve and handled later, in
-    /// the privacy checking phase.
-    PathPublicOrPrivateSearch,
-
-    /// We're doing a name search in order to resolve a path type, a path
-    /// expression, or a path pattern. Allow only public names to be selected.
-    PathPublicOnlySearch,
+    /// expression, or a path pattern.
+    PathSearch,
 }
 
 enum BareIdentifierPatternResolution {
-    FoundStructOrEnumVariant(Def),
-    FoundConst(Def),
+    FoundStructOrEnumVariant(Def, LastPrivate),
+    FoundConst(Def, LastPrivate),
     BareIdentifierPatternUnresolved
 }
 
@@ -323,26 +334,26 @@ impl Rib {
 
 /// One import directive.
 struct ImportDirective {
-    privacy: Privacy,
     module_path: ~[Ident],
     subclass: @ImportDirectiveSubclass,
     span: Span,
     id: NodeId,
+    is_public: bool, // see note in ImportResolution about how to use this
 }
 
 impl ImportDirective {
-    fn new(privacy: Privacy,
-               module_path: ~[Ident],
-               subclass: @ImportDirectiveSubclass,
-               span: Span,
-               id: NodeId)
-               -> ImportDirective {
+    fn new(module_path: ~[Ident],
+           subclass: @ImportDirectiveSubclass,
+           span: Span,
+           id: NodeId,
+           is_public: bool)
+           -> ImportDirective {
         ImportDirective {
-            privacy: privacy,
             module_path: module_path,
             subclass: subclass,
             span: span,
-            id: id
+            id: id,
+            is_public: is_public,
         }
     }
 }
@@ -366,9 +377,11 @@ impl Target {
 
 /// An ImportResolution represents a particular `use` directive.
 struct ImportResolution {
-    /// The privacy of this `use` directive (whether it's `use` or
-    /// `pub use`.
-    privacy: Privacy,
+    /// Whether this resolution came from a `use` or a `pub use`. Note that this
+    /// should *not* be used whenever resolution is being performed, this is
+    /// only looked at for glob imports statements currently. Privacy testing
+    /// occurs during a later phase of compilation.
+    is_public: bool,
 
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
@@ -389,15 +402,14 @@ struct ImportResolution {
 }
 
 impl ImportResolution {
-    fn new(privacy: Privacy,
-               id: NodeId) -> ImportResolution {
+    fn new(id: NodeId, is_public: bool) -> ImportResolution {
         ImportResolution {
-            privacy: privacy,
             type_id: id,
             value_id: id,
             outstanding_references: 0,
             value_target: None,
             type_target: None,
+            is_public: is_public,
         }
     }
 
@@ -439,6 +451,7 @@ struct Module {
     parent_link: ParentLink,
     def_id: Option<DefId>,
     kind: ModuleKind,
+    is_public: bool,
 
     children: @mut HashMap<Name, @mut NameBindings>,
     imports: @mut ~[@ImportDirective],
@@ -480,14 +493,16 @@ struct Module {
 
 impl Module {
     fn new(parent_link: ParentLink,
-                def_id: Option<DefId>,
-                kind: ModuleKind,
-                external: bool)
+           def_id: Option<DefId>,
+           kind: ModuleKind,
+           external: bool,
+           is_public: bool)
                 -> Module {
         Module {
             parent_link: parent_link,
             def_id: def_id,
             kind: kind,
+            is_public: is_public,
             children: @mut HashMap::new(),
             imports: @mut ~[],
             external_module_children: @mut HashMap::new(),
@@ -507,7 +522,7 @@ impl Module {
 
 // Records a possibly-private type definition.
 struct TypeNsDef {
-    privacy: Privacy,
+    is_public: bool, // see note in ImportResolution about how to use this
     module_def: Option<@mut Module>,
     type_def: Option<Def>,
     type_span: Option<Span>
@@ -515,7 +530,7 @@ struct TypeNsDef {
 
 // Records a possibly-private value definition.
 struct ValueNsDef {
-    privacy: Privacy,
+    is_public: bool, // see note in ImportResolution about how to use this
     def: Def,
     value_span: Option<Span>,
 }
@@ -537,18 +552,19 @@ enum TraitReferenceType {
 impl NameBindings {
     /// Creates a new module in this set of name bindings.
     fn define_module(&mut self,
-                         privacy: Privacy,
-                         parent_link: ParentLink,
-                         def_id: Option<DefId>,
-                         kind: ModuleKind,
-                         external: bool,
-                         sp: Span) {
+                     parent_link: ParentLink,
+                     def_id: Option<DefId>,
+                     kind: ModuleKind,
+                     external: bool,
+                     is_public: bool,
+                     sp: Span) {
         // Merges the module with the existing type def or creates a new one.
-        let module_ = @mut Module::new(parent_link, def_id, kind, external);
+        let module_ = @mut Module::new(parent_link, def_id, kind, external,
+                                       is_public);
         match self.type_def {
             None => {
                 self.type_def = Some(TypeNsDef {
-                    privacy: privacy,
+                    is_public: is_public,
                     module_def: Some(module_),
                     type_def: None,
                     type_span: Some(sp)
@@ -556,7 +572,7 @@ impl NameBindings {
             }
             Some(type_def) => {
                 self.type_def = Some(TypeNsDef {
-                    privacy: privacy,
+                    is_public: is_public,
                     module_def: Some(module_),
                     type_span: Some(sp),
                     type_def: type_def.type_def
@@ -567,17 +583,18 @@ impl NameBindings {
 
     /// Sets the kind of the module, creating a new one if necessary.
     fn set_module_kind(&mut self,
-                           privacy: Privacy,
-                           parent_link: ParentLink,
-                           def_id: Option<DefId>,
-                           kind: ModuleKind,
-                           external: bool,
-                           _sp: Span) {
+                       parent_link: ParentLink,
+                       def_id: Option<DefId>,
+                       kind: ModuleKind,
+                       external: bool,
+                       is_public: bool,
+                       _sp: Span) {
         match self.type_def {
             None => {
-                let module = @mut Module::new(parent_link, def_id, kind, external);
+                let module = @mut Module::new(parent_link, def_id, kind,
+                                              external, is_public);
                 self.type_def = Some(TypeNsDef {
-                    privacy: privacy,
+                    is_public: is_public,
                     module_def: Some(module),
                     type_def: None,
                     type_span: None,
@@ -587,11 +604,12 @@ impl NameBindings {
                 match type_def.module_def {
                     None => {
                         let module = @mut Module::new(parent_link,
-                                                 def_id,
-                                                 kind,
-                                                 external);
+                                                      def_id,
+                                                      kind,
+                                                      external,
+                                                      is_public);
                         self.type_def = Some(TypeNsDef {
-                            privacy: privacy,
+                            is_public: is_public,
                             module_def: Some(module),
                             type_def: type_def.type_def,
                             type_span: None,
@@ -604,31 +622,32 @@ impl NameBindings {
     }
 
     /// Records a type definition.
-    fn define_type(&mut self, privacy: Privacy, def: Def, sp: Span) {
+    fn define_type(&mut self, def: Def, sp: Span, is_public: bool) {
         // Merges the type with the existing type def or creates a new one.
         match self.type_def {
             None => {
                 self.type_def = Some(TypeNsDef {
-                    privacy: privacy,
                     module_def: None,
                     type_def: Some(def),
-                    type_span: Some(sp)
+                    type_span: Some(sp),
+                    is_public: is_public,
                 });
             }
             Some(type_def) => {
                 self.type_def = Some(TypeNsDef {
-                    privacy: privacy,
                     type_def: Some(def),
                     type_span: Some(sp),
-                    module_def: type_def.module_def
+                    module_def: type_def.module_def,
+                    is_public: is_public,
                 });
             }
         }
     }
 
     /// Records a value definition.
-    fn define_value(&mut self, privacy: Privacy, def: Def, sp: Span) {
-        self.value_def = Some(ValueNsDef { privacy: privacy, def: def, value_span: Some(sp) });
+    fn define_value(&mut self, def: Def, sp: Span, is_public: bool) {
+        self.value_def = Some(ValueNsDef { def: def, value_span: Some(sp),
+                                           is_public: is_public });
     }
 
     /// Returns the module node if applicable.
@@ -663,12 +682,10 @@ impl NameBindings {
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
             TypeNS => match self.type_def {
-                Some(def) => def.privacy != Private,
-                None => false
+                Some(def) => def.is_public, None => false
             },
             ValueNS => match self.value_def {
-                Some(def) => def.privacy != Private,
-                None => false
+                Some(def) => def.is_public, None => false
             }
         }
     }
@@ -700,24 +717,6 @@ impl NameBindings {
                 match self.value_def {
                     None => None,
                     Some(value_def) => Some(value_def.def)
-                }
-            }
-        }
-    }
-
-    fn privacy_for_namespace(&self, namespace: Namespace)
-                                 -> Option<Privacy> {
-        match namespace {
-            TypeNS => {
-                match self.type_def {
-                    None => None,
-                    Some(ref type_def) => Some((*type_def).privacy)
-                }
-            }
-            ValueNS => {
-                match self.value_def {
-                    None => None,
-                    Some(value_def) => Some(value_def.privacy)
                 }
             }
         }
@@ -800,15 +799,15 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 }
 
 fn Resolver(session: Session,
-                lang_items: LanguageItems,
-                crate_span: Span) -> Resolver {
+            lang_items: LanguageItems,
+            crate_span: Span) -> Resolver {
     let graph_root = @mut NameBindings();
 
-    graph_root.define_module(Public,
-                             NoParentLink,
+    graph_root.define_module(NoParentLink,
                              Some(DefId { crate: 0, node: 0 }),
                              NormalModuleKind,
                              false,
+                             true,
                              crate_span);
 
     let current_module = graph_root.get_module();
@@ -846,6 +845,8 @@ fn Resolver(session: Session,
         export_map2: @mut HashMap::new(),
         trait_map: HashMap::new(),
         used_imports: HashSet::new(),
+        external_exports: HashSet::new(),
+        last_private: HashMap::new(),
 
         emit_errors: true,
         intr: session.intr()
@@ -903,6 +904,8 @@ struct Resolver {
     def_map: DefMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
+    external_exports: ExternalExports,
+    last_private: LastPrivateMap,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -1161,7 +1164,7 @@ impl Resolver {
     {
         let ident = item.ident;
         let sp = item.span;
-        let privacy = visibility_to_privacy(item.vis);
+        let is_public = item.vis == ast::public;
 
         match item.node {
             item_mod(*) => {
@@ -1170,11 +1173,11 @@ impl Resolver {
 
                 let parent_link = self.get_parent_link(new_parent, ident);
                 let def_id = DefId { crate: 0, node: item.id };
-                name_bindings.define_module(privacy,
-                                            parent_link,
+                name_bindings.define_module(parent_link,
                                             Some(def_id),
                                             NormalModuleKind,
                                             false,
+                                            item.vis == ast::public,
                                             sp);
 
                 ModuleReducedGraphParent(name_bindings.get_module())
@@ -1190,11 +1193,11 @@ impl Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         let def_id = DefId { crate: 0, node: item.id };
-                        name_bindings.define_module(privacy,
-                                                    parent_link,
+                        name_bindings.define_module(parent_link,
                                                     Some(def_id),
                                                     ExternModuleKind,
                                                     false,
+                                                    true,
                                                     sp);
 
                         ModuleReducedGraphParent(name_bindings.get_module())
@@ -1213,7 +1216,7 @@ impl Resolver {
                 let mutbl = m == ast::MutMutable;
 
                 name_bindings.define_value
-                    (privacy, DefStatic(local_def(item.id), mutbl), sp);
+                    (DefStatic(local_def(item.id), mutbl), sp, is_public);
                 parent
             }
             item_fn(_, purity, _, _, _) => {
@@ -1221,7 +1224,7 @@ impl Resolver {
                 self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
                 let def = DefFn(local_def(item.id), purity);
-                name_bindings.define_value(privacy, def, sp);
+                name_bindings.define_value(def, sp, is_public);
                 new_parent
             }
 
@@ -1231,7 +1234,7 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 name_bindings.define_type
-                    (privacy, DefTy(local_def(item.id)), sp);
+                    (DefTy(local_def(item.id)), sp, is_public);
                 parent
             }
 
@@ -1240,16 +1243,14 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 name_bindings.define_type
-                    (privacy, DefTy(local_def(item.id)), sp);
+                    (DefTy(local_def(item.id)), sp, is_public);
 
                 for variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
                         variant,
                         local_def(item.id),
-                        // inherited => privacy of the enum item
-                        variant_visibility_to_privacy(variant.node.vis,
-                                                      privacy == Public),
-                        new_parent);
+                        new_parent,
+                        is_public);
                 }
                 parent
             }
@@ -1265,12 +1266,13 @@ impl Resolver {
                 let (name_bindings, new_parent) = self.add_child(ident, parent, forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(privacy, DefTy(local_def(item.id)), sp);
+                name_bindings.define_type(DefTy(local_def(item.id)), sp, is_public);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
                 do ctor_id.while_some |cid| {
-                    name_bindings.define_value(privacy, DefStruct(local_def(cid)), sp);
+                    name_bindings.define_value(DefStruct(local_def(cid)), sp,
+                                               is_public);
                     None
                 }
 
@@ -1316,11 +1318,11 @@ impl Resolver {
                                 let parent_link =
                                     self.get_parent_link(new_parent, ident);
                                 let def_id = local_def(item.id);
-                                name_bindings.define_module(Public,
-                                                            parent_link,
+                                name_bindings.define_module(parent_link,
                                                             Some(def_id),
                                                             ImplModuleKind,
                                                             false,
+                                                            true,
                                                             sp);
 
                                 ModuleReducedGraphParent(
@@ -1353,9 +1355,10 @@ impl Resolver {
                                 }
                             };
 
-                            method_name_bindings.define_value(Public,
-                                                              def,
-                                                              method.span);
+                            let is_public = method.vis == ast::public;
+                            method_name_bindings.define_value(def,
+                                                              method.span,
+                                                              is_public);
                         }
                     }
                     _ => {}
@@ -1372,11 +1375,11 @@ impl Resolver {
 
                 // Add all the methods within to a new module.
                 let parent_link = self.get_parent_link(parent, ident);
-                name_bindings.define_module(privacy,
-                                            parent_link,
+                name_bindings.define_module(parent_link,
                                             Some(local_def(item.id)),
                                             TraitModuleKind,
                                             false,
+                                            item.vis == ast::public,
                                             sp);
                 let module_parent = ModuleReducedGraphParent(name_bindings.
                                                              get_module());
@@ -1408,7 +1411,7 @@ impl Resolver {
                                        module_parent,
                                        ForbidDuplicateValues,
                                        ty_m.span);
-                    method_name_bindings.define_value(Public, def, ty_m.span);
+                    method_name_bindings.define_value(def, ty_m.span, true);
 
                     // Add it to the trait info if not static.
                     match ty_m.explicit_self.node {
@@ -1430,7 +1433,7 @@ impl Resolver {
                     }
                 }
 
-                name_bindings.define_type(privacy, DefTrait(def_id), sp);
+                name_bindings.define_type(DefTrait(def_id), sp, is_public);
                 new_parent
             }
 
@@ -1443,35 +1446,30 @@ impl Resolver {
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and/or value namespaces.
     fn build_reduced_graph_for_variant(&mut self,
-                                           variant: &variant,
-                                           item_id: DefId,
-                                           parent_privacy: Privacy,
-                                           parent: ReducedGraphParent) {
+                                       variant: &variant,
+                                       item_id: DefId,
+                                       parent: ReducedGraphParent,
+                                       parent_public: bool) {
         let ident = variant.node.name;
-
-        let privacy =
-            match variant.node.vis {
-                public    => Public,
-                private   => Private,
-                inherited => parent_privacy
-            };
+        // XXX: this is unfortunate to have to do this privacy calculation
+        //      here. This should be living in middle::privacy, but it's
+        //      necessary to keep around in some form becaues of glob imports...
+        let is_public = parent_public && variant.node.vis != ast::private;
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
                 let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
                                                 variant.span);
-                child.define_value(privacy,
-                                   DefVariant(item_id,
-                                               local_def(variant.node.id), false),
-                                   variant.span);
+                child.define_value(DefVariant(item_id,
+                                              local_def(variant.node.id), false),
+                                   variant.span, is_public);
             }
             struct_variant_kind(_) => {
                 let (child, _) = self.add_child(ident, parent, ForbidDuplicateTypesAndValues,
                                                 variant.span);
-                child.define_type(privacy,
-                                  DefVariant(item_id,
-                                              local_def(variant.node.id), true),
-                                  variant.span);
+                child.define_type(DefVariant(item_id,
+                                             local_def(variant.node.id), true),
+                                  variant.span, is_public);
                 self.structs.insert(local_def(variant.node.id));
             }
         }
@@ -1482,7 +1480,6 @@ impl Resolver {
     fn build_reduced_graph_for_view_item(&mut self,
                                              view_item: &view_item,
                                              parent: ReducedGraphParent) {
-        let privacy = visibility_to_privacy(view_item.vis);
         match view_item.node {
             view_item_use(ref view_paths) => {
                 for view_path in view_paths.iter() {
@@ -1515,39 +1512,40 @@ impl Resolver {
 
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
+                    let is_public = view_item.vis == ast::public;
                     match view_path.node {
                         view_path_simple(binding, ref full_path, id) => {
                             let source_ident =
                                 full_path.segments.last().identifier;
                             let subclass = @SingleImport(binding,
                                                          source_ident);
-                            self.build_import_directive(privacy,
-                                                        module_,
+                            self.build_import_directive(module_,
                                                         module_path,
                                                         subclass,
                                                         view_path.span,
-                                                        id);
+                                                        id,
+                                                        is_public);
                         }
                         view_path_list(_, ref source_idents, _) => {
                             for source_ident in source_idents.iter() {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name, name);
                                 self.build_import_directive(
-                                    privacy,
                                     module_,
                                     module_path.clone(),
                                     subclass,
                                     source_ident.span,
-                                    source_ident.node.id);
+                                    source_ident.node.id,
+                                    is_public);
                             }
                         }
                         view_path_glob(_, id) => {
-                            self.build_import_directive(privacy,
-                                                        module_,
+                            self.build_import_directive(module_,
                                                         module_path,
                                                         @GlobImport,
                                                         view_path.span,
-                                                        id);
+                                                        id,
+                                                        is_public);
                         }
                     }
                 }
@@ -1559,12 +1557,14 @@ impl Resolver {
                                                         node_id) {
                     Some(crate_id) => {
                         let def_id = DefId { crate: crate_id, node: 0 };
+                        self.external_exports.insert(def_id);
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(parent), name);
                         let external_module = @mut Module::new(parent_link,
                                                           Some(def_id),
                                                           NormalModuleKind,
-                                                          false);
+                                                          false,
+                                                          true);
 
                         parent.external_module_children.insert(
                             name.name,
@@ -1586,6 +1586,7 @@ impl Resolver {
                                                 f: &fn(&mut Resolver,
                                                        ReducedGraphParent)) {
         let name = foreign_item.ident;
+        let is_public = foreign_item.vis == ast::public;
         let (name_bindings, new_parent) =
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
@@ -1593,7 +1594,7 @@ impl Resolver {
         match foreign_item.node {
             foreign_item_fn(_, ref generics) => {
                 let def = DefFn(local_def(foreign_item.id), unsafe_fn);
-                name_bindings.define_value(Public, def, foreign_item.span);
+                name_bindings.define_value(def, foreign_item.span, is_public);
 
                 do self.with_type_parameter_rib(
                     HasTypeParameters(
@@ -1604,7 +1605,7 @@ impl Resolver {
             }
             foreign_item_static(_, m) => {
                 let def = DefStatic(local_def(foreign_item.id), m);
-                name_bindings.define_value(Public, def, foreign_item.span);
+                name_bindings.define_value(def, foreign_item.span, is_public);
 
                 f(self, new_parent)
             }
@@ -1628,6 +1629,7 @@ impl Resolver {
                 BlockParentLink(parent_module, block_id),
                 None,
                 AnonymousModuleKind,
+                false,
                 false);
             parent_module.anonymous_children.insert(block_id, new_module);
             ModuleReducedGraphParent(new_module)
@@ -1638,15 +1640,26 @@ impl Resolver {
 
     fn handle_external_def(&mut self,
                            def: Def,
-                           visibility: ast::visibility,
+                           vis: visibility,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
                            ident: Ident,
                            new_parent: ReducedGraphParent) {
-        let privacy = visibility_to_privacy(visibility);
         debug2!("(building reduced graph for \
                 external crate) building external def, priv {:?}",
-               privacy);
+               vis);
+        let is_public = vis == ast::public;
+        let is_exported = is_public && match new_parent {
+            ModuleReducedGraphParent(module) => {
+                match module.def_id {
+                    None => true,
+                    Some(did) => self.external_exports.contains(&did)
+                }
+            }
+        };
+        if is_exported {
+            self.external_exports.insert(def_id_of_def(def));
+        }
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
           DefTy(def_id) => {
@@ -1662,11 +1675,11 @@ impl Resolver {
                         {}", final_ident);
                 let parent_link = self.get_parent_link(new_parent, ident);
 
-                child_name_bindings.define_module(privacy,
-                                                  parent_link,
+                child_name_bindings.define_module(parent_link,
                                                   Some(def_id),
                                                   NormalModuleKind,
                                                   true,
+                                                  is_public,
                                                   dummy_sp());
               }
             }
@@ -1681,20 +1694,20 @@ impl Resolver {
                     variant {}",
                    final_ident);
             // We assume the parent is visible, or else we wouldn't have seen
-            // it.
-            let privacy = variant_visibility_to_privacy(visibility, true);
+            // it. Also variants are public-by-default if the parent was also
+            // public.
+            let is_public = vis != ast::private;
             if is_struct {
-                child_name_bindings.define_type(privacy, def, dummy_sp());
+                child_name_bindings.define_type(def, dummy_sp(), is_public);
                 self.structs.insert(variant_id);
-            }
-            else {
-                child_name_bindings.define_value(privacy, def, dummy_sp());
+            } else {
+                child_name_bindings.define_value(def, dummy_sp(), is_public);
             }
           }
           DefFn(*) | DefStaticMethod(*) | DefStatic(*) => {
             debug2!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
-            child_name_bindings.define_value(privacy, def, dummy_sp());
+            child_name_bindings.define_value(def, dummy_sp(), is_public);
           }
           DefTrait(def_id) => {
               debug2!("(building reduced graph for external \
@@ -1720,6 +1733,9 @@ impl Resolver {
                   if explicit_self != sty_static {
                       interned_method_names.insert(method_name.name);
                   }
+                  if is_exported {
+                      self.external_exports.insert(method_def_id);
+                  }
               }
               for name in interned_method_names.iter() {
                   if !self.method_map.contains_key(name) {
@@ -1731,35 +1747,37 @@ impl Resolver {
                   }
               }
 
-              child_name_bindings.define_type(privacy, def, dummy_sp());
+              child_name_bindings.define_type(def, dummy_sp(), is_public);
 
               // Define a module if necessary.
               let parent_link = self.get_parent_link(new_parent, ident);
-              child_name_bindings.set_module_kind(privacy,
-                                                  parent_link,
+              child_name_bindings.set_module_kind(parent_link,
                                                   Some(def_id),
                                                   TraitModuleKind,
                                                   true,
+                                                  is_public,
                                                   dummy_sp())
           }
           DefTy(_) => {
               debug2!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
-              child_name_bindings.define_type(privacy, def, dummy_sp());
+              child_name_bindings.define_type(def, dummy_sp(), is_public);
           }
           DefStruct(def_id) => {
             debug2!("(building reduced graph for external \
                     crate) building type and value for {}",
                    final_ident);
-            child_name_bindings.define_type(privacy, def, dummy_sp());
+            child_name_bindings.define_type(def, dummy_sp(), is_public);
             if get_struct_fields(self.session.cstore, def_id).len() == 0 {
-                child_name_bindings.define_value(privacy, def, dummy_sp());
+                child_name_bindings.define_value(def, dummy_sp(), is_public);
             }
             self.structs.insert(def_id);
           }
           DefMethod(*) => {
-            // Ignored; handled elsewhere.
+              debug2!("(building reduced graph for external crate) \
+                      ignoring {:?}", def);
+              // Ignored; handled elsewhere.
           }
           DefSelf(*) | DefArg(*) | DefLocal(*) |
           DefPrimTy(*) | DefTyParam(*) | DefBinding(*) |
@@ -1854,10 +1872,10 @@ impl Resolver {
                                             self.get_parent_link(new_parent,
                                                                  final_ident);
                                         child_name_bindings.define_module(
-                                            Public,
                                             parent_link,
                                             Some(def),
                                             ImplModuleKind,
+                                            true,
                                             true,
                                             dummy_sp());
                                         type_module =
@@ -1886,10 +1904,9 @@ impl Resolver {
                                         static_method_info.def_id,
                                         static_method_info.purity);
 
-                                    let p = visibility_to_privacy(
-                                        static_method_info.vis);
                                     method_name_bindings.define_value(
-                                        p, def, dummy_sp());
+                                        def, dummy_sp(),
+                                        visibility == ast::public);
                                 }
                             }
 
@@ -1943,7 +1960,7 @@ impl Resolver {
     /// Builds the reduced graph rooted at the 'use' directive for an external
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self,
-                                                  root: @mut Module) {
+                                              root: @mut Module) {
         do csearch::each_top_level_item_of_crate(self.session.cstore,
                                                  root.def_id.unwrap().crate)
                 |def_like, ident, visibility| {
@@ -1956,14 +1973,15 @@ impl Resolver {
 
     /// Creates and adds an import directive to the given module.
     fn build_import_directive(&mut self,
-                                  privacy: Privacy,
-                                  module_: @mut Module,
-                                  module_path: ~[Ident],
-                                  subclass: @ImportDirectiveSubclass,
-                                  span: Span,
-                                  id: NodeId) {
-        let directive = @ImportDirective::new(privacy, module_path,
-                                         subclass, span, id);
+                              module_: @mut Module,
+                              module_path: ~[Ident],
+                              subclass: @ImportDirectiveSubclass,
+                              span: Span,
+                              id: NodeId,
+                              is_public: bool) {
+        let directive = @ImportDirective::new(module_path,
+                                              subclass, span, id,
+                                              is_public);
         module_.imports.push(directive);
 
         // Bump the reference count on the name. Or, if this is a glob, set
@@ -1972,8 +1990,7 @@ impl Resolver {
         match *subclass {
             SingleImport(target, _) => {
                 debug2!("(building import directive) building import \
-                        directive: privacy {:?} {}::{}",
-                       privacy,
+                        directive: {}::{}",
                        self.idents_to_str(directive.module_path),
                        self.session.str_of(target));
 
@@ -1984,13 +2001,12 @@ impl Resolver {
                         resolution.outstanding_references += 1;
 
                         // the source of this name is different now
-                        resolution.privacy = privacy;
                         resolution.type_id = id;
                         resolution.value_id = id;
                     }
                     None => {
                         debug2!("(building import directive) creating new");
-                        let resolution = @mut ImportResolution::new(privacy, id);
+                        let resolution = @mut ImportResolution::new(id, is_public);
                         resolution.outstanding_references = 1;
                         module_.import_resolutions.insert(target.name, resolution);
                     }
@@ -2153,8 +2169,8 @@ impl Resolver {
     /// currently-unresolved imports, or success if we know the name exists.
     /// If successful, the resolved bindings are written into the module.
     fn resolve_import_for_module(&mut self,
-                                     module_: @mut Module,
-                                     import_directive: @ImportDirective)
+                                 module_: @mut Module,
+                                 import_directive: @ImportDirective)
                                      -> ResolveResult<()> {
         let mut resolution_result = Failed;
         let module_path = &import_directive.module_path;
@@ -2165,9 +2181,9 @@ impl Resolver {
                self.module_to_str(module_));
 
         // First, resolve the module path for the directive, if necessary.
-        let containing_module = if module_path.len() == 0 {
+        let container = if module_path.len() == 0 {
             // Use the crate root.
-            Some(self.graph_root.get_module())
+            Some((self.graph_root.get_module(), AllPublic))
         } else {
             match self.resolve_module_path(module_,
                                            *module_path,
@@ -2180,13 +2196,13 @@ impl Resolver {
                     resolution_result = Indeterminate;
                     None
                 }
-                Success(containing_module) => Some(containing_module),
+                Success(container) => Some(container),
             }
         };
 
-        match containing_module {
+        match container {
             None => {}
-            Some(containing_module) => {
+            Some((containing_module, lp)) => {
                 // We found the module that the target is contained
                 // within. Attempt to resolve the import within it.
 
@@ -2197,15 +2213,16 @@ impl Resolver {
                                                        containing_module,
                                                        target,
                                                        source,
-                                                       import_directive);
+                                                       import_directive,
+                                                       lp);
                     }
                     GlobImport => {
-                        let privacy = import_directive.privacy;
                         resolution_result =
-                            self.resolve_glob_import(privacy,
-                                                     module_,
+                            self.resolve_glob_import(module_,
                                                      containing_module,
-                                                     import_directive.id);
+                                                     import_directive.id,
+                                                     import_directive.is_public,
+                                                     lp);
                     }
                 }
             }
@@ -2246,7 +2263,7 @@ impl Resolver {
                                             -> NameBindings {
         NameBindings {
             type_def: Some(TypeNsDef {
-                privacy: Public,
+                is_public: false,
                 module_def: Some(module),
                 type_def: None,
                 type_span: None
@@ -2256,18 +2273,21 @@ impl Resolver {
     }
 
     fn resolve_single_import(&mut self,
-                                 module_: @mut Module,
-                                 containing_module: @mut Module,
-                                 target: Ident,
-                                 source: Ident,
-                                 directive: &ImportDirective)
+                             module_: @mut Module,
+                             containing_module: @mut Module,
+                             target: Ident,
+                             source: Ident,
+                             directive: &ImportDirective,
+                             lp: LastPrivate)
                                  -> ResolveResult<()> {
         debug2!("(resolving single import) resolving `{}` = `{}::{}` from \
-                `{}`",
+                `{}` id {}, last private {:?}",
                self.session.str_of(target),
                self.module_to_str(containing_module),
                self.session.str_of(source),
-               self.module_to_str(module_));
+               self.module_to_str(module_),
+               directive.id,
+               lp);
 
         // We need to resolve both namespaces for this to succeed.
         //
@@ -2295,6 +2315,7 @@ impl Resolver {
 
         // Unless we managed to find a result in both namespaces (unlikely),
         // search imports as well.
+        let mut used_reexport = false;
         match (value_result, type_result) {
             (BoundResult(*), BoundResult(*)) => {} // Continue.
             _ => {
@@ -2337,7 +2358,7 @@ impl Resolver {
 
                             // Import resolutions must be declared with "pub"
                             // in order to be exported.
-                            if import_resolution.privacy == Private {
+                            if !import_resolution.is_public {
                                 return UnboundResult;
                             }
 
@@ -2360,11 +2381,14 @@ impl Resolver {
                         if value_result.is_unknown() {
                             value_result = get_binding(self, *import_resolution,
                                                        ValueNS);
+                            used_reexport = import_resolution.is_public;
                         }
                         if type_result.is_unknown() {
                             type_result = get_binding(self, *import_resolution,
                                                       TypeNS);
+                            used_reexport = import_resolution.is_public;
                         }
+
                     }
                     Some(_) => {
                         // The import is unresolved. Bail out.
@@ -2378,6 +2402,7 @@ impl Resolver {
 
         // If we didn't find a result in the type namespace, search the
         // external modules.
+        let mut used_public = false;
         match type_result {
             BoundResult(*) => {}
             _ => {
@@ -2390,6 +2415,7 @@ impl Resolver {
                                 *module);
                         type_result = BoundResult(containing_module,
                                                   name_bindings);
+                        used_public = true;
                     }
                 }
             }
@@ -2405,6 +2431,7 @@ impl Resolver {
                 import_resolution.value_target =
                     Some(Target::new(target_module, name_bindings));
                 import_resolution.value_id = directive.id;
+                used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2418,6 +2445,7 @@ impl Resolver {
                 import_resolution.type_target =
                     Some(Target::new(target_module, name_bindings));
                 import_resolution.type_id = directive.id;
+                used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2425,61 +2453,16 @@ impl Resolver {
             }
         }
 
-        let i = import_resolution;
-        let mut resolve_fail = false;
-        let mut priv_fail = false;
-        match (i.value_target, i.type_target) {
-            // If this name wasn't found in either namespace, it's definitely
-            // unresolved.
-            (None, None) => { resolve_fail = true; }
-            // If it's private, it's also unresolved.
-            (Some(t), None) | (None, Some(t)) => {
-                let bindings = &mut *t.bindings;
-                match bindings.type_def {
-                    Some(ref type_def) => {
-                        if type_def.privacy == Private {
-                            priv_fail = true;
-                        }
-                    }
-                    _ => ()
-                }
-                match bindings.value_def {
-                    Some(ref value_def) => {
-                        if value_def.privacy == Private {
-                            priv_fail = true;
-                        }
-                    }
-                    _ => ()
-                }
-            }
-            // It's also an error if there's both a type and a value with this
-            // name, but both are private
-            (Some(val), Some(ty)) => {
-                match (val.bindings.value_def, ty.bindings.value_def) {
-                    (Some(ref value_def), Some(ref type_def)) =>
-                        if value_def.privacy == Private
-                            && type_def.privacy == Private {
-                                priv_fail = true;
-                        },
-                    _ => ()
-                }
-            }
-        }
-
-        let span = directive.span;
-        if resolve_fail {
-            let msg = format!("unresolved import: there is no `{}` in `{}`",
+        if import_resolution.value_target.is_none() &&
+           import_resolution.type_target.is_none() {
+            let msg = format!("unresolved import: there is no \
+                               `{}` in `{}`",
                               self.session.str_of(source),
                               self.module_to_str(containing_module));
-            self.resolve_error(span, msg);
-            return Failed;
-        } else if priv_fail {
-            let msg = format!("unresolved import: found `{}` in `{}` but it is \
-                              private", self.session.str_of(source),
-                              self.module_to_str(containing_module));
-            self.resolve_error(span, msg);
+            self.resolve_error(directive.span, msg);
             return Failed;
         }
+        let used_public = used_reexport || used_public;
 
         assert!(import_resolution.outstanding_references >= 1);
         import_resolution.outstanding_references -= 1;
@@ -2487,19 +2470,23 @@ impl Resolver {
         // record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        match i.value_target {
+        match import_resolution.value_target {
             Some(target) => {
-                self.def_map.insert(i.value_id,
-                                    target.bindings.value_def.get_ref().def);
+                let def = target.bindings.def_for_namespace(ValueNS).unwrap();
+                self.def_map.insert(directive.id, def);
+                let did = def_id_of_def(def);
+                self.last_private.insert(directive.id,
+                    if used_public {lp} else {DependsOn(did)});
             }
             None => {}
         }
-        match i.type_target {
+        match import_resolution.type_target {
             Some(target) => {
-                match target.bindings.type_def.get_ref().type_def {
-                    Some(def) => { self.def_map.insert(i.type_id, def); }
-                    None => {}
-                }
+                let def = target.bindings.def_for_namespace(TypeNS).unwrap();
+                self.def_map.insert(directive.id, def);
+                let did = def_id_of_def(def);
+                self.last_private.insert(directive.id,
+                    if used_public {lp} else {DependsOn(did)});
             }
             None => {}
         }
@@ -2512,15 +2499,16 @@ impl Resolver {
     // succeeds or bails out (as importing * from an empty module or a module
     // that exports nothing is valid).
     fn resolve_glob_import(&mut self,
-                               privacy: Privacy,
-                               module_: @mut Module,
-                               containing_module: @mut Module,
-                               id: NodeId)
-                               -> ResolveResult<()> {
+                           module_: @mut Module,
+                           containing_module: @mut Module,
+                           id: NodeId,
+                           is_public: bool,
+                           lp: LastPrivate)
+                           -> ResolveResult<()> {
         // This function works in a highly imperative manner; it eagerly adds
         // everything it can to the list of import resolutions of the module
         // node.
-        debug2!("(resolving glob import) resolving {:?} glob import", privacy);
+        debug2!("(resolving glob import) resolving glob import {}", id);
 
         // We must bail out if the node has unresolved imports of any kind
         // (including globs).
@@ -2540,12 +2528,17 @@ impl Resolver {
                    target_import_resolution.type_target.is_none(),
                    self.module_to_str(module_));
 
+            if !target_import_resolution.is_public {
+                debug2!("(resolving glob import) nevermind, just kidding");
+                continue
+            }
+
             // Here we merge two import resolutions.
             match module_.import_resolutions.find(ident) {
-                None if target_import_resolution.privacy == Public => {
+                None => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
-                        @mut ImportResolution::new(privacy, id);
+                        @mut ImportResolution::new(id, is_public);
                     new_import_resolution.value_target =
                         target_import_resolution.value_target;
                     new_import_resolution.type_target =
@@ -2554,7 +2547,6 @@ impl Resolver {
                     module_.import_resolutions.insert
                         (*ident, new_import_resolution);
                 }
-                None => { /* continue ... */ }
                 Some(&dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
                     // level.
@@ -2577,6 +2569,7 @@ impl Resolver {
                                 Some(type_target);
                         }
                     }
+                    dest_import_resolution.is_public = is_public;
                 }
             }
         }
@@ -2587,7 +2580,8 @@ impl Resolver {
             match module_.import_resolutions.find(&name) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @mut ImportResolution::new(privacy, id);
+                    dest_import_resolution = @mut ImportResolution::new(id,
+                                                                        is_public);
                     module_.import_resolutions.insert
                         (name, dest_import_resolution);
                 }
@@ -2597,11 +2591,10 @@ impl Resolver {
             }
 
             debug2!("(resolving glob import) writing resolution `{}` in `{}` \
-                    to `{}`, privacy={:?}",
+                    to `{}`",
                    interner_get(name),
                    self.module_to_str(containing_module),
-                   self.module_to_str(module_),
-                   dest_import_resolution.privacy);
+                   self.module_to_str(module_));
 
             // Merge the child item into the import resolution.
             if name_bindings.defined_in_public_namespace(ValueNS) {
@@ -2616,6 +2609,7 @@ impl Resolver {
                     Some(Target::new(containing_module, name_bindings));
                 dest_import_resolution.type_id = id;
             }
+            dest_import_resolution.is_public = is_public;
         };
 
         // Add all children from the containing module.
@@ -2635,6 +2629,7 @@ impl Resolver {
         match containing_module.def_id {
             Some(did) => {
                 self.def_map.insert(id, DefMod(did));
+                self.last_private.insert(id, lp);
             }
             None => {}
         }
@@ -2645,15 +2640,17 @@ impl Resolver {
 
     /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(&mut self,
-                                         module_: @mut Module,
-                                         module_path: &[Ident],
-                                         index: uint,
-                                         span: Span,
-                                         mut name_search_type: NameSearchType)
-                                         -> ResolveResult<@mut Module> {
+                                     module_: @mut Module,
+                                     module_path: &[Ident],
+                                     index: uint,
+                                     span: Span,
+                                     name_search_type: NameSearchType,
+                                     lp: LastPrivate)
+                                -> ResolveResult<(@mut Module, LastPrivate)> {
         let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
+        let mut closest_private = lp;
 
         // Resolve the module part of the path. This does not involve looking
         // upward though scope chains; we simply resolve names directly in
@@ -2690,7 +2687,7 @@ impl Resolver {
                             self.session.str_of(name));
                     return Indeterminate;
                 }
-                Success(target) => {
+                Success((target, used_proxy)) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     match target.bindings.type_def {
@@ -2720,7 +2717,23 @@ impl Resolver {
                                                  or type implementation");
                                             return Failed;
                                         }
-                                        (_, _) => search_module = module_def,
+                                        (_, _) => {
+                                            search_module = module_def;
+
+                                            // Keep track of the closest
+                                            // private module used when
+                                            // resolving this import chain.
+                                            if !used_proxy &&
+                                               !search_module.is_public {
+                                                match search_module.def_id {
+                                                    Some(did) => {
+                                                        closest_private =
+                                                            DependsOn(did);
+                                                    }
+                                                    None => {}
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2738,28 +2751,23 @@ impl Resolver {
             }
 
             index += 1;
-
-            // After the first element of the path, allow searching only
-            // through public identifiers.
-            //
-            // XXX: Rip this out and move it to the privacy checker.
-            if name_search_type == PathPublicOrPrivateSearch {
-                name_search_type = PathPublicOnlySearch
-            }
         }
 
-        return Success(search_module);
+        return Success((search_module, closest_private));
     }
 
     /// Attempts to resolve the module part of an import directive or path
     /// rooted at the given module.
+    ///
+    /// On success, returns the resolved module, and the closest *private*
+    /// module found to the destination when resolving this path.
     fn resolve_module_path(&mut self,
-                               module_: @mut Module,
-                               module_path: &[Ident],
-                               use_lexical_scope: UseLexicalScopeFlag,
-                               span: Span,
-                               name_search_type: NameSearchType)
-                               -> ResolveResult<@mut Module> {
+                           module_: @mut Module,
+                           module_path: &[Ident],
+                           use_lexical_scope: UseLexicalScopeFlag,
+                           span: Span,
+                           name_search_type: NameSearchType)
+                               -> ResolveResult<(@mut Module, LastPrivate)> {
         let module_path_len = module_path.len();
         assert!(module_path_len > 0);
 
@@ -2774,6 +2782,7 @@ impl Resolver {
 
         let search_module;
         let start_index;
+        let last_private;
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
@@ -2805,6 +2814,7 @@ impl Resolver {
                         // resolution process at index zero.
                         search_module = self.graph_root.get_module();
                         start_index = 0;
+                        last_private = AllPublic;
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
@@ -2826,6 +2836,7 @@ impl Resolver {
                             Success(containing_module) => {
                                 search_module = containing_module;
                                 start_index = 1;
+                                last_private = AllPublic;
                             }
                         }
                     }
@@ -2834,6 +2845,7 @@ impl Resolver {
             Success(PrefixFound(containing_module, index)) => {
                 search_module = containing_module;
                 start_index = index;
+                last_private = DependsOn(containing_module.def_id.unwrap());
             }
         }
 
@@ -2841,18 +2853,19 @@ impl Resolver {
                                            module_path,
                                            start_index,
                                            span,
-                                           name_search_type)
+                                           name_search_type,
+                                           last_private)
     }
 
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_item_in_lexical_scope(&mut self,
-                                         module_: @mut Module,
-                                         name: Ident,
-                                         namespace: Namespace,
-                                         search_through_modules:
-                                         SearchThroughModulesFlag)
-                                         -> ResolveResult<Target> {
+                                     module_: @mut Module,
+                                     name: Ident,
+                                     namespace: Namespace,
+                                     search_through_modules:
+                                     SearchThroughModulesFlag)
+                                    -> ResolveResult<(Target, bool)> {
         debug2!("(resolving item in lexical scope) resolving `{}` in \
                 namespace {:?} in `{}`",
                self.session.str_of(name),
@@ -2865,7 +2878,8 @@ impl Resolver {
         match module_.children.find(&name.name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
-                return Success(Target::new(module_, *name_bindings));
+                debug2!("top name bindings succeeded");
+                return Success((Target::new(module_, *name_bindings), false));
             }
             Some(_) | None => { /* Not found; continue. */ }
         }
@@ -2890,7 +2904,7 @@ impl Resolver {
                         debug2!("(resolving item in lexical scope) using \
                                 import resolution");
                         self.used_imports.insert(import_resolution.id(namespace));
-                        return Success(target);
+                        return Success((target, false));
                     }
                 }
             }
@@ -2904,7 +2918,8 @@ impl Resolver {
                     let name_bindings =
                         @mut Resolver::create_name_bindings_from_module(
                             *module);
-                    return Success(Target::new(module_, name_bindings));
+                    debug2!("lower name bindings succeeded");
+                    return Success((Target::new(module_, name_bindings), false));
                 }
             }
         }
@@ -2954,7 +2969,7 @@ impl Resolver {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               namespace,
-                                              PathPublicOrPrivateSearch) {
+                                              PathSearch) {
                 Failed => {
                     // Continue up the search chain.
                 }
@@ -2966,9 +2981,11 @@ impl Resolver {
                             higher scope; bailing");
                     return Indeterminate;
                 }
-                Success(target) => {
+                Success((target, used_reexport)) => {
                     // We found the module.
-                    return Success(target);
+                    debug2!("(resolving item in lexical scope) found name \
+                            in module, done");
+                    return Success((target, used_reexport));
                 }
             }
         }
@@ -2976,15 +2993,15 @@ impl Resolver {
 
     /// Resolves a module name in the current lexical scope.
     fn resolve_module_in_lexical_scope(&mut self,
-                                           module_: @mut Module,
-                                           name: Ident)
-                                           -> ResolveResult<@mut Module> {
+                                       module_: @mut Module,
+                                       name: Ident)
+                                -> ResolveResult<@mut Module> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
         let resolve_result = self.resolve_item_in_lexical_scope(
             module_, name, TypeNS, DontSearchThroughModules);
         match resolve_result {
-            Success(target) => {
+            Success((target, _)) => {
                 let bindings = &mut *target.bindings;
                 match bindings.type_def {
                     Some(ref type_def) => {
@@ -3064,8 +3081,8 @@ impl Resolver {
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
     fn resolve_module_prefix(&mut self,
-                                 module_: @mut Module,
-                                 module_path: &[Ident])
+                             module_: @mut Module,
+                             module_path: &[Ident])
                                  -> ResolveResult<ModulePrefixResult> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -3106,12 +3123,15 @@ impl Resolver {
     /// Attempts to resolve the supplied name in the given module for the
     /// given namespace. If successful, returns the target corresponding to
     /// the name.
+    ///
+    /// The boolean returned on success is an indicator of whether this lookup
+    /// passed through a public re-export proxy.
     fn resolve_name_in_module(&mut self,
-                                  module_: @mut Module,
-                                  name: Ident,
-                                  namespace: Namespace,
-                                  name_search_type: NameSearchType)
-                                  -> ResolveResult<Target> {
+                              module_: @mut Module,
+                              name: Ident,
+                              namespace: Namespace,
+                              name_search_type: NameSearchType)
+                              -> ResolveResult<(Target, bool)> {
         debug2!("(resolving name in module) resolving `{}` in `{}`",
                self.session.str_of(name),
                self.module_to_str(module_));
@@ -3122,7 +3142,7 @@ impl Resolver {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug2!("(resolving name in module) found node as child");
-                return Success(Target::new(module_, *name_bindings));
+                return Success((Target::new(module_, *name_bindings), false));
             }
             Some(_) | None => {
                 // Continue.
@@ -3133,39 +3153,30 @@ impl Resolver {
 
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
-        if name_search_type == PathPublicOrPrivateSearch ||
-                name_search_type == PathPublicOnlySearch {
+        if name_search_type == PathSearch {
             assert_eq!(module_.glob_count, 0);
         }
 
         // Check the list of resolved imports.
         match module_.import_resolutions.find(&name.name) {
             Some(import_resolution) => {
-                if import_resolution.privacy == Public &&
+                if import_resolution.is_public &&
                         import_resolution.outstanding_references != 0 {
                     debug2!("(resolving name in module) import \
-                            unresolved; bailing out");
+                           unresolved; bailing out");
                     return Indeterminate;
                 }
-
                 match import_resolution.target_for_namespace(namespace) {
                     None => {
                         debug2!("(resolving name in module) name found, \
                                 but not in namespace {:?}",
                                namespace);
                     }
-                    Some(target)
-                            if name_search_type ==
-                                PathPublicOrPrivateSearch ||
-                            import_resolution.privacy == Public => {
+                    Some(target) => {
                         debug2!("(resolving name in module) resolved to \
                                 import");
                         self.used_imports.insert(import_resolution.id(namespace));
-                        return Success(target);
-                    }
-                    Some(_) => {
-                        debug2!("(resolving name in module) name found, \
-                                but not public");
+                        return Success((target, true));
                     }
                 }
             }
@@ -3180,7 +3191,7 @@ impl Resolver {
                     let name_bindings =
                         @mut Resolver::create_name_bindings_from_module(
                             *module);
-                    return Success(Target::new(module_, name_bindings));
+                    return Success((Target::new(module_, name_bindings), false));
                 }
             }
         }
@@ -3299,14 +3310,13 @@ impl Resolver {
     }
 
     fn add_exports_of_namebindings(&mut self,
-                                       exports2: &mut ~[Export2],
-                                       name: Name,
-                                       namebindings: @mut NameBindings,
-                                       ns: Namespace,
-                                       reexport: bool) {
-        match (namebindings.def_for_namespace(ns),
-               namebindings.privacy_for_namespace(ns)) {
-            (Some(d), Some(Public)) => {
+                                   exports2: &mut ~[Export2],
+                                   name: Name,
+                                   namebindings: @mut NameBindings,
+                                   ns: Namespace,
+                                   reexport: bool) {
+        match namebindings.def_for_namespace(ns) {
+            Some(d) => {
                 debug2!("(computing exports) YES: {} '{}' => {:?}",
                        if reexport { ~"reexport" } else { ~"export"},
                        interner_get(name),
@@ -3317,34 +3327,27 @@ impl Resolver {
                     def_id: def_id_of_def(d)
                 });
             }
-            (Some(_), Some(privacy)) => {
-                debug2!("(computing reexports) NO: privacy {:?}", privacy);
-            }
-            (d_opt, p_opt) => {
-                debug2!("(computing reexports) NO: {:?}, {:?}", d_opt, p_opt);
+            d_opt => {
+                debug2!("(computing reexports) NO: {:?}", d_opt);
             }
         }
     }
 
     fn add_exports_for_module(&mut self,
-                                  exports2: &mut ~[Export2],
-                                  module_: @mut Module) {
+                              exports2: &mut ~[Export2],
+                              module_: @mut Module) {
         for (name, importresolution) in module_.import_resolutions.iter() {
-            if importresolution.privacy != Public {
-                debug2!("(computing exports) not reexporting private `{}`",
-                       interner_get(*name));
-                continue;
-            }
+            if !importresolution.is_public { continue }
             let xs = [TypeNS, ValueNS];
-            for ns in xs.iter() {
-                match importresolution.target_for_namespace(*ns) {
+            for &ns in xs.iter() {
+                match importresolution.target_for_namespace(ns) {
                     Some(target) => {
                         debug2!("(computing exports) maybe reexport '{}'",
                                interner_get(*name));
-                        self.add_exports_of_namebindings(&mut *exports2,
+                        self.add_exports_of_namebindings(exports2,
                                                          *name,
                                                          target.bindings,
-                                                         *ns,
+                                                         ns,
                                                          true)
                     }
                     _ => ()
@@ -3753,7 +3756,7 @@ impl Resolver {
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,
-                                    DefTyParamBinder(node_id));
+                                    (DefTyParamBinder(node_id), AllPublic));
                     // plain insert (no renaming)
                     function_type_rib.bindings.insert(ident.name, def_like);
                 }
@@ -4192,7 +4195,7 @@ impl Resolver {
 
                         Some(&primitive_type) => {
                             result_def =
-                                Some(DefPrimTy(primitive_type));
+                                Some((DefPrimTy(primitive_type), AllPublic));
 
                             if path.segments
                                    .iter()
@@ -4218,10 +4221,7 @@ impl Resolver {
 
                 match result_def {
                     None => {
-                        match self.resolve_path(ty.id,
-                                                path,
-                                                TypeNS,
-                                                true) {
+                        match self.resolve_path(ty.id, path, TypeNS, true) {
                             Some(def) => {
                                 debug2!("(resolving type) resolved `{}` to \
                                         type {:?}",
@@ -4279,12 +4279,12 @@ impl Resolver {
     }
 
     fn resolve_pattern(&mut self,
-                           pattern: @Pat,
-                           mode: PatternBindingMode,
-                           mutability: Mutability,
-                           // Maps idents to the node ID for the (outermost)
-                           // pattern that binds them
-                           bindings_list: Option<@mut HashMap<Name,NodeId>>) {
+                       pattern: @Pat,
+                       mode: PatternBindingMode,
+                       mutability: Mutability,
+                       // Maps idents to the node ID for the (outermost)
+                       // pattern that binds them
+                       bindings_list: Option<@mut HashMap<Name,NodeId>>) {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
             match pattern.node {
@@ -4304,7 +4304,7 @@ impl Resolver {
                     let renamed = mtwt_resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {
-                        FoundStructOrEnumVariant(def)
+                        FoundStructOrEnumVariant(def, lp)
                                 if mode == RefutableMode => {
                             debug2!("(resolving pattern) resolving `{}` to \
                                     struct or enum variant",
@@ -4314,9 +4314,9 @@ impl Resolver {
                                 pattern,
                                 binding_mode,
                                 "an enum variant");
-                            self.record_def(pattern.id, def);
+                            self.record_def(pattern.id, (def, lp));
                         }
-                        FoundStructOrEnumVariant(_) => {
+                        FoundStructOrEnumVariant(*) => {
                             self.resolve_error(pattern.span,
                                                   format!("declaration of `{}` \
                                                         shadows an enum \
@@ -4324,7 +4324,7 @@ impl Resolver {
                                                         struct in scope",
                                                        interner_get(renamed)));
                         }
-                        FoundConst(def) if mode == RefutableMode => {
+                        FoundConst(def, lp) if mode == RefutableMode => {
                             debug2!("(resolving pattern) resolving `{}` to \
                                     constant",
                                    interner_get(renamed));
@@ -4333,9 +4333,9 @@ impl Resolver {
                                 pattern,
                                 binding_mode,
                                 "a constant");
-                            self.record_def(pattern.id, def);
+                            self.record_def(pattern.id, (def, lp));
                         }
-                        FoundConst(_) => {
+                        FoundConst(*) => {
                             self.resolve_error(pattern.span,
                                                   "only irrefutable patterns \
                                                    allowed here");
@@ -4367,7 +4367,7 @@ impl Resolver {
                             // will be able to distinguish variants from
                             // locals in patterns.
 
-                            self.record_def(pattern.id, def);
+                            self.record_def(pattern.id, (def, AllPublic));
 
                             // Add the binding to the local ribs, if it
                             // doesn't already exist in the bindings list. (We
@@ -4420,11 +4420,11 @@ impl Resolver {
                 PatIdent(binding_mode, ref path, _) => {
                     // This must be an enum variant, struct, or constant.
                     match self.resolve_path(pat_id, path, ValueNS, false) {
-                        Some(def @ DefVariant(*)) |
-                                Some(def @ DefStruct(*)) => {
+                        Some(def @ (DefVariant(*), _)) |
+                        Some(def @ (DefStruct(*), _)) => {
                             self.record_def(pattern.id, def);
                         }
-                        Some(def @ DefStatic(*)) => {
+                        Some(def @ (DefStatic(*), _)) => {
                             self.enforce_default_binding_mode(
                                 pattern,
                                 binding_mode,
@@ -4455,10 +4455,10 @@ impl Resolver {
                 PatEnum(ref path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(pat_id, path, ValueNS, false) {
-                        Some(def @ DefFn(*))      |
-                        Some(def @ DefVariant(*)) |
-                        Some(def @ DefStruct(*))  |
-                        Some(def @ DefStatic(*)) => {
+                        Some(def @ (DefFn(*), _))      |
+                        Some(def @ (DefVariant(*), _)) |
+                        Some(def @ (DefStruct(*), _))  |
+                        Some(def @ (DefStatic(*), _)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
@@ -4500,16 +4500,16 @@ impl Resolver {
 
                 PatStruct(ref path, _, _) => {
                     match self.resolve_path(pat_id, path, TypeNS, false) {
-                        Some(DefTy(class_id))
+                        Some((DefTy(class_id), lp))
                                 if self.structs.contains(&class_id) => {
                             let class_def = DefStruct(class_id);
-                            self.record_def(pattern.id, class_def);
+                            self.record_def(pattern.id, (class_def, lp));
                         }
-                        Some(definition @ DefStruct(class_id)) => {
+                        Some(definition @ (DefStruct(class_id), _)) => {
                             assert!(self.structs.contains(&class_id));
                             self.record_def(pattern.id, definition);
                         }
-                        Some(definition @ DefVariant(_, variant_id, _))
+                        Some(definition @ (DefVariant(_, variant_id, _), _))
                                 if self.structs.contains(&variant_id) => {
                             self.record_def(pattern.id, definition);
                         }
@@ -4538,19 +4538,25 @@ impl Resolver {
                                                  name,
                                                  ValueNS,
                                                  SearchThroughModules) {
-            Success(target) => {
+            Success((target, _)) => {
+                debug2!("(resolve bare identifier pattern) succeeded in \
+                         finding {} at {:?}",
+                        self.session.str_of(name), target.bindings.value_def);
                 match target.bindings.value_def {
                     None => {
                         fail2!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");
                     }
                     Some(def) => {
+                        // For the two success cases, this lookup can be
+                        // considered as not having a private component because
+                        // the lookup happened only within the current module.
                         match def.def {
                             def @ DefVariant(*) | def @ DefStruct(*) => {
-                                return FoundStructOrEnumVariant(def);
+                                return FoundStructOrEnumVariant(def, AllPublic);
                             }
                             def @ DefStatic(_, false) => {
-                                return FoundConst(def);
+                                return FoundConst(def, AllPublic);
                             }
                             _ => {
                                 return BareIdentifierPatternUnresolved;
@@ -4565,6 +4571,8 @@ impl Resolver {
             }
 
             Failed => {
+                debug2!("(resolve bare identifier pattern) failed to find {}",
+                        self.session.str_of(name));
                 return BareIdentifierPatternUnresolved;
             }
         }
@@ -4573,35 +4581,31 @@ impl Resolver {
     /// If `check_ribs` is true, checks the local definitions first; i.e.
     /// doesn't skip straight to the containing module.
     fn resolve_path(&mut self,
-                        id: NodeId,
-                        path: &Path,
-                        namespace: Namespace,
-                        check_ribs: bool)
-                        -> Option<Def> {
+                    id: NodeId,
+                    path: &Path,
+                    namespace: Namespace,
+                    check_ribs: bool) -> Option<(Def, LastPrivate)> {
         // First, resolve the types.
         for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
             self.resolve_type(ty);
         }
 
         if path.global {
-            return self.resolve_crate_relative_path(path,
-                                                    self.xray_context,
-                                                    namespace);
+            return self.resolve_crate_relative_path(path, namespace);
         }
 
-        let unqualified_def = self.resolve_identifier(path.segments
-                                                          .last()
-                                                          .identifier,
-                                                      namespace,
-                                                      check_ribs,
-                                                      path.span);
+        let unqualified_def =
+                self.resolve_identifier(path.segments
+                                            .last()
+                                            .identifier,
+                                        namespace,
+                                        check_ribs,
+                                        path.span);
 
         if path.segments.len() > 1 {
-            let def = self.resolve_module_relative_path(path,
-                                                        self.xray_context,
-                                                        namespace);
+            let def = self.resolve_module_relative_path(path, namespace);
             match (def, unqualified_def) {
-                (Some(d), Some(ud)) if d == ud => {
+                (Some((d, _)), Some((ud, _))) if d == ud => {
                     self.session.add_lint(unnecessary_qualification,
                                           id,
                                           path.span,
@@ -4622,13 +4626,13 @@ impl Resolver {
                               namespace: Namespace,
                               check_ribs: bool,
                               span: Span)
-                              -> Option<Def> {
+                              -> Option<(Def, LastPrivate)> {
         if check_ribs {
             match self.resolve_identifier_in_local_ribs(identifier,
                                                       namespace,
                                                       span) {
                 Some(def) => {
-                    return Some(def);
+                    return Some((def, AllPublic));
                 }
                 None => {
                     // Continue.
@@ -4642,51 +4646,43 @@ impl Resolver {
 
     // FIXME #4952: Merge me with resolve_name_in_module?
     fn resolve_definition_of_name_in_module(&mut self,
-                                                containing_module: @mut Module,
-                                                name: Ident,
-                                                namespace: Namespace,
-                                                xray: XrayFlag)
+                                            containing_module: @mut Module,
+                                            name: Ident,
+                                            namespace: Namespace)
                                                 -> NameDefinition {
         // First, search children.
         self.populate_module_if_necessary(containing_module);
         match containing_module.children.find(&name.name) {
             Some(child_name_bindings) => {
-                match (child_name_bindings.def_for_namespace(namespace),
-                       child_name_bindings.privacy_for_namespace(namespace)) {
-                    (Some(def), Some(Public)) => {
+                match child_name_bindings.def_for_namespace(namespace) {
+                    Some(def) => {
                         // Found it. Stop the search here.
-                        return ChildNameDefinition(def);
+                        let p = child_name_bindings.defined_in_public_namespace(
+                                        namespace);
+                        let lp = if p {AllPublic} else {
+                            DependsOn(def_id_of_def(def))
+                        };
+                        return ChildNameDefinition(def, lp);
                     }
-                    (Some(def), _) if xray == Xray => {
-                        // Found it. Stop the search here.
-                        return ChildNameDefinition(def);
-                    }
-                    (Some(_), _) | (None, _) => {
-                        // Continue.
-                    }
+                    None => {}
                 }
             }
-            None => {
-                // Continue.
-            }
+            None => {}
         }
 
         // Next, search import resolutions.
         match containing_module.import_resolutions.find(&name.name) {
-            Some(import_resolution) if import_resolution.privacy == Public ||
-                                       xray == Xray => {
+            Some(import_resolution) if import_resolution.is_public => {
                 match (*import_resolution).target_for_namespace(namespace) {
                     Some(target) => {
-                        match (target.bindings.def_for_namespace(namespace),
-                               target.bindings.privacy_for_namespace(
-                                    namespace)) {
-                            (Some(def), Some(Public)) => {
+                        match target.bindings.def_for_namespace(namespace) {
+                            Some(def) => {
                                 // Found it.
                                 let id = import_resolution.id(namespace);
                                 self.used_imports.insert(id);
-                                return ImportNameDefinition(def);
+                                return ImportNameDefinition(def, AllPublic);
                             }
-                            (Some(_), _) | (None, _) => {
+                            None => {
                                 // This can happen with external impls, due to
                                 // the imperfect way we read the metadata.
                             }
@@ -4695,7 +4691,7 @@ impl Resolver {
                     None => {}
                 }
             }
-            Some(_) | None => {}    // Continue.
+            Some(*) | None => {} // Continue.
         }
 
         // Finally, search through external children.
@@ -4706,7 +4702,10 @@ impl Resolver {
                     match module.def_id {
                         None => {} // Continue.
                         Some(def_id) => {
-                            return ChildNameDefinition(DefMod(def_id));
+                            let lp = if module.is_public {AllPublic} else {
+                                DependsOn(def_id)
+                            };
+                            return ChildNameDefinition(DefMod(def_id), lp);
                         }
                     }
                 }
@@ -4719,17 +4718,17 @@ impl Resolver {
     // resolve a "module-relative" path, e.g. a::b::c
     fn resolve_module_relative_path(&mut self,
                                         path: &Path,
-                                        xray: XrayFlag,
                                         namespace: Namespace)
-                                        -> Option<Def> {
+                                        -> Option<(Def, LastPrivate)> {
         let module_path_idents = path.segments.init().map(|ps| ps.identifier);
 
         let containing_module;
+        let last_private;
         match self.resolve_module_path(self.current_module,
                                        module_path_idents,
                                        UseLexicalScope,
                                        path.span,
-                                       PathPublicOnlySearch) {
+                                       PathSearch) {
             Failed => {
                 let msg = format!("use of undeclared module `{}`",
                                   self.idents_to_str(module_path_idents));
@@ -4741,22 +4740,22 @@ impl Resolver {
                 fail2!("indeterminate unexpected");
             }
 
-            Success(resulting_module) => {
+            Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
+                last_private = resulting_last_private;
             }
         }
 
         let ident = path.segments.last().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module,
                                                         ident,
-                                                        namespace,
-                                                        xray) {
+                                                        namespace) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
                 return None;
             }
-            ChildNameDefinition(def) | ImportNameDefinition(def) => {
-                def
+            ChildNameDefinition(def, lp) | ImportNameDefinition(def, lp) => {
+                (def, last_private.or(lp))
             }
         };
         match containing_module.kind {
@@ -4783,20 +4782,21 @@ impl Resolver {
     /// Invariant: This must be called only during main resolution, not during
     /// import resolution.
     fn resolve_crate_relative_path(&mut self,
-                                       path: &Path,
-                                       xray: XrayFlag,
-                                       namespace: Namespace)
-                                       -> Option<Def> {
+                                   path: &Path,
+                                   namespace: Namespace)
+                                       -> Option<(Def, LastPrivate)> {
         let module_path_idents = path.segments.init().map(|ps| ps.identifier);
 
         let root_module = self.graph_root.get_module();
 
         let containing_module;
+        let last_private;
         match self.resolve_module_path_from_root(root_module,
                                                  module_path_idents,
                                                  0,
                                                  path.span,
-                                                 PathPublicOrPrivateSearch) {
+                                                 PathSearch,
+                                                 AllPublic) {
             Failed => {
                 let msg = format!("use of undeclared module `::{}`",
                                   self.idents_to_str(module_path_idents));
@@ -4808,22 +4808,22 @@ impl Resolver {
                 fail2!("indeterminate unexpected");
             }
 
-            Success(resulting_module) => {
+            Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
+                last_private = resulting_last_private;
             }
         }
 
         let name = path.segments.last().identifier;
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
-                                                        namespace,
-                                                        xray) {
+                                                        namespace) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
                 return None;
             }
-            ChildNameDefinition(def) | ImportNameDefinition(def) => {
-                return Some(def);
+            ChildNameDefinition(def, lp) | ImportNameDefinition(def, lp) => {
+                return Some((def, last_private.or(lp)));
             }
         }
     }
@@ -4896,26 +4896,32 @@ impl Resolver {
     }
 
     fn resolve_item_by_identifier_in_lexical_scope(&mut self,
-                                                       ident: Ident,
-                                                       namespace: Namespace)
-                                                       -> Option<Def> {
+                                                   ident: Ident,
+                                                   namespace: Namespace)
+                                                -> Option<(Def, LastPrivate)> {
         // Check the items.
         match self.resolve_item_in_lexical_scope(self.current_module,
                                                  ident,
                                                  namespace,
                                                  DontSearchThroughModules) {
-            Success(target) => {
+            Success((target, _)) => {
                 match (*target.bindings).def_for_namespace(namespace) {
                     None => {
                         // This can happen if we were looking for a type and
                         // found a module instead. Modules don't have defs.
+                        debug2!("(resolving item path by identifier in lexical \
+                                 scope) failed to resolve {} after success...",
+                                 self.session.str_of(ident));
                         return None;
                     }
                     Some(def) => {
                         debug2!("(resolving item path in lexical scope) \
                                 resolved `{}` to item",
                                self.session.str_of(ident));
-                        return Some(def);
+                        // This lookup is "all public" because it only searched
+                        // for one identifier in the current module (couldn't
+                        // have passed through reexports or anything like that.
+                        return Some((def, AllPublic));
                     }
                 }
             }
@@ -4923,6 +4929,8 @@ impl Resolver {
                 fail2!("unexpected indeterminate result");
             }
             Failed => {
+                debug2!("(resolving item path by identifier in lexical scope) \
+                         failed to resolve {}", self.session.str_of(ident));
                 return None;
             }
         }
@@ -5005,7 +5013,7 @@ impl Resolver {
                         // First-class methods are not supported yet; error
                         // out here.
                         match def {
-                            DefMethod(*) => {
+                            (DefMethod(*), _) => {
                                 self.resolve_error(expr.span,
                                                       "first-class methods \
                                                        are not supported");
@@ -5027,7 +5035,7 @@ impl Resolver {
                         // structs, which wouldn't result in this error.)
                         match self.with_no_errors(|this|
                             this.resolve_path(expr.id, path, TypeNS, false)) {
-                            Some(DefTy(struct_id))
+                            Some((DefTy(struct_id), _))
                               if self.structs.contains(&struct_id) => {
                                 self.resolve_error(expr.span,
                                         format!("`{}` is a structure name, but \
@@ -5075,12 +5083,12 @@ impl Resolver {
             ExprStruct(ref path, _, _) => {
                 // Resolve the path to the structure it goes to.
                 match self.resolve_path(expr.id, path, TypeNS, false) {
-                    Some(DefTy(class_id)) | Some(DefStruct(class_id))
+                    Some((DefTy(class_id), lp)) | Some((DefStruct(class_id), lp))
                             if self.structs.contains(&class_id) => {
                         let class_def = DefStruct(class_id);
-                        self.record_def(expr.id, class_def);
+                        self.record_def(expr.id, (class_def, lp));
                     }
-                    Some(definition @ DefVariant(_, class_id, _))
+                    Some(definition @ (DefVariant(_, class_id, _), _))
                             if self.structs.contains(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
@@ -5118,7 +5126,8 @@ impl Resolver {
                                                    `{}`",
                                                    interner_get(label))),
                     Some(DlDef(def @ DefLabel(_))) => {
-                        self.record_def(expr.id, def)
+                        // XXX: is AllPublic correct?
+                        self.record_def(expr.id, (def, AllPublic))
                     }
                     Some(_) => {
                         self.session.span_bug(expr.span,
@@ -5135,7 +5144,7 @@ impl Resolver {
                                               "`self` is not allowed in \
                                                this context")
                     }
-                    Some(def) => self.record_def(expr.id, def),
+                    Some(def) => self.record_def(expr.id, (def, AllPublic)),
                 }
             }
 
@@ -5352,8 +5361,10 @@ impl Resolver {
         }
     }
 
-    fn record_def(&mut self, node_id: NodeId, def: Def) {
-        debug2!("(recording def) recording {:?} for {:?}", def, node_id);
+    fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {
+        debug2!("(recording def) recording {:?} for {:?}, last private {:?}",
+                def, node_id, lp);
+        self.last_private.insert(node_id, lp);
         do self.def_map.insert_or_update_with(node_id, def) |_, old_value| {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
@@ -5393,7 +5404,7 @@ impl Resolver {
     }
 
     fn check_for_item_unused_imports(&self, vi: &view_item) {
-        // Ignore public import statements because there's no way to be sure
+        // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
@@ -5499,7 +5510,9 @@ impl Resolver {
 pub struct CrateMap {
     def_map: DefMap,
     exp_map2: ExportMap2,
-    trait_map: TraitMap
+    trait_map: TraitMap,
+    external_exports: ExternalExports,
+    last_private_map: LastPrivateMap,
 }
 
 /// Entry point to crate resolution.
@@ -5509,9 +5522,13 @@ pub fn resolve_crate(session: Session,
                   -> CrateMap {
     let mut resolver = Resolver(session, lang_items, crate.span);
     resolver.resolve(crate);
+    let Resolver { def_map, export_map2, trait_map, last_private,
+                   external_exports, _ } = resolver;
     CrateMap {
-        def_map: resolver.def_map,
-        exp_map2: resolver.export_map2,
-        trait_map: resolver.trait_map.clone(),
+        def_map: def_map,
+        exp_map2: export_map2,
+        trait_map: trait_map,
+        external_exports: external_exports,
+        last_private_map: last_private,
     }
 }

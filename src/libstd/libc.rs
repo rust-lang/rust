@@ -2708,12 +2708,9 @@ pub mod funcs {
                 pub fn setbuf(stream: *FILE, buf: *c_char);
                 // Omitted: printf and scanf variants.
                 pub fn fgetc(stream: *FILE) -> c_int;
-                #[fast_ffi]
                 pub fn fgets(buf: *mut c_char, n: c_int, stream: *FILE)
                              -> *c_char;
-                #[fast_ffi]
                 pub fn fputc(c: c_int, stream: *FILE) -> c_int;
-                #[fast_ffi]
                 pub fn fputs(s: *c_char, stream: *FILE) -> *c_char;
                 // Omitted: getc, getchar (might be macros).
 
@@ -2723,13 +2720,11 @@ pub mod funcs {
                 // Omitted: putc, putchar (might be macros).
                 pub fn puts(s: *c_char) -> c_int;
                 pub fn ungetc(c: c_int, stream: *FILE) -> c_int;
-                #[fast_ffi]
                 pub fn fread(ptr: *mut c_void,
                              size: size_t,
                              nobj: size_t,
                              stream: *FILE)
                              -> size_t;
-                #[fast_ffi]
                 pub fn fwrite(ptr: *c_void,
                               size: size_t,
                               nobj: size_t,
@@ -2766,13 +2761,9 @@ pub mod funcs {
                               -> c_long;
                 pub fn strtoul(s: *c_char, endp: **c_char, base: c_int)
                                -> c_ulong;
-                #[fast_ffi]
                 pub fn calloc(nobj: size_t, size: size_t) -> *c_void;
-                #[fast_ffi]
                 pub fn malloc(size: size_t) -> *c_void;
-                #[fast_ffi]
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
-                #[fast_ffi]
                 pub fn free(p: *c_void);
                 pub fn abort() -> !;
                 pub fn exit(status: c_int) -> !;
@@ -2865,7 +2856,6 @@ pub mod funcs {
                 #[link_name = "_pclose"]
                 pub fn pclose(stream: *FILE) -> c_int;
                 #[link_name = "_fdopen"]
-                #[fast_ffi]
                 pub fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
                 #[link_name = "_fileno"]
                 pub fn fileno(stream: *FILE) -> c_int;
@@ -2933,7 +2923,6 @@ pub mod funcs {
                 pub fn pipe(fds: *mut c_int, psize: c_uint, textmode: c_int)
                             -> c_int;
                 #[link_name = "_read"]
-                #[fast_ffi]
                 pub fn read(fd: c_int, buf: *mut c_void, count: c_uint)
                             -> c_int;
                 #[link_name = "_rmdir"]
@@ -2941,7 +2930,6 @@ pub mod funcs {
                 #[link_name = "_unlink"]
                 pub fn unlink(c: *c_char) -> c_int;
                 #[link_name = "_write"]
-                #[fast_ffi]
                 pub fn write(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
             }
         }
@@ -3095,7 +3083,6 @@ pub mod funcs {
                 pub fn pathconf(path: *c_char, name: c_int) -> c_long;
                 pub fn pause() -> c_int;
                 pub fn pipe(fds: *mut c_int) -> c_int;
-                #[fast_ffi]
                 pub fn read(fd: c_int, buf: *mut c_void, count: size_t)
                             -> ssize_t;
                 pub fn rmdir(path: *c_char) -> c_int;
@@ -3108,7 +3095,6 @@ pub mod funcs {
                 pub fn tcgetpgrp(fd: c_int) -> pid_t;
                 pub fn ttyname(fd: c_int) -> *c_char;
                 pub fn unlink(c: *c_char) -> c_int;
-                #[fast_ffi]
                 pub fn write(fd: c_int, buf: *c_void, count: size_t)
                              -> ssize_t;
             }

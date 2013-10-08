@@ -353,7 +353,12 @@ whose literals are written between single quotes, as in `'x'`.
 Just like C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
 written between double quotes, allow the same escape sequences.
-More on strings [later](#vectors-and-strings).
+
+On the other hand, raw string literals do not process any escape sequences.
+They are written as `r##"blah"##`, with a matching number of zero or more `#`
+before the opening and after the closing quote, and can contain any sequence of
+characters except their closing delimiter.  More on strings
+[later](#vectors-and-strings).
 
 The nil type, written `()`, has a single value, also written `()`.
 
@@ -2322,19 +2327,18 @@ fn main() {
 
 The `::farm::chicken` construct is what we call a 'path'.
 
-Because it's starting with a `::`, it's also a 'global path',
-which qualifies an item by its full path in the module hierarchy
-relative to the crate root.
+Because it's starting with a `::`, it's also a 'global path', which qualifies
+an item by its full path in the module hierarchy relative to the crate root.
 
-If the path were to start with a regular identifier, like `farm::chicken`, it would be
-a 'local path' instead. We'll get to them later.
+If the path were to start with a regular identifier, like `farm::chicken`, it
+would be a 'local path' instead. We'll get to them later.
 
-Now, if you actually tried to compile this code example, you'll notice
-that you get a `unresolved name: 'farm::chicken'` error. That's because per default,
-items (`fn`, `struct`, `static`, `mod`, ...) are only visible inside the module
-they are defined in.
+Now, if you actually tried to compile this code example, you'll notice that you
+get a `function 'chicken' is private` error. That's because by default, items
+(`fn`, `struct`, `static`, `mod`, ...) are private.
 
-To make them visible outside their containing modules, you need to mark them _public_ with `pub`:
+To make them visible outside their containing modules, you need to mark them
+_public_ with `pub`:
 
 ~~~~
 mod farm {
@@ -2356,7 +2360,8 @@ Rust doesn't support encapsulation: both struct fields and methods can
 be private. But this encapsulation is at the module level, not the
 struct level.
 
-For convenience, fields are _public_ by default, and can be made _private_ with the `priv` keyword:
+For convenience, fields are _public_ by default, and can be made _private_ with
+the `priv` keyword:
 
 ~~~
 mod farm {
@@ -2393,7 +2398,8 @@ fn main() {
 # fn make_me_a_chicken() -> farm::Chicken { 0 }
 ~~~
 
-> ***Note:*** Visibility rules are currently buggy and not fully defined, you might have to add or remove `pub` along a path until it works.
+Exact details and specifications about visibility rules can be found in the Rust
+manual.
 
 ## Files and modules
 

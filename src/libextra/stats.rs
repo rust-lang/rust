@@ -101,7 +101,8 @@ pub trait Stats {
 
 /// Extracted collection of all the summary statistics of a sample set.
 #[deriving(Clone, Eq)]
-struct Summary {
+#[allow(missing_doc)]
+pub struct Summary {
     sum: f64,
     min: f64,
     max: f64,

@@ -3034,7 +3034,6 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
             diag: diag,
             tcx: cx.tcx,
             reexports2: cx.exp_map2,
-            exported_items: cx.exported_items,
             item_symbols: item_symbols,
             discrim_symbols: discrim_symbols,
             non_inlineable_statics: &cx.non_inlineable_statics,
@@ -3116,16 +3115,10 @@ pub fn trans_crate(sess: session::Session,
                                      llmod_id,
                                      analysis.ty_cx,
                                      analysis.exp_map2,
-                                     analysis.exported_items,
                                      analysis.maps,
                                      symbol_hasher,
                                      link_meta,
                                      analysis.reachable);
-
-    if ccx.sess.opts.debuginfo {
-        debuginfo::initialize(ccx, &crate);
-    }
-
     {
         let _icx = push_ctxt("text");
         trans_mod(ccx, &crate.module);
