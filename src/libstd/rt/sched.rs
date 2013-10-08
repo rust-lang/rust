@@ -859,42 +859,36 @@ fn new_sched_rng() -> XorShiftRng {
     use libc;
     use sys;
     use c_str::ToCStr;
-    use ptr::RawPtr;
     use vec::MutableVector;
     use iter::Iterator;
     use rand::SeedableRng;
 
     // XXX: this could use io::native::file, when it works.
-    let file = do "/dev/urandom".with_c_str |name| {
-        do "r".with_c_str |mode| {
-            unsafe { libc::fopen(name, mode) }
-        }
+    let fd = do "/dev/urandom".with_c_str |name| {
+        unsafe { libc::open(name, libc::O_RDONLY, 0) }
     };
-    if file.is_null() {
+    if fd == -1 {
         rtabort!("could not open /dev/urandom for reading.")
     }
 
     let mut seeds = [0u32, .. 4];
+    let size = sys::size_of_val(&seeds);
     loop {
-        let nbytes = do seeds.as_mut_buf |buf, len| {
+        let nbytes = do seeds.as_mut_buf |buf, _| {
             unsafe {
-                libc::fread(buf as *mut libc::c_void,
-                            sys::size_of::<u32>() as libc::size_t,
-                            len as libc::size_t,
-                            file)
+                libc::read(fd,
+                           buf as *mut libc::c_void,
+                           size as libc::size_t)
             }
         };
-        rtassert!(nbytes == seeds.len() as libc::size_t);
+        rtassert!(nbytes as uint == size);
 
         if !seeds.iter().all(|x| *x == 0) {
             break;
         }
     }
 
-    // XXX: do we need to guarantee that this is closed with a finally
-    // block (is that even possible without a scheduler?), or do we
-    // know that the only way that we can fail here is `abort`ing?
-    unsafe {libc::fclose(file);}
+    unsafe {libc::close(fd);}
 
     SeedableRng::from_seed(seeds)
 }
