@@ -680,11 +680,15 @@ do
   for s in 0 1 2 3
   do
     make_dir $t/rt/stage$s
+    make_dir $t/rt/libuv
+    make_dir $t/rt/libuv/src/ares
+    make_dir $t/rt/libuv/src/eio
+    make_dir $t/rt/libuv/src/ev
+    make_dir $t/rt/jemalloc
     for i in                                          \
       isaac linenoise sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
-      libuv libuv/src/ares libuv/src/eio libuv/src/ev \
-      jemalloc sundown/src sundown/html
+      sundown/src sundown/html
     do
       make_dir $t/rt/stage$s/$i
     done
