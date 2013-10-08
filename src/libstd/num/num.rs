@@ -404,9 +404,7 @@ pub trait ToPrimitive {
 
     /// Converts the value of `self` to an `u64`.
     #[inline]
-    fn to_u64(&self) -> Option<u64> {
-        self.to_u64().and_then(|x| x.to_u64())
-    }
+    fn to_u64(&self) -> Option<u64>;
 
     /// Converts the value of `self` to an `f32`.
     #[inline]
@@ -1480,5 +1478,52 @@ mod tests {
         assert_eq!(third.checked_mul(&2), Some(third * 2));
         assert_eq!(third.checked_mul(&3), Some(third * 3));
         assert_eq!(third.checked_mul(&4), None);
+    }
+
+
+    #[deriving(Eq)]
+    struct Value { x: int }
+
+    impl ToPrimitive for Value {
+        fn to_i64(&self) -> Option<i64> { self.x.to_i64() }
+        fn to_u64(&self) -> Option<u64> { self.x.to_u64() }
+    }
+
+    impl FromPrimitive for Value {
+        fn from_i64(n: i64) -> Option<Value> { Some(Value { x: n as int }) }
+        fn from_u64(n: u64) -> Option<Value> { Some(Value { x: n as int }) }
+    }
+
+    #[test]
+    fn test_to_primitive() {
+        let value = Value { x: 5 };
+        assert_eq!(value.to_int(),  Some(5));
+        assert_eq!(value.to_i8(),   Some(5));
+        assert_eq!(value.to_i16(),  Some(5));
+        assert_eq!(value.to_i32(),  Some(5));
+        assert_eq!(value.to_i64(),  Some(5));
+        assert_eq!(value.to_uint(), Some(5));
+        assert_eq!(value.to_u8(),   Some(5));
+        assert_eq!(value.to_u16(),  Some(5));
+        assert_eq!(value.to_u32(),  Some(5));
+        assert_eq!(value.to_u64(),  Some(5));
+        assert_eq!(value.to_f32(),  Some(5f32));
+        assert_eq!(value.to_f64(),  Some(5f64));
+    }
+
+    #[test]
+    fn test_from_primitive() {
+        assert_eq!(from_int(5),    Some(Value { x: 5 }));
+        assert_eq!(from_i8(5),     Some(Value { x: 5 }));
+        assert_eq!(from_i16(5),    Some(Value { x: 5 }));
+        assert_eq!(from_i32(5),    Some(Value { x: 5 }));
+        assert_eq!(from_i64(5),    Some(Value { x: 5 }));
+        assert_eq!(from_uint(5),   Some(Value { x: 5 }));
+        assert_eq!(from_u8(5),     Some(Value { x: 5 }));
+        assert_eq!(from_u16(5),    Some(Value { x: 5 }));
+        assert_eq!(from_u32(5),    Some(Value { x: 5 }));
+        assert_eq!(from_u64(5),    Some(Value { x: 5 }));
+        assert_eq!(from_f32(5f32), Some(Value { x: 5 }));
+        assert_eq!(from_f64(5f64), Some(Value { x: 5 }));
     }
 }
