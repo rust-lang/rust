@@ -24,31 +24,22 @@ impl mpz_t {
 
 #[link_args="-lgmp"]
 extern {
-    #[fast_ffi]
     #[link_name="__gmpz_add"]
     fn mpz_add(x: *mpz_t, y: *mpz_t, z: *mpz_t);
-    #[fast_ffi]
     #[link_name="__gmpz_cmp"]
     fn mpz_cmp(x: *mpz_t, y: *mpz_t) -> c_int;
-    #[fast_ffi]
     #[link_name="__gmpz_fdiv_qr"]
     fn mpz_fdiv_qr(a: *mpz_t, b: *mpz_t, c: *mpz_t, d: *mpz_t);
-    #[fast_ffi]
     #[link_name="__gmpz_get_ui"]
     fn mpz_get_ui(x: *mpz_t) -> c_uint;
-    #[fast_ffi]
     #[link_name="__gmpz_init"]
     fn mpz_init(x: *mpz_t);
-    #[fast_ffi]
     #[link_name="__gmpz_init_set_ui"]
     fn mpz_init_set_ui(x: *mpz_t, y: c_uint);
-    #[fast_ffi]
     #[link_name="__gmpz_mul_2exp"]
     fn mpz_mul_2exp(x: *mpz_t, y: *mpz_t, z: c_uint);
-    #[fast_ffi]
     #[link_name="__gmpz_mul_ui"]
     fn mpz_mul_ui(x: *mpz_t, y: *mpz_t, z: c_uint);
-    #[fast_ffi]
     #[link_name="__gmpz_submul_ui"]
     fn mpz_submul_ui(x: *mpz_t, y: *mpz_t, z: c_uint);
 }

@@ -52,11 +52,8 @@ type pthread_key_t = ::libc::c_uint;
 
 #[cfg(unix)]
 extern {
-    #[fast_ffi]
     fn pthread_key_create(key: *mut pthread_key_t, dtor: *u8) -> c_int;
-    #[fast_ffi]
     fn pthread_setspecific(key: pthread_key_t, value: *mut c_void) -> c_int;
-    #[fast_ffi]
     fn pthread_getspecific(key: pthread_key_t) -> *mut c_void;
 }
 
