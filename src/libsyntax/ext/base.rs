@@ -410,10 +410,10 @@ impl ExtCtxt {
     }
 }
 
-pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> @str {
+pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast::StrStyle) {
     match expr.node {
       ast::ExprLit(l) => match l.node {
-        ast::lit_str(s) => s,
+        ast::lit_str(s, style) => (s, style),
         _ => cx.span_fatal(l.span, err_msg)
       },
       _ => cx.span_fatal(expr.span, err_msg)
@@ -437,7 +437,8 @@ pub fn get_single_str_from_tts(cx: @ExtCtxt,
     }
 
     match tts[0] {
-        ast::tt_tok(_, token::LIT_STR(ident)) => cx.str_of(ident),
+        ast::tt_tok(_, token::LIT_STR(ident))
+        | ast::tt_tok(_, token::LIT_STR_RAW(ident, _)) => cx.str_of(ident),
         _ => cx.span_fatal(sp, format!("{} requires a string.", name)),
     }
 }

@@ -239,13 +239,14 @@ literal : string_lit | char_lit | num_lit ;
 
 ~~~~~~~~ {.ebnf .gram}
 char_lit : '\x27' char_body '\x27' ;
-string_lit : '"' string_body * '"' ;
+string_lit : '"' string_body * '"' | 'r' raw_string ;
 
 char_body : non_single_quote
           | '\x5c' [ '\x27' | common_escape ] ;
 
 string_body : non_double_quote
             | '\x5c' [ '\x22' | common_escape ] ;
+raw_string : '"' raw_string_body '"' | '#' raw_string '#' ;
 
 common_escape : '\x5c'
               | 'n' | 'r' | 't' | '0'
@@ -267,9 +268,10 @@ which must be _escaped_ by a preceding U+005C character (`\`).
 
 A _string literal_ is a sequence of any Unicode characters enclosed within
 two `U+0022` (double-quote) characters, with the exception of `U+0022`
-itself, which must be _escaped_ by a preceding `U+005C` character (`\`).
+itself, which must be _escaped_ by a preceding `U+005C` character (`\`),
+or a _raw string literal_.
 
-Some additional _escapes_ are available in either character or string
+Some additional _escapes_ are available in either character or non-raw string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of
 the following forms:
 
@@ -285,8 +287,34 @@ the following forms:
   * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
     (`r`), or `U+0074` (`t`), denoting the unicode values `U+000A` (LF),
     `U+000D` (CR) or `U+0009` (HT) respectively.
-  * The _backslash escape_ is the character U+005C (`\`) which must be
+  * The _backslash escape_ is the character `U+005C` (`\`) which must be
     escaped in order to denote *itself*.
+
+Raw string literals do not process any escapes. They start with the character
+`U+0072` (`r`), followed zero or more of the character `U+0023` (`#`) and a
+`U+0022` (double-quote) character. The _raw string body_ is not defined in the
+EBNF grammar above: it can contain any sequence of Unicode characters and is
+terminated only by another `U+0022` (double-quote) character, followed by the
+same number of `U+0023` (`#`) characters that preceeded the opening `U+0022`
+(double-quote) character.
+
+All Unicode characters contained in the raw string body represent themselves,
+the characters `U+0022` (double-quote) (except when followed by at least as
+many `U+0023` (`#`) characters as were used to start the raw string literal) or
+`U+005C` (`\`) do not have any special meaning.
+
+Examples for string literals:
+
+~~~
+"foo"; r"foo";                     // foo
+"\"foo\""; r#""foo""#;             // "foo"
+
+"foo #\"# bar";
+r##"foo #"# bar"##;                // foo #"# bar
+
+"\x52"; "R"; r"R";                 // R
+"\\x52"; r"\x52";                  // \x52
+~~~
 
 #### Number literals
 

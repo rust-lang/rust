@@ -48,6 +48,7 @@ use ast::{BiRem, required};
 use ast::{ret_style, return_val, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, struct_def, struct_field};
 use ast::{struct_variant_kind, BiSub};
+use ast::StrStyle;
 use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
@@ -1282,7 +1283,8 @@ impl Parser {
             token::LIT_FLOAT(s, ft) => lit_float(self.id_to_str(s), ft),
             token::LIT_FLOAT_UNSUFFIXED(s) =>
                 lit_float_unsuffixed(self.id_to_str(s)),
-            token::LIT_STR(s) => lit_str(self.id_to_str(s)),
+            token::LIT_STR(s) => lit_str(self.id_to_str(s), ast::CookedStr),
+            token::LIT_STR_RAW(s, n) => lit_str(self.id_to_str(s), ast::RawStr(n)),
             token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
             _ => { self.unexpected_last(tok); }
         }
@@ -2157,7 +2159,7 @@ impl Parser {
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
                   ExprVec(*) | ExprLit(@codemap::Spanned {
-                    node: lit_str(_), span: _
+                    node: lit_str(*), span: _
                   })
                   if m == MutImmutable => {
                     ExprVstore(e, ExprVstoreSlice)
@@ -2181,7 +2183,7 @@ impl Parser {
               ExprVec(*) | ExprRepeat(*) if m == MutMutable =>
                 ExprVstore(e, ExprVstoreMutBox),
               ExprVec(*) |
-              ExprLit(@codemap::Spanned { node: lit_str(_), span: _}) |
+              ExprLit(@codemap::Spanned { node: lit_str(*), span: _}) |
               ExprRepeat(*) if m == MutImmutable => ExprVstore(e, ExprVstoreBox),
               _ => self.mk_unary(UnBox(m), e)
             };
@@ -2194,7 +2196,7 @@ impl Parser {
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
               ExprVec(*) |
-              ExprLit(@codemap::Spanned { node: lit_str(_), span: _}) |
+              ExprLit(@codemap::Spanned { node: lit_str(*), span: _}) |
               ExprRepeat(*) => ExprVstore(e, ExprVstoreUniq),
               _ => self.mk_unary(UnUniq, e)
             };
@@ -2706,7 +2708,7 @@ impl Parser {
             pat = match sub.node {
               PatLit(e@@Expr {
                 node: ExprLit(@codemap::Spanned {
-                    node: lit_str(_),
+                    node: lit_str(*),
                     span: _}), _
               }) => {
                 let vst = @Expr {
@@ -2734,7 +2736,7 @@ impl Parser {
             pat = match sub.node {
               PatLit(e@@Expr {
                 node: ExprLit(@codemap::Spanned {
-                    node: lit_str(_),
+                    node: lit_str(*),
                     span: _}), _
               }) => {
                 let vst = @Expr {
@@ -2763,7 +2765,7 @@ impl Parser {
               pat = match sub.node {
                   PatLit(e@@Expr {
                       node: ExprLit(@codemap::Spanned {
-                            node: lit_str(_), span: _}), _
+                            node: lit_str(*), span: _}), _
                   }) => {
                       let vst = @Expr {
                           id: ast::DUMMY_NODE_ID,
@@ -4345,7 +4347,8 @@ impl Parser {
     // parse a string as an ABI spec on an extern type or module
     fn parse_opt_abis(&self) -> Option<AbiSet> {
         match *self.token {
-            token::LIT_STR(s) => {
+            token::LIT_STR(s)
+            | token::LIT_STR_RAW(s, _) => {
                 self.bump();
                 let the_string = ident_to_str(&s);
                 let mut abis = AbiSet::empty();
@@ -4371,15 +4374,15 @@ impl Parser {
                                      abi::all_names().connect(", "),
                                      word));
                         }
-                    }
-                }
+                     }
+                 }
                 Some(abis)
             }
 
             _ => {
                 None
-            }
-        }
+             }
+         }
     }
 
     // parse one of the items or view items allowed by the
@@ -4930,17 +4933,17 @@ impl Parser {
         }
     }
 
-    pub fn parse_optional_str(&self) -> Option<@str> {
-        match *self.token {
-            token::LIT_STR(s) => {
-                self.bump();
-                Some(ident_to_str(&s))
-            }
-            _ => None
-        }
+    pub fn parse_optional_str(&self) -> Option<(@str, ast::StrStyle)> {
+        let (s, style) = match *self.token {
+            token::LIT_STR(s) => (s, ast::CookedStr),
+            token::LIT_STR_RAW(s, n) => (s, ast::RawStr(n)),
+            _ => return None
+        };
+        self.bump();
+        Some((ident_to_str(&s), style))
     }
 
-    pub fn parse_str(&self) -> @str {
+    pub fn parse_str(&self) -> (@str, StrStyle) {
         match self.parse_optional_str() {
             Some(s) => { s }
             _ =>  self.fatal("expected string literal")

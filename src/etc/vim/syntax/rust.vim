@@ -148,6 +148,7 @@ syn match     rustFormat      display "%%" contained
 syn match     rustSpecial     display contained /\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
 syn match     rustStringContinuation display contained /\\\n\s*/
 syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial,rustStringContinuation
+syn region    rustString      start='r\z(#*\)"' end='"\z1'
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
