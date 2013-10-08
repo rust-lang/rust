@@ -107,25 +107,18 @@ pub fn live_allocs() -> *raw::Box<()> {
 }
 
 extern {
-    #[fast_ffi]
     fn rust_new_memory_region(detailed_leaks: uintptr_t,
                                poison_on_free: uintptr_t) -> *MemoryRegion;
-    #[fast_ffi]
     fn rust_delete_memory_region(region: *MemoryRegion);
-    #[fast_ffi]
     fn rust_new_boxed_region(region: *MemoryRegion,
                              poison_on_free: uintptr_t) -> *BoxedRegion;
-    #[fast_ffi]
     fn rust_delete_boxed_region(region: *BoxedRegion);
-    #[fast_ffi]
     fn rust_boxed_region_malloc(region: *BoxedRegion,
                                 td: *TypeDesc,
                                 size: size_t) -> *OpaqueBox;
-    #[fast_ffi]
     fn rust_boxed_region_realloc(region: *BoxedRegion,
                                  ptr: *OpaqueBox,
                                  size: size_t) -> *OpaqueBox;
-    #[fast_ffi]
     fn rust_boxed_region_free(region: *BoxedRegion, box: *OpaqueBox);
 }
 
