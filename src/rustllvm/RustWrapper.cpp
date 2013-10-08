@@ -548,14 +548,21 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateStructType(
     LLVMValueRef DerivedFrom,
     LLVMValueRef Elements,
     unsigned RunTimeLang,
-    LLVMValueRef VTableHolder) {
+    LLVMValueRef VTableHolder,
+    const char *UniqueId) {
     return wrap(Builder->createStructType(
-        unwrapDI<DIDescriptor>(Scope), Name,
-        unwrapDI<DIFile>(File), LineNumber,
-        SizeInBits, AlignInBits, Flags,
+        unwrapDI<DIDescriptor>(Scope),
+        Name,
+        unwrapDI<DIFile>(File),
+        LineNumber,
+        SizeInBits,
+        AlignInBits,
+        Flags,
         unwrapDI<DIType>(DerivedFrom),
-        unwrapDI<DIArray>(Elements), RunTimeLang,
-        unwrapDI<MDNode*>(VTableHolder)));
+        unwrapDI<DIArray>(Elements),
+        RunTimeLang,
+        unwrapDI<MDNode*>(VTableHolder),
+        UniqueId));
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateMemberType(
