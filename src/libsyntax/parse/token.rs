@@ -499,30 +499,11 @@ fn mk_fresh_ident_interner() -> @ident_interner {
     @interner::StrInterner::prefill(init_vec)
 }
 
-// NOTE remove stage0 pub'ed special cases after next snapshot.
-#[cfg(stage0)]
-pub static SELF_KEYWORD_NAME: uint = 8;
-#[cfg(not(stage0))]
 static SELF_KEYWORD_NAME: uint = 8;
-#[cfg(stage0)]
-pub static STATIC_KEYWORD_NAME: uint = 27;
-#[cfg(not(stage0))]
 static STATIC_KEYWORD_NAME: uint = 27;
-#[cfg(stage0)]
-pub static STRICT_KEYWORD_START: uint = 32;
-#[cfg(not(stage0))]
 static STRICT_KEYWORD_START: uint = 32;
-#[cfg(stage0)]
-pub static STRICT_KEYWORD_FINAL: uint = 64;
-#[cfg(not(stage0))]
 static STRICT_KEYWORD_FINAL: uint = 64;
-#[cfg(stage0)]
-pub static RESERVED_KEYWORD_START: uint = 65;
-#[cfg(not(stage0))]
 static RESERVED_KEYWORD_START: uint = 65;
-#[cfg(stage0)]
-pub static RESERVED_KEYWORD_FINAL: uint = 71;
-#[cfg(not(stage0))]
 static RESERVED_KEYWORD_FINAL: uint = 71;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
