@@ -100,7 +100,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
         }
         fn get_target_lib_file_path(&self, file: &Path) -> Path {
             let mut p = self.get_target_lib_path();
-            p.push_path(file);
+            p.push(file);
             p
         }
     }
@@ -148,7 +148,7 @@ pub fn relative_target_lib_path(target_triple: &str) -> Path {
 
 fn make_target_lib_path(sysroot: &Path,
                         target_triple: &str) -> Path {
-    sysroot.join_path(&relative_target_lib_path(target_triple))
+    sysroot.join(&relative_target_lib_path(target_triple))
 }
 
 fn make_rustpkg_target_lib_path(dir: &Path,
@@ -196,7 +196,7 @@ pub fn rust_path() -> ~[Path] {
         }
         None => ~[]
     };
-    let cwd = os::getcwd();
+    let mut cwd = os::getcwd();
     // now add in default entries
     let cwd_dot_rust = cwd.join(".rust");
     if !env_rust_path.contains(&cwd_dot_rust) {
@@ -205,28 +205,25 @@ pub fn rust_path() -> ~[Path] {
     if !env_rust_path.contains(&cwd) {
         env_rust_path.push(cwd.clone());
     }
-    do cwd.each_parent() |p| {
-        if !env_rust_path.contains(&p.join(".rust")) {
-            push_if_exists(&mut env_rust_path, p);
+    loop {
+        let f = cwd.pop();
+        if f.is_none() || bytes!("..") == f.unwrap() {
+            break;
         }
-        true
-    };
+        cwd.push(".rust");
+        if !env_rust_path.contains(&cwd) && os::path_exists(&cwd) {
+            env_rust_path.push(cwd.clone());
+        }
+        cwd.pop();
+    }
     let h = os::homedir();
     for h in h.iter() {
-        if !env_rust_path.contains(&h.join(".rust")) {
-            push_if_exists(&mut env_rust_path, h);
+        let p = h.join(".rust");
+        if !env_rust_path.contains(&p) && os::path_exists(&p) {
+            env_rust_path.push(p);
         }
     }
     env_rust_path
-}
-
-
-/// Adds p/.rust into vec, only if it exists
-fn push_if_exists(vec: &mut ~[Path], p: &Path) {
-    let maybe_dir = p.join(".rust");
-    if os::path_exists(&maybe_dir) {
-        vec.push(maybe_dir);
-    }
 }
 
 // The name of the directory rustc expects libraries to be located.

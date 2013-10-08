@@ -3996,7 +3996,7 @@ impl Parser {
         prefix.pop();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path::new(".").join_many(*mod_path_stack);
-        let dir_path = prefix.join_path(&mod_path);
+        let dir_path = prefix.join(&mod_path);
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
             Some(d) => dir_path.join(d),

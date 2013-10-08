@@ -95,20 +95,20 @@ impl PkgSrc {
             // We search for sources under both src/ and build/ , because build/ is where
             // automatically-checked-out sources go.
             let mut result = source_workspace.join("src");
-            result.push_path(&id.path.dir_path());
+            result.push(&id.path.dir_path());
             result.push(format!("{}-{}", id.short_name, id.version.to_str()));
             to_try.push(result);
             let mut result = source_workspace.join("src");
-            result.push_path(&id.path);
+            result.push(&id.path);
             to_try.push(result);
 
             let mut result = build_dir.join("src");
-            result.push_path(&id.path.dir_path());
+            result.push(&id.path.dir_path());
             result.push_str(format!("{}-{}", id.short_name, id.version.to_str()));
             to_try.push(result.clone());
             output_names.push(result);
             let mut other_result = build_dir.join("src");
-            other_result.push_path(&id.path);
+            other_result.push(&id.path);
             to_try.push(other_result.clone());
             output_names.push(other_result);
 
@@ -146,7 +146,7 @@ impl PkgSrc {
                                     source_workspace: source.clone(),
                                     build_in_destination: build_in_destination,
                                     destination_workspace: destination,
-                                    start_dir: start.join_path(&suffix),
+                                    start_dir: start.join(&suffix),
                                     id: id,
                                     libs: ~[],
                                     mains: ~[],
@@ -371,7 +371,7 @@ impl PkgSrc {
                     cfgs: &[~str],
                     what: OutputType) {
         for crate in crates.iter() {
-            let path = self.start_dir.join_path(&crate.file);
+            let path = self.start_dir.join(&crate.file);
             debug2!("build_crates: compiling {}", path.display());
             let cfgs = crate.cfgs + cfgs;
 
@@ -416,7 +416,7 @@ impl PkgSrc {
         debug2!("In declare inputs, self = {}", self.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
-                let path = self.start_dir.join_path(&c.file);
+                let path = self.start_dir.join(&c.file);
                 debug2!("Declaring input: {}", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("file", path.as_str().unwrap(),

@@ -24,6 +24,7 @@
  */
 
 use std::{os, path};
+use std::path::is_sep;
 
 use sort;
 
@@ -81,11 +82,7 @@ pub fn glob(pattern: &str) -> GlobIterator {
  */
 pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
     #[cfg(windows)]
-    use is_sep = std::path::windows::is_sep2;
-    #[cfg(not(windows))]
-    fn is_sep(c: char) -> bool { c <= '\x7F' && ::std::path::posix::is_sep(&(c as u8)) }
-    #[cfg(windows)]
-    fn check_windows_verbatim(p: &Path) -> bool { p.is_verbatim() }
+    fn check_windows_verbatim(p: &Path) -> bool { path::windows::is_verbatim(p) }
     #[cfg(not(windows))]
     fn check_windows_verbatim(_: &Path) -> bool { false }
 
@@ -98,7 +95,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
             // since we can't very well find all UNC shares with a 1-letter server name.
             return GlobIterator { root: root, dir_patterns: ~[], options: options, todo: ~[] };
         }
-        root.push_path(pat_root.get_ref());
+        root.push(pat_root.get_ref());
     }
 
     let root_len = pat_root.map_move_default(0u, |p| p.as_vec().len());
@@ -462,7 +459,7 @@ fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptio
 
 /// A helper function to determine if two chars are (possibly case-insensitively) equal.
 fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
-    if cfg!(windows) && path::windows::is_sep2(a) && path::windows::is_sep2(b) {
+    if cfg!(windows) && path::windows::is_sep(a) && path::windows::is_sep(b) {
         true
     } else if !case_sensitive && a.is_ascii() && b.is_ascii() {
         // FIXME: work with non-ascii chars properly (issue #1347)
@@ -471,16 +468,6 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
         a == b
     }
 }
-
-/// A helper function to determine if a char is a path separator on the current platform.
-fn is_sep(c: char) -> bool {
-    if cfg!(windows) {
-        path::windows::is_sep2(c)
-    } else {
-        c <= '\x7F' && path::posix::is_sep(&(c as u8))
-    }
-}
-
 
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`

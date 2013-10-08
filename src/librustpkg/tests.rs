@@ -156,7 +156,7 @@ fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &st
 fn init_git_repo(p: &Path) -> TempDir {
     assert!(p.is_relative());
     let tmp = TempDir::new("git_local").expect("couldn't create temp dir");
-    let work_dir = tmp.path().join_path(p);
+    let work_dir = tmp.path().join(p);
     let work_dir_for_opts = work_dir.clone();
     assert!(os::mkdir_recursive(&work_dir, U_RWX));
     debug2!("Running: git init in {}", work_dir.display());
@@ -793,7 +793,7 @@ fn test_package_request_version() {
             == repo.join_many([".rust", "bin", "test_pkg_version"]));
 
     let mut dir = target_build_dir(&repo.join(".rust"));
-    dir.push_path(&Path::new("src/mockgithub.com/catamorphism/test_pkg_version-0.3"));
+    dir.push(&Path::new("src/mockgithub.com/catamorphism/test_pkg_version-0.3"));
     debug2!("dir = {}", dir.display());
     assert!(os::path_is_dir(&dir));
     assert!(os::path_exists(&dir.join("version-0.3-file.txt")));

@@ -78,7 +78,7 @@ pub fn getcwd() -> Path {
                 fail2!()
             }
 
-            GenericPath::from_c_str(CString::new(buf as *c_char, false))
+            Path::new(CString::new(buf as *c_char, false))
         }
     }
 }
@@ -608,7 +608,7 @@ pub fn tmpdir() -> Path {
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
     let r = list_dir(p);
     r.iter().advance(|q| {
-        let path = &p.join_path(q);
+        let path = &p.join(q);
         f(path) && (!path_is_dir(path) || walk_dir(path, |p| f(p)))
     })
 }
@@ -648,7 +648,7 @@ pub fn make_absolute(p: &Path) -> Path {
         p.clone()
     } else {
         let mut ret = getcwd();
-        ret.push_path(p);
+        ret.push(p);
         ret
     }
 }
@@ -730,7 +730,7 @@ pub fn list_dir(p: &Path) -> ~[Path] {
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     let cstr = CString::new(rust_list_dir_val(entry_ptr), false);
-                    paths.push(GenericPath::from_c_str(cstr));
+                    paths.push(Path::new(cstr));
                     entry_ptr = readdir(dir_ptr);
                 }
                 closedir(dir_ptr);
@@ -800,7 +800,7 @@ pub fn list_dir(p: &Path) -> ~[Path] {
  * This version prepends each entry with the directory.
  */
 pub fn list_dir_path(p: &Path) -> ~[Path] {
-    list_dir(p).map(|f| p.join_path(f))
+    list_dir(p).map(|f| p.join(f))
 }
 
 /// Removes a directory at the specified path, after removing

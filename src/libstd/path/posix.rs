@@ -48,12 +48,19 @@ pub struct Path {
 }
 
 /// The standard path separator character
-pub static sep: u8 = '/' as u8;
+pub static sep: char = '/';
+static sep_byte: u8 = sep as u8;
 
 /// Returns whether the given byte is a path separator
 #[inline]
-pub fn is_sep(u: &u8) -> bool {
-    *u == sep
+pub fn is_sep_byte(u: &u8) -> bool {
+    *u as char == sep
+}
+
+/// Returns whether the given char is a path separator
+#[inline]
+pub fn is_sep(c: char) -> bool {
+    c == sep
 }
 
 impl Eq for Path {
@@ -89,11 +96,29 @@ impl IterBytes for Path {
     }
 }
 
+impl BytesContainer for Path {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_vec()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.into_vec()
+    }
+}
+
+impl<'self> BytesContainer for &'self Path {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_vec()
+    }
+}
+
 impl GenericPathUnsafe for Path {
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let path = Path::normalize(path.container_as_bytes());
         assert!(!path.is_empty());
-        let idx = path.rposition_elem(&sep);
+        let idx = path.rposition_elem(&sep_byte);
         Path{ repr: path, sepidx: idx }
     }
 
@@ -106,11 +131,11 @@ impl GenericPathUnsafe for Path {
             None => {
                 let mut v = vec::with_capacity(dirname.len() + self.repr.len() + 1);
                 v.push_all(dirname);
-                v.push(sep);
+                v.push(sep_byte);
                 v.push_all(self.repr);
                 self.repr = Path::normalize(v);
             }
-            Some(0) if self.repr.len() == 1 && self.repr[0] == sep => {
+            Some(0) if self.repr.len() == 1 && self.repr[0] == sep_byte => {
                 self.repr = Path::normalize(dirname);
             }
             Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
@@ -127,7 +152,7 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(v);
             }
         }
-        self.sepidx = self.repr.rposition_elem(&sep);
+        self.sepidx = self.repr.rposition_elem(&sep_byte);
     }
 
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
@@ -136,7 +161,7 @@ impl GenericPathUnsafe for Path {
             None if bytes!("..") == self.repr => {
                 let mut v = vec::with_capacity(3 + filename.len());
                 v.push_all(dot_dot_static);
-                v.push(sep);
+                v.push(sep_byte);
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
             }
@@ -146,7 +171,7 @@ impl GenericPathUnsafe for Path {
             Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
                 let mut v = vec::with_capacity(self.repr.len() + 1 + filename.len());
                 v.push_all(self.repr);
-                v.push(sep);
+                v.push(sep_byte);
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
             }
@@ -157,22 +182,22 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(v);
             }
         }
-        self.sepidx = self.repr.rposition_elem(&sep);
+        self.sepidx = self.repr.rposition_elem(&sep_byte);
     }
 
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
         let path = path.container_as_bytes();
         if !path.is_empty() {
-            if path[0] == sep {
+            if path[0] == sep_byte {
                 self.repr = Path::normalize(path);
             }  else {
                 let mut v = vec::with_capacity(self.repr.len() + path.len() + 1);
                 v.push_all(self.repr);
-                v.push(sep);
+                v.push(sep_byte);
                 v.push_all(path);
                 self.repr = Path::normalize(v);
             }
-            self.sepidx = self.repr.rposition_elem(&sep);
+            self.sepidx = self.repr.rposition_elem(&sep_byte);
         }
     }
 }
@@ -228,7 +253,7 @@ impl GenericPath for Path {
                 } else {
                     self.repr.truncate(idx);
                 }
-                self.sepidx = self.repr.rposition_elem(&sep);
+                self.sepidx = self.repr.rposition_elem(&sep_byte);
                 Some(v)
             }
         }
@@ -244,7 +269,7 @@ impl GenericPath for Path {
 
     #[inline]
     fn is_absolute(&self) -> bool {
-        self.repr[0] == sep
+        self.repr[0] == sep_byte
     }
 
     fn is_ancestor_of(&self, other: &Path) -> bool {
@@ -305,7 +330,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect_vec(&sep)))
+            Some(Path::new(comps.connect_vec(&sep_byte)))
         }
     }
 
@@ -347,14 +372,14 @@ impl Path {
     fn normalize<V: Vector<u8>+CopyableVector<u8>>(v: V) -> ~[u8] {
         // borrowck is being very picky
         let val = {
-            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == sep;
+            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == sep_byte;
             let v_ = if is_abs { v.as_slice().slice_from(1) } else { v.as_slice() };
             let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
                 Some(comps) => {
                     if is_abs && comps.is_empty() {
-                        Some(~[sep])
+                        Some(~[sep_byte])
                     } else {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
@@ -367,7 +392,7 @@ impl Path {
                             }
                         }
                         for comp in it {
-                            v.push(sep);
+                            v.push(sep_byte);
                             v.push_all(comp);
                         }
                         Some(v)
@@ -386,10 +411,10 @@ impl Path {
     /// /a/b/c and a/b/c yield the same set of components.
     /// A path of "/" yields no components. A path of "." yields one component.
     pub fn component_iter<'a>(&'a self) -> ComponentIter<'a> {
-        let v = if self.repr[0] == sep {
+        let v = if self.repr[0] == sep_byte {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
-        let mut ret = v.split_iter(is_sep);
+        let mut ret = v.split_iter(is_sep_byte);
         if v.is_empty() {
             // consume the empty "" component
             ret.next();
@@ -400,10 +425,10 @@ impl Path {
     /// Returns an iterator that yields each component of the path in reverse.
     /// See component_iter() for details.
     pub fn rev_component_iter<'a>(&'a self) -> RevComponentIter<'a> {
-        let v = if self.repr[0] == sep {
+        let v = if self.repr[0] == sep_byte {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
-        let mut ret = v.rsplit_iter(is_sep);
+        let mut ret = v.rsplit_iter(is_sep_byte);
         if v.is_empty() {
             // consume the empty "" component
             ret.next();
@@ -432,7 +457,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
     let mut comps: ~[&'a [u8]] = ~[];
     let mut n_up = 0u;
     let mut changed = false;
-    for comp in v.split_iter(is_sep) {
+    for comp in v.split_iter(is_sep_byte) {
         if comp.is_empty() { changed = true }
         else if comp == bytes!(".") { changed = true }
         else if comp == bytes!("..") {
@@ -928,7 +953,7 @@ mod tests {
                 {
                     let mut p = Path::new($path);
                     let push = Path::new($push);
-                    p.push_path(&push);
+                    p.push(&push);
                     assert_eq!(p.as_str(), Some($exp));
                 }
             )
@@ -1049,7 +1074,7 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let join = Path::new($join);
-                    let res = path.join_path(&join);
+                    let res = path.join(&join);
                     assert_eq!(res.as_str(), Some($exp));
                 }
             )
@@ -1597,59 +1622,5 @@ mod tests {
         t!(v: ["../../foo", 0xcd, "bar"], [Some(".."), Some(".."), None]);
         // str_component_iter is a wrapper around component_iter, so no need to do
         // the full set of tests
-    }
-
-    #[test]
-    fn test_each_parent() {
-        assert!(Path::new("/foo/bar").each_parent(|_| true));
-        assert!(!Path::new("/foo/bar").each_parent(|_| false));
-
-        macro_rules! t(
-            (s: $path:expr, $exp:expr) => (
-                {
-                    let path = Path::new($path);
-                    let exp: &[&str] = $exp;
-                    let mut comps = exp.iter().map(|&x|x);
-                    do path.each_parent |p| {
-                        let p = p.as_str();
-                        assert!(p.is_some());
-                        let e = comps.next();
-                        assert!(e.is_some());
-                        assert_eq!(p.unwrap(), e.unwrap());
-                        true
-                    };
-                    assert!(comps.next().is_none());
-                }
-            );
-            (v: $path:expr, $exp:expr) => (
-                {
-                    let path = Path::new($path);
-                    let exp: &[&[u8]] = $exp;
-                    let mut comps = exp.iter().map(|&x|x);
-                    do path.each_parent |p| {
-                        let p = p.as_vec();
-                        let e = comps.next();
-                        assert!(e.is_some());
-                        assert_eq!(p, e.unwrap());
-                        true
-                    };
-                    assert!(comps.next().is_none());
-                }
-            )
-        )
-
-        t!(s: "/foo/bar", ["/foo/bar", "/foo", "/"]);
-        t!(s: "/foo/bar/baz", ["/foo/bar/baz", "/foo/bar", "/foo", "/"]);
-        t!(s: "/foo", ["/foo", "/"]);
-        t!(s: "/", ["/"]);
-        t!(s: "foo/bar/baz", ["foo/bar/baz", "foo/bar", "foo", "."]);
-        t!(s: "foo/bar", ["foo/bar", "foo", "."]);
-        t!(s: "foo", ["foo", "."]);
-        t!(s: ".", ["."]);
-        t!(s: "..", [".."]);
-        t!(s: "../../foo", ["../../foo", "../.."]);
-
-        t!(v: b!("foo/bar", 0x80), [b!("foo/bar", 0x80), b!("foo"), b!(".")]);
-        t!(v: b!(0xff, "/bar"), [b!(0xff, "/bar"), b!(0xff), b!(".")]);
     }
 }

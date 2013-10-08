@@ -68,7 +68,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     let mut found = None;
     do os::walk_dir(&src_dir) |p| {
         if os::path_is_dir(p) {
-            if *p == src_dir.join_path(&pkgid.path) || {
+            if *p == src_dir.join(&pkgid.path) || {
                 let pf = p.filename_str();
                 do pf.iter().any |&g| {
                     match split_version_general(g, '-') {
@@ -196,7 +196,7 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
             prefix = {}", short_name, where, workspace.display(), prefix);
 
     let dir_to_search = match where {
-        Build => target_build_dir(workspace).join_path(path),
+        Build => target_build_dir(workspace).join(path),
         Install => target_lib_dir(workspace)
     };
 
@@ -273,7 +273,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     // Return the filename that matches, which we now know exists
     // (if result_filename != None)
     let abs_path = do result_filename.map |result_filename| {
-        let absolute_path = dir_to_search.join_path(&result_filename);
+        let absolute_path = dir_to_search.join(&result_filename);
         debug2!("result_filename = {}", absolute_path.display());
         absolute_path
     };
@@ -329,7 +329,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
     let result = match (where, what) {
-                (Build, _)      => target_build_dir(workspace).join_path(&pkgid.path),
+                (Build, _)      => target_build_dir(workspace).join(&pkgid.path),
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
@@ -347,7 +347,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
 
     let mut result = target_build_dir(workspace);
-    result.push_path(&pkgid.path);
+    result.push(&pkgid.path);
     debug2!("Creating build dir {} for package id {}", result.display(),
            pkgid.to_str());
     if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
@@ -370,7 +370,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
         // If we're installing, it just goes under <workspace>...
         Install => workspace,
         // and if we're just building, it goes in a package-specific subdir
-        Build => workspace.join_path(&pkg_id.path)
+        Build => workspace.join(&pkg_id.path)
     };
     debug2!("[{:?}:{:?}] mk_output_path: short_name = {}, path = {}", what, where,
            if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },
@@ -388,7 +388,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
                            os::EXE_SUFFIX))
     };
     if !output_path.is_absolute() {
-        output_path = os::getcwd().join_path(&output_path);
+        output_path = os::getcwd().join(&output_path);
     }
     debug2!("mk_output_path: returning {}", output_path.display());
     output_path

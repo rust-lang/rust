@@ -45,7 +45,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
 
 fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
     let r = filesearch::relative_target_lib_path(sess.opts.target_triple);
-    let mut p = sess.filesearch.sysroot().join_path(&r);
+    let mut p = sess.filesearch.sysroot().join(&r);
     p.push(os::dll_filename("rustrt"));
     p
 }
@@ -148,7 +148,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> ~str {
 
     let tlib = filesearch::relative_target_lib_path(target_triple);
     let mut path = Path::new(install_prefix);
-    path.push_path(&tlib);
+    path.push(&tlib);
     let path = os::make_absolute(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
     path.as_str().expect("non-utf8 component in rpath").to_owned()

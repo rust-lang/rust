@@ -416,15 +416,15 @@ impl CtxMethods for BuildContext {
 
         debug2!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
                 pkgid = {} pkgsrc start_dir = {}", workspace.display(),
-               in_rust_path(&workspace), is_git_dir(&workspace.join_path(&pkgid.path)),
+               in_rust_path(&workspace), is_git_dir(&workspace.join(&pkgid.path)),
                pkgid.to_str(), pkg_src.start_dir.display());
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
-        if !in_rust_path(&workspace) && is_git_dir(&workspace.join_path(&pkgid.path)) {
+        if !in_rust_path(&workspace) && is_git_dir(&workspace.join(&pkgid.path)) {
             let mut out_dir = default_workspace().join("src");
-            out_dir.push_path(&pkgid.path);
-            let git_result = source_control::safe_git_clone(&workspace.join_path(&pkgid.path),
+            out_dir.push(&pkgid.path);
+            let git_result = source_control::safe_git_clone(&workspace.join(&pkgid.path),
                                                             &pkgid.version,
                                                             &out_dir);
             match git_result {
@@ -494,7 +494,7 @@ impl CtxMethods for BuildContext {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
                     debug2!("JustOne: p = {}", p.display());
-                    assert!(os::path_exists(&pkg_src.start_dir.join_path(p)));
+                    assert!(os::path_exists(&pkg_src.start_dir.join(p)));
                     if is_lib(p) {
                         PkgSrc::push_crate(&mut pkg_src.libs, 0, p);
                     } else if is_main(p) {
@@ -553,7 +553,7 @@ impl CtxMethods for BuildContext {
         debug2!("In declare inputs for {}", id.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
-                let path = pkg_src.start_dir.join_path(&c.file);
+                let path = pkg_src.start_dir.join(&c.file);
                 debug2!("Recording input: {}", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 inputs.push((~"file", path.as_str().unwrap().to_owned()));

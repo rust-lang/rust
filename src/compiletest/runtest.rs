@@ -189,7 +189,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
 
     let mut expected = match props.pp_exact {
         Some(ref file) => {
-            let filepath = testfile.dir_path().join_path(file);
+            let filepath = testfile.dir_path().join(file);
             io::read_whole_file_str(&filepath).unwrap()
           }
           None => { srcs[srcs.len() - 2u].clone() }
@@ -657,7 +657,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
     // what we return here is not particularly important, as it
     // happens; rustc ignores everything except for the directory.
     let auxname = output_testname(auxfile);
-    aux_output_dir_name(config, testfile).join_path(&auxname)
+    aux_output_dir_name(config, testfile).join(&auxname)
 }
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
@@ -757,7 +757,7 @@ fn output_testname(testfile: &Path) -> Path {
 
 fn output_base_name(config: &config, testfile: &Path) -> Path {
     config.build_base
-        .join_path(&output_testname(testfile))
+        .join(&output_testname(testfile))
         .with_extension(config.stage_id.as_slice())
 }
 

@@ -177,7 +177,7 @@ pub fn compile_input(context: &BuildContext,
     // not sure if we should support anything else
 
     let mut out_dir = target_build_dir(workspace);
-    out_dir.push_path(&pkg_id.path);
+    out_dir.push(&pkg_id.path);
     // Make the output directory if it doesn't exist already
     assert!(os::mkdir_recursive(&out_dir, U_RWX));
 

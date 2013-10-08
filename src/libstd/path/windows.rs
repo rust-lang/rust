@@ -121,6 +121,44 @@ impl IterBytes for Path {
     }
 }
 
+impl BytesContainer for Path {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_vec()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.into_vec()
+    }
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> &'a str {
+        self.as_str().unwrap()
+    }
+    #[inline]
+    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+        self.as_str()
+    }
+    #[inline]
+    fn is_str(_: Option<Path>) -> bool { true }
+}
+
+impl<'self> BytesContainer for &'self Path {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_vec()
+    }
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> &'a str {
+        self.as_str().unwrap()
+    }
+    #[inline]
+    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+        self.as_str()
+    }
+    #[inline]
+    fn is_str(_: Option<&'self Path>) -> bool { true }
+}
+
 impl GenericPathUnsafe for Path {
     /// See `GenericPathUnsafe::from_vec_unchecked`.
     ///
@@ -235,7 +273,7 @@ impl GenericPathUnsafe for Path {
         fn is_vol_abs(path: &str, prefix: Option<PathPrefix>) -> bool {
             // assume prefix is Some(DiskPrefix)
             let rest = path.slice_from(prefix_len(prefix));
-            !rest.is_empty() && rest[0].is_ascii() && is_sep2(rest[0] as char)
+            !rest.is_empty() && rest[0].is_ascii() && is_sep(rest[0] as char)
         }
         fn shares_volume(me: &Path, path: &str) -> bool {
             // path is assumed to have a prefix of Some(DiskPrefix)
@@ -246,8 +284,8 @@ impl GenericPathUnsafe for Path {
             }
         }
         fn is_sep_(prefix: Option<PathPrefix>, u: u8) -> bool {
-            u.is_ascii() && if prefix_is_verbatim(prefix) { is_sep(u as char) }
-                            else { is_sep2(u as char) }
+            if prefix_is_verbatim(prefix) { is_sep_verbatim(u as char) }
+            else { is_sep(u as char) }
         }
 
         fn replace_path(me: &mut Path, path: &str, prefix: Option<PathPrefix>) {
@@ -262,7 +300,7 @@ impl GenericPathUnsafe for Path {
         fn append_path(me: &mut Path, path: &str) {
             // appends a path that has no prefix
             // if me is verbatim, we need to pre-normalize the new path
-            let path_ = if me.is_verbatim() { Path::normalize__(path, None) }
+            let path_ = if is_verbatim(me) { Path::normalize__(path, None) }
                         else { None };
             let pathlen = path_.map_default(path.len(), |p| p.len());
             let mut s = str::with_capacity(me.repr.len() + 1 + pathlen);
@@ -291,7 +329,7 @@ impl GenericPathUnsafe for Path {
                 }
                 None if !path.is_empty() && is_sep_(self.prefix, path[0]) => {
                     // volume-relative path
-                    if self.prefix().is_some() {
+                    if self.prefix.is_some() {
                         // truncate self down to the prefix, then append
                         let n = self.prefix_len();
                         self.repr.truncate(n);
@@ -419,11 +457,6 @@ impl GenericPath for Path {
     }
 
     #[inline]
-    fn push_path(&mut self, path: &Path) {
-        self.push(path.as_str().unwrap())
-    }
-
-    #[inline]
     fn pop(&mut self) -> Option<~[u8]> {
         self.pop_str().map_move(|s| s.into_bytes())
     }
@@ -463,7 +496,7 @@ impl GenericPath for Path {
                 }
                 _ => self.repr.slice_to(self.prefix_len())
             }))
-        } else if self.is_vol_relative() {
+        } else if is_vol_relative(self) {
             Some(Path::new(self.repr.slice_to(1)))
         } else {
             None
@@ -493,14 +526,14 @@ impl GenericPath for Path {
 
     #[inline]
     fn is_relative(&self) -> bool {
-        self.prefix.is_none() && !self.is_vol_relative()
+        self.prefix.is_none() && !is_vol_relative(self)
     }
 
     fn is_ancestor_of(&self, other: &Path) -> bool {
         if !self.equiv_prefix(other) {
             false
         } else if self.is_absolute() != other.is_absolute() ||
-                  self.is_vol_relative() != other.is_vol_relative() {
+                  is_vol_relative(self) != is_vol_relative(other) {
             false
         } else {
             let mut ita = self.str_component_iter().map(|x|x.unwrap());
@@ -544,8 +577,8 @@ impl GenericPath for Path {
             } else {
                 None
             }
-        } else if self.is_vol_relative() != base.is_vol_relative() {
-            if self.is_vol_relative() {
+        } else if is_vol_relative(self) != is_vol_relative(base) {
+            if is_vol_relative(self) {
                 Some(self.clone())
             } else {
                 None
@@ -555,8 +588,8 @@ impl GenericPath for Path {
             let mut itb = base.str_component_iter().map(|x|x.unwrap());
             let mut comps = ~[];
 
-            let a_verb = self.is_verbatim();
-            let b_verb = base.is_verbatim();
+            let a_verb = is_verbatim(self);
+            let b_verb = is_verbatim(base);
             loop {
                 match (ita.next(), itb.next()) {
                     (None, None) => break,
@@ -596,20 +629,6 @@ impl GenericPath for Path {
             }
             Some(Path::new(comps.connect("\\")))
         }
-    }
-
-    fn each_parent(&self, f: &fn(&Path) -> bool) -> bool {
-        let mut p = self.clone();
-        loop {
-            if !f(&p) {
-                return false;
-            }
-            let f = p.pop();
-            if f.is_none() || (!p.is_verbatim() && bytes!("..") == f.unwrap()) {
-                break;
-            }
-        }
-        true
     }
 
     fn ends_with_path(&self, child: &Path) -> bool {
@@ -692,34 +711,6 @@ impl Path {
             x.unwrap().as_bytes()
         }
         self.rev_str_component_iter().map(convert)
-    }
-
-    /// Returns whether the path is considered "volume-relative", which means a path
-    /// that looks like "\foo". Paths of this form are relative to the current volume,
-    /// but absolute within that volume.
-    #[inline]
-    pub fn is_vol_relative(&self) -> bool {
-        self.prefix.is_none() && self.repr[0] == sep as u8
-    }
-
-    /// Returns whether the path is considered "cwd-relative", which means a path
-    /// with a volume prefix that is not absolute. This look like "C:foo.txt". Paths
-    /// of this form are relative to the cwd on the given volume.
-    #[inline]
-    pub fn is_cwd_relative(&self) -> bool {
-        self.prefix == Some(DiskPrefix) && !self.is_absolute()
-    }
-
-    /// Returns the PathPrefix for this Path
-    #[inline]
-    pub fn prefix(&self) -> Option<PathPrefix> {
-        self.prefix
-    }
-
-    /// Returns whether the prefix is a verbatim prefix, i.e. \\?\
-    #[inline]
-    pub fn is_verbatim(&self) -> bool {
-        prefix_is_verbatim(self.prefix)
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {
@@ -866,8 +857,8 @@ impl Path {
         let s = if self.has_nonsemantic_trailing_slash() {
                     self.repr.slice_to(self.repr.len()-1)
                 } else { self.repr.as_slice() };
-        let idx = s.rfind(if !prefix_is_verbatim(self.prefix) { is_sep2 }
-                          else { is_sep });
+        let idx = s.rfind(if !prefix_is_verbatim(self.prefix) { is_sep }
+                          else { is_sep_verbatim });
         let prefixlen = self.prefix_len();
         self.sepidx = idx.and_then(|x| if x < prefixlen { None } else { Some(x) });
     }
@@ -893,7 +884,7 @@ impl Path {
     }
 
     fn has_nonsemantic_trailing_slash(&self) -> bool {
-        self.is_verbatim() && self.repr.len() > self.prefix_len()+1 &&
+        is_verbatim(self) && self.repr.len() > self.prefix_len()+1 &&
             self.repr[self.repr.len()-1] == sep as u8
     }
 
@@ -905,23 +896,65 @@ impl Path {
     }
 }
 
+/// Returns whether the path is considered "volume-relative", which means a path
+/// that looks like "\foo". Paths of this form are relative to the current volume,
+/// but absolute within that volume.
+#[inline]
+pub fn is_vol_relative(path: &Path) -> bool {
+    path.prefix.is_none() && is_sep_byte(&path.repr[0])
+}
+
+/// Returns whether the path is considered "cwd-relative", which means a path
+/// with a volume prefix that is not absolute. This look like "C:foo.txt". Paths
+/// of this form are relative to the cwd on the given volume.
+#[inline]
+pub fn is_cwd_relative(path: &Path) -> bool {
+    path.prefix == Some(DiskPrefix) && !path.is_absolute()
+}
+
+/// Returns the PathPrefix for this Path
+#[inline]
+pub fn prefix(path: &Path) -> Option<PathPrefix> {
+    path.prefix
+}
+
+/// Returns whether the Path's prefix is a verbatim prefix, i.e. \\?\
+#[inline]
+pub fn is_verbatim(path: &Path) -> bool {
+    prefix_is_verbatim(path.prefix)
+}
+
 /// The standard path separator character
 pub static sep: char = '\\';
 /// The alternative path separator character
 pub static sep2: char = '/';
 
-/// Returns whether the given byte is a path separator.
-/// Only allows the primary separator '\'; use is_sep2 to allow '/'.
+/// Returns whether the given char is a path separator.
+/// Allows both the primary separator '\' and the alternative separator '/'.
 #[inline]
 pub fn is_sep(c: char) -> bool {
+    c == sep || c == sep2
+}
+
+/// Returns whether the given char is a path separator.
+/// Only allows the primary separator '\'; use is_sep to allow '/'.
+#[inline]
+pub fn is_sep_verbatim(c: char) -> bool {
     c == sep
 }
 
 /// Returns whether the given byte is a path separator.
 /// Allows both the primary separator '\' and the alternative separator '/'.
 #[inline]
-pub fn is_sep2(c: char) -> bool {
-    c == sep || c == sep2
+pub fn is_sep_byte(u: &u8) -> bool {
+    *u as char == sep || *u as char == sep2
+}
+
+/// Returns whether the given byte is a path separator.
+/// Only allows the primary separator '\'; use is_sep_byte to allow '/'.
+#[inline]
+pub fn is_sep_byte_verbatim(u: &u8) -> bool {
+    *u as char == sep
 }
 
 /// Prefix types for Path
@@ -953,7 +986,7 @@ pub fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             if path.starts_with("UNC\\") {
                 // \\?\UNC\server\share
                 path = path.slice_from(4);
-                let (idx_a, idx_b) = match parse_two_comps(path, is_sep) {
+                let (idx_a, idx_b) = match parse_two_comps(path, is_sep_verbatim) {
                     Some(x) => x,
                     None => (path.len(), 0)
                 };
@@ -977,7 +1010,7 @@ pub fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             let idx = path.find('\\').unwrap_or(path.len());
             return Some(DeviceNSPrefix(idx));
         }
-        match parse_two_comps(path, is_sep2) {
+        match parse_two_comps(path, is_sep) {
             Some((idx_a, idx_b)) if idx_a > 0 && idx_b > 0 => {
                 // \\server\share
                 return Some(UNCPrefix(idx_a, idx_b));
@@ -1006,14 +1039,14 @@ pub fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
 
 // None result means the string didn't need normalizing
 fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<~[&'a str]>) {
-    let f = if !prefix_is_verbatim(prefix) { is_sep2 } else { is_sep };
+    let f = if !prefix_is_verbatim(prefix) { is_sep } else { is_sep_verbatim };
     let is_abs = s.len() > prefix_len(prefix) && f(s.char_at(prefix_len(prefix)));
     let s_ = s.slice_from(prefix_len(prefix));
     let s_ = if is_abs { s_.slice_from(1) } else { s_ };
 
     if is_abs && s_.is_empty() {
         return (is_abs, match prefix {
-            Some(DiskPrefix) | None => (if is_sep(s.char_at(prefix_len(prefix))) { None }
+            Some(DiskPrefix) | None => (if is_sep_verbatim(s.char_at(prefix_len(prefix))) { None }
                                         else { Some(~[]) }),
             Some(_) => Some(~[]), // need to trim the trailing separator
         });
@@ -1036,7 +1069,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
         } else { comps.push(comp) }
     }
     if !changed && !prefix_is_verbatim(prefix) {
-        changed = s.find(is_sep2).is_some();
+        changed = s.find(is_sep).is_some();
     }
     if changed {
         if comps.is_empty() && !is_abs && prefix.is_none() {
@@ -1078,8 +1111,8 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
 }
 
 fn prefix_is_sep(p: Option<PathPrefix>, c: u8) -> bool {
-    c.is_ascii() && if !prefix_is_verbatim(p) { is_sep2(c as char) }
-                    else { is_sep(c as char) }
+    c.is_ascii() && if !prefix_is_verbatim(p) { is_sep(c as char) }
+                    else { is_sep_verbatim(c as char) }
 }
 
 // Stat support
@@ -1636,9 +1669,9 @@ mod tests {
 
         // we do want to check one odd case though to ensure the prefix is re-parsed
         let mut p = Path::new("\\\\?\\C:");
-        assert_eq!(p.prefix(), Some(VerbatimPrefix(2)));
+        assert_eq!(prefix(&p), Some(VerbatimPrefix(2)));
         p.push("foo");
-        assert_eq!(p.prefix(), Some(VerbatimDiskPrefix));
+        assert_eq!(prefix(&p), Some(VerbatimDiskPrefix));
         assert_eq!(p.as_str(), Some("\\\\?\\C:\\foo"));
 
         // and another with verbatim non-normalized paths
@@ -1654,7 +1687,7 @@ mod tests {
                 {
                     let mut p = Path::new($path);
                     let push = Path::new($push);
-                    p.push_path(&push);
+                    p.push(&push);
                     assert_eq!(p.as_str(), Some($exp));
                 }
             )
@@ -1837,7 +1870,7 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let join = Path::new($join);
-                    let res = path.join_path(&join);
+                    let res = path.join(&join);
                     assert_eq!(res.as_str(), Some($exp));
                 }
             )
@@ -1849,7 +1882,7 @@ mod tests {
         t!(s: "a\\b", "\\c\\d", "\\c\\d");
         t!(s: ".", "a\\b", "a\\b");
         t!(s: "\\", "a\\b", "\\a\\b");
-        // join_path is implemented using push_path, so there's no need for
+        // join is implemented using push, so there's no need for
         // the full set of prefix tests
     }
 
@@ -2217,11 +2250,11 @@ mod tests {
                     let b = path.is_absolute();
                     assert!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), abs, b);
-                    let b = path.is_vol_relative();
-                    assert!(b == vol, "Path '{}'.is_vol_relative(): expected {:?}, found {:?}",
+                    let b = is_vol_relative(&path);
+                    assert!(b == vol, "is_vol_relative('{}'): expected {:?}, found {:?}",
                             path.as_str().unwrap(), vol, b);
-                    let b = path.is_cwd_relative();
-                    assert!(b == cwd, "Path '{}'.is_cwd_relative(): expected {:?}, found {:?}",
+                    let b = is_cwd_relative(&path);
+                    assert!(b == cwd, "is_cwd_relative('{}'): expected {:?}, found {:?}",
                             path.as_str().unwrap(), cwd, b);
                     let b = path.is_relative();
                     assert!(b == rel, "Path '{}'.is_relativf(): expected {:?}, found {:?}",
@@ -2613,55 +2646,5 @@ mod tests {
         t!(s: "a\\b\\c", [b!("a"), b!("b"), b!("c")]);
         t!(s: ".", [b!(".")]);
         // since this is really a wrapper around str_component_iter, those tests suffice
-    }
-
-    #[test]
-    fn test_each_parent() {
-        assert!(Path::new("/foo/bar").each_parent(|_| true));
-        assert!(!Path::new("/foo/bar").each_parent(|_| false));
-
-        macro_rules! t(
-            (s: $path:expr, $exp:expr) => (
-                {
-                    let path = Path::new($path);
-                    let exp: &[&str] = $exp;
-                    let mut comps = exp.iter().map(|&x|x);
-                    do path.each_parent |p| {
-                        let p = p.as_str();
-                        assert!(p.is_some());
-                        let e = comps.next();
-                        assert!(e.is_some());
-                        assert_eq!(p.unwrap(), e.unwrap());
-                        true
-                    };
-                    assert!(comps.next().is_none());
-                }
-            )
-        )
-
-        t!(s: "\\foo\\bar", ["\\foo\\bar", "\\foo", "\\"]);
-        t!(s: "\\foo\\bar\\baz", ["\\foo\\bar\\baz", "\\foo\\bar", "\\foo", "\\"]);
-        t!(s: "\\foo", ["\\foo", "\\"]);
-        t!(s: "\\", ["\\"]);
-        t!(s: "foo\\bar\\baz", ["foo\\bar\\baz", "foo\\bar", "foo", "."]);
-        t!(s: "foo\\bar", ["foo\\bar", "foo", "."]);
-        t!(s: "foo", ["foo", "."]);
-        t!(s: ".", ["."]);
-        t!(s: "..", [".."]);
-        t!(s: "..\\..\\foo", ["..\\..\\foo", "..\\.."]);
-        t!(s: "C:\\a\\b", ["C:\\a\\b", "C:\\a", "C:\\"]);
-        t!(s: "C:\\", ["C:\\"]);
-        t!(s: "C:a\\b", ["C:a\\b", "C:a", "C:"]);
-        t!(s: "C:", ["C:"]);
-        t!(s: "C:..\\..\\a", ["C:..\\..\\a", "C:..\\.."]);
-        t!(s: "C:..", ["C:.."]);
-        t!(s: "\\\\a\\b\\c", ["\\\\a\\b\\c", "\\\\a\\b"]);
-        t!(s: "\\\\a\\b", ["\\\\a\\b"]);
-        t!(s: "\\\\?\\a\\b\\c", ["\\\\?\\a\\b\\c", "\\\\?\\a\\b", "\\\\?\\a"]);
-        t!(s: "\\\\?\\C:\\a\\b", ["\\\\?\\C:\\a\\b", "\\\\?\\C:\\a", "\\\\?\\C:\\"]);
-        t!(s: "\\\\?\\UNC\\a\\b\\c", ["\\\\?\\UNC\\a\\b\\c", "\\\\?\\UNC\\a\\b"]);
-        t!(s: "\\\\.\\a\\b\\c", ["\\\\.\\a\\b\\c", "\\\\.\\a\\b", "\\\\.\\a"]);
-        t!(s: "\\\\?\\a\\..\\b\\.\\c/d", ["\\\\?\\a\\..\\b\\.\\c/d", "\\\\?\\a\\..\\b\\.",
-                                          "\\\\?\\a\\..\\b", "\\\\?\\a\\..", "\\\\?\\a"]);
     }
 }
