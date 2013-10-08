@@ -410,10 +410,10 @@ impl ExtCtxt {
     }
 }
 
-pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> @str {
+pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast::StrStyle) {
     match expr.node {
       ast::ExprLit(l) => match l.node {
-        ast::lit_str(s) => s,
+        ast::lit_str(s, style) => (s, style),
         _ => cx.span_fatal(l.span, err_msg)
       },
       _ => cx.span_fatal(expr.span, err_msg)

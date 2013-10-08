@@ -205,7 +205,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
 
     // Handle the &"..." case:
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s), span: _}) => {
+        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s, _), span: _}) => {
             return trans_lit_str(bcx, content_expr, s, dest);
         }
         _ => {}
@@ -296,7 +296,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: &a
         heap_exchange => {
             match content_expr.node {
                 ast::ExprLit(@codemap::Spanned {
-                    node: ast::lit_str(s), span
+                    node: ast::lit_str(s, _), span
                 }) => {
                     let llptrval = C_cstr(bcx.ccx(), s);
                     let llptrval = PointerCast(bcx, llptrval, Type::i8p());
@@ -357,7 +357,7 @@ pub fn write_content(bcx: @mut Block,
     let _indenter = indenter();
 
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s), _ }) => {
+        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s, _), _ }) => {
             match dest {
                 Ignore => {
                     return bcx;
@@ -490,7 +490,7 @@ pub fn elements_required(bcx: @mut Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s), _ }) => {
+        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s, _), _ }) => {
             s.len()
         },
         ast::ExprVec(ref es, _) => es.len(),
