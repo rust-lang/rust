@@ -27,7 +27,7 @@ pub fn main() {
     }
 
     fn abs_path(path: &str) -> Path {
-        os::getcwd().join_path(&Path::new(path))
+        os::getcwd().join(&Path::new(path))
     }
 
     fn glob_vec(pattern: &str) -> ~[Path] {

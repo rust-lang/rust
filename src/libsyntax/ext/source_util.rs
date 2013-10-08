@@ -147,7 +147,7 @@ fn res_rel_file(cx: @ExtCtxt, sp: codemap::Span, arg: &Path) -> Path {
     if !arg.is_absolute() {
         let mut cu = Path::new(cx.codemap().span_to_filename(sp));
         cu.pop();
-        cu.push_path(arg);
+        cu.push(arg);
         cu
     } else {
         arg.clone()

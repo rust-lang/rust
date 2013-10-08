@@ -30,9 +30,7 @@ no restriction on paths beyond disallowing NUL).
 ## Usage
 
 Usage of this module is fairly straightforward. Unless writing platform-specific
-code, `Path` should be used to refer to the platform-native path, and methods
-used should be restricted to those defined in `GenericPath`, and those methods
-that are declared identically on both `PosixPath` and `WindowsPath`.
+code, `Path` should be used to refer to the platform-native path.
 
 Creation of a path is typically done with either `Path::new(some_str)` or
 `Path::new(some_vec)`. This path can be modified with `.push()` and
@@ -69,7 +67,6 @@ debug2!("path exists: {}", b);
 use container::Container;
 use c_str::CString;
 use clone::Clone;
-use either::{Left, Right};
 use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
@@ -121,6 +118,19 @@ pub use StrComponentIter = self::windows::StrComponentIter;
 #[cfg(windows)]
 pub use RevStrComponentIter = self::windows::RevStrComponentIter;
 
+/// Typedef for the platform-native separator char func
+#[cfg(unix)]
+pub use is_sep = self::posix::is_sep;
+/// Typedef for the platform-native separator char func
+#[cfg(windows)]
+pub use is_sep = self::windows::is_sep;
+/// Typedef for the platform-native separator byte func
+#[cfg(unix)]
+pub use is_sep_byte = self::posix::is_sep_byte;
+/// Typedef for the platform-native separator byte func
+#[cfg(windows)]
+pub use is_sep_byte = self::windows::is_sep_byte;
+
 pub mod posix;
 pub mod windows;
 
@@ -162,19 +172,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         }
     }
 
-    /// Creates a new Path from a CString.
-    /// The resulting Path will always be normalized.
-    ///
-    /// See individual Path impls for potential restrictions.
-    #[inline]
-    fn from_c_str(path: CString) -> Self {
-        // CStrings can't contain NULs
-        let v = path.as_bytes();
-        // v is NUL-terminated. Strip it off
-        let v = v.slice_to(v.len()-1);
-        unsafe { GenericPathUnsafe::new_unchecked(v) }
-    }
-
     /// Returns the path as a string, if possible.
     /// If the path is not representable in utf-8, this returns None.
     #[inline]
@@ -195,15 +192,15 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// This will print the equivalent of `to_display_str()` when used with a {} format parameter.
     fn display<'a>(&'a self) -> Display<'a, Self> {
-        Display{ path: self }
+        Display{ path: self, filename: false }
     }
 
     /// Returns an object that implements `fmt::Default` for printing filenames
     ///
     /// This will print the equivalent of `to_filename_display_str()` when used with a {}
     /// format parameter. If there is no filename, nothing will be printed.
-    fn filename_display<'a>(&'a self) -> FilenameDisplay<'a, Self> {
-        FilenameDisplay{ path: self }
+    fn filename_display<'a>(&'a self) -> Display<'a, Self> {
+        Display{ path: self, filename: true }
     }
 
     /// Returns the directory component of `self`, as a byte vector (with no trailing separator).
@@ -314,13 +311,17 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Raises the `null_byte` condition if the filestem contains a NUL.
     fn set_filestem<T: BytesContainer>(&mut self, filestem: T) {
         // borrowck is being a pain here
+        enum Value<T> {
+            Checked(T),
+            Unchecked(~[u8])
+        }
         let val = {
             match self.filename() {
-                None => Left(filestem),
+                None => Checked(filestem),
                 Some(name) => {
                     let dot = '.' as u8;
                     match name.rposition_elem(&dot) {
-                        None | Some(0) => Left(filestem),
+                        None | Some(0) => Checked(filestem),
                         Some(idx) => {
                             let mut v;
                             if contains_nul(filestem.container_as_bytes()) {
@@ -336,15 +337,15 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                 v.push_all(filestem);
                             }
                             v.push_all(name.slice_from(idx));
-                            Right(v)
+                            Unchecked(v)
                         }
                     }
                 }
             }
         };
         match val {
-            Left(v)  => self.set_filename(v),
-            Right(v) => unsafe { self.set_filename_unchecked(v) }
+            Checked(v)  => self.set_filename(v),
+            Unchecked(v) => unsafe { self.set_filename_unchecked(v) }
         }
     }
     /// Replaces the extension with the given byte vector or string.
@@ -545,12 +546,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             unsafe { self.push_unchecked(path) }
         }
     }
-    /// Pushes a Path onto `self`.
-    /// If the argument represents an absolute path, it replaces `self`.
-    #[inline]
-    fn push_path(&mut self, path: &Self) {
-        self.push(path.as_vec())
-    }
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.
     /// See `push` for details.
     #[inline]
@@ -590,14 +585,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         p.push(path);
         p
     }
-    /// Returns a new Path constructed by joining `self` with the given path.
-    /// If the given path is absolute, the new Path will represent just that.
-    #[inline]
-    fn join_path(&self, path: &Self) -> Self {
-        let mut p = self.clone();
-        p.push_path(path);
-        p
-    }
     /// Returns a new Path constructed by joining `self` with the given paths
     /// (as byte vectors or strings).
     /// See `join` for details.
@@ -632,21 +619,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// paths refer to separate drives, an absolute path is returned.
     fn path_relative_from(&self, base: &Self) -> Option<Self>;
 
-    /// Executes a callback with the receiver and every parent
-    fn each_parent(&self, f: &fn(&Self) -> bool) -> bool {
-        let mut p = self.clone();
-        loop {
-            if !f(&p) {
-                return false;
-            }
-            let f = p.pop();
-            if f.is_none() || bytes!("..") == f.unwrap() {
-                break;
-            }
-        }
-        true
-    }
-
     /// Returns whether the relative path `child` is a suffix of `self`.
     fn ends_with_path(&self, child: &Self) -> bool;
 }
@@ -674,7 +646,7 @@ pub trait BytesContainer {
     fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
         str::from_utf8_slice_opt(self.container_as_bytes())
     }
-    /// Returns whether the concrete receiver is a string type
+    /// Returns whether .container_as_str() is guaranteed to not fail
     // FIXME (#8888): Remove unused arg once ::<for T> works
     #[inline]
     fn is_str(_: Option<Self>) -> bool { false }
@@ -703,11 +675,8 @@ pub trait GenericPathUnsafe {
 
 /// Helper struct for printing paths with format!()
 pub struct Display<'self, P> {
-    priv path: &'self P
-}
-/// Helper struct for printing filenames with format!()
-pub struct FilenameDisplay<'self, P> {
-    priv path: &'self P
+    priv path: &'self P,
+    priv filename: bool
 }
 
 impl<'self, P: GenericPath> fmt::Default for Display<'self, P> {
@@ -724,7 +693,14 @@ impl<'self, P: GenericPath> ToStr for Display<'self, P> {
     /// If the path is not UTF-8, invalid sequences with be replaced with the
     /// unicode replacement char. This involves allocation.
     fn to_str(&self) -> ~str {
-        from_utf8_with_replacement(self.path.as_vec())
+        if self.filename {
+            match self.path.filename() {
+                None => ~"",
+                Some(v) => from_utf8_with_replacement(v)
+            }
+        } else {
+            from_utf8_with_replacement(self.path.as_vec())
+        }
     }
 }
 
@@ -735,47 +711,9 @@ impl<'self, P: GenericPath> Display<'self, P> {
     /// unicode replacement char. This involves allocation.
     #[inline]
     pub fn with_str<T>(&self, f: &fn(&str) -> T) -> T {
-        match self.path.as_str() {
-            Some(s) => f(s),
-            None => {
-                let s = self.to_str();
-                f(s.as_slice())
-            }
-        }
-    }
-}
-
-impl<'self, P: GenericPath> fmt::Default for FilenameDisplay<'self, P> {
-    fn fmt(d: &FilenameDisplay<P>, f: &mut fmt::Formatter) {
-        do d.with_str |s| {
-            f.pad(s)
-        }
-    }
-}
-
-impl<'self, P: GenericPath> ToStr for FilenameDisplay<'self, P> {
-    /// Returns the filename as a string. If there is no filename, ~"" will be
-    /// returned.
-    ///
-    /// If the filename is not UTF-8, invalid sequences will be replaced with
-    /// the unicode replacement char. This involves allocation.
-    fn to_str(&self) -> ~str {
-        match self.path.filename() {
-            None => ~"",
-            Some(v) => from_utf8_with_replacement(v)
-        }
-    }
-}
-
-impl<'self, P: GenericPath> FilenameDisplay<'self, P> {
-    /// Provides the filename as a string to a closure. If there is no
-    /// filename, "" will be provided.
-    ///
-    /// If the filename is not UTF-8, invalid sequences will be replaced with
-    /// the unicode replacement char. This involves allocation.
-    #[inline]
-    pub fn with_str<T>(&self, f: &fn(&str) -> T) -> T {
-        match self.path.filename_str() {
+        let opt = if self.filename { self.path.filename_str() }
+                  else { self.path.as_str() };
+        match opt {
             Some(s) => f(s),
             None => {
                 let s = self.to_str();
@@ -862,6 +800,14 @@ impl BytesContainer for @[u8] {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_slice()
+    }
+}
+
+impl BytesContainer for CString {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        let s = self.as_bytes();
+        s.slice_to(s.len()-1)
     }
 }
 
@@ -1121,13 +1067,13 @@ mod tests {
     use c_str::ToCStr;
 
     #[test]
-    fn test_from_c_str() {
+    fn test_cstring() {
         let input = "/foo/bar/baz";
-        let path: PosixPath = GenericPath::from_c_str(input.to_c_str());
+        let path: PosixPath = PosixPath::new(input.to_c_str());
         assert_eq!(path.as_vec(), input.as_bytes());
 
         let input = "\\foo\\bar\\baz";
-        let path: WindowsPath = GenericPath::from_c_str(input.to_c_str());
+        let path: WindowsPath = WindowsPath::new(input.to_c_str());
         assert_eq!(path.as_str().unwrap(), input.as_slice());
     }
 }
