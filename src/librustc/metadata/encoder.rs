@@ -1440,7 +1440,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
       }
       MetaNameValue(name, value) => {
         match value.node {
-          lit_str(value) => {
+          lit_str(value, _) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
             ebml_w.writer.write(name.as_bytes());
