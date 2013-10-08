@@ -57,8 +57,12 @@ struct Queue<T> {
 impl<T: Send> State<T> {
     fn with_capacity(capacity: uint) -> State<T> {
         let capacity = if capacity < 2 || (capacity & (capacity - 1)) != 0 {
-            // use next power of 2 as capacity
-            2f64.pow(&((capacity as f64).log2().floor()+1f64)) as uint
+            if capacity < 2 {
+                2u
+            } else {
+                // use next power of 2 as capacity
+                2f64.pow(&((capacity as f64).log2().ceil())) as uint
+            }
         } else {
             capacity
         };
