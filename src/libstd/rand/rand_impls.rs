@@ -209,6 +209,9 @@ mod tests {
     use rand::Rng;
     struct ConstantRng(u64);
     impl Rng for ConstantRng {
+        fn next_u32(&mut self) -> u32 {
+            (**self) as u32
+        }
         fn next_u64(&mut self) -> u64 {
             **self
         }

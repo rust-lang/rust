@@ -99,12 +99,8 @@ pub trait Rng {
     /// Return the next random u32. This rarely needs to be called
     /// directly, prefer `r.gen()` to `r.next_u32()`.
     ///
-    /// By default this is implemented in terms of `next_u64`. An
-    /// implementation of this trait must provide at least one of
-    /// these two methods.
-    fn next_u32(&mut self) -> u32 {
-        self.next_u64() as u32
-    }
+    // FIXME #7771: Should be implemented in terms of next_u64
+    fn next_u32(&mut self) -> u32;
 
     /// Return the next random u64. This rarely needs to be called
     /// directly, prefer `r.gen()` to `r.next_u64()`.
