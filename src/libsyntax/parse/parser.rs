@@ -338,7 +338,7 @@ pub struct Parser {
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: @mut ~[@Span]
+    open_braces: @mut ~[Span]
 }
 
 #[unsafe_destructor]
@@ -2026,7 +2026,7 @@ impl Parser {
         match *self.token {
             token::EOF => {
                 for sp in self.open_braces.iter() {
-                    self.span_note(**sp, "Did you mean to close this delimiter?");
+                    self.span_note(*sp, "Did you mean to close this delimiter?");
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
                 // if we give it one
@@ -2036,7 +2036,7 @@ impl Parser {
                 let close_delim = token::flip_delimiter(&*self.token);
 
                 // Parse the open delimiter.
-                (*self.open_braces).push(@*self.span);
+                (*self.open_braces).push(*self.span);
                 let mut result = ~[parse_any_tt_tok(self)];
 
                 let trees =
