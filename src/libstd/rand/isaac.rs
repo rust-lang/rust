@@ -363,6 +363,12 @@ impl Isaac64Rng {
 }
 
 impl Rng for Isaac64Rng {
+    // FIXME #7771: having next_u32 like this should be unnecessary
+    #[inline]
+    fn next_u32(&mut self) -> u32 {
+        self.next_u64() as u32
+    }
+
     #[inline]
     fn next_u64(&mut self) -> u64 {
         if self.cnt == 0 {
