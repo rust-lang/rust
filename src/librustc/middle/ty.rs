@@ -3266,7 +3266,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprDoBody(*) |
         ast::ExprBlock(*) |
         ast::ExprRepeat(*) |
-        ast::ExprLit(@codemap::Spanned {node: lit_str(_), _}) |
+        ast::ExprLit(@codemap::Spanned {node: lit_str(*), _}) |
         ast::ExprVstore(_, ast::ExprVstoreSlice) |
         ast::ExprVstore(_, ast::ExprVstoreMutSlice) |
         ast::ExprVec(*) => {

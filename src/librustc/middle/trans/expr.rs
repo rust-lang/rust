@@ -705,7 +705,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
-        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s), _}) => {
+        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s, _), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::ExprVstore(contents, ast::ExprVstoreSlice) |

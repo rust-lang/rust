@@ -407,7 +407,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     debug2!("encoding {}", ast_util::path_name_i(path));
 
     let name_lit: ast::lit =
-        nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
+        nospan(ast::lit_str(ast_util::path_name_i(path).to_managed(), ast::CookedStr));
 
     let name_expr = @ast::Expr {
           id: ast::DUMMY_NODE_ID,

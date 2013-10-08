@@ -2259,7 +2259,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     match expr.node {
       ast::ExprVstore(ev, vst) => {
         let typ = match ev.node {
-          ast::ExprLit(@codemap::Spanned { node: ast::lit_str(_), _ }) => {
+          ast::ExprLit(@codemap::Spanned { node: ast::lit_str(*), _ }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_estr(tcx, tt)
           }

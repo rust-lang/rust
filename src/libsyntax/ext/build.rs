@@ -562,7 +562,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::ExprVstoreSlice)
     }
     fn expr_str(&self, sp: Span, s: @str) -> @ast::Expr {
-        self.expr_lit(sp, ast::lit_str(s))
+        self.expr_lit(sp, ast::lit_str(s, ast::CookedStr))
     }
     fn expr_str_uniq(&self, sp: Span, s: @str) -> @ast::Expr {
         self.expr_vstore(sp, self.expr_str(sp, s), ast::ExprVstoreUniq)

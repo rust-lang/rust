@@ -86,7 +86,7 @@ pub fn check_pat(v: &mut CheckCrateVisitor, p: @Pat, _is_const: bool) {
         match e.node {
             ExprVstore(
                 @Expr { node: ExprLit(@codemap::Spanned {
-                    node: lit_str(_),
+                    node: lit_str(*),
                     _}),
                        _ },
                 ExprVstoreUniq
@@ -120,7 +120,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                           "disallowed operator in constant expression");
             return;
           }
-          ExprLit(@codemap::Spanned {node: lit_str(_), _}) => { }
+          ExprLit(@codemap::Spanned {node: lit_str(*), _}) => { }
           ExprBinary(*) | ExprUnary(*) => {
             if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \

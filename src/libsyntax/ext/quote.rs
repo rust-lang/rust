@@ -118,7 +118,7 @@ pub mod rt {
 
     impl<'self> ToSource for &'self str {
         fn to_source(&self) -> @str {
-            let lit = dummy_spanned(ast::lit_str(self.to_managed()));
+            let lit = dummy_spanned(ast::lit_str(self.to_managed(), ast::CookedStr));
             pprust::lit_to_str(@lit).to_managed()
         }
     }
