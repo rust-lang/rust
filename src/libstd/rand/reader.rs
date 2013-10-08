@@ -47,6 +47,9 @@ impl<R: Reader> ReaderRng<R> {
 
 impl<R: Reader> Rng for ReaderRng<R> {
     fn next_u32(&mut self) -> u32 {
+        // This is designed for speed: reading a LE integer on a LE
+        // platform just involves blitting the bytes into the memory
+        // of the u32, similarly for BE on BE; avoiding byteswapping.
         if cfg!(target_endian="little") {
             self.reader.read_le_u32_()
         } else {
@@ -54,6 +57,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
         }
     }
     fn next_u64(&mut self) -> u64 {
+        // see above for explanation.
         if cfg!(target_endian="little") {
             self.reader.read_le_u64_()
         } else {
