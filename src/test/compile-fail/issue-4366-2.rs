@@ -8,15 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// aux-build:xc_private_method_lib.rs
+#[feature(globs)];
 
-extern mod xc_private_method_lib;
+// ensures that 'use foo:*' doesn't import non-public item
+
+use m1::*;
+
+mod foo {
+    pub fn foo() {}
+}
+mod a {
+    pub mod b {
+        use foo::foo;
+        type bar = int;
+    }
+    pub mod sub {
+        use a::b::*;
+        fn sub() -> bar { 1 }
+        //~^ ERROR: undeclared type name
+    }
+}
+
+mod m1 {
+    fn foo() {}
+}
 
 fn main() {
-    let _ = xc_private_method_lib::Struct::static_meth_struct();
-    //~^ ERROR: method `static_meth_struct` is private
-
-    let _ = xc_private_method_lib::Enum::static_meth_enum();
-    //~^ ERROR: method `static_meth_enum` is private
+    foo(); //~ ERROR: unresolved name
 }
+

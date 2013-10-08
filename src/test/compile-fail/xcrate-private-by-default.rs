@@ -10,15 +10,14 @@
 
 // aux-build:static_priv_by_default.rs
 
-#[allow(unused_imports)];
-#[no_std];
+#[no_std]; // helps if debugging resolve
 
 extern mod static_priv_by_default;
 
 fn foo<T>() {}
 
 #[start]
-fn main(_: int, _: **u8, _: *u8) -> int {
+fn main(_: int, _: **u8) -> int {
     // Actual public items should be public
     static_priv_by_default::a;
     static_priv_by_default::b;
@@ -33,25 +32,23 @@ fn main(_: int, _: **u8, _: *u8) -> int {
 
     // private items at the top should be inaccessible
     static_priv_by_default::i;
-    //~^ ERROR: unresolved name
+    //~^ ERROR: static `i` is private
     static_priv_by_default::j;
-    //~^ ERROR: unresolved name
+    //~^ ERROR: function `j` is private
     static_priv_by_default::k;
-    //~^ ERROR: unresolved name
+    //~^ ERROR: struct `k` is private
     foo::<static_priv_by_default::l>();
-    //~^ ERROR: use of undeclared type name
-    //~^^ ERROR: use of undeclared type name
+    //~^ ERROR: type `l` is private
 
     // public items in a private mod should be inaccessible
     static_priv_by_default::foo::a;
-    //~^ ERROR: unresolved name
+    //~^ ERROR: static `a` is private
     static_priv_by_default::foo::b;
-    //~^ ERROR: unresolved name
+    //~^ ERROR: function `b` is private
     static_priv_by_default::foo::c;
-    //~^ ERROR: unresolved name
+    //~^ ERROR: struct `c` is private
     foo::<static_priv_by_default::foo::d>();
-    //~^ ERROR: use of undeclared type name
-    //~^^ ERROR: use of undeclared type name
+    //~^ ERROR: type `d` is private
 
     3
 }

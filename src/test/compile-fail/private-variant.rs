@@ -17,5 +17,5 @@ mod a {
 }
 
 fn main() {
-    let x = a::Liege;   //~ ERROR unresolved name
+    let x = a::Liege;   //~ ERROR variant `Liege` is private
 }

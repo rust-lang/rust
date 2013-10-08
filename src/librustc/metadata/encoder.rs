@@ -58,7 +58,6 @@ pub struct EncodeParams<'self> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
-    exported_items: @middle::privacy::ExportedItems,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
     discrim_symbols: &'self HashMap<ast::NodeId, @str>,
     non_inlineable_statics: &'self HashSet<ast::NodeId>,
@@ -89,7 +88,6 @@ pub struct EncodeContext<'self> {
     tcx: ty::ctxt,
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,
-    exported_items: @middle::privacy::ExportedItems,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
     discrim_symbols: &'self HashMap<ast::NodeId, @str>,
     non_inlineable_statics: &'self HashSet<ast::NodeId>,
@@ -625,6 +623,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     }
 
     encode_path(ecx, ebml_w, path, ast_map::path_mod(name));
+    encode_visibility(ebml_w, vis);
 
     // Encode the reexports of this module, if this module is public.
     if vis == public {
@@ -1277,12 +1276,7 @@ fn my_visit_item(i:@item, items: ast_map::map, ebml_w:&writer::Encoder,
             let mut ebml_w = ebml_w.clone();
             // See above
             let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
-            let vis = if ecx.exported_items.contains(&i.id) {
-                ast::public
-            } else {
-                ast::inherited
-            };
-            encode_info_for_item(ecx, &mut ebml_w, i, index, *pt, vis);
+            encode_info_for_item(ecx, &mut ebml_w, i, index, *pt, i.vis);
         }
         _ => fail2!("bad item")
     }
@@ -1628,7 +1622,7 @@ impl<'self> Visitor<()> for ImplVisitor<'self> {
 
                 // Load eagerly if this is an implementation of the Drop trait
                 // or if the trait is not defined in this crate.
-                if def_id == self.ecx.tcx.lang_items.drop_trait().unwrap() ||
+                if Some(def_id) == self.ecx.tcx.lang_items.drop_trait() ||
                         def_id.crate != LOCAL_CRATE {
                     self.ebml_w.start_tag(tag_impls_impl);
                     encode_def_id(self.ebml_w, local_def(item.id));
@@ -1744,7 +1738,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         diag,
         tcx,
         reexports2,
-        exported_items,
         discrim_symbols,
         cstore,
         encode_inlined_item,
@@ -1760,7 +1753,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         tcx: tcx,
         stats: stats,
         reexports2: reexports2,
-        exported_items: exported_items,
         item_symbols: item_symbols,
         discrim_symbols: discrim_symbols,
         non_inlineable_statics: non_inlineable_statics,

@@ -89,11 +89,8 @@ use unstable::sync::Exclusive;
 use rt::in_green_task_context;
 use rt::local::Local;
 use rt::task::{Task, Sched};
-use rt::kill::KillHandle;
-use rt::sched::Scheduler;
+use rt::shouldnt_be_public::{Scheduler, KillHandle, WorkQueue, Thread};
 use rt::uv::uvio::UvEventLoop;
-use rt::thread::Thread;
-use rt::work_queue::WorkQueue;
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -556,8 +553,6 @@ fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
 }
 
 pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
-    use rt::sched::*;
-
     rtassert!(in_green_task_context());
 
     let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
@@ -622,7 +617,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let mut new_sched_handle = new_sched.make_handle();
 
             // Allow the scheduler to exit when the pinned task exits
-            new_sched_handle.send(Shutdown);
+            new_sched_handle.send_shutdown();
 
             // Pin the new task to the new scheduler
             let new_task = if opts.watched {
@@ -660,7 +655,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 rtdebug!("enqueing join_task");
                 // Now tell the original scheduler to join with this thread
                 // by scheduling a thread-joining task on the original scheduler
-                orig_sched_handle.send(TaskFromFriend(join_task));
+                orig_sched_handle.send_task_from_friend(join_task);
 
                 // NB: We can't simply send a message from here to another task
                 // because this code isn't running in a task and message passing doesn't

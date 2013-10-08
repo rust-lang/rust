@@ -8,15 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// aux-build:xc_private_method_lib.rs
+pub mod test2 {
+    // This used to generate an ICE (make sure that default functions are
+    // parented to their trait to find the first private thing as the trait).
 
-extern mod xc_private_method_lib;
+    struct B;
+    trait A { fn foo(&self) {} }
+    impl A for B {}
 
-fn main() {
-    let _ = xc_private_method_lib::Struct::static_meth_struct();
-    //~^ ERROR: method `static_meth_struct` is private
-
-    let _ = xc_private_method_lib::Enum::static_meth_enum();
-    //~^ ERROR: method `static_meth_enum` is private
+    mod tests {
+        use super::A;
+        fn foo() {
+            let a = super::B;
+            a.foo();
+        }
+    }
 }
+
+
+pub fn main() {}
