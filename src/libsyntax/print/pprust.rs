@@ -1433,10 +1433,10 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
             word(s.s, "asm!");
         }
         popen(s);
-        print_string(s, a.asm);
+        print_string(s, a.asm, a.asm_str_style);
         word_space(s, ":");
         for &(co, o) in a.outputs.iter() {
-            print_string(s, co);
+            print_string(s, co, ast::CookedStr);
             popen(s);
             print_expr(s, o);
             pclose(s);
@@ -1444,14 +1444,14 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         }
         word_space(s, ":");
         for &(co, o) in a.inputs.iter() {
-            print_string(s, co);
+            print_string(s, co, ast::CookedStr);
             popen(s);
             print_expr(s, o);
             pclose(s);
             word_space(s, ",");
         }
         word_space(s, ":");
-        print_string(s, a.clobbers);
+        print_string(s, a.clobbers, ast::CookedStr);
         pclose(s);
       }
       ast::ExprMac(ref m) => print_mac(s, m),
@@ -1894,9 +1894,11 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
         ast::view_item_extern_mod(id, ref optional_path, ref mta, _) => {
             head(s, "extern mod");
             print_ident(s, id);
-            for p in optional_path.iter() {
+            for &(ref p, style) in optional_path.iter() {
+                space(s.s);
                 word(s.s, "=");
-                print_string(s, *p);
+                space(s.s);
+                print_string(s, *p, style);
             }
             if !mta.is_empty() {
                 popen(s);
@@ -2058,7 +2060,7 @@ pub fn print_literal(s: @ps, lit: &ast::lit) {
       _ => ()
     }
     match lit.node {
-      ast::lit_str(st) => print_string(s, st),
+      ast::lit_str(st, style) => print_string(s, st, style),
       ast::lit_char(ch) => {
           let mut res = ~"'";
           do char::from_u32(ch).unwrap().escape_default |c| {
@@ -2178,10 +2180,13 @@ pub fn print_comment(s: @ps, cmnt: &comments::cmnt) {
     }
 }
 
-pub fn print_string(s: @ps, st: &str) {
-    word(s.s, "\"");
-    word(s.s, st.escape_default());
-    word(s.s, "\"");
+pub fn print_string(s: @ps, st: &str, style: ast::StrStyle) {
+    let st = match style {
+        ast::CookedStr => format!("\"{}\"", st.escape_default()),
+        ast::RawStr(n) => format!("r{delim}\"{string}\"{delim}",
+                                  delim="#".repeat(n), string=st)
+    };
+    word(s.s, st);
 }
 
 pub fn to_str<T>(t: &T, f: &fn(@ps, &T), intr: @ident_interner) -> ~str {

@@ -1008,7 +1008,7 @@ impl Clean<ViewItemInner> for ast::view_item_ {
     fn clean(&self) -> ViewItemInner {
         match self {
             &ast::view_item_extern_mod(ref i, ref p, ref mi, ref id) =>
-                ExternMod(i.clean(), p.map(|x| x.to_owned()),  mi.clean(), *id),
+                ExternMod(i.clean(), p.map(|&(ref x, _)| x.to_owned()),  mi.clean(), *id),
             &ast::view_item_use(ref vp) => Import(vp.clean())
         }
     }
@@ -1114,7 +1114,7 @@ impl ToSource for syntax::codemap::Span {
 
 fn lit_to_str(lit: &ast::lit) -> ~str {
     match lit.node {
-        ast::lit_str(st) => st.to_owned(),
+        ast::lit_str(st, _) => st.to_owned(),
         ast::lit_char(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::lit_int(i, _t) => i.to_str(),
         ast::lit_uint(u, _t) => u.to_str(),

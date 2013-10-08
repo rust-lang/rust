@@ -213,10 +213,22 @@ fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
     (pos - rdr.filemap.start_pos)
 }
 
+/// Calls `f` with a string slice of the source text spanning from `start`
+/// up to but excluding `rdr.last_pos`, meaning the slice does not include
+/// the character `rdr.curr`.
 pub fn with_str_from<T>(rdr: @mut StringReader, start: BytePos, f: &fn(s: &str) -> T) -> T {
+    with_str_from_to(rdr, start, rdr.last_pos, f)
+}
+
+/// Calls `f` with astring slice of the source text spanning from `start`
+/// up to but excluding `end`.
+fn with_str_from_to<T>(rdr: @mut StringReader,
+                       start: BytePos,
+                       end: BytePos,
+                       f: &fn(s: &str) -> T) -> T {
     f(rdr.src.slice(
             byte_offset(rdr, start).to_uint(),
-            byte_offset(rdr, rdr.last_pos).to_uint()))
+            byte_offset(rdr, end).to_uint()))
 }
 
 // EFFECT: advance the StringReader by one character. If a newline is
@@ -612,7 +624,10 @@ fn ident_continue(c: char) -> bool {
 // EFFECT: updates the interner
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
     let c = rdr.curr;
-    if ident_start(c) {
+    if ident_start(c) && nextch(rdr) != '"' && nextch(rdr) != '#' {
+        // Note: r as in r" or r#" is part of a raw string literal,
+        // not an identifier, and is handled further down.
+
         let start = rdr.last_pos;
         while ident_continue(rdr.curr) {
             bump(rdr);
@@ -829,6 +844,47 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         bump(rdr);
         return token::LIT_STR(str_to_ident(accum_str));
       }
+      'r' => {
+        let start_bpos = rdr.last_pos;
+        bump(rdr);
+        let mut hash_count = 0u;
+        while rdr.curr == '#' {
+            bump(rdr);
+            hash_count += 1;
+        }
+        if rdr.curr != '"' {
+            fatal_span_char(rdr, start_bpos, rdr.last_pos,
+                            ~"only `#` is allowed in raw string delimitation; \
+                              found illegal character",
+                            rdr.curr);
+        }
+        bump(rdr);
+        let content_start_bpos = rdr.last_pos;
+        let mut content_end_bpos;
+        'outer: loop {
+            if is_eof(rdr) {
+                fatal_span(rdr, start_bpos, rdr.last_pos,
+                           ~"unterminated raw string");
+            }
+            if rdr.curr == '"' {
+                content_end_bpos = rdr.last_pos;
+                for _ in range(0, hash_count) {
+                    bump(rdr);
+                    if rdr.curr != '#' {
+                        continue 'outer;
+                    }
+                }
+                break;
+            }
+            bump(rdr);
+        }
+        bump(rdr);
+        let str_content = with_str_from_to(rdr,
+                                           content_start_bpos,
+                                           content_end_bpos,
+                                           str_to_ident);
+        return token::LIT_STR_RAW(str_content, hash_count);
+      }
       '-' => {
         if nextch(rdr) == '>' {
             bump(rdr);
@@ -985,6 +1041,14 @@ mod test {
             env.string_reader.next_token();
         let id = token::str_to_ident("abc");
         assert_eq!(tok, token::LIFETIME(id));
+    }
+
+    #[test] fn raw_string() {
+        let env = setup(@"r###\"\"#a\\b\x00c\"\"###");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        let id = token::str_to_ident("\"#a\\b\x00c\"");
+        assert_eq!(tok, token::LIT_STR_RAW(id, 3));
     }
 
     #[test] fn line_doc_comments() {
