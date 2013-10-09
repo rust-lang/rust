@@ -222,7 +222,6 @@ CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
 CFG_LIBRUSTPKG_$(1) :=$(call CFG_LIB_NAME_$(1),rustpkg)
 CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
 CFG_LIBRUSTI_$(1) :=$(call CFG_LIB_NAME_$(1),rusti)
-CFG_LIBRUST_$(1) :=$(call CFG_LIB_NAME_$(1),rust)
 
 EXTRALIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),extra)
 STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
@@ -231,7 +230,6 @@ LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
 LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
 LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
 LIBRUSTI_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rusti)
-LIBRUST_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rust)
 EXTRALIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),extra)
 STDLIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),std)
 LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
@@ -239,7 +237,6 @@ LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
 LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
 LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
 LIBRUSTI_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rusti)
-LIBRUST_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rust)
 
 endef
 
@@ -447,11 +444,9 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rusti$$(X_$(3)) \
-	$$(HBIN$(1)_H_$(3))/rust$$(X_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
-	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUST_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))  \
@@ -459,7 +454,6 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUST_$(2))
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed

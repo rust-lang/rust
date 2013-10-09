@@ -30,7 +30,6 @@ PKG_FILES := \
       driver                                   \
       librustpkg                               \
       librusti                                 \
-      librust                                  \
       librustc                                 \
       compiletest                              \
       etc                                      \
