@@ -15,7 +15,6 @@
 #include "sync/lock_and_signal.h"
 #include "memory_region.h"
 #include "boxed_region.h"
-#include "rust_rng.h"
 #include "vg/valgrind.h"
 #include "sp.h"
 
@@ -68,11 +67,6 @@ rust_env_pairs() {
     return environ;
 }
 #endif
-
-extern "C" CDECL void
-rand_gen_seed(uint8_t* dest, size_t size) {
-    rng_gen_seed(dest, size);
-}
 
 extern "C" CDECL char*
 #if defined(__WIN32__)
@@ -654,6 +648,62 @@ rust_unset_sigprocmask() {
 
 #endif
 
+#if defined(__WIN32__)
+void
+win32_require(LPCTSTR fn, BOOL ok) {
+    if (!ok) {
+        LPTSTR buf;
+        DWORD err = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                      FORMAT_MESSAGE_FROM_SYSTEM |
+                      FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, err,
+                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      (LPTSTR) &buf, 0, NULL );
+        fprintf(stderr, "%s failed with error %ld: %s", fn, err, buf);
+        LocalFree((HLOCAL)buf);
+        abort();
+    }
+}
+
+extern "C" CDECL void
+rust_win32_rand_acquire(HCRYPTPROV* phProv) {
+    win32_require
+        (_T("CryptAcquireContext"),
+         CryptAcquireContext(phProv, NULL, NULL, PROV_RSA_FULL,
+                             CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
+
+}
+extern "C" CDECL void
+rust_win32_rand_gen(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffer) {
+    win32_require
+        (_T("CryptGenRandom"), CryptGenRandom(hProv, dwLen, pbBuffer));
+}
+extern "C" CDECL void
+rust_win32_rand_release(HCRYPTPROV hProv) {
+    win32_require
+        (_T("CryptReleaseContext"), CryptReleaseContext(hProv, 0));
+}
+
+#else
+
+// these symbols are listed in rustrt.def.in, so they need to exist; but they
+// should never be called.
+
+extern "C" CDECL void
+rust_win32_rand_acquire() {
+    abort();
+}
+extern "C" CDECL void
+rust_win32_rand_gen() {
+    abort();
+}
+extern "C" CDECL void
+rust_win32_rand_release() {
+    abort();
+}
+
+#endif
 //
 // Local Variables:
 // mode: C++

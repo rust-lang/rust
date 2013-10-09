@@ -76,7 +76,7 @@ fn make_random_fasta(wr: @io::Writer,
     wr.write_line(~">" + id + " " + desc);
     let mut rng = rand::rng();
     let rng = @mut MyRandom {
-        last: rng.next()
+        last: rng.gen()
     };
     let mut op: ~str = ~"";
     for _ in range(0u, n as uint) {

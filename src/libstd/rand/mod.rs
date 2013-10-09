@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,6 +18,15 @@ suffice, but sometimes an annotation is required, e.g. `rand::random::<f64>()`.
 
 See the `distributions` submodule for sampling random numbers from
 distributions like normal and exponential.
+
+# Task-local RNG
+
+There is built-in support for a RNG associated with each task stored
+in task-local storage. This RNG can be accessed via `task_rng`, or
+used implicitly via `random`. This RNG is normally randomly seeded
+from an operating-system source of randomness, e.g. `/dev/urandom` on
+Unix systems, and will automatically reseed itself from this source
+after generating 32 KiB of random data.
 
 # Examples
 
@@ -44,199 +53,29 @@ fn main () {
 */
 
 use cast;
-use cmp;
 use container::Container;
-use int;
-use iter::{Iterator, range, range_step};
+use iter::{Iterator, range};
 use local_data;
 use prelude::*;
 use str;
-use sys;
-use u32;
 use u64;
-use uint;
 use vec;
-use libc::size_t;
+
+pub use self::isaac::{IsaacRng, Isaac64Rng};
+pub use self::os::OSRng;
 
 pub mod distributions;
+pub mod isaac;
+pub mod os;
+pub mod reader;
+pub mod reseeding;
+mod rand_impls;
 
 /// A type that can be randomly generated using an Rng
 pub trait Rand {
     /// Generates a random instance of this type using the specified source of
     /// randomness
     fn rand<R: Rng>(rng: &mut R) -> Self;
-}
-
-impl Rand for int {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> int {
-        if int::bits == 32 {
-            rng.next() as int
-        } else {
-            rng.gen::<i64>() as int
-        }
-    }
-}
-
-impl Rand for i8 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> i8 {
-        rng.next() as i8
-    }
-}
-
-impl Rand for i16 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> i16 {
-        rng.next() as i16
-    }
-}
-
-impl Rand for i32 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> i32 {
-        rng.next() as i32
-    }
-}
-
-impl Rand for i64 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> i64 {
-        (rng.next() as i64 << 32) | rng.next() as i64
-    }
-}
-
-impl Rand for uint {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> uint {
-        if uint::bits == 32 {
-            rng.next() as uint
-        } else {
-            rng.gen::<u64>() as uint
-        }
-    }
-}
-
-impl Rand for u8 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> u8 {
-        rng.next() as u8
-    }
-}
-
-impl Rand for u16 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> u16 {
-        rng.next() as u16
-    }
-}
-
-impl Rand for u32 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> u32 {
-        rng.next()
-    }
-}
-
-impl Rand for u64 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> u64 {
-        (rng.next() as u64 << 32) | rng.next() as u64
-    }
-}
-
-impl Rand for f32 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> f32 {
-        rng.gen::<f64>() as f32
-    }
-}
-
-static SCALE : f64 = (u32::max_value as f64) + 1.0f64;
-impl Rand for f64 {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> f64 {
-        let u1 = rng.next() as f64;
-        let u2 = rng.next() as f64;
-        let u3 = rng.next() as f64;
-
-        ((u1 / SCALE + u2) / SCALE + u3) / SCALE
-    }
-}
-
-impl Rand for bool {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> bool {
-        rng.next() & 1u32 == 1u32
-    }
-}
-
-macro_rules! tuple_impl {
-    // use variables to indicate the arity of the tuple
-    ($($tyvar:ident),* ) => {
-        // the trailing commas are for the 1 tuple
-        impl<
-            $( $tyvar : Rand ),*
-            > Rand for ( $( $tyvar ),* , ) {
-
-            #[inline]
-            fn rand<R: Rng>(_rng: &mut R) -> ( $( $tyvar ),* , ) {
-                (
-                    // use the $tyvar's to get the appropriate number of
-                    // repeats (they're not actually needed)
-                    $(
-                        _rng.gen::<$tyvar>()
-                    ),*
-                    ,
-                )
-            }
-        }
-    }
-}
-
-impl Rand for () {
-    #[inline]
-    fn rand<R: Rng>(_: &mut R) -> () { () }
-}
-tuple_impl!{A}
-tuple_impl!{A, B}
-tuple_impl!{A, B, C}
-tuple_impl!{A, B, C, D}
-tuple_impl!{A, B, C, D, E}
-tuple_impl!{A, B, C, D, E, F}
-tuple_impl!{A, B, C, D, E, F, G}
-tuple_impl!{A, B, C, D, E, F, G, H}
-tuple_impl!{A, B, C, D, E, F, G, H, I}
-tuple_impl!{A, B, C, D, E, F, G, H, I, J}
-
-impl<T:Rand> Rand for Option<T> {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> Option<T> {
-        if rng.gen() {
-            Some(rng.gen())
-        } else {
-            None
-        }
-    }
-}
-
-impl<T: Rand> Rand for ~T {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> ~T { ~rng.gen() }
-}
-
-impl<T: Rand + 'static> Rand for @T {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> @T { @rng.gen() }
-}
-
-#[abi = "cdecl"]
-pub mod rustrt {
-    use libc::size_t;
-
-    extern {
-        pub fn rand_gen_seed(buf: *mut u8, sz: size_t);
-    }
 }
 
 /// A value with a particular weight compared to other values
@@ -249,9 +88,92 @@ pub struct Weighted<T> {
 
 /// A random number generator
 pub trait Rng {
-    /// Return the next random integer
-    fn next(&mut self) -> u32;
+    /// Return the next random u32. This rarely needs to be called
+    /// directly, prefer `r.gen()` to `r.next_u32()`.
+    ///
+    // FIXME #7771: Should be implemented in terms of next_u64
+    fn next_u32(&mut self) -> u32;
 
+    /// Return the next random u64. This rarely needs to be called
+    /// directly, prefer `r.gen()` to `r.next_u64()`.
+    ///
+    /// By default this is implemented in terms of `next_u32`. An
+    /// implementation of this trait must provide at least one of
+    /// these two methods.
+    fn next_u64(&mut self) -> u64 {
+        (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
+    }
+
+    /// Fill `dest` with random data.
+    ///
+    /// This has a default implementation in terms of `next_u64` and
+    /// `next_u32`, but should be overriden by implementations that
+    /// offer a more efficient solution than just calling those
+    /// methods repeatedly.
+    ///
+    /// This method does *not* have a requirement to bear any fixed
+    /// relationship to the other methods, for example, it does *not*
+    /// have to result in the same output as progressively filling
+    /// `dest` with `self.gen::<u8>()`, and any such behaviour should
+    /// not be relied upon.
+    ///
+    /// This method should guarantee that `dest` is entirely filled
+    /// with new data, and may fail if this is impossible
+    /// (e.g. reading past the end of a file that is being used as the
+    /// source of randomness).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::rand::{task_rng, Rng};
+    ///
+    /// fn main() {
+    ///    let mut v = [0u8, .. 13579];
+    ///    task_rng().fill_bytes(v);
+    ///    println!("{:?}", v);
+    /// }
+    /// ```
+    fn fill_bytes(&mut self, mut dest: &mut [u8]) {
+        // this relies on the lengths being transferred correctly when
+        // transmuting between vectors like this.
+        let as_u64: &mut &mut [u64] = unsafe { cast::transmute(&mut dest) };
+        for dest in as_u64.mut_iter() {
+            *dest = self.next_u64();
+        }
+
+        // the above will have filled up the vector as much as
+        // possible in multiples of 8 bytes.
+        let mut remaining = dest.len() % 8;
+
+        // space for a u32
+        if remaining >= 4 {
+            let as_u32: &mut &mut [u32] = unsafe { cast::transmute(&mut dest) };
+            as_u32[as_u32.len() - 1] = self.next_u32();
+            remaining -= 4;
+        }
+        // exactly filled
+        if remaining == 0 { return }
+
+        // now we know we've either got 1, 2 or 3 spots to go,
+        // i.e. exactly one u32 is enough.
+        let rand = self.next_u32();
+        let remaining_index = dest.len() - remaining;
+        match dest.mut_slice_from(remaining_index) {
+            [ref mut a] => {
+                *a = rand as u8;
+            }
+            [ref mut a, ref mut b] => {
+                *a = rand as u8;
+                *b = (rand >> 8) as u8;
+            }
+            [ref mut a, ref mut b, ref mut c] => {
+                *a = rand as u8;
+                *b = (rand >> 8) as u8;
+                *c = (rand >> 16) as u8;
+            }
+            _ => fail2!("Rng.fill_bytes: the impossible occurred: remaining != 1, 2 or 3")
+        }
+    }
 
     /// Return a random value of a Rand type.
     ///
@@ -556,14 +478,105 @@ pub trait Rng {
     }
 }
 
+/// A random number generator that can be explicitly seeded to produce
+/// the same stream of randomness multiple times.
+pub trait SeedableRng<Seed>: Rng {
+    /// Reseed an RNG with the given seed.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::rand;
+    /// use std::rand::Rng;
+    ///
+    /// fn main() {
+    ///     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     println!("{}", rng.gen::<f64>());
+    ///     rng.reseed([5, 6, 7, 8]);
+    ///     println!("{}", rng.gen::<f64>());
+    /// }
+    /// ```
+    fn reseed(&mut self, Seed);
+
+    /// Create a new RNG with the given seed.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::rand;
+    /// use std::rand::Rng;
+    ///
+    /// fn main() {
+    ///     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     println!("{}", rng.gen::<f64>());
+    /// }
+    /// ```
+    fn from_seed(seed: Seed) -> Self;
+}
+
 /// Create a random number generator with a default algorithm and seed.
 ///
 /// It returns the cryptographically-safest `Rng` algorithm currently
 /// available in Rust. If you require a specifically seeded `Rng` for
 /// consistency over time you should pick one algorithm and create the
 /// `Rng` yourself.
-pub fn rng() -> IsaacRng {
-    IsaacRng::new()
+///
+/// This is a very expensive operation as it has to read randomness
+/// from the operating system and use this in an expensive seeding
+/// operation. If one does not require high performance generation of
+/// random numbers, `task_rng` and/or `random` may be more
+/// appropriate.
+pub fn rng() -> StdRng {
+    StdRng::new()
+}
+
+/// The standard RNG. This is designed to be efficient on the current
+/// platform.
+#[cfg(not(target_word_size="64"))]
+pub struct StdRng { priv rng: IsaacRng }
+
+/// The standard RNG. This is designed to be efficient on the current
+/// platform.
+#[cfg(target_word_size="64")]
+pub struct StdRng { priv rng: Isaac64Rng }
+
+impl StdRng {
+    /// Create a randomly seeded instance of `StdRng`. This reads
+    /// randomness from the OS to seed the PRNG.
+    #[cfg(not(target_word_size="64"))]
+    pub fn new() -> StdRng {
+        StdRng { rng: IsaacRng::new() }
+    }
+    /// Create a randomly seeded instance of `StdRng`. This reads
+    /// randomness from the OS to seed the PRNG.
+    #[cfg(target_word_size="64")]
+    pub fn new() -> StdRng {
+        StdRng { rng: Isaac64Rng::new() }
+    }
+}
+
+impl Rng for StdRng {
+    #[inline]
+    fn next_u32(&mut self) -> u32 {
+        self.rng.next_u32()
+    }
+
+    #[inline]
+    fn next_u64(&mut self) -> u64 {
+        self.rng.next_u64()
+    }
+}
+
+impl<'self> SeedableRng<&'self [uint]> for StdRng {
+    fn reseed(&mut self, seed: &'self [uint]) {
+        // the internal RNG can just be seeded from the above
+        // randomness.
+        self.rng.reseed(unsafe {cast::transmute(seed)})
+    }
+
+    fn from_seed(seed: &'self [uint]) -> StdRng {
+        StdRng { rng: SeedableRng::from_seed(unsafe {cast::transmute(seed)}) }
+    }
 }
 
 /// Create a weak random number generator with a default algorithm and seed.
@@ -572,186 +585,11 @@ pub fn rng() -> IsaacRng {
 /// consideration for cryptography or security. If you require a specifically
 /// seeded `Rng` for consistency over time you should pick one algorithm and
 /// create the `Rng` yourself.
+///
+/// This will read randomness from the operating system to seed the
+/// generator.
 pub fn weak_rng() -> XorShiftRng {
     XorShiftRng::new()
-}
-
-static RAND_SIZE_LEN: u32 = 8;
-static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
-
-/// A random number generator that uses the [ISAAC
-/// algorithm](http://en.wikipedia.org/wiki/ISAAC_%28cipher%29).
-///
-/// The ISAAC algorithm is suitable for cryptographic purposes.
-pub struct IsaacRng {
-    priv cnt: u32,
-    priv rsl: [u32, .. RAND_SIZE],
-    priv mem: [u32, .. RAND_SIZE],
-    priv a: u32,
-    priv b: u32,
-    priv c: u32
-}
-
-impl IsaacRng {
-    /// Create an ISAAC random number generator with a random seed.
-    pub fn new() -> IsaacRng {
-        IsaacRng::new_seeded(seed())
-    }
-
-    /// Create an ISAAC random number generator with a seed. This can be any
-    /// length, although the maximum number of bytes used is 1024 and any more
-    /// will be silently ignored. A generator constructed with a given seed
-    /// will generate the same sequence of values as all other generators
-    /// constructed with the same seed.
-    pub fn new_seeded(seed: &[u8]) -> IsaacRng {
-        let mut rng = IsaacRng {
-            cnt: 0,
-            rsl: [0, .. RAND_SIZE],
-            mem: [0, .. RAND_SIZE],
-            a: 0, b: 0, c: 0
-        };
-
-        let array_size = sys::size_of_val(&rng.rsl);
-        let copy_length = cmp::min(array_size, seed.len());
-
-        // manually create a &mut [u8] slice of randrsl to copy into.
-        let dest = unsafe { cast::transmute((&mut rng.rsl, array_size)) };
-        vec::bytes::copy_memory(dest, seed, copy_length);
-        rng.init(true);
-        rng
-    }
-
-    /// Create an ISAAC random number generator using the default
-    /// fixed seed.
-    pub fn new_unseeded() -> IsaacRng {
-        let mut rng = IsaacRng {
-            cnt: 0,
-            rsl: [0, .. RAND_SIZE],
-            mem: [0, .. RAND_SIZE],
-            a: 0, b: 0, c: 0
-        };
-        rng.init(false);
-        rng
-    }
-
-    /// Initialises `self`. If `use_rsl` is true, then use the current value
-    /// of `rsl` as a seed, otherwise construct one algorithmically (not
-    /// randomly).
-    fn init(&mut self, use_rsl: bool) {
-        let mut a = 0x9e3779b9;
-        let mut b = a;
-        let mut c = a;
-        let mut d = a;
-        let mut e = a;
-        let mut f = a;
-        let mut g = a;
-        let mut h = a;
-
-        macro_rules! mix(
-            () => {{
-                a^=b<<11; d+=a; b+=c;
-                b^=c>>2;  e+=b; c+=d;
-                c^=d<<8;  f+=c; d+=e;
-                d^=e>>16; g+=d; e+=f;
-                e^=f<<10; h+=e; f+=g;
-                f^=g>>4;  a+=f; g+=h;
-                g^=h<<8;  b+=g; h+=a;
-                h^=a>>9;  c+=h; a+=b;
-            }}
-        );
-
-        do 4.times { mix!(); }
-
-        if use_rsl {
-            macro_rules! memloop (
-                ($arr:expr) => {{
-                    for i in range_step(0u32, RAND_SIZE, 8) {
-                        a+=$arr[i  ]; b+=$arr[i+1];
-                        c+=$arr[i+2]; d+=$arr[i+3];
-                        e+=$arr[i+4]; f+=$arr[i+5];
-                        g+=$arr[i+6]; h+=$arr[i+7];
-                        mix!();
-                        self.mem[i  ]=a; self.mem[i+1]=b;
-                        self.mem[i+2]=c; self.mem[i+3]=d;
-                        self.mem[i+4]=e; self.mem[i+5]=f;
-                        self.mem[i+6]=g; self.mem[i+7]=h;
-                    }
-                }}
-            );
-
-            memloop!(self.rsl);
-            memloop!(self.mem);
-        } else {
-            for i in range_step(0u32, RAND_SIZE, 8) {
-                mix!();
-                self.mem[i  ]=a; self.mem[i+1]=b;
-                self.mem[i+2]=c; self.mem[i+3]=d;
-                self.mem[i+4]=e; self.mem[i+5]=f;
-                self.mem[i+6]=g; self.mem[i+7]=h;
-            }
-        }
-
-        self.isaac();
-    }
-
-    /// Refills the output buffer (`self.rsl`)
-    #[inline]
-    fn isaac(&mut self) {
-        self.c += 1;
-        // abbreviations
-        let mut a = self.a;
-        let mut b = self.b + self.c;
-
-        static MIDPOINT: uint = RAND_SIZE as uint / 2;
-
-        macro_rules! ind (($x:expr) => {
-            self.mem[($x >> 2) & (RAND_SIZE - 1)]
-        });
-        macro_rules! rngstep(
-            ($j:expr, $shift:expr) => {{
-                let base = $j;
-                let mix = if $shift < 0 {
-                    a >> -$shift as uint
-                } else {
-                    a << $shift as uint
-                };
-
-                let x = self.mem[base  + mr_offset];
-                a = (a ^ mix) + self.mem[base + m2_offset];
-                let y = ind!(x) + a + b;
-                self.mem[base + mr_offset] = y;
-
-                b = ind!(y >> RAND_SIZE_LEN) + x;
-                self.rsl[base + mr_offset] = b;
-            }}
-        );
-
-        let r = [(0, MIDPOINT), (MIDPOINT, 0)];
-        for &(mr_offset, m2_offset) in r.iter() {
-            for i in range_step(0u, MIDPOINT, 4) {
-                rngstep!(i + 0, 13);
-                rngstep!(i + 1, -6);
-                rngstep!(i + 2, 2);
-                rngstep!(i + 3, -16);
-            }
-        }
-
-        self.a = a;
-        self.b = b;
-        self.cnt = RAND_SIZE;
-    }
-}
-
-impl Rng for IsaacRng {
-    #[inline]
-    fn next(&mut self) -> u32 {
-        if self.cnt == 0 {
-            // make some more numbers
-            self.isaac();
-        }
-        self.cnt -= 1;
-        self.rsl[self.cnt]
-    }
 }
 
 /// An [Xorshift random number
@@ -769,7 +607,7 @@ pub struct XorShiftRng {
 
 impl Rng for XorShiftRng {
     #[inline]
-    fn next(&mut self) -> u32 {
+    fn next_u32(&mut self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);
         self.x = self.y;
@@ -781,89 +619,123 @@ impl Rng for XorShiftRng {
     }
 }
 
+impl SeedableRng<[u32, .. 4]> for XorShiftRng {
+    /// Reseed an XorShiftRng. This will fail if `seed` is entirely 0.
+    fn reseed(&mut self, seed: [u32, .. 4]) {
+        assert!(!seed.iter().all(|&x| x == 0),
+                "XorShiftRng.reseed called with an all zero seed.");
+
+        self.x = seed[0];
+        self.y = seed[1];
+        self.z = seed[2];
+        self.w = seed[3];
+    }
+
+    /// Create a new XorShiftRng. This will fail if `seed` is entirely 0.
+    fn from_seed(seed: [u32, .. 4]) -> XorShiftRng {
+        assert!(!seed.iter().all(|&x| x == 0),
+                "XorShiftRng::from_seed called with an all zero seed.");
+
+        XorShiftRng {
+            x: seed[0],
+            y: seed[1],
+            z: seed[2],
+            w: seed[3]
+        }
+    }
+}
+
 impl XorShiftRng {
     /// Create an xor shift random number generator with a random seed.
     pub fn new() -> XorShiftRng {
-        #[fixed_stack_segment]; #[inline(never)];
-
-        // generate seeds the same way as seed(), except we have a spceific size
         let mut s = [0u8, ..16];
         loop {
-            do s.as_mut_buf |p, sz| {
-                unsafe {
-                    rustrt::rand_gen_seed(p, sz as size_t);
-                }
-            }
+            let mut r = OSRng::new();
+            r.fill_bytes(s);
+
             if !s.iter().all(|x| *x == 0) {
                 break;
             }
         }
-        let s: &[u32, ..4] = unsafe { cast::transmute(&s) };
-        XorShiftRng::new_seeded(s[0], s[1], s[2], s[3])
-    }
-
-    /**
-     * Create a random number generator using the specified seed. A generator
-     * constructed with a given seed will generate the same sequence of values
-     * as all other generators constructed with the same seed.
-     */
-    pub fn new_seeded(x: u32, y: u32, z: u32, w: u32) -> XorShiftRng {
-        XorShiftRng {
-            x: x,
-            y: y,
-            z: z,
-            w: w,
-        }
+        let s: [u32, ..4] = unsafe { cast::transmute(s) };
+        SeedableRng::from_seed(s)
     }
 }
 
-/// Create a new random seed.
-pub fn seed() -> ~[u8] {
-    #[fixed_stack_segment]; #[inline(never)];
+/// Controls how the task-local RNG is reseeded.
+struct TaskRngReseeder;
 
-    unsafe {
-        let n = RAND_SIZE * 4;
-        let mut s = vec::from_elem(n as uint, 0_u8);
-        do s.as_mut_buf |p, sz| {
-            rustrt::rand_gen_seed(p, sz as size_t)
-        }
-        s
+impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
+    fn reseed(&mut self, rng: &mut StdRng) {
+        *rng = StdRng::new();
     }
 }
+static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
+/// The task-local RNG.
+pub type TaskRng = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
 
 // used to make space in TLS for a random number generator
-local_data_key!(tls_rng_state: @@mut IsaacRng)
+local_data_key!(TASK_RNG_KEY: @mut TaskRng)
 
-/**
- * Gives back a lazily initialized task-local random number generator,
- * seeded by the system. Intended to be used in method chaining style, ie
- * `task_rng().gen::<int>()`.
- */
-#[inline]
-pub fn task_rng() -> @mut IsaacRng {
-    let r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
+/// Retrieve the lazily-initialized task-local random number
+/// generator, seeded by the system. Intended to be used in method
+/// chaining style, e.g. `task_rng().gen::<int>()`.
+///
+/// The RNG provided will reseed itself from the operating system
+/// after generating a certain amount of randomness.
+///
+/// The internal RNG used is platform and architecture dependent, even
+/// if the operating system random number generator is rigged to give
+/// the same sequence always. If absolute consistency is required,
+/// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
+pub fn task_rng() -> @mut TaskRng {
+    let r = local_data::get(TASK_RNG_KEY, |k| k.map(|&k| *k));
     match r {
         None => {
-            let rng = @@mut IsaacRng::new_seeded(seed());
-            local_data::set(tls_rng_state, rng);
-            *rng
+            let rng = @mut reseeding::ReseedingRng::new(StdRng::new(),
+                                                        TASK_RNG_RESEED_THRESHOLD,
+                                                        TaskRngReseeder);
+            local_data::set(TASK_RNG_KEY, rng);
+            rng
         }
-        Some(rng) => *rng
+        Some(rng) => rng
     }
 }
 
 // Allow direct chaining with `task_rng`
 impl<R: Rng> Rng for @mut R {
     #[inline]
-    fn next(&mut self) -> u32 {
-        (**self).next()
+    fn next_u32(&mut self) -> u32 {
+        (**self).next_u32()
+    }
+    #[inline]
+    fn next_u64(&mut self) -> u64 {
+        (**self).next_u64()
+    }
+
+    #[inline]
+    fn fill_bytes(&mut self, bytes: &mut [u8]) {
+        (**self).fill_bytes(bytes);
     }
 }
 
-/**
- * Returns a random value of a Rand type, using the task's random number
- * generator.
- */
+/// Generate a random value using the task-local random number
+/// generator.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand::random;
+///
+/// fn main() {
+///     if random() {
+///         let x = random();
+///         println!("{}", 2u * x);
+///     } else {
+///         println!("{}", random::<float>());
+///     }
+/// }
+/// ```
 #[inline]
 pub fn random<T: Rand>() -> T {
     task_rng().gen()
@@ -876,31 +748,11 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_rng_seeded() {
-        let seed = seed();
-        let mut ra = IsaacRng::new_seeded(seed);
-        let mut rb = IsaacRng::new_seeded(seed);
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
-    }
+    fn test_fill_bytes_default() {
+        let mut r = weak_rng();
 
-    #[test]
-    fn test_rng_seeded_custom_seed() {
-        // much shorter than generated seeds which are 1024 bytes
-        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
-        let mut ra = IsaacRng::new_seeded(seed);
-        let mut rb = IsaacRng::new_seeded(seed);
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
-    }
-
-    #[test]
-    fn test_rng_seeded_custom_seed2() {
-        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
-        let mut ra = IsaacRng::new_seeded(seed);
-        // Regression test that isaac is actually using the above vector
-        let r = ra.next();
-        debug2!("{:?}", r);
-        assert!(r == 890007737u32 // on x86_64
-                     || r == 2935188040u32); // on x86
+        let mut v = [0u8, .. 100];
+        r.fill_bytes(v);
     }
 
     #[test]
@@ -1070,6 +922,26 @@ mod test {
             **e >= MIN_VAL && **e <= MAX_VAL
         }));
     }
+
+    #[test]
+    fn test_std_rng_seeded() {
+        let s = OSRng::new().gen_vec::<uint>(256);
+        let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
+        let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
+        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+    }
+
+    #[test]
+    fn test_std_rng_reseed() {
+        let s = OSRng::new().gen_vec::<uint>(256);
+        let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
+        let string1 = r.gen_ascii_str(100);
+
+        r.reseed(s);
+
+        let string2 = r.gen_ascii_str(100);
+        assert_eq!(string1, string2);
+    }
 }
 
 #[cfg(test)]
@@ -1090,6 +962,24 @@ mod bench {
     #[bench]
     fn rand_isaac(bh: &mut BenchHarness) {
         let mut rng = IsaacRng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_isaac64(bh: &mut BenchHarness) {
+        let mut rng = Isaac64Rng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_std(bh: &mut BenchHarness) {
+        let mut rng = StdRng::new();
         do bh.iter {
             rng.gen::<uint>();
         }
