@@ -178,5 +178,5 @@ pub fn maybe_tls_key() -> Option<tls::Key> {
 #[inline]
 #[cfg(test)]
 pub fn maybe_tls_key() -> Option<tls::Key> {
-    unsafe { ::cast::transmute(::realstd::rt::local_ptr::maybe_tls_key()) }
+    unsafe { ::cast::transmute(::realstd::rt::shouldnt_be_public::maybe_tls_key()) }
 }

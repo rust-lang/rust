@@ -12,16 +12,13 @@
 
 use c_str::ToCStr;
 use cast::transmute;
-use libc::{c_char, c_void, size_t, uintptr_t};
-use option::{Option, None, Some};
-use sys;
-use rt::task::Task;
-use rt::local::Local;
+use libc::{c_char, size_t, uintptr_t};
+use rt::task;
 use rt::borrowck;
 
 #[lang="fail_"]
 pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
-    sys::begin_unwind_(expr, file, line);
+    task::begin_unwind(expr, file, line);
 }
 
 #[lang="fail_bounds_check"]
@@ -36,14 +33,7 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
 
 #[lang="malloc"]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    // XXX: Unsafe borrow for speed. Lame.
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-    match task {
-        Some(task) => {
-            (*task).heap.alloc(td as *c_void, size as uint) as *c_char
-        }
-        None => rtabort!("local malloc outside of task")
-    }
+    ::rt::local_heap::local_malloc(td, size)
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from

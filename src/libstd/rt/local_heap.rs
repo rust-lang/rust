@@ -86,6 +86,17 @@ impl Drop for LocalHeap {
     }
 }
 
+pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c_char {
+    // XXX: Unsafe borrow for speed. Lame.
+    let task: Option<*mut Task> = Local::try_unsafe_borrow();
+    match task {
+        Some(task) => {
+            (*task).heap.alloc(td as *libc::c_void, size as uint) as *libc::c_char
+        }
+        None => rtabort!("local malloc outside of task")
+    }
+}
+
 // A little compatibility function
 pub unsafe fn local_free(ptr: *libc::c_char) {
     // XXX: Unsafe borrow for speed. Lame.
