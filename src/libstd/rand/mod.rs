@@ -28,13 +28,6 @@ from an operating-system source of randomness, e.g. `/dev/urandom` on
 Unix systems, and will automatically reseed itself from this source
 after generating 32 KiB of random data.
 
-It can be explicitly seeded on a per-task basis with `seed_task_rng`;
-this only affects the task-local generator in the task in which it is
-called. It can be seeded globally using the `RUST_SEED` environment
-variable, which should be an integer. Setting `RUST_SEED` will seed
-every task-local RNG with the same seed. Using either of these will
-disable the automatic reseeding.
-
 # Examples
 
 ```rust
@@ -67,7 +60,6 @@ use prelude::*;
 use str;
 use u64;
 use vec;
-use os::getenv;
 
 pub use self::isaac::{IsaacRng, Isaac64Rng};
 pub use self::os::OSRng;
@@ -673,25 +665,11 @@ impl XorShiftRng {
 }
 
 /// Controls how the task-local RNG is reseeded.
-enum TaskRngReseeder {
-    /// Reseed using the StdRng::new() function, i.e. reading new
-    /// randomness.
-    WithNew,
-    /// Don't reseed at all, e.g. when it has been explicitly seeded
-    /// by the user.
-    DontReseed
-}
-
-impl Default for TaskRngReseeder {
-    fn default() -> TaskRngReseeder { WithNew }
-}
+struct TaskRngReseeder;
 
 impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
     fn reseed(&mut self, rng: &mut StdRng) {
-        match *self {
-            WithNew => *rng = StdRng::new(),
-            DontReseed => {}
-        }
+        *rng = StdRng::new();
     }
 }
 static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
@@ -706,59 +684,24 @@ local_data_key!(TASK_RNG_KEY: @mut TaskRng)
 /// chaining style, e.g. `task_rng().gen::<int>()`.
 ///
 /// The RNG provided will reseed itself from the operating system
-/// after generating a certain amount of randomness, unless it was
-/// explicitly seeded either by `seed_task_rng` or by setting the
-/// `RUST_SEED` environmental variable to some integer.
+/// after generating a certain amount of randomness.
 ///
-/// The internal RNG used is platform and architecture dependent, so
-/// may yield differing sequences on different computers, even when
-/// explicitly seeded with `seed_task_rng`. If absolute consistency is
-/// required, explicitly select an RNG, e.g. `IsaacRng` or
-/// `Isaac64Rng`.
+/// The internal RNG used is platform and architecture dependent, even
+/// if the operating system random number generator is rigged to give
+/// the same sequence always. If absolute consistency is required,
+/// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> @mut TaskRng {
     let r = local_data::get(TASK_RNG_KEY, |k| k.map(|&k| *k));
     match r {
         None => {
-            // check the environment
-            let (sub_rng, reseeder) = match getenv("RUST_SEED") {
-                None => (StdRng::new(), WithNew),
-
-                Some(s) => match from_str::<uint>(s) {
-                    None => fail2!("`RUST_SEED` is `{}`, should be a positive integer.", s),
-                    // explicitly seeded, so don't overwrite the seed later.
-                    Some(seed) => (SeedableRng::from_seed(&[seed]), DontReseed),
-                }
-            };
-
-            let rng = @mut reseeding::ReseedingRng::new(sub_rng,
+            let rng = @mut reseeding::ReseedingRng::new(StdRng::new(),
                                                         TASK_RNG_RESEED_THRESHOLD,
-                                                        reseeder);
+                                                        TaskRngReseeder);
             local_data::set(TASK_RNG_KEY, rng);
             rng
         }
         Some(rng) => rng
     }
-}
-
-/// Explicitly seed (or reseed) the task-local random number
-/// generator. This stops the RNG from automatically reseeding itself.
-///
-/// # Example
-///
-/// ```rust
-/// use std::rand;
-///
-/// fn main() {
-///     rand::seed_task_rng(&[10u]);
-///     println!("Same every time: {}", rand::random::<uint>());
-///
-///     rand::seed_task_rng(&[1u, 2, 3, 4, 5, 6, 7, 8]);
-///     println!("Same every time: {}", rand::random::<float>());
-/// }
-/// ```
-pub fn seed_task_rng(seed: &[uint]) {
-    let t_r = task_rng();
-    (*t_r).reseed((DontReseed, seed));
 }
 
 // Allow direct chaining with `task_rng`
@@ -995,16 +938,6 @@ mod test {
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
-    }
-
-    #[test]
-    fn test_seed_task_rng() {
-        seed_task_rng([1]);
-        let first = random::<uint>();
-
-        seed_task_rng([1]);
-        let second = random::<uint>();
-        assert_eq!(first, second);
     }
 }
 
