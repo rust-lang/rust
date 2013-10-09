@@ -320,27 +320,6 @@ rust_mktime(rust_tm* timeptr) {
     return mktime(&t);
 }
 
-static lock_and_signal log_lock;
-static bool log_to_console = true;
-
-extern "C" CDECL void
-rust_log_console_on() {
-    scoped_lock with(log_lock);
-    log_to_console = true;
-}
-
-extern "C" CDECL void
-rust_log_console_off() {
-    scoped_lock with(log_lock);
-    log_to_console = false;
-}
-
-extern "C" CDECL uintptr_t
-rust_should_log_console() {
-    scoped_lock with(log_lock);
-    return log_to_console;
-}
-
 extern "C" lock_and_signal*
 rust_create_little_lock() {
     return new lock_and_signal();
