@@ -10,7 +10,7 @@
 
 use fmt;
 use from_str::from_str;
-use libc::{uintptr_t, exit};
+use libc::exit;
 use option::{Some, None, Option};
 use rt;
 use rt::util::dumb_println;
@@ -174,9 +174,7 @@ pub struct StdErrLogger;
 
 impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
-        if should_log_console() {
-            fmt::writeln(self as &mut rt::io::Writer, args);
-        }
+        fmt::writeln(self as &mut rt::io::Writer, args);
     }
 }
 
@@ -220,21 +218,6 @@ pub fn init() {
             }
         }
     }
-}
-
-#[fixed_stack_segment] #[inline(never)]
-pub fn console_on() { unsafe { rust_log_console_on() } }
-
-#[fixed_stack_segment] #[inline(never)]
-pub fn console_off() { unsafe { rust_log_console_off() } }
-
-#[fixed_stack_segment] #[inline(never)]
-fn should_log_console() -> bool { unsafe { rust_should_log_console() != 0 } }
-
-extern {
-    fn rust_log_console_on();
-    fn rust_log_console_off();
-    fn rust_should_log_console() -> uintptr_t;
 }
 
 // Tests for parse_logging_spec()
