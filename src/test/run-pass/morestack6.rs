@@ -69,8 +69,8 @@ pub fn main() {
     let mut rng = rand::rng();
     for f in fns.iter() {
         let f = *f;
-        let sz = rng.next() % 256u32 + 256u32;
-        let frame_backoff = rng.next() % 10u32 + 1u32;
+        let sz = rng.gen::<u32>() % 256u32 + 256u32;
+        let frame_backoff = rng.gen::<u32>() % 10u32 + 1u32;
         task::try(|| runtest(f, frame_backoff) );
     }
 }
