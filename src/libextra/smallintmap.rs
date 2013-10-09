@@ -158,7 +158,7 @@ impl<V> SmallIntMap<V> {
     {
         let values = replace(&mut self.v, ~[]);
         values.move_iter().enumerate().filter_map(|(i, v)| {
-            v.map_move(|v| (i, v))
+            v.map(|v| (i, v))
         })
     }
 }

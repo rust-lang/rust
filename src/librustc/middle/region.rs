@@ -117,7 +117,7 @@ impl RegionMaps {
     pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         //! Returns the narrowest scope that encloses `id`, if any.
 
-        self.scope_map.find(&id).map_move(|x| *x)
+        self.scope_map.find(&id).map(|x| *x)
     }
 
     pub fn encl_scope(&self, id: ast::NodeId) -> ast::NodeId {
@@ -613,7 +613,7 @@ impl DetermineRpCtxt {
     /// the new variance is joined with the old variance.
     pub fn add_rp(&mut self, id: ast::NodeId, variance: region_variance) {
         assert!(id != 0);
-        let old_variance = self.region_paramd_items.find(&id).map_move(|x| *x);
+        let old_variance = self.region_paramd_items.find(&id).map(|x| *x);
         let joined_variance = match old_variance {
           None => variance,
           Some(v) => join_variance(v, variance)

@@ -176,7 +176,7 @@ pub fn trans_method_callee(bcx: @mut Block,
                 data: Method(MethodData {
                     llfn: callee_fn.llfn,
                     llself: val,
-                    temp_cleanup: temp_cleanups.head_opt().map_move(|v| *v),
+                    temp_cleanup: temp_cleanups.head_opt().map(|v| *v),
                     self_mode: mentry.self_mode,
                 })
             }
@@ -356,7 +356,7 @@ pub fn trans_monomorphized_callee(bcx: @mut Block,
               data: Method(MethodData {
                   llfn: llfn_val,
                   llself: llself_val,
-                  temp_cleanup: temp_cleanups.head_opt().map_move(|v| *v),
+                  temp_cleanup: temp_cleanups.head_opt().map(|v| *v),
                   self_mode: mentry.self_mode,
               })
           }

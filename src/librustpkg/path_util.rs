@@ -272,7 +272,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     // Return the filename that matches, which we now know exists
     // (if result_filename != None)
     let abs_path = do result_filename.map |result_filename| {
-        let absolute_path = dir_to_search.push_rel(result_filename);
+        let absolute_path = dir_to_search.push_rel(&result_filename);
         debug2!("result_filename = {}", absolute_path.to_str());
         absolute_path
     };

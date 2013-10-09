@@ -72,7 +72,7 @@ fn fold_mod(cx: &Context, m: &ast::_mod) -> ast::_mod {
         filter_item(cx, *a).and_then(|x| cx.fold_item(x))
     }.collect();
     let filtered_view_items = do m.view_items.iter().filter_map |a| {
-        do filter_view_item(cx, a).map_move |x| {
+        do filter_view_item(cx, a).map |x| {
             cx.fold_view_item(x)
         }
     }.collect();
@@ -97,7 +97,7 @@ fn fold_foreign_mod(cx: &Context, nm: &ast::foreign_mod) -> ast::foreign_mod {
                            .filter_map(|a| filter_foreign_item(cx, *a))
                            .collect();
     let filtered_view_items = do nm.view_items.iter().filter_map |a| {
-        do filter_view_item(cx, a).map_move |x| {
+        do filter_view_item(cx, a).map |x| {
             cx.fold_view_item(x)
         }
     }.collect();
@@ -152,12 +152,12 @@ fn fold_block(cx: &Context, b: &ast::Block) -> ast::Block {
         filter_stmt(cx, *a).and_then(|stmt| cx.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
-        filter_view_item(cx, a).map(|x| cx.fold_view_item(*x))
+        filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }.collect();
     ast::Block {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
-        expr: b.expr.map(|x| cx.fold_expr(*x)),
+        expr: b.expr.map(|x| cx.fold_expr(x)),
         id: b.id,
         rules: b.rules,
         span: b.span,

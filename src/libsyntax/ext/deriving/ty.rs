@@ -249,7 +249,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                     Send => ast::sty_uniq,
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(*s)));
+                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
                         ast::sty_region(lt, mutbl)
                     }
                 });

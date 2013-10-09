@@ -241,20 +241,20 @@ pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let run_ignored = matches.opt_present("ignored");
 
     let logfile = matches.opt_str("logfile");
-    let logfile = logfile.map_move(|s| Path(s));
+    let logfile = logfile.map(|s| Path(s));
 
     let run_benchmarks = matches.opt_present("bench");
     let run_tests = ! run_benchmarks ||
         matches.opt_present("test");
 
     let ratchet_metrics = matches.opt_str("ratchet-metrics");
-    let ratchet_metrics = ratchet_metrics.map_move(|s| Path(s));
+    let ratchet_metrics = ratchet_metrics.map(|s| Path(s));
 
     let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
-    let ratchet_noise_percent = ratchet_noise_percent.map_move(|s| from_str::<f64>(s).unwrap());
+    let ratchet_noise_percent = ratchet_noise_percent.map(|s| from_str::<f64>(s).unwrap());
 
     let save_metrics = matches.opt_str("save-metrics");
-    let save_metrics = save_metrics.map_move(|s| Path(s));
+    let save_metrics = save_metrics.map(|s| Path(s));
 
     let test_shard = matches.opt_str("test-shard");
     let test_shard = opt_shard(test_shard);

@@ -1008,7 +1008,7 @@ impl Clean<ViewItemInner> for ast::view_item_ {
     fn clean(&self) -> ViewItemInner {
         match self {
             &ast::view_item_extern_mod(ref i, ref p, ref mi, ref id) =>
-                ExternMod(i.clean(), p.map(|&(ref x, _)| x.to_owned()),  mi.clean(), *id),
+                ExternMod(i.clean(), p.map(|(ref x, _)| x.to_owned()),  mi.clean(), *id),
             &ast::view_item_use(ref vp) => Import(vp.clean())
         }
     }
@@ -1208,5 +1208,5 @@ fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
 
 fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
     let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
-    dm.find(&id).map_move(|&d| ast_util::def_id_of_def(d))
+    dm.find(&id).map(|&d| ast_util::def_id_of_def(d))
 }
