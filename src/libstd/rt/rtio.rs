@@ -132,6 +132,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
+    fn sleep_uv(&mut self, msecs: u64, deschedule: bool);
+    fn sleep_then(&mut self, msecs: u64, cb: &fn(&mut Self));
 }
 
 pub trait RtioFileStream {
