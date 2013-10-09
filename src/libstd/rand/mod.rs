@@ -648,8 +648,6 @@ impl SeedableRng<[u32, .. 4]> for XorShiftRng {
 impl XorShiftRng {
     /// Create an xor shift random number generator with a random seed.
     pub fn new() -> XorShiftRng {
-        // generate seeds the same way as seed(), except we have a
-        // specific size, so we can just use a fixed buffer.
         let mut s = [0u8, ..16];
         loop {
             let mut r = OSRng::new();
@@ -713,6 +711,11 @@ impl<R: Rng> Rng for @mut R {
     #[inline]
     fn next_u64(&mut self) -> u64 {
         (**self).next_u64()
+    }
+
+    #[inline]
+    fn fill_bytes(&mut self, bytes: &mut [u8]) {
+        (**self).fill_bytes(bytes);
     }
 }
 

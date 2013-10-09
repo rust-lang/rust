@@ -863,7 +863,6 @@ fn new_sched_rng() -> XorShiftRng {
     use iter::Iterator;
     use rand::SeedableRng;
 
-    // XXX: this could use io::native::file, when it works.
     let fd = do "/dev/urandom".with_c_str |name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }
     };
