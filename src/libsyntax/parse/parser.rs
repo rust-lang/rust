@@ -4561,9 +4561,6 @@ impl Parser {
                     || self.look_ahead(2, |t| *t == token::LPAREN)
                     || self.look_ahead(2, |t| *t == token::LBRACE)) {
             // MACRO INVOCATION ITEM
-            if attrs.len() > 0 {
-                self.fatal("attrs on macros are not yet supported");
-            }
 
             // item macro.
             let pth = self.parse_path(NoTypesAllowed).path;
