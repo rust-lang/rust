@@ -239,7 +239,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let len_buckets = self.buckets.len();
         let bucket = self.buckets[idx].take();
 
-        let value = do bucket.map_move |bucket| {
+        let value = do bucket.map |bucket| {
             bucket.value
         };
 
@@ -480,7 +480,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
     /// Like `find`, but returns a copy of the value.
     pub fn find_copy(&self, k: &K) -> Option<V> {
-        self.find(k).map_move(|v| (*v).clone())
+        self.find(k).map(|v| (*v).clone())
     }
 
     /// Like `get`, but returns a copy of the value.

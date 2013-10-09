@@ -46,7 +46,7 @@ impl Process {
                  exit_cb: uv::ExitCallback)
                     -> Result<~[Option<UvPipeStream>], uv::UvError>
     {
-        let cwd = config.cwd.map_move(|s| s.to_c_str());
+        let cwd = config.cwd.map(|s| s.to_c_str());
 
         extern fn on_exit(p: *uvll::uv_process_t,
                           exit_status: libc::c_int,

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -372,12 +372,16 @@ impl Context {
 
         let mut note = None;
         let msg = match src {
-            Default | CommandLine => {
-                format!("{} [-{} {}{}]", msg, match level {
+            Default => {
+                format!("{}, \\#[{}({})] on by default", msg,
+                    level_to_str(level), self.lint_to_str(lint))
+            },
+            CommandLine => {
+                format!("{} [-{} {}]", msg,
+                    match level {
                         warn => 'W', deny => 'D', forbid => 'F',
                         allow => fail2!()
-                    }, self.lint_to_str(lint).replace("_", "-"),
-                    if src == Default { " (default)" } else { "" })
+                    }, self.lint_to_str(lint).replace("_", "-"))
             },
             Node(src) => {
                 note = Some(src);
@@ -997,7 +1001,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         match cx.tcx.items.find(&id.node) {
             Some(ast_node) => {
                 let s = do ast_node.with_attrs |attrs| {
-                    do attrs.map_move |a| {
+                    do attrs.map |a| {
                         attr::find_stability(a.iter().map(|a| a.meta()))
                     }
                 };

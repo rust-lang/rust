@@ -119,6 +119,7 @@ use back::link;
 use lib::llvm::{ValueRef, llvm, SetLinkage, False};
 use lib;
 use metadata::csearch;
+use metadata::cstore;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::asm;
@@ -1799,9 +1800,14 @@ pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
     let ccx = bcx.ccx();
 
     let (modpath, modname) = {
-        let path = &mut bcx.fcx.path;
-        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
-        for e in path.iter() {
+        let srccrate = match ccx.external_srcs.find(&bcx.fcx.id) {
+            Some(&src) => {
+                cstore::get_crate_data(ccx.sess.cstore, src.crate).name
+            }
+            None => ccx.link_meta.name,
+        };
+        let mut modpath = ~[path_mod(ccx.sess.ident_of(srccrate))];
+        for e in bcx.fcx.path.iter() {
             match *e {
                 path_mod(_) => { modpath.push(*e) }
                 _ => {}

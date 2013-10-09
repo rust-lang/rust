@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#ifndef RUST_RNG_H
-#define RUST_RNG_H
+// xfail-fast windows doesn't like compile-flags
+// compile-flags: --cfg foo
 
-void rng_gen_seed(uint8_t* dest, size_t size);
+#[feature(macro_rules)];
 
-//
-// Local Variables:
-// mode: C++
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//
+#[cfg(foo)]
+macro_rules! foo( () => (1) )
 
-#endif
+#[cfg(not(foo))]
+macro_rules! foo( () => (2) )
+
+fn main() {
+    assert_eq!(foo!(), 1);
+}

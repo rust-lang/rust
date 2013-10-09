@@ -309,6 +309,7 @@ pub fn Parser(sess: @mut ParseSess,
         quote_depth: @mut 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
+        open_braces: @mut ~[]
     }
 }
 
@@ -337,6 +338,8 @@ pub struct Parser {
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
+    /// Stack of spans of open delimiters. Used for error message.
+    open_braces: @mut ~[Span]
 }
 
 #[unsafe_destructor]
@@ -402,7 +405,7 @@ impl Parser {
         fn tokens_to_str(p:&Parser, tokens: &[token::Token]) -> ~str {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
-            let b = i.next().map_default(~"", |t| p.token_to_str(*t));
+            let b = i.next().map_default(~"", |t| p.token_to_str(t));
             i.fold(b, |b,a| b + "`, `" + p.token_to_str(a))
         }
         if edible.contains(self.token) {
@@ -467,7 +470,7 @@ impl Parser {
     pub fn commit_stmt(&self, s: @Stmt, edible: &[token::Token], inedible: &[token::Token]) {
         debug2!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
-        if self.last_token.map_default(false, |t|is_ident_or_path(*t)) {
+        if self.last_token.as_ref().map_default(false, |t| is_ident_or_path(*t)) {
             let expected = vec::append(edible.to_owned(), inedible);
             self.check_for_erroneous_unit_struct_expecting(expected);
         }
@@ -2024,12 +2027,18 @@ impl Parser {
 
         match *self.token {
             token::EOF => {
-                self.fatal("file ended with unbalanced delimiters");
+                for sp in self.open_braces.iter() {
+                    self.span_note(*sp, "Did you mean to close this delimiter?");
+                }
+                // There shouldn't really be a span, but it's easier for the test runner
+                // if we give it one
+                self.fatal("This file contains an un-closed delimiter ");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&*self.token);
 
                 // Parse the open delimiter.
+                (*self.open_braces).push(*self.span);
                 let mut result = ~[parse_any_tt_tok(self)];
 
                 let trees =
@@ -2040,6 +2049,7 @@ impl Parser {
 
                 // Parse the close delimiter.
                 result.push(parse_any_tt_tok(self));
+                self.open_braces.pop();
 
                 tt_delim(@mut result)
             }
@@ -4551,9 +4561,6 @@ impl Parser {
                     || self.look_ahead(2, |t| *t == token::LPAREN)
                     || self.look_ahead(2, |t| *t == token::LBRACE)) {
             // MACRO INVOCATION ITEM
-            if attrs.len() > 0 {
-                self.fatal("attrs on macros are not yet supported");
-            }
 
             // item macro.
             let pth = self.parse_path(NoTypesAllowed).path;

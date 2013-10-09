@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:attrs on macros are not yet supported
+static foo: int = 2; } //~ ERROR incorrect close delimiter:
 
-// Don't know how to deal with a syntax extension appearing after an
-// item attribute. Probably could use a better error message.
-#[foo = "bar"]
-fmt!("baz")
-fn main() { }

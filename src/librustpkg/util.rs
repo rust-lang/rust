@@ -554,5 +554,5 @@ pub fn datestamp(p: &Path) -> Option<libc::time_t> {
     debug2!("Scrutinizing datestamp for {} - does it exist? {:?}", p.to_str(), os::path_exists(p));
     let out = p.stat().map(|stat| stat.st_mtime);
     debug2!("Date = {:?}", out);
-    out.map(|t| { *t as libc::time_t })
+    out.map(|t| { t as libc::time_t })
 }

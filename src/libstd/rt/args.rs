@@ -74,7 +74,7 @@ mod imp {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
             let val = util::replace(&mut *ptr, None);
-            val.map(|s: &~~[~str]| (**s).clone())
+            val.as_ref().map(|s: &~~[~str]| (**s).clone())
         })
     }
 
@@ -89,7 +89,7 @@ mod imp {
     pub fn clone() -> Option<~[~str]> {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
-            (*ptr).map(|s: &~~[~str]| (**s).clone())
+            (*ptr).as_ref().map(|s: &~~[~str]| (**s).clone())
         })
     }
 

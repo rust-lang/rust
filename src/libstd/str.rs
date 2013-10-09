@@ -415,7 +415,7 @@ impl<'self> Iterator<(uint, char)> for CharOffsetIterator<'self> {
                 b as uint - a as uint
             }
         };
-        self.iter.next().map_move(|ch| (offset, ch))
+        self.iter.next().map(|ch| (offset, ch))
     }
 
     #[inline]
@@ -427,7 +427,7 @@ impl<'self> Iterator<(uint, char)> for CharOffsetIterator<'self> {
 impl<'self> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
-        self.iter.next_back().map_move(|ch| {
+        self.iter.next_back().map(|ch| {
             let offset = do self.string.as_imm_buf |a, _| {
                 do self.iter.string.as_imm_buf |b, len| {
                     b as uint - a as uint + len
@@ -2260,7 +2260,7 @@ impl<'self> StrSlice<'self> for &'self str {
         } else {
             self.matches_index_iter(needle)
                 .next()
-                .map_move(|(start, _end)| start)
+                .map(|(start, _end)| start)
         }
     }
 

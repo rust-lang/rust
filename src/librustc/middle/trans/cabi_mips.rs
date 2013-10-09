@@ -161,7 +161,7 @@ fn struct_ty(ty: Type,
              padding: Option<Type>,
              coerce: bool) -> Type {
     let size = ty_size(ty) * 8;
-    let mut fields = padding.map_move_default(~[], |p| ~[p]);
+    let mut fields = padding.map_default(~[], |p| ~[p]);
 
     if coerce {
         fields = vec::append(fields, coerce_to_int(size));
