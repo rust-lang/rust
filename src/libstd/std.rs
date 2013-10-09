@@ -88,9 +88,6 @@ pub mod linkhack {
     }
 }
 
-// Internal macros
-mod macros;
-
 /* The Prelude. */
 
 pub mod prelude;

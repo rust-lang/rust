@@ -739,7 +739,7 @@ fn get_concurrency() -> uint {
             }
         }
         None => {
-            rt::util::default_sched_threads()
+            rt::default_sched_threads()
         }
     }
 }
