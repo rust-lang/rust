@@ -17,9 +17,6 @@ rust_get_stderr
 rust_list_dir_val
 rust_list_dir_wfd_size
 rust_list_dir_wfd_fp_buf
-rust_log_console_on
-rust_log_console_off
-rust_should_log_console
 rust_unset_sigprocmask
 rust_env_pairs
 rust_win32_rand_acquire
