@@ -596,8 +596,7 @@ mod test {
             |i| format!("tmp/lib-fileinput-test-next-file-{}.tmp", i)),true);
 
         for (i, filename) in filenames.iter().enumerate() {
-            let contents =
-                vec::from_fn(3, |j| format!("{} {}", i, j + 1));
+            let contents = vec::from_fn(3, |j| format!("{} {}", i, j + 1));
             make_file(filename.get_ref(), contents);
         }
 

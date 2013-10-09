@@ -507,9 +507,9 @@ pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: &Expr, b: &Expr) -> Option<in
 }
 
 pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: &Expr, b: &Expr) -> Option<bool> {
-    compare_lit_exprs(tcx, a, b).map_move(|val| val == 0)
+    compare_lit_exprs(tcx, a, b).map(|val| val == 0)
 }
 
 pub fn lit_eq(a: &lit, b: &lit) -> Option<bool> {
-    compare_const_vals(&lit_to_const(a), &lit_to_const(b)).map_move(|val| val == 0)
+    compare_const_vals(&lit_to_const(a), &lit_to_const(b)).map(|val| val == 0)
 }

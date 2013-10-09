@@ -83,7 +83,7 @@ impl AttrMetaMethods for MetaItem {
     }
 
     fn name_str_pair(&self) -> Option<(@str, @str)> {
-        self.value_str().map_move(|s| (self.name(), s))
+        self.value_str().map(|s| (self.name(), s))
     }
 }
 

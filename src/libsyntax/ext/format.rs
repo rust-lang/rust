@@ -266,7 +266,7 @@ impl Context {
                     }
                 };
                 self.verify_same(span, ty,
-                                 self.name_types.find(&name).map(|&x| *x));
+                                 self.name_types.find(&name).map(|&x| x));
                 if !self.name_types.contains_key(&name) {
                     self.name_types.insert(name, ty);
                 }

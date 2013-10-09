@@ -198,7 +198,7 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
     let stderr = io::stderr();
 
     if stderr.get_type() == io::Screen {
-        let t = match local_data::get(tls_terminal, |v| v.map_move(|k| *k)) {
+        let t = match local_data::get(tls_terminal, |v| v.map(|k| *k)) {
             None => {
                 let t = term::Terminal::new(stderr);
                 let tls = @match t {
@@ -337,7 +337,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
     for ei in sp.expn_info.iter() {
-        let ss = ei.callee.span.map_default(~"", |span| cm.span_to_str(*span));
+        let ss = ei.callee.span.as_ref().map_default(~"", |span| cm.span_to_str(*span));
         print_diagnostic(ss, note,
                          format!("in expansion of {}!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);

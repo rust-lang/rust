@@ -58,7 +58,7 @@ mod test {
     fn test_io_timer_sleep_simple() {
         do run_in_mt_newsched_task {
             let timer = Timer::new();
-            do timer.map_move |mut t| { t.sleep(1) };
+            do timer.map |mut t| { t.sleep(1) };
         }
     }
 

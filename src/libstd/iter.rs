@@ -617,7 +617,7 @@ pub trait Iterator<A> {
                     Some((y, y_val))
                 }
             }
-        }).map_move(|(x, _)| x)
+        }).map(|(x, _)| x)
     }
 
     /// Return the element that gives the minimum value from the
@@ -641,7 +641,7 @@ pub trait Iterator<A> {
                     Some((y, y_val))
                 }
             }
-        }).map_move(|(x, _)| x)
+        }).map(|(x, _)| x)
     }
 }
 
@@ -1550,8 +1550,8 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'self,
                     return Some(x)
                 }
             }
-            match self.iter.next().map_move(|x| (self.f)(x)) {
-                None => return self.backiter.and_then_mut_ref(|it| it.next()),
+            match self.iter.next().map(|x| (self.f)(x)) {
+                None => return self.backiter.as_mut().and_then(|it| it.next()),
                 next => self.frontiter = next,
             }
         }
@@ -1559,8 +1559,8 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'self,
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let (flo, fhi) = self.frontiter.map_default((0, Some(0)), |it| it.size_hint());
-        let (blo, bhi) = self.backiter.map_default((0, Some(0)), |it| it.size_hint());
+        let (flo, fhi) = self.frontiter.as_ref().map_default((0, Some(0)), |it| it.size_hint());
+        let (blo, bhi) = self.backiter.as_ref().map_default((0, Some(0)), |it| it.size_hint());
         let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
             ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(&b)),
@@ -1582,8 +1582,8 @@ impl<'self,
                     y => return y
                 }
             }
-            match self.iter.next_back().map_move(|x| (self.f)(x)) {
-                None => return self.frontiter.and_then_mut_ref(|it| it.next_back()),
+            match self.iter.next_back().map(|x| (self.f)(x)) {
+                None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
                 next => self.backiter = next,
             }
         }

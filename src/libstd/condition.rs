@@ -106,7 +106,7 @@ impl<T, U> Condition<T, U> {
     /// ```
     pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
         let h: Closure = unsafe { ::cast::transmute(h) };
-        let prev = local_data::get(self.key, |k| k.map(|&x| *x));
+        let prev = local_data::get(self.key, |k| k.map(|x| *x));
         let h = @Handler { handle: h, prev: prev };
         Trap { cond: self, handler: h }
     }

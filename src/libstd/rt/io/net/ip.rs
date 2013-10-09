@@ -203,7 +203,7 @@ impl<'self> Parser<'self> {
                 return None;
             }
 
-            let octet = self.read_number(10, 3, 0x100).map(|&n| n as u8);
+            let octet = self.read_number(10, 3, 0x100).map(|n| n as u8);
             match octet {
                 Some(d) => bs[i] = d,
                 None => return None,
@@ -252,7 +252,7 @@ impl<'self> Parser<'self> {
 
                 let group = do p.read_atomically |p| {
                     if i == 0 || p.read_given_char(':').is_some() {
-                        p.read_number(16, 4, 0x10000).map(|&n| n as u16)
+                        p.read_number(16, 4, 0x10000).map(|n| n as u16)
                     } else {
                         None
                     }
@@ -310,16 +310,16 @@ impl<'self> Parser<'self> {
                 let ip_addr = |p: &mut Parser| p.read_ipv6_addr();
                 let clos_br = |p: &mut Parser| p.read_given_char(']');
                 p.read_seq_3::<char, IpAddr, char>(open_br, ip_addr, clos_br)
-                        .map(|&t| match t { (_, ip, _) => ip })
+                        .map(|t| match t { (_, ip, _) => ip })
             };
             p.read_or([ipv4_p, ipv6_p])
         };
         let colon = |p: &mut Parser| p.read_given_char(':');
-        let port  = |p: &mut Parser| p.read_number(10, 5, 0x10000).map(|&n| n as u16);
+        let port  = |p: &mut Parser| p.read_number(10, 5, 0x10000).map(|n| n as u16);
 
         // host, colon, port
         self.read_seq_3::<IpAddr, char, u16>(ip_addr, colon, port)
-                .map(|&t| match t { (ip, _, port) => SocketAddr { ip: ip, port: port } })
+                .map(|t| match t { (ip, _, port) => SocketAddr { ip: ip, port: port } })
     }
 }
 

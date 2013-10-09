@@ -719,7 +719,7 @@ pub fn build_session_options(binary: @str,
         } else if matches.opt_present("emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let sysroot_opt = matches.opt_str("sysroot").map_move(|m| @Path(m));
+    let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
     let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
     let target_feature = matches.opt_str("target-feature").unwrap_or(~"");

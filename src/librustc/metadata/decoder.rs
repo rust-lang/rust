@@ -200,7 +200,7 @@ fn item_def_id(d: ebml::Doc, cdata: Cmd) -> ast::DefId {
 }
 
 fn get_provided_source(d: ebml::Doc, cdata: Cmd) -> Option<ast::DefId> {
-    do reader::maybe_get_doc(d, tag_item_method_provided_source).map_move |doc| {
+    do reader::maybe_get_doc(d, tag_item_method_provided_source).map |doc| {
         translate_def_id(cdata, reader::with_doc_data(doc, parse_def_id))
     }
 }
@@ -267,7 +267,7 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: Cmd,
 }
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
-    do reader::maybe_get_doc(item, tag_region_param).map_move |doc| {
+    do reader::maybe_get_doc(item, tag_region_param).map |doc| {
         let mut decoder = reader::Decoder(doc);
         Decodable::decode(&mut decoder)
     }
@@ -400,7 +400,7 @@ pub fn get_trait_def(cdata: Cmd,
     do reader::tagged_docs(item_doc, tag_item_super_trait_ref) |trait_doc| {
         // NB. Bypasses real supertraits. See get_supertraits() if you wanted them.
         let trait_ref = doc_trait_ref(trait_doc, tcx, cdata);
-        do tcx.lang_items.to_builtin_kind(trait_ref.def_id).map_move |bound| {
+        do tcx.lang_items.to_builtin_kind(trait_ref.def_id).map |bound| {
             bounds.add(bound);
         };
         true
@@ -446,7 +446,7 @@ pub fn get_impl_trait(cdata: Cmd,
                        tcx: ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data);
-    do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map_move |tp| {
+    do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map |tp| {
         @doc_trait_ref(tp, tcx, cdata)
     }
 }

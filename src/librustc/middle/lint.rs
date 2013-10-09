@@ -1001,7 +1001,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         match cx.tcx.items.find(&id.node) {
             Some(ast_node) => {
                 let s = do ast_node.with_attrs |attrs| {
-                    do attrs.map_move |a| {
+                    do attrs.map |a| {
                         attr::find_stability(a.iter().map(|a| a.meta()))
                     }
                 };

@@ -134,7 +134,7 @@ pub fn main_args(args: &[~str]) -> int {
 
     info2!("going to format");
     let started = time::precise_time_ns();
-    let output = matches.opt_str("o").map(|s| Path(*s));
+    let output = matches.opt_str("o").map(|s| Path(s));
     match matches.opt_str("w") {
         Some(~"html") | None => {
             html::render::run(crate, output.unwrap_or(Path("doc")))

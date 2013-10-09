@@ -645,7 +645,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
         in_binding_rscope(rscope,
                           RegionParamNames(bound_lifetime_names.clone()));
 
-    let opt_transformed_self_ty = do opt_self_info.map_move |self_info| {
+    let opt_transformed_self_ty = do opt_self_info.map |self_info| {
         transform_self_ty(this, &rb, self_info)
     };
 
@@ -749,7 +749,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
                           RegionParamNames(bound_lifetime_names.clone()));
 
     let input_tys = do decl.inputs.iter().enumerate().map |(i, a)| {
-        let expected_arg_ty = do expected_sig.and_then_ref |e| {
+        let expected_arg_ty = do expected_sig.as_ref().and_then |e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
