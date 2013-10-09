@@ -1349,7 +1349,7 @@ pub fn fold_bare_fn_ty(fty: &BareFnTy, fldop: &fn(t) -> t) -> BareFnTy {
 fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: &fn(t) -> t) -> substs {
         substs {regions: substs.regions.clone(),
-                self_ty: substs.self_ty.map(|t| fldop(*t)),
+                self_ty: substs.self_ty.map(|t| fldop(t)),
                 tps: substs.tps.map(|t| fldop(*t))}
     }
 
@@ -1449,7 +1449,7 @@ pub fn fold_regions_and_ty(
 
         substs {
             regions: regions,
-            self_ty: substs.self_ty.map(|t| fldt(*t)),
+            self_ty: substs.self_ty.map(|t| fldt(t)),
             tps: substs.tps.map(|t| fldt(*t))
         }
     }
@@ -3619,7 +3619,7 @@ pub fn def_has_ty_params(def: ast::Def) -> bool {
 }
 
 pub fn provided_source(cx: ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.find(&id).map_move(|x| *x)
+    cx.provided_method_sources.find(&id).map(|x| *x)
 }
 
 pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
@@ -3791,7 +3791,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::DefId) -> Option<ast::DefId> {
         Some(&ast_map::node_item(item, _)) => {
             match item.node {
                 ast::item_struct(struct_def, _) => {
-                    do struct_def.ctor_id.map_move |ctor_id| {
+                    do struct_def.ctor_id.map |ctor_id| {
                         ast_util::local_def(ctor_id)
                     }
                 }

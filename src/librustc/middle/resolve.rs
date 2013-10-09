@@ -3463,7 +3463,7 @@ impl Resolver {
                   // item, it's ok
                   match def {
                     DefTyParam(did, _)
-                        if self.def_map.find(&did.node).map_move(|x| *x)
+                        if self.def_map.find(&did.node).map(|x| *x)
                             == Some(DefTyParamBinder(item_id)) => {
                       // ok
                     }
@@ -4255,7 +4255,7 @@ impl Resolver {
                     }
                 }
 
-                do bounds.map |bound_vec| {
+                do bounds.as_ref().map |bound_vec| {
                     for bound in bound_vec.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound);
                     }
@@ -4263,7 +4263,7 @@ impl Resolver {
             }
 
             ty_closure(c) => {
-                do c.bounds.map |bounds| {
+                do c.bounds.as_ref().map |bounds| {
                     for bound in bounds.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound);
                     }

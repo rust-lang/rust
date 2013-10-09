@@ -36,7 +36,7 @@ pub fn replace_bound_regions_in_fn_sig(
 
     debug2!("replace_bound_regions_in_fn_sig(self_ty={:?}, fn_sig={}, \
             all_tys={:?})",
-           opt_self_ty.map(|t| ppaux::ty_to_str(tcx, *t)),
+           opt_self_ty.map(|t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, fn_sig),
            all_tys.map(|t| ppaux::ty_to_str(tcx, *t)));
     let _i = indenter();
@@ -48,12 +48,12 @@ pub fn replace_bound_regions_in_fn_sig(
     let new_fn_sig = ty::fold_sig(fn_sig, |t| {
         replace_bound_regions(tcx, isr, t)
     });
-    let new_self_ty = opt_self_ty.map(|t| replace_bound_regions(tcx, isr, *t));
+    let new_self_ty = opt_self_ty.map(|t| replace_bound_regions(tcx, isr, t));
 
     debug2!("result of replace_bound_regions_in_fn_sig: \
             new_self_ty={:?}, \
             fn_sig={}",
-           new_self_ty.map(|t| ppaux::ty_to_str(tcx, *t)),
+           new_self_ty.map(|t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, &new_fn_sig));
 
     return (isr, new_self_ty, new_fn_sig);

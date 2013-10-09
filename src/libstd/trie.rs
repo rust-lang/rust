@@ -488,7 +488,7 @@ pub struct TrieSetIterator<'self> {
 
 impl<'self> Iterator<uint> for TrieSetIterator<'self> {
     fn next(&mut self) -> Option<uint> {
-        do self.iter.next().map |&(key, _)| { key }
+        do self.iter.next().map |(key, _)| { key }
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {

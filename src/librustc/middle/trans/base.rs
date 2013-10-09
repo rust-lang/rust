@@ -113,7 +113,7 @@ pub struct _InsnCtxt { _x: () }
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
         do local_data::modify(task_local_insn_key) |c| {
-            do c.map_move |mut ctx| {
+            do c.map |mut ctx| {
                 ctx.pop();
                 ctx
             }
@@ -124,7 +124,7 @@ impl Drop for _InsnCtxt {
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug2!("new InsnCtxt: {}", s);
     do local_data::modify(task_local_insn_key) |c| {
-        do c.map_move |mut ctx| {
+        do c.map |mut ctx| {
             ctx.push(s);
             ctx
         }
