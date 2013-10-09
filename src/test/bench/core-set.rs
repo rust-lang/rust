@@ -60,7 +60,7 @@ impl Results {
             let mut set = f();
             do timed(&mut self.random_ints) {
                 for _ in range(0, num_keys) {
-                    set.insert((rng.next() as uint) % rand_cap);
+                    set.insert(rng.gen::<uint>() % rand_cap);
                 }
             }
         }
@@ -102,7 +102,7 @@ impl Results {
             let mut set = f();
             do timed(&mut self.random_strings) {
                 for _ in range(0, num_keys) {
-                    let s = (rng.next() as uint).to_str();
+                    let s = rng.gen::<uint>().to_str();
                     set.insert(s);
                 }
             }
@@ -163,11 +163,11 @@ fn main() {
         }
     };
 
-    let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let seed = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let max = 200000;
 
     {
-        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || {
             let s: HashSet<uint> = HashSet::new();
@@ -181,7 +181,7 @@ fn main() {
     }
 
     {
-        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || {
             let s: TreeSet<uint> = TreeSet::new();
@@ -195,7 +195,7 @@ fn main() {
     }
 
     {
-        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || BitvSet::new());
         write_results("extra::bitv::BitvSet", &results);

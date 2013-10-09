@@ -15,7 +15,7 @@ use extra::treemap::TreeMap;
 use std::hashmap::{HashMap, HashSet};
 use std::io;
 use std::os;
-use std::rand::Rng;
+use std::rand::{Rng, IsaacRng, SeedableRng};
 use std::trie::TrieMap;
 use std::uint;
 use std::vec;
@@ -106,10 +106,10 @@ fn main() {
     let mut rand = vec::with_capacity(n_keys);
 
     {
-        let mut rng = std::rand::IsaacRng::new_seeded([1, 1, 1, 1, 1, 1, 1]);
+        let mut rng: IsaacRng = SeedableRng::from_seed(&[1, 1, 1, 1, 1, 1, 1]);
         let mut set = HashSet::new();
         while set.len() != n_keys {
-            let next = rng.next() as uint;
+            let next = rng.gen();
             if set.insert(next) {
                 rand.push(next);
             }

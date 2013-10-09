@@ -140,7 +140,7 @@ impl Scheduler {
             cleanup_job: None,
             run_anything: run_anything,
             friend_handle: friend,
-            rng: XorShiftRng::new(),
+            rng: new_sched_rng(),
             idle_callback: None,
             yield_check_count: 0,
             steal_for_yield: false
@@ -842,6 +842,54 @@ impl ClosureConverter for UnsafeTaskReceiver {
         unsafe { transmute(f) }
     }
     fn to_fn(self) -> &fn(&mut Scheduler, ~Task) { unsafe { transmute(self) } }
+}
+
+// On unix, we read randomness straight from /dev/urandom, but the
+// default constructor of an XorShiftRng does this via io::file, which
+// relies on the scheduler existing, so we have to manually load
+// randomness. Windows has its own C API for this, so we don't need to
+// worry there.
+#[cfg(windows)]
+fn new_sched_rng() -> XorShiftRng {
+    XorShiftRng::new()
+}
+#[cfg(unix)]
+#[fixed_stack_segment] #[inline(never)]
+fn new_sched_rng() -> XorShiftRng {
+    use libc;
+    use sys;
+    use c_str::ToCStr;
+    use vec::MutableVector;
+    use iter::Iterator;
+    use rand::SeedableRng;
+
+    let fd = do "/dev/urandom".with_c_str |name| {
+        unsafe { libc::open(name, libc::O_RDONLY, 0) }
+    };
+    if fd == -1 {
+        rtabort!("could not open /dev/urandom for reading.")
+    }
+
+    let mut seeds = [0u32, .. 4];
+    let size = sys::size_of_val(&seeds);
+    loop {
+        let nbytes = do seeds.as_mut_buf |buf, _| {
+            unsafe {
+                libc::read(fd,
+                           buf as *mut libc::c_void,
+                           size as libc::size_t)
+            }
+        };
+        rtassert!(nbytes as uint == size);
+
+        if !seeds.iter().all(|x| *x == 0) {
+            break;
+        }
+    }
+
+    unsafe {libc::close(fd);}
+
+    SeedableRng::from_seed(seeds)
 }
 
 #[cfg(test)]

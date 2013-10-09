@@ -1524,8 +1524,8 @@ mod tests {
     }
 
     fn rng() -> rand::IsaacRng {
-        let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-        rand::IsaacRng::new_seeded(seed)
+        let seed = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+        rand::SeedableRng::from_seed(seed)
     }
 
     #[bench]
@@ -1533,7 +1533,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = 0 as uint;
         do b.iter {
-            bitv |= (1 << ((r.next() as uint) % uint::bits));
+            bitv |= (1 << ((r.next_u32() as uint) % uint::bits));
         }
     }
 
@@ -1542,7 +1542,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = SmallBitv::new(uint::bits);
         do b.iter {
-            bitv.set((r.next() as uint) % uint::bits, true);
+            bitv.set((r.next_u32() as uint) % uint::bits, true);
         }
     }
 
@@ -1551,7 +1551,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = BigBitv::new(~[0]);
         do b.iter {
-            bitv.set((r.next() as uint) % uint::bits, true);
+            bitv.set((r.next_u32() as uint) % uint::bits, true);
         }
     }
 
@@ -1562,7 +1562,7 @@ mod tests {
         storage.grow(BENCH_BITS / uint::bits, &0u);
         let mut bitv = BigBitv::new(storage);
         do b.iter {
-            bitv.set((r.next() as uint) % BENCH_BITS, true);
+            bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
         }
     }
 
@@ -1571,7 +1571,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = Bitv::new(BENCH_BITS, false);
         do b.iter {
-            bitv.set((r.next() as uint) % BENCH_BITS, true);
+            bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
         }
     }
 
@@ -1580,7 +1580,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = Bitv::new(uint::bits, false);
         do b.iter {
-            bitv.set((r.next() as uint) % uint::bits, true);
+            bitv.set((r.next_u32() as uint) % uint::bits, true);
         }
     }
 
@@ -1589,7 +1589,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
-            bitv.insert((r.next() as uint) % uint::bits);
+            bitv.insert((r.next_u32() as uint) % uint::bits);
         }
     }
 
@@ -1598,7 +1598,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
-            bitv.insert((r.next() as uint) % BENCH_BITS);
+            bitv.insert((r.next_u32() as uint) % BENCH_BITS);
         }
     }
 
