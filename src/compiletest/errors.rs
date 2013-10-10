@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
-
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
 // Load any test directives embedded in the file
 pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
+    use std::rt::io::Open;
+    use std::rt::io::file::FileInfo;
+    use std::rt::io::buffered::BufferedReader;
+
     let mut error_patterns = ~[];
-    let rdr = io::file_reader(testfile).unwrap();
+    let mut rdr = BufferedReader::new(testfile.open_reader(Open).unwrap());
     let mut line_num = 1u;
-    while !rdr.eof() {
-        let ln = rdr.read_line();
+    loop {
+        let ln = match rdr.read_line() {
+            Some(ln) => ln, None => break,
+        };
         error_patterns.push_all_move(parse_expected(line_num, ln));
         line_num += 1u;
     }
@@ -26,6 +30,7 @@ pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
 }
 
 fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
+    let line = line.trim();
     let error_tag = ~"//~";
     let mut idx;
     match line.find_str(error_tag) {

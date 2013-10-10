@@ -55,6 +55,7 @@ use prelude::*;
 
 use num;
 use vec;
+use str;
 use super::{Reader, Writer, Stream, Decorator};
 
 // libuv recommends 64k buffers to maximize throughput
@@ -84,23 +85,69 @@ impl<R: Reader> BufferedReader<R> {
     pub fn new(inner: R) -> BufferedReader<R> {
         BufferedReader::with_capacity(DEFAULT_CAPACITY, inner)
     }
-}
 
-impl<R: Reader> Reader for BufferedReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    /// Reads the next line of input, interpreted as a sequence of utf-8
+    /// encoded unicode codepoints. If a newline is encountered, then the
+    /// newline is contained in the returned string.
+    pub fn read_line(&mut self) -> Option<~str> {
+        self.read_until('\n' as u8).map(str::from_utf8_owned)
+    }
+
+    /// Reads a sequence of bytes leading up to a specified delimeter. Once the
+    /// specified byte is encountered, reading ceases and the bytes up to and
+    /// including the delimiter are returned.
+    pub fn read_until(&mut self, byte: u8) -> Option<~[u8]> {
+        let mut res = ~[];
+        let mut used;
+        loop {
+            {
+                let available = self.fill_buffer();
+                match available.iter().position(|&b| b == byte) {
+                    Some(i) => {
+                        res.push_all(available.slice_to(i + 1));
+                        used = i + 1;
+                        break
+                    }
+                    None => {
+                        res.push_all(available);
+                        used = available.len();
+                    }
+                }
+            }
+            if used == 0 {
+                break
+            }
+            self.pos += used;
+        }
+        self.pos += used;
+        return if res.len() == 0 {None} else {Some(res)};
+    }
+
+    fn fill_buffer<'a>(&'a mut self) -> &'a [u8] {
         if self.pos == self.cap {
             match self.inner.read(self.buf) {
                 Some(cap) => {
                     self.pos = 0;
                     self.cap = cap;
                 }
-                None => return None
+                None => {}
             }
         }
+        return self.buf.slice(self.pos, self.cap);
+    }
+}
 
-        let src = self.buf.slice(self.pos, self.cap);
-        let nread = num::min(src.len(), buf.len());
-        vec::bytes::copy_memory(buf, src, nread);
+impl<R: Reader> Reader for BufferedReader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        let nread = {
+            let available = self.fill_buffer();
+            if available.len() == 0 {
+                return None;
+            }
+            let nread = num::min(available.len(), buf.len());
+            vec::bytes::copy_memory(buf, available, nread);
+            nread
+        };
         self.pos += nread;
         Some(nread)
     }
@@ -354,5 +401,16 @@ mod test {
         stream.eof();
         stream.write(buf);
         stream.flush();
+    }
+
+    #[test]
+    fn test_read_until() {
+        let inner = MemReader::new(~[0, 1, 2, 1, 0]);
+        let mut reader = BufferedReader::with_capacity(2, inner);
+        assert_eq!(reader.read_until(0), Some(~[0]));
+        assert_eq!(reader.read_until(2), Some(~[1, 2]));
+        assert_eq!(reader.read_until(1), Some(~[1]));
+        assert_eq!(reader.read_until(8), Some(~[0]));
+        assert_eq!(reader.read_until(9), None);
     }
 }
