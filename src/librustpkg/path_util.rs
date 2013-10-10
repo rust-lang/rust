@@ -449,8 +449,8 @@ pub fn user_set_rust_path() -> bool {
 
 /// Append the version string onto the end of the path's filename
 pub fn versionize(p: &Path, v: &Version) -> Path {
-    let q = p.file_path().expect("path is a directory");
-    let mut q = q.as_vec().to_owned();
+    let q = p.filename().expect("path is a directory");
+    let mut q = q.to_owned();
     q.push('-' as u8);
     let vs = v.to_str();
     q.push_all(vs.as_bytes());

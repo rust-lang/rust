@@ -24,7 +24,7 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 pub type pick<'self> = &'self fn(path: &Path) -> FileMatch;
 
 pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
-    if path.file_path() == Some(file) {
+    if path.filename() == Some(file.as_vec()) {
         Some(path.clone())
     } else {
         None
@@ -206,11 +206,10 @@ pub fn rust_path() -> ~[Path] {
         env_rust_path.push(cwd.clone());
     }
     loop {
-        let f = cwd.pop();
-        if f.is_none() || bytes!("..") == f.unwrap() {
-            break;
+        if { let f = cwd.filename(); f.is_none() || f.unwrap() == bytes!("..") } {
+            break
         }
-        cwd.push(".rust");
+        cwd.set_filename(".rust");
         if !env_rust_path.contains(&cwd) && os::path_exists(&cwd) {
             env_rust_path.push(cwd.clone());
         }
