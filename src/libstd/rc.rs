@@ -8,31 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(missing_doc)];
+/** Task-local reference counted boxes
 
-/** Task-local reference counted smart pointers
+The `Rc` type provides shared ownership of an immutable value. Destruction is deterministic, and
+will occur as soon as the last owner is gone. It is marked as non-sendable because it avoids the
+overhead of atomic reference counting.
 
-Task-local reference counted smart pointers are an alternative to managed boxes with deterministic
-destruction. They are restricted to containing types that are either `Send` or `Freeze` (or both) to
-prevent cycles.
-
-Neither `Rc<T>` or `RcMut<T>` is ever `Send` and `RcMut<T>` is never `Freeze`. If `T` is `Freeze`, a
-cycle cannot be created with `Rc<T>` because there is no way to modify it after creation.
+The `RcMut` type provides shared ownership of a mutable value. Since multiple owners prevent
+inherited mutability, a dynamic freezing check is used to maintain the invariant that an `&mut`
+reference is a unique handle and the type is marked as non-`Freeze`.
 
 */
 
-
-use std::cast;
-use std::ptr;
-use std::unstable::intrinsics;
-
-// Convert ~T into *mut T without dropping it
-#[inline]
-unsafe fn owned_to_raw<T>(mut box: ~T) -> *mut T {
-    let ptr = ptr::to_mut_unsafe_ptr(box);
-    intrinsics::forget(box);
-    ptr
-}
+use ptr::RawPtr;
+use unstable::intrinsics::transmute;
+use ops::Drop;
+use kinds::{Freeze, Send};
+use clone::{Clone, DeepClone};
 
 struct RcBox<T> {
     value: T,
@@ -43,50 +35,38 @@ struct RcBox<T> {
 #[unsafe_no_drop_flag]
 #[no_send]
 pub struct Rc<T> {
-    priv ptr: *mut RcBox<T>,
-}
-
-impl<T> Rc<T> {
-    unsafe fn new(value: T) -> Rc<T> {
-        Rc{ptr: owned_to_raw(~RcBox{value: value, count: 1})}
-    }
-}
-
-impl<T: Send> Rc<T> {
-    pub fn from_send(value: T) -> Rc<T> {
-        unsafe { Rc::new(value) }
-    }
+    priv ptr: *mut RcBox<T>
 }
 
 impl<T: Freeze> Rc<T> {
-    pub fn from_freeze(value: T) -> Rc<T> {
-        unsafe { Rc::new(value) }
-    }
-}
-
-impl<T> Rc<T> {
+    /// Construct a new reference-counted box from a `Freeze` value
     #[inline]
-    pub fn borrow<'r>(&'r self) -> &'r T {
-        unsafe { cast::copy_lifetime(self, &(*self.ptr).value) }
-    }
-}
-
-#[unsafe_destructor]
-impl<T> Drop for Rc<T> {
-    fn drop(&mut self) {
+    pub fn new(value: T) -> Rc<T> {
         unsafe {
-            if self.ptr.is_not_null() {
-                (*self.ptr).count -= 1;
-                if (*self.ptr).count == 0 {
-                    let _: ~T = cast::transmute(self.ptr);
-                }
-            }
+            Rc::new_unchecked(value)
         }
     }
 }
 
+impl<T> Rc<T> {
+    /// Unsafety construct a new reference-counted box from any value.
+    ///
+    /// If the type is not `Freeze`, the `Rc` box will incorrectly still be considered as a `Freeze`
+    /// type. It is also possible to create cycles, which will leak, and may interact poorly with
+    /// managed pointers.
+    #[inline]
+    pub unsafe fn new_unchecked(value: T) -> Rc<T> {
+        Rc{ptr: transmute(~RcBox{value: value, count: 1})}
+    }
+
+    /// Borrow the value contained in the reference-counted box
+    #[inline]
+    pub fn borrow<'r>(&'r self) -> &'r T {
+        unsafe { &(*self.ptr).value }
+    }
+}
+
 impl<T> Clone for Rc<T> {
-    /// Return a shallow copy of the reference counted pointer.
     #[inline]
     fn clone(&self) -> Rc<T> {
         unsafe {
@@ -97,47 +77,64 @@ impl<T> Clone for Rc<T> {
 }
 
 impl<T: DeepClone> DeepClone for Rc<T> {
-    /// Return a deep copy of the reference counted pointer.
     #[inline]
     fn deep_clone(&self) -> Rc<T> {
-        unsafe { Rc::new(self.borrow().deep_clone()) }
+        unsafe { Rc::new_unchecked(self.borrow().deep_clone()) }
+    }
+}
+
+#[unsafe_destructor]
+impl<T> Drop for Rc<T> {
+    fn drop(&mut self) {
+        unsafe {
+            if self.ptr.is_not_null() {
+                (*self.ptr).count -= 1;
+                if (*self.ptr).count == 0 {
+                    let _: ~RcBox<T> = transmute(self.ptr);
+                }
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod test_rc {
     use super::*;
-    use std::cell::Cell;
+    use cell::Cell;
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(Cell::new(5));
-        let y = x.clone();
-        do x.borrow().with_mut_ref |inner| {
-            *inner = 20;
+        unsafe {
+            let x = Rc::new_unchecked(Cell::new(5));
+            let y = x.clone();
+            do x.borrow().with_mut_ref |inner| {
+                *inner = 20;
+            }
+            assert_eq!(y.borrow().take(), 20);
         }
-        assert_eq!(y.borrow().take(), 20);
     }
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(Cell::new(5));
-        let y = x.deep_clone();
-        do x.borrow().with_mut_ref |inner| {
-            *inner = 20;
+        unsafe {
+            let x = Rc::new_unchecked(Cell::new(5));
+            let y = x.deep_clone();
+            do x.borrow().with_mut_ref |inner| {
+                *inner = 20;
+            }
+            assert_eq!(y.borrow().take(), 5);
         }
-        assert_eq!(y.borrow().take(), 5);
     }
 
     #[test]
     fn test_simple() {
-        let x = Rc::from_freeze(5);
+        let x = Rc::new(5);
         assert_eq!(*x.borrow(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
-        let x = Rc::from_freeze(5);
+        let x = Rc::new(5);
         let y = x.clone();
         assert_eq!(*x.borrow(), 5);
         assert_eq!(*y.borrow(), 5);
@@ -145,8 +142,10 @@ mod test_rc {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::from_send(~5);
-        assert_eq!(**x.borrow(), 5);
+        unsafe {
+            let x = Rc::new_unchecked(~5);
+            assert_eq!(**x.borrow(), 5);
+        }
     }
 }
 
@@ -171,21 +170,30 @@ pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }
 
-impl<T> RcMut<T> {
-    unsafe fn new(value: T) -> RcMut<T> {
-        RcMut{ptr: owned_to_raw(~RcMutBox{value: value, count: 1, borrow: Nothing})}
+impl<T: Freeze> RcMut<T> {
+    /// Construct a new mutable reference-counted box from a `Freeze` value
+    #[inline]
+    pub fn new(value: T) -> RcMut<T> {
+        unsafe { RcMut::new_unchecked(value) }
     }
 }
 
 impl<T: Send> RcMut<T> {
+    /// Construct a new mutable reference-counted box from a `Send` value
+    #[inline]
     pub fn from_send(value: T) -> RcMut<T> {
-        unsafe { RcMut::new(value) }
+        unsafe { RcMut::new_unchecked(value) }
     }
 }
 
-impl<T: Freeze> RcMut<T> {
-    pub fn from_freeze(value: T) -> RcMut<T> {
-        unsafe { RcMut::new(value) }
+impl<T> RcMut<T> {
+    /// Unsafety construct a new mutable reference-counted box from any value.
+    ///
+    /// It is possible to create cycles, which will leak, and may interact
+    /// poorly with managed pointers.
+    #[inline]
+    pub unsafe fn new_unchecked(value: T) -> RcMut<T> {
+        RcMut{ptr: transmute(~RcMutBox{value: value, count: 1, borrow: Nothing})}
     }
 }
 
@@ -223,7 +231,7 @@ impl<T> Drop for RcMut<T> {
             if self.ptr.is_not_null() {
                 (*self.ptr).count -= 1;
                 if (*self.ptr).count == 0 {
-                    let _: ~T = cast::transmute(self.ptr);
+                    let _: ~RcMutBox<T> = transmute(self.ptr);
                 }
             }
         }
@@ -247,7 +255,7 @@ impl<T: DeepClone> DeepClone for RcMut<T> {
     fn deep_clone(&self) -> RcMut<T> {
         do self.with_borrow |x| {
             // FIXME: #6497: should avoid freeze (slow)
-            unsafe { RcMut::new(x.deep_clone()) }
+            unsafe { RcMut::new_unchecked(x.deep_clone()) }
         }
     }
 }
@@ -270,7 +278,7 @@ mod test_rc_mut {
 
     #[test]
     fn test_deep_clone() {
-        let x = RcMut::from_freeze(5);
+        let x = RcMut::new(5);
         let y = x.deep_clone();
         do x.with_mut_borrow |value| {
             *value = 20;
@@ -298,7 +306,7 @@ mod test_rc_mut {
 
     #[test]
     fn modify() {
-        let x = RcMut::from_freeze(5);
+        let x = RcMut::new(5);
         let y = x.clone();
 
         do y.with_mut_borrow |a| {
@@ -320,7 +328,7 @@ mod test_rc_mut {
 
     #[test]
     fn release_mutable() {
-        let x = RcMut::from_freeze(5);
+        let x = RcMut::new(5);
         do x.with_mut_borrow |_| {}
         do x.with_borrow |_| {}
     }
@@ -340,7 +348,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_dupe() {
-        let x = RcMut::from_freeze(5);
+        let x = RcMut::new(5);
         let y = x.clone();
 
         do x.with_mut_borrow |_| {
@@ -364,7 +372,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn restore_freeze() {
-        let x = RcMut::from_freeze(5);
+        let x = RcMut::new(5);
         let y = x.clone();
 
         do x.with_borrow |_| {
