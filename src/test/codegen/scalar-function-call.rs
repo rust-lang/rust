@@ -13,6 +13,6 @@ fn foo(x: int) -> int {
 }
 
 #[no_mangle]
-fn test() {
+pub fn test() {
     let _x = foo(10);
 }

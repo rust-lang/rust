@@ -17,11 +17,13 @@
 
 use middle::ty;
 use middle::typeck;
+use middle::privacy;
+use middle::resolve;
 
 use std::hashmap::HashSet;
 use syntax::ast::*;
 use syntax::ast_map;
-use syntax::ast_util::def_id_of_def;
+use syntax::ast_util::{def_id_of_def, is_local};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::visit::Visitor;
@@ -71,15 +73,6 @@ fn trait_method_might_be_inlined(trait_method: &trait_method) -> bool {
     }
 }
 
-// The context we're in. If we're in a public context, then public symbols are
-// marked reachable. If we're in a private context, then only trait
-// implementations are marked reachable.
-#[deriving(Clone, Eq)]
-enum PrivacyContext {
-    PublicContext,
-    PrivateContext,
-}
-
 // Information needed while computing reachability.
 struct ReachableContext {
     // The type context.
@@ -92,108 +85,8 @@ struct ReachableContext {
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     worklist: @mut ~[NodeId],
-}
-
-struct ReachableVisitor {
-    reachable_symbols: @mut HashSet<NodeId>,
-    worklist: @mut ~[NodeId],
-}
-
-impl Visitor<PrivacyContext> for ReachableVisitor {
-
-    fn visit_item(&mut self, item:@item, privacy_context:PrivacyContext) {
-
-                match item.node {
-                    item_fn(*) => {
-                        if privacy_context == PublicContext {
-                            self.reachable_symbols.insert(item.id);
-                        }
-                        if item_might_be_inlined(item) {
-                            self.worklist.push(item.id)
-                        }
-                    }
-                    item_struct(ref struct_def, _) => {
-                        match struct_def.ctor_id {
-                            Some(ctor_id) if
-                                    privacy_context == PublicContext => {
-                                self.reachable_symbols.insert(ctor_id);
-                            }
-                            Some(_) | None => {}
-                        }
-                    }
-                    item_enum(ref enum_def, _) => {
-                        if privacy_context == PublicContext {
-                            for variant in enum_def.variants.iter() {
-                                self.reachable_symbols.insert(variant.node.id);
-                            }
-                        }
-                    }
-                    item_impl(ref generics, ref trait_ref, _, ref methods) => {
-                        // XXX(pcwalton): We conservatively assume any methods
-                        // on a trait implementation are reachable, when this
-                        // is not the case. We could be more precise by only
-                        // treating implementations of reachable or cross-
-                        // crate traits as reachable.
-
-                        let should_be_considered_public = |method: @method| {
-                            (method.vis == public &&
-                                    privacy_context == PublicContext) ||
-                                    trait_ref.is_some()
-                        };
-
-                        // Mark all public methods as reachable.
-                        for &method in methods.iter() {
-                            if should_be_considered_public(method) {
-                                self.reachable_symbols.insert(method.id);
-                            }
-                        }
-
-                        if generics_require_inlining(generics) {
-                            // If the impl itself has generics, add all public
-                            // symbols to the worklist.
-                            for &method in methods.iter() {
-                                if should_be_considered_public(method) {
-                                    self.worklist.push(method.id)
-                                }
-                            }
-                        } else {
-                            // Otherwise, add only public methods that have
-                            // generics to the worklist.
-                            for method in methods.iter() {
-                                let generics = &method.generics;
-                                let attrs = &method.attrs;
-                                if generics_require_inlining(generics) ||
-                                        attributes_specify_inlining(*attrs) ||
-                                        should_be_considered_public(*method) {
-                                    self.worklist.push(method.id)
-                                }
-                            }
-                        }
-                    }
-                    item_trait(_, _, ref trait_methods) => {
-                        // Mark all provided methods as reachable.
-                        if privacy_context == PublicContext {
-                            for trait_method in trait_methods.iter() {
-                                match *trait_method {
-                                    provided(method) => {
-                                        self.reachable_symbols.insert(method.id);
-                                        self.worklist.push(method.id)
-                                    }
-                                    required(_) => {}
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
-                if item.vis == public && privacy_context == PublicContext {
-                    visit::walk_item(self, item, PublicContext)
-                } else {
-                    visit::walk_item(self, item, PrivateContext)
-                }
-    }
-
+    // Known reexports of modules
+    exp_map2: resolve::ExportMap2,
 }
 
 struct MarkSymbolVisitor {
@@ -256,29 +149,15 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 impl ReachableContext {
     // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::method_map)
-           -> ReachableContext {
+    fn new(tcx: ty::ctxt, method_map: typeck::method_map,
+           exp_map2: resolve::ExportMap2) -> ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
             reachable_symbols: @mut HashSet::new(),
             worklist: @mut ~[],
+            exp_map2: exp_map2,
         }
-    }
-
-    // Step 1: Mark all public symbols, and add all public symbols that might
-    // be inlined to a worklist.
-    fn mark_public_symbols(&self, crate: &Crate) {
-        let reachable_symbols = self.reachable_symbols;
-        let worklist = self.worklist;
-
-        let mut visitor = ReachableVisitor {
-            reachable_symbols: reachable_symbols,
-            worklist: worklist,
-        };
-
-
-        visit::walk_crate(&mut visitor, crate, PublicContext);
     }
 
     // Returns true if the given def ID represents a local item that is
@@ -352,6 +231,19 @@ impl ReachableContext {
         }
     }
 
+    fn propagate_mod(&self, id: NodeId) {
+        match self.exp_map2.find(&id) {
+            Some(l) => {
+                for reexport in l.iter() {
+                    if reexport.reexport && is_local(reexport.def_id) {
+                        self.worklist.push(reexport.def_id.node);
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&self) {
         let mut visitor = self.init_visitor();
@@ -373,6 +265,18 @@ impl ReachableContext {
                         item_fn(_, _, _, _, ref search_block) => {
                             visit::walk_block(&mut visitor, search_block, ())
                         }
+                        // Our recursion into modules involves looking up their
+                        // public reexports and the destinations of those
+                        // exports. Privacy will put them in the worklist, but
+                        // we won't find them in the ast_map, so this is where
+                        // we deal with publicly re-exported items instead.
+                        item_mod(*) => { self.propagate_mod(item.id); }
+                        // These are normal, nothing reachable about these
+                        // inherently and their children are already in the
+                        // worklist
+                        item_struct(*) | item_impl(*) | item_static(*) |
+                        item_enum(*) | item_ty(*) | item_trait(*) |
+                        item_foreign_mod(*) => {}
                         _ => {
                             self.tcx.sess.span_bug(item.span,
                                                    "found non-function item \
@@ -382,10 +286,8 @@ impl ReachableContext {
                 }
                 Some(&ast_map::node_trait_method(trait_method, _, _)) => {
                     match *trait_method {
-                        required(ref ty_method) => {
-                            self.tcx.sess.span_bug(ty_method.span,
-                                                   "found required method in \
-                                                    worklist?!")
+                        required(*) => {
+                            // Keep going, nothing to get exported
                         }
                         provided(ref method) => {
                             visit::walk_block(&mut visitor, &method.body, ())
@@ -395,6 +297,10 @@ impl ReachableContext {
                 Some(&ast_map::node_method(ref method, _, _)) => {
                     visit::walk_block(&mut visitor, &method.body, ())
                 }
+                // Nothing to recurse on for these
+                Some(&ast_map::node_foreign_item(*)) |
+                Some(&ast_map::node_variant(*)) |
+                Some(&ast_map::node_struct_ctor(*)) => {}
                 Some(_) => {
                     let ident_interner = token::get_ident_interner();
                     let desc = ast_map::node_id_to_str(self.tcx.items,
@@ -403,6 +309,9 @@ impl ReachableContext {
                     self.tcx.sess.bug(format!("found unexpected thingy in \
                                                worklist: {}",
                                                desc))
+                }
+                None if search_item == CRATE_NODE_ID => {
+                    self.propagate_mod(search_item);
                 }
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
@@ -429,7 +338,8 @@ impl ReachableContext {
 
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
-                      crate: &Crate)
+                      exp_map2: resolve::ExportMap2,
+                      exported_items: &privacy::ExportedItems)
                       -> @mut HashSet<NodeId> {
     // XXX(pcwalton): We only need to mark symbols that are exported. But this
     // is more complicated than just looking at whether the symbol is `pub`,
@@ -442,11 +352,13 @@ pub fn find_reachable(tcx: ty::ctxt,
     // is to have the name resolution pass mark all targets of a `pub use` as
     // "must be reachable".
 
-    let reachable_context = ReachableContext::new(tcx, method_map);
+    let reachable_context = ReachableContext::new(tcx, method_map, exp_map2);
 
-    // Step 1: Mark all public symbols, and add all public symbols that might
-    // be inlined to a worklist.
-    reachable_context.mark_public_symbols(crate);
+    // Step 1: Seed the worklist with all nodes which were found to be public as
+    //         a result of the privacy pass
+    for &id in exported_items.iter() {
+        reachable_context.worklist.push(id);
+    }
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     reachable_context.propagate();

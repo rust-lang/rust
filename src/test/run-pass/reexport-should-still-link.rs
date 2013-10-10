@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_mangle]
-pub fn test() {
-    let _x = "hello";
+// aux-build:reexport-should-still-link.rs
+// xfail-fast windows doesn't like extern mod
+
+extern mod foo(name = "reexport-should-still-link");
+
+fn main() {
+    foo::bar();
 }

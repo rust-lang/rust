@@ -2535,7 +2535,6 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let (v, inlineable) = consts::const_expr(ccx, expr);
                             ccx.const_values.insert(id, v);
                             let mut inlineable = inlineable;
-                            exprt = true;
 
                             unsafe {
                                 let llty = llvm::LLVMTypeOf(v);
