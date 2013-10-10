@@ -31,6 +31,10 @@ use syntax::visit::Visitor;
 
 type Context<'self> = (&'self method_map, &'self resolve::ExportMap2);
 
+// A set of all nodes in the ast which can be considered "publicly exported" in
+// the sense that they are accessible from anywhere in any hierarchy.
+pub type ExportedItems = HashSet<ast::NodeId>;
+
 // This visitor is used to determine the parent of all nodes in question when it
 // comes to privacy. This is used to determine later on if a usage is actually
 // valid or not.
@@ -137,7 +141,7 @@ impl<'self> Visitor<()> for ParentVisitor<'self> {
 // This visitor is used to determine which items of the ast are embargoed,
 // otherwise known as not exported.
 struct EmbargoVisitor<'self> {
-    exported_items: &'self mut HashSet<ast::NodeId>,
+    exported_items: &'self mut ExportedItems,
     exp_map2: &'self resolve::ExportMap2,
     path_all_public: bool,
 }
@@ -239,7 +243,7 @@ struct PrivacyVisitor<'self> {
     curitem: ast::NodeId,
 
     // Results of previous analyses necessary for privacy checking.
-    exported_items: &'self HashSet<ast::NodeId>,
+    exported_items: &'self ExportedItems,
     method_map: &'self method_map,
     parents: &'self HashMap<ast::NodeId, ast::NodeId>,
     external_exports: resolve::ExternalExports,
@@ -785,7 +789,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    exp_map2: &resolve::ExportMap2,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap,
-                   crate: &ast::Crate) {
+                   crate: &ast::Crate) -> ExportedItems {
     let mut parents = HashMap::new();
     let mut exported_items = HashSet::new();
 
@@ -802,7 +806,7 @@ pub fn check_crate(tcx: ty::ctxt,
     {
         // Initialize the exported items with resolve's id for the "root crate"
         // to resolve references to `super` leading to the root and such.
-        exported_items.insert(0);
+        exported_items.insert(ast::CRATE_NODE_ID);
         let mut visitor = EmbargoVisitor {
             exported_items: &mut exported_items,
             exp_map2: exp_map2,
@@ -824,4 +828,5 @@ pub fn check_crate(tcx: ty::ctxt,
         };
         visit::walk_crate(&mut visitor, crate, ());
     }
+    return exported_items;
 }

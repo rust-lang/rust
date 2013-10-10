@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_mangle]
-pub fn test() {
-    let _x = "hello";
+pub use foo::bar;
+
+mod foo {
+    pub fn bar() {}
 }
