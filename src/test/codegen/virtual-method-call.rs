@@ -13,6 +13,6 @@ trait Trait {
 }
 
 #[no_mangle]
-fn test(t: &Trait) -> int {
+pub fn test(t: &Trait) -> int {
     t.method()
 }
