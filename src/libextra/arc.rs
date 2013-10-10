@@ -140,6 +140,27 @@ impl<T:Freeze+Send> Arc<T> {
     }
 }
 
+impl<T: Freeze+Send+Clone> Arc<T> {
+    /// Clones the content if there is more than one reference, and returns a
+    /// mutable reference to the data once this is the only refence
+    #[inline]
+    pub fn cow<'r>(&'r mut self) -> &'r mut T {
+        unsafe {
+            if !self.x.is_owned() {
+                self.cow_clone()
+            } else {
+                &mut *self.x.get()
+            }
+        }
+    }
+
+    #[inline(never)]
+    unsafe fn cow_clone<'r>(&'r mut self) -> &'r mut T {
+        self.x = UnsafeArc::new((*self.x.get_immut()).clone());
+        &mut *self.x.get()
+    }
+}
+
 impl<T:Freeze + Send> Clone for Arc<T> {
     /**
     * Duplicate an atomically reference counted wrapper.
@@ -620,6 +641,15 @@ mod tests {
         assert_eq!(arc_v.get()[4], 5);
 
         info2!("{:?}", arc_v);
+    }
+
+    #[test]
+    fn test_arc_mut() {
+        let mut x = Arc::new(5);
+        let y = x.clone();
+        *x.cow() = 9;
+        assert_eq!(*x.get(), 9);
+        assert_eq!(*y.get(), 5);
     }
 
     #[test]

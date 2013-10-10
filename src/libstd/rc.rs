@@ -66,6 +66,28 @@ impl<T> Rc<T> {
     }
 }
 
+impl<T: Clone> Rc<T> {
+    /// Clones the content if there is more than one reference, and returns a
+    /// mutable reference to the data once this is the only refence
+    #[inline]
+    pub fn cow<'r>(&'r mut self) -> &'r mut T {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                self.cow_clone()
+            } else {
+                cast::copy_mut_lifetime(self, &mut (*self.ptr).value)
+            }
+        }
+    }
+
+    #[inline(never)]
+    unsafe fn cow_clone<'r>(&'r mut self) -> &'r mut T {
+        (*self.ptr).count -= 1;
+        self.ptr = transmute(~RcBox{value: (*self.ptr).value.clone(), count: 1});
+        cast::copy_mut_lifetime(self, &mut (*self.ptr).value)
+    }
+}
+
 impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
@@ -146,6 +168,15 @@ mod test_rc {
             let x = Rc::new_unchecked(~5);
             assert_eq!(**x.get(), 5);
         }
+    }
+
+    #[test]
+    fn test_mut() {
+        let mut x = Rc::from_freeze(5);
+        let y = x.clone();
+        *x.cow() = 9;
+        assert_eq!(*x.get(), 9);
+        assert_eq!(*y.get(), 5);
     }
 }
 
