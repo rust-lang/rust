@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-use extra::rc::RcMut;
+use std::rc::RcMut;
 
 trait Foo
 {
@@ -37,7 +36,7 @@ struct A
 fn main()
 {
     let a = A {v: ~B{v: None} as ~Foo}; //~ ERROR cannot pack type `~B`, which does not fulfill `Send`
-    let v = RcMut::from_freeze(a); //~ ERROR instantiating a type parameter with an incompatible type
+    let v = RcMut::new(a); //~ ERROR instantiating a type parameter with an incompatible type
     let w = v.clone();
     v.with_mut_borrow(|p| {p.v.set(w.clone());})
 }
