@@ -23,6 +23,10 @@
 use num;
 use rand::{Rng,Rand};
 
+pub use self::range::Range;
+
+pub mod range;
+
 /// Things that can be used to create a random instance of `Support`.
 pub trait Sample<Support> {
     /// Generate a random value of `Support`, using `rng` as the

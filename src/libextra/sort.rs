@@ -1069,8 +1069,8 @@ mod big_tests {
             isSorted(arr);
 
             do 3.times {
-                let i1 = rng.gen_integer_range(0u, n);
-                let i2 = rng.gen_integer_range(0u, n);
+                let i1 = rng.gen_range(0u, n);
+                let i2 = rng.gen_range(0u, n);
                 arr.swap(i1, i2);
             }
             tim_sort(arr); // 3sort
@@ -1088,7 +1088,7 @@ mod big_tests {
             isSorted(arr);
 
             do (n/100).times {
-                let idx = rng.gen_integer_range(0u, n);
+                let idx = rng.gen_range(0u, n);
                 arr[idx] = rng.gen();
             }
             tim_sort(arr);
@@ -1141,8 +1141,8 @@ mod big_tests {
             isSorted(arr);
 
             do 3.times {
-                let i1 = rng.gen_integer_range(0u, n);
-                let i2 = rng.gen_integer_range(0u, n);
+                let i1 = rng.gen_range(0u, n);
+                let i2 = rng.gen_range(0u, n);
                 arr.swap(i1, i2);
             }
             tim_sort(arr); // 3sort
@@ -1160,7 +1160,7 @@ mod big_tests {
             isSorted(arr);
 
             do (n/100).times {
-                let idx = rng.gen_integer_range(0u, n);
+                let idx = rng.gen_range(0u, n);
                 arr[idx] = @rng.gen();
             }
             tim_sort(arr);
