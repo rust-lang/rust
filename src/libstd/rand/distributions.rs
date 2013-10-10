@@ -41,6 +41,20 @@ pub trait IndependentSample<Support>: Sample<Support> {
     fn ind_sample<R: Rng>(&self, &mut R) -> Support;
 }
 
+/// A wrapper for generating types that implement `Rand` via the
+/// `Sample` & `IndependentSample` traits.
+pub struct RandSample<Sup>;
+
+impl<Sup: Rand> Sample<Sup> for RandSample<Sup> {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> Sup { self.ind_sample(rng) }
+}
+
+impl<Sup: Rand> IndependentSample<Sup> for RandSample<Sup> {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> Sup {
+        rng.gen()
+    }
+}
+
 mod ziggurat_tables;
 
 // inlining should mean there is no performance penalty for this
@@ -164,5 +178,26 @@ impl Rand for Exp1 {
                       &ziggurat_tables::ZIG_EXP_X,
                       &ziggurat_tables::ZIG_EXP_F, &ziggurat_tables::ZIG_EXP_F_DIFF,
                       pdf, zero_case))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::*;
+    use super::*;
+
+    struct ConstRand(uint);
+    impl Rand for ConstRand {
+        fn rand<R: Rng>(_: &mut R) -> ConstRand {
+            ConstRand(0)
+        }
+    }
+
+    #[test]
+    fn test_rand_sample() {
+        let mut rand_sample = RandSample::<ConstRand>;
+
+        assert_eq!(*rand_sample.sample(task_rng()), 0);
+        assert_eq!(*rand_sample.ind_sample(task_rng()), 0);
     }
 }
