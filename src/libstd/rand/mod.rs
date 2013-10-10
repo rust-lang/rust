@@ -732,7 +732,7 @@ impl<R: Rng> Rng for @mut R {
 ///         let x = random();
 ///         println!("{}", 2u * x);
 ///     } else {
-///         println!("{}", random::<float>());
+///         println!("{}", random::<f64>());
 ///     }
 /// }
 /// ```
