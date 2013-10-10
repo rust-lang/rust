@@ -23,6 +23,24 @@
 use num;
 use rand::{Rng,Rand};
 
+/// Things that can be used to create a random instance of `Support`.
+pub trait Sample<Support> {
+    /// Generate a random value of `Support`, using `rng` as the
+    /// source of randomness.
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> Support;
+}
+
+/// `Sample`s that do not require keeping track of state, so each
+/// sample is (statistically) independent of all others, assuming the
+/// `Rng` used has this property.
+// XXX maybe having this separate is overkill (the only reason is to
+// take &self rather than &mut self)? or maybe this should be the
+// trait called `Sample` and the other should be `DependentSample`.
+pub trait IndependentSample<Support>: Sample<Support> {
+    /// Generate a random value.
+    fn ind_sample<R: Rng>(&self, &mut R) -> Support;
+}
+
 mod ziggurat_tables;
 
 // inlining should mean there is no performance penalty for this
