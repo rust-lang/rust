@@ -4128,7 +4128,6 @@ impl Parser {
     // at this point, this is essentially a wrapper for
     // parse_foreign_items.
     fn parse_foreign_mod_items(&self,
-                               sort: ast::foreign_mod_sort,
                                abis: AbiSet,
                                first_item_attrs: ~[Attribute])
                                -> foreign_mod {
@@ -4144,7 +4143,6 @@ impl Parser {
         }
         assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
-            sort: sort,
             abis: abis,
             view_items: view_items,
             items: foreign_items
@@ -4169,7 +4167,7 @@ impl Parser {
                                  self.this_token_to_str()));
         }
 
-        let (sort, maybe_path, ident) = match *self.token {
+        let (named, maybe_path, ident) = match *self.token {
             token::IDENT(*) => {
                 let the_ident = self.parse_ident();
                 let path = if *self.token == token::EQ {
@@ -4177,7 +4175,7 @@ impl Parser {
                     Some(self.parse_str())
                 }
                 else { None };
-                (ast::named, path, the_ident)
+                (true, path, the_ident)
             }
             _ => {
                 if must_be_named_mod {
@@ -4187,7 +4185,7 @@ impl Parser {
                                          self.this_token_to_str()));
                 }
 
-                (ast::anonymous, None,
+                (false, None,
                  special_idents::clownshoes_foreign_mod)
             }
         };
@@ -4195,14 +4193,14 @@ impl Parser {
         // extern mod foo { ... } or extern { ... }
         if items_allowed && self.eat(&token::LBRACE) {
             // `extern mod foo { ... }` is obsolete.
-            if sort == ast::named {
+            if named {
                 self.obsolete(*self.last_span, ObsoleteNamedExternModule);
             }
 
             let abis = opt_abis.unwrap_or(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();
-            let m = self.parse_foreign_mod_items(sort, abis, next);
+            let m = self.parse_foreign_mod_items(abis, next);
             self.expect(&token::RBRACE);
 
             return iovi_item(self.mk_item(lo,

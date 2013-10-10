@@ -294,17 +294,11 @@ impl Visitor<()> for Ctx {
                                                       nm.abis,
                                                       visibility,
                                                       // FIXME (#2543)
-                                                      if nm.sort ==
-                                                            ast::named {
-                                                          let e = path_name(
-                                                              i.ident);
-                                                          self.extend(e)
-                                                      } else {
                                                         // Anonymous extern
                                                         // mods go in the
                                                         // parent scope.
                                                         @self.path.clone()
-                                                      }));
+                                                      ));
                 }
             }
             item_struct(struct_def, _) => {
