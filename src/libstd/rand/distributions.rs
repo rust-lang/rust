@@ -94,17 +94,6 @@ fn ziggurat<R:Rng>(rng: &mut R,
 ///
 /// Note that this has to be unwrapped before use as an `f64` (using either
 /// `*` or `cast::transmute` is safe).
-///
-/// # Example
-///
-/// ```
-/// use std::rand::distributions::StandardNormal;
-///
-/// fn main() {
-///     let normal = 2.0 + (*rand::random::<StandardNormal>()) * 3.0;
-///     println!("{} is from a N(2, 9) distribution", normal)
-/// }
-/// ```
 pub struct StandardNormal(f64);
 
 impl Rand for StandardNormal {
@@ -142,23 +131,52 @@ impl Rand for StandardNormal {
     }
 }
 
+/// The `N(mean, std_dev**2)` distribution, i.e. samples from a normal
+/// distribution with mean `mean` and standard deviation `std_dev`.
+///
+/// # Example
+///
+/// ```
+/// use std::rand;
+/// use std::rand::distributions::{Normal, IndependentSample};
+///
+/// fn main() {
+///     let normal = Normal::new(2.0, 3.0);
+///     let v = normal.ind_sample(rand::task_rng());
+///     println!("{} is from a N(2, 9) distribution", v)
+/// }
+/// ```
+pub struct Normal {
+    priv mean: f64,
+    priv std_dev: f64
+}
+
+impl Normal {
+    /// Construct a new `Normal` distribution with the given mean and
+    /// standard deviation. Fails if `std_dev < 0`.
+    pub fn new(mean: f64, std_dev: f64) -> Normal {
+        assert!(std_dev >= 0.0, "Normal::new called with `std_dev` < 0");
+        Normal {
+            mean: mean,
+            std_dev: std_dev
+        }
+    }
+}
+impl Sample<f64> for Normal {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for Normal {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        self.mean + self.std_dev * (*rng.gen::<StandardNormal>())
+    }
+}
+
 /// A wrapper around an `f64` to generate Exp(1) random numbers. Dividing by
 /// the desired rate `lambda` will give Exp(lambda) distributed random
 /// numbers.
 ///
 /// Note that this has to be unwrapped before use as an `f64` (using either
 /// `*` or `cast::transmute` is safe).
-///
-/// # Example
-///
-/// ```
-/// use std::rand::distributions::Exp1;
-///
-/// fn main() {
-///     let exp2 = (*rand::random::<Exp1>()) * 0.5;
-///     println!("{} is from a Exp(2) distribution", exp2);
-/// }
-/// ```
 pub struct Exp1(f64);
 
 // This could be done via `-rng.gen::<f64>().ln()` but that is slower.
@@ -181,10 +199,53 @@ impl Rand for Exp1 {
     }
 }
 
+/// The `Exp(lambda)` distribution; i.e. samples from the exponential
+/// distribution with rate parameter `lambda`.
+///
+/// This distribution has density function: `f(x) = lambda *
+/// exp(-lambda * x)` for `x > 0`.
+///
+/// # Example
+///
+/// ```
+/// use std::rand;
+/// use std::rand::distributions::{Exp, IndependentSample};
+///
+/// fn main() {
+///     let exp = Exp::new(2.0);
+///     let v = exp.ind_sample(rand::task_rng());
+///     println!("{} is from a Exp(2) distribution", v);
+/// }
+/// ```
+pub struct Exp {
+    /// `lambda` stored as `1/lambda`, since this is what we scale by.
+    priv lambda_inverse: f64
+}
+
+impl Exp {
+    /// Construct a new `Exp` with the given shape parameter
+    /// `lambda`. Fails if `lambda <= 0`.
+    pub fn new(lambda: f64) -> Exp {
+        assert!(lambda > 0.0, "Exp::new called with `lambda` <= 0");
+        Exp { lambda_inverse: 1.0 / lambda }
+    }
+}
+
+impl Sample<f64> for Exp {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for Exp {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        (*rng.gen::<Exp1>()) * self.lambda_inverse
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rand::*;
     use super::*;
+    use iter::range;
+    use option::{Some, None};
 
     struct ConstRand(uint);
     impl Rand for ConstRand {
@@ -199,5 +260,40 @@ mod tests {
 
         assert_eq!(*rand_sample.sample(task_rng()), 0);
         assert_eq!(*rand_sample.ind_sample(task_rng()), 0);
+    }
+
+    #[test]
+    fn test_normal() {
+        let mut norm = Normal::new(10.0, 10.0);
+        let rng = task_rng();
+        for _ in range(0, 1000) {
+            norm.sample(rng);
+            norm.ind_sample(rng);
+        }
+    }
+    #[test]
+    #[should_fail]
+    fn test_normal_invalid_sd() {
+        Normal::new(10.0, -1.0);
+    }
+
+    #[test]
+    fn test_exp() {
+        let mut exp = Exp::new(10.0);
+        let rng = task_rng();
+        for _ in range(0, 1000) {
+            assert!(exp.sample(rng) >= 0.0);
+            assert!(exp.ind_sample(rng) >= 0.0);
+        }
+    }
+    #[test]
+    #[should_fail]
+    fn test_exp_invalid_lambda_zero() {
+        Exp::new(0.0);
+    }
+    #[test]
+    #[should_fail]
+    fn test_exp_invalid_lambda_neg() {
+        Exp::new(-10.0);
     }
 }
