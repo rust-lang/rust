@@ -268,23 +268,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         self.extension().and_then(str::from_utf8_slice_opt)
     }
 
-    /// Replaces the directory portion of the path with the given byte vector or string.
-    /// If `self` represents the root of the filesystem hierarchy, the last path component
-    /// of the argument becomes the filename.
-    ///
-    /// # Failure
-    ///
-    /// Raises the `null_byte` condition if the dirname contains a NUL.
-    #[inline]
-    fn set_dirname<T: BytesContainer>(&mut self, dirname: T) {
-        if contains_nul(dirname.container_as_bytes()) {
-            let dirname = self::null_byte::cond.raise(dirname.container_into_owned_bytes());
-            assert!(!contains_nul(dirname));
-            unsafe { self.set_dirname_unchecked(dirname) }
-        } else {
-            unsafe { self.set_dirname_unchecked(dirname) }
-        }
-    }
     /// Replaces the filename portion of the path with the given byte vector or string.
     /// If the replacement name is [], this is equivalent to popping the path.
     ///
@@ -299,53 +282,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             unsafe { self.set_filename_unchecked(filename) }
         } else {
             unsafe { self.set_filename_unchecked(filename) }
-        }
-    }
-    /// Replaces the filestem with the given byte vector or string.
-    /// If there is no extension in `self` (or `self` has no filename), this is equivalent
-    /// to `set_filename`. Otherwise, if the argument is [] or "", the extension (including
-    /// the preceding '.') becomes the new filename.
-    ///
-    /// # Failure
-    ///
-    /// Raises the `null_byte` condition if the filestem contains a NUL.
-    fn set_filestem<T: BytesContainer>(&mut self, filestem: T) {
-        // borrowck is being a pain here
-        enum Value<T> {
-            Checked(T),
-            Unchecked(~[u8])
-        }
-        let val = {
-            match self.filename() {
-                None => Checked(filestem),
-                Some(name) => {
-                    let dot = '.' as u8;
-                    match name.rposition_elem(&dot) {
-                        None | Some(0) => Checked(filestem),
-                        Some(idx) => {
-                            let mut v;
-                            if contains_nul(filestem.container_as_bytes()) {
-                                let filestem = filestem.container_into_owned_bytes();
-                                let filestem = self::null_byte::cond.raise(filestem);
-                                assert!(!contains_nul(filestem));
-                                v = filestem;
-                                let n = v.len();
-                                v.reserve(n + name.len() - idx);
-                            } else {
-                                let filestem = filestem.container_as_bytes();
-                                v = vec::with_capacity(filestem.len() + name.len() - idx);
-                                v.push_all(filestem);
-                            }
-                            v.push_all(name.slice_from(idx));
-                            Unchecked(v)
-                        }
-                    }
-                }
-            }
-        };
-        match val {
-            Checked(v)  => self.set_filename(v),
-            Unchecked(v) => unsafe { self.set_filename_unchecked(v) }
         }
     }
     /// Replaces the extension with the given byte vector or string.
@@ -417,61 +353,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             Some(v) => unsafe { self.set_filename_unchecked(v) }
         }
     }
-    /// Adds the given extension (as a byte vector or string) to the file.
-    /// This does not remove any existing extension.
-    /// `foo.bar`.add_extension(`baz`) becomes `foo.bar.baz`.
-    /// If `self` has no filename, this is a no-op.
-    /// If the argument is [] or "", this is a no-op.
-    ///
-    /// # Failure
-    ///
-    /// Raises the `null_byte` condition if the extension contains a NUL.
-    fn add_extension<T: BytesContainer>(&mut self, extension: T) {
-        if extension.container_as_bytes().is_empty() { return; }
-        // appease borrowck
-        let val = {
-            match self.filename() {
-                None => None,
-                Some(name) => {
-                    let mut v;
-                    if contains_nul(extension.container_as_bytes()) {
-                        let ext = extension.container_into_owned_bytes();
-                        let extension = self::null_byte::cond.raise(ext);
-                        assert!(!contains_nul(extension));
-                        v = vec::with_capacity(name.len() + 1 + extension.len());
-                        v.push_all(name);
-                        v.push('.' as u8);
-                        v.push_all(extension);
-                    } else {
-                        let extension = extension.container_as_bytes();
-                        v = vec::with_capacity(name.len() + 1 + extension.len());
-                        v.push_all(name);
-                        v.push('.' as u8);
-                        v.push_all(extension);
-                    }
-                    Some(v)
-                }
-            }
-        };
-        match val {
-            None => (),
-            Some(v) => unsafe { self.set_filename_unchecked(v) }
-        }
-    }
 
-    /// Returns a new Path constructed by replacing the dirname with the given
-    /// byte vector or string.
-    /// See `set_dirname` for details.
-    ///
-    /// # Failure
-    ///
-    /// Raises the `null_byte` condition if the dirname contains a NUL.
-    #[inline]
-    fn with_dirname<T: BytesContainer>(&self, dirname: T) -> Self {
-        let mut p = self.clone();
-        p.set_dirname(dirname);
-        p
-    }
     /// Returns a new Path constructed by replacing the filename with the given
     /// byte vector or string.
     /// See `set_filename` for details.
@@ -483,19 +365,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn with_filename<T: BytesContainer>(&self, filename: T) -> Self {
         let mut p = self.clone();
         p.set_filename(filename);
-        p
-    }
-    /// Returns a new Path constructed by setting the filestem to the given
-    /// byte vector or string.
-    /// See `set_filestem` for details.
-    ///
-    /// # Failure
-    ///
-    /// Raises the `null_byte` condition if the filestem contains a NUL.
-    #[inline]
-    fn with_filestem<T: BytesContainer>(&self, filestem: T) -> Self {
-        let mut p = self.clone();
-        p.set_filestem(filestem);
         p
     }
     /// Returns a new Path constructed by setting the extension to the given
@@ -517,12 +386,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn dir_path(&self) -> Self {
         // self.dirname() returns a NUL-free vector
         unsafe { GenericPathUnsafe::new_unchecked(self.dirname()) }
-    }
-    /// Returns the file component of `self`, as a relative Path.
-    /// If `self` represents the root of the filesystem hierarchy, returns None.
-    fn file_path(&self) -> Option<Self> {
-        // self.filename() returns a NUL-free vector
-        self.filename().map_move(|v| unsafe { GenericPathUnsafe::new_unchecked(v) })
     }
 
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
@@ -561,16 +424,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             }
         }
     }
-    /// Pops the last path component off of `self` and returns it.
-    /// If `self` represents the root of the file hierarchy, None is returned.
-    fn pop(&mut self) -> Option<~[u8]>;
-    /// Pops the last path component off of `self` and returns it as a string, if possible.
-    /// `self` will still be modified even if None is returned.
-    /// See `pop` for details.
-    #[inline]
-    fn pop_str(&mut self) -> Option<~str> {
-        self.pop().and_then(|v| str::from_utf8_owned_opt(v))
-    }
+    /// Removes the last path component from the receiver.
+    /// Returns `true` if the receiver was modified, or `false` if it already
+    /// represented the root of the file hierarchy.
+    fn pop(&mut self) -> bool;
 
     /// Returns a new Path constructed by joining `self` with the given path
     /// (as a byte vector or string).
@@ -657,11 +514,6 @@ pub trait GenericPathUnsafe {
     /// Creates a new Path without checking for null bytes.
     /// The resulting Path will always be normalized.
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Self;
-
-    /// Replaces the directory portion of the path without checking for null
-    /// bytes.
-    /// See `set_dirname` for details.
-    unsafe fn set_dirname_unchecked<T: BytesContainer>(&mut self, dirname: T);
 
     /// Replaces the filename portion of the path without checking for null
     /// bytes.

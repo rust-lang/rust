@@ -693,8 +693,9 @@ pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
     if path_is_dir(p) {
         return true;
     }
-    let mut p_ = p.clone();
-    if p_.pop().is_some() {
+    if p.filename().is_some() {
+        let mut p_ = p.clone();
+        p_.pop();
         if !mkdir_recursive(&p_, mode) {
             return false;
         }
