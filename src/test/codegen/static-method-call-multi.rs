@@ -19,10 +19,10 @@ impl Struct {
 }
 
 #[no_mangle]
-fn test(a: &Struct,
-        b: &Struct,
-        c: &Struct,
-        d: &Struct,
-        e: &Struct) -> int {
+pub fn test(a: &Struct,
+            b: &Struct,
+            c: &Struct,
+            d: &Struct,
+            e: &Struct) -> int {
     a.method(b.method(c.method(d.method(e.method(1)))))
 }
