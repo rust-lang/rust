@@ -175,40 +175,43 @@ fn visit_item(e: &Env, i: @ast::item) {
         }
 
         let cstore = e.cstore;
-        let mut already_added = false;
         let link_args = i.attrs.iter()
             .filter_map(|at| if "link_args" == at.name() {Some(at)} else {None})
             .collect::<~[&ast::Attribute]>();
 
-        match fm.sort {
-            ast::named => {
-                let link_name = i.attrs.iter()
-                    .find(|at| "link_name" == at.name())
-                    .and_then(|at| at.value_str());
+        // XXX: two whom it may concern, this was the old logic applied to the
+        //      ast's extern mod blocks which had names (we used to allow
+        //      "extern mod foo"). This code was never run for anonymous blocks,
+        //      and we now only have anonymous blocks. We're still in the midst
+        //      of figuring out what the exact operations we'd like to support
+        //      when linking external modules, but I wanted to leave this logic
+        //      here for the time beging to refer back to it
 
-                let foreign_name = match link_name {
-                        Some(nn) => {
-                            if nn.is_empty() {
-                                e.diag.span_fatal(
-                                    i.span,
-                                    "empty #[link_name] not allowed; use \
-                                     #[nolink].");
-                            }
-                            nn
-                        }
-                        None => token::ident_to_str(&i.ident)
-                    };
-                if !attr::contains_name(i.attrs, "nolink") {
-                    already_added =
-                        !cstore::add_used_library(cstore, foreign_name);
-                }
-                if !link_args.is_empty() && already_added {
-                    e.diag.span_fatal(i.span, ~"library '" + foreign_name +
-                               "' already added: can't specify link_args.");
-                }
-            }
-            ast::anonymous => { /* do nothing */ }
-        }
+        //let mut already_added = false;
+        //let link_name = i.attrs.iter()
+        //    .find(|at| "link_name" == at.name())
+        //    .and_then(|at| at.value_str());
+
+        //let foreign_name = match link_name {
+        //        Some(nn) => {
+        //            if nn.is_empty() {
+        //                e.diag.span_fatal(
+        //                    i.span,
+        //                    "empty #[link_name] not allowed; use \
+        //                     #[nolink].");
+        //            }
+        //            nn
+        //        }
+        //        None => token::ident_to_str(&i.ident)
+        //    };
+        //if !attr::contains_name(i.attrs, "nolink") {
+        //    already_added =
+        //        !cstore::add_used_library(cstore, foreign_name);
+        //}
+        //if !link_args.is_empty() && already_added {
+        //    e.diag.span_fatal(i.span, ~"library '" + foreign_name +
+        //               "' already added: can't specify link_args.");
+        //}
 
         for m in link_args.iter() {
             match m.value_str() {

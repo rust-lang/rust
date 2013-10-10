@@ -1183,31 +1183,7 @@ impl Resolver {
                 ModuleReducedGraphParent(name_bindings.get_module())
             }
 
-            item_foreign_mod(ref fm) => {
-                match fm.sort {
-                    named => {
-                        let (name_bindings, new_parent) =
-                            self.add_child(ident, parent,
-                                           ForbidDuplicateModules, sp);
-
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        let def_id = DefId { crate: 0, node: item.id };
-                        name_bindings.define_module(parent_link,
-                                                    Some(def_id),
-                                                    ExternModuleKind,
-                                                    false,
-                                                    true,
-                                                    sp);
-
-                        ModuleReducedGraphParent(name_bindings.get_module())
-                    }
-
-                    // For anon foreign mods, the contents just go in the
-                    // current scope
-                    anonymous => parent
-                }
-            }
+            item_foreign_mod(*) => parent,
 
             // These items live in the value namespace.
             item_static(_, m, _) => {
