@@ -21,10 +21,12 @@ reference is a unique handle and the type is marked as non-`Freeze`.
 */
 
 use ptr::RawPtr;
-use unstable::intrinsics::transmute;
+use unstable::intrinsics::{forget, transmute};
+use cast;
 use ops::Drop;
 use kinds::{Freeze, Send};
 use clone::{Clone, DeepClone};
+use either::{Either, Left, Right};
 
 struct RcBox<T> {
     value: T,
@@ -64,6 +66,32 @@ impl<T> Rc<T> {
     pub fn get<'r>(&'r self) -> &'r T {
         unsafe { &(*self.ptr).value }
     }
+
+    /// Return a mutable reference that only alters this Rc if possible,
+    /// or return self
+    pub fn try_get_mut<'r>(&'r mut self) -> Either<&'r mut Rc<T>, &'r mut T> {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                Left(self)
+            } else {
+                Right(cast::copy_mut_lifetime(self, &mut (*self.ptr).value))
+            }
+        }
+    }
+
+    /// Return the contents while altering only this Rc if possible,
+    /// or return self
+    pub fn try_unwrap(self) -> Either<Rc<T>, T> {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                Left(self)
+            } else {
+                let box: ~RcBox<T> = transmute(self.ptr);
+                forget(self);
+                Right(box.value)
+            }
+        }
+    }
 }
 
 impl<T: Clone> Rc<T> {
@@ -85,6 +113,20 @@ impl<T: Clone> Rc<T> {
         (*self.ptr).count -= 1;
         self.ptr = transmute(~RcBox{value: (*self.ptr).value.clone(), count: 1});
         cast::copy_mut_lifetime(self, &mut (*self.ptr).value)
+    }
+
+    /// Clones the content if there is more than one reference, or unwraps
+    /// the data if this is the only reference
+    pub fn value<'r>(self) -> T {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                (*self.ptr).value.clone()
+            } else {
+                let box: ~RcBox<T> = transmute(self.ptr);
+                forget(self);
+                box.value
+            }
+        }
     }
 }
 
