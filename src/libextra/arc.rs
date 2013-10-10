@@ -138,6 +138,23 @@ impl<T:Freeze+Send> Arc<T> {
         let Arc { x: x } = self;
         x.unwrap()
     }
+
+    pub fn try_get_mut<'a>(&'a mut self) -> Either<&'a mut Arc<T>, &'a mut T> {
+        unsafe {
+            if !self.x.is_owned() {
+                Left(self)
+            } else {
+                Right(&mut *self.x.get())
+            }
+        }
+    }
+
+    pub fn try_unwrap(self) -> Either<Arc<T>, T> {
+        match self.x.try_unwrap() {
+            Left(this) => Left(Arc {x: this}),
+            Right(v) => Right(v)
+        }
+    }
 }
 
 impl<T: Freeze+Send+Clone> Arc<T> {
@@ -158,6 +175,15 @@ impl<T: Freeze+Send+Clone> Arc<T> {
     unsafe fn cow_clone<'r>(&'r mut self) -> &'r mut T {
         self.x = UnsafeArc::new((*self.x.get_immut()).clone());
         &mut *self.x.get()
+    }
+
+    pub fn value(self) -> T {
+        unsafe {
+            match self.x.try_unwrap() {
+                Left(this) => (*this.get()).clone(),
+                Right(v) => v
+            }
+        }
     }
 }
 
