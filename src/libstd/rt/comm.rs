@@ -1117,7 +1117,7 @@ mod test {
             let total = stress_factor() + 10;
             let mut rng = rand::rng();
             do total.times {
-                let msgs = rng.gen_integer_range(0u, 10);
+                let msgs = rng.gen_range(0u, 10);
                 let pipe_clone = pipe.clone();
                 let end_chan_clone = end_chan.clone();
                 do spawntask_random {

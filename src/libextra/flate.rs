@@ -113,7 +113,7 @@ mod tests {
         let mut r = rand::rng();
         let mut words = ~[];
         do 20.times {
-            let range = r.gen_integer_range(1u, 10);
+            let range = r.gen_range(1u, 10);
             words.push(r.gen_vec::<u8>(range));
         }
         do 20.times {
