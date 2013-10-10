@@ -19,6 +19,6 @@ impl Struct {
 }
 
 #[no_mangle]
-fn test(s: &Struct) -> int {
+pub fn test(s: &Struct) -> int {
     s.method()
 }

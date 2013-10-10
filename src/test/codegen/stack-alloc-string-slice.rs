@@ -9,6 +9,6 @@
 // except according to those terms.
 
 #[no_mangle]
-fn test() {
+pub fn test() {
     let _x = "hello";
 }
