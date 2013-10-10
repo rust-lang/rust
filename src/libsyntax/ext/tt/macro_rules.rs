@@ -20,6 +20,7 @@ use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
+use parse::attr::parser_attr;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt, EOF};
 use print;
@@ -54,12 +55,14 @@ impl AnyMacro for ParserAnyMacro {
         ret
     }
     fn make_item(&self) -> Option<@ast::item> {
-        let ret = self.parser.parse_item(~[]);     // no attrs
+        let attrs = self.parser.parse_outer_attributes();
+        let ret = self.parser.parse_item(attrs);
         self.ensure_complete_parse(false);
         ret
     }
     fn make_stmt(&self) -> @ast::Stmt {
-        let ret = self.parser.parse_stmt(~[]);     // no attrs
+        let attrs = self.parser.parse_outer_attributes();
+        let ret = self.parser.parse_stmt(attrs);
         self.ensure_complete_parse(true);
         ret
     }
