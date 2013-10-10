@@ -109,6 +109,17 @@ impl<T: Send> UnsafeArc<T> {
         }
     }
 
+    /// Whether this is the only reference to the data
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        unsafe {
+            let mut data: ~ArcData<T> = cast::transmute(self.data);
+            let r = data.count.load(Acquire) == 1 && data.unwrapper.is_empty(Acquire);
+            cast::forget(data);
+            return r;
+        }
+    }
+
     /// Wait until all other handles are dropped, then retrieve the enclosed
     /// data. See extra::arc::Arc for specific semantics documentation.
     /// If called when the task is already unkillable, unwrap will unkillably
@@ -557,6 +568,12 @@ mod tests {
         assert!(left_x.is_left());
         util::ignore(left_x);
         p.recv();
+    }
+
+    #[test]
+    fn arclike_new_should_be_owned() {
+        let x = UnsafeArc::new(~~"hello");
+        assert!(x.is_owned())
     }
 
     #[test]
