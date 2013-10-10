@@ -50,7 +50,7 @@ use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench, Tests};
 // use workcache_support::{discover_outputs, digest_only_date};
 use workcache_support::digest_only_date;
-use exit_codes::COPY_FAILED_CODE;
+use exit_codes::{COPY_FAILED_CODE, BAD_FLAG_CODE};
 
 pub mod api;
 mod conditions;
@@ -701,7 +701,7 @@ pub fn main_args(args: &[~str]) -> int {
             return 1;
         }
     };
-    let mut help = matches.opt_present("h") ||
+    let help = matches.opt_present("h") ||
                    matches.opt_present("help");
     let no_link = matches.opt_present("no-link");
     let no_trans = matches.opt_present("no-trans");
@@ -798,8 +798,11 @@ pub fn main_args(args: &[~str]) -> int {
             return 0;
         }
         Some(cmd) => {
-            help |= context::flags_ok_for_cmd(&rustc_flags, cfgs, *cmd, user_supplied_opt_level);
-            if help {
+            let bad_option = context::flags_forbidden_for_cmd(&rustc_flags,
+                                                              cfgs,
+                                                              *cmd,
+                                                              user_supplied_opt_level);
+            if help || bad_option {
                 match *cmd {
                     ~"build" => usage::build(),
                     ~"clean" => usage::clean(),
@@ -814,7 +817,12 @@ pub fn main_args(args: &[~str]) -> int {
                     ~"unprefer" => usage::unprefer(),
                     _ => usage::general()
                 };
-                return 0;
+                if bad_option {
+                    return BAD_FLAG_CODE;
+                }
+                else {
+                    return 0;
+                }
             } else {
                 cmd
             }
