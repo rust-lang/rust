@@ -567,9 +567,8 @@ macro_rules! impl_to_primitive_float_to_float(
             Some(*self as $DstT)
         } else {
             let n = *self as f64;
-            let min_value: $SrcT = Bounded::min_value();
             let max_value: $SrcT = Bounded::max_value();
-            if min_value as f64 <= n && n <= max_value as f64 {
+            if -max_value as f64 <= n && n <= max_value as f64 {
                 Some(*self as $DstT)
             } else {
                 None
