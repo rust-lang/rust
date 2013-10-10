@@ -156,17 +156,21 @@ fn make_sequence_processor(sz: uint,
 
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
+    use std::rt::io::{Reader, Open};
+    use std::rt::io::file::FileInfo;
+    use std::rt::io::native::stdio;
+    use std::rt::io::buffered::BufferedReader;
+
     let rdr = if os::getenv("RUST_BENCH").is_some() {
-       // FIXME: Using this compile-time env variable is a crummy way to
-       // get to this massive data set, but include_bin! chokes on it (#2598)
-       let path = Path(env!("CFG_SRC_DIR"))
-           .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
-       io::file_reader(&path).unwrap()
-   } else {
-      io::stdin()
-   };
-
-
+        // FIXME: Using this compile-time env variable is a crummy way to
+        // get to this massive data set, but include_bin! chokes on it (#2598)
+        let path = Path(env!("CFG_SRC_DIR"))
+            .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
+        ~path.open_reader(Open).unwrap() as ~Reader
+    } else {
+        ~stdio::stdin() as ~Reader
+    };
+    let mut rdr = BufferedReader::new(rdr);
 
     // initialize each sequence sorter
     let sizes = ~[1u,2,3,4,6,12,18];
@@ -193,8 +197,11 @@ fn main() {
    // reading the sequence of interest
    let mut proc_mode = false;
 
-   while !rdr.eof() {
-      let line: ~str = rdr.read_line();
+   loop {
+      let line = match rdr.read_line() {
+          Some(ln) => ln, None => break,
+      };
+      let line = line.trim().to_owned();
 
       if line.len() == 0u { continue; }
 

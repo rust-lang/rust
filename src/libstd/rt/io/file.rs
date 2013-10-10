@@ -599,7 +599,7 @@ impl FileInfo for Path { }
 ///     else { fail2!("nope"); }
 /// }
 /// ```
-trait DirectoryInfo : FileSystemInfo {
+pub trait DirectoryInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) is pointing at a directory in the underlying FS.
     /// Will return false for paths to non-existent locations or if the item is

@@ -12,8 +12,6 @@ use fmt;
 use from_str::from_str;
 use libc::exit;
 use option::{Some, None, Option};
-use rt;
-use rt::util::dumb_println;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
 use u32;
@@ -88,16 +86,16 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
                         log_level = num;
                     },
                     _ => {
-                        dumb_println(format!("warning: invalid logging spec \
-                                              '{}', ignoring it", parts[1]));
-                        continue;
+                        rterrln!("warning: invalid logging spec '{}', \
+                                  ignoring it", parts[1]);
+                        continue
                     }
                 }
             },
             _ => {
-                dumb_println(format!("warning: invalid logging spec '{}',\
-                                      ignoring it", s));
-                continue;
+                rterrln!("warning: invalid logging spec '{}', \
+                          ignoring it", s);
+                continue
             }
         }
         let dir = LogDirective {name: name, level: log_level};
@@ -141,9 +139,9 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
     let mut dirs = ~[];
     if settings.len() > 0 {
         if settings == ~"::help" || settings == ~"?" {
-        dumb_println("\nCrate log map:\n");
+            rterrln!("\nCrate log map:\n");
             do iter_crate_map(crate_map) |entry| {
-                dumb_println(" "+entry.name);
+                rterrln!(" {}", entry.name);
             }
             unsafe { exit(1); }
         }
@@ -157,12 +155,10 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
     }
 
     if n_matches < (dirs.len() as u32) {
-        dumb_println(format!("warning: got {} RUST_LOG specs but only matched\n\
-                              {} of them. You may have mistyped a RUST_LOG \
-                              spec. \n\
-                              Use RUST_LOG=::help to see the list of crates \
-                              and modules.\n",
-                             dirs.len(), n_matches));
+        rterrln!("warning: got {} RUST_LOG specs but only matched\n\
+                  {} of them. You may have mistyped a RUST_LOG spec. \n\
+                  Use RUST_LOG=::help to see the list of crates and modules.\n",
+                 dirs.len(), n_matches);
     }
 }
 
@@ -174,22 +170,11 @@ pub struct StdErrLogger;
 
 impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
-        fmt::writeln(self as &mut rt::io::Writer, args);
+        // FIXME(#6846): this should not call the blocking version of println,
+        //               or at least the default loggers for tasks shouldn't do
+        //               that
+        ::rt::util::dumb_println(args);
     }
-}
-
-impl rt::io::Writer for StdErrLogger {
-    fn write(&mut self, buf: &[u8]) {
-        // Nothing like swapping between I/O implementations! In theory this
-        // could use the libuv bindings for writing to file descriptors, but
-        // that may not necessarily be desirable because logging should work
-        // outside of the uv loop. (modify with caution)
-        use io::Writer;
-        let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-        dbg.write(buf);
-    }
-
-    fn flush(&mut self) {}
 }
 
 /// Configure logging by traversing the crate map and setting the
@@ -212,7 +197,7 @@ pub fn init() {
         _ => {
             match log_spec {
                 Some(_) => {
-                    dumb_println("warning: RUST_LOG set, but no crate map found.");
+                    rterrln!("warning: RUST_LOG set, but no crate map found.");
                 },
                 None => {}
             }

@@ -68,9 +68,6 @@ fn debug_mem() -> bool {
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
 pub unsafe fn annihilate() {
     use rt::local_heap::local_free;
-    use io::WriterUtil;
-    use io;
-    use libc;
     use sys;
     use managed;
 
@@ -126,14 +123,10 @@ pub unsafe fn annihilate() {
 
     if debug_mem() {
         // We do logging here w/o allocation.
-        let dbg = libc::STDERR_FILENO as io::fd_t;
-        dbg.write_str("annihilator stats:");
-        dbg.write_str("\n  total_boxes: ");
-        dbg.write_uint(stats.n_total_boxes);
-        dbg.write_str("\n  unique_boxes: ");
-        dbg.write_uint(stats.n_unique_boxes);
-        dbg.write_str("\n  bytes_freed: ");
-        dbg.write_uint(stats.n_bytes_freed);
-        dbg.write_str("\n");
+        rterrln!("annihilator stats:\n  \
+                     total boxes: {}\n  \
+                    unique boxes: {}\n  \
+                     bytes freed: {}",
+                 stats.n_total_boxes, stats.n_unique_boxes, stats.n_bytes_freed);
     }
 }

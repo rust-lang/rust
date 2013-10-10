@@ -9,11 +9,8 @@
 // except according to those terms.
 
 use cell::Cell;
-use c_str::ToCStr;
-use cast::transmute;
-use io::{Writer, WriterUtil};
-use io;
-use libc::{c_char, size_t, STDERR_FILENO};
+use c_str::{ToCStr, CString};
+use libc::{c_char, size_t};
 use option::{Option, None, Some};
 use ptr::RawPtr;
 use rt::env;
@@ -113,51 +110,10 @@ unsafe fn debug_borrow<T,P:RawPtr<T>>(tag: &'static str,
                                                new_bits: uint,
                                                filename: *c_char,
                                                line: size_t) {
-        let dbg = STDERR_FILENO as io::fd_t;
-        dbg.write_str(tag);
-        dbg.write_hex(p.to_uint());
-        dbg.write_str(" ");
-        dbg.write_hex(old_bits);
-        dbg.write_str(" ");
-        dbg.write_hex(new_bits);
-        dbg.write_str(" ");
-        dbg.write_cstr(filename);
-        dbg.write_str(":");
-        dbg.write_hex(line as uint);
-        dbg.write_str("\n");
-    }
-}
-
-trait DebugPrints {
-    fn write_hex(&self, val: uint);
-    unsafe fn write_cstr(&self, str: *c_char);
-}
-
-impl DebugPrints for io::fd_t {
-    fn write_hex(&self, mut i: uint) {
-        let letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8',
-                       '9', 'a', 'b', 'c', 'd', 'e', 'f'];
-        static UINT_NIBBLES: uint = ::uint::bytes << 1;
-        let mut buffer = [0_u8, ..UINT_NIBBLES+1];
-        let mut c = UINT_NIBBLES;
-        while c > 0 {
-            c -= 1;
-            buffer[c] = letters[i & 0xF] as u8;
-            i >>= 4;
-        }
-        self.write(buffer.slice(0, UINT_NIBBLES));
-    }
-
-    unsafe fn write_cstr(&self, p: *c_char) {
-        #[fixed_stack_segment]; #[inline(never)];
-        use libc::strlen;
-        use vec;
-
-        let len = strlen(p);
-        let p: *u8 = transmute(p);
-        do vec::raw::buf_as_slice(p, len as uint) |s| {
-            self.write(s);
-        }
+        let filename = CString::new(filename, false);
+        rterrln!("{}{:#x} {:x} {:x} {}:{}",
+                 tag, p.to_uint(), old_bits, new_bits,
+                 filename.as_str().unwrap(), line);
     }
 }
 
