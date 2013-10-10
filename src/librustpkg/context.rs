@@ -210,11 +210,11 @@ impl RustcFlags {
 }
 
 /// Returns true if any of the flags given are incompatible with the cmd
-pub fn flags_ok_for_cmd(flags: &RustcFlags,
+pub fn flags_forbidden_for_cmd(flags: &RustcFlags,
                         cfgs: &[~str],
                         cmd: &str, user_supplied_opt_level: bool) -> bool {
     let complain = |s| {
-        println!("The {} option can only be used with the build command:
+        println!("The {} option can only be used with the `build` command:
                   rustpkg [options..] build {} [package-ID]", s, s);
     };
 
