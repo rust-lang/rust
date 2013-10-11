@@ -539,14 +539,6 @@ pub fn print_item(s: @ps, item: &ast::item) {
       ast::item_foreign_mod(ref nmod) => {
         head(s, "extern");
         word_nbsp(s, nmod.abis.to_str());
-        match nmod.sort {
-            ast::named => {
-                word_nbsp(s, "mod");
-                print_ident(s, item.ident);
-                nbsp(s);
-            }
-            ast::anonymous => {}
-        }
         bopen(s);
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
