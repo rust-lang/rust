@@ -48,7 +48,7 @@ doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
          --standalone --toc \
          --section-divs \
          --number-sections \
-         --from=markdown --to=html \
+         --from=markdown --to=html5 \
          --css=rust.css \
          --css=manual.css \
 	     --include-before-body=doc/version_info.html \
@@ -73,7 +73,7 @@ doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css doc/manual.css
          --standalone --toc \
          --section-divs \
          --number-sections \
-         --from=markdown --to=html \
+         --from=markdown --to=html5 \
          --css=rust.css \
          --css=manual.css \
 	     --include-before-body=doc/version_info.html \
@@ -85,7 +85,7 @@ doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -95,7 +95,7 @@ doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rus
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight doc/l10n/ja/tutorial.md | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=../../rust.css \
+           --from=markdown --to=html5 --css=../../rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -106,7 +106,7 @@ doc/tutorial-macros.html: tutorial-macros.md doc/version_info.html \
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -116,7 +116,7 @@ doc/tutorial-container.html: tutorial-container.md doc/version_info.html doc/rus
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -126,7 +126,7 @@ doc/tutorial-ffi.html: tutorial-ffi.md doc/version_info.html doc/rust.css
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -136,7 +136,7 @@ doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html d
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -146,7 +146,7 @@ doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -156,7 +156,7 @@ doc/tutorial-conditions.html: tutorial-conditions.md doc/version_info.html doc/r
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
            --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -166,7 +166,7 @@ doc/tutorial-rustpkg.html: tutorial-rustpkg.md doc/version_info.html doc/rust.cs
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
            --include-before-body=doc/version_info.html \
            --output=$@
 
