@@ -100,14 +100,6 @@ pub trait Rand {
     fn rand<R: Rng>(rng: &mut R) -> Self;
 }
 
-/// A value with a particular weight compared to other values
-pub struct Weighted<T> {
-    /// The numerical weight of this item
-    weight: uint,
-    /// The actual item which is being weighted
-    item: T,
-}
-
 /// A random number generator
 pub trait Rng {
     /// Return the next random u32. This rarely needs to be called
@@ -332,91 +324,6 @@ pub trait Rng {
         } else {
             Some(&values[self.gen_range(0u, values.len())])
         }
-    }
-
-    /// Choose an item respecting the relative weights, failing if the sum of
-    /// the weights is 0
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
-    ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     let x = [rand::Weighted {weight: 4, item: 'a'},
-    ///              rand::Weighted {weight: 2, item: 'b'},
-    ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     println!("{}", rng.choose_weighted(x));
-    /// }
-    /// ```
-    fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
-        self.choose_weighted_option(v).expect("Rng.choose_weighted: total weight is 0")
-    }
-
-    /// Choose Some(item) respecting the relative weights, returning none if
-    /// the sum of the weights is 0
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
-    ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     let x = [rand::Weighted {weight: 4, item: 'a'},
-    ///              rand::Weighted {weight: 2, item: 'b'},
-    ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     println!("{:?}", rng.choose_weighted_option(x));
-    /// }
-    /// ```
-    fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
-                                       -> Option<T> {
-        let mut total = 0u;
-        for item in v.iter() {
-            total += item.weight;
-        }
-        if total == 0u {
-            return None;
-        }
-        let chosen = self.gen_range(0u, total);
-        let mut so_far = 0u;
-        for item in v.iter() {
-            so_far += item.weight;
-            if so_far > chosen {
-                return Some(item.item.clone());
-            }
-        }
-        unreachable!();
-    }
-
-    /// Return a vec containing copies of the items, in order, where
-    /// the weight of the item determines how many copies there are
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
-    ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     let x = [rand::Weighted {weight: 4, item: 'a'},
-    ///              rand::Weighted {weight: 2, item: 'b'},
-    ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     println!("{}", rng.weighted_vec(x));
-    /// }
-    /// ```
-    fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
-        let mut r = ~[];
-        for item in v.iter() {
-            for _ in range(0u, item.weight) {
-                r.push(item.item.clone());
-            }
-        }
-        r
     }
 
     /// Shuffle a vec
@@ -858,44 +765,6 @@ mod test {
         let i = 1;
         let v = [1,1,1];
         assert_eq!(r.choose_option(v), Some(&i));
-    }
-
-    #[test]
-    fn test_choose_weighted() {
-        let mut r = rng();
-        assert!(r.choose_weighted([
-            Weighted { weight: 1u, item: 42 },
-        ]) == 42);
-        assert!(r.choose_weighted([
-            Weighted { weight: 0u, item: 42 },
-            Weighted { weight: 1u, item: 43 },
-        ]) == 43);
-    }
-
-    #[test]
-    fn test_choose_weighted_option() {
-        let mut r = rng();
-        assert!(r.choose_weighted_option([
-            Weighted { weight: 1u, item: 42 },
-        ]) == Some(42));
-        assert!(r.choose_weighted_option([
-            Weighted { weight: 0u, item: 42 },
-            Weighted { weight: 1u, item: 43 },
-        ]) == Some(43));
-        let v: Option<int> = r.choose_weighted_option([]);
-        assert!(v.is_none());
-    }
-
-    #[test]
-    fn test_weighted_vec() {
-        let mut r = rng();
-        let empty: ~[int] = ~[];
-        assert_eq!(r.weighted_vec([]), empty);
-        assert!(r.weighted_vec([
-            Weighted { weight: 0u, item: 3u },
-            Weighted { weight: 1u, item: 2u },
-            Weighted { weight: 2u, item: 1u },
-        ]) == ~[2u, 1u, 1u]);
     }
 
     #[test]
