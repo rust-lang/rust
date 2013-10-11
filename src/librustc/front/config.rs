@@ -102,7 +102,6 @@ fn fold_foreign_mod(cx: &Context, nm: &ast::foreign_mod) -> ast::foreign_mod {
         }
     }.collect();
     ast::foreign_mod {
-        sort: nm.sort,
         abis: nm.abis,
         view_items: filtered_view_items,
         items: filtered_items

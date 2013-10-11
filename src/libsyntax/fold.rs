@@ -289,7 +289,6 @@ pub trait ast_fold {
 
     fn fold_foreign_mod(&self, nm: &foreign_mod) -> foreign_mod {
         ast::foreign_mod {
-            sort: nm.sort,
             abis: nm.abis,
             view_items: nm.view_items
                           .iter()
