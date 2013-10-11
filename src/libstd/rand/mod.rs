@@ -28,6 +28,23 @@ from an operating-system source of randomness, e.g. `/dev/urandom` on
 Unix systems, and will automatically reseed itself from this source
 after generating 32 KiB of random data.
 
+# Cryptographic security
+
+An application that requires random numbers for cryptographic purposes
+should prefer `OSRng`, which reads randomness from one of the source
+that the operating system provides (e.g. `/dev/urandom` on
+Unixes). The other random number generators provided by this module
+are either known to be insecure (`XorShiftRng`), or are not verified
+to be secure (`IsaacRng`, `Isaac64Rng` and `StdRng`).
+
+*Note*: on Linux, `/dev/random` is more secure than `/dev/urandom`,
+but it is a blocking RNG, and will wait until it has determined that
+it has collected enough entropy to fulfill a request for random
+data. It can be used with the `Rng` trait provided by this module by
+opening the file and passing it to `reader::ReaderRng`. Since it
+blocks, `/dev/random` should only be used to retrieve small amounts of
+randomness.
+
 # Examples
 
 ```rust
@@ -516,8 +533,8 @@ pub trait SeedableRng<Seed>: Rng {
 
 /// Create a random number generator with a default algorithm and seed.
 ///
-/// It returns the cryptographically-safest `Rng` algorithm currently
-/// available in Rust. If you require a specifically seeded `Rng` for
+/// It returns the strongest `Rng` algorithm currently implemented in
+/// pure Rust. If you require a specifically seeded `Rng` for
 /// consistency over time you should pick one algorithm and create the
 /// `Rng` yourself.
 ///
@@ -592,12 +609,16 @@ pub fn weak_rng() -> XorShiftRng {
     XorShiftRng::new()
 }
 
-/// An [Xorshift random number
-/// generator](http://en.wikipedia.org/wiki/Xorshift).
+/// An Xorshift[1] random number
+/// generator.
 ///
 /// The Xorshift algorithm is not suitable for cryptographic purposes
 /// but is very fast. If you do not know for sure that it fits your
-/// requirements, use a more secure one such as `IsaacRng`.
+/// requirements, use a more secure one such as `IsaacRng` or `OSRng`.
+///
+/// [1]: Marsaglia, George (July 2003). ["Xorshift
+/// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
+/// Statistical Software*. Vol. 8 (Issue 14).
 pub struct XorShiftRng {
     priv x: u32,
     priv y: u32,
