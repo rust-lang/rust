@@ -13,11 +13,10 @@
 use std::{os,util};
 use std::path::Path;
 use context::Context;
-use path_util::{workspace_contains_package_id, find_dir_using_rust_path_hack};
+use path_util::{workspace_contains_package_id, find_dir_using_rust_path_hack, default_workspace};
+use path_util::rust_path;
 use util::option_to_vec;
 use package_id::PkgId;
-
-use path_util::rust_path;
 
 pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
@@ -74,4 +73,15 @@ pub fn cwd_to_workspace() -> Option<(Path, PkgId)> {
         }
     }
     None
+}
+
+/// If `workspace` is the same as `cwd`, and use_rust_path_hack is false,
+/// return `workspace`; otherwise, return the first workspace in the RUST_PATH.
+pub fn determine_destination(cwd: Path, use_rust_path_hack: bool, workspace: &Path) -> Path {
+    if workspace == &cwd && !use_rust_path_hack {
+        workspace.clone()
+    }
+    else {
+        default_workspace()
+    }
 }

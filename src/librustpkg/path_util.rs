@@ -16,6 +16,7 @@ pub use version::{Version, NoVersion, split_version_general, try_parsing_version
 pub use rustc::metadata::filesearch::rust_path;
 use rustc::driver::driver::host_triple;
 
+use std::libc;
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
 use std::os;
@@ -447,9 +448,30 @@ pub fn user_set_rust_path() -> bool {
 }
 
 /// Append the version string onto the end of the path's filename
-fn versionize(p: &Path, v: &Version) -> Path {
+pub fn versionize(p: &Path, v: &Version) -> Path {
     let q = p.file_path().to_str();
     p.with_filename(format!("{}-{}", q, v.to_str()))
 }
 
+
+#[cfg(target_os = "win32")]
+pub fn chmod_read_only(p: &Path) -> bool {
+    #[fixed_stack_segment];
+    unsafe {
+        do p.to_str().with_c_str |src_buf| {
+            libc::chmod(src_buf, S_IRUSR as libc::c_int) == 0 as libc::c_int
+        }
+    }
+}
+
+#[cfg(not(target_os = "win32"))]
+pub fn chmod_read_only(p: &Path) -> bool {
+    #[fixed_stack_segment];
+    unsafe {
+        do p.to_str().with_c_str |src_buf| {
+            libc::chmod(src_buf, S_IRUSR as libc::mode_t) == 0
+                as libc::c_int
+        }
+    }
+}
 

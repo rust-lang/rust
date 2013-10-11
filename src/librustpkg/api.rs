@@ -16,6 +16,8 @@ use target::*;
 use version::Version;
 use workcache_support::*;
 
+pub use source_control::{safe_git_clone, git_clone_url};
+
 use std::os;
 use extra::arc::{Arc,RWArc};
 use extra::workcache;
@@ -68,15 +70,17 @@ pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Version,
                  lib: Path) {
     let cx = default_context(sysroot);
     let pkg_src = PkgSrc {
-            workspace: root.clone(),
-            start_dir: root.push("src").push(name),
-            id: PkgId{ version: version, ..PkgId::new(name)},
-            // n.b. This assumes the package only has one crate
-            libs: ~[mk_crate(lib)],
-            mains: ~[],
-            tests: ~[],
-            benchs: ~[]
-        };
+        source_workspace: root.clone(),
+        build_in_destination: false,
+        destination_workspace: root.clone(),
+        start_dir: root.push("src").push(name),
+        id: PkgId{ version: version, ..PkgId::new(name)},
+        // n.b. This assumes the package only has one crate
+        libs: ~[mk_crate(lib)],
+        mains: ~[],
+        tests: ~[],
+        benchs: ~[]
+    };
     pkg_src.build(&cx, ~[]);
 }
 
@@ -84,7 +88,9 @@ pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Version,
                  main: Path) {
     let cx = default_context(sysroot);
     let pkg_src = PkgSrc {
-        workspace: root.clone(),
+        source_workspace: root.clone(),
+        build_in_destination: false,
+        destination_workspace: root.clone(),
         start_dir: root.push("src").push(name),
         id: PkgId{ version: version, ..PkgId::new(name)},
         libs: ~[],
@@ -100,7 +106,7 @@ pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Version,
 pub fn install_pkg(sysroot: Path, workspace: Path, name: ~str, version: Version) {
     let cx = default_context(sysroot);
     let pkgid = PkgId{ version: version, ..PkgId::new(name)};
-    cx.install(PkgSrc::new(workspace, false, pkgid), &Everything);
+    cx.install(PkgSrc::new(workspace.clone(), workspace, false, pkgid), &Everything);
 }
 
 fn mk_crate(p: Path) -> Crate {
