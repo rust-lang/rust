@@ -28,10 +28,6 @@ RUSTDOC_INPUTS := $(wildcard $(addprefix $(S)src/librustdoc/,        \
 RUSTI_LIB := $(S)src/librusti/rusti.rs
 RUSTI_INPUTS := $(wildcard $(S)src/librusti/*.rs)
 
-# Rust, the convenience tool
-RUST_LIB := $(S)src/librust/rust.rs
-RUST_INPUTS := $(wildcard $(S)src/librust/*.rs)
-
 # FIXME: These are only built for the host arch. Eventually we'll
 # have tools that need to built for other targets.
 define TOOLS_STAGE_N_TARGET
@@ -96,27 +92,6 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X_$(4)):			\
 		| $$(TBIN$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rusti -o $$@ $$<
-
-$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4)):		\
-		$$(RUST_LIB) $$(RUST_INPUTS)			\
-		$$(SREQ$(1)_T_$(4)_H_$(3))				\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4))	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4))		\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4))	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))		\
-		| $$(TLIB$(1)_T_$(4)_H_$(3))/
-	@$$(call E, compile_and_link: $$@)
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUST_GLOB_$(4)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(4)_H_$(3)) $$(WFLAGS_ST$(1)) --out-dir $$(@D) $$< && touch $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUST_GLOB_$(4)),$$(notdir $$@))
-
-$$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X_$(4)):			\
-		$$(DRIVER_CRATE) 							\
-		$$(TSREQ$(1)_T_$(4)_H_$(3))			\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4)) \
-		| $$(TBIN$(1)_T_$(4)_H_$(3))/
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rust -o $$@ $$<
 
 endef
 
@@ -188,27 +163,6 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTI_$(4)):					\
 $$(HBIN$(2)_H_$(4))/rusti$$(X_$(4)):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X_$(4))	\
 		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTI_$(4))	\
-		$$(HSREQ$(2)_H_$(4))				\
-		| $$(HBIN$(2)_H_$(4))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUST_$(4)):					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4))	\
-		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4))	\
-		$$(HSREQ$(2)_H_$(4))				\
-		| $$(HLIB$(2)_H_$(4))/
-	@$$(call E, cp: $$@)
-	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUST_GLOB_$(4)),$$(notdir $$@))
-	$$(Q)cp $$< $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUST_GLOB_$(4)),$$(notdir $$@))
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_GLOB_$(4)) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_DSYM_GLOB)_$(4)) \
-	        $$(HLIB$(2)_H_$(4))
-
-$$(HBIN$(2)_H_$(4))/rust$$(X_$(4)):				\
-		$$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X_$(4))	\
-		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUST_$(4))	\
 		$$(HSREQ$(2)_H_$(4))				\
 		| $$(HBIN$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
