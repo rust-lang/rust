@@ -4,7 +4,6 @@ body {
     margin-bottom: 4em;
     font-family: "Helvetica Neue", Helvetica, sans-serif;
     font-size: 12pt;
-    background-color: white;
     color: black;
     line-height: 1.6em;
     min-width: 45em;
@@ -100,18 +99,23 @@ h3 a:link, h3 a:visited { color: black; }
 .cm-s-default span.cm-attribute {color: #00c;}
 
 #versioninfo {
-  position: fixed;
-  bottom: 0px;
-  right: 0px;
-
-  background-color: white;
-  padding: 0.5em;
+    position: fixed;
+    bottom: 0px;
+    right: 0px;
+    text-align: center;
+    background-color: white;
+    padding: 0.5em;
 }
-
-a.lessimportant {
-  color: gray;
-  font-size: 60%;
+#versioninfo a.hash {
+    color: gray;
+    font-size: 60%;
 }
+#versioninfo .white-sticker {
++    background-color: #fff;
++    margin: 2px;
++    padding: 0 2px;
++    border-radius: .3em;
++  }
 
 blockquote {
     color: black;
