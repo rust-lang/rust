@@ -21,16 +21,10 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
                         rty: Type,
                         ret_def: bool) -> FnType {
     let mut arg_tys = ~[];
-    let mut attrs = ~[];
 
     let ret_ty;
-    let sret;
     if !ret_def {
-        ret_ty = LLVMType {
-            cast: false,
-            ty: Type::void(),
-        };
-        sret = false;
+        ret_ty = ArgType::direct(Type::void(), None, None, None);
     } else if rty.kind() == Struct {
         // Returning a structure. Most often, this will use
         // a hidden first argument. On some platforms, though,
@@ -58,43 +52,22 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
 
         match strategy {
             RetValue(t) => {
-                ret_ty = LLVMType {
-                    cast: true,
-                    ty: t
-                };
-                sret = false;
+                ret_ty = ArgType::direct(rty, Some(t), None, None);
             }
             RetPointer => {
-                arg_tys.push(LLVMType {
-                    cast: false,
-                    ty: rty.ptr_to()
-                });
-                attrs.push(Some(StructRetAttribute));
-
-                ret_ty = LLVMType {
-                    cast: false,
-                    ty: Type::void(),
-                };
-                sret = true;
+                ret_ty = ArgType::indirect(rty, Some(StructRetAttribute));
             }
         }
     } else {
-        ret_ty = LLVMType {
-            cast: false,
-            ty: rty
-        };
-        sret = false;
+        ret_ty = ArgType::direct(rty, None, None, None);
     }
 
     for &a in atys.iter() {
-        arg_tys.push(LLVMType { cast: false, ty: a });
-        attrs.push(None);
+        arg_tys.push(ArgType::direct(a, None, None, None));
     }
 
     return FnType {
         arg_tys: arg_tys,
         ret_ty: ret_ty,
-        attrs: attrs,
-        sret: sret
     };
 }

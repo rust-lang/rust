@@ -11,14 +11,14 @@
 #[allow(non_uppercase_pattern_statics)];
 
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
-use lib::llvm::{Attribute, StructRetAttribute};
-use middle::trans::cabi::{FnType, LLVMType};
+use lib::llvm::StructRetAttribute;
+use middle::trans::cabi::{FnType, ArgType};
 use middle::trans::context::CrateContext;
 
 use middle::trans::type_::Type;
 
 use std::num;
-use std::option::{Option, None, Some};
+use std::option::{None, Some};
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -85,9 +85,9 @@ fn ty_size(ty: Type) -> uint {
     }
 }
 
-fn classify_ret_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
+fn classify_ret_ty(ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        return (LLVMType { cast: false, ty: ty }, None);
+        return ArgType::direct(ty, None, None, None);
     }
     let size = ty_size(ty);
     if size <= 4 {
@@ -98,14 +98,14 @@ fn classify_ret_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
         } else {
             Type::i32()
         };
-        return (LLVMType { cast: true, ty: llty }, None);
+        return ArgType::direct(ty, Some(llty), None, None);
     }
-    (LLVMType { cast: false, ty: ty.ptr_to() }, Some(StructRetAttribute))
+    ArgType::indirect(ty, Some(StructRetAttribute))
 }
 
-fn classify_arg_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
+fn classify_arg_ty(ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        return (LLVMType { cast: false, ty: ty }, None);
+        return ArgType::direct(ty, None, None, None);
     }
     let align = ty_align(ty);
     let size = ty_size(ty);
@@ -114,7 +114,7 @@ fn classify_arg_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
     } else {
         Type::array(&Type::i64(), ((size + 7) / 8) as u64)
     };
-    (LLVMType { cast: true, ty: llty }, None)
+    ArgType::direct(ty, Some(llty), None, None)
 }
 
 fn is_reg_ty(ty: Type) -> bool {
@@ -132,32 +132,19 @@ pub fn compute_abi_info(_ccx: &mut CrateContext,
                         rty: Type,
                         ret_def: bool) -> FnType {
     let mut arg_tys = ~[];
-    let mut attrs = ~[];
     for &aty in atys.iter() {
-        let (ty, attr) = classify_arg_ty(aty);
+        let ty = classify_arg_ty(aty);
         arg_tys.push(ty);
-        attrs.push(attr);
     }
 
-    let (ret_ty, ret_attr) = if ret_def {
+    let ret_ty = if ret_def {
         classify_ret_ty(rty)
     } else {
-        (LLVMType { cast: false, ty: Type::void() }, None)
+        ArgType::direct(Type::void(), None, None, None)
     };
-
-    let mut ret_ty = ret_ty;
-
-    let sret = ret_attr.is_some();
-    if sret {
-        arg_tys.unshift(ret_ty);
-        attrs.unshift(ret_attr);
-        ret_ty = LLVMType { cast: false, ty: Type::void() };
-    }
 
     return FnType {
         arg_tys: arg_tys,
         ret_ty: ret_ty,
-        attrs: attrs,
-        sret: sret
     };
 }
