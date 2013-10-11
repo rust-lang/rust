@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod Bar {
-    pub struct Foo {
-        v: int,
-    }
+use std::libc;
 
-    extern {
-        #[rust_stack]
-        pub fn foo(v: *Foo) -> Foo;
-    }
+extern {
+    #[link_name = "malloc"]
+    fn malloc1(len: libc::c_int) -> *libc::c_void;
+    #[link_name = "malloc"]
+    fn malloc2(len: libc::c_int, foo: libc::c_int) -> *libc::c_void;
 }
 
-pub fn main() { }
+pub fn main () {}
