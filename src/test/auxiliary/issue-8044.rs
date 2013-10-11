@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod Bar {
-    pub struct Foo {
-        v: int,
-    }
+#[feature(struct_variant)];
 
-    extern {
-        #[rust_stack]
-        pub fn foo(v: *Foo) -> Foo;
-    }
+pub struct BTree<V> {
+    node: TreeItem<V>,
 }
 
-pub fn main() { }
+pub enum TreeItem<V> {
+    TreeLeaf { value: V },
+}
+
+pub fn leaf<V>(value: V) -> TreeItem<V> {
+    TreeLeaf { value: value }
+}
+
+fn main() {
+    BTree::<int> { node: leaf(1) };
+}

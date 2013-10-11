@@ -8,15 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod Bar {
-    pub struct Foo {
-        v: int,
-    }
+// xfail-fast windows doesn't like aux-build
+// aux-build:issue-4545.rs
 
-    extern {
-        #[rust_stack]
-        pub fn foo(v: *Foo) -> Foo;
-    }
-}
-
-pub fn main() { }
+extern mod somelib(name = "issue-4545");
+fn main() { somelib::mk::<int>(); }
