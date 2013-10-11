@@ -50,3 +50,7 @@ condition! {
 condition! {
     pub failed_to_create_temp_dir: (~str) -> Path;
 }
+
+condition! {
+    pub git_checkout_failed: (~str, Path) -> ();
+}

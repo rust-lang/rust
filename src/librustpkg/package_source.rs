@@ -17,10 +17,11 @@ use std::os;
 use context::*;
 use crate::Crate;
 use messages::*;
-use source_control::{git_clone, git_clone_general};
-use path_util::{find_dir_using_rust_path_hack, default_workspace, make_dir_rwx_recursive};
+use source_control::{safe_git_clone, git_clone_url, DirToUse, CheckedOutSources};
+use source_control::make_read_only;
+use path_util::{find_dir_using_rust_path_hack, make_dir_rwx_recursive};
+use path_util::{target_build_dir, versionize};
 use util::compile_crate;
-use workspace::is_workspace;
 use workcache_support;
 use workcache_support::crate_tag;
 use extra::workcache;
@@ -30,7 +31,17 @@ use extra::workcache;
 #[deriving(Clone)]
 pub struct PkgSrc {
     /// Root of where the package source code lives
-    workspace: Path,
+    source_workspace: Path,
+    /// If build_in_destination is true, temporary results should
+    /// go in the build/ subdirectory of the destination workspace.
+    /// (Otherwise, they go in the build/ subdirectory of the
+    /// source workspace.) This happens if the "RUST_PATH hack" is
+    /// in effect, or if sources were fetched from a remote
+    /// repository.
+    build_in_destination: bool,
+    /// Where to install the results. May or may not be the same
+    /// as source_workspace
+    destination_workspace: Path,
     // Directory to start looking in for packages -- normally
     // this is workspace/src/id but it may be just workspace
     start_dir: Path,
@@ -41,11 +52,15 @@ pub struct PkgSrc {
     benchs: ~[Crate],
 }
 
+pub enum BuildSort { InPlace, Discovered }
+
 impl ToStr for PkgSrc {
     fn to_str(&self) -> ~str {
-        format!("Package ID {} in start dir {} [workspace = {}]",
+        format!("Package ID {} in start dir {} [workspaces = {} -> {}]",
                 self.id.to_str(),
-                self.start_dir.to_str(), self.workspace.to_str())
+                self.start_dir.to_str(),
+                self.source_workspace.to_str(),
+                self.destination_workspace.to_str())
     }
 }
 condition! {
@@ -55,26 +70,52 @@ condition! {
 
 impl PkgSrc {
 
-    pub fn new(workspace: Path, use_rust_path_hack: bool, id: PkgId) -> PkgSrc {
+    pub fn new(mut source_workspace: Path,
+               destination_workspace: Path,
+               use_rust_path_hack: bool,
+               id: PkgId) -> PkgSrc {
         use conditions::nonexistent_package::cond;
 
         debug2!("Checking package source for package ID {}, \
-               workspace = {} use_rust_path_hack = {:?}",
-               id.to_str(), workspace.to_str(), use_rust_path_hack);
+                workspace = {} -> {}, use_rust_path_hack = {:?}",
+                id.to_str(),
+                source_workspace.to_str(),
+                destination_workspace.to_str(),
+                use_rust_path_hack);
+
+        let mut destination_workspace = destination_workspace.clone();
 
         let mut to_try = ~[];
+        let mut output_names = ~[];
+        let build_dir = target_build_dir(&source_workspace);
+
         if use_rust_path_hack {
-            to_try.push(workspace.clone());
+            to_try.push(source_workspace.clone());
         } else {
-            let result = workspace.push("src").push_rel(&id.path.pop()).push(format!("{}-{}",
+            // We search for sources under both src/ and build/ , because build/ is where
+            // automatically-checked-out sources go.
+            let result = source_workspace.push("src").push_rel(&id.path.pop()).push(format!("{}-{}",
                                                          id.short_name, id.version.to_str()));
             to_try.push(result);
-            to_try.push(workspace.push("src").push_rel(&id.path));
+            to_try.push(source_workspace.push("src").push_rel(&id.path));
+
+            let result = build_dir.push("src").push_rel(&id.path.pop()).push(format!("{}-{}",
+                                                         id.short_name, id.version.to_str()));
+            to_try.push(result.clone());
+            output_names.push(result);
+            let other_result = build_dir.push("src").push_rel(&id.path);
+            to_try.push(other_result.clone());
+            output_names.push(other_result);
+
         }
 
         debug2!("Checking dirs: {:?}", to_try.map(|s| s.to_str()).connect(":"));
 
         let path = to_try.iter().find(|&d| os::path_exists(d));
+
+        // See the comments on the definition of PkgSrc
+        let mut build_in_destination = use_rust_path_hack;
+        debug2!("1. build_in_destination = {:?}", build_in_destination);
 
         let dir: Path = match path {
             Some(d) => (*d).clone(),
@@ -83,23 +124,33 @@ impl PkgSrc {
                 // That is, is this a package ID that points into the middle of a workspace?
                 for (prefix, suffix) in id.prefixes_iter() {
                     let package_id = PkgId::new(prefix.to_str());
-                    let path = workspace.push("src").push_rel(&package_id.path);
+                    let path = build_dir.push_rel(&package_id.path);
                     debug2!("in loop: checking if {} is a directory", path.to_str());
                     if os::path_is_dir(&path) {
-                        let ps = PkgSrc::new(workspace.clone(),
+                        let ps = PkgSrc::new(source_workspace,
+                                             destination_workspace,
                                              use_rust_path_hack,
                                              PkgId::new(prefix.to_str()));
-                        debug2!("pkgsrc: Returning [{}|{}|{}]", workspace.to_str(),
-                                ps.start_dir.push_rel(&suffix).to_str(), ps.id.to_str());
-
-                        return PkgSrc {
-                            workspace: workspace,
-                            start_dir: ps.start_dir.push_rel(&suffix),
-                            id: ps.id,
-                            libs: ~[],
-                            mains: ~[],
-                            tests: ~[],
-                            benchs: ~[]
+                        match ps {
+                            PkgSrc {
+                                source_workspace: source,
+                                destination_workspace: destination,
+                                start_dir: start,
+                                id: id, _ } => {
+                                let result = PkgSrc {
+                                    source_workspace: source.clone(),
+                                    build_in_destination: build_in_destination,
+                                    destination_workspace: destination,
+                                    start_dir: start.push_rel(&suffix),
+                                    id: id,
+                                    libs: ~[],
+                                    mains: ~[],
+                                    tests: ~[],
+                                    benchs: ~[]
+                                };
+                                debug2!("pkgsrc: Returning {}", result.to_str());
+                                return result;
+                            }
                         }
 
                     };
@@ -107,14 +158,33 @@ impl PkgSrc {
 
                 // Ok, no prefixes work, so try fetching from git
                 let mut ok_d = None;
-                for w in to_try.iter() {
+                for w in output_names.iter() {
                     debug2!("Calling fetch_git on {}", w.to_str());
-                    let gf = PkgSrc::fetch_git(w, &id);
-                    for p in gf.iter() {
+                    let target_dir_opt = PkgSrc::fetch_git(w, &id);
+                    for p in target_dir_opt.iter() {
                         ok_d = Some(p.clone());
+                        build_in_destination = true;
+                        debug2!("2. build_in_destination = {:?}", build_in_destination);
                         break;
                     }
-                    if ok_d.is_some() { break; }
+                    match ok_d {
+                        Some(ref d) => {
+                            if d.is_parent_of(&id.path)
+                                || d.is_parent_of(&versionize(&id.path, &id.version)) {
+                                // Strip off the package ID
+                                source_workspace = d.clone();
+                                for _ in id.path.components().iter() {
+                                    source_workspace = source_workspace.pop();
+                                }
+                                // Strip off the src/ part
+                                source_workspace = source_workspace.pop();
+                                // Strip off the build/<target-triple> part to get the workspace
+                                destination_workspace = source_workspace.pop().pop();
+                            }
+                            break;
+                        }
+                        None => ()
+                    }
                 }
                 match ok_d {
                     Some(d) => d,
@@ -138,6 +208,9 @@ impl PkgSrc {
                 }
             }
         };
+        debug2!("3. build_in_destination = {:?}", build_in_destination);
+        debug2!("source: {} dest: {}", source_workspace.to_str(), destination_workspace.to_str());
+
         debug2!("For package id {}, returning {}", id.to_str(), dir.to_str());
 
         if !os::path_is_dir(&dir) {
@@ -145,11 +218,10 @@ impl PkgSrc {
                                         non-directory"));
         }
 
-        debug2!("pkgsrc: Returning \\{{}|{}|{}\\}", workspace.to_str(),
-               dir.to_str(), id.to_str());
-
         PkgSrc {
-            workspace: workspace,
+            source_workspace: source_workspace.clone(),
+            build_in_destination: build_in_destination,
+            destination_workspace: destination_workspace,
             start_dir: dir,
             id: id,
             libs: ~[],
@@ -165,55 +237,52 @@ impl PkgSrc {
     /// refers to a git repo on the local version, also check it out.
     /// (right now we only support git)
     pub fn fetch_git(local: &Path, pkgid: &PkgId) -> Option<Path> {
-        use conditions::failed_to_create_temp_dir::cond;
+        use conditions::git_checkout_failed::cond;
 
         // We use a temporary directory because if the git clone fails,
         // it creates the target directory anyway and doesn't delete it
 
-        let scratch_dir = extra::tempfile::mkdtemp(&os::tmpdir(), "rustpkg");
-        let clone_target = match scratch_dir {
-            Some(d) => d.push("rustpkg_temp"),
-            None    => cond.raise(~"Failed to create temporary directory for fetching git sources")
-        };
-
         debug2!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
-               pkgid.to_str(), pkgid.path.to_str(),
-               os::getcwd().to_str(),
-               os::path_exists(&pkgid.path));
+                pkgid.to_str(), pkgid.path.to_str(),
+                os::getcwd().to_str(),
+                os::path_exists(&pkgid.path));
 
-        if os::path_exists(&pkgid.path) {
-            debug2!("{} exists locally! Cloning it into {}",
-                   pkgid.path.to_str(), local.to_str());
-            // Ok to use local here; we know it will succeed
-            git_clone(&pkgid.path, local, &pkgid.version);
-            return Some(local.clone());
-        }
-
-        if pkgid.path.components().len() < 2 {
-            // If a non-URL, don't bother trying to fetch
-            return None;
-        }
-
-        let url = format!("https://{}", pkgid.path.to_str());
-        debug2!("Fetching package: git clone {} {} [version={}]",
-                  url, clone_target.to_str(), pkgid.version.to_str());
-
-        if git_clone_general(url, &clone_target, &pkgid.version) {
-            // Since the operation succeeded, move clone_target to local.
-            // First, create all ancestor directories.
-            if make_dir_rwx_recursive(&local.pop())
-                && os::rename_file(&clone_target, local) {
-                 Some(local.clone())
+        match safe_git_clone(&pkgid.path, &pkgid.version, local) {
+            CheckedOutSources => {
+                make_read_only(local);
+                Some(local.clone())
             }
-            else {
-                 None
+            DirToUse(clone_target) => {
+                if pkgid.path.components().len() < 2 {
+                    // If a non-URL, don't bother trying to fetch
+                    return None;
+                }
+
+                let url = format!("https://{}", pkgid.path.to_str());
+                debug2!("Fetching package: git clone {} {} [version={}]",
+                        url, clone_target.to_str(), pkgid.version.to_str());
+
+                let mut failed = false;
+
+                do cond.trap(|_| {
+                    failed = true;
+                }).inside {
+                    git_clone_url(url, &clone_target, &pkgid.version);
+                };
+
+                if failed {
+                    return None;
+                }
+
+                // Move clone_target to local.
+                // First, create all ancestor directories.
+                let moved = make_dir_rwx_recursive(&local.pop())
+                    && os::rename_file(&clone_target, local);
+                if moved { Some(local.clone()) }
+                    else { None }
             }
-        }
-        else {
-            None
         }
     }
-
 
     // If a file named "pkg.rs" in the start directory exists,
     // return the path for it. Otherwise, None
@@ -292,7 +361,6 @@ impl PkgSrc {
 
     fn build_crates(&self,
                     ctx: &BuildContext,
-                    destination_dir: &Path,
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
@@ -311,7 +379,7 @@ impl PkgSrc {
                 let subpath_str = path_str.clone();
                 let subcx = ctx.clone();
                 let id = self.id.clone();
-                let sub_dir = destination_dir.clone();
+                let sub_dir = self.build_workspace().clone();
                 let sub_flags = crate.flags.clone();
                 do prep.exec |exec| {
                     let result = compile_crate(&subcx,
@@ -351,42 +419,30 @@ impl PkgSrc {
     // Encodable.
     pub fn build(&self,
                  build_context: &BuildContext,
-                 cfgs: ~[~str]) -> ~str {
-        use conditions::not_a_workspace::cond;
-
-        // Determine the destination workspace (which depends on whether
-        // we're using the rust_path_hack)
-        let destination_workspace = if is_workspace(&self.workspace) {
-            debug2!("{} is indeed a workspace", self.workspace.to_str());
-            self.workspace.clone()
-        } else {
-            // It would be nice to have only one place in the code that checks
-            // for the use_rust_path_hack flag...
-            if build_context.context.use_rust_path_hack {
-                let rs = default_workspace();
-                debug2!("Using hack: {}", rs.to_str());
-                rs
-            } else {
-                cond.raise(format!("Package root {} is not a workspace; pass in --rust_path_hack \
-                                        if you want to treat it as a package source",
-                                self.workspace.to_str()))
-            }
-        };
-
+                 cfgs: ~[~str]) {
         let libs = self.libs.clone();
         let mains = self.mains.clone();
         let tests = self.tests.clone();
         let benchs = self.benchs.clone();
         debug2!("Building libs in {}, destination = {}",
-               destination_workspace.to_str(), destination_workspace.to_str());
-        self.build_crates(build_context, &destination_workspace, libs, cfgs, Lib);
+               self.source_workspace.to_str(), self.build_workspace().to_str());
+        self.build_crates(build_context, libs, cfgs, Lib);
         debug2!("Building mains");
-        self.build_crates(build_context, &destination_workspace, mains, cfgs, Main);
+        self.build_crates(build_context, mains, cfgs, Main);
         debug2!("Building tests");
-        self.build_crates(build_context, &destination_workspace, tests, cfgs, Test);
+        self.build_crates(build_context, tests, cfgs, Test);
         debug2!("Building benches");
-        self.build_crates(build_context, &destination_workspace, benchs, cfgs, Bench);
-        destination_workspace.to_str()
+        self.build_crates(build_context, benchs, cfgs, Bench);
+    }
+
+    /// Return the workspace to put temporary files in. See the comment on `PkgSrc`
+    pub fn build_workspace<'a>(&'a self) -> &'a Path {
+        if self.build_in_destination {
+            &self.destination_workspace
+        }
+        else {
+            &self.source_workspace
+        }
     }
 
     /// Debugging
