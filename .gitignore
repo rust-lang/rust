@@ -77,7 +77,7 @@ src/.DS_Store
 /nd/
 /llvm/
 version.md
-rust.tex
+*.tex
 keywords.md
 x86_64-apple-darwin/
 x86_64-unknown-linux-gnu/
