@@ -8,15 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod Bar {
-    pub struct Foo {
-        v: int,
-    }
-
-    extern {
-        #[rust_stack]
-        pub fn foo(v: *Foo) -> Foo;
-    }
-}
-
-pub fn main() { }
+pub struct S<T>(Option<T>);
+pub fn mk<T>() -> S<T> { S(None) }
