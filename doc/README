@@ -19,7 +19,7 @@ To generate HTML documentation from one source file/crate, do something like:
 To generate an HTML version of a doc from Markdown, without having Node.js
 installed, do something like:
 
-  pandoc --from=markdown --to=html --number-sections -o rust.html rust.md
+  pandoc --from=markdown --to=html5 --number-sections -o rust.html rust.md
 
 The syntax for pandoc flavored markdown can be found at:
 http://johnmacfarlane.net/pandoc/README.html#pandocs-markdown
