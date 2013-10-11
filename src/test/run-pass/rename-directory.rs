@@ -9,12 +9,12 @@
 // except according to those terms.
 
 // This test can't be a unit test in std,
-// because it needs mkdtemp, which is in extra
+// because it needs TempDir, which is in extra
 
 // xfail-fast
 extern mod extra;
 
-use extra::tempfile::mkdtemp;
+use extra::tempfile::TempDir;
 use std::os;
 use std::libc;
 
@@ -23,7 +23,8 @@ fn rename_directory() {
     unsafe {
         static U_RWX: i32 = (libc::S_IRUSR | libc::S_IWUSR | libc::S_IXUSR) as i32;
 
-        let tmpdir = mkdtemp(&os::tmpdir(), "rename_directory").expect("rename_directory failed");
+        let tmpdir = TempDir::new("rename_directory").expect("rename_directory failed");
+        let tmpdir = tmpdir.path();
         let old_path = tmpdir.push_many(["foo", "bar", "baz"]);
         assert!(os::mkdir_recursive(&old_path, U_RWX));
         let test_file = &old_path.push("temp.txt");

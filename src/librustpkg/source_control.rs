@@ -12,7 +12,7 @@
 
 use std::{io, os, run, str};
 use std::run::{ProcessOutput, ProcessOptions, Process};
-use extra::tempfile;
+use extra::tempfile::TempDir;
 use version::*;
 use path_util::chmod_read_only;
 
@@ -22,14 +22,6 @@ use path_util::chmod_read_only;
 /// directory (that the callee may use, for example, to check out remote sources into).
 /// Returns `CheckedOutSources` if the clone succeeded.
 pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult {
-    use conditions::failed_to_create_temp_dir::cond;
-
-    let scratch_dir = tempfile::mkdtemp(&os::tmpdir(), "rustpkg");
-    let clone_target = match scratch_dir {
-        Some(d) => d.push("rustpkg_temp"),
-        None    => cond.raise(~"Failed to create temporary directory for fetching git sources")
-    };
-
     if os::path_exists(source) {
         debug2!("{} exists locally! Cloning it into {}",
                 source.to_str(), target.to_str());
@@ -77,6 +69,14 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
         }
         CheckedOutSources
     } else {
+        use conditions::failed_to_create_temp_dir::cond;
+
+        let scratch_dir = TempDir::new("rustpkg");
+        let clone_target = match scratch_dir {
+            Some(d) => d.unwrap().push("rustpkg_temp"),
+            None    => cond.raise(~"Failed to create temporary directory for fetching git sources")
+        };
+
         DirToUse(clone_target)
     }
 }

@@ -239,9 +239,6 @@ impl PkgSrc {
     pub fn fetch_git(local: &Path, pkgid: &PkgId) -> Option<Path> {
         use conditions::git_checkout_failed::cond;
 
-        // We use a temporary directory because if the git clone fails,
-        // it creates the target directory anyway and doesn't delete it
-
         debug2!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
                 pkgid.to_str(), pkgid.path.to_str(),
                 os::getcwd().to_str(),
