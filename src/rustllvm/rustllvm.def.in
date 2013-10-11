@@ -628,3 +628,4 @@ LLVMRustSetNormalizedTarget
 LLVMRustAddAlwaysInlinePass
 LLVMAddReturnAttribute
 LLVMRemoveReturnAttribute
+LLVMTypeToString

@@ -15,7 +15,8 @@
 
 use std::c_str::ToCStr;
 use std::hashmap::HashMap;
-use std::libc::{c_uint, c_ushort};
+use std::libc::{c_uint, c_ushort, c_void, free};
+use std::str::raw::from_c_str;
 use std::option;
 
 use middle::trans::type_::Type;
@@ -1666,6 +1667,7 @@ pub mod llvm {
                                             -> ValueRef;
 
         pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
+        pub fn LLVMTypeToString(Type: TypeRef) -> *c_char;
 
         pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
@@ -1789,66 +1791,13 @@ impl TypeNames {
         self.named_types.find_equiv(&s).map(|x| Type::from_ref(*x))
     }
 
-    // We have a depth count, because we seem to make infinite types.
-    pub fn type_to_str_depth(&self, ty: Type, depth: int) -> ~str {
-        match self.find_name(&ty) {
-            option::Some(name) => return name.to_owned(),
-            None => ()
-        }
-
-        if depth == 0 {
-            return ~"###";
-        }
-
-        unsafe {
-            let kind = ty.kind();
-
-            match kind {
-                Void => ~"Void",
-                Half => ~"Half",
-                Float => ~"Float",
-                Double => ~"Double",
-                X86_FP80 => ~"X86_FP80",
-                FP128 => ~"FP128",
-                PPC_FP128 => ~"PPC_FP128",
-                Label => ~"Label",
-                Vector => ~"Vector",
-                Metadata => ~"Metadata",
-                X86_MMX => ~"X86_MMAX",
-                Integer => {
-                    format!("i{}", llvm::LLVMGetIntTypeWidth(ty.to_ref()) as int)
-                }
-                Function => {
-                    let out_ty = ty.return_type();
-                    let args = ty.func_params();
-                    let args =
-                        args.map(|&ty| self.type_to_str_depth(ty, depth-1)).connect(", ");
-                    let out_ty = self.type_to_str_depth(out_ty, depth-1);
-                    format!("fn({}) -> {}", args, out_ty)
-                }
-                Struct => {
-                    let tys = ty.field_types();
-                    let tys = tys.map(|&ty| self.type_to_str_depth(ty, depth-1)).connect(", ");
-                    format!("\\{{}\\}", tys)
-                }
-                Array => {
-                    let el_ty = ty.element_type();
-                    let el_ty = self.type_to_str_depth(el_ty, depth-1);
-                    let len = ty.array_length();
-                    format!("[{} x {}]", el_ty, len)
-                }
-                Pointer => {
-                    let el_ty = ty.element_type();
-                    let el_ty = self.type_to_str_depth(el_ty, depth-1);
-                    format!("*{}", el_ty)
-                }
-                _ => fail2!("Unknown Type Kind ({})", kind as uint)
-            }
-        }
-    }
-
     pub fn type_to_str(&self, ty: Type) -> ~str {
-        self.type_to_str_depth(ty, 30)
+        unsafe {
+            let s = llvm::LLVMTypeToString(ty.to_ref());
+            let ret = from_c_str(s);
+            free(s as *c_void);
+            ret
+        }
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> ~str {
