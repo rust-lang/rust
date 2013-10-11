@@ -949,16 +949,8 @@ pub struct _mod {
     items: ~[@item],
 }
 
-// Foreign mods can be named or anonymous
-#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub enum foreign_mod_sort {
-    named,
-    anonymous,
-}
-
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct foreign_mod {
-    sort: foreign_mod_sort,
     abis: AbiSet,
     view_items: ~[view_item],
     items: ~[@foreign_item],
