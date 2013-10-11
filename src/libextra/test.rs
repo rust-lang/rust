@@ -1148,8 +1148,7 @@ mod tests {
     use test::{TestOpts, run_test};
 
     use std::comm::{stream, SharedChan};
-    use tempfile;
-    use std::os;
+    use tempfile::TempDir;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1392,9 +1391,8 @@ mod tests {
 
     pub fn ratchet_test() {
 
-        let dpth = tempfile::mkdtemp(&os::tmpdir(),
-                                     "test-ratchet").expect("missing test for ratchet");
-        let pth = dpth.push("ratchet.json");
+        let dpth = TempDir::new("test-ratchet").expect("missing test for ratchet");
+        let pth = dpth.path().push("ratchet.json");
 
         let mut m1 = MetricMap::new();
         m1.insert_metric("runtime", 1000.0, 2.0);
@@ -1432,7 +1430,5 @@ mod tests {
         assert_eq!(m4.len(), 2);
         assert_eq!(*(m4.find(&~"runtime").unwrap()), Metric { value: 1100.0, noise: 2.0 });
         assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric { value: 50.0, noise: 2.0 });
-
-        os::remove_dir_recursive(&dpth);
     }
 }
