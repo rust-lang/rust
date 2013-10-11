@@ -20,14 +20,62 @@
 
 extern mod extra;
 
-use extra::tempfile::mkdtemp;
+use extra::tempfile::TempDir;
 use std::os;
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+use std::task;
+use std::cell::Cell;
 
-fn test_mkdtemp() {
-    let p = mkdtemp(&Path("."), "foobar").unwrap();
-    os::remove_dir(&p);
-    assert!(p.to_str().ends_with("foobar"));
+fn test_tempdir() {
+    let path = {
+        let p = TempDir::new_in(&Path("."), "foobar").unwrap();
+        let p = p.path();
+        assert!(p.to_str().ends_with("foobar"));
+        p.clone()
+    };
+    assert!(!os::path_exists(&path));
+}
+
+fn test_rm_tempdir() {
+    let (rd, wr) = stream();
+    let f: ~fn() = || {
+        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        wr.send(tmp.path().clone());
+        fail2!("fail to unwind past `tmp`");
+    };
+    task::try(f);
+    let path = rd.recv();
+    assert!(!os::path_exists(&path));
+
+    let tmp = TempDir::new("test_rm_tempdir").unwrap();
+    let path = tmp.path().clone();
+    let cell = Cell::new(tmp);
+    let f: ~fn() = || {
+        let _tmp = cell.take();
+        fail2!("fail to unwind past `tmp`");
+    };
+    task::try(f);
+    assert!(!os::path_exists(&path));
+
+    let path;
+    {
+        let f: ~fn() -> TempDir = || {
+            TempDir::new("test_rm_tempdir").unwrap()
+        };
+        let tmp = task::try(f).expect("test_rm_tmdir");
+        path = tmp.path().clone();
+        assert!(os::path_exists(&path));
+    }
+    assert!(!os::path_exists(&path));
+
+    let path;
+    {
+        let tmp = TempDir::new("test_rm_tempdir").unwrap();
+        path = tmp.unwrap();
+    }
+    assert!(os::path_exists(&path));
+    os::remove_dir_recursive(&path);
+    assert!(!os::path_exists(&path));
 }
 
 // Ideally these would be in std::os but then core would need
@@ -65,12 +113,13 @@ fn recursive_mkdir_rel_2() {
     assert!(os::path_is_dir(&path2.pop()));
 }
 
-// Ideally this would be in core, but needs mkdtemp
+// Ideally this would be in core, but needs TempFile
 pub fn test_rmdir_recursive_ok() {
     let rwx = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 
-    let tmpdir = mkdtemp(&os::tmpdir(), "test").expect("test_rmdir_recursive_ok: \
-                                        couldn't create temp dir");
+    let tmpdir = TempDir::new("test").expect("test_rmdir_recursive_ok: \
+                                              couldn't create temp dir");
+    let tmpdir = tmpdir.path();
     let root = tmpdir.push("foo");
 
     debug2!("making {}", root.to_str());
@@ -85,14 +134,15 @@ pub fn test_rmdir_recursive_ok() {
 }
 
 fn in_tmpdir(f: &fn()) {
-    let tmpdir = mkdtemp(&os::tmpdir(), "test").expect("can't make tmpdir");
-    assert!(os::change_dir(&tmpdir));
+    let tmpdir = TempDir::new("test").expect("can't make tmpdir");
+    assert!(os::change_dir(tmpdir.path()));
 
     f();
 }
 
 fn main() {
-    in_tmpdir(test_mkdtemp);
+    in_tmpdir(test_tempdir);
+    in_tmpdir(test_rm_tempdir);
     in_tmpdir(recursive_mkdir_rel);
     in_tmpdir(recursive_mkdir_dot);
     in_tmpdir(recursive_mkdir_rel_2);
