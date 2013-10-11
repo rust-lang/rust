@@ -12,41 +12,55 @@
 
 #[allow(missing_doc)];
 
-use c_str::ToCStr;
-use libc::size_t;
-use libc;
+use any::Any;
+use kinds::Send;
+use rt::task::{UnwindReasonStr, UnwindReasonAny};
 use rt::task;
+use send_str::{SendStr, IntoSendStr};
 
-/// Trait for initiating task failure.
+/// Trait for initiating task failure with a sendable cause.
 pub trait FailWithCause {
-    /// Fail the current task, taking ownership of `cause`
+    /// Fail the current task with `cause`.
     fn fail_with(cause: Self, file: &'static str, line: uint) -> !;
 }
 
 impl FailWithCause for ~str {
     fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
-        do cause.with_c_str |msg_buf| {
-            do file.with_c_str |file_buf| {
-                task::begin_unwind(msg_buf, file_buf, line as libc::size_t)
-            }
-        }
+        task::begin_unwind_reason(UnwindReasonStr(cause.into_send_str()), file, line)
     }
 }
 
 impl FailWithCause for &'static str {
     fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
-        do cause.with_c_str |msg_buf| {
-            do file.with_c_str |file_buf| {
-                task::begin_unwind(msg_buf, file_buf, line as libc::size_t)
-            }
-        }
+        task::begin_unwind_reason(UnwindReasonStr(cause.into_send_str()), file, line)
+    }
+}
+
+impl FailWithCause for SendStr {
+    fn fail_with(cause: SendStr, file: &'static str, line: uint) -> ! {
+        task::begin_unwind_reason(UnwindReasonStr(cause), file, line)
+    }
+}
+
+impl FailWithCause for ~Any {
+    fn fail_with(cause: ~Any, file: &'static str, line: uint) -> ! {
+        task::begin_unwind_reason(UnwindReasonAny(cause), file, line)
+    }
+}
+
+impl<T: Any + Send + 'static> FailWithCause for ~T {
+    fn fail_with(cause: ~T, file: &'static str, line: uint) -> ! {
+        task::begin_unwind_reason(UnwindReasonAny(cause as ~Any), file, line)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    use any::Any;
     use cast;
-    use sys::*;
+    use send_str::IntoSendStr;
 
     #[test]
     fn synthesize_closure() {
@@ -74,9 +88,21 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn fail_static() { FailWithCause::fail_with("cause", file!(), line!())  }
+    fn fail_static() { FailWithCause::fail_with("cause", file!(), line!()) }
 
     #[test]
     #[should_fail]
-    fn fail_owned() { FailWithCause::fail_with(~"cause", file!(), line!())  }
+    fn fail_owned() { FailWithCause::fail_with(~"cause", file!(), line!()) }
+
+    #[test]
+    #[should_fail]
+    fn fail_send() { FailWithCause::fail_with("cause".into_send_str(), file!(), line!()) }
+
+    #[test]
+    #[should_fail]
+    fn fail_any() { FailWithCause::fail_with(~612_u16 as ~Any, file!(), line!()) }
+
+    #[test]
+    #[should_fail]
+    fn fail_any_wrap() { FailWithCause::fail_with(~413_u16, file!(), line!()) }
 }

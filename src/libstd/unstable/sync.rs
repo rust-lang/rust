@@ -14,7 +14,6 @@ use comm;
 use libc;
 use ptr;
 use option::*;
-use either::{Either, Left, Right};
 use task;
 use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,Relaxed,SeqCst};
 use unstable::finally::Finally;
@@ -29,6 +28,27 @@ use vec;
 //#[unsafe_no_drop_flag] FIXME: #9758
 pub struct UnsafeArc<T> {
     data: *mut ArcData<T>,
+}
+
+pub enum UnsafeArcUnwrap<T> {
+    UnsafeArcSelf(UnsafeArc<T>),
+    UnsafeArcT(T)
+}
+
+impl<T> UnsafeArcUnwrap<T> {
+    fn expect_t(self, msg: &'static str) -> T {
+        match self {
+            UnsafeArcSelf(_) => fail!(msg),
+            UnsafeArcT(t) => t
+        }
+    }
+
+    fn is_self(&self) -> bool {
+        match *self {
+            UnsafeArcSelf(_) => true,
+            UnsafeArcT(_) => false
+        }
+    }
 }
 
 struct ArcData<T> {
@@ -178,9 +198,9 @@ impl<T: Send> UnsafeArc<T> {
         }
     }
 
-    /// As unwrap above, but without blocking. Returns 'Left(self)' if this is
-    /// not the last reference; 'Right(unwrapped_data)' if so.
-    pub fn try_unwrap(self) -> Either<UnsafeArc<T>, T> {
+    /// As unwrap above, but without blocking. Returns 'UnsafeArcSelf(self)' if this is
+    /// not the last reference; 'UnsafeArcT(unwrapped_data)' if so.
+    pub fn try_unwrap(self) -> UnsafeArcUnwrap<T> {
         unsafe {
             let mut this = self; // FIXME(#4330) mutable self
             // The ~ dtor needs to run if this code succeeds.
@@ -198,10 +218,10 @@ impl<T: Send> UnsafeArc<T> {
                 // Tell this handle's destructor not to run (we are now it).
                 this.data = ptr::mut_null();
                 // FIXME(#3224) as above
-                Right(data.data.take_unwrap())
+                UnsafeArcT(data.data.take_unwrap())
             } else {
                 cast::forget(data);
-                Left(this)
+                UnsafeArcSelf(this)
             }
         }
     }
@@ -574,7 +594,7 @@ mod tests {
     #[test]
     fn arclike_try_unwrap() {
         let x = UnsafeArc::new(~~"hello");
-        assert!(x.try_unwrap().expect_right("try_unwrap failed") == ~~"hello");
+        assert!(x.try_unwrap().expect_t("try_unwrap failed") == ~~"hello");
     }
 
     #[test]
@@ -582,9 +602,9 @@ mod tests {
         let x = UnsafeArc::new(~~"hello");
         let x2 = x.clone();
         let left_x = x.try_unwrap();
-        assert!(left_x.is_left());
+        assert!(left_x.is_self());
         util::ignore(left_x);
-        assert!(x2.try_unwrap().expect_right("try_unwrap none") == ~~"hello");
+        assert!(x2.try_unwrap().expect_t("try_unwrap none") == ~~"hello");
     }
 
     #[test]
@@ -601,7 +621,7 @@ mod tests {
         p.recv();
         task::deschedule(); // Try to make the unwrapper get blocked first.
         let left_x = x.try_unwrap();
-        assert!(left_x.is_left());
+        assert!(left_x.is_self());
         util::ignore(left_x);
         p.recv();
     }
@@ -649,7 +669,7 @@ mod tests {
             assert!(x2.unwrap() == ~~"hello");
         }
         assert!(x.unwrap() == ~~"hello");
-        assert!(res.recv() == task::Success);
+        assert!(res.recv().is_ok());
     }
 
     #[test]

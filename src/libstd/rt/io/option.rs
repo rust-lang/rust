@@ -107,7 +107,7 @@ mod test {
     use option::*;
     use super::super::mem::*;
     use rt::test::*;
-    use super::super::{PreviousIoError, io_error, io_error};
+    use super::super::{PreviousIoError, io_error};
 
     #[test]
     fn test_option_writer() {

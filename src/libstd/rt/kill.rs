@@ -152,14 +152,15 @@ There are two known issues with the current scheme for exit code propagation.
 
 use cast;
 use cell::Cell;
-use either::{Either, Left, Right};
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
+use rt::task::UnwindReasonLinked;
+use rt::task::{UnwindResult, Failure};
 use task::spawn::Taskgroup;
 use to_bytes::IterBytes;
 use unstable::atomics::{AtomicUint, Relaxed};
-use unstable::sync::{UnsafeArc, LittleLock};
+use unstable::sync::{UnsafeArc, UnsafeArcSelf, UnsafeArcT, LittleLock};
 use util;
 
 static KILLED_MSG: &'static str = "killed by linked failure";
@@ -222,7 +223,7 @@ pub struct Death {
     priv watching_parent: Option<KillHandle>,
     // Action to be done with the exit code. If set, also makes the task wait
     // until all its watched children exit before collecting the status.
-    on_exit:         Option<~fn(bool)>,
+    on_exit:         Option<~fn(UnwindResult)>,
     // nesting level counter for task::unkillable calls (0 == killable).
     priv unkillable:      int,
     // nesting level counter for unstable::atomically calls (0 == can deschedule).
@@ -478,7 +479,7 @@ impl KillHandle {
         match self.try_unwrap() {
             // Couldn't unwrap; children still alive. Reparent entire handle as
             // our own tombstone, to be unwrapped later.
-            Left(this) => {
+            UnsafeArcSelf(this) => {
                 let this = Cell::new(this); // :(
                 do add_lazy_tombstone(parent) |other_tombstones| {
                     let this = Cell::new(this.take()); // :(
@@ -494,14 +495,16 @@ impl KillHandle {
                     }
                 }
             }
+
             // Whether or not all children exited, one or more already failed.
-            Right(KillHandleInner { any_child_failed: true, _ }) => {
+            UnsafeArcT(KillHandleInner { any_child_failed: true, _ }) => {
                 parent.notify_immediate_failure();
             }
+
             // All children exited, but some left behind tombstones that we
             // don't want to wait on now. Give them to our parent.
-            Right(KillHandleInner { any_child_failed: false,
-                                    child_tombstones: Some(f), _ }) => {
+            UnsafeArcT(KillHandleInner { any_child_failed: false,
+                                         child_tombstones: Some(f), _ }) => {
                 let f = Cell::new(f); // :(
                 do add_lazy_tombstone(parent) |other_tombstones| {
                     let f = Cell::new(f.take()); // :(
@@ -513,9 +516,10 @@ impl KillHandle {
                     }
                 }
             }
+
             // All children exited, none failed. Nothing to do!
-            Right(KillHandleInner { any_child_failed: false,
-                                    child_tombstones: None, _ }) => { }
+            UnsafeArcT(KillHandleInner { any_child_failed: false,
+                                         child_tombstones: None, _ }) => { }
         }
 
         // NB: Takes a pthread mutex -- 'blk' not allowed to reschedule.
@@ -562,7 +566,7 @@ impl Death {
     }
 
     /// Collect failure exit codes from children and propagate them to a parent.
-    pub fn collect_failure(&mut self, mut success: bool, group: Option<Taskgroup>) {
+    pub fn collect_failure(&mut self, result: UnwindResult, group: Option<Taskgroup>) {
         // This may run after the task has already failed, so even though the
         // task appears to need to be killed, the scheduler should not fail us
         // when we block to unwrap.
@@ -576,19 +580,27 @@ impl Death {
         // FIXME(#8192): Doesn't work with "let _ = ..."
         { use util; util::ignore(group); }
 
+        let mut success = result.is_success();
+        let mut result = Cell::new(result);
+
         // Step 1. Decide if we need to collect child failures synchronously.
         do self.on_exit.take().map |on_exit| {
             if success {
                 // We succeeded, but our children might not. Need to wait for them.
                 let mut inner = self.kill_handle.take_unwrap().unwrap();
+
                 if inner.any_child_failed {
                     success = false;
                 } else {
                     // Lockless access to tombstones protected by unwrap barrier.
                     success = inner.child_tombstones.take().map_default(true, |f| f());
                 }
+
+                if !success {
+                    result = Cell::new(Failure(UnwindReasonLinked));
+                }
             }
-            on_exit(success);
+            on_exit(result.take());
         };
 
         // Step 2. Possibly alert possibly-watching parent to failure status.
