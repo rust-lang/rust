@@ -15,10 +15,10 @@ use option::{Option, None, Some};
 use ptr::RawPtr;
 use rt::env;
 use rt::local::Local;
+use rt::task;
 use rt::task::Task;
 use str::{OwnedStr, StrSlice};
 use str;
-use sys;
 use uint;
 use unstable::raw;
 use vec::ImmutableVector;
@@ -64,7 +64,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
         None => { // not recording borrows
             let msg = "borrowed";
             do msg.with_c_str |msg_p| {
-                sys::begin_unwind_(msg_p, file, line);
+                task::begin_unwind(msg_p, file, line);
             }
         }
         Some(borrow_list) => { // recording borrows
@@ -80,7 +80,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
                 }
             }
             do msg.with_c_str |msg_p| {
-                sys::begin_unwind_(msg_p, file, line)
+                task::begin_unwind(msg_p, file, line)
             }
         }
     }
@@ -179,7 +179,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
             if br.box != a || br.file != file || br.line != line {
                 let err = format!("wrong borrow found, br={:?}", br);
                 do err.with_c_str |msg_p| {
-                    sys::begin_unwind_(msg_p, file, line)
+                    task::begin_unwind(msg_p, file, line)
                 }
             }
             borrow_list
