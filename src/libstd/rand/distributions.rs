@@ -63,21 +63,48 @@ impl<Sup: Rand> IndependentSample<Sup> for RandSample<Sup> {
 
 mod ziggurat_tables;
 
-// inlining should mean there is no performance penalty for this
-#[inline]
+
+/// Sample a random number using the Ziggurat method (specifically the
+/// ZIGNOR variant from Doornik 2005). Most of the arguments are
+/// directly from the paper:
+///
+/// * `rng`: source of randomness
+/// * `symmetric`: whether this is a symmetric distribution, or one-sided with P(x < 0) = 0.
+/// * `X`: the $x_i$ abscissae.
+/// * `F`: precomputed values of the PDF at the $x_i$, (i.e. $f(x_i)$)
+/// * `F_DIFF`: precomputed values of $f(x_i) - f(x_{i+1})$
+/// * `pdf`: the probability density function
+/// * `zero_case`: manual sampling from the tail when we chose the
+///    bottom box (i.e. i == 0)
+
+// the perf improvement (25-50%) is definitely worth the extra code
+// size from force-inlining.
+#[inline(always)]
 fn ziggurat<R:Rng>(rng: &mut R,
-                   center_u: bool,
+                   symmetric: bool,
                    X: ziggurat_tables::ZigTable,
                    F: ziggurat_tables::ZigTable,
                    F_DIFF: ziggurat_tables::ZigTable,
-                   pdf: &'static fn(f64) -> f64, // probability density function
+                   pdf: &'static fn(f64) -> f64,
                    zero_case: &'static fn(&mut R, f64) -> f64) -> f64 {
+    static SCALE: f64 = (1u64 << 53) as f64;
     loop {
-        let u = if center_u {2.0 * rng.gen() - 1.0} else {rng.gen()};
-        let i: uint = rng.gen::<uint>() & 0xff;
+        // reimplement the f64 generation as an optimisation suggested
+        // by the Doornik paper: we have a lot of precision-space
+        // (i.e. there are 11 bits of the 64 of a u64 to use after
+        // creating a f64), so we might as well reuse some to save
+        // generating a whole extra random number. (Seems to be 15%
+        // faster.)
+        let bits: u64 = rng.gen();
+        let i = (bits & 0xff) as uint;
+        let f = (bits >> 11) as f64 / SCALE;
+
+        // u is either U(-1, 1) or U(0, 1) depending on if this is a
+        // symmetric distribution or not.
+        let u = if symmetric {2.0 * f - 1.0} else {f};
         let x = u * X[i];
 
-        let test_x = if center_u {num::abs(x)} else {x};
+        let test_x = if symmetric {num::abs(x)} else {x};
 
         // algebraically equivalent to |u| < X[i+1]/X[i] (or u < X[i+1]/X[i])
         if test_x < X[i + 1] {
@@ -87,7 +114,7 @@ fn ziggurat<R:Rng>(rng: &mut R,
             return zero_case(rng, u);
         }
         // algebraically equivalent to f1 + DRanU()*(f0 - f1) < 1
-        if F[i+1] + F_DIFF[i+1] * rng.gen() < pdf(x) {
+        if F[i + 1] + F_DIFF[i + 1] * rng.gen() < pdf(x) {
             return x;
         }
     }
@@ -316,5 +343,42 @@ mod tests {
     #[should_fail]
     fn test_exp_invalid_lambda_neg() {
         Exp::new(-10.0);
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use rand::*;
+    use super::*;
+    use iter::range;
+    use option::{Some, None};
+    use mem::size_of;
+
+    static N: u64 = 100;
+
+    #[bench]
+    fn rand_normal(bh: &mut BenchHarness) {
+        let mut rng = XorShiftRng::new();
+        let mut normal = Normal::new(-2.71828, 3.14159);
+
+        do bh.iter {
+            for _ in range(0, N) {
+                normal.sample(&mut rng);
+            }
+        }
+        bh.bytes = size_of::<f64>() as u64 * N;
+    }
+    #[bench]
+    fn rand_exp(bh: &mut BenchHarness) {
+        let mut rng = XorShiftRng::new();
+        let mut exp = Exp::new(2.71828 * 3.14159);
+
+        do bh.iter {
+            for _ in range(0, N) {
+                exp.sample(&mut rng);
+            }
+        }
+        bh.bytes = size_of::<f64>() as u64 * N;
     }
 }
