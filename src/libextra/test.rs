@@ -873,8 +873,7 @@ pub fn run_test(force_ignore: bool,
             task.spawn(testfn_cell.take());
 
             let task_result = result_future.recv();
-            let test_result = calc_result(&desc,
-                                          task_result == task::Success);
+            let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result));
         }
     }

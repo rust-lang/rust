@@ -60,7 +60,7 @@ fn spawn_supervised_blocking(myname: &str, f: ~fn()) {
     builder.spawn(f);
     error!("{} group waiting", myname);
     let x = res.recv();
-    assert_eq!(x, task::Success);
+    assert!(x.is_ok());
 }
 
 fn main() {
@@ -78,7 +78,7 @@ fn main() {
     // Main group #0 waits for unsupervised group #1.
     // Grandparent group #1 waits for middle group #2, then fails, killing #3.
     // Middle group #2 creates grandchild_group #3, waits for it to be ready, exits.
-    let x: result::Result<(),()> = do task::try { // unlinked
+    let x: result::Result<(), ~Any> = do task::try { // unlinked
         do spawn_supervised_blocking("grandparent") {
             do spawn_supervised_blocking("middle") {
                 grandchild_group(num_tasks);

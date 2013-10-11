@@ -66,12 +66,13 @@ use ptr::RawPtr;
 use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
+use rt::task::UnwindResult;
 use rt::task::{Task, SchedTask, GreenTask, Sched};
 use rt::uv::uvio::UvEventLoop;
 use unstable::atomics::{AtomicInt, AtomicBool, SeqCst};
 use unstable::sync::UnsafeArc;
-use vec;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
+use vec;
 
 use self::thread::Thread;
 use self::work_queue::WorkQueue;
@@ -343,7 +344,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // When the main task exits, after all the tasks in the main
     // task tree, shut down the schedulers and set the exit code.
     let handles = Cell::new(handles);
-    let on_exit: ~fn(bool) = |exit_success| {
+    let on_exit: ~fn(UnwindResult) = |exit_success| {
         unsafe {
             assert!(!(*exited_already.get()).swap(true, SeqCst),
                     "the runtime already exited");
@@ -355,7 +356,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         }
 
         unsafe {
-            let exit_code = if exit_success {
+            let exit_code = if exit_success.is_success() {
                 use rt::util;
 
                 // If we're exiting successfully, then return the global
