@@ -13,19 +13,11 @@
 extern mod extra;
 
 use extra::glob::glob;
-use extra::tempfile;
+use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
 use std::{io, os, unstable};
 
 pub fn main() {
-    fn change_then_remove(p: &Path, f: &fn()) {
-        assert!(os::change_dir(p));
-
-        do f.finally {
-            os::remove_dir_recursive(p);
-        }
-    }
-
     fn mk_file(path: &str, directory: bool) {
         if directory {
             os::make_dir(&Path(path), 0xFFFF);
@@ -42,162 +34,161 @@ pub fn main() {
         glob(pattern).collect()
     }
 
-    let root = tempfile::mkdtemp(&os::tmpdir(), "glob-tests");
+    let root = TempDir::new("glob-tests");
     let root = root.expect("Should have created a temp directory");
+    assert!(os::change_dir(root.path()));
 
-    do change_then_remove(&root) {
-        mk_file("aaa", true);
-        mk_file("aaa/apple", true);
-        mk_file("aaa/orange", true);
-        mk_file("aaa/tomato", true);
-        mk_file("aaa/tomato/tomato.txt", false);
-        mk_file("aaa/tomato/tomoto.txt", false);
-        mk_file("bbb", true);
-        mk_file("bbb/specials", true);
-        mk_file("bbb/specials/!", false);
+    mk_file("aaa", true);
+    mk_file("aaa/apple", true);
+    mk_file("aaa/orange", true);
+    mk_file("aaa/tomato", true);
+    mk_file("aaa/tomato/tomato.txt", false);
+    mk_file("aaa/tomato/tomoto.txt", false);
+    mk_file("bbb", true);
+    mk_file("bbb/specials", true);
+    mk_file("bbb/specials/!", false);
 
-        // windows does not allow `*` or `?` characters to exist in filenames
-        if os::consts::FAMILY != os::consts::windows::FAMILY {
-            mk_file("bbb/specials/*", false);
-            mk_file("bbb/specials/?", false);
-        }
+    // windows does not allow `*` or `?` characters to exist in filenames
+    if os::consts::FAMILY != os::consts::windows::FAMILY {
+        mk_file("bbb/specials/*", false);
+        mk_file("bbb/specials/?", false);
+    }
 
-        mk_file("bbb/specials/[", false);
-        mk_file("bbb/specials/]", false);
-        mk_file("ccc", true);
-        mk_file("xyz", true);
-        mk_file("xyz/x", false);
-        mk_file("xyz/y", false);
-        mk_file("xyz/z", false);
+    mk_file("bbb/specials/[", false);
+    mk_file("bbb/specials/]", false);
+    mk_file("ccc", true);
+    mk_file("xyz", true);
+    mk_file("xyz/x", false);
+    mk_file("xyz/y", false);
+    mk_file("xyz/z", false);
 
-        assert_eq!(glob_vec(""), ~[]);
-        assert_eq!(glob_vec("."), ~[]);
-        assert_eq!(glob_vec(".."), ~[]);
+    assert_eq!(glob_vec(""), ~[]);
+    assert_eq!(glob_vec("."), ~[]);
+    assert_eq!(glob_vec(".."), ~[]);
 
-        assert_eq!(glob_vec("aaa"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aaa/"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("a"), ~[]);
-        assert_eq!(glob_vec("aa"), ~[]);
-        assert_eq!(glob_vec("aaaa"), ~[]);
+    assert_eq!(glob_vec("aaa"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aaa/"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("a"), ~[]);
+    assert_eq!(glob_vec("aa"), ~[]);
+    assert_eq!(glob_vec("aaaa"), ~[]);
 
-        assert_eq!(glob_vec("aaa/apple"), ~[abs_path("aaa/apple")]);
-        assert_eq!(glob_vec("aaa/apple/nope"), ~[]);
+    assert_eq!(glob_vec("aaa/apple"), ~[abs_path("aaa/apple")]);
+    assert_eq!(glob_vec("aaa/apple/nope"), ~[]);
 
-        // windows should support both / and \ as directory separators
-        if os::consts::FAMILY == os::consts::windows::FAMILY {
-            assert_eq!(glob_vec("aaa\\apple"), ~[abs_path("aaa/apple")]);
-        }
+    // windows should support both / and \ as directory separators
+    if os::consts::FAMILY == os::consts::windows::FAMILY {
+        assert_eq!(glob_vec("aaa\\apple"), ~[abs_path("aaa/apple")]);
+    }
 
-        assert_eq!(glob_vec("???/"), ~[
-            abs_path("aaa"),
-            abs_path("bbb"),
-            abs_path("ccc"),
-            abs_path("xyz")]);
+    assert_eq!(glob_vec("???/"), ~[
+        abs_path("aaa"),
+        abs_path("bbb"),
+        abs_path("ccc"),
+        abs_path("xyz")]);
 
-        assert_eq!(glob_vec("aaa/tomato/tom?to.txt"), ~[
-            abs_path("aaa/tomato/tomato.txt"),
-            abs_path("aaa/tomato/tomoto.txt")]);
+    assert_eq!(glob_vec("aaa/tomato/tom?to.txt"), ~[
+        abs_path("aaa/tomato/tomato.txt"),
+        abs_path("aaa/tomato/tomoto.txt")]);
 
-        assert_eq!(glob_vec("xyz/?"), ~[
-            abs_path("xyz/x"),
-            abs_path("xyz/y"),
-            abs_path("xyz/z")]);
+    assert_eq!(glob_vec("xyz/?"), ~[
+        abs_path("xyz/x"),
+        abs_path("xyz/y"),
+        abs_path("xyz/z")]);
 
-        assert_eq!(glob_vec("a*"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("*a*"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("a*a"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aaa*"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("*aaa"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("*aaa*"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("*a*a*a*"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aaa*/"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("a*"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("*a*"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("a*a"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aaa*"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("*aaa"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("*aaa*"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("*a*a*a*"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aaa*/"), ~[abs_path("aaa")]);
 
-        assert_eq!(glob_vec("aaa/*"), ~[
-            abs_path("aaa/apple"),
-            abs_path("aaa/orange"),
-            abs_path("aaa/tomato")]);
+    assert_eq!(glob_vec("aaa/*"), ~[
+        abs_path("aaa/apple"),
+        abs_path("aaa/orange"),
+        abs_path("aaa/tomato")]);
 
-        assert_eq!(glob_vec("aaa/*a*"), ~[
-            abs_path("aaa/apple"),
-            abs_path("aaa/orange"),
-            abs_path("aaa/tomato")]);
+    assert_eq!(glob_vec("aaa/*a*"), ~[
+        abs_path("aaa/apple"),
+        abs_path("aaa/orange"),
+        abs_path("aaa/tomato")]);
 
-        assert_eq!(glob_vec("*/*/*.txt"), ~[
-            abs_path("aaa/tomato/tomato.txt"),
-            abs_path("aaa/tomato/tomoto.txt")]);
+    assert_eq!(glob_vec("*/*/*.txt"), ~[
+        abs_path("aaa/tomato/tomato.txt"),
+        abs_path("aaa/tomato/tomoto.txt")]);
 
-        assert_eq!(glob_vec("*/*/t[aob]m?to[.]t[!y]t"), ~[
-            abs_path("aaa/tomato/tomato.txt"),
-            abs_path("aaa/tomato/tomoto.txt")]);
+    assert_eq!(glob_vec("*/*/t[aob]m?to[.]t[!y]t"), ~[
+        abs_path("aaa/tomato/tomato.txt"),
+        abs_path("aaa/tomato/tomoto.txt")]);
 
-        assert_eq!(glob_vec("aa[a]"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aa[abc]"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("a[bca]a"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aa[b]"), ~[]);
-        assert_eq!(glob_vec("aa[xyz]"), ~[]);
-        assert_eq!(glob_vec("aa[]]"), ~[]);
+    assert_eq!(glob_vec("aa[a]"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aa[abc]"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("a[bca]a"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aa[b]"), ~[]);
+    assert_eq!(glob_vec("aa[xyz]"), ~[]);
+    assert_eq!(glob_vec("aa[]]"), ~[]);
 
-        assert_eq!(glob_vec("aa[!b]"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aa[!bcd]"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("a[!bcd]a"), ~[abs_path("aaa")]);
-        assert_eq!(glob_vec("aa[!a]"), ~[]);
-        assert_eq!(glob_vec("aa[!abc]"), ~[]);
+    assert_eq!(glob_vec("aa[!b]"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aa[!bcd]"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("a[!bcd]a"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("aa[!a]"), ~[]);
+    assert_eq!(glob_vec("aa[!abc]"), ~[]);
 
-        assert_eq!(glob_vec("bbb/specials/[[]"), ~[abs_path("bbb/specials/[")]);
-        assert_eq!(glob_vec("bbb/specials/!"), ~[abs_path("bbb/specials/!")]);
-        assert_eq!(glob_vec("bbb/specials/[]]"), ~[abs_path("bbb/specials/]")]);
+    assert_eq!(glob_vec("bbb/specials/[[]"), ~[abs_path("bbb/specials/[")]);
+    assert_eq!(glob_vec("bbb/specials/!"), ~[abs_path("bbb/specials/!")]);
+    assert_eq!(glob_vec("bbb/specials/[]]"), ~[abs_path("bbb/specials/]")]);
 
-        if os::consts::FAMILY != os::consts::windows::FAMILY {
-            assert_eq!(glob_vec("bbb/specials/[*]"), ~[abs_path("bbb/specials/*")]);
-            assert_eq!(glob_vec("bbb/specials/[?]"), ~[abs_path("bbb/specials/?")]);
-        }
+    if os::consts::FAMILY != os::consts::windows::FAMILY {
+        assert_eq!(glob_vec("bbb/specials/[*]"), ~[abs_path("bbb/specials/*")]);
+        assert_eq!(glob_vec("bbb/specials/[?]"), ~[abs_path("bbb/specials/?")]);
+    }
 
-        if os::consts::FAMILY == os::consts::windows::FAMILY {
+    if os::consts::FAMILY == os::consts::windows::FAMILY {
 
-            assert_eq!(glob_vec("bbb/specials/[![]"), ~[
-                abs_path("bbb/specials/!"),
-                abs_path("bbb/specials/]")]);
+        assert_eq!(glob_vec("bbb/specials/[![]"), ~[
+            abs_path("bbb/specials/!"),
+            abs_path("bbb/specials/]")]);
 
-            assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
-                abs_path("bbb/specials/!"),
-                abs_path("bbb/specials/[")]);
+        assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
+            abs_path("bbb/specials/!"),
+            abs_path("bbb/specials/[")]);
 
-            assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
-                abs_path("bbb/specials/["),
-                abs_path("bbb/specials/]")]);
+        assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
+            abs_path("bbb/specials/["),
+            abs_path("bbb/specials/]")]);
 
-        } else {
+    } else {
 
-            assert_eq!(glob_vec("bbb/specials/[![]"), ~[
-                abs_path("bbb/specials/!"),
-                abs_path("bbb/specials/*"),
-                abs_path("bbb/specials/?"),
-                abs_path("bbb/specials/]")]);
+        assert_eq!(glob_vec("bbb/specials/[![]"), ~[
+            abs_path("bbb/specials/!"),
+            abs_path("bbb/specials/*"),
+            abs_path("bbb/specials/?"),
+            abs_path("bbb/specials/]")]);
 
-            assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
-                abs_path("bbb/specials/!"),
-                abs_path("bbb/specials/*"),
-                abs_path("bbb/specials/?"),
-                abs_path("bbb/specials/[")]);
+        assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
+            abs_path("bbb/specials/!"),
+            abs_path("bbb/specials/*"),
+            abs_path("bbb/specials/?"),
+            abs_path("bbb/specials/[")]);
 
-            assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
-                abs_path("bbb/specials/*"),
-                abs_path("bbb/specials/?"),
-                abs_path("bbb/specials/["),
-                abs_path("bbb/specials/]")]);
+        assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
+            abs_path("bbb/specials/*"),
+            abs_path("bbb/specials/?"),
+            abs_path("bbb/specials/["),
+            abs_path("bbb/specials/]")]);
 
-            assert_eq!(glob_vec("bbb/specials/[!*]"), ~[
-                abs_path("bbb/specials/!"),
-                abs_path("bbb/specials/?"),
-                abs_path("bbb/specials/["),
-                abs_path("bbb/specials/]")]);
+        assert_eq!(glob_vec("bbb/specials/[!*]"), ~[
+            abs_path("bbb/specials/!"),
+            abs_path("bbb/specials/?"),
+            abs_path("bbb/specials/["),
+            abs_path("bbb/specials/]")]);
 
-            assert_eq!(glob_vec("bbb/specials/[!?]"), ~[
-                abs_path("bbb/specials/!"),
-                abs_path("bbb/specials/*"),
-                abs_path("bbb/specials/["),
-                abs_path("bbb/specials/]")]);
+        assert_eq!(glob_vec("bbb/specials/[!?]"), ~[
+            abs_path("bbb/specials/!"),
+            abs_path("bbb/specials/*"),
+            abs_path("bbb/specials/["),
+            abs_path("bbb/specials/]")]);
 
-        }
-    };
+    }
 }

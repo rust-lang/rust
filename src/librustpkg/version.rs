@@ -15,7 +15,7 @@ extern mod std;
 
 use extra::semver;
 use std::{char, os, result, run, str};
-use extra::tempfile::mkdtemp;
+use extra::tempfile::TempDir;
 use path_util::rust_path;
 
 #[deriving(Clone)]
@@ -132,8 +132,9 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
 /// otherwise, `None`
 pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
     if is_url_like(remote_path) {
-        let tmp_dir = mkdtemp(&os::tmpdir(),
-                              "test").expect("try_getting_version: couldn't create temp dir");
+        let tmp_dir = TempDir::new("test");
+        let tmp_dir = tmp_dir.expect("try_getting_version: couldn't create temp dir");
+        let tmp_dir = tmp_dir.path();
         debug2!("(to get version) executing \\{git clone https://{} {}\\}",
                remote_path.to_str(),
                tmp_dir.to_str());
