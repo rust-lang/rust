@@ -30,8 +30,12 @@ type HCRYPTPROV = c_long;
 // assume they work when we call them.
 
 /// A random number generator that retrieves randomness straight from
-/// the operating system. On Unix-like systems this reads from
-/// `/dev/urandom`, on Windows this uses `CryptGenRandom`.
+/// the operating system. Platform sources:
+///
+/// - Unix-like systems (Linux, Android, Mac OSX): read directly from
+///   `/dev/urandom`.
+/// - Windows: calls `CryptGenRandom`, using the default cryptographic
+///   service provider with the `PROV_RSA_FULL` type.
 ///
 /// This does not block.
 #[cfg(unix)]
@@ -39,8 +43,12 @@ pub struct OSRng {
     priv inner: ReaderRng<file::FileStream>
 }
 /// A random number generator that retrieves randomness straight from
-/// the operating system. On Unix-like systems this reads from
-/// `/dev/urandom`, on Windows this uses `CryptGenRandom`.
+/// the operating system. Platform sources:
+///
+/// - Unix-like systems (Linux, Android, Mac OSX): read directly from
+///   `/dev/urandom`.
+/// - Windows: calls `CryptGenRandom`, using the default cryptographic
+///   service provider with the `PROV_RSA_FULL` type.
 ///
 /// This does not block.
 #[cfg(windows)]

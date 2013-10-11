@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Sampling from random distributions
+/*!
+Sampling from random distributions.
 
-// Some implementations use the Ziggurat method
-// https://en.wikipedia.org/wiki/Ziggurat_algorithm
-//
-// The version used here is ZIGNOR [Doornik 2005, "An Improved
-// Ziggurat Method to Generate Normal Random Samples"] which is slower
-// (about double, it generates an extra random number) than the
-// canonical version [Marsaglia & Tsang 2000, "The Ziggurat Method for
-// Generating Random Variables"], but more robust. If one wanted, one
-// could implement VIZIGNOR the ZIGNOR paper for more speed.
+This is a generalization of `Rand` to allow parameters to control the
+exact properties of the generated values, e.g. the mean and standard
+deviation of a normal distribution. The `Sample` trait is the most
+general, and allows for generating values that change some state
+internally. The `IndependentSample` trait is for generating values
+that do not need to record state.
+
+*/
 
 use num;
 use rand::{Rng,Rand};
@@ -27,16 +27,18 @@ pub use self::range::Range;
 
 pub mod range;
 
-/// Things that can be used to create a random instance of `Support`.
+/// Types that can be used to create a random instance of `Support`.
 pub trait Sample<Support> {
     /// Generate a random value of `Support`, using `rng` as the
     /// source of randomness.
     fn sample<R: Rng>(&mut self, rng: &mut R) -> Support;
 }
 
-/// `Sample`s that do not require keeping track of state, so each
-/// sample is (statistically) independent of all others, assuming the
-/// `Rng` used has this property.
+/// `Sample`s that do not require keeping track of state.
+///
+/// Since no state is recored, each sample is (statistically)
+/// independent of all others, assuming the `Rng` used has this
+/// property.
 // XXX maybe having this separate is overkill (the only reason is to
 // take &self rather than &mut self)? or maybe this should be the
 // trait called `Sample` and the other should be `DependentSample`.
@@ -91,13 +93,19 @@ fn ziggurat<R:Rng>(rng: &mut R,
     }
 }
 
-/// A wrapper around an `f64` to generate N(0, 1) random numbers (a.k.a.  a
-/// standard normal, or Gaussian). Multiplying the generated values by the
-/// desired standard deviation `sigma` then adding the desired mean `mu` will
-/// give N(mu, sigma^2) distributed random numbers.
+/// A wrapper around an `f64` to generate N(0, 1) random numbers
+/// (a.k.a.  a standard normal, or Gaussian).
 ///
-/// Note that this has to be unwrapped before use as an `f64` (using either
-/// `*` or `cast::transmute` is safe).
+/// See `Normal` for the general normal distribution. That this has to
+/// be unwrapped before use as an `f64` (using either `*` or
+/// `cast::transmute` is safe).
+///
+/// Implemented via the ZIGNOR variant[1] of the Ziggurat method.
+///
+/// [1]: Jurgen A. Doornik (2005). [*An Improved Ziggurat Method to
+/// Generate Normal Random
+/// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
+/// College, Oxford
 pub struct StandardNormal(f64);
 
 impl Rand for StandardNormal {
@@ -135,8 +143,10 @@ impl Rand for StandardNormal {
     }
 }
 
-/// The `N(mean, std_dev**2)` distribution, i.e. samples from a normal
-/// distribution with mean `mean` and standard deviation `std_dev`.
+/// The normal distribution `N(mean, std_dev**2)`.
+///
+/// This uses the ZIGNOR variant of the Ziggurat method, see
+/// `StandardNormal` for more details.
 ///
 /// # Example
 ///
@@ -175,12 +185,20 @@ impl IndependentSample<f64> for Normal {
     }
 }
 
-/// A wrapper around an `f64` to generate Exp(1) random numbers. Dividing by
-/// the desired rate `lambda` will give Exp(lambda) distributed random
-/// numbers.
+/// A wrapper around an `f64` to generate Exp(1) random numbers.
 ///
-/// Note that this has to be unwrapped before use as an `f64` (using either
+/// See `Exp` for the general exponential distribution.Note that this
+ // has to be unwrapped before use as an `f64` (using either
 /// `*` or `cast::transmute` is safe).
+///
+/// Implemented via the ZIGNOR variant[1] of the Ziggurat method. The
+/// exact description in the paper was adjusted to use tables for the
+/// exponential distribution rather than normal.
+///
+/// [1]: Jurgen A. Doornik (2005). [*An Improved Ziggurat Method to
+/// Generate Normal Random
+/// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
+/// College, Oxford
 pub struct Exp1(f64);
 
 // This could be done via `-rng.gen::<f64>().ln()` but that is slower.
@@ -203,8 +221,7 @@ impl Rand for Exp1 {
     }
 }
 
-/// The `Exp(lambda)` distribution; i.e. samples from the exponential
-/// distribution with rate parameter `lambda`.
+/// The exponential distribution `Exp(lambda)`.
 ///
 /// This distribution has density function: `f(x) = lambda *
 /// exp(-lambda * x)` for `x > 0`.
