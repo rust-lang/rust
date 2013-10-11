@@ -102,10 +102,7 @@ impl PkgId {
     }
 
     pub fn prefixes_iter(&self) -> Prefixes {
-        Prefixes {
-            components: self.path.components().to_owned(),
-            remaining: ~[]
-        }
+        prefixes_iter(&self.path)
     }
 
     // This is the workcache function name for the *installed*
@@ -113,6 +110,13 @@ impl PkgId {
     // which are per-crate).
     pub fn install_tag(&self) -> ~str {
         format!("install({})", self.to_str())
+    }
+}
+
+pub fn prefixes_iter(p: &Path) -> Prefixes {
+    Prefixes {
+        components: p.components().to_owned(),
+        remaining: ~[]
     }
 }
 

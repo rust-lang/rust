@@ -27,8 +27,8 @@ use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
-use path_util::{installed_library_in_workspace, U_RWX, system_library, target_build_dir};
-use path_util::default_workspace;
+use path_util::{U_RWX, system_library, target_build_dir};
+use path_util::{default_workspace, built_library_in_workspace};
 pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
 use workcache_support::{digest_file_with_date, digest_only_date};
 
@@ -298,7 +298,7 @@ pub fn compile_input(context: &BuildContext,
                                           crate);
     // Discover the output
     let discovered_output = if what == Lib  {
-        installed_library_in_workspace(&pkg_id.path, workspace)
+        built_library_in_workspace(pkg_id, workspace) // Huh???
     }
     else {
         result
@@ -306,6 +306,7 @@ pub fn compile_input(context: &BuildContext,
     debug2!("About to discover output {}", discovered_output.to_str());
     for p in discovered_output.iter() {
         if os::path_exists(p) {
+            debug2!("4. discovering output {}", p.to_str());
             exec.discover_output("binary", p.to_str(), digest_only_date(p));
         }
         // Nothing to do if it doesn't exist -- that could happen if we had the
@@ -443,7 +444,13 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         let dest_workspace = if workspaces.is_empty() {
                             default_workspace()
                         } else { workspaces[0] };
-                        let pkg_src = PkgSrc::new(dest_workspace,
+                        // In this case, the source and destination workspaces are the same:
+                        // Either it's a remote package, so the local sources don't exist
+                        // and the `PkgSrc` constructor will detect that;
+                        // or else it's already in a workspace and we'll build into that
+                        // workspace
+                        let pkg_src = PkgSrc::new(dest_workspace.clone(),
+                                                  dest_workspace,
                         // Use the rust_path_hack to search for dependencies iff
                         // we were already using it
                                                   self.context.context.use_rust_path_hack,
@@ -453,14 +460,18 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         debug2!("Installed {}, returned {:?} dependencies and \
                                {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
+                        debug2!("discovered outputs = {:?} discovered_inputs = {:?}",
+                               outputs_disc, inputs_disc);
                         // It must have installed *something*...
                         assert!(!outputs_disc.is_empty());
-                        let target_workspace = outputs_disc[0].pop();
                         for dep in outputs_disc.iter() {
                             debug2!("Discovering a binary input: {}", dep.to_str());
                             self.exec.discover_input("binary",
                                                      dep.to_str(),
                                                      digest_only_date(dep));
+                            // Also, add an additional search path
+                            debug2!("Installed {} into {}", dep.to_str(), dep.pop().to_str());
+                            (self.save)(dep.pop());
                         }
                         for &(ref what, ref dep) in inputs_disc.iter() {
                             if *what == ~"file" {
@@ -477,9 +488,6 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                 fail2!("Bad kind: {}", *what);
                             }
                         }
-                        // Also, add an additional search path
-                        debug2!("Installed {} into {}", lib_name, target_workspace.to_str());
-                        (self.save)(target_workspace);
                     }
                 }
             }
