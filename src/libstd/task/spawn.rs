@@ -448,7 +448,7 @@ impl RuntimeGlue {
     }
 
     fn with_task_handle_and_failing(blk: &fn(&KillHandle, bool)) {
-        rtassert!(in_green_task_context());
+        assert!(in_green_task_context());
         unsafe {
             // Can't use safe borrow, because the taskgroup destructor needs to
             // access the scheduler again to send kill signals to other tasks.
@@ -458,7 +458,7 @@ impl RuntimeGlue {
     }
 
     fn with_my_taskgroup<U>(blk: &fn(&Taskgroup) -> U) -> U {
-        rtassert!(in_green_task_context());
+        assert!(in_green_task_context());
         unsafe {
             // Can't use safe borrow, because creating new hashmaps for the
             // tasksets requires an rng, which needs to borrow the sched.
@@ -553,7 +553,7 @@ fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
 }
 
 pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
-    rtassert!(in_green_task_context());
+    assert!(in_green_task_context());
 
     let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
     let indestructible = opts.indestructible;
@@ -631,7 +631,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let (thread_port, thread_chan) = oneshot();
             let thread_port_cell = Cell::new(thread_port);
             let join_task = do Task::build_child(None) {
-                rtdebug!("running join task");
+                debug2!("running join task");
                 let thread_port = thread_port_cell.take();
                 let thread: Thread = thread_port.recv();
                 thread.join();
@@ -648,11 +648,11 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 let join_task = join_task_cell.take();
 
                 let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
-                    rtdebug!("boostrapping a 1:1 scheduler");
+                    debug2!("boostrapping a 1:1 scheduler");
                 };
                 new_sched.bootstrap(bootstrap_task);
 
-                rtdebug!("enqueing join_task");
+                debug2!("enqueing join_task");
                 // Now tell the original scheduler to join with this thread
                 // by scheduling a thread-joining task on the original scheduler
                 orig_sched_handle.send_task_from_friend(join_task);
@@ -684,7 +684,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
     }
 
     task.name = opts.name.take();
-    rtdebug!("spawn calling run_task");
+    debug2!("spawn calling run_task");
     Scheduler::run_task(task);
 
 }

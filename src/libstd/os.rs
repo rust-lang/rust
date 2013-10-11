@@ -1185,7 +1185,7 @@ pub fn last_os_error() -> ~str {
  */
 pub fn set_exit_status(code: int) {
     use rt;
-    rt::util::set_exit_status(code);
+    rt::set_exit_status(code);
 }
 
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
