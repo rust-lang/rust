@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Macros used by the runtime.
+//!
+//! These macros call functions which are only accessible in the `rt` module, so
+//! they aren't defined anywhere outside of the `rt` module.
+
 #[macro_escape];
-#[doc(hidden)];
 
 macro_rules! rterrln (
     ($($arg:tt)*) => ( {
@@ -37,7 +41,7 @@ macro_rules! rtassert (
 )
 
 
-macro_rules! rtabort(
+macro_rules! rtabort (
     ($($msg:tt)*) => ( {
         ::rt::util::abort(format!($($msg)*));
     } )

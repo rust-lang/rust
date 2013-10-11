@@ -123,10 +123,10 @@ pub unsafe fn annihilate() {
 
     if debug_mem() {
         // We do logging here w/o allocation.
-        rterrln!("annihilator stats:\n  \
-                     total boxes: {}\n  \
-                    unique boxes: {}\n  \
-                     bytes freed: {}",
-                 stats.n_total_boxes, stats.n_unique_boxes, stats.n_bytes_freed);
+        debug2!("annihilator stats:\n  \
+                       total boxes: {}\n  \
+                      unique boxes: {}\n  \
+                       bytes freed: {}",
+                stats.n_total_boxes, stats.n_unique_boxes, stats.n_bytes_freed);
     }
 }

@@ -76,6 +76,16 @@ use vec::{OwnedVector, MutableVector, ImmutableVector};
 use self::thread::Thread;
 use self::work_queue::WorkQueue;
 
+// the os module needs to reach into this helper, so allow general access
+// through this reexport.
+pub use self::util::set_exit_status;
+
+// this is somewhat useful when a program wants to spawn a "reasonable" number
+// of workers based on the constraints of the system that it's running on.
+// Perhaps this shouldn't be a `pub use` though and there should be another
+// method...
+pub use self::util::default_sched_threads;
+
 // XXX: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
@@ -86,7 +96,11 @@ pub mod shouldnt_be_public {
     pub use super::select::SelectInner;
     pub use super::rtio::EventLoop;
     pub use super::select::{SelectInner, SelectPortInner};
+    pub use super::local_ptr::maybe_tls_key;
 }
+
+// Internal macros used by the runtime.
+mod macros;
 
 /// The global (exchange) heap.
 pub mod global_heap;
@@ -158,17 +172,14 @@ pub mod comm;
 
 mod select;
 
-// FIXME #5248 shouldn't be pub
 /// The runtime needs to be able to put a pointer into thread-local storage.
-pub mod local_ptr;
+mod local_ptr;
 
-// FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 /// Bindings to pthread/windows thread-local storage.
-pub mod thread_local_storage;
+mod thread_local_storage;
 
-// FIXME #5248 shouldn't be pub
 /// Just stuff
-pub mod util;
+mod util;
 
 // Global command line argument storage
 pub mod args;

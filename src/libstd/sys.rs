@@ -14,9 +14,10 @@
 
 use c_str::ToCStr;
 use cast;
+use libc::size_t;
 use libc;
-use libc::{c_char, size_t};
 use repr;
+use rt::task;
 use str;
 use unstable::intrinsics;
 
@@ -109,7 +110,7 @@ impl FailWithCause for ~str {
     fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
         do cause.with_c_str |msg_buf| {
             do file.with_c_str |file_buf| {
-                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                task::begin_unwind(msg_buf, file_buf, line as libc::size_t)
             }
         }
     }
@@ -119,44 +120,9 @@ impl FailWithCause for &'static str {
     fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
         do cause.with_c_str |msg_buf| {
             do file.with_c_str |file_buf| {
-                begin_unwind_(msg_buf, file_buf, line as libc::size_t)
+                task::begin_unwind(msg_buf, file_buf, line as libc::size_t)
             }
         }
-    }
-}
-
-// FIXME #4427: Temporary until rt::rt_fail_ goes away
-pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use rt::in_green_task_context;
-    use rt::task::Task;
-    use rt::local::Local;
-    use rt::logging::Logger;
-    use str::Str;
-
-    unsafe {
-        // XXX: Bad re-allocations. fail2! needs some refactoring
-        let msg = str::raw::from_c_str(msg);
-        let file = str::raw::from_c_str(file);
-
-        if in_green_task_context() {
-            // Be careful not to allocate in this block, if we're failing we may
-            // have been failing due to a lack of memory in the first place...
-            do Local::borrow |task: &mut Task| {
-                let n = task.name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
-                format_args!(|args| { task.logger.log(args) },
-                             "task '{}' failed at '{}', {}:{}",
-                             n, msg.as_slice(), file.as_slice(), line);
-            }
-        } else {
-            rterrln!("failed in non-task context at '{}', {}:{}",
-                     msg, file, line as int);
-        }
-
-        let task: *mut Task = Local::unsafe_borrow();
-        if (*task).unwinder.unwinding {
-            rtabort!("unwinding again");
-        }
-        (*task).unwinder.begin_unwind();
     }
 }
 
