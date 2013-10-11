@@ -46,7 +46,6 @@ pub use std::os;
 
 pub mod c_vec;
 pub mod io_util;
-pub mod rc;
 
 // Concurrency
 
