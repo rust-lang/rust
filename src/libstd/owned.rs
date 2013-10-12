@@ -10,7 +10,9 @@
 
 //! Operations on unique pointer types
 
+#[allow(missing_doc)];
 #[cfg(not(test))] use cmp::*;
+use either::{Either, Right};
 
 #[cfg(not(test))]
 impl<T:Eq> Eq for ~T {
@@ -42,4 +44,26 @@ impl<T: TotalOrd> TotalOrd for ~T {
 impl<T: TotalEq> TotalEq for ~T {
     #[inline]
     fn equals(&self, other: &~T) -> bool { (**self).equals(*other) }
+}
+
+#[deriving(Clone)]
+pub struct Own<T> {
+    priv p: ~T
+}
+
+impl<T> Own<T> {
+    pub fn new(v: T) -> Own<T> {Own {p: ~v}}
+
+    pub fn get<'r>(&'r self) -> &'r T {&*self.p}
+
+    pub fn get_mut<'r>(&'r mut self) -> &'r mut T {&mut *self.p}
+    pub fn unwrap(self) -> T {*self.p}
+
+    pub fn try_get_mut<'r>(&'r mut self) -> Either<&'r mut Own<T>, &'r mut T> {
+    Right(&mut *self.p)
+    }
+    pub fn try_unwrap<'r>(self) -> Either<Own<T>, T> {Right(*self.p)}
+
+    pub fn cow<'r>(&'r mut self) -> &'r mut T {&mut *self.p}
+    pub fn value<'r>(self) -> T {*self.p}
 }
