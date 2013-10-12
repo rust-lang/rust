@@ -220,7 +220,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     };
     mkdir(&cx.dst);
 
-    match crate.module.get_ref().doc_list() {
+    match crate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
         Some(attrs) => {
             for attr in attrs.iter() {
                 match *attr {
