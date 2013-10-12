@@ -9,3 +9,6 @@
 // except according to those terms.
 
 pub static COPY_FAILED_CODE: int = 65;
+pub static BAD_FLAG_CODE: int    = 67;
+pub static NONEXISTENT_PACKAGE_CODE: int = 68;
+
