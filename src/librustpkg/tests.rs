@@ -36,6 +36,7 @@ use syntax::diagnostic;
 use target::*;
 use package_source::PkgSrc;
 use source_control::{CheckedOutSources, DirToUse, safe_git_clone};
+use exit_codes::{BAD_FLAG_CODE, COPY_FAILED_CODE};
 use util::datestamp;
 
 fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
@@ -244,12 +245,24 @@ fn rustpkg_exec() -> Path {
 fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
     match command_line_test_with_env(args, cwd, None) {
         Success(r) => r,
-        _ => fail2!("Command line test failed")
+        Fail(error) => fail2!("Command line test failed with error {}", error)
     }
 }
 
 fn command_line_test_partial(args: &[~str], cwd: &Path) -> ProcessResult {
     command_line_test_with_env(args, cwd, None)
+}
+
+fn command_line_test_expect_fail(args: &[~str],
+                                 cwd: &Path,
+                                 env: Option<~[(~str, ~str)]>,
+                                 expected_exitcode: int) {
+    match command_line_test_with_env(args, cwd, env) {
+        Success(_) => fail2!("Should have failed with {}, but it succeeded", expected_exitcode),
+        Fail(error) if error == expected_exitcode => (), // ok
+        Fail(other) => fail2!("Expected to fail with {}, but failed with {} instead",
+                              expected_exitcode, other)
+    }
 }
 
 enum ProcessResult {
@@ -1448,11 +1461,11 @@ fn compile_flag_fail() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
     let workspace = workspace.path();
-    command_line_test([test_sysroot().to_str(),
+    command_line_test_expect_fail([test_sysroot().to_str(),
                        ~"install",
                        ~"--no-link",
                        ~"foo"],
-                      workspace);
+                      workspace, None, BAD_FLAG_CODE);
     assert!(!built_executable_exists(workspace, "foo"));
     assert!(!object_file_exists(workspace, "foo"));
 }
@@ -1488,14 +1501,11 @@ fn notrans_flag_fail() {
     let flags_to_test = [~"--no-trans", ~"--parse-only",
                          ~"--pretty", ~"-S"];
     for flag in flags_to_test.iter() {
-        command_line_test([test_sysroot().to_str(),
+        command_line_test_expect_fail([test_sysroot().to_str(),
                            ~"install",
                            flag.clone(),
                            ~"foo"],
-                          workspace);
-        // Ideally we'd test that rustpkg actually fails, but
-        // since task failure doesn't set the exit code properly,
-        // we can't tell
+                          workspace, None, BAD_FLAG_CODE);
         assert!(!built_executable_exists(workspace, "foo"));
         assert!(!object_file_exists(workspace, "foo"));
         assert!(!lib_exists(workspace, &Path("foo"), NoVersion));
@@ -1522,11 +1532,11 @@ fn dash_S_fail() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
     let workspace = workspace.path();
-    command_line_test([test_sysroot().to_str(),
+    command_line_test_expect_fail([test_sysroot().to_str(),
                        ~"install",
                        ~"-S",
                        ~"foo"],
-                      workspace);
+                       workspace, None, BAD_FLAG_CODE);
     assert!(!built_executable_exists(workspace, "foo"));
     assert!(!object_file_exists(workspace, "foo"));
     assert!(!assembly_file_exists(workspace, "foo"));
@@ -1587,11 +1597,13 @@ fn test_emit_llvm_S_fail() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
     let workspace = workspace.path();
-    command_line_test([test_sysroot().to_str(),
+    command_line_test_expect_fail([test_sysroot().to_str(),
                        ~"install",
                        ~"-S", ~"--emit-llvm",
                        ~"foo"],
-                      workspace);
+                       workspace,
+                       None,
+                       BAD_FLAG_CODE);
     assert!(!built_executable_exists(workspace, "foo"));
     assert!(!object_file_exists(workspace, "foo"));
     assert!(!llvm_assembly_file_exists(workspace, "foo"));
@@ -1620,11 +1632,13 @@ fn test_emit_llvm_fail() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
     let workspace = workspace.path();
-    command_line_test([test_sysroot().to_str(),
+    command_line_test_expect_fail([test_sysroot().to_str(),
                        ~"install",
                        ~"--emit-llvm",
                        ~"foo"],
-                      workspace);
+                                  workspace,
+                                  None,
+                                  BAD_FLAG_CODE);
     assert!(!built_executable_exists(workspace, "foo"));
     assert!(!object_file_exists(workspace, "foo"));
     assert!(!llvm_bitcode_file_exists(workspace, "foo"));
@@ -1665,11 +1679,10 @@ fn test_build_install_flags_fail() {
                      ~[~"--target", host_triple()],
                      ~[~"--target-cpu", ~"generic"],
                      ~[~"-Z", ~"--time-passes"]];
+    let cwd = os::getcwd();
     for flag in forbidden.iter() {
-        let output = command_line_test_output([test_sysroot().to_str(),
-                           ~"list"] + *flag);
-        assert!(output.len() > 1);
-        assert!(output[1].find_str("can only be used with").is_some());
+        command_line_test_expect_fail([test_sysroot().to_str(),
+                           ~"list"] + *flag, &cwd, None, BAD_FLAG_CODE);
     }
 }
 
@@ -1686,6 +1699,7 @@ fn test_optimized_build() {
     assert!(built_executable_exists(workspace, "foo"));
 }
 
+#[test]
 fn pkgid_pointing_to_subdir() {
     // The actual repo is mockgithub.com/mozilla/some_repo
     // rustpkg should recognize that and treat the part after some_repo/ as a subdir
@@ -1717,6 +1731,7 @@ fn pkgid_pointing_to_subdir() {
     assert_executable_exists(workspace, "testpkg");
 }
 
+#[test]
 fn test_recursive_deps() {
     let a_id = PkgId::new("a");
     let b_id = PkgId::new("b");
@@ -1762,6 +1777,7 @@ fn test_install_to_rust_path() {
     assert!(!executable_exists(second_workspace, "foo"));
 }
 
+#[test]
 fn test_target_specific_build_dir() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
@@ -1870,8 +1886,9 @@ fn correct_package_name_with_rust_path_hack() {
     let rust_path = Some(~[(~"RUST_PATH", format!("{}:{}", dest_workspace.to_str(),
                         foo_workspace.push_many(["src", "foo-0.1"]).to_str()))]);
     // bar doesn't exist, but we want to make sure rustpkg doesn't think foo is bar
-    command_line_test_with_env([~"install", ~"--rust-path-hack", ~"bar"],
-                               dest_workspace, rust_path);
+    command_line_test_expect_fail([~"install", ~"--rust-path-hack", ~"bar"],
+                                  // FIXME #3408: Should be NONEXISTENT_PACKAGE_CODE
+                               dest_workspace, rust_path, COPY_FAILED_CODE);
     assert!(!executable_exists(dest_workspace, "bar"));
     assert!(!lib_exists(dest_workspace, &bar_id.path.clone(), bar_id.version.clone()));
     assert!(!executable_exists(dest_workspace, "foo"));
@@ -2048,6 +2065,23 @@ fn test_7402() {
     let cwd = os::getcwd();
     command_line_test_with_env([~"install", ~"foo"], &cwd, rust_path);
     assert_executable_exists(dest_workspace, "foo");
+}
+
+#[test]
+fn test_compile_error() {
+    let foo_id = PkgId::new("foo");
+    let foo_workspace = create_local_package(&foo_id);
+    let foo_workspace = foo_workspace.path();
+    let main_crate = foo_workspace.push_many(["src", "foo-0.1", "main.rs"]);
+    // Write something bogus
+    writeFile(&main_crate, "pub fn main() { if 42 != ~\"the answer\" { fail!(); } }");
+    let result = command_line_test_partial([~"build", ~"foo"], foo_workspace);
+    match result {
+        Success(*) => fail2!("Failed by succeeding!"), // should be a compile error
+        Fail(status) => {
+            debug2!("Failed with status {:?}... that's good, right?", status);
+        }
+    }
 }
 
 /// Returns true if p exists and is executable
