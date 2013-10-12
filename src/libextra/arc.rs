@@ -120,7 +120,9 @@ impl<T:Freeze+Send> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         Arc { x: UnsafeArc::new(data) }
     }
+}
 
+impl<T> Arc<T> {
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
@@ -157,7 +159,7 @@ impl<T:Freeze+Send> Arc<T> {
     }
 }
 
-impl<T: Freeze+Send+Clone> Arc<T> {
+impl<T: Clone> Arc<T> {
     /// Clones the content if there is more than one reference, and returns a
     /// mutable reference to the data once this is the only refence
     #[inline]
@@ -173,7 +175,7 @@ impl<T: Freeze+Send+Clone> Arc<T> {
 
     #[inline(never)]
     unsafe fn cow_clone<'r>(&'r mut self) -> &'r mut T {
-        self.x = UnsafeArc::new((*self.x.get_immut()).clone());
+        self.x = UnsafeArc::new_unsafe((*self.x.get_immut()).clone());
         &mut *self.x.get()
     }
 
@@ -187,7 +189,7 @@ impl<T: Freeze+Send+Clone> Arc<T> {
     }
 }
 
-impl<T:Freeze + Send> Clone for Arc<T> {
+impl<T> Clone for Arc<T> {
     /**
     * Duplicate an atomically reference counted wrapper.
     *
