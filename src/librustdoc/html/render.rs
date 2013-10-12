@@ -582,7 +582,7 @@ impl DocFolder for Cache {
             clean::StructItem(*) | clean::EnumItem(*) |
             clean::TypedefItem(*) | clean::TraitItem(*) |
             clean::FunctionItem(*) | clean::ModuleItem(*) |
-            clean::VariantItem(*) => {
+            clean::ForeignFunctionItem(*) | clean::VariantItem(*) => {
                 self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
             }
             _ => {}
