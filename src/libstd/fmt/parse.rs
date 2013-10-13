@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Parsing of format strings
+//!
+//! These structures are used when parsing format strings for the compiler.
+//! Parsing does not currently happen at runtime (structures of std::fmt::rt are
+//! generated instead).
+
 use prelude::*;
 
 use char;
