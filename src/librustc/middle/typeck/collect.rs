@@ -268,7 +268,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         //        fn foo<D,E,F>(...) -> Self;
         //     }
         //
-        // and we will create a function like
+        // then we will create a function like
         //
         //     fn foo<A',B',C',D',E',F',G'>(...) -> D' {}
         //
@@ -357,7 +357,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                           ty_param_bounds_and_ty {
                               generics: ty::Generics {
                                   type_param_defs: @new_type_param_defs,
-                                  region_param: trait_ty_generics.region_param
+                                  region_param: None
                               },
                               ty: ty
                           });

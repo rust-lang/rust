@@ -17,4 +17,15 @@ pub trait FromVec<'self> {
     fn fromVec(&'self [u8]) -> Self;
 }
 
+struct Reader<'self> {
+    v : &'self [u8]
+}
+
+impl <'self, T : FromVec<'self>> Reader<'self> {
+    fn get(&self) -> T {
+        FromVec::fromVec(self.v)
+    }
+}
+
+
 fn main() {}

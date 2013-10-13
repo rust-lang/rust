@@ -28,6 +28,7 @@ use std::result;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
+use syntax::opt_vec;
 use syntax::print::pprust::expr_to_str;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -295,6 +296,33 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
                bound_trait_ref.repr(vcx.tcx()));
 
         if bound_trait_ref.def_id == trait_ref.def_id {
+
+            // Replace any instances of br_self with a new region
+            // variable in order to avoid asking region inference to
+            // relate a bound region to a free region. Strictly
+            // speaking, instead of a new region variable, we should
+            // use the free region associated with br_self, if it
+            // exists. However, bound_trait_ref does not play an
+            // important role in the main phase of region checking, so
+            // precisely what we choose here shouldn't matter.
+            let substs = ty::substs {
+                self_ty : None,
+                tps : ~[],
+                regions: ty::NonerasedRegions(opt_vec::with(
+                        vcx.infcx.next_region_var(
+                            infer::BoundRegionInTypeOrImpl(
+                                location_info.span))))
+            };
+
+            let bound_trait_ref = @ty::TraitRef {
+                def_id : bound_trait_ref.def_id,
+                substs : ty::substs {
+                    self_ty : bound_trait_ref.substs.self_ty.clone(),
+                    tps : bound_trait_ref.substs.tps.clone(),
+                    regions : bound_trait_ref.substs.regions.subst(vcx.ccx.tcx,
+                                                                   &substs)
+                }};
+
             relate_trait_refs(vcx,
                               location_info,
                               bound_trait_ref,
