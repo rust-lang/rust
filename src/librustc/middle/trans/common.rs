@@ -848,7 +848,7 @@ pub fn C_floating(s: &str, t: Type) -> ValueRef {
 }
 
 pub fn C_nil() -> ValueRef {
-    return C_struct([]);
+    C_struct([], false)
 }
 
 pub fn C_bool(val: bool) -> ValueRef {
@@ -913,7 +913,7 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
-        C_struct([cs, C_uint(cx, len)])
+        C_struct([cs, C_uint(cx, len)], false)
     }
 }
 
@@ -927,18 +927,10 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
     }
 }
 
-pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
+pub fn C_struct(elts: &[ValueRef], packed: bool) -> ValueRef {
     unsafe {
         do elts.as_imm_buf |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, False)
-        }
-    }
-}
-
-pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
-    unsafe {
-        do elts.as_imm_buf |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, True)
+            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, packed as Bool)
         }
     }
 }

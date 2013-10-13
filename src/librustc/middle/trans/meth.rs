@@ -576,7 +576,7 @@ pub fn make_vtable(ccx: &mut CrateContext,
             components.push(ptr)
         }
 
-        let tbl = C_struct(components);
+        let tbl = C_struct(components, false);
         let sym = token::gensym("vtable");
         let vt_gvar = do format!("vtable{}", sym).with_c_str |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
