@@ -505,7 +505,8 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
         }
         Univariant(ref st, _dro) => {
             assert_eq!(discr, 0);
-            C_struct(build_const_struct(ccx, st, vals))
+            let contents = build_const_struct(ccx, st, vals);
+            C_struct(contents, st.packed)
         }
         General(ref cases) => {
             let case = &cases[discr];
@@ -513,18 +514,18 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
             let discr_ty = C_disr(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
-            C_struct(contents + &[padding(max_sz - case.size)])
+            C_struct(contents + &[padding(max_sz - case.size)], false)
         }
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             if discr == nndiscr {
-                C_struct(build_const_struct(ccx, nonnull, vals))
+                C_struct(build_const_struct(ccx, nonnull, vals), false)
             } else {
                 assert_eq!(vals.len(), 0);
                 let vals = do nonnull.fields.iter().enumerate().map |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
                 }.collect::<~[ValueRef]>();
-                C_struct(build_const_struct(ccx, nonnull, vals))
+                C_struct(build_const_struct(ccx, nonnull, vals), false)
             }
         }
     }
@@ -559,7 +560,7 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
             offset = target_offset;
         }
         let val = if is_undef(vals[i]) {
-            let wrapped = C_struct([vals[i]]);
+            let wrapped = C_struct([vals[i]], false);
             assert!(!is_undef(wrapped));
             wrapped
         } else {
