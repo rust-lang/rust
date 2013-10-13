@@ -840,6 +840,7 @@ pub trait ImmutableVector<'self, T> {
     fn window_iter(self, size: uint) -> WindowIter<'self, T>;
     fn chunk_iter(self, size: uint) -> ChunkIter<'self, T>;
 
+    fn get_opt(&self, index: uint) -> Option<&'self T>;
     fn head(&self) -> &'self T;
     fn head_opt(&self) -> Option<&'self T>;
     fn tail(&self) -> &'self [T];
@@ -1017,6 +1018,13 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn chunk_iter(self, size: uint) -> ChunkIter<'self, T> {
         assert!(size != 0);
         ChunkIter { v: self, size: size }
+    }
+
+    /// Returns the element of a vector at the given index, or `None` if the
+    /// index is out of bounds
+    #[inline]
+    fn get_opt(&self, index: uint) -> Option<&'self T> {
+        if index < self.len() { Some(&self[index]) } else { None }
     }
 
     /// Returns the first element of a vector, failing if the vector is empty.
@@ -2572,6 +2580,16 @@ mod tests {
         assert_eq!(v0.len(), 0);
         assert_eq!(v1.len(), 1);
         assert_eq!(v2.len(), 2);
+    }
+
+    #[test]
+    fn test_get_opt() {
+        let mut a = ~[11];
+        assert_eq!(a.get_opt(1), None);
+        a = ~[11, 12];
+        assert_eq!(a.get_opt(1).unwrap(), &12);
+        a = ~[11, 12, 13];
+        assert_eq!(a.get_opt(1).unwrap(), &12);
     }
 
     #[test]
