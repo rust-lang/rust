@@ -94,7 +94,7 @@ pub fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr])
         let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e)));
         // If the vector contains enums, an LLVM array won't work.
         let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-            C_struct(vs)
+            C_struct(vs, false)
         } else {
             C_array(llunitty, vs)
         };
@@ -186,7 +186,7 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     match adjustment {
         None => { }
         Some(@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
-            llconst = C_struct([llconst, C_null(Type::opaque_box(cx).ptr_to())])
+            llconst = C_struct([llconst, C_null(Type::opaque_box(cx).ptr_to())], false)
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
             cx.sess.span_bug(e.span, format!("unexpected static function: \
@@ -227,7 +227,7 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
                             match ty::get(ty).sty {
                                 ty::ty_evec(_, ty::vstore_fixed(*)) => {
                                     let size = machine::llsize_of(cx, val_ty(llconst));
-                                    llconst = C_struct([llptr, size]);
+                                    llconst = C_struct([llptr, size], false);
                                 }
                                 _ => {}
                             }
@@ -559,7 +559,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                 llvm::LLVMSetGlobalConstant(gv, True);
                 SetLinkage(gv, PrivateLinkage);
                 let p = const_ptrcast(cx, gv, llunitty);
-                (C_struct([p, sz]), false)
+                (C_struct([p, sz], false), false)
               }
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
@@ -575,7 +575,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
             };
             let vs = vec::from_elem(n, const_expr(cx, elem).first());
             let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-                C_struct(vs)
+                C_struct(vs, false)
             } else {
                 C_array(llunitty, vs)
             };

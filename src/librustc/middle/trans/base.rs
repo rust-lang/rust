@@ -2936,7 +2936,7 @@ pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint, uint) {
             let elt = C_struct([
                 C_estr_slice(ccx, *key),
                 v_ptr
-            ]);
+            ], false);
             elts.push(elt);
     }
     unsafe {
@@ -3012,13 +3012,13 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
                 p2i(ccx, mod_map),
                 // byte size of the module map array, an entry consists of two integers
                 C_int(ccx, ((mod_count * mod_struct_size) as int))
-             ]),
+             ], false),
              C_struct([
                 p2i(ccx, vec_elements),
                 // byte size of the subcrates array, an entry consists of an integer
                 C_int(ccx, (subcrates.len() * llsize_of_alloc(ccx, ccx.int_type)) as int)
-             ])
-        ]));
+             ], false)
+        ], false));
     }
 }
 
@@ -3052,7 +3052,7 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
-    let llconst = C_struct([llmeta]);
+    let llconst = C_struct([llmeta], false);
     let mut llglobal = do "rust_metadata".with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst).to_ref(), buf)
