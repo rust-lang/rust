@@ -177,6 +177,9 @@ impl Context {
             parse::CountIsParam(i) => {
                 self.verify_arg_type(Left(i), Unsigned);
             }
+            parse::CountIsName(s) => {
+                self.verify_arg_type(Right(s.to_managed()), Unsigned);
+            }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {
                     self.verify_arg_type(Left(self.next_arg), Unsigned);
@@ -361,20 +364,30 @@ impl Context {
         let trans_count = |c: parse::Count| {
             match c {
                 parse::CountIs(i) => {
-                    self.ecx.expr_call_global(sp, ctpath("CountIs"),
+                    self.ecx.expr_call_global(sp, rtpath("CountIs"),
                                               ~[self.ecx.expr_uint(sp, i)])
                 }
                 parse::CountIsParam(i) => {
-                    self.ecx.expr_call_global(sp, ctpath("CountIsParam"),
+                    self.ecx.expr_call_global(sp, rtpath("CountIsParam"),
                                               ~[self.ecx.expr_uint(sp, i)])
                 }
                 parse::CountImplied => {
-                    let path = self.ecx.path_global(sp, ctpath("CountImplied"));
+                    let path = self.ecx.path_global(sp, rtpath("CountImplied"));
                     self.ecx.expr_path(path)
                 }
                 parse::CountIsNextParam => {
-                    let path = self.ecx.path_global(sp, ctpath("CountIsNextParam"));
+                    let path = self.ecx.path_global(sp, rtpath("CountIsNextParam"));
                     self.ecx.expr_path(path)
+                }
+                parse::CountIsName(n) => {
+                    let n = n.to_managed();
+                    let i = match self.name_positions.find_copy(&n) {
+                        Some(i) => i,
+                        None => 0, // error already emitted elsewhere
+                    };
+                    let i = i + self.args.len();
+                    self.ecx.expr_call_global(sp, rtpath("CountIsParam"),
+                                              ~[self.ecx.expr_uint(sp, i)])
                 }
             }
         };
