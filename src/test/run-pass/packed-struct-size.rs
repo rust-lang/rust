@@ -50,6 +50,11 @@ struct S7_Option {
     d: Option<@mut f64>
 }
 
+// Placing packed structs in statics should work
+static TEST_S4: S4 = S4 { a: 1, b: [2, 3, 4] };
+static TEST_S5: S5 = S5 { a: 3, b: 67 };
+static TEST_S3_Foo: S3_Foo = S3_Foo { a: 1, b: 2, c: Baz };
+
 
 pub fn main() {
     assert_eq!(sys::size_of::<S4>(), 4);
