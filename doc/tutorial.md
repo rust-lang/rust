@@ -2811,7 +2811,7 @@ For every crate you can define a number of metadata items, such as link name, ve
 You can also toggle settings that have crate-global consequences. Both mechanism
 work by providing attributes in the crate root.
 
-For example, Rust uniquely identifies crates by their link metadate, which includes
+For example, Rust uniquely identifies crates by their link metadata, which includes
 the link name and the version. It also hashes the filename and the symbols in a binary
 based on the link metadata, allowing you to use two different versions of the same library in a crate
 without conflict.
@@ -2916,7 +2916,7 @@ As well as this line into every module body:
 use std::prelude::*;
 ~~~
 
-The role of the `prelude` module is to re-exports common definitions from `std`.
+The role of the `prelude` module is to re-export common definitions from `std`.
 
 This allows you to use common types and functions like `Option<T>` or `println`
 without needing to import them. And if you need something from `std` that's not in the prelude,
