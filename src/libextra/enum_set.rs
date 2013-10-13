@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! A structure for holding a set of enum variants
+//!
+//! This module defines a container which uses an efficient bit mask
+//! representation to hold C-like enum variants.
+
 #[deriving(Clone, Eq, IterBytes, ToStr)]
 /// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {

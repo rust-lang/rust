@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Bindings for the ability to read lines of input from the console
+
 use std::c_str::ToCStr;
 use std::libc::{c_char, c_int};
 use std::{local_data, str, rt};
 use std::unstable::finally::Finally;
 
-pub mod rustrt {
+mod rustrt {
     use std::libc::{c_char, c_int};
 
     externfn!(fn linenoise(prompt: *c_char) -> *c_char)

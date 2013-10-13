@@ -29,6 +29,9 @@ pub struct PubFoo2 {
     c: int,
 }
 
+mod module_no_dox {}
+pub mod pub_module_no_dox {} //~ ERROR: missing documentation
+
 /// dox
 pub fn foo() {}
 pub fn foo2() {} //~ ERROR: missing documentation

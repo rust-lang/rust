@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 /**
  * The concurrency primitives you know and love.
  *

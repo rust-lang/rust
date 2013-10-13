@@ -603,6 +603,7 @@ impl<'self, T> RandomAccessIterator<&'self [T]> for ChunkIter<'self, T> {
 // Equality
 
 #[cfg(not(test))]
+#[allow(missing_doc)]
 pub mod traits {
     use super::*;
 

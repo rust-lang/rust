@@ -1253,6 +1253,7 @@ Section: Trait implementations
 */
 
 #[cfg(not(test))]
+#[allow(missing_doc)]
 pub mod traits {
     use ops::Add;
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
