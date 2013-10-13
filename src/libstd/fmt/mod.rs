@@ -647,21 +647,6 @@ impl<'self> Formatter<'self> {
     // the format! syntax extension.
 
     fn run(&mut self, piece: &rt::Piece, cur: Option<&str>) {
-        let setcount = |slot: &mut Option<uint>, cnt: &parse::Count| {
-            match *cnt {
-                parse::CountIs(n) => { *slot = Some(n); }
-                parse::CountImplied => { *slot = None; }
-                parse::CountIsParam(i) => {
-                    let v = self.args[i].value;
-                    unsafe { *slot = Some(*(v as *util::Void as *uint)); }
-                }
-                parse::CountIsNextParam => {
-                    let v = self.curarg.next().unwrap().value;
-                    unsafe { *slot = Some(*(v as *util::Void as *uint)); }
-                }
-            }
-        };
-
         match *piece {
             rt::String(s) => { self.buf.write(s.as_bytes()); }
             rt::CurrentArgument(()) => { self.buf.write(cur.unwrap().as_bytes()); }
@@ -670,8 +655,8 @@ impl<'self> Formatter<'self> {
                 self.fill = arg.format.fill;
                 self.align = arg.format.align;
                 self.flags = arg.format.flags;
-                setcount(&mut self.width, &arg.format.width);
-                setcount(&mut self.precision, &arg.format.precision);
+                self.width = self.getcount(&arg.format.width);
+                self.precision = self.getcount(&arg.format.precision);
 
                 // Extract the correct argument
                 let value = match arg.position {
@@ -684,6 +669,39 @@ impl<'self> Formatter<'self> {
                     None => { (value.formatter)(value.value, self); }
                     Some(ref method) => { self.execute(*method, value); }
                 }
+            }
+        }
+    }
+
+    #[cfg(stage0)]
+    fn getcount(&mut self, cnt: &parse::Count) -> Option<uint> {
+        match *cnt {
+            parse::CountIs(n) => { Some(n) }
+            parse::CountImplied => { None }
+            parse::CountIsParam(i) => {
+                let v = self.args[i].value;
+                unsafe { Some(*(v as *util::Void as *uint)) }
+            }
+            parse::CountIsNextParam => {
+                let v = self.curarg.next().unwrap().value;
+                unsafe { Some(*(v as *util::Void as *uint)) }
+            }
+            parse::CountIsName(*) => unreachable!()
+        }
+    }
+
+    #[cfg(not(stage0))]
+    fn getcount(&mut self, cnt: &rt::Count) -> Option<uint> {
+        match *cnt {
+            rt::CountIs(n) => { Some(n) }
+            rt::CountImplied => { None }
+            rt::CountIsParam(i) => {
+                let v = self.args[i].value;
+                unsafe { Some(*(v as *util::Void as *uint)) }
+            }
+            rt::CountIsNextParam => {
+                let v = self.curarg.next().unwrap().value;
+                unsafe { Some(*(v as *util::Void as *uint)) }
             }
         }
     }
