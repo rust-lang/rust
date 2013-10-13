@@ -505,7 +505,12 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
         }
         Univariant(ref st, _dro) => {
             assert_eq!(discr, 0);
-            C_struct(build_const_struct(ccx, st, vals))
+            let contents = build_const_struct(ccx, st, vals);
+            if st.packed {
+                C_packed_struct(contents)
+            } else {
+                C_struct(contents)
+            }
         }
         General(ref cases) => {
             let case = &cases[discr];
