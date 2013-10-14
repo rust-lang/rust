@@ -162,7 +162,6 @@ pub mod icu {
 
         // #[link_name = "icuuc"]
         #[link_args = "-licuuc"]
-        #[abi = "cdecl"]
         extern {
             pub fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
             pub fn u_isdigit(c: UChar32) -> UBool;

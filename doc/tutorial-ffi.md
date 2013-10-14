@@ -415,21 +415,18 @@ fn main() {
 
 Most foreign code exposes a C ABI, and Rust uses the platform's C calling convention by default when
 calling foreign functions. Some foreign functions, most notably the Windows API, use other calling
-conventions. Rust provides the `abi` attribute as a way to hint to the compiler which calling
-convention to use:
+conventions. Rust provides a way to tell the compiler which convention to use:
 
 ~~~~
 #[cfg(target_os = "win32")]
-#[abi = "stdcall"]
 #[link_name = "kernel32"]
-extern {
+extern "stdcall" {
     fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
 }
 ~~~~
 
-The `abi` attribute applies to a foreign module (it cannot be applied to a single function within a
-module), and must be either `"cdecl"` or `"stdcall"`. The compiler may eventually support other
-calling conventions.
+This applies to the entire `extern` block, and must be either `"cdecl"` or
+`"stdcall"`. The compiler may eventually support other calling conventions.
 
 # Interoperability with foreign code
 

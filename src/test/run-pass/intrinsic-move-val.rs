@@ -9,7 +9,6 @@
 // except according to those terms.
 
 mod rusti {
-    #[abi = "rust-intrinsic"]
     extern "rust-intrinsic" {
         pub fn move_val_init<T>(dst: &mut T, src: T);
         pub fn move_val<T>(dst: &mut T, src: T);
