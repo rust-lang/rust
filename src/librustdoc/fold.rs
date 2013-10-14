@@ -27,7 +27,9 @@ pub trait DocFolder {
             StructItem(i) => {
                 let mut i = i;
                 let mut foo = ~[]; swap(&mut foo, &mut i.fields);
+                let num_fields = foo.len();
                 i.fields.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
+                i.fields_stripped |= num_fields != i.fields.len();
                 StructItem(i)
             },
             ModuleItem(i) => {
@@ -36,7 +38,9 @@ pub trait DocFolder {
             EnumItem(i) => {
                 let mut i = i;
                 let mut foo = ~[]; swap(&mut foo, &mut i.variants);
+                let num_variants = foo.len();
                 i.variants.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
+                i.variants_stripped |= num_variants != i.variants.len();
                 EnumItem(i)
             },
             TraitItem(i) => {
@@ -73,7 +77,9 @@ pub trait DocFolder {
                     StructVariant(j) => {
                         let mut j = j;
                         let mut foo = ~[]; swap(&mut foo, &mut j.fields);
+                        let num_fields = foo.len();
                         j.fields.extend(&mut foo.move_iter().filter_map(c));
+                        j.fields_stripped |= num_fields != j.fields.len();
                         VariantItem(Variant {kind: StructVariant(j), ..i2})
                     },
                     _ => VariantItem(i2)
