@@ -77,7 +77,7 @@ pub mod rustrt {
     use libc;
 
     #[link_name = "rustrt"]
-    extern "cdecl" {
+    extern {
         pub fn rust_get_stdin() -> *libc::FILE;
         pub fn rust_get_stdout() -> *libc::FILE;
         pub fn rust_get_stderr() -> *libc::FILE;

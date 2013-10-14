@@ -10,26 +10,26 @@
 
 mod bar {
     #[nolink]
-    extern "cdecl" {}
+    extern {}
 }
 
 mod zed {
     #[nolink]
-    extern "cdecl" {}
+    extern {}
 }
 
 mod libc {
     use std::libc::{c_int, c_void, size_t, ssize_t};
 
     #[nolink]
-    extern "cdecl" {
+    extern {
         pub fn write(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
     }
 }
 
 mod baz {
     #[nolink]
-    extern "cdecl" {}
+    extern {}
 }
 
 pub fn main() { }

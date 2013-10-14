@@ -14,7 +14,7 @@ mod libc {
     use std::libc::{c_char, size_t};
 
     #[nolink]
-    extern "cdecl" {
+    extern {
         #[link_name = "strlen"]
         pub fn my_strlen(str: *c_char) -> size_t;
     }

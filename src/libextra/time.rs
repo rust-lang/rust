@@ -19,7 +19,7 @@ static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 pub mod rustrt {
     use super::Tm;
 
-    extern "cdecl" {
+    extern {
         pub fn get_time(sec: &mut i64, nsec: &mut i32);
         pub fn precise_time_ns(ns: &mut u64);
         pub fn rust_tzset();
