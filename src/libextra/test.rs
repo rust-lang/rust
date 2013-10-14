@@ -30,8 +30,8 @@ use treemap::TreeMap;
 
 use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
-use std::io;
-use std::result;
+use std::rt::io;
+use std::rt::io::file::FileInfo;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -336,8 +336,8 @@ pub enum TestResult {
 }
 
 struct ConsoleTestState {
-    out: @io::Writer,
-    log_out: Option<@io::Writer>,
+    out: @mut io::Writer,
+    log_out: Option<@mut io::Writer>,
     term: Option<term::Terminal>,
     use_color: bool,
     total: uint,
@@ -353,17 +353,13 @@ struct ConsoleTestState {
 impl ConsoleTestState {
     pub fn new(opts: &TestOpts) -> ConsoleTestState {
         let log_out = match opts.logfile {
-            Some(ref path) => match io::file_writer(path,
-                                                    [io::Create,
-                                                     io::Truncate]) {
-                result::Ok(w) => Some(w),
-                result::Err(ref s) => {
-                    fail!("can't open output file: {}", *s)
-                }
+            Some(ref path) => {
+                let out = path.open_writer(io::CreateOrTruncate);
+                Some(@mut out as @mut io::Writer)
             },
             None => None
         };
-        let out = io::stdout();
+        let out = @mut io::stdio::stdout() as @mut io::Writer;
         let term = match term::Terminal::new(out) {
             Err(_) => None,
             Ok(t) => Some(t)
@@ -424,12 +420,12 @@ impl ConsoleTestState {
                         word: &str,
                         color: term::color::Color) {
         match self.term {
-            None => self.out.write_str(word),
+            None => self.out.write(word.as_bytes()),
             Some(ref t) => {
                 if self.use_color {
                     t.fg(color);
                 }
-                self.out.write_str(word);
+                self.out.write(word.as_bytes());
                 if self.use_color {
                     t.reset();
                 }
@@ -440,12 +436,12 @@ impl ConsoleTestState {
     pub fn write_run_start(&mut self, len: uint) {
         self.total = len;
         let noun = if len != 1 { &"tests" } else { &"test" };
-        self.out.write_line(format!("\nrunning {} {}", len, noun));
+        write!(self.out, "\nrunning {} {}\n", len, noun);
     }
 
     pub fn write_test_start(&self, test: &TestDesc, align: NamePadding) {
         let name = test.padded_name(self.max_name_len, align);
-        self.out.write_str(format!("test {} ... ", name));
+        write!(self.out, "test {} ... ", name);
     }
 
     pub fn write_result(&self, result: &TestResult) {
@@ -455,41 +451,40 @@ impl ConsoleTestState {
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 self.write_metric();
-                self.out.write_str(": " + fmt_metrics(mm));
+                write!(self.out, ": {}", fmt_metrics(mm));
             }
             TrBench(ref bs) => {
                 self.write_bench();
-                self.out.write_str(": " + fmt_bench_samples(bs))
+                write!(self.out, ": {}", fmt_bench_samples(bs));
             }
         }
-        self.out.write_str(&"\n");
+        write!(self.out, "\n");
     }
 
     pub fn write_log(&self, test: &TestDesc, result: &TestResult) {
         match self.log_out {
             None => (),
             Some(out) => {
-                out.write_line(format!("{} {}",
-                                    match *result {
+                write!(out, "{} {}",match *result {
                                         TrOk => ~"ok",
                                         TrFailed => ~"failed",
                                         TrIgnored => ~"ignored",
                                         TrMetrics(ref mm) => fmt_metrics(mm),
                                         TrBench(ref bs) => fmt_bench_samples(bs)
-                                    }, test.name.to_str()));
+                                    }, test.name.to_str());
             }
         }
     }
 
     pub fn write_failures(&self) {
-        self.out.write_line("\nfailures:");
+        write!(self.out, "\nfailures:\n");
         let mut failures = ~[];
         for f in self.failures.iter() {
             failures.push(f.name.to_str());
         }
         sort::tim_sort(failures);
         for name in failures.iter() {
-            self.out.write_line(format!("    {}", name.to_str()));
+            writeln!(self.out, "    {}", name.to_str());
         }
     }
 
@@ -506,36 +501,34 @@ impl ConsoleTestState {
                 MetricAdded => {
                     added += 1;
                     self.write_added();
-                    self.out.write_line(format!(": {}", *k));
+                    writeln!(self.out, ": {}", *k);
                 }
                 MetricRemoved => {
                     removed += 1;
                     self.write_removed();
-                    self.out.write_line(format!(": {}", *k));
+                    writeln!(self.out, ": {}", *k);
                 }
                 Improvement(pct) => {
                     improved += 1;
-                    self.out.write_str(*k);
-                    self.out.write_str(": ");
+                    write!(self.out, "{}: ", *k);
                     self.write_improved();
-                    self.out.write_line(format!(" by {:.2f}%", pct as f64))
+                    writeln!(self.out, " by {:.2f}%", pct as f64);
                 }
                 Regression(pct) => {
                     regressed += 1;
-                    self.out.write_str(*k);
-                    self.out.write_str(": ");
+                    write!(self.out, "{}: ", *k);
                     self.write_regressed();
-                    self.out.write_line(format!(" by {:.2f}%", pct as f64))
+                    writeln!(self.out, " by {:.2f}%", pct as f64);
                 }
             }
         }
-        self.out.write_line(format!("result of ratchet: {} matrics added, {} removed, \
-                                  {} improved, {} regressed, {} noise",
-                                 added, removed, improved, regressed, noise));
+        writeln!(self.out, "result of ratchet: {} matrics added, {} removed, \
+                            {} improved, {} regressed, {} noise",
+                            added, removed, improved, regressed, noise);
         if regressed == 0 {
-            self.out.write_line("updated ratchet file")
+            writeln!(self.out, "updated ratchet file");
         } else {
-            self.out.write_line("left ratchet file untouched")
+            writeln!(self.out, "left ratchet file untouched");
         }
     }
 
@@ -547,12 +540,12 @@ impl ConsoleTestState {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                self.out.write_str(format!("\nusing metrics ratchet: {}\n", pth.display()));
+                write!(self.out, "\nusing metrics ratcher: {}\n", pth.display());
                 match ratchet_pct {
                     None => (),
                     Some(pct) =>
-                    self.out.write_str(format!("with noise-tolerance forced to: {}%%\n",
-                                            pct as f64))
+                        writeln!(self.out, "with noise-tolerance forced to: {}%",
+                                 pct)
                 }
                 let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
                 self.write_metric_diff(&diff);
@@ -567,15 +560,15 @@ impl ConsoleTestState {
 
         let success = ratchet_success && test_success;
 
-        self.out.write_str("\ntest result: ");
+        write!(self.out, "\ntest result: ");
         if success {
             // There's no parallelism at this point so it's safe to use color
             self.write_ok();
         } else {
             self.write_failed();
         }
-        self.out.write_str(format!(". {} passed; {} failed; {} ignored; {} measured\n\n",
-                                self.passed, self.failed, self.ignored, self.measured));
+        write!(self.out, ". {} passed; {} failed; {} ignored; {} measured\n\n",
+               self.passed, self.failed, self.ignored, self.measured);
         return success;
     }
 }
@@ -659,7 +652,7 @@ pub fn run_tests_console(opts: &TestOpts,
         None => (),
         Some(ref pth) => {
             st.metrics.save(pth);
-            st.out.write_str(format!("\nmetrics saved to: {}", pth.display()));
+            write!(st.out, "\nmetrics saved to: {}", pth.display());
         }
     }
     return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
@@ -667,38 +660,42 @@ pub fn run_tests_console(opts: &TestOpts,
 
 #[test]
 fn should_sort_failures_before_printing_them() {
+    use std::rt::io;
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::MemWriter;
+    use std::str;
     fn dummy() {}
 
-    let s = do io::with_str_writer |wr| {
-        let test_a = TestDesc {
-            name: StaticTestName("a"),
-            ignore: false,
-            should_fail: false
-        };
-
-        let test_b = TestDesc {
-            name: StaticTestName("b"),
-            ignore: false,
-            should_fail: false
-        };
-
-        let st = @ConsoleTestState {
-            out: wr,
-            log_out: None,
-            term: None,
-            use_color: false,
-            total: 0u,
-            passed: 0u,
-            failed: 0u,
-            ignored: 0u,
-            measured: 0u,
-            metrics: MetricMap::new(),
-            failures: ~[test_b, test_a],
-            max_name_len: 0u,
-        };
-
-        st.write_failures();
+    let m = @mut MemWriter::new();
+    let test_a = TestDesc {
+        name: StaticTestName("a"),
+        ignore: false,
+        should_fail: false
     };
+
+    let test_b = TestDesc {
+        name: StaticTestName("b"),
+        ignore: false,
+        should_fail: false
+    };
+
+    let st = @ConsoleTestState {
+        out: m as @mut io::Writer,
+        log_out: None,
+        term: None,
+        use_color: false,
+        total: 0u,
+        passed: 0u,
+        failed: 0u,
+        ignored: 0u,
+        measured: 0u,
+        max_name_len: 10u,
+        metrics: MetricMap::new(),
+        failures: ~[test_b, test_a]
+    };
+
+    st.write_failures();
+    let s = str::from_utf8(*m.inner_ref());
 
     let apos = s.find_str("a").unwrap();
     let bpos = s.find_str("b").unwrap();
@@ -939,15 +936,15 @@ impl MetricMap {
     /// Load MetricDiff from a file.
     pub fn load(p: &Path) -> MetricMap {
         assert!(os::path_exists(p));
-        let f = io::file_reader(p).unwrap();
+        let f = @mut p.open_reader(io::Open) as @mut io::Reader;
         let mut decoder = json::Decoder(json::from_reader(f).unwrap());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
-        let f = io::file_writer(p, [io::Create, io::Truncate]).unwrap();
-        self.to_json().to_pretty_writer(f);
+        let f = @mut p.open_writer(io::CreateOrTruncate);
+        self.to_json().to_pretty_writer(f as @mut io::Writer);
     }
 
     /// Compare against another MetricMap. Optionally compare all

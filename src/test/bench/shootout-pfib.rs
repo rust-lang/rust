@@ -23,8 +23,6 @@ extern mod extra;
 
 use extra::{time, getopts};
 use std::comm::{stream, SharedChan};
-use std::io::WriterUtil;
-use std::io;
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
@@ -113,8 +111,6 @@ fn main() {
 
         let num_trials = 10;
 
-        let out = io::stdout();
-
         for n in range(1, max + 1) {
             for _ in range(0, num_trials) {
                 let start = time::precise_time_ns();
@@ -123,8 +119,7 @@ fn main() {
 
                 let elapsed = stop - start;
 
-                out.write_line(format!("{}\t{}\t{}", n, fibn,
-                                       elapsed.to_str()));
+                println!("{}\t{}\t{}", n, fibn, elapsed.to_str());
             }
         }
     }

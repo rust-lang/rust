@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
-
 fn parse_args() -> ~str {
     let args = ::std::os::args();
     let mut n = 0;
@@ -28,5 +26,5 @@ fn parse_args() -> ~str {
 }
 
 pub fn main() {
-    io::println(parse_args());
+    println(parse_args());
 }

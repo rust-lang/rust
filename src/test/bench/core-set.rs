@@ -13,7 +13,6 @@ extern mod extra;
 use extra::bitv::BitvSet;
 use extra::treemap::TreeSet;
 use std::hashmap::HashSet;
-use std::io;
 use std::os;
 use std::rand;
 use std::uint;
@@ -123,12 +122,11 @@ impl Results {
 }
 
 fn write_header(header: &str) {
-    io::stdout().write_str(header);
-    io::stdout().write_str("\n");
+    println(header);
 }
 
 fn write_row(label: &str, value: f64) {
-    io::stdout().write_str(format!("{:30s} {} s\n", label, value));
+    println!("{:30s} {} s\n", label, value);
 }
 
 fn write_results(label: &str, results: &Results) {

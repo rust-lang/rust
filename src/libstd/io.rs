@@ -65,15 +65,17 @@ use ptr;
 use result::{Result, Ok, Err};
 use str::{StrSlice, OwnedStr};
 use str;
-use to_str::ToStr;
 use uint;
 use vec::{MutableVector, ImmutableVector, OwnedVector, OwnedCopyableVector, CopyableVector};
 use vec;
 
-#[allow(non_camel_case_types)] // not sure what to do about this
-pub type fd_t = c_int;
+#[cfg(stage0)]
+pub use rt::io::stdio::{print, println};
 
-pub mod rustrt {
+#[allow(non_camel_case_types)] // not sure what to do about this
+type fd_t = c_int;
+
+mod rustrt {
     use libc;
 
     #[link_name = "rustrt"]
@@ -1013,7 +1015,7 @@ pub struct FILERes {
 }
 
 impl FILERes {
-    pub fn new(f: *libc::FILE) -> FILERes {
+    fn new(f: *libc::FILE) -> FILERes {
         FILERes { f: f }
     }
 }
@@ -1025,37 +1027,6 @@ impl Drop for FILERes {
         unsafe {
             libc::fclose(self.f);
         }
-    }
-}
-
-pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
-    if cleanup {
-        @Wrapper { base: f, cleanup: FILERes::new(f) } as @Reader
-    } else {
-        @f as @Reader
-    }
-}
-
-// FIXME (#2004): this should either be an trait-less impl, a set of
-// top-level functions that take a reader, or a set of default methods on
-// reader (which can then be called reader)
-
-/**
-* Gives a `Reader` that allows you to read values from standard input.
-*
-* # Example
-*
-* ```rust
-* let stdin = std::io::stdin();
-* let line = stdin.read_line();
-* std::io::print(line);
-* ```
-*/
-pub fn stdin() -> @Reader {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        @rustrt::rust_get_stdin() as @Reader
     }
 }
 
@@ -1073,69 +1044,8 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
             Err(~"error opening " + p)
         }
     } else {
-        Ok(FILE_reader(f, true))
+        Ok(@Wrapper { base: f, cleanup: FILERes::new(f) } as @Reader)
     }
-}
-
-
-// Byte readers
-pub struct BytesReader {
-    // FIXME(#5723) see other FIXME below
-    // FIXME(#7268) this should also be parameterized over <'self>
-    bytes: &'static [u8],
-    pos: @mut uint
-}
-
-impl Reader for BytesReader {
-    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
-        let count = num::min(len, self.bytes.len() - *self.pos);
-
-        let view = self.bytes.slice(*self.pos, self.bytes.len());
-        vec::bytes::copy_memory(bytes, view, count);
-
-        *self.pos += count;
-
-        count
-    }
-
-    fn read_byte(&self) -> int {
-        if *self.pos == self.bytes.len() {
-            return -1;
-        }
-
-        let b = self.bytes[*self.pos];
-        *self.pos += 1u;
-        b as int
-    }
-
-    fn eof(&self) -> bool {
-        *self.pos == self.bytes.len()
-    }
-
-    fn seek(&self, offset: int, whence: SeekStyle) {
-        let pos = *self.pos;
-        *self.pos = seek_in_buf(offset, pos, self.bytes.len(), whence);
-    }
-
-    fn tell(&self) -> uint {
-        *self.pos
-    }
-}
-
-pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
-    // XXX XXX XXX this is glaringly unsound
-    // FIXME(#5723) Use a &Reader for the callback's argument. Should be:
-    // fn with_bytes_reader<'r, T>(bytes: &'r [u8], f: &fn(&'r Reader) -> T) -> T
-    let bytes: &'static [u8] = unsafe { cast::transmute(bytes) };
-    f(@BytesReader {
-        bytes: bytes,
-        pos: @mut 0
-    } as @Reader)
-}
-
-pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
-    // FIXME(#5723): As above.
-    with_bytes_reader(s.as_bytes(), f)
 }
 
 // Writing
@@ -1286,7 +1196,7 @@ pub struct FdRes {
 }
 
 impl FdRes {
-    pub fn new(fd: fd_t) -> FdRes {
+    fn new(fd: fd_t) -> FdRes {
         FdRes { fd: fd }
     }
 }
@@ -1300,15 +1210,6 @@ impl Drop for FdRes {
         }
     }
 }
-
-pub fn fd_writer(fd: fd_t, cleanup: bool) -> @Writer {
-    if cleanup {
-        @Wrapper { base: fd, cleanup: FdRes::new(fd) } as @Writer
-    } else {
-        @fd as @Writer
-    }
-}
-
 
 pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<@Writer, ~str> {
@@ -1339,7 +1240,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
     if fd < (0 as c_int) {
         Err(format!("error opening {}: {}", path.display(), os::last_os_error()))
     } else {
-        Ok(fd_writer(fd, true))
+        Ok(@Wrapper { base: fd, cleanup: FdRes::new(fd) } as @Writer)
     }
 }
 
@@ -1615,64 +1516,6 @@ pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
 // FIXME (#2004) why are these different from the way stdin() is
 // implemented?
 
-
-/**
-* Gives a `Writer` which allows you to write to the standard output.
-*
-* # Example
-*
-* ```rust
-* let stdout = std::io::stdout();
-* stdout.write_str("hello\n");
-* ```
-*/
-pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
-
-/**
-* Gives a `Writer` which allows you to write to standard error.
-*
-* # Example
-*
-* ```rust
-* let stderr = std::io::stderr();
-* stderr.write_str("hello\n");
-* ```
-*/
-pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
-
-/**
-* Prints a string to standard output.
-*
-* This string will not have an implicit newline at the end. If you want
-* an implicit newline, please see `println`.
-*
-* # Example
-*
-* ```rust
-* // print is imported into the prelude, and so is always available.
-* print("hello");
-* ```
-*/
-pub fn print(s: &str) {
-    stdout().write_str(s);
-}
-
-/**
-* Prints a string to standard output, followed by a newline.
-*
-* If you do not want an implicit newline, please see `print`.
-*
-* # Example
-*
-* ```rust
-* // println is imported into the prelude, and so is always available.
-* println("hello");
-* ```
-*/
-pub fn println(s: &str) {
-    stdout().write_line(s);
-}
-
 pub struct BytesWriter {
     bytes: @mut ~[u8],
     pos: @mut uint,
@@ -1736,7 +1579,7 @@ pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
 }
 
 // Utility functions
-pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
+fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
    uint {
     let mut bpos = pos as int;
     let blen = len as int;
@@ -1747,137 +1590,6 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
     }
     if bpos < 0 { bpos = 0; } else if bpos > blen { bpos = blen; }
     return bpos as uint;
-}
-
-pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
-    do read_whole_file(file).and_then |bytes| {
-        if str::is_utf8(bytes) {
-            Ok(str::from_utf8(bytes))
-        } else {
-            Err(file.display().to_str() + " is not UTF-8")
-        }
-    }
-}
-
-// FIXME (#2004): implement this in a low-level way. Going through the
-// abstractions is pointless.
-pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
-    do file_reader(file).and_then |rdr| {
-        Ok(rdr.read_whole_stream())
-    }
-}
-
-// fsync related
-
-pub mod fsync {
-    use io::{FILERes, FdRes, fd_t};
-    use libc;
-    use ops::Drop;
-    use option::{None, Option, Some};
-    use os;
-
-    pub enum Level {
-        // whatever fsync does on that platform
-        FSync,
-
-        // fdatasync on linux, similiar or more on other platforms
-        FDataSync,
-
-        // full fsync
-        //
-        // You must additionally sync the parent directory as well!
-        FullFSync,
-    }
-
-
-    // Artifacts that need to fsync on destruction
-    pub struct Res<t> {
-        priv arg: Arg<t>,
-    }
-
-    impl <t> Res<t> {
-        pub fn new(arg: Arg<t>) -> Res<t> {
-            Res { arg: arg }
-        }
-    }
-
-    #[unsafe_destructor]
-    impl<T> Drop for Res<T> {
-        fn drop(&mut self) {
-            match self.arg.opt_level {
-                None => (),
-                Some(level) => {
-                  // fail hard if not succesful
-                  assert!(((self.arg.fsync_fn)(&self.arg.val, level) != -1));
-                }
-            }
-        }
-    }
-
-    pub struct Arg<t> {
-        priv val: t,
-        priv opt_level: Option<Level>,
-        priv fsync_fn: extern "Rust" fn(f: &t, Level) -> int,
-    }
-
-    // fsync file after executing blk
-    // FIXME (#2004) find better way to create resources within lifetime of
-    // outer res
-    pub fn FILE_res_sync(file: &FILERes,
-                         opt_level: Option<Level>,
-                         blk: &fn(v: Res<*libc::FILE>)) {
-        blk(Res::new(Arg {
-            val: file.f,
-            opt_level: opt_level,
-            fsync_fn: fsync_FILE,
-        }));
-
-        fn fileno(stream: *libc::FILE) -> libc::c_int {
-            #[fixed_stack_segment]; #[inline(never)];
-            unsafe { libc::fileno(stream) }
-        }
-
-        fn fsync_FILE(stream: &*libc::FILE, level: Level) -> int {
-            fsync_fd(fileno(*stream), level)
-        }
-    }
-
-    // fsync fd after executing blk
-    pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
-                       blk: &fn(v: Res<fd_t>)) {
-        blk(Res::new(Arg {
-            val: fd.fd,
-            opt_level: opt_level,
-            fsync_fn: fsync_fd_helper,
-        }));
-    }
-
-    fn fsync_fd(fd: libc::c_int, level: Level) -> int {
-        #[fixed_stack_segment]; #[inline(never)];
-
-        os::fsync_fd(fd, level) as int
-    }
-
-    fn fsync_fd_helper(fd_ptr: &libc::c_int, level: Level) -> int {
-        fsync_fd(*fd_ptr, level)
-    }
-
-    // Type of objects that may want to fsync
-    pub trait FSyncable { fn fsync(&self, l: Level) -> int; }
-
-    // Call o.fsync after executing blk
-    pub fn obj_sync(o: @FSyncable, opt_level: Option<Level>,
-                    blk: &fn(v: Res<@FSyncable>)) {
-        blk(Res::new(Arg {
-            val: o,
-            opt_level: opt_level,
-            fsync_fn: obj_fsync_fn,
-        }));
-    }
-
-    fn obj_fsync_fn(o: &@FSyncable, level: Level) -> int {
-        (*o).fsync(level)
-    }
 }
 
 #[cfg(test)]
@@ -1931,82 +1643,6 @@ mod tests {
             do file.each_char() |_| {
                 fail!("must be empty")
             };
-        }
-    }
-
-    #[test]
-    fn test_readchars_empty() {
-        do io::with_str_reader("") |inp| {
-            let res : ~[char] = inp.read_chars(128);
-            assert_eq!(res.len(), 0);
-        }
-    }
-
-    #[test]
-    fn test_read_line_utf8() {
-        do io::with_str_reader("生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
-            let line = inp.read_line();
-            assert_eq!(line, ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
-        }
-    }
-
-    #[test]
-    fn test_read_lines() {
-        do io::with_str_reader("a\nb\nc\n") |inp| {
-            assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
-        }
-
-        do io::with_str_reader("a\nb\nc") |inp| {
-            assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
-        }
-
-        do io::with_str_reader("") |inp| {
-            assert!(inp.read_lines().is_empty());
-        }
-    }
-
-    #[test]
-    fn test_readchars_wide() {
-        let wide_test = ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤";
-        let ivals : ~[int] = ~[
-            29983, 38152, 30340, 27748,
-            21273, 20999, 32905, 27748,
-            104, 101, 108, 108, 111,
-            29983, 38152, 30340, 27748,
-            21273, 20999, 32905, 27748];
-        fn check_read_ln(len : uint, s: &str, ivals: &[int]) {
-            do io::with_str_reader(s) |inp| {
-                let res : ~[char] = inp.read_chars(len);
-                if len <= ivals.len() {
-                    assert_eq!(res.len(), len);
-                }
-                for (iv, c) in ivals.iter().zip(res.iter()) {
-                    assert!(*iv == *c as int)
-                }
-            }
-        }
-        let mut i = 0;
-        while i < 8 {
-            check_read_ln(i, wide_test, ivals);
-            i += 1;
-        }
-        // check a long read for good measure
-        check_read_ln(128, wide_test, ivals);
-    }
-
-    #[test]
-    fn test_readchar() {
-        do io::with_str_reader("生") |inp| {
-            let res = inp.read_char();
-            assert_eq!(res as int, 29983);
-        }
-    }
-
-    #[test]
-    fn test_readchar_empty() {
-        do io::with_str_reader("") |inp| {
-            let res = inp.read_char();
-            assert_eq!(res, unsafe { transmute(-1u32) }); // FIXME: #8971: unsound
         }
     }
 

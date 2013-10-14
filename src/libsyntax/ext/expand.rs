@@ -1524,7 +1524,8 @@ mod test {
     }
 
     fn fake_print_crate(crate: &ast::Crate) {
-        let s = pprust::rust_printer(std::io::stderr(),get_ident_interner());
+        let out = @mut std::rt::io::stderr() as @mut std::rt::io::Writer;
+        let s = pprust::rust_printer(out, get_ident_interner());
         pprust::print_crate_(s, crate);
     }
 
@@ -1536,7 +1537,7 @@ mod test {
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
         //let expanded_ast = expand_crate_str(crate_str);
-        // std::io::println(format!("expanded: {:?}\n",expanded_ast));
+        // println(format!("expanded: {:?}\n",expanded_ast));
         //mtwt_resolve_crate(expanded_ast)
     //}
     //fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
@@ -1645,9 +1646,9 @@ mod test {
                     let varref_marks = mtwt_marksof(varref.segments[0].identifier.ctxt,
                                                     invalid_name);
                     if (!(varref_name==binding_name)){
-                        std::io::println("uh oh, should match but doesn't:");
-                        std::io::println(format!("varref: {:?}",varref));
-                        std::io::println(format!("binding: {:?}", bindings[binding_idx]));
+                        println("uh oh, should match but doesn't:");
+                        println!("varref: {:?}",varref);
+                        println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
                     }
                     assert_eq!(varref_name,binding_name);
@@ -1665,12 +1666,12 @@ mod test {
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
                         println!("uh oh, matches but shouldn't:");
-                        std::io::println(format!("varref: {:?}",varref));
+                        println!("varref: {:?}",varref);
                         // good lord, you can't make a path with 0 segments, can you?
                         println!("varref's first segment's uint: {}, and string: \"{}\"",
                                  varref.segments[0].identifier.name,
                                  ident_to_str(&varref.segments[0].identifier));
-                        std::io::println(format!("binding: {:?}", bindings[binding_idx]));
+                        println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
                     }
                     assert!(!fail);
@@ -1703,17 +1704,17 @@ foo_module!()
                                           && (@"xx" == (ident_to_str(&p.segments[0].identifier)))
                                      }).enumerate() {
             if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
-                std::io::println("uh oh, xx binding didn't match xx varref:");
-                std::io::println(format!("this is xx varref \\# {:?}",idx));
-                std::io::println(format!("binding: {:?}",cxbind));
-                std::io::println(format!("resolves to: {:?}",resolved_binding));
-                std::io::println(format!("varref: {:?}",v.segments[0].identifier));
-                std::io::println(format!("resolves to: {:?}",
-                                         mtwt_resolve(v.segments[0].identifier)));
+                println("uh oh, xx binding didn't match xx varref:");
+                println!("this is xx varref \\# {:?}",idx);
+                println!("binding: {:?}",cxbind);
+                println!("resolves to: {:?}",resolved_binding);
+                println!("varref: {:?}",v.segments[0].identifier);
+                println!("resolves to: {:?}",
+                         mtwt_resolve(v.segments[0].identifier));
                 let table = get_sctable();
-                std::io::println("SC table:");
+                println("SC table:");
                 for (idx,val) in table.table.iter().enumerate() {
-                    std::io::println(format!("{:4u} : {:?}",idx,val));
+                    println!("{:4u} : {:?}",idx,val);
                 }
             }
             assert_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);

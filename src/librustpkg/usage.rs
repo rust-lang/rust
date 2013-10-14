@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
-
 pub fn general() {
-    io::println("Usage: rustpkg [options] <cmd> [args..]
+    println("Usage: rustpkg [options] <cmd> [args..]
 
 Where <cmd> is one of:
     build, clean, do, info, install, list, prefer, test, uninstall, unprefer
@@ -24,7 +22,7 @@ Options:
 }
 
 pub fn build() {
-    io::println("rustpkg build [options..] [package-ID]
+    println("rustpkg build [options..] [package-ID]
 
 Build the given package ID if specified. With no package ID argument,
 build the package in the current directory. In that case, the current
@@ -50,21 +48,21 @@ Options:
 }
 
 pub fn clean() {
-    io::println("rustpkg clean
+    println("rustpkg clean
 
 Remove all build files in the work cache for the package in the current
 directory.");
 }
 
 pub fn do_cmd() {
-    io::println("rustpkg do <cmd>
+    println("rustpkg do <cmd>
 
 Runs a command in the package script. You can listen to a command
 by tagging a function with the attribute `#[pkg_do(cmd)]`.");
 }
 
 pub fn info() {
-    io::println("rustpkg [options..] info
+    println("rustpkg [options..] info
 
 Probe the package script in the current directory for information.
 
@@ -73,13 +71,13 @@ Options:
 }
 
 pub fn list() {
-    io::println("rustpkg list
+    println("rustpkg list
 
 List all installed packages.");
 }
 
 pub fn install() {
-    io::println("rustpkg install [options..] [package-ID]
+    println("rustpkg install [options..] [package-ID]
 
 Install the given package ID if specified. With no package ID
 argument, install the package in the current directory.
@@ -105,14 +103,14 @@ Options:
 }
 
 pub fn uninstall() {
-    io::println("rustpkg uninstall <id|name>[@version]
+    println("rustpkg uninstall <id|name>[@version]
 
 Remove a package by id or name and optionally version. If the package(s)
 is/are depended on by another package then they cannot be removed.");
 }
 
 pub fn prefer() {
-    io::println("rustpkg [options..] prefer <id|name>[@version]
+    println("rustpkg [options..] prefer <id|name>[@version]
 
 By default all binaries are given a unique name so that multiple versions can
 coexist. The prefer command will symlink the uniquely named binary to
@@ -130,7 +128,7 @@ Example:
 }
 
 pub fn unprefer() {
-    io::println("rustpkg [options..] unprefer <id|name>[@version]
+    println("rustpkg [options..] unprefer <id|name>[@version]
 
 Remove all symlinks from the store to the binary directory for a package
 name and optionally version. If version is not supplied, the latest version
@@ -139,7 +137,7 @@ information.");
 }
 
 pub fn test() {
-    io::println("rustpkg [options..] test
+    println("rustpkg [options..] test
 
 Build all test crates in the current directory with the test flag.
 Then, run all the resulting test executables, redirecting the output
@@ -150,7 +148,7 @@ Options:
 }
 
 pub fn init() {
-    io::println("rustpkg init
+    println("rustpkg init
 
 This will turn the current working directory into a workspace. The first
 command you run when starting off a new project.

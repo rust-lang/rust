@@ -10,7 +10,6 @@
 
 use common::config;
 
-use std::io;
 use std::os::getenv;
 
 /// Conversion table from triple OS name to Rust SYSNAME
@@ -64,5 +63,5 @@ pub fn path_div() -> ~str { ~";" }
 
 pub fn logv(config: &config, s: ~str) {
     debug!("{}", s);
-    if config.verbose { io::println(s); }
+    if config.verbose { println(s); }
 }

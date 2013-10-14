@@ -19,7 +19,13 @@ use arc::{Arc,RWArc};
 use treemap::TreeMap;
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
-use std::{io, os, task};
+use std::{os, str, task};
+use std::rt::io;
+use std::rt::io::Writer;
+use std::rt::io::Decorator;
+use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::mem::MemWriter;
+use std::rt::io::file::FileInfo;
 
 /**
 *
@@ -174,19 +180,19 @@ impl Database {
 
     // FIXME #4330: This should have &mut self and should set self.db_dirty to false.
     fn save(&self) {
-        let f = io::file_writer(&self.db_filename, [io::Create, io::Truncate]).unwrap();
-        self.db_cache.to_json().to_pretty_writer(f);
+        let f = @mut self.db_filename.open_writer(io::CreateOrTruncate);
+        self.db_cache.to_json().to_pretty_writer(f as @mut io::Writer);
     }
 
     fn load(&mut self) {
         assert!(!self.db_dirty);
         assert!(os::path_exists(&self.db_filename));
-        let f = io::file_reader(&self.db_filename);
+        let f = self.db_filename.open_reader(io::Open);
         match f {
-            Err(e) => fail!("Couldn't load workcache database {}: {}",
-                            self.db_filename.display(), e.to_str()),
-            Ok(r) =>
-                match json::from_reader(r) {
+            None => fail!("Couldn't load workcache database {}",
+                          self.db_filename.display()),
+            Some(r) =>
+                match json::from_reader(@mut r as @mut io::Reader) {
                     Err(e) => fail!("Couldn't parse workcache database (from file {}): {}",
                                     self.db_filename.display(), e.to_str()),
                     Ok(r) => {
@@ -256,20 +262,18 @@ enum Work<'self, T> {
 }
 
 fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
-    do io::with_str_writer |wr| {
-        let mut encoder = json::Encoder(wr);
-        t.encode(&mut encoder);
-    }
+    let writer = @mut MemWriter::new();
+    let mut encoder = json::Encoder(writer as @mut io::Writer);
+    t.encode(&mut encoder);
+    str::from_utf8(writer.inner_ref().as_slice())
 }
 
 // FIXME(#5121)
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     debug!("json decoding: {}", s);
-    do io::with_str_reader(s) |rdr| {
-        let j = json::from_reader(rdr).unwrap();
-        let mut decoder = json::Decoder(j);
-        Decodable::decode(&mut decoder)
-    }
+    let j = json::from_str(s).unwrap();
+    let mut decoder = json::Decoder(j);
+    Decodable::decode(&mut decoder)
 }
 
 fn digest<T:Encodable<json::Encoder>>(t: &T) -> ~str {
@@ -280,8 +284,8 @@ fn digest<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 
 fn digest_file(path: &Path) -> ~str {
     let mut sha = ~Sha1::new();
-    let s = io::read_whole_file_str(path);
-    (*sha).input_str(s.unwrap());
+    let s = path.open_reader(io::Open).read_to_end();
+    (*sha).input(s);
     (*sha).result_str()
 }
 
@@ -492,7 +496,6 @@ impl<'self, T:Send +
 
 #[test]
 fn test() {
-    use std::io::WriterUtil;
     use std::{os, run};
 
     // Create a path to a new file 'filename' in the directory in which
@@ -507,8 +510,7 @@ fn test() {
 
     let pth = make_path(~"foo.c");
     {
-        let r = io::file_writer(&pth, [io::Create]);
-        r.unwrap().write_str("int main() { return 0; }");
+        pth.open_writer(io::Create).write(bytes!("int main() { return 0; }"));
     }
 
     let db_path = make_path(~"db.json");
@@ -539,5 +541,5 @@ fn test() {
         }
     };
 
-    io::println(s);
+    println(s);
 }
