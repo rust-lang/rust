@@ -19,9 +19,8 @@
 * C bindings as appropriate for the target platform. The exact
 * set of functions available are platform specific.
 *
-* *Note* Rustdoc does not indicate reexports currently. Also, because these
-* definitions are platform-specific, some may not
-* appear in the generated documentation.
+* *Note* Because these definitions are platform-specific, some may not appear in
+* the generated documentation.
 *
 * We consider the following specs reasonably normative with respect
 * to interoperating with the C standard library (libc/msvcrt):
