@@ -18,7 +18,6 @@ pub mod c_double_utils {
     use libc::{c_double, c_int};
 
     #[link_name = "m"]
-    #[abi = "cdecl"]
     extern {
         // Alpabetically sorted by link_name
 
@@ -107,7 +106,6 @@ pub mod c_float_utils {
     use libc::{c_float, c_int};
 
     #[link_name = "m"]
-    #[abi = "cdecl"]
     extern {
         // Alpabetically sorted by link_name
 

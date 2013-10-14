@@ -13,7 +13,6 @@
 #[feature(globs)];
 
 mod rusti {
-    #[abi = "rust-intrinsic"]
     extern "rust-intrinsic" {
         pub fn sqrtf32(x: f32) -> f32;
         pub fn sqrtf64(x: f64) -> f64;

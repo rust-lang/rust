@@ -30,7 +30,6 @@ mod m {
     use std::libc::{c_double, c_int};
 
     #[link_name = "m"]
-    #[abi = "cdecl"]
     extern {
         #[cfg(unix)]
         #[link_name="lgamma_r"]

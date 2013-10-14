@@ -1039,7 +1039,6 @@ pub fn errno() -> uint {
 
     #[cfg(target_arch = "x86")]
     #[link_name = "kernel32"]
-    #[abi = "stdcall"]
     extern "stdcall" {
         fn GetLastError() -> DWORD;
     }
@@ -1118,7 +1117,6 @@ pub fn last_os_error() -> ~str {
 
         #[cfg(target_arch = "x86")]
         #[link_name = "kernel32"]
-        #[abi = "stdcall"]
         extern "stdcall" {
             fn FormatMessageW(flags: DWORD,
                               lpSrc: LPVOID,
