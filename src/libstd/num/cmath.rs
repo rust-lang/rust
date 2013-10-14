@@ -18,7 +18,7 @@ pub mod c_double_utils {
     use libc::{c_double, c_int};
 
     #[link_name = "m"]
-    extern "cdecl" {
+    extern {
         // Alpabetically sorted by link_name
 
         pub fn acos(n: c_double) -> c_double;
@@ -106,7 +106,7 @@ pub mod c_float_utils {
     use libc::{c_float, c_int};
 
     #[link_name = "m"]
-    extern "cdecl" {
+    extern {
         // Alpabetically sorted by link_name
 
         #[link_name="acosf"]

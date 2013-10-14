@@ -21,13 +21,13 @@ static b: bool = true;
 
 mod rustrt {
     #[cfg(bogus)]
-    extern "cdecl" {
+    extern {
         // This symbol doesn't exist and would be a link error if this
         // module was translated
         pub fn bogus();
     }
 
-    extern "cdecl" {}
+    extern {}
 }
 
 #[cfg(bogus)]
@@ -107,7 +107,7 @@ fn test_in_fn_ctxt() {
 
 mod test_foreign_items {
     pub mod rustrt {
-        extern "cdecl" {
+        extern {
             #[cfg(bogus)]
             pub fn rust_get_stdin() -> ~str;
             pub fn rust_get_stdin() -> ~str;

@@ -11,7 +11,7 @@
 
 
 mod test {
-    extern "cdecl" {
+    extern {
         pub fn free();
     }
 }

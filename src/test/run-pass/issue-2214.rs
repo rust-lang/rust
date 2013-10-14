@@ -30,7 +30,7 @@ mod m {
     use std::libc::{c_double, c_int};
 
     #[link_name = "m"]
-    extern "cdecl" {
+    extern {
         #[cfg(unix)]
         #[link_name="lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
