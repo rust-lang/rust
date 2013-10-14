@@ -66,6 +66,8 @@ use std::rand::Rng;
 use std::cmp::Eq;
 use std::cast::{transmute,transmute_copy};
 
+use serialize::{Encoder, Encodable, Decoder, Decodable};
+
 /// A 128-bit (16 byte) buffer containing the ID
 pub type UuidBytes = [u8, ..16];
 
@@ -483,6 +485,19 @@ impl Eq for Uuid {
 impl TotalEq for Uuid {
     fn equals(&self, other: &Uuid) -> bool {
         self.bytes == other.bytes
+    }
+}
+
+// FIXME #9845: Test these
+impl<T: Encoder> Encodable<T> for Uuid {
+    fn encode(&self, e: &mut T) {
+        e.emit_str(self.to_hyphenated_str());
+    }
+}
+
+impl<T: Decoder> Decodable<T> for Uuid {
+    fn decode(d: &mut T) -> Uuid {
+        from_str(d.read_str()).unwrap()
     }
 }
 
