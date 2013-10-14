@@ -16,8 +16,7 @@
 
 extern mod extra;
 
-use std::io::ReaderUtil;
-use std::io;
+use std::rt::io;
 use std::to_str;
 
 enum square {
@@ -64,16 +63,15 @@ fn square_from_char(c: char) -> square {
 }
 
 fn read_board_grid<rdr:'static + io::Reader>(input: rdr) -> ~[~[square]] {
-    let input = @input as @io::Reader;
+    let input = @mut input as @mut io::Reader;
     let mut grid = ~[];
-    do input.each_line |line| {
-        let mut row = ~[];
-        for c in line.iter() {
-            row.push(square_from_char(c))
-        }
-        grid.push(row);
-        true
-    };
+    let mut line = [0, ..10];
+    input.read(line);
+    let mut row = ~[];
+    for c in line.iter() {
+        row.push(square_from_char(*c as char))
+    }
+    grid.push(row);
     let width = grid[0].len();
     for row in grid.iter() { assert!(row.len() == width) }
     grid

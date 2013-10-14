@@ -1819,7 +1819,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
             }
         }
 
-        io::println("metadata stats:");
+        println("metadata stats:");
         println!("    inline bytes: {}", ecx.stats.inline_bytes);
         println!(" attribute bytes: {}", ecx.stats.attr_bytes);
         println!("       dep bytes: {}", ecx.stats.dep_bytes);

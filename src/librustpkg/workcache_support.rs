@@ -8,21 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rt::io;
+use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::file::FileInfo;
+
 use extra::sha1::Sha1;
 use extra::digest::Digest;
 use extra::workcache;
-use std::io;
 
 /// Hashes the file contents along with the last-modified time
 pub fn digest_file_with_date(path: &Path) -> ~str {
     use conditions::bad_path::cond;
     use cond1 = conditions::bad_stat::cond;
 
-    let s = io::read_whole_file_str(path);
-    match s {
-        Ok(s) => {
+    let mut err = None;
+    let bytes = do io::io_error::cond.trap(|e| err = Some(e)).inside {
+        path.open_reader(io::Open).read_to_end()
+    };
+    match err {
+        None => {
             let mut sha = Sha1::new();
-            sha.input_str(s);
+            sha.input(bytes);
             let st = match path.stat() {
                 Some(st) => st,
                 None => cond1.raise((path.clone(), format!("Couldn't get file access time")))
@@ -30,11 +36,9 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
             sha.input_str(st.modified.to_str());
             sha.result_str()
         }
-        Err(e) => {
-            let path = cond.raise((path.clone(), format!("Couldn't read file: {}", e)));
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            // XXX: I'm pretty sure this is the wrong return value
-            path.as_str().unwrap().to_owned()
+        Some(e) => {
+            cond.raise((path.clone(), format!("Couldn't read file: {}", e.desc)));
+            ~""
         }
     }
 }

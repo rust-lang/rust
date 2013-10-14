@@ -26,7 +26,6 @@ use std::c_str::ToCStr;
 use std::char;
 use std::hash::Streaming;
 use std::hash;
-use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::os;
 use std::ptr;
@@ -930,7 +929,7 @@ pub fn link_binary(sess: Session,
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
     debug!("{} link args: {}", cc_prog, cc_args.connect(" "));
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
-        io::println(format!("{} link args: {}", cc_prog, cc_args.connect(" ")));
+        println!("{} link args: {}", cc_prog, cc_args.connect(" "));
     }
 
     // We run 'cc' here

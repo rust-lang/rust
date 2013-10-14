@@ -11,8 +11,6 @@
 // except according to those terms.
 
 mod base {
-    use std::io;
-
     pub trait HasNew<T> {
         fn new() -> Self;
     }
@@ -34,7 +32,7 @@ mod base {
 
     impl ::base::HasNew<Bar> for Bar {
         fn new() -> Bar {
-            io::println("Bar");
+            println("Bar");
             Bar { dummy: () }
         }
     }

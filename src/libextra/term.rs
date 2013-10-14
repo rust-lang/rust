@@ -13,7 +13,7 @@
 #[allow(missing_doc)];
 
 
-use std::io;
+use std::rt::io;
 
 #[cfg(not(target_os = "win32"))] use std::os;
 #[cfg(not(target_os = "win32"))] use terminfo::*;
@@ -96,19 +96,19 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 #[cfg(not(target_os = "win32"))]
 pub struct Terminal {
     priv num_colors: u16,
-    priv out: @io::Writer,
+    priv out: @mut io::Writer,
     priv ti: ~TermInfo
 }
 
 #[cfg(target_os = "win32")]
 pub struct Terminal {
     priv num_colors: u16,
-    priv out: @io::Writer,
+    priv out: @mut io::Writer,
 }
 
 #[cfg(not(target_os = "win32"))]
 impl Terminal {
-    pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
+    pub fn new(out: @mut io::Writer) -> Result<Terminal, ~str> {
         let term = os::getenv("TERM");
         if term.is_none() {
             return Err(~"TERM environment variable undefined");
@@ -243,7 +243,7 @@ impl Terminal {
 
 #[cfg(target_os = "win32")]
 impl Terminal {
-    pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
+    pub fn new(out: @mut io::Writer) -> Result<Terminal, ~str> {
         return Ok(Terminal {out: out, num_colors: 0});
     }
 

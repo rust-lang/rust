@@ -13,8 +13,6 @@
 extern mod extra;
 
 use extra::smallintmap::SmallIntMap;
-use std::io::WriterUtil;
-use std::io;
 use std::os;
 use std::uint;
 
@@ -59,8 +57,8 @@ fn main() {
 
     let maxf = max as f64;
 
-    io::stdout().write_str(format!("insert(): {:?} seconds\n", checkf));
-    io::stdout().write_str(format!("        : {} op/sec\n", maxf/checkf));
-    io::stdout().write_str(format!("get()   : {:?} seconds\n", appendf));
-    io::stdout().write_str(format!("        : {} op/sec\n", maxf/appendf));
+    println!("insert(): {:?} seconds\n", checkf);
+    println!("        : {} op/sec\n", maxf/checkf);
+    println!("get()   : {:?} seconds\n", appendf);
+    println!("        : {} op/sec\n", maxf/appendf);
 }

@@ -28,6 +28,9 @@ use std::local_data;
 use std::rt::io::Writer;
 use std::rt::io::file::FileInfo;
 use std::rt::io;
+use std::rt::io::mem::MemWriter;
+use std::rt::io::Decorator;
+use std::str;
 use extra::getopts;
 use extra::getopts::groups;
 use extra::json;
@@ -257,11 +260,11 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, ~str> {
-    let input = match ::std::io::file_reader(&Path::new(input)) {
-        Ok(i) => i,
-        Err(s) => return Err(s),
+    let input = match Path::new(input).open_reader(io::Open) {
+        Some(f) => f,
+        None => return Err(format!("couldn't open {} for reading", input)),
     };
-    match json::from_reader(input) {
+    match json::from_reader(@mut input as @mut io::Reader) {
         Err(s) => Err(s.to_str()),
         Ok(json::Object(obj)) => {
             let mut obj = obj;
@@ -306,8 +309,10 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
-    let crate_json_str = do std::io::with_str_writer |w| {
-        crate.encode(&mut json::Encoder(w));
+    let crate_json_str = {
+        let w = @mut MemWriter::new();
+        crate.encode(&mut json::Encoder(w as @mut io::Writer));
+        str::from_utf8(*w.inner_ref())
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,

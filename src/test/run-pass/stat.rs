@@ -13,8 +13,9 @@
 extern mod extra;
 
 use extra::tempfile;
-use std::io::WriterUtil;
-use std::io;
+use std::rt::io;
+use std::rt::io::Writer;
+use std::rt::io::file::FileInfo;
 use std::os;
 
 pub fn main() {
@@ -22,11 +23,12 @@ pub fn main() {
     let path = dir.path().join("file");
 
     {
-        match io::file_writer(&path, [io::Create, io::Truncate]) {
-            Err(ref e) => fail!("{}", e.clone()),
-            Ok(f) => {
+        match path.open_writer(io::CreateOrTruncate) {
+            None => unreachable!(),
+            Some(f) => {
+                let mut f = f;
                 for _ in range(0u, 1000) {
-                    f.write_u8(0);
+                    f.write([0]);
                 }
             }
         }

@@ -32,7 +32,6 @@
 use c_str::CString;
 use clone::Clone;
 use container::Container;
-use io;
 use iter::range;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
@@ -353,64 +352,6 @@ pub fn fdopen(fd: c_int) -> *FILE {
         unsafe {
             libc::fdopen(fd, modebuf)
         }
-    }
-}
-
-
-// fsync related
-
-#[cfg(windows)]
-pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-    unsafe {
-        use libc::funcs::extra::msvcrt::*;
-        return commit(fd);
-    }
-}
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
-pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-    unsafe {
-        use libc::funcs::posix01::unistd::*;
-        match level {
-          io::fsync::FSync
-          | io::fsync::FullFSync => return fsync(fd),
-          io::fsync::FDataSync => return fdatasync(fd)
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        use libc::consts::os::extra::*;
-        use libc::funcs::posix88::fcntl::*;
-        use libc::funcs::posix01::unistd::*;
-        match level {
-          io::fsync::FSync => return fsync(fd),
-          _ => {
-            // According to man fnctl, the ok retval is only specified to be
-            // !=-1
-            if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
-                { return -1 as c_int; }
-            else
-                { return 0 as c_int; }
-          }
-        }
-    }
-}
-
-#[cfg(target_os = "freebsd")]
-pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        use libc::funcs::posix01::unistd::*;
-        return fsync(fd);
     }
 }
 
