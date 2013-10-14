@@ -685,6 +685,7 @@ pub struct Struct {
     struct_type: doctree::StructType,
     generics: Generics,
     fields: ~[Item],
+    fields_stripped: bool,
 }
 
 impl Clean<Item> for doctree::Struct {
@@ -699,6 +700,7 @@ impl Clean<Item> for doctree::Struct {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(),
                 fields: self.fields.clean(),
+                fields_stripped: false,
             }),
         }
     }
@@ -711,6 +713,7 @@ impl Clean<Item> for doctree::Struct {
 pub struct VariantStruct {
     struct_type: doctree::StructType,
     fields: ~[Item],
+    fields_stripped: bool,
 }
 
 impl Clean<VariantStruct> for syntax::ast::struct_def {
@@ -718,6 +721,7 @@ impl Clean<VariantStruct> for syntax::ast::struct_def {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
             fields: self.fields.clean(),
+            fields_stripped: false,
         }
     }
 }
@@ -726,6 +730,7 @@ impl Clean<VariantStruct> for syntax::ast::struct_def {
 pub struct Enum {
     variants: ~[Item],
     generics: Generics,
+    variants_stripped: bool,
 }
 
 impl Clean<Item> for doctree::Enum {
@@ -739,6 +744,7 @@ impl Clean<Item> for doctree::Enum {
             inner: EnumItem(Enum {
                 variants: self.variants.clean(),
                 generics: self.generics.clean(),
+                variants_stripped: false,
             }),
         }
     }

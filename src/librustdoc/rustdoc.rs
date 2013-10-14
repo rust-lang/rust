@@ -48,7 +48,7 @@ pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
 
-pub static SCHEMA_VERSION: &'static str = "0.8.0";
+pub static SCHEMA_VERSION: &'static str = "0.8.1";
 
 type Pass = (&'static str,                                      // name
              extern fn(clean::Crate) -> plugins::PluginResult,  // fn
