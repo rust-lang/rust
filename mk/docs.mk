@@ -44,7 +44,7 @@ doc/rust.html: rust.md doc/version_info.html doc/css/rust.css doc/css/manual.inc
          --standalone --toc \
          --section-divs \
          --number-sections \
-         --from=markdown --to=html5 \
+         --from=markdown+raw_html --to=html5 \
          --css=css/rust.css --include-in-header=doc/css/manual.inc \
          --include-before-body=doc/version_info.html \
          --output=$@
@@ -57,7 +57,7 @@ doc/rust.tex: rust.md doc/version.md
          --standalone --toc \
          --number-sections \
          --include-before-body=doc/version.md \
-         --from=markdown --to=latex \
+         --from=markdown+raw_html --to=latex \
          --output=$@
 
 DOCS += doc/tutorial.tex
@@ -68,7 +68,7 @@ doc/tutorial.tex: tutorial.md doc/version.md
          --standalone --toc \
          --number-sections \
          --include-before-body=doc/version.md \
-         --from=markdown --to=latex \
+         --from=markdown+raw_html --to=latex \
          --output=$@
 
 DOCS += doc/rustpkg.html

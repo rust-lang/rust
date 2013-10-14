@@ -3710,7 +3710,7 @@ this is an info log
 >  errors. We do not want the errors in one module to adversely affect the
 >  behaviour of a module which does not have any errors.
 >
->  &mdash; Joe Armstrong
+>  <small>&mdash; Joe Armstrong</small>
 
 >  In our approach, all data is private to some process, and processes can
 >  only communicate through communications channels. *Security*, as used
@@ -3721,14 +3721,14 @@ this is an info log
 >  in isolation can be guaranteed to hold when that module is embedded in a
 >  system [...]
 >
->  &mdash; Robert Strom and Shaula Yemini
+>  <small>&mdash; Robert Strom and Shaula Yemini</small>
 
 >  Concurrent and applicative programming complement each other. The
 >  ability to send messages on channels provides I/O without side effects,
 >  while the avoidance of shared data helps keep concurrent processes from
 >  colliding.
 >
->  &mdash; Rob Pike
+>  <small>&mdash; Rob Pike</small>
 
 Rust is not a particularly original language. It may however appear unusual
 by contemporary standards, as its design elements are drawn from a number of
