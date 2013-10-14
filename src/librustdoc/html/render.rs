@@ -1265,7 +1265,8 @@ fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
 
 fn item_struct(w: &mut io::Writer, it: &clean::Item, s: &clean::Struct) {
     write!(w, "<pre class='struct'>");
-    render_struct(w, it, Some(&s.generics), s.struct_type, s.fields, "", true);
+    render_struct(w, it, Some(&s.generics), s.struct_type, s.fields,
+                  s.fields_stripped, "", true);
     write!(w, "</pre>");
 
     document(w, it);
@@ -1312,13 +1313,17 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
                         }
                         clean::StructVariant(ref s) => {
                             render_struct(w, v, None, s.struct_type, s.fields,
-                                          "    ", false);
+                                          s.fields_stripped, "    ", false);
                         }
                     }
                 }
                 _ => unreachable!()
             }
             write!(w, ",\n");
+        }
+
+        if e.variants_stripped {
+            write!(w, "    // some variants omitted\n");
         }
         write!(w, "\\}");
     }
@@ -1343,6 +1348,7 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
                  g: Option<&clean::Generics>,
                  ty: doctree::StructType,
                  fields: &[clean::Item],
+                 fields_stripped: bool,
                  tab: &str,
                  structhead: bool) {
     write!(w, "{}{}{}",
@@ -1367,6 +1373,10 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
                     }
                     _ => unreachable!()
                 }
+            }
+
+            if fields_stripped {
+                write!(w, "    // some fields omitted\n{}", tab);
             }
             write!(w, "\\}");
         }
