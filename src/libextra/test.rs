@@ -640,11 +640,20 @@ pub fn run_tests_console(opts: &TestOpts,
         }
     }
     let st = @mut ConsoleTestState::new(opts);
-    match tests.iter().map(|t| t.desc.name.to_str().len()).max() {
-        Some(l) => { st.max_name_len = l; },
+    fn len_if_padded(t: &TestDescAndFn) -> uint {
+        match t.testfn.padding() {
+            PadNone => 0u,
+            PadOnLeft | PadOnRight => t.desc.name.to_str().len(),
+        }
+    }
+    match tests.iter().max_by(|t|len_if_padded(*t)) {
+        Some(t) => {
+            let n = t.desc.name.to_str();
+            debug2!("Setting max_name_len from: {}", n);
+            st.max_name_len = n.len();
+        },
         None => {}
     }
-    debug2!("tests max_name_len: {}", st.max_name_len);
     run_tests(opts, tests, |x| callback(&x, st));
     match opts.save_metrics {
         None => (),
