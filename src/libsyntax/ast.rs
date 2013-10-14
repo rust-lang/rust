@@ -691,6 +691,7 @@ pub type lit = Spanned<lit_>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum lit_ {
     lit_str(@str, StrStyle),
+    lit_binary(@[u8]),
     lit_char(u32),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),

@@ -1020,6 +1020,10 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
 
     match lit.node {
       ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
+      ast::lit_binary(*) => {
+          ty::mk_evec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
+                      ty::vstore_slice(ty::re_static))
+      }
       ast::lit_char(_) => ty::mk_char(),
       ast::lit_int(_, t) => ty::mk_mach_int(t),
       ast::lit_uint(_, t) => ty::mk_mach_uint(t),
