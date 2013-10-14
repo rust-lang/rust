@@ -9,7 +9,6 @@
 // except according to those terms.
 
 mod rusti {
-    #[abi = "rust-intrinsic"]
     extern "rust-intrinsic" {
         pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
         pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;

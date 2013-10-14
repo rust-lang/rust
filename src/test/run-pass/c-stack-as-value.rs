@@ -11,7 +11,6 @@
 mod rustrt {
     use std::libc;
 
-    #[abi = "cdecl"]
     extern {
         pub fn rust_get_test_int() -> libc::intptr_t;
     }
