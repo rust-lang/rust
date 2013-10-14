@@ -111,7 +111,8 @@ use middle::moves;
 
 use std::cast::transmute;
 use std::hashmap::HashMap;
-use std::io;
+use std::rt::io;
+use std::str;
 use std::to_str;
 use std::uint;
 use std::vec;
@@ -739,15 +740,14 @@ impl Liveness {
     }
 
     pub fn write_vars(&self,
-                      wr: @io::Writer,
+                      wr: &mut io::Writer,
                       ln: LiveNode,
                       test: &fn(uint) -> LiveNode) {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                wr.write_str(" ");
-                wr.write_str(Variable(var_idx).to_str());
+                write!(wr, " {}", Variable(var_idx).to_str());
             }
         }
     }
@@ -784,20 +784,14 @@ impl Liveness {
     }
 
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
-        do io::with_str_writer |wr| {
-            wr.write_str("[ln(");
-            wr.write_uint(*ln);
-            wr.write_str(") of kind ");
-            wr.write_str(format!("{:?}", self.ir.lnks[*ln]));
-            wr.write_str(" reads");
+        str::from_utf8_owned(do io::mem::with_mem_writer |wr| {
+            let wr = wr as &mut io::Writer;
+            write!(wr, "[ln({}) of kind {:?} reads", *ln, self.ir.lnks[*ln]);
             self.write_vars(wr, ln, |idx| self.users[idx].reader );
-            wr.write_str("  writes");
+            write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer );
-            wr.write_str(" ");
-            wr.write_str(" precedes ");
-            wr.write_str((self.successors[*ln]).to_str());
-            wr.write_str("]");
-        }
+            write!(wr, "  precedes {}]", self.successors[*ln].to_str());
+        })
     }
 
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {

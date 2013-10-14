@@ -19,8 +19,11 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
-use std::io;
 use std::path::Path;
+use std::rt::io;
+use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::file::FileInfo;
+use std::str;
 
 pub mod lexer;
 pub mod parser;
@@ -260,15 +263,34 @@ pub fn new_parser_from_tts(sess: @mut ParseSess,
 /// add the path to the session's codemap and return the new filemap.
 pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<Span>)
     -> @FileMap {
-    match io::read_whole_file_str(path) {
-        Ok(src) => string_to_filemap(sess, src.to_managed(), path.to_str().to_managed()),
-        Err(e) => {
-            match spanopt {
-                Some(span) => sess.span_diagnostic.span_fatal(span, e),
-                None => sess.span_diagnostic.handler().fatal(e)
-            }
+    let err = |msg: &str| {
+        match spanopt {
+            Some(sp) => sess.span_diagnostic.span_fatal(sp, msg),
+            None => sess.span_diagnostic.handler().fatal(msg),
+        }
+    };
+    let mut error = None;
+    let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
+        do io::read_error::cond.trap(|e| error = Some(e)).inside {
+            path.open_reader(io::Open).read_to_end()
+        }
+    };
+    match error {
+        Some(e) => {
+            err(format!("couldn't read {}: {}", path.to_str(), e.desc));
+        }
+        None => {}
+    }
+    match str::from_utf8_owned_opt(bytes) {
+        Some(s) => {
+            return string_to_filemap(sess, s.to_managed(),
+                                     path.to_str().to_managed());
+        }
+        None => {
+            err(format!("{} is not UTF-8 encoded", path.to_str()))
         }
     }
+    unreachable!()
 }
 
 // given a session and a string, add the string to
@@ -317,7 +339,10 @@ mod test {
     use super::*;
     use extra::serialize::Encodable;
     use extra;
-    use std::io;
+    use std::rt::io;
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::MemWriter;
+    use std::str;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
     use ast;
@@ -329,10 +354,10 @@ mod test {
     use util::parser_testing::string_to_stmt;
 
     #[cfg(test)] fn to_json_str<E : Encodable<extra::json::Encoder>>(val: @E) -> ~str {
-        do io::with_str_writer |writer| {
-            let mut encoder = extra::json::Encoder(writer);
-            val.encode(&mut encoder);
-        }
+        let writer = @mut MemWriter::new();
+        let mut encoder = extra::json::Encoder(writer as @mut io::Writer);
+        val.encode(&mut encoder);
+        str::from_utf8(*writer.inner_ref())
     }
 
     // produce a codemap::span

@@ -82,8 +82,8 @@ pub struct FlatChan<T, F, C> {
 Constructors for flat pipes that using serialization-based flattening.
 */
 pub mod serial {
-    pub use DefaultEncoder = ebml::writer::Encoder;
-    pub use DefaultDecoder = ebml::reader::Decoder;
+    pub use DefaultEncoder = json::Encoder;
+    pub use DefaultDecoder = json::Decoder;
 
     use serialize::{Decodable, Encodable};
     use flatpipes::flatteners::{DeserializingUnflattener,
@@ -93,7 +93,7 @@ pub mod serial {
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
     use flatpipes::{FlatPort, FlatChan};
 
-    use std::io::{Reader, Writer};
+    use std::rt::io::{Reader, Writer};
     use std::comm::{Port, Chan};
     use std::comm;
 
@@ -109,7 +109,7 @@ pub mod serial {
 
     /// Create a `FlatPort` from a `Reader`
     pub fn reader_port<T: Decodable<DefaultDecoder>,
-                       R: Reader>(reader: R) -> ReaderPort<T, R> {
+                       R: Reader + 'static>(reader: R) -> ReaderPort<T, R> {
         let unflat: DeserializingUnflattener<DefaultDecoder, T> =
             DeserializingUnflattener::new(
                 deserialize_buffer::<DefaultDecoder, T>);
@@ -119,7 +119,7 @@ pub mod serial {
 
     /// Create a `FlatChan` from a `Writer`
     pub fn writer_chan<T: Encodable<DefaultEncoder>,
-                       W: Writer>(writer: W) -> WriterChan<T, W> {
+                       W: Writer + 'static>(writer: W) -> WriterChan<T, W> {
         let flat: SerializingFlattener<DefaultEncoder, T> =
             SerializingFlattener::new(
                 serialize_value::<DefaultEncoder, T>);
@@ -176,7 +176,7 @@ pub mod pod {
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
     use flatpipes::{FlatPort, FlatChan};
 
-    use std::io::{Reader, Writer};
+    use std::rt::io::{Reader, Writer};
     use std::comm::{Port, Chan};
     use std::comm;
 
@@ -188,7 +188,7 @@ pub mod pod {
     pub type PipeChan<T> = FlatChan<T, PodFlattener<T>, PipeByteChan>;
 
     /// Create a `FlatPort` from a `Reader`
-    pub fn reader_port<T:Clone + Send,R:Reader>(
+    pub fn reader_port<T:Clone + Send,R:Reader + 'static>(
         reader: R
     ) -> ReaderPort<T, R> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
@@ -197,7 +197,7 @@ pub mod pod {
     }
 
     /// Create a `FlatChan` from a `Writer`
-    pub fn writer_chan<T:Clone + Send,W:Writer>(
+    pub fn writer_chan<T:Clone + Send,W:Writer + 'static>(
         writer: W
     ) -> WriterChan<T, W> {
         let flat: PodFlattener<T> = PodFlattener::new();
@@ -335,15 +335,13 @@ impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
 
 pub mod flatteners {
 
-    use ebml;
     use flatpipes::{Flattener, Unflattener};
-    use io_util::BufReader;
     use json;
     use serialize::{Encoder, Decoder, Encodable, Decodable};
 
     use std::cast;
-    use std::io::{Writer, Reader, ReaderUtil};
-    use std::io;
+    use std::rt::io::{Writer, Reader, Decorator};
+    use std::rt::io::mem::{MemWriter, MemReader};
     use std::ptr;
     use std::sys::size_of;
     use std::vec;
@@ -447,8 +445,9 @@ pub mod flatteners {
                               buf: &[u8])
                               -> T {
         let buf = buf.to_owned();
-        let buf_reader = @BufReader::new(buf);
-        let reader = buf_reader as @Reader;
+        // XXX: bad clone
+        let buf_reader = @mut MemReader::new(buf.clone());
+        let reader = buf_reader as @mut Reader;
         let mut deser: D = FromReader::from_reader(reader);
         Decodable::decode(&mut deser)
     }
@@ -457,22 +456,22 @@ pub mod flatteners {
                            T: Encodable<D>>(
                            val: &T)
                            -> ~[u8] {
-        do io::with_bytes_writer |writer| {
-            let mut ser = FromWriter::from_writer(writer);
-            val.encode(&mut ser);
-        }
+        let wr = @mut MemWriter::new();
+        let mut ser = FromWriter::from_writer(wr as @mut Writer);
+        val.encode(&mut ser);
+        wr.inner_ref().clone()
     }
 
     pub trait FromReader {
-        fn from_reader(r: @Reader) -> Self;
+        fn from_reader(r: @mut Reader) -> Self;
     }
 
     pub trait FromWriter {
-        fn from_writer(w: @Writer) -> Self;
+        fn from_writer(w: @mut Writer) -> Self;
     }
 
     impl FromReader for json::Decoder {
-        fn from_reader(r: @Reader) -> json::Decoder {
+        fn from_reader(r: @mut Reader) -> json::Decoder {
             match json::from_reader(r) {
                 Ok(json) => {
                     json::Decoder(json)
@@ -483,24 +482,25 @@ pub mod flatteners {
     }
 
     impl FromWriter for json::Encoder {
-        fn from_writer(w: @Writer) -> json::Encoder {
+        fn from_writer(w: @mut Writer) -> json::Encoder {
             json::Encoder(w)
         }
     }
-
-    impl FromReader for ebml::reader::Decoder {
-        fn from_reader(r: @Reader) -> ebml::reader::Decoder {
-            let buf = @r.read_whole_stream();
-            let doc = ebml::reader::Doc(buf);
-            ebml::reader::Decoder(doc)
-        }
-    }
-
-    impl FromWriter for ebml::writer::Encoder {
-        fn from_writer(w: @Writer) -> ebml::writer::Encoder {
-            ebml::writer::Encoder(w)
-        }
-    }
+//
+//    impl FromReader for ebml::reader::Decoder {
+//        fn from_reader(r: @mut Reader) -> ebml::reader::Decoder {
+//            let r: &mut Reader = r;
+//            let buf = @r.read_to_end();
+//            let doc = ebml::reader::Doc(buf);
+//            ebml::reader::Decoder(doc)
+//        }
+//    }
+//
+//    impl FromWriter for ebml::writer::Encoder {
+//        fn from_writer(w: @mut Writer) -> ebml::writer::Encoder {
+//            ebml::writer::Encoder(w)
+//        }
+//    }
 
 }
 
@@ -510,33 +510,30 @@ pub mod bytepipes {
 
     use std::comm::{Port, Chan};
     use std::comm;
-    use std::io::{Writer, Reader, ReaderUtil};
+    use std::rt::io::{Writer, Reader, read_error};
+    use std::rt::io::extensions::ReaderUtil;
 
     pub struct ReaderBytePort<R> {
-        reader: R
+        reader: @mut R
     }
 
     pub struct WriterByteChan<W> {
-        writer: W
+        writer: @mut W
     }
 
     impl<R:Reader> BytePort for ReaderBytePort<R> {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
-            let mut left = count;
             let mut bytes = ~[];
-            while !self.reader.eof() && left > 0 {
-                assert!(left <= count);
-                assert!(left > 0);
-                let new_bytes = self.reader.read_bytes(left);
-                bytes.push_all(new_bytes);
-                assert!(new_bytes.len() <= left);
-                left -= new_bytes.len();
+            let mut err = false;
+            do read_error::cond.trap(|_| { err = true; }).inside {
+                let r: &mut R = self.reader;
+                r.push_bytes(&mut bytes, count);
             }
 
-            if left == 0 {
+            if !err {
                 return Some(bytes);
             } else {
-                warn2!("flatpipe: dropped {} broken bytes", left);
+                warn2!("flatpipe: dropped {} broken bytes", bytes.len());
                 return None;
             }
         }
@@ -548,18 +545,18 @@ pub mod bytepipes {
         }
     }
 
-    impl<R:Reader> ReaderBytePort<R> {
+    impl<R:Reader + 'static> ReaderBytePort<R> {
         pub fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
-                reader: r
+                reader: @mut r
             }
         }
     }
 
-    impl<W:Writer> WriterByteChan<W> {
+    impl<W:Writer + 'static> WriterByteChan<W> {
         pub fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
-                writer: w
+                writer: @mut w
             }
         }
     }
@@ -638,22 +635,22 @@ mod test {
     use flatpipes::BytePort;
     use flatpipes::pod;
     use flatpipes::serial;
-    use io_util::BufReader;
 
-    use std::io::BytesWriter;
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::{MemWriter, MemReader};
     use std::task;
 
     #[test]
     #[ignore(reason = "ebml failure")]
     fn test_serializing_memory_stream() {
-        let writer = BytesWriter::new();
+        let writer = MemWriter::new();
         let chan = serial::writer_chan(writer);
 
         chan.send(10);
 
-        let bytes = (*chan.byte_chan.writer.bytes).clone();
+        let bytes = chan.byte_chan.writer.inner_ref().clone();
 
-        let reader = BufReader::new(bytes);
+        let reader = MemReader::new(bytes);
         let port = serial::reader_port(reader);
 
         let res: int = port.recv();
@@ -694,14 +691,14 @@ mod test {
 
     #[test]
     fn test_pod_memory_stream() {
-        let writer = BytesWriter::new();
+        let writer = MemWriter::new();
         let chan = pod::writer_chan(writer);
 
         chan.send(10);
 
-        let bytes = (*chan.byte_chan.writer.bytes).clone();
+        let bytes = chan.byte_chan.writer.inner_ref().clone();
 
-        let reader = BufReader::new(bytes);
+        let reader = MemReader::new(bytes);
         let port = pod::reader_port(reader);
 
         let res: int = port.recv();
@@ -873,10 +870,10 @@ mod test {
         use flatpipes::{BytePort, FlatPort};
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;
-        use io_util::BufReader;
 
         use std::comm;
         use std::io;
+        use std::rt::io::mem::MemReader;
         use std::sys;
         use std::task;
 
@@ -884,8 +881,8 @@ mod test {
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;
 
         fn reader_port_loader(bytes: ~[u8]
-                             ) -> pod::ReaderPort<int, BufReader> {
-            let reader = BufReader::new(bytes);
+                             ) -> pod::ReaderPort<int, MemReader> {
+            let reader = MemReader::new(bytes);
             pod::reader_port(reader)
         }
 

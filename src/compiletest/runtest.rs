@@ -21,7 +21,10 @@ use util;
 use util::logv;
 
 use std::cell::Cell;
-use std::io;
+use std::rt::io;
+use std::rt::io::Writer;
+use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::file::FileInfo;
 use std::os;
 use std::str;
 use std::task::{spawn_sched, SingleThreaded};
@@ -60,7 +63,7 @@ pub fn run(config: config, testfile: ~str) {
 pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
-        io::stdout().write_str("\n\n");
+        print!("\n\n");
     }
     let testfile = Path(testfile);
     debug2!("running {}", testfile.to_str());
@@ -170,7 +173,9 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let mut srcs = ~[io::read_whole_file_str(testfile).unwrap()];
+    let src = testfile.open_reader(io::Open).read_to_end();
+    let src = str::from_utf8_owned(src);
+    let mut srcs = ~[src];
 
     let mut round = 0;
     while round < rounds {
@@ -190,7 +195,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut expected = match props.pp_exact {
         Some(ref file) => {
             let filepath = testfile.dir_path().push_rel(file);
-            io::read_whole_file_str(&filepath).unwrap()
+            let s = filepath.open_reader(io::Open).read_to_end();
+            str::from_utf8_owned(s)
           }
           None => { srcs[srcs.len() - 2u].clone() }
         };
@@ -227,8 +233,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     fn compare_source(expected: &str, actual: &str) {
         if expected != actual {
             error(~"pretty-printed source does not match expected source");
-            let msg =
-                format!("\n\
+            println!("\n\
 expected:\n\
 ------------------------------------------\n\
 {}\n\
@@ -239,7 +244,6 @@ actual:\n\
 ------------------------------------------\n\
 \n",
                      expected, actual);
-            io::stdout().write_str(msg);
             fail2!();
         }
     }
@@ -719,9 +723,7 @@ fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
 fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    let writer =
-        io::file_writer(&outfile, [io::Create, io::Truncate]).unwrap();
-    writer.write_str(out);
+    outfile.open_writer(io::CreateOrTruncate).write(out.as_bytes());
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
@@ -744,24 +746,20 @@ fn output_base_name(config: &config, testfile: &Path) -> Path {
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
     if config.verbose {
-        let sep1 = format!("------{}------------------------------", "stdout");
-        let sep2 = format!("------{}------------------------------", "stderr");
-        let sep3 = ~"------------------------------------------";
-        io::stdout().write_line(sep1);
-        io::stdout().write_line(out);
-        io::stdout().write_line(sep2);
-        io::stdout().write_line(err);
-        io::stdout().write_line(sep3);
+        println!("------{}------------------------------", "stdout");
+        println!("{}", out);
+        println!("------{}------------------------------", "stderr");
+        println!("{}", err);
+        println!("------------------------------------------");
     }
 }
 
-fn error(err: ~str) { io::stdout().write_line(format!("\nerror: {}", err)); }
+fn error(err: ~str) { println!("\nerror: {}", err); }
 
 fn fatal(err: ~str) -> ! { error(err); fail2!(); }
 
 fn fatal_ProcRes(err: ~str, ProcRes: &ProcRes) -> ! {
-    let msg =
-        format!("\n\
+    print!("\n\
 error: {}\n\
 command: {}\n\
 stdout:\n\
@@ -774,7 +772,6 @@ stderr:\n\
 ------------------------------------------\n\
 \n",
              err, ProcRes.cmdline, ProcRes.stdout, ProcRes.stderr);
-    io::stdout().write_str(msg);
     fail2!();
 }
 
@@ -794,9 +791,9 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
         ~[(~"",~"")], Some(~""));
 
     if config.verbose {
-        io::stdout().write_str(format!("push ({}) {} {} {}",
+        println!("push ({}) {} {} {}",
             config.target, args.prog,
-            copy_result.out, copy_result.err));
+            copy_result.out, copy_result.err);
     }
 
     logv(config, format!("executing ({}) {}", config.target, cmdline));
@@ -887,9 +884,9 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {
-                io::stdout().write_str(format!("push ({}) {} {} {}",
+                println!("push ({}) {} {} {}",
                     config.target, file.to_str(),
-                    copy_result.out, copy_result.err));
+                    copy_result.out, copy_result.err);
             }
         }
     }
@@ -965,7 +962,8 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = io::read_whole_file_str(&p.with_filetype("ll")).unwrap();
+    let x = p.with_filetype("ll").open_reader(io::Open).read_to_end();
+    let x = str::from_utf8_owned(x);
     x.line_iter().len()
 }
 

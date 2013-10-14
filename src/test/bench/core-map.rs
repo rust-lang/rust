@@ -13,7 +13,6 @@ extern mod extra;
 use extra::time;
 use extra::treemap::TreeMap;
 use std::hashmap::{HashMap, HashSet};
-use std::io;
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
 use std::trie::TrieMap;
@@ -28,7 +27,7 @@ fn timed(label: &str, f: &fn()) {
 }
 
 fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
-    io::println(" Ascending integers:");
+    println(" Ascending integers:");
 
     do timed("insert") {
         for i in range(0u, n_keys) {
@@ -50,7 +49,7 @@ fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
 }
 
 fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
-    io::println(" Descending integers:");
+    println(" Descending integers:");
 
     do timed("insert") {
         for i in range(0, n_keys).invert() {
@@ -118,7 +117,7 @@ fn main() {
 
     println!("{} keys", n_keys);
 
-    io::println("\nTreeMap:");
+    println("\nTreeMap:");
 
     {
         let mut map: TreeMap<uint,uint> = TreeMap::new();
@@ -131,12 +130,12 @@ fn main() {
     }
 
     {
-        io::println(" Random integers:");
+        println(" Random integers:");
         let mut map: TreeMap<uint,uint> = TreeMap::new();
         vector(&mut map, n_keys, rand);
     }
 
-    io::println("\nHashMap:");
+    println("\nHashMap:");
 
     {
         let mut map: HashMap<uint,uint> = HashMap::new();
@@ -149,12 +148,12 @@ fn main() {
     }
 
     {
-        io::println(" Random integers:");
+        println(" Random integers:");
         let mut map: HashMap<uint,uint> = HashMap::new();
         vector(&mut map, n_keys, rand);
     }
 
-    io::println("\nTrieMap:");
+    println("\nTrieMap:");
 
     {
         let mut map: TrieMap<uint> = TrieMap::new();
@@ -167,7 +166,7 @@ fn main() {
     }
 
     {
-        io::println(" Random integers:");
+        println(" Random integers:");
         let mut map: TrieMap<uint> = TrieMap::new();
         vector(&mut map, n_keys, rand);
     }

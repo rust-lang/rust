@@ -12,8 +12,7 @@
 
 extern mod extra;
 
-use std::io::{ReaderUtil, WriterUtil};
-use std::io;
+use std::rt::io;
 use std::os;
 use std::uint;
 use std::unstable::intrinsics::cttz16;
@@ -65,7 +64,7 @@ impl Sudoku {
         return true;
     }
 
-    pub fn read(reader: @io::Reader) -> Sudoku {
+    pub fn read(reader: @mut io::Reader) -> Sudoku {
         assert!(reader.read_line() == ~"9,9"); /* assert first line is exactly "9,9" */
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
@@ -85,7 +84,7 @@ impl Sudoku {
         return Sudoku::new(g)
     }
 
-    pub fn write(&self, writer: @io::Writer) {
+    pub fn write(&self, writer: @mut io::Writer) {
         for row in range(0u8, 9u8) {
             writer.write_str(format!("{}", self.grid[row][0] as uint));
             for col in range(1u8, 9u8) {
@@ -276,8 +275,8 @@ fn main() {
     let mut sudoku = if use_default {
         Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {
-        Sudoku::read(io::stdin())
+        Sudoku::read(@mut io::stdin() as @mut io::Reader)
     };
     sudoku.solve();
-    sudoku.write(io::stdout());
+    sudoku.write(@mut io::stdout() as @mut io::Writer);
 }

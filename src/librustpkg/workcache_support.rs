@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rt::io;
+use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::file::FileInfo;
+
 use extra::sha1::Sha1;
 use extra::digest::Digest;
 use extra::workcache;
-use std::io;
 
 /// Hashes the file contents along with the last-modified time
 pub fn digest_file_with_date(path: &Path) -> ~str {
@@ -19,10 +22,13 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
     use cond1 = conditions::bad_stat::cond;
 
     let mut sha = ~Sha1::new();
-    let s = io::read_whole_file_str(path);
-    match s {
-        Ok(s) => {
-            (*sha).input_str(s);
+    let mut err = None;
+    let bytes = do io::io_error::cond.trap(|e| err = Some(e)).inside {
+        path.open_reader(io::Open).read_to_end()
+    };
+    match err {
+        None => {
+            (*sha).input(bytes);
             let st = match path.stat() {
                 Some(st) => st,
                 None => cond1.raise((path.clone(), format!("Couldn't get file access time")))
@@ -30,7 +36,8 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
             (*sha).input_str(st.st_mtime.to_str());
             (*sha).result_str()
         }
-        Err(e) => cond.raise((path.clone(), format!("Couldn't read file: {}", e))).to_str()
+        Some(e) => cond.raise((path.clone(),
+                               format!("Couldn't read file: {}", e.desc))).to_str()
     }
 }
 
