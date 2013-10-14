@@ -825,144 +825,49 @@ impl<T: Clone> CopyableVector<T> for @[T] {
     fn into_owned(self) -> ~[T] { self.to_owned() }
 }
 
-#[allow(missing_doc)]
-pub trait ImmutableVector<'self, T> {
-    fn slice(&self, start: uint, end: uint) -> &'self [T];
-    fn slice_from(&self, start: uint) -> &'self [T];
-    fn slice_to(&self, end: uint) -> &'self [T];
-    fn iter(self) -> VecIterator<'self, T>;
-    fn rev_iter(self) -> RevIterator<'self, T>;
-    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
-    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
-    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
-    fn rsplitn_iter(self,  n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
-
-    fn window_iter(self, size: uint) -> WindowIter<'self, T>;
-    fn chunk_iter(self, size: uint) -> ChunkIter<'self, T>;
-
-    fn get_opt(&self, index: uint) -> Option<&'self T>;
-    fn head(&self) -> &'self T;
-    fn head_opt(&self) -> Option<&'self T>;
-    fn tail(&self) -> &'self [T];
-    fn tailn(&self, n: uint) -> &'self [T];
-    fn init(&self) -> &'self [T];
-    fn initn(&self, n: uint) -> &'self [T];
-    fn last(&self) -> &'self T;
-    fn last_opt(&self) -> Option<&'self T>;
-    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
-    unsafe fn unsafe_ref(&self, index: uint) -> *T;
-
-    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
-
-    fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
-
-    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U;
-}
-
 /// Extension methods for vectors
-impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
-
+pub trait ImmutableVector<'self, T> {
     /**
      * Returns a slice of self between `start` and `end`.
      *
      * Fails when `start` or `end` point outside the bounds of self,
      * or when `start` > `end`.
      */
-    #[inline]
-    fn slice(&self, start: uint, end: uint) -> &'self [T] {
-        assert!(start <= end);
-        assert!(end <= self.len());
-        do self.as_imm_buf |p, _len| {
-            unsafe {
-                cast::transmute(Slice {
-                    data: ptr::offset(p, start as int),
-                    len: (end - start) * sys::nonzero_size_of::<T>(),
-                })
-            }
-        }
-    }
+    fn slice(&self, start: uint, end: uint) -> &'self [T];
 
     /**
      * Returns a slice of self from `start` to the end of the vec.
      *
      * Fails when `start` points outside the bounds of self.
      */
-    #[inline]
-    fn slice_from(&self, start: uint) -> &'self [T] {
-        self.slice(start, self.len())
-    }
+    fn slice_from(&self, start: uint) -> &'self [T];
 
     /**
      * Returns a slice of self from the start of the vec to `end`.
      *
      * Fails when `end` points outside the bounds of self.
      */
-    #[inline]
-    fn slice_to(&self, end: uint) -> &'self [T] {
-        self.slice(0, end)
-    }
-
-    #[inline]
+    fn slice_to(&self, end: uint) -> &'self [T];
     /// Returns an iterator over the vector
-    fn iter(self) -> VecIterator<'self, T> {
-        unsafe {
-            let p = vec::raw::to_ptr(self);
-            if sys::size_of::<T>() == 0 {
-                VecIterator{ptr: p,
-                            end: (p as uint + self.len()) as *T,
-                            lifetime: None}
-            } else {
-                VecIterator{ptr: p,
-                            end: p.offset(self.len() as int),
-                            lifetime: None}
-            }
-        }
-    }
-
-    #[inline]
+    fn iter(self) -> VecIterator<'self, T>;
     /// Returns a reversed iterator over a vector
-    fn rev_iter(self) -> RevIterator<'self, T> {
-        self.iter().invert()
-    }
-
+    fn rev_iter(self) -> RevIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.
-    #[inline]
-    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
-        self.splitn_iter(uint::max_value, pred)
-    }
+    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.
-    #[inline]
-    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
-        SplitIterator {
-            v: self,
-            n: n,
-            pred: pred,
-            finished: false
-        }
-    }
+    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.
-    #[inline]
-    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
-        self.rsplitn_iter(uint::max_value, pred)
-    }
+    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.
-    #[inline]
-    fn rsplitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
-        RSplitIterator {
-            v: self,
-            n: n,
-            pred: pred,
-            finished: false
-        }
-    }
+    fn rsplitn_iter(self,  n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -986,11 +891,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ```
      *
      */
-    fn window_iter(self, size: uint) -> WindowIter<'self, T> {
-        assert!(size != 0);
-        WindowIter { v: self, size: size }
-    }
-
+    fn window_iter(self, size: uint) -> WindowIter<'self, T>;
     /**
      *
      * Returns an iterator over `size` elements of the vector at a
@@ -1015,79 +916,35 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ```
      *
      */
-    fn chunk_iter(self, size: uint) -> ChunkIter<'self, T> {
-        assert!(size != 0);
-        ChunkIter { v: self, size: size }
-    }
+    fn chunk_iter(self, size: uint) -> ChunkIter<'self, T>;
 
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
-    #[inline]
-    fn get_opt(&self, index: uint) -> Option<&'self T> {
-        if index < self.len() { Some(&self[index]) } else { None }
-    }
-
+    fn get_opt(&self, index: uint) -> Option<&'self T>;
     /// Returns the first element of a vector, failing if the vector is empty.
-    #[inline]
-    fn head(&self) -> &'self T {
-        if self.len() == 0 { fail2!("head: empty vector") }
-        &self[0]
-    }
-
+    fn head(&self) -> &'self T;
     /// Returns the first element of a vector, or `None` if it is empty
-    #[inline]
-    fn head_opt(&self) -> Option<&'self T> {
-        if self.len() == 0 { None } else { Some(&self[0]) }
-    }
-
+    fn head_opt(&self) -> Option<&'self T>;
     /// Returns all but the first element of a vector
-    #[inline]
-    fn tail(&self) -> &'self [T] { self.slice(1, self.len()) }
-
+    fn tail(&self) -> &'self [T];
     /// Returns all but the first `n' elements of a vector
-    #[inline]
-    fn tailn(&self, n: uint) -> &'self [T] { self.slice(n, self.len()) }
-
+    fn tailn(&self, n: uint) -> &'self [T];
     /// Returns all but the last element of a vector
-    #[inline]
-    fn init(&self) -> &'self [T] {
-        self.slice(0, self.len() - 1)
-    }
-
+    fn init(&self) -> &'self [T];
     /// Returns all but the last `n' elemnts of a vector
-    #[inline]
-    fn initn(&self, n: uint) -> &'self [T] {
-        self.slice(0, self.len() - n)
-    }
-
+    fn initn(&self, n: uint) -> &'self [T];
     /// Returns the last element of a vector, failing if the vector is empty.
-    #[inline]
-    fn last(&self) -> &'self T {
-        if self.len() == 0 { fail2!("last: empty vector") }
-        &self[self.len() - 1]
-    }
-
+    fn last(&self) -> &'self T;
     /// Returns the last element of a vector, or `None` if it is empty.
-    #[inline]
-    fn last_opt(&self) -> Option<&'self T> {
-            if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
-    }
-
+    fn last_opt(&self) -> Option<&'self T>;
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
      */
-    #[inline]
-    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U] {
-        flat_map(*self, f)
-    }
-
+    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
-    #[inline]
-    unsafe fn unsafe_ref(&self, index: uint) -> *T {
-        self.repr().data.offset(index as int)
-    }
+    unsafe fn unsafe_ref(&self, index: uint) -> *T;
 
     /**
      * Binary search a sorted vector with a comparator function.
@@ -1099,6 +956,156 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * Returns the index where the comparator returned `Equal`, or `None` if
      * not found.
      */
+    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
+
+    /// Deprecated, use iterators where possible
+    /// (`self.iter().map(f)`). Apply a function to each element
+    /// of a vector and return the results.
+    fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
+
+    /**
+     * Work with the buffer of a vector.
+     *
+     * Allows for unsafe manipulation of vector contents, which is useful for
+     * foreign interop.
+     */
+    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U;
+}
+
+impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
+    #[inline]
+    fn slice(&self, start: uint, end: uint) -> &'self [T] {
+        assert!(start <= end);
+        assert!(end <= self.len());
+        do self.as_imm_buf |p, _len| {
+            unsafe {
+                cast::transmute(Slice {
+                    data: ptr::offset(p, start as int),
+                    len: (end - start) * sys::nonzero_size_of::<T>(),
+                })
+            }
+        }
+    }
+    #[inline]
+    fn slice_from(&self, start: uint) -> &'self [T] {
+        self.slice(start, self.len())
+    }
+    #[inline]
+    fn slice_to(&self, end: uint) -> &'self [T] {
+        self.slice(0, end)
+    }
+
+    #[inline]
+    fn iter(self) -> VecIterator<'self, T> {
+        unsafe {
+            let p = vec::raw::to_ptr(self);
+            if sys::size_of::<T>() == 0 {
+                VecIterator{ptr: p,
+                            end: (p as uint + self.len()) as *T,
+                            lifetime: None}
+            } else {
+                VecIterator{ptr: p,
+                            end: p.offset(self.len() as int),
+                            lifetime: None}
+            }
+        }
+    }
+
+    #[inline]
+    fn rev_iter(self) -> RevIterator<'self, T> {
+        self.iter().invert()
+    }
+
+    #[inline]
+    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
+        self.splitn_iter(uint::max_value, pred)
+    }
+    #[inline]
+    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
+        SplitIterator {
+            v: self,
+            n: n,
+            pred: pred,
+            finished: false
+        }
+    }
+    #[inline]
+    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
+        self.rsplitn_iter(uint::max_value, pred)
+    }
+    #[inline]
+    fn rsplitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
+        RSplitIterator {
+            v: self,
+            n: n,
+            pred: pred,
+            finished: false
+        }
+    }
+
+    fn window_iter(self, size: uint) -> WindowIter<'self, T> {
+        assert!(size != 0);
+        WindowIter { v: self, size: size }
+    }
+
+    fn chunk_iter(self, size: uint) -> ChunkIter<'self, T> {
+        assert!(size != 0);
+        ChunkIter { v: self, size: size }
+    }
+
+    #[inline]
+    fn get_opt(&self, index: uint) -> Option<&'self T> {
+        if index < self.len() { Some(&self[index]) } else { None }
+    }
+
+    #[inline]
+    fn head(&self) -> &'self T {
+        if self.len() == 0 { fail2!("head: empty vector") }
+        &self[0]
+    }
+
+    #[inline]
+    fn head_opt(&self) -> Option<&'self T> {
+        if self.len() == 0 { None } else { Some(&self[0]) }
+    }
+
+    #[inline]
+    fn tail(&self) -> &'self [T] { self.slice(1, self.len()) }
+
+    #[inline]
+    fn tailn(&self, n: uint) -> &'self [T] { self.slice(n, self.len()) }
+
+    #[inline]
+    fn init(&self) -> &'self [T] {
+        self.slice(0, self.len() - 1)
+    }
+
+    #[inline]
+    fn initn(&self, n: uint) -> &'self [T] {
+        self.slice(0, self.len() - n)
+    }
+
+    #[inline]
+    fn last(&self) -> &'self T {
+        if self.len() == 0 { fail2!("last: empty vector") }
+        &self[self.len() - 1]
+    }
+
+    #[inline]
+    fn last_opt(&self) -> Option<&'self T> {
+            if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
+    }
+
+    #[inline]
+    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U] {
+        flat_map(*self, f)
+    }
+
+    #[inline]
+    unsafe fn unsafe_ref(&self, index: uint) -> *T {
+        self.repr().data.offset(index as int)
+    }
+
     fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint> {
         let mut base : uint = 0;
         let mut lim : uint = self.len();
@@ -1118,19 +1125,10 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         return None;
     }
 
-    /// Deprecated, use iterators where possible
-    /// (`self.iter().map(f)`). Apply a function to each element
-    /// of a vector and return the results.
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
         self.iter().map(f).collect()
     }
 
-    /**
-     * Work with the buffer of a vector.
-     *
-     * Allows for unsafe manipulation of vector contents, which is useful for
-     * foreign interop.
-     */
     #[inline]
     fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
         let s = self.repr();
@@ -1138,62 +1136,67 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 }
 
-#[allow(missing_doc)]
+/// Extension methods for vectors contain `Eq` elements.
 pub trait ImmutableEqVector<T:Eq> {
+    /// Find the first index containing a matching value
     fn position_elem(&self, t: &T) -> Option<uint>;
+
+    /// Find the last index containing a matching value
     fn rposition_elem(&self, t: &T) -> Option<uint>;
+
+    /// Return true if a vector contains an element with the given value
     fn contains(&self, x: &T) -> bool;
 }
 
 impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
-    /// Find the first index containing a matching value
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         self.iter().position(|y| *x == *y)
     }
 
-    /// Find the last index containing a matching value
     #[inline]
     fn rposition_elem(&self, t: &T) -> Option<uint> {
         self.iter().rposition(|x| *x == *t)
     }
 
-    /// Return true if a vector contains an element with the given value
     fn contains(&self, x: &T) -> bool {
         for elt in self.iter() { if *x == *elt { return true; } }
         false
     }
 }
 
-#[allow(missing_doc)]
+/// Extension methods for vectors containing `TotalOrd` elements.
 pub trait ImmutableTotalOrdVector<T: TotalOrd> {
-    fn bsearch_elem(&self, x: &T) -> Option<uint>;
-}
-
-impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
     /**
      * Binary search a sorted vector for a given element.
      *
      * Returns the index of the element or None if not found.
      */
+    fn bsearch_elem(&self, x: &T) -> Option<uint>;
+}
+
+impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
     fn bsearch_elem(&self, x: &T) -> Option<uint> {
         self.bsearch(|p| p.cmp(x))
     }
 }
 
-#[allow(missing_doc)]
+/// Extension methods for vectors containing `Clone` elements.
 pub trait ImmutableCopyableVector<T> {
-    fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
-    unsafe fn unsafe_get(&self, elem: uint) -> T;
-    fn permutations_iter(self) -> Permutations<T>;
-}
-
-/// Extension methods for vectors
-impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
     /**
      * Partitions the vector into those that satisfies the predicate, and
      * those that do not.
      */
+    fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+    /// Returns the element at the given index, without doing bounds checking.
+    unsafe fn unsafe_get(&self, elem: uint) -> T;
+
+    /// Create an iterator that yields every possible permutation of the
+    /// vector in succession.
+    fn permutations_iter(self) -> Permutations<T>;
+}
+
+impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
@@ -1210,14 +1213,11 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
         (lefts, rights)
     }
 
-    /// Returns the element at the given index, without doing bounds checking.
     #[inline]
     unsafe fn unsafe_get(&self, index: uint) -> T {
         (*self.unsafe_ref(index)).clone()
     }
 
-    /// Create an iterator that yields every possible permutation of the
-    /// vector in succession.
     fn permutations_iter(self) -> Permutations<T> {
         Permutations{
             swaps: ElementSwaps::new(self.len()),
@@ -1227,34 +1227,8 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
 
 }
 
-#[allow(missing_doc)]
+/// Extension methods for owned vectors.
 pub trait OwnedVector<T> {
-    fn move_iter(self) -> MoveIterator<T>;
-    fn move_rev_iter(self) -> MoveRevIterator<T>;
-
-    fn reserve(&mut self, n: uint);
-    fn reserve_at_least(&mut self, n: uint);
-    fn reserve_additional(&mut self, n: uint);
-    fn capacity(&self) -> uint;
-    fn shrink_to_fit(&mut self);
-
-    fn push(&mut self, t: T);
-    fn push_all_move(&mut self, rhs: ~[T]);
-    fn pop(&mut self) -> T;
-    fn pop_opt(&mut self) -> Option<T>;
-    fn shift(&mut self) -> T;
-    fn shift_opt(&mut self) -> Option<T>;
-    fn unshift(&mut self, x: T);
-    fn insert(&mut self, i: uint, x:T);
-    fn remove(&mut self, i: uint) -> T;
-    fn swap_remove(&mut self, index: uint) -> T;
-    fn truncate(&mut self, newlen: uint);
-    fn retain(&mut self, f: &fn(t: &T) -> bool);
-    fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
-    fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T);
-}
-
-impl<T> OwnedVector<T> for ~[T] {
     /// Creates a consuming iterator, that is, one that moves each
     /// value out of the vector (from start to end). The vector cannot
     /// be used after calling this.
@@ -1271,15 +1245,11 @@ impl<T> OwnedVector<T> for ~[T] {
     ///   println(s);
     /// }
     /// ```
-    fn move_iter(self) -> MoveIterator<T> {
-        MoveIterator { v: self, idx: 0 }
-    }
+    fn move_iter(self) -> MoveIterator<T>;
     /// Creates a consuming iterator that moves out of the vector in
     /// reverse order. Also see `move_iter`, however note that this
     /// is more efficient.
-    fn move_rev_iter(self) -> MoveRevIterator<T> {
-        MoveRevIterator { v: self }
-    }
+    fn move_rev_iter(self) -> MoveRevIterator<T>;
 
     /**
      * Reserves capacity for exactly `n` elements in the given vector.
@@ -1296,6 +1266,115 @@ impl<T> OwnedVector<T> for ~[T] {
      * This method always succeeds in reserving space for `n` elements, or it does
      * not return.
      */
+    fn reserve(&mut self, n: uint);
+    /**
+     * Reserves capacity for at least `n` elements in the given vector.
+     *
+     * This function will over-allocate in order to amortize the allocation costs
+     * in scenarios where the caller may need to repeatedly reserve additional
+     * space.
+     *
+     * If the capacity for `self` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to reserve space for
+     */
+    fn reserve_at_least(&mut self, n: uint);
+    /**
+     * Reserves capacity for at least `n` additional elements in the given vector.
+     *
+     * # Failure
+     *
+     * Fails if the new required capacity overflows uint.
+     *
+     * May also fail if `reserve` fails.
+     */
+    fn reserve_additional(&mut self, n: uint);
+    /// Returns the number of elements the vector can hold without reallocating.
+    fn capacity(&self) -> uint;
+    /// Shrink the capacity of the vector to match the length
+    fn shrink_to_fit(&mut self);
+
+    /// Append an element to a vector
+    fn push(&mut self, t: T);
+    /// Takes ownership of the vector `rhs`, moving all elements into
+    /// the current vector. This does not copy any elements, and it is
+    /// illegal to use the `rhs` vector after calling this method
+    /// (because it is moved here).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut a = ~[~1];
+    /// a.push_all_move(~[~2, ~3, ~4]);
+    /// assert!(a == ~[~1, ~2, ~3, ~4]);
+    /// ```
+    fn push_all_move(&mut self, rhs: ~[T]);
+    /// Remove the last element from a vector and return it, failing if it is empty
+    fn pop(&mut self) -> T;
+    /// Remove the last element from a vector and return it, or `None` if it is empty
+    fn pop_opt(&mut self) -> Option<T>;
+    /// Removes the first element from a vector and return it
+    fn shift(&mut self) -> T;
+    /// Removes the first element from a vector and return it, or `None` if it is empty
+    fn shift_opt(&mut self) -> Option<T>;
+    /// Prepend an element to the vector
+    fn unshift(&mut self, x: T);
+
+    /// Insert an element at position i within v, shifting all
+    /// elements after position i one position to the right.
+    fn insert(&mut self, i: uint, x:T);
+
+    /// Remove and return the element at position i within v, shifting
+    /// all elements after position i one position to the left.
+    fn remove(&mut self, i: uint) -> T;
+
+    /**
+     * Remove an element from anywhere in the vector and return it, replacing it
+     * with the last element. This does not preserve ordering, but is O(1).
+     *
+     * Fails if index >= length.
+     */
+    fn swap_remove(&mut self, index: uint) -> T;
+
+    /// Shorten a vector, dropping excess elements.
+    fn truncate(&mut self, newlen: uint);
+
+    /**
+     * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
+     */
+    fn retain(&mut self, f: &fn(t: &T) -> bool);
+    /**
+     * Partitions the vector into those that satisfies the predicate, and
+     * those that do not.
+     */
+    fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+
+    /**
+     * Expands a vector in place, initializing the new elements to the result of
+     * a function
+     *
+     * Function `init_op` is called `n` times with the values [0..`n`)
+     *
+     * # Arguments
+     *
+     * * n - The number of elements to add
+     * * init_op - A function to call to retreive each appended element's
+     *             value
+     */
+    fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T);
+}
+
+impl<T> OwnedVector<T> for ~[T] {
+    fn move_iter(self) -> MoveIterator<T> {
+        MoveIterator { v: self, idx: 0 }
+    }
+    fn move_rev_iter(self) -> MoveRevIterator<T> {
+        MoveRevIterator { v: self }
+    }
+
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
@@ -1319,34 +1398,11 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /**
-     * Reserves capacity for at least `n` elements in the given vector.
-     *
-     * This function will over-allocate in order to amortize the allocation costs
-     * in scenarios where the caller may need to repeatedly reserve additional
-     * space.
-     *
-     * If the capacity for `self` is already equal to or greater than the requested
-     * capacity, then no action is taken.
-     *
-     * # Arguments
-     *
-     * * n - The number of elements to reserve space for
-     */
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n));
     }
 
-    /**
-     * Reserves capacity for at least `n` additional elements in the given vector.
-     *
-     * # Failure
-     *
-     * Fails if the new required capacity overflows uint.
-     *
-     * May also fail if `reserve` fails.
-     */
     #[inline]
     fn reserve_additional(&mut self, n: uint) {
         if self.capacity() - self.len() < n {
@@ -1357,7 +1413,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Returns the number of elements the vector can hold without reallocating.
     #[inline]
     fn capacity(&self) -> uint {
         unsafe {
@@ -1371,7 +1426,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Shrink the capacity of the vector to match the length
     fn shrink_to_fit(&mut self) {
         unsafe {
             let ptr: *mut *mut Vec<()> = cast::transmute(self);
@@ -1382,7 +1436,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Append an element to a vector
     #[inline]
     fn push(&mut self, t: T) {
         unsafe {
@@ -1427,18 +1480,6 @@ impl<T> OwnedVector<T> for ~[T] {
 
     }
 
-    /// Takes ownership of the vector `rhs`, moving all elements into
-    /// the current vector. This does not copy any elements, and it is
-    /// illegal to use the `rhs` vector after calling this method
-    /// (because it is moved here).
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut a = ~[~1];
-    /// a.push_all_move(~[~2, ~3, ~4]);
-    /// assert!(a == ~[~1, ~2, ~3, ~4]);
-    /// ```
     #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
         let self_len = self.len();
@@ -1454,7 +1495,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Remove the last element from a vector and return it, or `None` if it is empty
     fn pop_opt(&mut self) -> Option<T> {
         match self.len() {
             0  => None,
@@ -1469,19 +1509,16 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
 
-    /// Remove the last element from a vector and return it, failing if it is empty
     #[inline]
     fn pop(&mut self) -> T {
         self.pop_opt().expect("pop: empty vector")
     }
 
-    /// Removes the first element from a vector and return it
     #[inline]
     fn shift(&mut self) -> T {
         self.shift_opt().expect("shift: empty vector")
     }
 
-    /// Removes the first element from a vector and return it, or `None` if it is empty
     fn shift_opt(&mut self) -> Option<T> {
         unsafe {
             let ln = match self.len() {
@@ -1535,14 +1572,10 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /// Prepend an element to the vector
     fn unshift(&mut self, x: T) {
         let v = util::replace(self, ~[x]);
         self.push_all_move(v);
     }
-
-    /// Insert an element at position i within v, shifting all
-    /// elements after position i one position to the right.
     fn insert(&mut self, i: uint, x:T) {
         let len = self.len();
         assert!(i <= len);
@@ -1554,9 +1587,6 @@ impl<T> OwnedVector<T> for ~[T] {
             j -= 1;
         }
     }
-
-    /// Remove and return the element at position i within v, shifting
-    /// all elements after position i one position to the left.
     fn remove(&mut self, i: uint) -> T {
         let len = self.len();
         assert!(i < len);
@@ -1568,13 +1598,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
         self.pop()
     }
-
-    /**
-     * Remove an element from anywhere in the vector and return it, replacing it
-     * with the last element. This does not preserve ordering, but is O(1).
-     *
-     * Fails if index >= length.
-     */
     fn swap_remove(&mut self, index: uint) -> T {
         let ln = self.len();
         if index >= ln {
@@ -1585,8 +1608,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
         self.pop()
     }
-
-    /// Shorten a vector, dropping excess elements.
     fn truncate(&mut self, newlen: uint) {
         do self.as_mut_buf |p, oldlen| {
             assert!(newlen <= oldlen);
@@ -1600,10 +1621,6 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe { raw::set_len(self, newlen); }
     }
 
-
-    /**
-     * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
-     */
     fn retain(&mut self, f: &fn(t: &T) -> bool) {
         let len = self.len();
         let mut deleted: uint = 0;
@@ -1621,10 +1638,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    /**
-     * Partitions the vector into those that satisfies the predicate, and
-     * those that do not.
-     */
     #[inline]
     fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
@@ -1640,19 +1653,6 @@ impl<T> OwnedVector<T> for ~[T] {
 
         (lefts, rights)
     }
-
-    /**
-     * Expands a vector in place, initializing the new elements to the result of
-     * a function
-     *
-     * Function `init_op` is called `n` times with the values [0..`n`)
-     *
-     * # Arguments
-     *
-     * * n - The number of elements to add
-     * * init_op - A function to call to retreive each appended element's
-     *             value
-     */
     fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T) {
         let new_len = self.len() + n;
         self.reserve_at_least(new_len);
@@ -1669,14 +1669,8 @@ impl<T> Mutable for ~[T] {
     fn clear(&mut self) { self.truncate(0) }
 }
 
-#[allow(missing_doc)]
+/// Extension methods for owned vectors containing `Clone` elements.
 pub trait OwnedCopyableVector<T:Clone> {
-    fn push_all(&mut self, rhs: &[T]);
-    fn grow(&mut self, n: uint, initval: &T);
-    fn grow_set(&mut self, index: uint, initval: &T, val: T);
-}
-
-impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
     /// Iterates over the slice `rhs`, copies each element, and then appends it to
     /// the vector provided `v`. The `rhs` vector is traversed in-order.
     ///
@@ -1687,15 +1681,7 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
     /// a.push_all([2, 3, 4]);
     /// assert!(a == ~[1, 2, 3, 4]);
     /// ```
-    #[inline]
-    fn push_all(&mut self, rhs: &[T]) {
-        let new_len = self.len() + rhs.len();
-        self.reserve(new_len);
-
-        for elt in rhs.iter() {
-            self.push((*elt).clone())
-        }
-    }
+    fn push_all(&mut self, rhs: &[T]);
 
     /**
      * Expands a vector in place, initializing the new elements to a given value
@@ -1705,6 +1691,29 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
      * * n - The number of elements to add
      * * initval - The value for the new elements
      */
+    fn grow(&mut self, n: uint, initval: &T);
+
+    /**
+     * Sets the value of a vector element at a given index, growing the vector as
+     * needed
+     *
+     * Sets the element at position `index` to `val`. If `index` is past the end
+     * of the vector, expands the vector by replicating `initval` to fill the
+     * intervening space.
+     */
+    fn grow_set(&mut self, index: uint, initval: &T, val: T);
+}
+
+impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
+    #[inline]
+    fn push_all(&mut self, rhs: &[T]) {
+        let new_len = self.len() + rhs.len();
+        self.reserve(new_len);
+
+        for elt in rhs.iter() {
+            self.push((*elt).clone())
+        }
+    }
     fn grow(&mut self, n: uint, initval: &T) {
         let new_len = self.len() + n;
         self.reserve_at_least(new_len);
@@ -1715,15 +1724,6 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
             i += 1u;
         }
     }
-
-    /**
-     * Sets the value of a vector element at a given index, growing the vector as
-     * needed
-     *
-     * Sets the element at position `index` to `val`. If `index` is past the end
-     * of the vector, expands the vector by replicating `initval` to fill the
-     * intervening space.
-     */
     fn grow_set(&mut self, index: uint, initval: &T, val: T) {
         let l = self.len();
         if index >= l { self.grow(index - l + 1u, initval); }
@@ -1731,16 +1731,16 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
     }
 }
 
-#[allow(missing_doc)]
+/// Extension methods for owned vectors containing `Eq` elements.
 pub trait OwnedEqVector<T:Eq> {
-    fn dedup(&mut self);
-}
-
-impl<T:Eq> OwnedEqVector<T> for ~[T] {
     /**
     * Remove consecutive repeated elements from a vector; if the vector is
     * sorted, this removes all duplicates.
     */
+    fn dedup(&mut self);
+}
+
+impl<T:Eq> OwnedEqVector<T> for ~[T] {
     fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
@@ -1829,14 +1829,36 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     }
 }
 
-#[allow(missing_doc)]
+/// Extension methods for vectors such that their elements are
+/// mutable.
 pub trait MutableVector<'self, T> {
+    /// Return a slice that points into another slice.
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
+    /**
+     * Returns a slice of self from `start` to the end of the vec.
+     *
+     * Fails when `start` points outside the bounds of self.
+     */
     fn mut_slice_from(self, start: uint) -> &'self mut [T];
+    /**
+     * Returns a slice of self from the start of the vec to `end`.
+     *
+     * Fails when `end` points outside the bounds of self.
+     */
     fn mut_slice_to(self, end: uint) -> &'self mut [T];
+    /// Returns an iterator that allows modifying each value
     fn mut_iter(self) -> VecMutIterator<'self, T>;
+    /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'self, T>;
 
+    /**
+     * Swaps two elements in a vector
+     *
+     * # Arguments
+     *
+     * * a - The index of the first element
+     * * b - The index of the second element
+     */
     fn swap(self, a: uint, b: uint);
 
     /**
@@ -1848,6 +1870,7 @@ pub trait MutableVector<'self, T> {
     fn mut_split(self, mid: uint) -> (&'self mut [T],
                                       &'self mut [T]);
 
+    /// Reverse the order of elements in a vector, in place
     fn reverse(self);
 
     /**
@@ -1865,14 +1888,16 @@ pub trait MutableVector<'self, T> {
      */
     fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
 
+    /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T;
+    /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T);
 
+    /// Similar to `as_imm_buf` but passing a `*mut T`
     fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U;
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
-    /// Return a slice that points into another slice.
     #[inline]
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
         assert!(start <= end);
@@ -1887,22 +1912,12 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
         }
     }
 
-    /**
-     * Returns a slice of self from `start` to the end of the vec.
-     *
-     * Fails when `start` points outside the bounds of self.
-     */
     #[inline]
     fn mut_slice_from(self, start: uint) -> &'self mut [T] {
         let len = self.len();
         self.mut_slice(start, len)
     }
 
-    /**
-     * Returns a slice of self from the start of the vec to `end`.
-     *
-     * Fails when `end` points outside the bounds of self.
-     */
     #[inline]
     fn mut_slice_to(self, end: uint) -> &'self mut [T] {
         self.mut_slice(0, end)
@@ -1918,7 +1933,6 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    /// Returns an iterator that allows modifying each value
     fn mut_iter(self) -> VecMutIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
@@ -1935,19 +1949,10 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
         self.mut_iter().invert()
     }
 
-    /**
-     * Swaps two elements in a vector
-     *
-     * # Arguments
-     *
-     * * a - The index of the first element
-     * * b - The index of the second element
-     */
     fn swap(self, a: uint, b: uint) {
         unsafe {
             // Can't take two mutable loans from one vector, so instead just cast
@@ -1958,7 +1963,6 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
         }
     }
 
-    /// Reverse the order of elements in a vector, in place
     fn reverse(self) {
         let mut i: uint = 0;
         let ln = self.len();
@@ -1977,18 +1981,15 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T {
         ptr::mut_offset(self.repr().data as *mut T, index as int)
     }
 
     #[inline]
-    /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
 
-    /// Similar to `as_imm_buf` but passing a `*mut T`
     #[inline]
     fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U {
         let Slice{ data, len } = self.repr();
