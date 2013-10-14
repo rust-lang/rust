@@ -57,6 +57,23 @@ impl ToStr for TestName {
     }
 }
 
+#[deriving(Clone)]
+enum NamePadding { PadNone, PadOnLeft, PadOnRight }
+
+impl TestDesc {
+    fn padded_name(&self, column_count: uint, align: NamePadding) -> ~str {
+        use std::num::Saturating;
+        let name = self.name.to_str();
+        let fill = column_count.saturating_sub(name.len());
+        let pad = " ".repeat(fill);
+        match align {
+            PadNone => name,
+            PadOnLeft => pad.append(name),
+            PadOnRight => name.append(pad),
+        }
+    }
+}
+
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
@@ -68,6 +85,19 @@ pub enum TestFn {
     DynTestFn(~fn()),
     DynMetricFn(~fn(&mut MetricMap)),
     DynBenchFn(~fn(&mut BenchHarness))
+}
+
+impl TestFn {
+    fn padding(&self) -> NamePadding {
+        match self {
+            &StaticTestFn(*)   => PadNone,
+            &StaticBenchFn(*)  => PadOnRight,
+            &StaticMetricFn(*) => PadOnRight,
+            &DynTestFn(*)      => PadNone,
+            &DynMetricFn(*)    => PadOnRight,
+            &DynBenchFn(*)     => PadOnRight,
+        }
+    }
 }
 
 // Structure passed to BenchFns
@@ -316,7 +346,8 @@ struct ConsoleTestState {
     ignored: uint,
     measured: uint,
     metrics: MetricMap,
-    failures: ~[TestDesc]
+    failures: ~[TestDesc],
+    max_name_len: uint, // number of columns to fill when aligning names
 }
 
 impl ConsoleTestState {
@@ -348,7 +379,8 @@ impl ConsoleTestState {
             ignored: 0u,
             measured: 0u,
             metrics: MetricMap::new(),
-            failures: ~[]
+            failures: ~[],
+            max_name_len: 0u,
         }
     }
 
@@ -411,8 +443,9 @@ impl ConsoleTestState {
         self.out.write_line(format!("\nrunning {} {}", len, noun));
     }
 
-    pub fn write_test_start(&self, test: &TestDesc) {
-        self.out.write_str(format!("test {} ... ", test.name.to_str()));
+    pub fn write_test_start(&self, test: &TestDesc, align: NamePadding) {
+        let name = test.padded_name(self.max_name_len, align);
+        self.out.write_str(format!("test {} ... ", name));
     }
 
     pub fn write_result(&self, result: &TestResult) {
@@ -559,12 +592,12 @@ pub fn fmt_metrics(mm: &MetricMap) -> ~str {
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
     if bs.mb_s != 0 {
-        format!("{} ns/iter (+/- {}) = {} MB/s",
+        format!("{:>9} ns/iter (+/- {}) = {} MB/s",
              bs.ns_iter_summ.median as uint,
              (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
              bs.mb_s)
     } else {
-        format!("{} ns/iter (+/- {})",
+        format!("{:>9} ns/iter (+/- {})",
              bs.ns_iter_summ.median as uint,
              (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
     }
@@ -577,7 +610,7 @@ pub fn run_tests_console(opts: &TestOpts,
         debug2!("callback(event={:?})", event);
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
-            TeWait(ref test) => st.write_test_start(test),
+            TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeResult(test, result) => {
                 st.write_log(&test, &result);
                 st.write_result(&result);
@@ -607,6 +640,20 @@ pub fn run_tests_console(opts: &TestOpts,
         }
     }
     let st = @mut ConsoleTestState::new(opts);
+    fn len_if_padded(t: &TestDescAndFn) -> uint {
+        match t.testfn.padding() {
+            PadNone => 0u,
+            PadOnLeft | PadOnRight => t.desc.name.to_str().len(),
+        }
+    }
+    match tests.iter().max_by(|t|len_if_padded(*t)) {
+        Some(t) => {
+            let n = t.desc.name.to_str();
+            debug2!("Setting max_name_len from: {}", n);
+            st.max_name_len = n.len();
+        },
+        None => {}
+    }
     run_tests(opts, tests, |x| callback(&x, st));
     match opts.save_metrics {
         None => (),
@@ -646,7 +693,8 @@ fn should_sort_failures_before_printing_them() {
             ignored: 0u,
             measured: 0u,
             metrics: MetricMap::new(),
-            failures: ~[test_b, test_a]
+            failures: ~[test_b, test_a],
+            max_name_len: 0u,
         };
 
         st.write_failures();
@@ -662,7 +710,7 @@ fn use_color() -> bool { return get_concurrency() == 1; }
 #[deriving(Clone)]
 enum TestEvent {
     TeFiltered(~[TestDesc]),
-    TeWait(TestDesc),
+    TeWait(TestDesc, NamePadding),
     TeResult(TestDesc, TestResult),
 }
 
@@ -704,7 +752,7 @@ fn run_tests(opts: &TestOpts,
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(TeWait(test.desc.clone()));
+                callback(TeWait(test.desc.clone(), test.testfn.padding()));
             }
             run_test(!opts.run_tests, test, ch.clone());
             pending += 1;
@@ -712,7 +760,7 @@ fn run_tests(opts: &TestOpts,
 
         let (desc, result) = p.recv();
         if concurrency != 1 {
-            callback(TeWait(desc.clone()));
+            callback(TeWait(desc.clone(), PadNone));
         }
         callback(TeResult(desc, result));
         pending -= 1;
@@ -721,7 +769,7 @@ fn run_tests(opts: &TestOpts,
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
     for b in filtered_benchs_and_metrics.move_iter() {
-        callback(TeWait(b.desc.clone()));
+        callback(TeWait(b.desc.clone(), b.testfn.padding()));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
         callback(TeResult(test, result));
