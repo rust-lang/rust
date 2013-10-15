@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,7 +12,7 @@
 
 mod rusti {
     extern "rust-intrinsic" {
-        pub fn frame_address(f: &once fn(*u8));
+        pub fn frame_address(f: &fn(*u8));
     }
 }
 
