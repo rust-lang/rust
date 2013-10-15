@@ -222,6 +222,11 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     }
 
     match name {
+        "abort" => {
+            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.trap"));
+            Call(bcx, llfn, [], []);
+            RetVoid(bcx);
+        }
         "size_of" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
