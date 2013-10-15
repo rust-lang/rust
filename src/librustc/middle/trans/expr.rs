@@ -972,8 +972,6 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
         let vt = tvec::vec_types(bcx, base_datum.ty);
         base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
-        let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
-        base::maybe_name_value(bcx.ccx(), scaled_ix, "scaled_ix");
 
         let (bcx, base, len) =
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
@@ -982,9 +980,9 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         debug2!("trans_index: base {}", bcx.val_to_str(base));
         debug2!("trans_index: len {}", bcx.val_to_str(len));
 
-        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
+        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
+        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, unscaled_len);
         let bcx = do with_cond(bcx, bounds_check) |bcx| {
-            let unscaled_len = UDiv(bcx, len, vt.llunit_size);
             controlflow::trans_fail_bounds_check(bcx, index_expr.span,
                                                  ix_val, unscaled_len)
         };
