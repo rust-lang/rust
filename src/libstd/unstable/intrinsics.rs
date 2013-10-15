@@ -171,6 +171,9 @@ pub trait TyVisitor {
 }
 
 extern "rust-intrinsic" {
+    /// Abort the execution of the process.
+    #[cfg(not(stage0))]
+    pub fn abort() -> !;
 
     /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
