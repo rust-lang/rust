@@ -237,8 +237,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
         Ignore => {}
         SaveIn(lldest) => {
             Store(bcx, llfixed, GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
-            let lllen = Mul(bcx, llcount, vt.llunit_size);
-            Store(bcx, lllen, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
+            Store(bcx, llcount, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
         }
     }
 
@@ -529,7 +528,8 @@ pub fn get_base_and_len(bcx: @mut Block,
         }
         ty::vstore_slice(_) => {
             let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
-            let len = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
+            let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
+            let len = Mul(bcx, count, vt.llunit_size);
             (base, len)
         }
         ty::vstore_uniq | ty::vstore_box => {

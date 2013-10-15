@@ -13,33 +13,33 @@
 // debugger:rbreak zzz
 // debugger:run
 // debugger:finish
-// debugger:print empty.size_in_bytes
+// debugger:print empty.length
 // check:$1 = 0
 
-// debugger:print singleton.size_in_bytes
-// check:$2 = 8
+// debugger:print singleton.length
+// check:$2 = 1
 // debugger:print *((int64_t[1]*)(singleton.data_ptr))
 // check:$3 = {1}
 
-// debugger:print multiple.size_in_bytes
-// check:$4 = 32
+// debugger:print multiple.length
+// check:$4 = 4
 // debugger:print *((int64_t[4]*)(multiple.data_ptr))
 // check:$5 = {2, 3, 4, 5}
 
-// debugger:print slice_of_slice.size_in_bytes
-// check:$6 = 16
+// debugger:print slice_of_slice.length
+// check:$6 = 2
 // debugger:print *((int64_t[2]*)(slice_of_slice.data_ptr))
 // check:$7 = {3, 4}
 
-// debugger:print padded_tuple.size_in_bytes
-// check:$8 = 16
+// debugger:print padded_tuple.length
+// check:$8 = 2
 // debugger:print padded_tuple.data_ptr[0]
 // check:$9 = {6, 7}
 // debugger:print padded_tuple.data_ptr[1]
 // check:$10 = {8, 9}
 
-// debugger:print padded_struct.size_in_bytes
-// check:$11 = 24
+// debugger:print padded_struct.length
+// check:$11 = 2
 // debugger:print padded_struct.data_ptr[0]
 // check:$12 = {x = 10, y = 11, z = 12}
 // debugger:print padded_struct.data_ptr[1]

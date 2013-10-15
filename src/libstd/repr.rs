@@ -186,12 +186,7 @@ impl<'self> ReprVisitor<'self> {
         }
     }
 
-    pub fn write_vec_range(&mut self,
-                           _mtbl: uint,
-                           ptr: *(),
-                           len: uint,
-                           inner: *TyDesc)
-                           -> bool {
+    pub fn write_vec_range(&mut self, ptr: *(), len: uint, inner: *TyDesc) -> bool {
         let mut p = ptr as *u8;
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
         self.writer.write(['[' as u8]);
@@ -213,13 +208,8 @@ impl<'self> ReprVisitor<'self> {
         true
     }
 
-    pub fn write_unboxed_vec_repr(&mut self,
-                                  mtbl: uint,
-                                  v: &raw::Vec<()>,
-                                  inner: *TyDesc)
-                                  -> bool {
-        self.write_vec_range(mtbl, ptr::to_unsafe_ptr(&v.data),
-                             v.fill, inner)
+    pub fn write_unboxed_vec_repr(&mut self, _: uint, v: &raw::Vec<()>, inner: *TyDesc) -> bool {
+        self.write_vec_range(ptr::to_unsafe_ptr(&v.data), v.fill, inner)
     }
 
     fn write_escaped_char(&mut self, ch: char, is_str: bool) {
@@ -377,19 +367,32 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         }
     }
 
+    #[cfg(stage0)]
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Slice<()>> |this, s| {
             this.writer.write(['&' as u8]);
             this.write_mut_qualifier(mtbl);
-            this.write_vec_range(mtbl, s.data, s.len, inner);
+            this.write_vec_range(s.data, s.len, inner);
+        }
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<raw::Slice<()>> |this, s| {
+            this.writer.write(['&' as u8]);
+            this.write_mut_qualifier(mtbl);
+            let size = unsafe {
+                if (*inner).size == 0 { 1 } else { (*inner).size }
+            };
+            this.write_vec_range(s.data, s.len * size, inner);
         }
     }
 
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, _align: uint,
-                        mtbl: uint, inner: *TyDesc) -> bool {
+                        _: uint, inner: *TyDesc) -> bool {
         let assumed_size = if sz == 0 { n } else { sz };
         do self.get::<()> |this, b| {
-            this.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), assumed_size, inner);
+            this.write_vec_range(ptr::to_unsafe_ptr(b), assumed_size, inner);
         }
     }
 
