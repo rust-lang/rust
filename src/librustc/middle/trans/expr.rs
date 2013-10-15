@@ -274,8 +274,12 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                                    ty::vstore_slice(ty::re_static));
 
         let scratch = scratch_datum(bcx, slice_ty, "__adjust", false);
+
+        let vt = tvec::vec_types(bcx, datum.ty);
+        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
+
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
-        Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
+        Store(bcx, unscaled_len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
         DatumBlock {bcx: bcx, datum: scratch}
     }
 

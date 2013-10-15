@@ -1059,7 +1059,7 @@ fn extract_vec_elems(bcx: @mut Block,
         Store(bcx, slice_begin,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_base])
         );
-        Store(bcx, slice_len,
+        Store(bcx, UDiv(bcx, slice_len, vt.llunit_size),
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_len])
         );
         elems[n] = scratch.val;
