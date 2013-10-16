@@ -439,12 +439,6 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
     }
 }
 
-// FIXME (#8169): Pull this into parent module once visibility works
-#[inline(always)]
-fn contains_nul(v: &[u8]) -> bool {
-    v.iter().any(|&x| x == 0)
-}
-
 static dot_static: &'static [u8] = bytes!(".");
 static dot_dot_static: &'static [u8] = bytes!("..");
 
