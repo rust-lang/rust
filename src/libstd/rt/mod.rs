@@ -310,8 +310,14 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
                                                      sleepers.clone(),
                                                      false,
                                                      Some(friend_handle));
-        let main_handle = main_sched.make_handle();
-        handles.push(main_handle);
+        let mut main_handle = main_sched.make_handle();
+        // Allow the scheduler to exit when the main task exits.
+        // Note: sending the shutdown message also prevents the scheduler
+        // from pushing itself to the sleeper list, which is used for
+        // waking up schedulers for work stealing; since this is a
+        // non-work-stealing scheduler it should not be adding itself
+        // to the list.
+        main_handle.send_shutdown();
         Some(main_sched)
     } else {
         None
