@@ -332,8 +332,7 @@ pub mod native {
 mod mock;
 
 /// The default buffer size for various I/O operations
-/// XXX: Not pub
-pub static DEFAULT_BUF_SIZE: uint = 1024 * 64;
+static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// The type passed to I/O condition handlers to indicate error
 ///

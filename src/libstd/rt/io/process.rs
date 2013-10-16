@@ -70,13 +70,6 @@ pub enum StdioContainer {
     /// specified for.
     InheritFd(libc::c_int),
 
-    // XXX: these two shouldn't have libuv-specific implementation details
-
-    /// The specified libuv stream is inherited for the corresponding file
-    /// descriptor it is assigned to.
-    // XXX: this needs to be thought out more.
-    //InheritStream(uv::net::StreamWatcher),
-
     /// Creates a pipe for the specified file descriptor which will be directed
     /// into the previously-initialized pipe passed in.
     ///
