@@ -13,7 +13,7 @@ use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
-use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
+use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle,
              status_to_maybe_uv_error, vec_to_uv_buf};
 use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec;
@@ -184,24 +184,6 @@ impl StreamWatcher {
         }
     }
 
-    pub fn close(self, cb: NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_stream_t) {
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            let cb = stream_watcher.get_watcher_data().close_cb.take_unwrap();
-            stream_watcher.drop_watcher_data();
-            unsafe { free_handle(handle as *c_void) }
-            cb();
-        }
-    }
 
     pub fn listen(&mut self, cb: ConnectionCallback) -> Result<(), UvError> {
         {
@@ -411,25 +393,6 @@ impl UdpWatcher {
             let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
             let status = status_to_maybe_uv_error(status);
             cb(udp_watcher, status);
-        }
-    }
-
-    pub fn close(self, cb: NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_udp_t) {
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            let cb = udp_watcher.get_watcher_data().close_cb.take_unwrap();
-            udp_watcher.drop_watcher_data();
-            unsafe { free_handle(handle as *c_void) }
-            cb();
         }
     }
 }

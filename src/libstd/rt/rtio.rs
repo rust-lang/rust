@@ -38,6 +38,7 @@ pub type RtioPipeObject = uvio::UvPipeStream;
 pub type RtioProcessObject = uvio::UvProcess;
 pub type RtioUnixListenerObject = uvio::UvUnixListener;
 pub type RtioUnixAcceptorObject = uvio::UvUnixAcceptor;
+pub type RtioTTYObject = uvio::UvTTY;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -94,6 +95,8 @@ pub trait IoFactory {
         Result<~RtioUnixListenerObject, IoError>;
     fn unix_connect<P: PathLike>(&mut self, path: &P) ->
         Result<~RtioPipeObject, IoError>;
+    fn tty_open(&mut self, fd: c_int, readable: bool, close_on_drop: bool)
+            -> Result<~RtioTTYObject, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -170,4 +173,12 @@ pub trait RtioUnixAcceptor {
     fn accept(&mut self) -> Result<~RtioPipeObject, IoError>;
     fn accept_simultaneously(&mut self) -> Result<(), IoError>;
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
+}
+
+pub trait RtioTTY {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+    fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
+    fn reset_mode(&mut self);
+    fn get_winsize(&mut self) -> Result<(int, int), IoError>;
 }

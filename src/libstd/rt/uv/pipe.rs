@@ -86,23 +86,6 @@ impl Pipe {
         }
     }
 
-    pub fn close(self, cb: uv::NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern "C" fn close_cb(handle: *uvll::uv_pipe_t) {
-            let mut process: Pipe = uv::NativeHandle::from_native_handle(handle);
-            process.get_watcher_data().close_cb.take_unwrap()();
-            process.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *libc::c_void) }
-        }
-    }
 }
 
 impl uv::NativeHandle<*uvll::uv_pipe_t> for Pipe {
