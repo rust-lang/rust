@@ -253,7 +253,7 @@ pub trait GenericPath : Clone + Eq + ToStr {
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
-mod stat {
+pub mod stat {
     #[cfg(target_arch = "x86")]
     pub mod arch {
         use libc;
@@ -373,7 +373,7 @@ mod stat {
 }
 
 #[cfg(target_os = "freebsd")]
-mod stat {
+pub mod stat {
     #[cfg(target_arch = "x86_64")]
     pub mod arch {
         use libc;
@@ -408,7 +408,7 @@ mod stat {
 }
 
 #[cfg(target_os = "macos")]
-mod stat {
+pub mod stat {
     pub mod arch {
         use libc;
 
@@ -442,7 +442,7 @@ mod stat {
 }
 
 #[cfg(target_os = "win32")]
-mod stat {
+pub mod stat {
     pub mod arch {
         use libc;
         pub fn default_stat() -> libc::stat {
