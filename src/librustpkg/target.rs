@@ -50,13 +50,13 @@ pub fn is_bench(p: &Path) -> bool {
 
 fn file_is(p: &Path, stem: &str) -> bool {
     match p.filestem() {
-        Some(s) if s == stem => true,
+        Some(s) if s == stem.as_bytes() => true,
         _ => false
     }
 }
 
 pub fn lib_name_of(p: &Path) -> Path {
-    p.push("lib.rs")
+    p.join("lib.rs")
 }
 
 pub static lib_crate_filename: &'static str = "lib.rs";

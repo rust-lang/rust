@@ -143,14 +143,15 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
           let meta_items = match path_opt {
               None => meta_items.clone(),
               Some((p, _path_str_style)) => {
-                  let p_path = Path(p);
-                  match p_path.filestem() {
+                  let p_path = Path::new(p);
+                  match p_path.filestem_str() {
+                      None|Some("") =>
+                          e.diag.span_bug(i.span, "Bad package path in `extern mod` item"),
                       Some(s) =>
                           vec::append(
                               ~[attr::mk_name_value_item_str(@"package_id", p),
                                attr::mk_name_value_item_str(@"name", s.to_managed())],
-                              *meta_items),
-                      None => e.diag.span_bug(i.span, "Bad package path in `extern mod` item")
+                              *meta_items)
                   }
             }
           };
@@ -274,7 +275,7 @@ fn resolve_crate(e: @mut Env,
         };
         let (lident, ldata) = loader::load_library_crate(&load_ctxt);
 
-        let cfilename = Path(lident);
+        let cfilename = Path::new(lident);
         let cdata = ldata;
 
         let attrs = decoder::get_crate_attributes(cdata);

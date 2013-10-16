@@ -105,7 +105,7 @@ impl<'self> PkgScript<'self> {
         let binary = os::args()[0].to_managed();
         // Build the rustc session data structures to pass
         // to the compiler
-        debug2!("pkgscript parse: {}", sysroot.to_str());
+        debug2!("pkgscript parse: {}", sysroot.display());
         let options = @session::options {
             binary: binary,
             maybe_sysroot: Some(sysroot),
@@ -141,31 +141,36 @@ impl<'self> PkgScript<'self> {
                   sysroot: &Path) -> (~[~str], ExitCode) {
         let sess = self.sess;
 
-        debug2!("Working directory = {}", self.build_dir.to_str());
+        debug2!("Working directory = {}", self.build_dir.display());
         // Collect together any user-defined commands in the package script
         let crate = util::ready_crate(sess, self.crate.take_unwrap());
         debug2!("Building output filenames with script name {}",
                driver::source_name(&driver::file_input(self.input.clone())));
-        let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
+        let exe = self.build_dir.join("pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
                                        exec,
                                        Nothing,
                                        &self.build_dir,
                                        sess,
                                        crate);
-        debug2!("Running program: {} {} {}", exe.to_str(),
-               sysroot.to_str(), "install");
+        debug2!("Running program: {} {} {}", exe.display(),
+               sysroot.display(), "install");
         // Discover the output
-        exec.discover_output("binary", exe.to_str(), digest_only_date(&exe));
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        exec.discover_output("binary", exe.as_str().unwrap(), digest_only_date(&exe));
         // FIXME #7401 should support commands besides `install`
-        let status = run::process_status(exe.to_str(), [sysroot.to_str(), ~"install"]);
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        let status = run::process_status(exe.as_str().unwrap(),
+                                         [sysroot.as_str().unwrap().to_owned(), ~"install"]);
         if status != 0 {
             return (~[], status);
         }
         else {
             debug2!("Running program (configs): {} {} {}",
-                   exe.to_str(), sysroot.to_str(), "configs");
-            let output = run::process_output(exe.to_str(), [sysroot.to_str(), ~"configs"]);
+                   exe.display(), sysroot.display(), "configs");
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            let output = run::process_output(exe.as_str().unwrap(),
+                                             [sysroot.as_str().unwrap().to_owned(), ~"configs"]);
             // Run the configs() function to get the configs
             let cfgs = str::from_utf8_slice(output.output).word_iter()
                 .map(|w| w.to_owned()).collect();
@@ -208,7 +213,8 @@ impl CtxMethods for BuildContext {
             match cwd_to_workspace() {
                 None if self.context.use_rust_path_hack => {
                     let cwd = os::getcwd();
-                    let pkgid = PkgId::new(cwd.components[cwd.components.len() - 1]);
+                    // FIXME (#9639): This needs to handle non-utf8 paths
+                    let pkgid = PkgId::new(cwd.filename_str().unwrap());
                     let mut pkg_src = PkgSrc::new(cwd, default_workspace(), true, pkgid);
                     self.build(&mut pkg_src, what);
                     match pkg_src {
@@ -237,7 +243,7 @@ impl CtxMethods for BuildContext {
             let mut dest_ws = default_workspace();
             do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
                 debug2!("found pkg {} in workspace {}, trying to build",
-                       pkgid.to_str(), workspace.to_str());
+                       pkgid.to_str(), workspace.display());
                 dest_ws = determine_destination(os::getcwd(),
                                                 self.context.use_rust_path_hack,
                                                 workspace);
@@ -290,8 +296,9 @@ impl CtxMethods for BuildContext {
                     match cwd_to_workspace() {
                         None if self.context.use_rust_path_hack => {
                             let cwd = os::getcwd();
+                            // FIXME (#9639): This needs to handle non-utf8 paths
                             let inferred_pkgid =
-                                PkgId::new(cwd.components[cwd.components.len() - 1]);
+                                PkgId::new(cwd.filename_str().unwrap());
                             self.install(PkgSrc::new(cwd, default_workspace(),
                                                      true, inferred_pkgid), &Everything);
                         }
@@ -331,7 +338,9 @@ impl CtxMethods for BuildContext {
             "list" => {
                 io::println("Installed packages:");
                 do installed_packages::list_installed_packages |pkg_id| {
-                    println(pkg_id.path.to_str());
+                    do pkg_id.path.display().with_str |s| {
+                        println(s);
+                    }
                     true
                 };
             }
@@ -379,7 +388,7 @@ impl CtxMethods for BuildContext {
                     do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
                         path_util::uninstall_package_from(workspace, &pkgid);
                         note(format!("Uninstalled package {} (was installed in {})",
-                                  pkgid.to_str(), workspace.to_str()));
+                                  pkgid.to_str(), workspace.display()));
                         true
                     };
                 }
@@ -407,23 +416,25 @@ impl CtxMethods for BuildContext {
         let pkgid = pkg_src.id.clone();
 
         debug2!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
-                pkgid = {} pkgsrc start_dir = {}", workspace.to_str(),
-               in_rust_path(&workspace), is_git_dir(&workspace.push_rel(&pkgid.path)),
-               pkgid.to_str(), pkg_src.start_dir.to_str());
+                pkgid = {} pkgsrc start_dir = {}", workspace.display(),
+               in_rust_path(&workspace), is_git_dir(&workspace.join(&pkgid.path)),
+               pkgid.to_str(), pkg_src.start_dir.display());
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
-        if !in_rust_path(&workspace) && is_git_dir(&workspace.push_rel(&pkgid.path)) {
-            let out_dir = default_workspace().push("src").push_rel(&pkgid.path);
-            let git_result = source_control::safe_git_clone(&workspace.push_rel(&pkgid.path),
+        if !in_rust_path(&workspace) && is_git_dir(&workspace.join(&pkgid.path)) {
+            let mut out_dir = default_workspace().join("src");
+            out_dir.push(&pkgid.path);
+            let git_result = source_control::safe_git_clone(&workspace.join(&pkgid.path),
                                                             &pkgid.version,
                                                             &out_dir);
             match git_result {
                 CheckedOutSources => make_read_only(&out_dir),
-                _ => cond.raise((pkgid.path.to_str(), out_dir.clone()))
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                _ => cond.raise((pkgid.path.as_str().unwrap().to_owned(), out_dir.clone()))
             };
             let default_ws = default_workspace();
-            debug2!("Calling build recursively with {:?} and {:?}", default_ws.to_str(),
+            debug2!("Calling build recursively with {:?} and {:?}", default_ws.display(),
                    pkgid.to_str());
             return self.build(&mut PkgSrc::new(default_ws.clone(),
                                                default_ws,
@@ -439,8 +450,10 @@ impl CtxMethods for BuildContext {
         let cfgs = match pkg_src.package_script_option() {
             Some(package_script_path) => {
                 let sysroot = self.sysroot_to_use();
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                let pkg_script_path_str = package_script_path.as_str().unwrap();
                 let (cfgs, hook_result) =
-                    do self.workcache_context.with_prep(package_script_path.to_str()) |prep| {
+                    do self.workcache_context.with_prep(pkg_script_path_str) |prep| {
                     let sub_sysroot = sysroot.clone();
                     let package_script_path_clone = package_script_path.clone();
                     let sub_ws = workspace.clone();
@@ -476,13 +489,13 @@ impl CtxMethods for BuildContext {
                 // Find crates inside the workspace
                 &Everything => pkg_src.find_crates(),
                 // Find only tests
-                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path(s)) }),
+                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::new(s)) }),
                 // Don't infer any crates -- just build the one that was requested
                 &JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
-                    debug2!("JustOne: p = {}", p.to_str());
-                    assert!(os::path_exists(&pkg_src.start_dir.push_rel(p)));
+                    debug2!("JustOne: p = {}", p.display());
+                    assert!(os::path_exists(&pkg_src.start_dir.join(p)));
                     if is_lib(p) {
                         PkgSrc::push_crate(&mut pkg_src.libs, 0, p);
                     } else if is_main(p) {
@@ -492,7 +505,7 @@ impl CtxMethods for BuildContext {
                     } else if is_bench(p) {
                         PkgSrc::push_crate(&mut pkg_src.benchs, 0, p);
                     } else {
-                        warn(format!("Not building any crates for dependency {}", p.to_str()));
+                        warn(format!("Not building any crates for dependency {}", p.display()));
                         return;
                     }
                 }
@@ -509,10 +522,10 @@ impl CtxMethods for BuildContext {
 
         let dir = build_pkg_id_in_workspace(id, workspace);
         note(format!("Cleaning package {} (removing directory {})",
-                        id.to_str(), dir.to_str()));
+                        id.to_str(), dir.display()));
         if os::path_exists(&dir) {
             os::remove_dir_recursive(&dir);
-            note(format!("Removed directory {}", dir.to_str()));
+            note(format!("Removed directory {}", dir.display()));
         }
 
         note(format!("Cleaned package {}", id.to_str()));
@@ -541,21 +554,22 @@ impl CtxMethods for BuildContext {
         debug2!("In declare inputs for {}", id.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
-                let path = pkg_src.start_dir.push_rel(&c.file).normalize();
-                debug2!("Recording input: {}", path.to_str());
-                inputs.push((~"file", path.to_str()));
+                let path = pkg_src.start_dir.join(&c.file);
+                debug2!("Recording input: {}", path.display());
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                inputs.push((~"file", path.as_str().unwrap().to_owned()));
             }
         }
 
         let result = self.install_no_build(pkg_src.build_workspace(),
                                            &pkg_src.destination_workspace,
-                                           &id).map(|s| Path(*s));
+                                           &id).map(|s| Path::new(s.as_slice()));
         debug2!("install: id = {}, about to call discover_outputs, {:?}",
-               id.to_str(), result.to_str());
+               id.to_str(), result.map(|p| p.display().to_str()));
         installed_files = installed_files + result;
         note(format!("Installed package {} to {}",
                      id.to_str(),
-                     pkg_src.destination_workspace.to_str()));
+                     pkg_src.destination_workspace.display()));
         (installed_files, inputs)
     }
 
@@ -567,7 +581,7 @@ impl CtxMethods for BuildContext {
         use conditions::copy_failed::cond;
 
         debug2!("install_no_build: assuming {} comes from {} with target {}",
-               id.to_str(), build_workspace.to_str(), target_workspace.to_str());
+               id.to_str(), build_workspace.display(), target_workspace.display());
 
         // Now copy stuff into the install dirs
         let maybe_executable = built_executable_in_workspace(id, build_workspace);
@@ -578,18 +592,20 @@ impl CtxMethods for BuildContext {
 
         debug2!("target_exec = {} target_lib = {:?} \
                maybe_executable = {:?} maybe_library = {:?}",
-               target_exec.to_str(), target_lib,
+               target_exec.display(), target_lib,
                maybe_executable, maybe_library);
 
         do self.workcache_context.with_prep(id.install_tag()) |prep| {
             for ee in maybe_executable.iter() {
+                // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("binary",
-                                   ee.to_str(),
+                                   ee.as_str().unwrap(),
                                    workcache_support::digest_only_date(ee));
             }
             for ll in maybe_library.iter() {
+                // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("binary",
-                                   ll.to_str(),
+                                   ll.as_str().unwrap(),
                                    workcache_support::digest_only_date(ll));
             }
             let subex = maybe_executable.clone();
@@ -601,31 +617,31 @@ impl CtxMethods for BuildContext {
                 let mut outputs = ~[];
 
                 for exec in subex.iter() {
-                    debug2!("Copying: {} -> {}", exec.to_str(), sub_target_ex.to_str());
+                    debug2!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
                     if !(os::mkdir_recursive(&sub_target_ex.dir_path(), U_RWX) &&
                          os::copy_file(exec, &sub_target_ex)) {
                         cond.raise(((*exec).clone(), sub_target_ex.clone()));
                     }
+                    // FIXME (#9639): This needs to handle non-utf8 paths
                     exe_thing.discover_output("binary",
-                        sub_target_ex.to_str(),
+                        sub_target_ex.as_str().unwrap(),
                         workcache_support::digest_only_date(&sub_target_ex));
-                    outputs.push(sub_target_ex.to_str());
+                    outputs.push(sub_target_ex.as_str().unwrap().to_owned());
                 }
                 for lib in sublib.iter() {
-                    let target_lib = sub_target_lib
+                    let mut target_lib = sub_target_lib
                         .clone().expect(format!("I built {} but apparently \
-                                             didn't install it!", lib.to_str()));
-                    let target_lib = target_lib
-                        .pop().push(lib.filename().expect("weird target lib"));
+                                             didn't install it!", lib.display()));
+                    target_lib.set_filename(lib.filename().expect("weird target lib"));
                     if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                          os::copy_file(lib, &target_lib)) {
                         cond.raise(((*lib).clone(), target_lib.clone()));
                     }
-                    debug2!("3. discovering output {}", target_lib.to_str());
+                    debug2!("3. discovering output {}", target_lib.display());
                     exe_thing.discover_output("binary",
-                                              target_lib.to_str(),
+                                              target_lib.as_str().unwrap(),
                                               workcache_support::digest_only_date(&target_lib));
-                    outputs.push(target_lib.to_str());
+                    outputs.push(target_lib.as_str().unwrap().to_owned());
                 }
                 outputs
             }
@@ -639,23 +655,24 @@ impl CtxMethods for BuildContext {
     fn test(&self, pkgid: &PkgId, workspace: &Path)  {
         match built_test_in_workspace(pkgid, workspace) {
             Some(test_exec) => {
-                debug2!("test: test_exec = {}", test_exec.to_str());
-                let status = run::process_status(test_exec.to_str(), [~"--test"]);
+                debug2!("test: test_exec = {}", test_exec.display());
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
                 os::set_exit_status(status);
             }
             None => {
                 error(format!("Internal error: test executable for package ID {} in workspace {} \
                            wasn't built! Please report this as a bug.",
-                           pkgid.to_str(), workspace.to_str()));
+                           pkgid.to_str(), workspace.display()));
             }
         }
     }
 
     fn init(&self) {
-        os::mkdir_recursive(&Path("src"),   U_RWX);
-        os::mkdir_recursive(&Path("lib"),   U_RWX);
-        os::mkdir_recursive(&Path("bin"),   U_RWX);
-        os::mkdir_recursive(&Path("build"), U_RWX);
+        os::mkdir_recursive(&Path::new("src"),   U_RWX);
+        os::mkdir_recursive(&Path::new("lib"),   U_RWX);
+        os::mkdir_recursive(&Path::new("bin"),   U_RWX);
+        os::mkdir_recursive(&Path::new("build"), U_RWX);
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
@@ -835,12 +852,13 @@ pub fn main_args(args: &[~str]) -> int {
     let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
     remaining_args.shift();
     let sroot = match supplied_sysroot {
-        Some(getopts::Val(s)) => Path(s),
+        Some(getopts::Val(s)) => Path::new(s),
         _ => filesearch::get_or_default_sysroot()
     };
 
-    debug2!("Using sysroot: {}", sroot.to_str());
-    debug2!("Will store workcache in {}", default_workspace().to_str());
+    debug2!("Using sysroot: {}", sroot.display());
+    let ws = default_workspace();
+    debug2!("Will store workcache in {}", ws.display());
 
     let rm_args = remaining_args.clone();
     let sub_cmd = cmd.clone();
@@ -866,7 +884,8 @@ pub fn main_args(args: &[~str]) -> int {
 
 fn declare_package_script_dependency(prep: &mut workcache::Prep, pkg_src: &PkgSrc) {
     match pkg_src.package_script_option() {
-        Some(ref p) => prep.declare_input("file", p.to_str(),
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        Some(ref p) => prep.declare_input("file", p.as_str().unwrap(),
                                       workcache_support::digest_file_with_date(p)),
         None => ()
     }

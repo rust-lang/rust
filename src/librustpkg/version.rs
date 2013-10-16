@@ -98,15 +98,16 @@ pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
 pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
     let rustpath = rust_path();
     for rp in rustpath.iter() {
-        let local_path = rp.push_rel(local_path);
-        let git_dir = local_path.push(".git");
+        let local_path = rp.join(local_path);
+        let git_dir = local_path.join(".git");
         if !os::path_is_dir(&git_dir) {
             continue;
         }
+        // FIXME (#9639): This needs to handle non-utf8 paths
         let outp = run::process_output("git",
-                                   [format!("--git-dir={}", git_dir.to_str()), ~"tag", ~"-l"]);
+                                   ["--git-dir=" + git_dir.as_str().unwrap(), ~"tag", ~"-l"]);
 
-        debug2!("git --git-dir={} tag -l ~~~> {:?}", git_dir.to_str(), outp.status);
+        debug2!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
 
         if outp.status != 0 {
             continue;
@@ -136,21 +137,23 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
         let tmp_dir = tmp_dir.expect("try_getting_version: couldn't create temp dir");
         let tmp_dir = tmp_dir.path();
         debug2!("(to get version) executing \\{git clone https://{} {}\\}",
-               remote_path.to_str(),
-               tmp_dir.to_str());
-        let outp  = run::process_output("git", [~"clone",
-                                                format!("https://{}",
-                                                        remote_path.to_str()),
-                                                tmp_dir.to_str()]);
+               remote_path.display(),
+               tmp_dir.display());
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        let outp  = run::process_output("git", [~"clone", format!("https://{}",
+                                                                  remote_path.as_str().unwrap()),
+                                                tmp_dir.as_str().unwrap().to_owned()]);
         if outp.status == 0 {
             debug2!("Cloned it... ( {}, {} )",
                    str::from_utf8(outp.output),
                    str::from_utf8(outp.error));
             let mut output = None;
+            let git_dir = tmp_dir.join(".git");
             debug2!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
-                   tmp_dir.push(".git").to_str());
+                   git_dir.display());
+            // FIXME (#9639): This needs to handle non-utf8 paths
             let outp = run::process_output("git",
-                                           [format!("--git-dir={}", tmp_dir.push(".git").to_str()),
+                                           ["--git-dir=" + git_dir.as_str().unwrap(),
                                             ~"tag", ~"-l"]);
             let output_text = str::from_utf8(outp.output);
             debug2!("Full output: ( {} ) [{:?}]", output_text, outp.status);
@@ -203,8 +206,8 @@ pub fn try_parsing_version(s: &str) -> Option<Version> {
 
 /// Just an approximation
 fn is_url_like(p: &Path) -> bool {
-    let str = p.to_str();
-    str.split_iter('/').len() > 2
+    // check if there are more than 2 /-separated components
+    p.as_vec().split_iter(|b| *b == '/' as u8).nth(2).is_some()
 }
 
 /// If s is of the form foo#bar, where bar is a valid version

@@ -10,7 +10,7 @@
 
 // rustpkg utilities having to do with workspaces
 
-use std::{os,util};
+use std::os;
 use std::path::Path;
 use context::Context;
 use path_util::{workspace_contains_package_id, find_dir_using_rust_path_hack, default_workspace};
@@ -26,8 +26,8 @@ pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path)
         // tjc: make this a condition
         fail2!("Package {} not found in any of \
                     the following workspaces: {}",
-                   pkgid.path.to_str(),
-                   rust_path().to_str());
+                   pkgid.path.display(),
+                   rust_path().map(|p| p.display().to_str()).to_str());
     }
     for ws in workspaces.iter() {
         if action(ws) {
@@ -52,7 +52,7 @@ pub fn pkg_parent_workspaces(cx: &Context, pkgid: &PkgId) -> ~[Path] {
 }
 
 pub fn is_workspace(p: &Path) -> bool {
-    os::path_is_dir(&p.push("src"))
+    os::path_is_dir(&p.join("src"))
 }
 
 /// Construct a workspace and package-ID name based on the current directory.
@@ -60,16 +60,13 @@ pub fn is_workspace(p: &Path) -> bool {
 pub fn cwd_to_workspace() -> Option<(Path, PkgId)> {
     let cwd = os::getcwd();
     for path in rust_path().move_iter() {
-        let srcpath = path.push("src");
+        let srcpath = path.join("src");
         if srcpath.is_ancestor_of(&cwd) {
-            // I'd love to use srcpath.get_relative_to(cwd) but it behaves wrong
-            // I'd say broken, but it has tests enforcing the wrong behavior.
-            // instead, just hack up the components vec
-            let mut pkgid = cwd;
-            pkgid.is_absolute = false;
-            let comps = util::replace(&mut pkgid.components, ~[]);
-            pkgid.components = comps.move_iter().skip(srcpath.components.len()).collect();
-            return Some((path, PkgId::new(pkgid.components.connect("/"))))
+            let rel = cwd.path_relative_from(&srcpath);
+            let rel_s = rel.as_ref().and_then(|p|p.as_str());
+            if rel_s.is_some() {
+                return Some((path, PkgId::new(rel_s.unwrap())));
+            }
         }
     }
     None

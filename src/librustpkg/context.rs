@@ -123,7 +123,7 @@ impl Context {
 
     /// Debugging
     pub fn sysroot_str(&self) -> ~str {
-        self.sysroot.to_str()
+        self.sysroot.as_str().unwrap().to_owned()
     }
 
     // Hack so that rustpkg can run either out of a rustc target dir,
@@ -132,7 +132,11 @@ impl Context {
         if !in_target(&self.sysroot) {
             self.sysroot.clone()
         } else {
-            self.sysroot.pop().pop().pop()
+            let mut p = self.sysroot.clone();
+            p.pop();
+            p.pop();
+            p.pop();
+            p
         }
     }
 
@@ -150,8 +154,10 @@ impl Context {
 /// rustpkg from a Rust target directory. This is part of a
 /// kludgy hack used to adjust the sysroot.
 pub fn in_target(sysroot: &Path) -> bool {
-    debug2!("Checking whether {} is in target", sysroot.to_str());
-    os::path_is_dir(&sysroot.pop().pop().push("rustc"))
+    debug2!("Checking whether {} is in target", sysroot.display());
+    let mut p = sysroot.dir_path();
+    p.set_filename("rustc");
+    os::path_is_dir(&p)
 }
 
 impl RustcFlags {

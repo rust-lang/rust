@@ -3992,27 +3992,20 @@ impl Parser {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::item_, ~[ast::Attribute]) {
-        let prefix = Path(self.sess.cm.span_to_filename(*self.span));
-        let prefix = prefix.dir_path();
+        let mut prefix = Path::new(self.sess.cm.span_to_filename(*self.span));
+        prefix.pop();
         let mod_path_stack = &*self.mod_path_stack;
-        let mod_path = Path(".").push_many(*mod_path_stack);
-        let dir_path = prefix.push_many(mod_path.components);
+        let mod_path = Path::new(".").join_many(*mod_path_stack);
+        let dir_path = prefix.join(&mod_path);
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
-            Some(d) => {
-                let path = Path(d);
-                if !path.is_absolute {
-                    dir_path.push(d)
-                } else {
-                    path
-                }
-            }
+            Some(d) => dir_path.join(d),
             None => {
                 let mod_name = token::interner_get(id.name).to_owned();
                 let default_path_str = mod_name + ".rs";
                 let secondary_path_str = mod_name + "/mod.rs";
-                let default_path = dir_path.push(default_path_str);
-                let secondary_path = dir_path.push(secondary_path_str);
+                let default_path = dir_path.join(default_path_str.as_slice());
+                let secondary_path = dir_path.join(secondary_path_str.as_slice());
                 let default_exists = default_path.exists();
                 let secondary_exists = secondary_path.exists();
                 match (default_exists, secondary_exists) {
@@ -4039,28 +4032,30 @@ impl Parser {
                               path: Path,
                               outer_attrs: ~[ast::Attribute],
                               id_sp: Span) -> (ast::item_, ~[ast::Attribute]) {
-        let full_path = path.normalize();
-
-        let maybe_i = do self.sess.included_mod_stack.iter().position |p| { *p == full_path };
+        let maybe_i = do self.sess.included_mod_stack.iter().position |p| { *p == path };
         match maybe_i {
             Some(i) => {
                 let stack = &self.sess.included_mod_stack;
                 let mut err = ~"circular modules: ";
                 for p in stack.slice(i, stack.len()).iter() {
-                    err.push_str(p.to_str());
+                    do p.display().with_str |s| {
+                        err.push_str(s);
+                    }
                     err.push_str(" -> ");
                 }
-                err.push_str(full_path.to_str());
+                do path.display().with_str |s| {
+                    err.push_str(s);
+                }
                 self.span_fatal(id_sp, err);
             }
             None => ()
         }
-        self.sess.included_mod_stack.push(full_path.clone());
+        self.sess.included_mod_stack.push(path.clone());
 
         let p0 =
             new_sub_parser_from_file(self.sess,
                                      self.cfg.clone(),
-                                     &full_path,
+                                     &path,
                                      id_sp);
         let (inner, next) = p0.parse_inner_attrs_and_next();
         let mod_attrs = vec::append(outer_attrs, inner);
