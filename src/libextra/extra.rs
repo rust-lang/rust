@@ -54,7 +54,6 @@ pub mod arc;
 pub mod comm;
 pub mod future;
 pub mod task_pool;
-pub mod flatpipes;
 
 // Collections
 
