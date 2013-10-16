@@ -70,15 +70,13 @@ pub enum StdioContainer {
     /// specified for.
     InheritFd(libc::c_int),
 
-    /// Creates a pipe for the specified file descriptor which will be directed
-    /// into the previously-initialized pipe passed in.
+    /// Creates a pipe for the specified file descriptor which will be created
+    /// when the process is spawned.
     ///
     /// The first boolean argument is whether the pipe is readable, and the
     /// second is whether it is writable. These properties are from the view of
     /// the *child* process, not the parent process.
-    CreatePipe(io::UnboundPipeStream,
-               bool /* readable */,
-               bool /* writable */),
+    CreatePipe(bool /* readable */, bool /* writable */),
 }
 
 impl Process {

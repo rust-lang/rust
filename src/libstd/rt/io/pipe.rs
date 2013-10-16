@@ -16,35 +16,13 @@
 use prelude::*;
 use super::{Reader, Writer};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::local::Local;
-use rt::rtio::{RtioPipe, RtioPipeObject, IoFactoryObject, IoFactory};
-use rt::rtio::RtioUnboundPipeObject;
+use rt::rtio::{RtioPipe, RtioPipeObject};
 
 pub struct PipeStream {
     priv obj: ~RtioPipeObject
 }
 
-// This should not be a newtype, but rt::uv::process::set_stdio needs to reach
-// into the internals of this :(
-pub struct UnboundPipeStream(~RtioUnboundPipeObject);
-
 impl PipeStream {
-    /// Creates a new pipe initialized, but not bound to any particular
-    /// source/destination
-    pub fn new() -> Option<UnboundPipeStream> {
-        let pipe = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).pipe_init(false)
-        };
-        match pipe {
-            Ok(p) => Some(UnboundPipeStream(p)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
-    }
-
     pub fn new_bound(inner: ~RtioPipeObject) -> PipeStream {
         PipeStream { obj: inner }
     }
