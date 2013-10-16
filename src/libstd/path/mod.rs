@@ -179,9 +179,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         str::from_utf8_slice_opt(self.as_vec())
     }
 
-    /// Converts the Path into an owned string, if possible
-    fn into_str(self) -> Option<~str>;
-
     /// Returns the path as a byte vector
     fn as_vec<'a>(&'a self) -> &'a [u8];
 

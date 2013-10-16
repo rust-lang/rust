@@ -327,13 +327,6 @@ impl GenericPath for Path {
         Some(self.repr.as_slice())
     }
 
-    /// See `GenericPath::into_str` for info.
-    /// Always returns a `Some` value.
-    #[inline]
-    fn into_str(self) -> Option<~str> {
-        Some(self.repr)
-    }
-
     #[inline]
     fn as_vec<'a>(&'a self) -> &'a [u8] {
         self.repr.as_bytes()
@@ -1260,8 +1253,6 @@ mod tests {
         assert_eq!(Path::new(b!("foo\\bar")).into_vec(), b!("foo\\bar").to_owned());
         assert_eq!(Path::new(b!("\\foo\\..\\..\\bar")).into_vec(),
                    b!("\\bar").to_owned());
-        assert_eq!(Path::new("foo\\bar").into_str(), Some(~"foo\\bar"));
-        assert_eq!(Path::new("\\foo\\..\\..\\bar").into_str(), Some(~"\\bar"));
 
         t!(s: Path::new("\\\\a"), "\\a");
         t!(s: Path::new("\\\\a\\"), "\\a");
