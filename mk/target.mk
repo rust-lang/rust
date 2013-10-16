@@ -15,9 +15,9 @@ export CFG_COMPILER_TRIPLE
 
 # The standard libraries should be held up to a higher standard than any old
 # code, make sure that these common warnings are denied by default. These can
-# be overridden during development temporarily. For stage0, we allow all these
-# to suppress warnings which may be bugs in stage0 (should be fixed in stage1+)
-WFLAGS_ST0 = -A warnings
+# be overridden during development temporarily. For stage0, we allow warnings
+# which may be bugs in stage0 (should be fixed in stage1+)
+WFLAGS_ST0 = -W warnings
 WFLAGS_ST1 = -D warnings
 WFLAGS_ST2 = -D warnings
 
