@@ -35,7 +35,6 @@ pub type RtioUdpSocketObject = uvio::UvUdpSocket;
 pub type RtioTimerObject = uvio::UvTimer;
 pub type PausibleIdleCallback = uvio::UvPausibleIdleCallback;
 pub type RtioPipeObject = uvio::UvPipeStream;
-pub type RtioUnboundPipeObject = uvio::UvUnboundPipe;
 pub type RtioProcessObject = uvio::UvProcess;
 pub type RtioUnixListenerObject = uvio::UvUnixListener;
 pub type RtioUnixAcceptorObject = uvio::UvUnixAcceptor;
@@ -88,7 +87,6 @@ pub trait IoFactory {
     fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
         Result<~[Path], IoError>;
-    fn pipe_init(&mut self, ipc: bool) -> Result<~RtioUnboundPipeObject, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcessObject, ~[Option<~RtioPipeObject>]), IoError>;
 

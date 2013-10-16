@@ -749,11 +749,6 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn pipe_init(&mut self, ipc: bool) -> Result<~RtioUnboundPipeObject, IoError> {
-        let home = get_handle_to_current_scheduler!();
-        Ok(~UvUnboundPipe::new(Pipe::new(self.uv_loop(), ipc), home))
-    }
-
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcessObject, ~[Option<~RtioPipeObject>]), IoError>
     {
@@ -1069,8 +1064,18 @@ pub struct UvUnboundPipe {
 }
 
 impl UvUnboundPipe {
+    /// Takes ownership of an unbound pipe along with the scheduler that it is
+    /// homed on.
     fn new(pipe: Pipe, home: SchedHandle) -> UvUnboundPipe {
         UvUnboundPipe { pipe: pipe, home: home }
+    }
+
+    /// Creates a fresh new unbound pipe on the specified I/O loop
+    pub fn new_fresh(loop_: &Loop) -> UvUnboundPipe {
+        UvUnboundPipe {
+            pipe: Pipe::new(loop_, false),
+            home: get_handle_to_current_scheduler!(),
+        }
     }
 }
 

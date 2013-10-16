@@ -261,7 +261,6 @@ pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
-pub use self::pipe::UnboundPipeStream;
 pub use self::process::Process;
 
 // Some extension traits that all Readers and Writers get.

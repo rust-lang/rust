@@ -17,7 +17,7 @@ use vec;
 
 use rt::io::process::*;
 use rt::uv;
-use rt::uv::uvio::UvPipeStream;
+use rt::uv::uvio::{UvPipeStream, UvUnboundPipe};
 use rt::uv::uvll;
 
 /// A process wraps the handle of the underlying uv_process_t.
@@ -68,7 +68,8 @@ impl Process {
         unsafe {
             vec::raw::set_len(&mut stdio, io.len());
             for (slot, other) in stdio.iter().zip(io.move_iter()) {
-                let io = set_stdio(slot as *uvll::uv_stdio_container_t, other);
+                let io = set_stdio(slot as *uvll::uv_stdio_container_t, other,
+                                   loop_);
                 ret_io.push(io);
             }
         }
@@ -144,7 +145,8 @@ impl Process {
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
-                    io: StdioContainer) -> Option<~UvPipeStream> {
+                    io: StdioContainer,
+                    loop_: &uv::Loop) -> Option<~UvPipeStream> {
     match io {
         Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
@@ -155,7 +157,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             uvll::set_stdio_container_fd(dst, fd);
             None
         }
-        CreatePipe(pipe, readable, writable) => {
+        CreatePipe(readable, writable) => {
             let mut flags = uvll::STDIO_CREATE_PIPE as libc::c_int;
             if readable {
                 flags |= uvll::STDIO_READABLE_PIPE as libc::c_int;
@@ -163,10 +165,11 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
+            let pipe = UvUnboundPipe::new_fresh(loop_);
             let handle = pipe.pipe.as_stream().native_handle();
             uvll::set_stdio_container_flags(dst, flags);
             uvll::set_stdio_container_stream(dst, handle);
-            Some(~UvPipeStream::new(**pipe))
+            Some(~UvPipeStream::new(pipe))
         }
     }
 }

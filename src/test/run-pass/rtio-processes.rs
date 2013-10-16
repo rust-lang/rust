@@ -25,7 +25,6 @@
 
 use std::rt::io::process::{Process, ProcessConfig, CreatePipe, Ignored};
 use std::rt::io::{Reader, Writer};
-use std::rt::io::pipe::PipeStream;
 use std::str;
 
 #[test]
@@ -105,8 +104,7 @@ fn run_output(args: ProcessConfig) -> ~str {
 #[test]
 #[cfg(unix, not(target_os="android"))]
 fn stdout_works() {
-    let pipe = PipeStream::new().unwrap();
-    let io = ~[Ignored, CreatePipe(pipe, false, true)];
+    let io = ~[Ignored, CreatePipe(false, true)];
     let args = ProcessConfig {
         program: "/bin/sh",
         args: [~"-c", ~"echo foobar"],
@@ -120,8 +118,7 @@ fn stdout_works() {
 #[test]
 #[cfg(unix, not(target_os="android"))]
 fn set_cwd_works() {
-    let pipe = PipeStream::new().unwrap();
-    let io = ~[Ignored, CreatePipe(pipe, false, true)];
+    let io = ~[Ignored, CreatePipe(false, true)];
     let cwd = Some("/");
     let args = ProcessConfig {
         program: "/bin/sh",
@@ -136,10 +133,8 @@ fn set_cwd_works() {
 #[test]
 #[cfg(unix, not(target_os="android"))]
 fn stdin_works() {
-    let input = PipeStream::new().unwrap();
-    let output = PipeStream::new().unwrap();
-    let io = ~[CreatePipe(input, true, false),
-               CreatePipe(output, false, true)];
+    let io = ~[CreatePipe(true, false),
+               CreatePipe(false, true)];
     let args = ProcessConfig {
         program: "/bin/sh",
         args: [~"-c", ~"read line; echo $line"],
