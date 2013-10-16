@@ -298,11 +298,13 @@ pub mod types {
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
+                use default::Default;
 
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
-
+                
+                #[deriving(Default)]
                 pub struct stat {
                     st_dev: dev_t,
                     __pad1: c_short,
@@ -331,6 +333,7 @@ pub mod types {
                 use libc::types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
                 use libc::types::os::arch::c99::{c_longlong, c_ulonglong};
                 use libc::types::os::arch::posix88::{uid_t, gid_t, ino_t};
+                use default::Default;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = u32;
@@ -357,6 +360,31 @@ pub mod types {
                     st_ctime_nsec: c_ulong,
                     st_ino: c_ulonglong
                 }
+                impl Default for stat {
+                    fn default() -> stat {
+                        stat {
+                            st_dev: 0,
+                            __pad0: [0, ..4],
+                            __st_ino: 0,
+                            st_mode: 0,
+                            st_nlink: 0,
+                            st_uid: 0,
+                            st_gid: 0,
+                            st_rdev: 0,
+                            __pad3: [0, ..4],
+                            st_size: 0,
+                            st_blksize: 0,
+                            st_blocks: 0,
+                            st_atime: 0,
+                            st_atime_nsec: 0,
+                            st_mtime: 0,
+                            st_mtime_nsec: 0,
+                            st_ctime: 0,
+                            st_ctime_nsec: 0,
+                            st_ino: 0
+                        }
+                    }
+                }
             }
             #[cfg(target_arch = "mips")]
             pub mod posix01 {
@@ -364,6 +392,7 @@ pub mod types {
                 use libc::types::os::arch::posix88::{gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
+                use default::Default;
 
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
@@ -390,6 +419,32 @@ pub mod types {
                     st_blksize: blksize_t,
                     st_blocks: blkcnt_t,
                     st_pad5: [c_long, ..14],
+                }
+                impl Default for stat {
+                    fn default() -> stat {
+                        stat {
+                            st_dev: 0,
+                            st_pad1: [0, ..3],
+                            st_ino: 0,
+                            st_mode: 0,
+                            st_nlink: 0,
+                            st_uid: 0,
+                            st_gid: 0,
+                            st_rdev: 0,
+                            st_pad2: [0, ..2],
+                            st_size: 0,
+                            st_pad3: 0,
+                            st_atime: 0,
+                            st_atime_nsec: 0,
+                            st_mtime: 0,
+                            st_mtime_nsec: 0,
+                            st_ctime: 0,
+                            st_ctime_nsec: 0,
+                            st_blksize: 0,
+                            st_blocks: 0,
+                            st_pad5: [0, ..14],
+                        }
+                    }
                 }
             }
             pub mod posix08 {}
@@ -439,10 +494,12 @@ pub mod types {
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
+                use default::Default;
 
                 pub type nlink_t = u64;
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
+
                 pub struct stat {
                     st_dev: dev_t,
                     st_ino: ino_t,
@@ -462,6 +519,30 @@ pub mod types {
                     st_ctime: time_t,
                     st_ctime_nsec: c_long,
                     __unused: [c_long, ..3],
+                }
+                impl Default for stat {
+                    fn default() -> stat {
+                        stat {
+                            st_dev: 0,
+                            st_ino: 0,
+                            st_nlink: 0,
+                            st_mode: 0,
+                            st_uid: 0,
+                            st_gid: 0,
+                            __pad0: 0,
+                            st_rdev: 0,
+                            st_size: 0,
+                            st_blksize: 0,
+                            st_blocks: 0,
+                            st_atime: 0,
+                            st_atime_nsec: 0,
+                            st_mtime: 0,
+                            st_mtime_nsec: 0,
+                            st_ctime: 0,
+                            st_ctime_nsec: 0,
+                            __unused: [0, 0, 0],
+                        }
+                    }
                 }
             }
             pub mod posix08 {
@@ -540,11 +621,13 @@ pub mod types {
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
+                use default::Default;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
+
                 pub struct stat {
                     st_dev: dev_t,
                     st_ino: ino_t,
@@ -569,6 +652,34 @@ pub mod types {
                     st_birthtime_nsec: c_long,
                     __unused: [uint8_t, ..2],
                 }
+                impl Default for stat {
+                    fn default() -> stat {
+                        stat {
+                            st_dev: 0,
+                            st_ino: 0,
+                            st_mode: 0,
+                            st_nlink: 0,
+                            st_uid: 0,
+                            st_gid: 0,
+                            st_rdev: 0,
+                            st_atime: 0,
+                            st_atime_nsec: 0,
+                            st_mtime: 0,
+                            st_mtime_nsec: 0,
+                            st_ctime: 0,
+                            st_ctime_nsec: 0,
+                            st_size: 0,
+                            st_blocks: 0,
+                            st_blksize: 0,
+                            st_flags: 0,
+                            st_gen: 0,
+                            st_lspare: 0,
+                            st_birthtime: 0,
+                            st_birthtime_nsec: 0,
+                            __unused: [0, 0],
+                        }
+                    }
+                }
             }
             pub mod posix08 {
             }
@@ -587,9 +698,11 @@ pub mod types {
                 use libc::types::os::arch::extra::{int64, time64_t};
                 use libc::types::os::arch::posix88::{dev_t, ino_t};
                 use libc::types::os::arch::posix88::mode_t;
+                use default::Default;
 
                 // Note: this is the struct called stat64 in win32. Not stat,
                 // nor stati64.
+                #[deriving(Default)]
                 pub struct stat {
                     st_dev: dev_t,
                     st_ino: ino_t,
@@ -1005,6 +1118,7 @@ pub mod types {
                 use libc::types::os::arch::c95::{c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t,
                                                      mode_t, off_t, uid_t};
+                use default::Default;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = i64;
@@ -1033,6 +1147,34 @@ pub mod types {
                     st_gen: uint32_t,
                     st_lspare: int32_t,
                     st_qspare: [int64_t, ..2],
+                }
+                impl Default for stat {
+                    fn default() -> stat {
+                        stat {
+                            st_dev: 0,
+                            st_mode: 0,
+                            st_nlink: 0,
+                            st_ino: 0,
+                            st_uid: 0,
+                            st_gid: 0,
+                            st_rdev: 0,
+                            st_atime: 0,
+                            st_atime_nsec: 0,
+                            st_mtime: 0,
+                            st_mtime_nsec: 0,
+                            st_ctime: 0,
+                            st_ctime_nsec: 0,
+                            st_birthtime: 0,
+                            st_birthtime_nsec: 0,
+                            st_size: 0,
+                            st_blocks: 0,
+                            st_blksize: 0,
+                            st_flags: 0,
+                            st_gen: 0,
+                            st_lspare: 0,
+                            st_qspare: [0, 0],
+                        }
+                    }
                 }
             }
             pub mod posix08 {
@@ -1086,6 +1228,7 @@ pub mod types {
                 use libc::types::os::arch::c95::{c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t, uid_t};
+                use default::Default;
 
                 pub type nlink_t = u16;
                 pub type blksize_t = i64;
@@ -1114,6 +1257,34 @@ pub mod types {
                     st_gen: uint32_t,
                     st_lspare: int32_t,
                     st_qspare: [int64_t, ..2],
+                }
+                impl Default for stat {
+                    fn default() -> stat {
+                        stat {
+                            st_dev: 0,
+                            st_mode: 0,
+                            st_nlink: 0,
+                            st_ino: 0,
+                            st_uid: 0,
+                            st_gid: 0,
+                            st_rdev: 0,
+                            st_atime: 0,
+                            st_atime_nsec: 0,
+                            st_mtime: 0,
+                            st_mtime_nsec: 0,
+                            st_ctime: 0,
+                            st_ctime_nsec: 0,
+                            st_birthtime: 0,
+                            st_birthtime_nsec: 0,
+                            st_size: 0,
+                            st_blocks: 0,
+                            st_blksize: 0,
+                            st_flags: 0,
+                            st_gen: 0,
+                            st_lspare: 0,
+                            st_qspare: [0, 0],
+                        }
+                    }
                 }
             }
             pub mod posix08 {
