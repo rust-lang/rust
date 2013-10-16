@@ -22,6 +22,7 @@ use vec;
 use vec::OwnedVector;
 use to_str::ToStr;
 use str::StrSlice;
+use fmt;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
@@ -290,7 +291,7 @@ pub trait AsResult<T, E> {
 
 impl<T: Clone, E> option::ToOption<T> for Result<T, E> {
     #[inline]
-    fn to_option(&self)-> Option<T> {
+    fn to_option(&self) -> Option<T> {
         match *self {
             Ok(ref t) => Some(t.clone()),
             Err(_) => None,
@@ -300,7 +301,7 @@ impl<T: Clone, E> option::ToOption<T> for Result<T, E> {
 
 impl<T, E> option::IntoOption<T> for Result<T, E> {
     #[inline]
-    fn into_option(self)-> Option<T> {
+    fn into_option(self) -> Option<T> {
         match self {
             Ok(t) => Some(t),
             Err(_) => None,
@@ -310,7 +311,7 @@ impl<T, E> option::IntoOption<T> for Result<T, E> {
 
 impl<T, E> option::AsOption<T> for Result<T, E> {
     #[inline]
-    fn as_option<'a>(&'a self)-> Option<&'a T> {
+    fn as_option<'a>(&'a self) -> Option<&'a T> {
         match *self {
             Ok(ref t) => Some(t),
             Err(_) => None,
@@ -340,7 +341,7 @@ impl<T, E> AsResult<T, E> for Result<T, E> {
 
 impl<T: Clone, E: Clone> either::ToEither<E, T> for Result<T, E> {
     #[inline]
-    fn to_either(&self)-> either::Either<E, T> {
+    fn to_either(&self) -> either::Either<E, T> {
         match *self {
             Ok(ref t) => either::Right(t.clone()),
             Err(ref e) => either::Left(e.clone()),
@@ -350,7 +351,7 @@ impl<T: Clone, E: Clone> either::ToEither<E, T> for Result<T, E> {
 
 impl<T, E> either::IntoEither<E, T> for Result<T, E> {
     #[inline]
-    fn into_either(self)-> either::Either<E, T> {
+    fn into_either(self) -> either::Either<E, T> {
         match self {
             Ok(t) => either::Right(t),
             Err(e) => either::Left(e),
@@ -360,10 +361,30 @@ impl<T, E> either::IntoEither<E, T> for Result<T, E> {
 
 impl<T, E> either::AsEither<E, T> for Result<T, E> {
     #[inline]
-    fn as_either<'a>(&'a self)-> either::Either<&'a E, &'a T> {
+    fn as_either<'a>(&'a self) -> either::Either<&'a E, &'a T> {
         match *self {
             Ok(ref t) => either::Right(t),
             Err(ref e) => either::Left(e),
+        }
+    }
+}
+
+impl<T: ToStr, E: ToStr> ToStr for Result<T, E> {
+    #[inline]
+    fn to_str(&self) -> ~str {
+        match *self {
+            Ok(ref t) => format!("Ok({:s})", t.to_str()),
+            Err(ref e) => format!("Err({:s})", e.to_str())
+        }
+    }
+}
+
+impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
+    #[inline]
+    fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) {
+        match *s {
+            Ok(ref t) => write!(f.buf, "Ok({})", *t),
+            Err(ref e) => write!(f.buf, "Err({})", *e)
         }
     }
 }
@@ -441,6 +462,8 @@ mod tests {
     use option;
     use str::OwnedStr;
     use vec::ImmutableVector;
+    use to_str::ToStr;
+    use fmt::Default;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
     pub fn op2() -> Result<int, ~str> { Err(~"sadface") }
@@ -658,5 +681,23 @@ mod tests {
 
         assert_eq!(ok.as_either().unwrap_right(), &100);
         assert_eq!(err.as_either().unwrap_left(), &404);
+    }
+
+    #[test]
+    pub fn test_to_str() {
+        let ok: Result<int, ~str> = Ok(100);
+        let err: Result<int, ~str> = Err(~"Err");
+
+        assert_eq!(ok.to_str(), ~"Ok(100)");
+        assert_eq!(err.to_str(), ~"Err(Err)");
+    }
+
+    #[test]
+    pub fn test_fmt_default() {
+        let ok: Result<int, ~str> = Ok(100);
+        let err: Result<int, ~str> = Err(~"Err");
+
+        assert_eq!(format!("{}", ok), ~"Ok(100)");
+        assert_eq!(format!("{}", err), ~"Err(Err)");
     }
 }
