@@ -21,7 +21,7 @@ use str;
 use str::{CharSplitIterator, OwnedStr, Str, StrVector};
 use to_bytes::IterBytes;
 use vec::Vector;
-use super::{BytesContainer, GenericPath, GenericPathUnsafe};
+use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
 #[cfg(target_os = "win32")]
 use libc;
@@ -922,9 +922,8 @@ pub enum PathPrefix {
     DiskPrefix
 }
 
-/// Internal function; only public for tests. Don't use.
 // FIXME (#8169): Make private once visibility is fixed
-pub fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
+fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     if path.starts_with("\\\\") {
         // \\
         path = path.slice_from(2);
@@ -1032,12 +1031,6 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
     }
 }
 
-// FIXME (#8169): Pull this into parent module once visibility works
-#[inline(always)]
-fn contains_nul(v: &[u8]) -> bool {
-    v.iter().any(|&x| x == 0)
-}
-
 fn prefix_is_verbatim(p: Option<PathPrefix>) -> bool {
     match p {
         Some(VerbatimPrefix(_)) | Some(VerbatimUNCPrefix(_,_)) | Some(VerbatimDiskPrefix) => true,
@@ -1136,6 +1129,7 @@ impl Path {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::parse_prefix;
     use option::{Some,None};
     use iter::Iterator;
     use vec::Vector;
