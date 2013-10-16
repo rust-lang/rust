@@ -791,7 +791,7 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::new($path);
-                    let left = path.$op().map(|&x| str::from_utf8_slice(x));
+                    let left = path.$op().map(|x| str::from_utf8_slice(x));
                     assert_eq!(left, $exp);
                 }
             );
@@ -1313,7 +1313,7 @@ mod tests {
                     let path = Path::new($path);
                     let other = Path::new($other);
                     let res = path.path_relative_from(&other);
-                    assert_eq!(res.and_then_ref(|x| x.as_str()), $exp);
+                    assert_eq!(res.as_ref().and_then(|x| x.as_str()), $exp);
                 }
             )
         )

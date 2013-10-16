@@ -164,7 +164,7 @@ fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
       Some(s) => Some(Path::new(s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
-            testfile.filename().map_move(|s| Path::new(s))
+            testfile.filename().map(|s| Path::new(s))
         } else {
             None
         }

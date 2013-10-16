@@ -462,7 +462,7 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
 pub fn chmod_read_only(p: &Path) -> bool {
     #[fixed_stack_segment];
     unsafe {
-        do p.to_str().with_c_str |src_buf| {
+        do p.with_c_str |src_buf| {
             libc::chmod(src_buf, S_IRUSR as libc::c_int) == 0 as libc::c_int
         }
     }
@@ -472,7 +472,7 @@ pub fn chmod_read_only(p: &Path) -> bool {
 pub fn chmod_read_only(p: &Path) -> bool {
     #[fixed_stack_segment];
     unsafe {
-        do p.to_str().with_c_str |src_buf| {
+        do p.with_c_str |src_buf| {
             libc::chmod(src_buf, S_IRUSR as libc::mode_t) == 0
                 as libc::c_int
         }

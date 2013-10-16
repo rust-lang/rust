@@ -88,7 +88,7 @@ fn writeFile(file_path: &Path, contents: &str) {
 
 fn mk_emptier_workspace(tag: &str) -> TempDir {
     let workspace = TempDir::new(tag).expect("couldn't create temp dir");
-    let package_dir = workspace.path().push("src");
+    let package_dir = workspace.path().join("src");
     assert!(os::mkdir_recursive(&package_dir, U_RWX));
     workspace
 }
@@ -110,9 +110,10 @@ fn mk_workspace(workspace: &Path, short_name: &Path, version: &Version) -> Path 
 
 fn mk_temp_workspace(short_name: &Path, version: &Version) -> (TempDir, Path) {
     let workspace_dir = mk_empty_workspace(short_name, version, "temp_workspace");
+    // FIXME (#9639): This needs to handle non-utf8 paths
     let package_dir = workspace_dir.path().join_many([~"src",
                                                       format!("{}-{}",
-                                                              short_name.to_str(),
+                                                              short_name.as_str().unwrap(),
                                                               version.to_str())]);
 
     debug2!("Created {} and does it exist? {:?}", package_dir.display(),
@@ -912,7 +913,8 @@ fn rust_path_test() {
     // FIXME (#9639): This needs to handle non-utf8 paths
     command_line_test_with_env([~"install", ~"foo"],
                                &cwd,
-                               Some(~[(~"RUST_PATH", dir_for_path.path().as_str().unwrap())]));
+                               Some(~[(~"RUST_PATH",
+                                       dir_for_path.path().as_str().unwrap().to_owned())]));
     assert_executable_exists(dir_for_path.path(), "foo");
 }
 
@@ -1078,7 +1080,7 @@ fn do_rebuild_dep_dates_change() {
     command_line_test([~"build", ~"foo"], workspace);
     let bar_lib_name = lib_output_file_name(workspace, "bar");
     let bar_date = datestamp(&bar_lib_name);
-    debug2!("Datestamp on {} is {:?}", bar_lib_name.to_str(), bar_date);
+    debug2!("Datestamp on {} is {:?}", bar_lib_name.display(), bar_date);
     touch_source_file(workspace, &dep_id);
     command_line_test([~"build", ~"foo"], workspace);
     let new_bar_date = datestamp(&bar_lib_name);
@@ -1326,6 +1328,7 @@ fn rust_path_hack_test(hack_flag: bool) {
    let workspace = workspace.path();
    let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
    let dest_workspace = dest_workspace.path();
+   let foo_path = workspace.join_many(["src", "foo-0.1"]);
    let rust_path = Some(~[(~"RUST_PATH",
        format!("{}:{}",
                dest_workspace.as_str().unwrap(),
@@ -1568,7 +1571,7 @@ fn dash_S() {
     let workspace = workspace.path();
     let test_sys = test_sysroot();
     // FIXME (#9639): This needs to handle non-utf8 paths
-    command_line_test([test_sysroot().as_str().unwrap().to_owned(),
+    command_line_test([test_sys.as_str().unwrap().to_owned(),
                        ~"build",
                        ~"-S",
                        ~"foo"],
@@ -1809,7 +1812,7 @@ fn test_recursive_deps() {
     let c_id = PkgId::new("c");
     let b_workspace = create_local_package_with_dep(&b_id, &c_id);
     let b_workspace = b_workspace.path();
-    writeFile(&b_workspace.join_many(["src", "c-0.1", "lib.rs"])),
+    writeFile(&b_workspace.join_many(["src", "c-0.1", "lib.rs"]),
                "pub fn g() {}");
     let a_workspace = create_local_package(&a_id);
     let a_workspace = a_workspace.path();
@@ -1879,7 +1882,7 @@ fn test_target_specific_install_dir() {
                        ~"install",
                        ~"foo"],
                       workspace);
-    assert!(os::path_is_dir(&workspace.join_many(["lib", host_triple()])));
+    assert!(os::path_is_dir(&workspace.join_many([~"lib", host_triple()])));
     assert_lib_exists(workspace, &Path::new("foo"), NoVersion);
     assert!(os::list_dir(&workspace.join("lib")).len() == 1);
     assert!(os::path_is_dir(&workspace.join("bin")));
@@ -2051,7 +2054,7 @@ fn test_installed_read_only() {
     let repo = init_git_repo(&temp_pkg_id.path);
     let repo = repo.path();
     debug2!("repo = {}", repo.display());
-    let repo_subdir = repo.join_many_str(["mockgithub.com", "catamorphism", "test-pkg"]);
+    let repo_subdir = repo.join_many(["mockgithub.com", "catamorphism", "test-pkg"]);
     debug2!("repo_subdir = {}", repo_subdir.display());
 
     writeFile(&repo_subdir.join("main.rs"),
@@ -2077,8 +2080,8 @@ fn test_installed_read_only() {
     assert!(is_rwx(&built_lib));
 
     // Make sure sources are (a) under "build" and (b) read-only
-    let src1 = target_build_dir(&ws).join_many_str(["src", temp_pkg_id.to_str(), "main.rs"]);
-    let src2 = target_build_dir(&ws).join_many_str(["src", temp_pkg_id.to_str(), "lib.rs"]);
+    let src1 = target_build_dir(&ws).join_many([~"src", temp_pkg_id.to_str(), ~"main.rs"]);
+    let src2 = target_build_dir(&ws).join_many([~"src", temp_pkg_id.to_str(), ~"lib.rs"]);
     assert!(os::path_exists(&src1));
     assert!(os::path_exists(&src2));
     assert!(is_read_only(&src1));
@@ -2091,9 +2094,9 @@ fn test_installed_local_changes() {
     let repo = init_git_repo(&temp_pkg_id.path);
     let repo = repo.path();
     debug2!("repo = {}", repo.display());
-    let repo_subdir = repo.join_many_str(["mockgithub.com", "catamorphism", "test-pkg"]);
+    let repo_subdir = repo.join_many(["mockgithub.com", "catamorphism", "test-pkg"]);
     debug2!("repo_subdir = {}", repo_subdir.display());
-    assert!(os::mkdir_recursive(&repo.join_many_str([".rust", "src"]), U_RWX));
+    assert!(os::mkdir_recursive(&repo.join_many([".rust", "src"]), U_RWX));
 
     writeFile(&repo_subdir.join("main.rs"),
               "fn main() { let _x = (); }");
@@ -2109,10 +2112,10 @@ fn test_installed_local_changes() {
     // Now start a new workspace and clone it into it
     let hacking_workspace = mk_emptier_workspace("hacking_workspace");
     let hacking_workspace = hacking_workspace.path();
-    let target_dir = hacking_workspace.join_many_str(["src",
-                                                      "mockgithub.com",
-                                                      "catamorphism",
-                                                      "test-pkg-0.1"]);
+    let target_dir = hacking_workspace.join_many(["src",
+                                                  "mockgithub.com",
+                                                  "catamorphism",
+                                                  "test-pkg-0.1"]);
     debug2!("---- git clone {} {}", repo_subdir.display(), target_dir.display());
 
     let c_res = safe_git_clone(&repo_subdir, &NoVersion, &target_dir);
@@ -2159,7 +2162,7 @@ fn test_compile_error() {
     let foo_id = PkgId::new("foo");
     let foo_workspace = create_local_package(&foo_id);
     let foo_workspace = foo_workspace.path();
-    let main_crate = foo_workspace.join_many_str(["src", "foo-0.1", "main.rs"]);
+    let main_crate = foo_workspace.join_many(["src", "foo-0.1", "main.rs"]);
     // Write something bogus
     writeFile(&main_crate, "pub fn main() { if 42 != ~\"the answer\" { fail!(); } }");
     let result = command_line_test_partial([~"build", ~"foo"], foo_workspace);

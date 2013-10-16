@@ -104,7 +104,7 @@ impl PkgSrc {
 
             let mut result = build_dir.join("src");
             result.push(&id.path.dir_path());
-            result.push_str(format!("{}-{}", id.short_name, id.version.to_str()));
+            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
             to_try.push(result.clone());
             output_names.push(result);
             let mut other_result = build_dir.join("src");
@@ -174,17 +174,19 @@ impl PkgSrc {
                     }
                     match ok_d {
                         Some(ref d) => {
-                            if d.is_parent_of(&id.path)
-                                || d.is_parent_of(&versionize(&id.path, &id.version)) {
+                            if d.is_ancestor_of(&id.path)
+                                || d.is_ancestor_of(&versionize(&id.path, &id.version)) {
                                 // Strip off the package ID
                                 source_workspace = d.clone();
-                                for _ in id.path.components().iter() {
-                                    source_workspace = source_workspace.pop();
+                                for _ in id.path.component_iter() {
+                                    source_workspace.pop();
                                 }
                                 // Strip off the src/ part
-                                source_workspace = source_workspace.pop();
+                                source_workspace.pop();
                                 // Strip off the build/<target-triple> part to get the workspace
-                                destination_workspace = source_workspace.pop().pop();
+                                destination_workspace = source_workspace.clone();
+                                destination_workspace.pop();
+                                destination_workspace.pop();
                             }
                             break;
                         }
@@ -244,9 +246,10 @@ impl PkgSrc {
     pub fn fetch_git(local: &Path, pkgid: &PkgId) -> Option<Path> {
         use conditions::git_checkout_failed::cond;
 
+        let cwd = os::getcwd();
         debug2!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
                 pkgid.to_str(), pkgid.path.display(),
-                os::getcwd().display(),
+                cwd.display(),
                 os::path_exists(&pkgid.path));
 
         match safe_git_clone(&pkgid.path, &pkgid.version, local) {
@@ -400,7 +403,7 @@ impl PkgSrc {
                     // into account. I'm not sure if the workcache really likes seeing the
                     // output as "Some(\"path\")". But I don't know what to do about it.
                     // FIXME (#9639): This needs to handle non-utf8 paths
-                    let result = result.map(|p|p.as_str().unwrap());
+                    let result = result.as_ref().map(|p|p.as_str().unwrap());
                     debug2!("Result of compiling {} was {}", subpath.display(), result.to_str());
                     result.to_str()
                 }

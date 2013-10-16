@@ -63,7 +63,7 @@ pub fn cwd_to_workspace() -> Option<(Path, PkgId)> {
         let srcpath = path.join("src");
         if srcpath.is_ancestor_of(&cwd) {
             let rel = cwd.path_relative_from(&srcpath);
-            let rel_s = rel.and_then_ref(|p|p.as_str());
+            let rel_s = rel.as_ref().and_then(|p|p.as_str());
             if rel_s.is_some() {
                 return Some((path, PkgId::new(rel_s.unwrap())));
             }

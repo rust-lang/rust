@@ -663,7 +663,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
     if !os::EXE_SUFFIX.is_empty() {
-        match f.filename().map_move(|s| s + os::EXE_SUFFIX.as_bytes()) {
+        match f.filename().map(|s| s + os::EXE_SUFFIX.as_bytes()) {
             Some(v) => f.set_filename(v),
             None => ()
         }
@@ -752,7 +752,7 @@ fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
 
 fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    match f.filename().map_move(|s| s + bytes!(".libaux")) {
+    match f.filename().map(|s| s + bytes!(".libaux")) {
         Some(v) => f.set_filename(v),
         None => ()
     }
