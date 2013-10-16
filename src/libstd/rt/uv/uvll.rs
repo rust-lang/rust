@@ -1102,4 +1102,23 @@ extern {
     fn rust_set_stdio_container_stream(c: *uv_stdio_container_t,
                                        stream: *uv_stream_t);
     fn rust_uv_pipe_init(loop_ptr: *c_void, p: *uv_pipe_t, ipc: c_int) -> c_int;
+
+    pub fn uv_pipe_open(pipe: *uv_pipe_t, file: c_int) -> c_int;
+    pub fn uv_pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int;
+    pub fn uv_pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
+                           name: *c_char, cb: uv_connect_cb);
+
+    // These should all really be constants...
+    #[rust_stack] pub fn rust_SOCK_STREAM() -> c_int;
+    #[rust_stack] pub fn rust_SOCK_DGRAM() -> c_int;
+    #[rust_stack] pub fn rust_SOCK_RAW() -> c_int;
+    #[rust_stack] pub fn rust_IPPROTO_UDP() -> c_int;
+    #[rust_stack] pub fn rust_IPPROTO_TCP() -> c_int;
+    #[rust_stack] pub fn rust_AI_ADDRCONFIG() -> c_int;
+    #[rust_stack] pub fn rust_AI_ALL() -> c_int;
+    #[rust_stack] pub fn rust_AI_CANONNAME() -> c_int;
+    #[rust_stack] pub fn rust_AI_NUMERICHOST() -> c_int;
+    #[rust_stack] pub fn rust_AI_NUMERICSERV() -> c_int;
+    #[rust_stack] pub fn rust_AI_PASSIVE() -> c_int;
+    #[rust_stack] pub fn rust_AI_V4MAPPED() -> c_int;
 }

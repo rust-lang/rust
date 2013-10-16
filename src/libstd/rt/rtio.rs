@@ -36,6 +36,8 @@ pub type PausibleIdleCallback = uvio::UvPausibleIdleCallback;
 pub type RtioPipeObject = uvio::UvPipeStream;
 pub type RtioUnboundPipeObject = uvio::UvUnboundPipe;
 pub type RtioProcessObject = uvio::UvProcess;
+pub type RtioUnixListenerObject = uvio::UvUnixListener;
+pub type RtioUnixAcceptorObject = uvio::UvUnixAcceptor;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -86,7 +88,12 @@ pub trait IoFactory {
         Result<~[Path], IoError>;
     fn pipe_init(&mut self, ipc: bool) -> Result<~RtioUnboundPipeObject, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
-            -> Result<(~RtioProcessObject, ~[Option<RtioPipeObject>]), IoError>;
+            -> Result<(~RtioProcessObject, ~[Option<~RtioPipeObject>]), IoError>;
+
+    fn unix_bind<P: PathLike>(&mut self, path: &P) ->
+        Result<~RtioUnixListenerObject, IoError>;
+    fn unix_connect<P: PathLike>(&mut self, path: &P) ->
+        Result<~RtioPipeObject, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -153,4 +160,14 @@ pub trait RtioProcess {
 pub trait RtioPipe {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+}
+
+pub trait RtioUnixListener {
+    fn listen(self) -> Result<~RtioUnixAcceptorObject, IoError>;
+}
+
+pub trait RtioUnixAcceptor {
+    fn accept(&mut self) -> Result<~RtioPipeObject, IoError>;
+    fn accept_simultaneously(&mut self) -> Result<(), IoError>;
+    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
 }

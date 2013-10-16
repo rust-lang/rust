@@ -206,12 +206,6 @@ impl StreamWatcher {
         }
     }
 
-    pub fn accept(&mut self, stream: StreamWatcher) {
-        let self_handle = self.native_handle() as *c_void;
-        let stream_handle = stream.native_handle() as *c_void;
-        assert_eq!(0, unsafe { uvll::accept(self_handle, stream_handle) } );
-    }
-
     pub fn close(self, cb: NullCallback) {
         {
             let mut this = self;
@@ -229,6 +223,36 @@ impl StreamWatcher {
             unsafe { free_handle(handle as *c_void) }
             cb();
         }
+    }
+
+    pub fn listen(&mut self, cb: ConnectionCallback) -> Result<(), UvError> {
+        {
+            let data = self.get_watcher_data();
+            assert!(data.connect_cb.is_none());
+            data.connect_cb = Some(cb);
+        }
+
+        unsafe {
+            static BACKLOG: c_int = 128; // XXX should be configurable
+            match uvll::listen(self.native_handle(), BACKLOG, connection_cb) {
+                0 => Ok(()),
+                n => Err(UvError(n))
+            }
+        }
+
+        extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
+            rtdebug!("connection_cb");
+            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
+            let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
+            let status = status_to_maybe_uv_error(status);
+            (*cb)(stream_watcher, status);
+        }
+    }
+
+    pub fn accept(&mut self, stream: StreamWatcher) {
+        let self_handle = self.native_handle() as *c_void;
+        let stream_handle = stream.native_handle() as *c_void;
+        assert_eq!(0, unsafe { uvll::accept(self_handle, stream_handle) } );
     }
 }
 
@@ -297,28 +321,6 @@ impl TcpWatcher {
                 let status = status_to_maybe_uv_error(status);
                 cb(stream_watcher, status);
             }
-        }
-    }
-
-    pub fn listen(&mut self, cb: ConnectionCallback) {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.connect_cb.is_none());
-            data.connect_cb = Some(cb);
-        }
-
-        unsafe {
-            static BACKLOG: c_int = 128; // XXX should be configurable
-            // XXX: This can probably fail
-            assert_eq!(0, uvll::listen(self.native_handle(), BACKLOG, connection_cb));
-        }
-
-        extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
-            rtdebug!("connection_cb");
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
-            let status = status_to_maybe_uv_error(status);
-            (*cb)(stream_watcher, status);
         }
     }
 
@@ -644,7 +646,8 @@ mod test {
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+            let mut stream = server_tcp_watcher.as_stream();
+            let res = do stream.listen |mut server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
                 let mut loop_ = loop_;
@@ -678,7 +681,9 @@ mod test {
                     }
                     count_cell.put_back(count);
                 }
-            }
+            };
+
+            assert!(res.is_ok());
 
             let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
@@ -705,7 +710,7 @@ mod test {
             loop_.run();
             loop_.close();
             client_thread.join();
-        }
+        };
     }
 
     #[test]
@@ -718,7 +723,8 @@ mod test {
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+            let mut stream = server_tcp_watcher.as_stream();
+            let res = do stream.listen |mut server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
                 let mut loop_ = loop_;
@@ -754,7 +760,8 @@ mod test {
                     }
                     count_cell.put_back(count);
                 }
-            }
+            };
+            assert!(res.is_ok());
 
             let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
