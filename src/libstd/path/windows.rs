@@ -258,7 +258,7 @@ impl GenericPathUnsafe for Path {
             // if me is verbatim, we need to pre-normalize the new path
             let path_ = if is_verbatim(me) { Path::normalize__(path, None) }
                         else { None };
-            let pathlen = path_.map_default(path.len(), |p| p.len());
+            let pathlen = path_.as_ref().map_default(path.len(), |p| p.len());
             let mut s = str::with_capacity(me.repr.len() + 1 + pathlen);
             s.push_str(me.repr);
             let plen = me.prefix_len();
@@ -368,7 +368,7 @@ impl GenericPath for Path {
 
     #[inline]
     fn filename<'a>(&'a self) -> Option<&'a [u8]> {
-        self.filename_str().map_move(|x| x.as_bytes())
+        self.filename_str().map(|x| x.as_bytes())
     }
 
     /// See `GenericPath::filename_str` for info.
@@ -388,13 +388,13 @@ impl GenericPath for Path {
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
         // filestem() returns a byte vector that's guaranteed valid UTF-8
-        self.filestem().map_move(cast::transmute)
+        self.filestem().map(cast::transmute)
     }
 
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
         // extension() returns a byte vector that's guaranteed valid UTF-8
-        self.extension().map_move(cast::transmute)
+        self.extension().map(cast::transmute)
     }
 
     fn dir_path(&self) -> Path {
@@ -728,16 +728,25 @@ impl Path {
                             DiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
                                 let mut s = s.slice_to(len).to_owned();
-                                s[0] = s[0].to_ascii().to_upper().to_byte();
+                                unsafe {
+                                    str::raw::as_owned_vec(&mut s)[0] =
+                                        s[0].to_ascii().to_upper().to_byte();
+                                }
                                 if is_abs {
-                                    s[2] = sep as u8; // normalize C:/ to C:\
+                                    // normalize C:/ to C:\
+                                    unsafe {
+                                        str::raw::as_owned_vec(&mut s)[2] = sep as u8;
+                                    }
                                 }
                                 Some(s)
                             }
                             VerbatimDiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
                                 let mut s = s.slice_to(len).to_owned();
-                                s[4] = s[4].to_ascii().to_upper().to_byte();
+                                unsafe {
+                                    str::raw::as_owned_vec(&mut s)[4] =
+                                        s[4].to_ascii().to_upper().to_byte();
+                                }
                                 Some(s)
                             }
                             _ => {
@@ -2204,10 +2213,10 @@ mod tests {
                     let other = Path::new($other);
                     let res = path.path_relative_from(&other);
                     let exp = $exp;
-                    assert!(res.and_then_ref(|x| x.as_str()) == exp,
+                    assert!(res.as_ref().and_then(|x| x.as_str()) == exp,
                             "`{}`.path_relative_from(`{}`): Expected {:?}, got {:?}",
                             path.as_str().unwrap(), other.as_str().unwrap(), exp,
-                            res.and_then_ref(|x| x.as_str()));
+                            res.as_ref().and_then(|x| x.as_str()));
                 }
             )
         )

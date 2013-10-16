@@ -247,8 +247,9 @@ impl CtxMethods for BuildContext {
                 dest_ws = determine_destination(os::getcwd(),
                                                 self.context.use_rust_path_hack,
                                                 workspace);
-                let mut pkg_src = PkgSrc::new(workspace.clone(), false, pkgid.clone());
-                dest_ws = Some(self.build(&mut pkg_src, what));
+                let mut pkg_src = PkgSrc::new(workspace.clone(), dest_ws.clone(),
+                                              false, pkgid.clone());
+                self.build(&mut pkg_src, what);
                 true
             };
             // n.b. If this builds multiple packages, it only returns the workspace for
@@ -430,7 +431,7 @@ impl CtxMethods for BuildContext {
             match git_result {
                 CheckedOutSources => make_read_only(&out_dir),
                 // FIXME (#9639): This needs to handle non-utf8 paths
-                _ => cond.raise((pkgid.path.as_str().unwrap(), out_dir.clone()))
+                _ => cond.raise((pkgid.path.as_str().unwrap().to_owned(), out_dir.clone()))
             };
             let default_ws = default_workspace();
             debug2!("Calling build recursively with {:?} and {:?}", default_ws.display(),
@@ -562,7 +563,7 @@ impl CtxMethods for BuildContext {
 
         let result = self.install_no_build(pkg_src.build_workspace(),
                                            &pkg_src.destination_workspace,
-                                           &id).map(|s| Path::new(*s));
+                                           &id).map(|s| Path::new(s.as_slice()));
         debug2!("install: id = {}, about to call discover_outputs, {:?}",
                id.to_str(), result.map(|p| p.display().to_str()));
         installed_files = installed_files + result;
@@ -580,7 +581,7 @@ impl CtxMethods for BuildContext {
         use conditions::copy_failed::cond;
 
         debug2!("install_no_build: assuming {} comes from {} with target {}",
-               id.to_str(), build_workspace.to_str(), target_workspace.to_str());
+               id.to_str(), build_workspace.display(), target_workspace.display());
 
         // Now copy stuff into the install dirs
         let maybe_executable = built_executable_in_workspace(id, build_workspace);
@@ -631,8 +632,7 @@ impl CtxMethods for BuildContext {
                     let mut target_lib = sub_target_lib
                         .clone().expect(format!("I built {} but apparently \
                                              didn't install it!", lib.display()));
-                    let target_lib = target_lib
-                        .set_filename(lib.filename().expect("weird target lib"));
+                    target_lib.set_filename(lib.filename().expect("weird target lib"));
                     if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                          os::copy_file(lib, &target_lib)) {
                         cond.raise(((*lib).clone(), target_lib.clone()));

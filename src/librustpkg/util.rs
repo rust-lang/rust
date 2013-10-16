@@ -482,9 +482,9 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                      dep.as_str().unwrap(),
                                                      digest_only_date(dep));
                             // Also, add an additional search path
-                            debug2!("Installed {} into {}", dep.display(),
-                                    dep.dir_path().display());
-                            (self.save)(dep.dir_path());
+                            let dep_dir = dep.dir_path();
+                            debug2!("Installed {} into {}", dep.display(), dep_dir.display());
+                            (self.save)(dep_dir);
                         }
                         for &(ref what, ref dep) in inputs_disc.iter() {
                             if *what == ~"file" {

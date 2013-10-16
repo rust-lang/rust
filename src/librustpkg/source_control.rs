@@ -107,7 +107,9 @@ pub fn make_read_only(target: &Path) {
 pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     use conditions::git_checkout_failed::cond;
 
-    let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let outp = run::process_output("git", [~"clone", source.to_owned(),
+                                           target.as_str().unwrap().to_owned()]);
     if outp.status != 0 {
          debug2!("{}", str::from_utf8_owned(outp.output.clone()));
          debug2!("{}", str::from_utf8_owned(outp.error));

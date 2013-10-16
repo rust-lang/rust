@@ -98,7 +98,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
         root.push(pat_root.get_ref());
     }
 
-    let root_len = pat_root.map_move_default(0u, |p| p.as_vec().len());
+    let root_len = pat_root.map_default(0u, |p| p.as_vec().len());
     let dir_patterns = pattern.slice_from(root_len.min(&pattern.len()))
                        .split_terminator_iter(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
 
@@ -303,7 +303,7 @@ impl Pattern {
      */
     pub fn matches_path(&self, path: &Path) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        do path.as_str().map_move_default(false) |s| {
+        do path.as_str().map_default(false) |s| {
             self.matches(s)
         }
     }
@@ -321,7 +321,7 @@ impl Pattern {
      */
     pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        do path.as_str().map_move_default(false) |s| {
+        do path.as_str().map_default(false) |s| {
             self.matches_with(s, options)
         }
     }

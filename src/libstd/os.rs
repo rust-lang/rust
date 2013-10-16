@@ -509,11 +509,11 @@ pub fn self_exe_path() -> Option<Path> {
             use os::win32::fill_utf16_buf_and_decode;
             do fill_utf16_buf_and_decode() |buf, sz| {
                 libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
-            }.map_move(|s| s.into_bytes())
+            }.map(|s| s.into_bytes())
         }
     }
 
-    load_self().and_then(|path| Path::new_opt(path).map(|p| { p.pop(); p }))
+    load_self().and_then(|path| Path::new_opt(path).map(|mut p| { p.pop(); p }))
 }
 
 
