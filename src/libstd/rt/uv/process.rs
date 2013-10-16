@@ -44,7 +44,7 @@ impl Process {
     /// occurred.
     pub fn spawn(&mut self, loop_: &uv::Loop, mut config: ProcessConfig,
                  exit_cb: uv::ExitCallback)
-                    -> Result<~[Option<UvPipeStream>], uv::UvError>
+                    -> Result<~[Option<~UvPipeStream>], uv::UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
 
@@ -144,7 +144,7 @@ impl Process {
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
-                    io: StdioContainer) -> Option<UvPipeStream> {
+                    io: StdioContainer) -> Option<~UvPipeStream> {
     match io {
         Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
@@ -166,7 +166,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             let handle = pipe.pipe.as_stream().native_handle();
             uvll::set_stdio_container_flags(dst, flags);
             uvll::set_stdio_container_stream(dst, handle);
-            Some(pipe.bind())
+            Some(~UvPipeStream::new(**pipe))
         }
     }
 }

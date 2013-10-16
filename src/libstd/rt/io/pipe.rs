@@ -21,7 +21,7 @@ use rt::rtio::{RtioPipe, RtioPipeObject, IoFactoryObject, IoFactory};
 use rt::rtio::RtioUnboundPipeObject;
 
 pub struct PipeStream {
-    priv obj: RtioPipeObject
+    priv obj: ~RtioPipeObject
 }
 
 // This should not be a newtype, but rt::uv::process::set_stdio needs to reach
@@ -45,7 +45,7 @@ impl PipeStream {
         }
     }
 
-    pub fn bind(inner: RtioPipeObject) -> PipeStream {
+    pub fn new_bound(inner: ~RtioPipeObject) -> PipeStream {
         PipeStream { obj: inner }
     }
 }
