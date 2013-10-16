@@ -121,7 +121,7 @@ mod test {
     fn test_errors_do_not_crash() {
         // Open /dev/null as a library to get an error, and make sure
         // that only causes an error, and not a crash.
-        let path = GenericPath::from_str("/dev/null");
+        let path = GenericPath::new("/dev/null");
         match DynamicLibrary::open(Some(&path)) {
             Err(_) => {}
             Ok(_) => fail2!("Successfully opened the empty library.")
@@ -225,7 +225,7 @@ pub mod dl {
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
         #[fixed_stack_segment]; #[inline(never)];
-        do os::win32::as_utf16_p(filename.to_str()) |raw_name| {
+        do os::win32::as_utf16_p(filename.as_str().unwrap()) |raw_name| {
             LoadLibraryW(raw_name)
         }
     }

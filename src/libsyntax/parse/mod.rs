@@ -261,7 +261,8 @@ pub fn new_parser_from_tts(sess: @mut ParseSess,
 pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<Span>)
     -> @FileMap {
     match io::read_whole_file_str(path) {
-        Ok(src) => string_to_filemap(sess, src.to_managed(), path.to_str().to_managed()),
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        Ok(src) => string_to_filemap(sess, src.to_managed(), path.as_str().unwrap().to_managed()),
         Err(e) => {
             match spanopt {
                 Some(span) => sess.span_diagnostic.span_fatal(span, e),

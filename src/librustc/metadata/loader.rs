@@ -93,25 +93,27 @@ fn find_library_crate_aux(
     let prefix = format!("{}{}-", prefix, crate_name);
     let mut matches = ~[];
     filesearch::search(filesearch, |path| -> FileMatch {
-      let path_str = path.filename();
+      // FIXME (#9639): This needs to handle non-utf8 paths
+      let path_str = path.filename_str();
       match path_str {
           None => FileDoesntMatch,
           Some(path_str) =>
               if path_str.starts_with(prefix) && path_str.ends_with(suffix) {
-                  debug2!("{} is a candidate", path.to_str());
+                  debug2!("{} is a candidate", path.display());
                   match get_metadata_section(cx.os, path) {
                       Some(cvec) =>
                           if !crate_matches(cvec, cx.metas, cx.hash) {
                               debug2!("skipping {}, metadata doesn't match",
-                                  path.to_str());
+                                  path.display());
                               FileDoesntMatch
                           } else {
-                              debug2!("found {} with matching metadata", path.to_str());
-                              matches.push((path.to_str(), cvec));
+                              debug2!("found {} with matching metadata", path.display());
+                              // FIXME (#9639): This needs to handle non-utf8 paths
+                              matches.push((path.as_str().unwrap().to_owned(), cvec));
                               FileMatches
                           },
                       _ => {
-                          debug2!("could not load metadata for {}", path.to_str());
+                          debug2!("could not load metadata for {}", path.display());
                           FileDoesntMatch
                       }
                   }
@@ -273,7 +275,7 @@ pub fn list_file_metadata(intr: @ident_interner,
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {
-        out.write_str(format!("could not find metadata in {}.\n", path.to_str()))
+        out.write_str(format!("could not find metadata in {}.\n", path.display()))
       }
     }
 }

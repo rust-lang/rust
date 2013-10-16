@@ -20,14 +20,14 @@ use std::{io, os, unstable};
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
-            os::make_dir(&Path(path), 0xFFFF);
+            os::make_dir(&Path::new(path), 0xFFFF);
         } else {
-            io::mk_file_writer(&Path(path), [io::Create]);
+            io::mk_file_writer(&Path::new(path), [io::Create]);
         }
     }
 
     fn abs_path(path: &str) -> Path {
-        os::getcwd().push_many(Path(path).components)
+        os::getcwd().join(&Path::new(path))
     }
 
     fn glob_vec(pattern: &str) -> ~[Path] {

@@ -142,7 +142,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let options = @session::options {
         crate_type: session::unknown_crate,
         binary: binary,
-        addl_lib_search_paths: @mut lib_search_paths.map(|p| Path(*p)),
+        addl_lib_search_paths: @mut lib_search_paths.map(|p| Path::new(p.as_slice())),
         jit: true,
         .. (*session::basic_options()).clone()
     };
@@ -315,8 +315,20 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 // because it already exists and is newer than the source file, or
 // None if there were compile errors.
 fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
+    fn has_prefix(v: &[u8], pref: &[u8]) -> bool {
+        v.len() >= pref.len() && v.slice_to(pref.len()) == pref
+    }
+    fn has_extension(v: &[u8], ext: Option<&[u8]>) -> bool {
+        match ext {
+            None => true,
+            Some(ext) => {
+                v.len() > ext.len() && v[v.len()-ext.len()-1] == '.' as u8 &&
+                    v.slice_from(v.len()-ext.len()) == ext
+            }
+        }
+    }
     match do task::try {
-        let src_path = Path(src_filename);
+        let src_path = Path::new(src_filename.as_slice());
         let binary = binary.to_managed();
         let options = @session::options {
             binary: binary,
@@ -334,7 +346,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         // If the library already exists and is newer than the source
         // file, skip compilation and return None.
         let mut should_compile = true;
-        let dir = os::list_dir_path(&Path(outputs.out_filename.dirname()));
+        let dir = os::list_dir_path(&outputs.out_filename.dir_path());
         let maybe_lib_path = do dir.iter().find |file| {
             // The actual file's name has a hash value and version
             // number in it which is unknown at this time, so looking
@@ -342,9 +354,9 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             // instead we guess which file is the library by matching
             // the prefix and suffix of out_filename to files in the
             // directory.
-            let file_str = file.filename().unwrap();
-            file_str.starts_with(outputs.out_filename.filestem().unwrap())
-                && file_str.ends_with(outputs.out_filename.filetype().unwrap())
+            let file_vec = file.filename().unwrap();
+            has_prefix(file_vec, outputs.out_filename.filestem().unwrap()) &&
+                has_extension(file_vec, outputs.out_filename.extension())
         };
         match maybe_lib_path {
             Some(lib_path) => {
@@ -429,11 +441,12 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 }
             }
             for crate in loaded_crates.iter() {
-                let crate_path = Path(*crate);
-                let crate_dir = crate_path.dirname();
+                let crate_path = Path::new(crate.as_slice());
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                let crate_dir = crate_path.dirname_str().unwrap();
                 repl.program.record_extern(format!("extern mod {};", *crate));
-                if !repl.lib_search_paths.iter().any(|x| x == &crate_dir) {
-                    repl.lib_search_paths.push(crate_dir);
+                if !repl.lib_search_paths.iter().any(|x| crate_dir == *x) {
+                    repl.lib_search_paths.push(crate_dir.to_owned());
                 }
             }
             if loaded_crates.is_empty() {

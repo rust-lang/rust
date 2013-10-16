@@ -59,14 +59,14 @@ impl PkgId {
             }
         };
 
-        let path = Path(s);
-        if path.is_absolute {
+        let path = Path::new(s);
+        if !path.is_relative() {
             return cond.raise((path, ~"absolute pkgid"));
         }
-        if path.components.len() < 1 {
+        if path.filename().is_none() {
             return cond.raise((path, ~"0-length pkgid"));
         }
-        let short_name = path.filestem().expect(format!("Strange path! {}", s));
+        let short_name = path.filestem_str().expect(format!("Strange path! {}", s));
 
         let version = match given_version {
             Some(v) => v,
@@ -87,9 +87,11 @@ impl PkgId {
     }
 
     pub fn hash(&self) -> ~str {
-        format!("{}-{}-{}", self.path.to_str(),
-                hash(self.path.to_str() + self.version.to_str()),
-                self.version.to_str())
+        // FIXME (#9639): hash should take a &[u8] so we can hash the real path
+        do self.path.display().with_str |s| {
+            let vers = self.version.to_str();
+            format!("{}-{}-{}", s, hash(s + vers), vers)
+        }
     }
 
     pub fn short_name_with_version(&self) -> ~str {
@@ -98,7 +100,7 @@ impl PkgId {
 
     /// True if the ID has multiple components
     pub fn is_complex(&self) -> bool {
-        self.short_name != self.path.to_str()
+        self.short_name.as_bytes() != self.path.as_vec()
     }
 
     pub fn prefixes_iter(&self) -> Prefixes {
@@ -115,7 +117,7 @@ impl PkgId {
 
 pub fn prefixes_iter(p: &Path) -> Prefixes {
     Prefixes {
-        components: p.components().to_owned(),
+        components: p.str_component_iter().map(|x|x.unwrap().to_owned()).to_owned_vec(),
         remaining: ~[]
     }
 }
@@ -133,9 +135,10 @@ impl Iterator<(Path, Path)> for Prefixes {
         }
         else {
             let last = self.components.pop();
-            self.remaining.push(last);
+            self.remaining.unshift(last);
             // converting to str and then back is a little unfortunate
-            Some((Path(self.components.to_str()), Path(self.remaining.to_str())))
+            Some((Path::new(self.components.connect("/")),
+                  Path::new(self.remaining.connect("/"))))
         }
     }
 }
@@ -143,7 +146,7 @@ impl Iterator<(Path, Path)> for Prefixes {
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        format!("{}-{}", self.path.to_str(), self.version.to_str())
+        format!("{}-{}", self.path.as_str().unwrap(), self.version.to_str())
     }
 }
 

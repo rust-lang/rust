@@ -70,7 +70,7 @@ pub fn WriteOutputFile(
         Target: lib::llvm::TargetMachineRef,
         PM: lib::llvm::PassManagerRef,
         M: ModuleRef,
-        Output: &str,
+        Output: &Path,
         FileType: lib::llvm::FileType) {
     unsafe {
         do Output.with_c_str |Output| {
@@ -129,15 +129,13 @@ pub mod jit {
             let cstore = sess.cstore;
             let r = cstore::get_used_crate_files(cstore);
             for cratepath in r.iter() {
-                let path = cratepath.to_str();
+                debug2!("linking: {}", cratepath.display());
 
-                debug2!("linking: {}", path);
-
-                do path.with_c_str |buf_t| {
+                do cratepath.with_c_str |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
-                    debug2!("linked: {}", path);
+                    debug2!("linked: {}", cratepath.display());
                 }
             }
 
@@ -251,7 +249,7 @@ pub mod write {
             llvm::LLVMInitializeMipsAsmParser();
 
             if sess.opts.save_temps {
-                do output.with_filetype("no-opt.bc").with_c_str |buf| {
+                do output.with_extension("no-opt.bc").with_c_str |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }
@@ -319,7 +317,7 @@ pub mod write {
             llvm::LLVMDisposePassManager(mpm);
 
             if sess.opts.save_temps {
-                do output.with_filetype("bc").with_c_str |buf| {
+                do output.with_extension("bc").with_c_str |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }
@@ -350,12 +348,10 @@ pub mod write {
                         }
                     }
                     output_type_assembly => {
-                        WriteOutputFile(sess, tm, cpm, llmod, output.to_str(),
-                                        lib::llvm::AssemblyFile);
+                        WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::AssemblyFile);
                     }
                     output_type_exe | output_type_object => {
-                        WriteOutputFile(sess, tm, cpm, llmod, output.to_str(),
-                                        lib::llvm::ObjectFile);
+                        WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::ObjectFile);
                     }
                 }
 
@@ -375,10 +371,11 @@ pub mod write {
     pub fn run_assembler(sess: Session, assembly: &Path, object: &Path) {
         let cc_prog = super::get_cc_prog(sess);
 
+        // FIXME (#9639): This needs to handle non-utf8 paths
         let cc_args = ~[
             ~"-c",
-            ~"-o", object.to_str(),
-            assembly.to_str()];
+            ~"-o", object.as_str().unwrap().to_owned(),
+            assembly.as_str().unwrap().to_owned()];
 
         let prog = run::process_output(cc_prog, cc_args);
 
@@ -612,11 +609,12 @@ pub fn build_link_meta(sess: Session,
             _ => {
                 // to_managed could go away if there was a version of
                 // filestem that returned an @str
+                // FIXME (#9639): Non-utf8 filenames will give a misleading error
                 let name = session::expect(sess,
-                                           output.filestem(),
+                                           output.filestem_str(),
                                            || format!("output file name `{}` doesn't\
                                                     appear to have a stem",
-                                                   output.to_str())).to_managed();
+                                                   output.display())).to_managed();
                 if name.is_empty() {
                     sess.fatal("missing crate link meta `name`, and the \
                                 inferred name is blank");
@@ -919,15 +917,16 @@ pub fn link_binary(sess: Session,
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         debug2!("link_meta.name:  {}", lm.name);
         debug2!("long_libname: {}", long_libname);
-        debug2!("out_filename: {}", out_filename.to_str());
-        debug2!("dirname(out_filename): {}", out_filename.dir_path().to_str());
+        debug2!("out_filename: {}", out_filename.display());
+        let out_dirname = out_filename.dir_path();
+        debug2!("dirname(out_filename): {}", out_dirname.display());
 
-        out_filename.dir_path().push(long_libname)
+        out_filename.with_filename(long_libname)
     } else {
         out_filename.clone()
     };
 
-    debug2!("output: {}", output.to_str());
+    debug2!("output: {}", output.display());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
     debug2!("{} link args: {}", cc_prog, cc_args.connect(" "));
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
@@ -947,14 +946,15 @@ pub fn link_binary(sess: Session,
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::OsMacos {
-        run::process_status("dsymutil", [output.to_str()]);
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        run::process_status("dsymutil", [output.as_str().unwrap().to_owned()]);
     }
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
         if ! os::remove_file(obj_filename) {
             sess.warn(format!("failed to delete object file `{}`",
-                           obj_filename.to_str()));
+                           obj_filename.display()));
         }
     }
 }
@@ -977,20 +977,23 @@ pub fn link_args(sess: Session,
 
     let output = if *sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
-        out_filename.dir_path().push(long_libname)
+        out_filename.with_filename(long_libname)
     } else {
         out_filename.clone()
     };
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path().to_str();
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let lib_path = sess.filesearch.get_target_lib_path();
+    let stage: ~str = ~"-L" + lib_path.as_str().unwrap();
 
     let mut args = vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
 
+    // FIXME (#9639): This needs to handle non-utf8 paths
     args.push_all([
-        ~"-o", output.to_str(),
-        obj_filename.to_str()]);
+        ~"-o", output.as_str().unwrap().to_owned(),
+        obj_filename.as_str().unwrap().to_owned()]);
 
     let lib_cmd = match sess.targ_cfg.os {
         session::OsMacos => ~"-dynamiclib",
@@ -1001,14 +1004,15 @@ pub fn link_args(sess: Session,
 
     let cstore = sess.cstore;
     let r = cstore::get_used_crate_files(cstore);
+    // FIXME (#9639): This needs to handle non-utf8 paths
     for cratepath in r.iter() {
-        if cratepath.filetype() == Some(".rlib") {
-            args.push(cratepath.to_str());
+        if cratepath.extension_str() == Some("rlib") {
+            args.push(cratepath.as_str().unwrap().to_owned());
             continue;
         }
-        let dir = cratepath.dirname();
+        let dir = cratepath.dirname_str().unwrap();
         if !dir.is_empty() { args.push("-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, cratepath.filestem().unwrap().to_owned());
+        let libarg = unlib(sess.targ_cfg, cratepath.filestem_str().unwrap().to_owned());
         args.push("-l" + libarg);
     }
 
@@ -1032,12 +1036,14 @@ pub fn link_args(sess: Session,
     // forces to make sure that library can be found at runtime.
 
     for path in sess.opts.addl_lib_search_paths.iter() {
-        args.push("-L" + path.to_str());
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
     let rustpath = filesearch::rust_path();
     for path in rustpath.iter() {
-        args.push("-L" + path.to_str());
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
     // The names of the extern libraries
@@ -1050,8 +1056,9 @@ pub fn link_args(sess: Session,
         // On mac we need to tell the linker to let this library
         // be rpathed
         if sess.targ_cfg.os == session::OsMacos {
+            // FIXME (#9639): This needs to handle non-utf8 paths
             args.push("-Wl,-install_name,@rpath/"
-                      + output.filename().unwrap());
+                      + output.filename_str().unwrap());
         }
     }
 

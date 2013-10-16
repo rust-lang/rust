@@ -30,7 +30,12 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
             (*sha).input_str(st.st_mtime.to_str());
             (*sha).result_str()
         }
-        Err(e) => cond.raise((path.clone(), format!("Couldn't read file: {}", e))).to_str()
+        Err(e) => {
+            let path = cond.raise((path.clone(), format!("Couldn't read file: {}", e)));
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            // XXX: I'm pretty sure this is the wrong return value
+            path.as_str().unwrap().to_owned()
+        }
     }
 }
 
@@ -51,13 +56,15 @@ pub fn digest_only_date(path: &Path) -> ~str {
 pub fn discover_outputs(e: &mut workcache::Exec, outputs: ~[Path]) {
     debug2!("Discovering {:?} outputs", outputs.len());
     for p in outputs.iter() {
-        debug2!("Discovering output! {}", p.to_str());
+        debug2!("Discovering output! {}", p.display());
         // For now, assume that all discovered outputs are binaries
-        e.discover_output("binary", p.to_str(), digest_only_date(p));
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        e.discover_output("binary", p.as_str().unwrap(), digest_only_date(p));
     }
 }
 
 /// Returns the function name for building a crate
 pub fn crate_tag(p: &Path) -> ~str {
-    p.to_str() // implicitly, it's "build(p)"...
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    p.as_str().unwrap().to_owned() // implicitly, it's "build(p)"...
 }

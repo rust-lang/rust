@@ -391,7 +391,7 @@ mod test {
             let read_mem = vec::from_elem(read_buf_len, 0u8);
             let read_buf = slice_to_uv_buf(read_mem);
             let read_buf_ptr: *Buf = &read_buf;
-            let p = Path(path_str);
+            let p = Path::new(path_str);
             let open_req = FsRequest::new();
             do open_req.open(&loop_, &p, create_flags as int, mode as int)
             |req, uverr| {
@@ -405,7 +405,7 @@ mod test {
                         assert!(uverr.is_none());
                         let loop_ = req.get_loop();
                         let open_req = FsRequest::new();
-                        do open_req.open(&loop_, &Path(path_str), read_flags as int,0)
+                        do open_req.open(&loop_, &Path::new(path_str), read_flags as int,0)
                             |req, uverr| {
                             assert!(uverr.is_none());
                             let loop_ = req.get_loop();
@@ -431,7 +431,7 @@ mod test {
                                         assert!(uverr.is_none());
                                         let loop_ = &req.get_loop();
                                         let unlink_req = FsRequest::new();
-                                        do unlink_req.unlink(loop_, &Path(path_str))
+                                        do unlink_req.unlink(loop_, &Path::new(path_str))
                                         |_,uverr| {
                                             assert!(uverr.is_none());
                                         };
@@ -465,7 +465,7 @@ mod test {
             let write_buf = slice_to_uv_buf(write_val);
             // open/create
             let open_req = FsRequest::new();
-            let result = open_req.open_sync(&loop_, &Path(path_str),
+            let result = open_req.open_sync(&loop_, &Path::new(path_str),
                                                    create_flags as int, mode as int);
             assert!(result.is_ok());
             let fd = result.unwrap();
@@ -479,7 +479,7 @@ mod test {
             assert!(result.is_ok());
             // re-open
             let open_req = FsRequest::new();
-            let result = open_req.open_sync(&loop_, &Path(path_str),
+            let result = open_req.open_sync(&loop_, &Path::new(path_str),
                                                    read_flags as int,0);
             assert!(result.is_ok());
             let len = 1028;
@@ -503,7 +503,7 @@ mod test {
                 assert!(result.is_ok());
                 // unlink
                 let unlink_req = FsRequest::new();
-                let result = unlink_req.unlink_sync(&loop_, &Path(path_str));
+                let result = unlink_req.unlink_sync(&loop_, &Path::new(path_str));
                 assert!(result.is_ok());
             } else { fail2!("nread was 0.. wudn't expectin' that."); }
             loop_.close();

@@ -271,20 +271,20 @@ pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let run_ignored = matches.opt_present("ignored");
 
     let logfile = matches.opt_str("logfile");
-    let logfile = logfile.map(|s| Path(s));
+    let logfile = logfile.map(|s| Path::new(s));
 
     let run_benchmarks = matches.opt_present("bench");
     let run_tests = ! run_benchmarks ||
         matches.opt_present("test");
 
     let ratchet_metrics = matches.opt_str("ratchet-metrics");
-    let ratchet_metrics = ratchet_metrics.map(|s| Path(s));
+    let ratchet_metrics = ratchet_metrics.map(|s| Path::new(s));
 
     let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
     let ratchet_noise_percent = ratchet_noise_percent.map(|s| from_str::<f64>(s).unwrap());
 
     let save_metrics = matches.opt_str("save-metrics");
-    let save_metrics = save_metrics.map(|s| Path(s));
+    let save_metrics = save_metrics.map(|s| Path::new(s));
 
     let test_shard = matches.opt_str("test-shard");
     let test_shard = opt_shard(test_shard);
@@ -547,7 +547,7 @@ impl ConsoleTestState {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                self.out.write_str(format!("\nusing metrics ratchet: {}\n", pth.to_str()));
+                self.out.write_str(format!("\nusing metrics ratchet: {}\n", pth.display()));
                 match ratchet_pct {
                     None => (),
                     Some(pct) =>
@@ -659,7 +659,7 @@ pub fn run_tests_console(opts: &TestOpts,
         None => (),
         Some(ref pth) => {
             st.metrics.save(pth);
-            st.out.write_str(format!("\nmetrics saved to: {}", pth.to_str()));
+            st.out.write_str(format!("\nmetrics saved to: {}", pth.display()));
         }
     }
     return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
@@ -1440,7 +1440,7 @@ mod tests {
     pub fn ratchet_test() {
 
         let dpth = TempDir::new("test-ratchet").expect("missing test for ratchet");
-        let pth = dpth.path().push("ratchet.json");
+        let pth = dpth.path().join("ratchet.json");
 
         let mut m1 = MetricMap::new();
         m1.insert_metric("runtime", 1000.0, 2.0);

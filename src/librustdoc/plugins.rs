@@ -41,7 +41,7 @@ impl PluginManager {
     /// platform. On windows, it turns into name.dll, on OS X, name.dylib, and
     /// elsewhere, libname.so.
     pub fn load_plugin(&mut self, name: ~str) {
-        let x = self.prefix.push(libname(name));
+        let x = self.prefix.join(libname(name));
         let lib_result = dl::DynamicLibrary::open(Some(&x));
         let lib = lib_result.unwrap();
         let plugin = unsafe { lib.symbol("rustdoc_plugin_entrypoint") }.unwrap();

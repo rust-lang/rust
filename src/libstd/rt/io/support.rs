@@ -22,7 +22,7 @@ impl<'self> PathLike for &'self str {
 
 impl PathLike for Path {
     fn path_as_str<T>(&self, f: &fn(&str) -> T) -> T {
-        let s = self.to_str();
+        let s = self.as_str().unwrap();
         f(s)
     }
 }
@@ -35,7 +35,7 @@ mod test {
     #[test]
     fn path_like_smoke_test() {
         let expected = if cfg!(unix) { "/home" } else { "C:\\" };
-        let path = Path(expected);
+        let path = Path::new(expected);
         path.path_as_str(|p| assert!(p == expected));
         path.path_as_str(|p| assert!(p == expected));
     }

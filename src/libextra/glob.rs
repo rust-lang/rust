@@ -24,6 +24,7 @@
  */
 
 use std::{os, path};
+use std::path::is_sep;
 
 use sort;
 
@@ -35,7 +36,7 @@ pub struct GlobIterator {
     priv root: Path,
     priv dir_patterns: ~[Pattern],
     priv options: MatchOptions,
-    priv todo: ~[Path]
+    priv todo: ~[(Path,uint)]
 }
 
 /**
@@ -80,18 +81,28 @@ pub fn glob(pattern: &str) -> GlobIterator {
  * Paths are yielded in alphabetical order, as absolute paths.
  */
 pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
+    #[cfg(windows)]
+    fn check_windows_verbatim(p: &Path) -> bool { path::windows::is_verbatim(p) }
+    #[cfg(not(windows))]
+    fn check_windows_verbatim(_: &Path) -> bool { false }
 
-    // note that this relies on the glob meta characters not
-    // having any special meaning in actual pathnames
-    let path = Path(pattern);
-    let dir_patterns = path.components.map(|s| Pattern::new(*s));
+    // calculate root this way to handle volume-relative Windows paths correctly
+    let mut root = os::getcwd();
+    let pat_root = Path::new(pattern).root_path();
+    if pat_root.is_some() {
+        if check_windows_verbatim(pat_root.get_ref()) {
+            // XXX: How do we want to handle verbatim paths? I'm inclined to return nothing,
+            // since we can't very well find all UNC shares with a 1-letter server name.
+            return GlobIterator { root: root, dir_patterns: ~[], options: options, todo: ~[] };
+        }
+        root.push(pat_root.get_ref());
+    }
 
-    let root = if path.is_absolute() {
-        Path {components: ~[], .. path} // preserve windows path host/device
-    } else {
-        os::getcwd()
-    };
-    let todo = list_dir_sorted(&root);
+    let root_len = pat_root.map_default(0u, |p| p.as_vec().len());
+    let dir_patterns = pattern.slice_from(root_len.min(&pattern.len()))
+                       .split_terminator_iter(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
+
+    let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();
 
     GlobIterator {
         root: root,
@@ -109,18 +120,24 @@ impl Iterator<Path> for GlobIterator {
                 return None;
             }
 
-            let path = self.todo.pop();
-            let pattern_index = path.components.len() - self.root.components.len() - 1;
-            let ref pattern = self.dir_patterns[pattern_index];
+            let (path,idx) = self.todo.pop();
+            let ref pattern = self.dir_patterns[idx];
 
-            if pattern.matches_with(*path.components.last(), self.options) {
-
-                if pattern_index == self.dir_patterns.len() - 1 {
+            if pattern.matches_with(match path.filename_str() {
+                // this ugly match needs to go here to avoid a borrowck error
+                None => {
+                    // FIXME (#9639): How do we handle non-utf8 filenames? Ignore them for now
+                    // Ideally we'd still match them against a *
+                    continue;
+                }
+                Some(x) => x
+            }, self.options) {
+                if idx == self.dir_patterns.len() - 1 {
                     // it is not possible for a pattern to match a directory *AND* its children
                     // so we don't need to check the children
                     return Some(path);
                 } else {
-                    self.todo.push_all(list_dir_sorted(&path));
+                    self.todo.extend(&mut list_dir_sorted(&path).move_iter().map(|x|(x,idx+1)));
                 }
             }
         }
@@ -130,7 +147,7 @@ impl Iterator<Path> for GlobIterator {
 
 fn list_dir_sorted(path: &Path) -> ~[Path] {
     let mut children = os::list_dir_path(path);
-    sort::quick_sort(children, |p1, p2| p2.components.last() <= p1.components.last());
+    sort::quick_sort(children, |p1, p2| p2.filename().unwrap() <= p1.filename().unwrap());
     children
 }
 
@@ -285,7 +302,10 @@ impl Pattern {
      * using the default match options (i.e. `MatchOptions::new()`).
      */
     pub fn matches_path(&self, path: &Path) -> bool {
-        self.matches(path.to_str())
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        do path.as_str().map_default(false) |s| {
+            self.matches(s)
+        }
     }
 
     /**
@@ -300,7 +320,10 @@ impl Pattern {
      * using the specified match options.
      */
     pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
-        self.matches_with(path.to_str(), options)
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        do path.as_str().map_default(false) |s| {
+            self.matches_with(s, options)
+        }
     }
 
     fn matches_from(&self,
@@ -446,16 +469,6 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
     }
 }
 
-/// A helper function to determine if a char is a path separator on the current platform.
-fn is_sep(c: char) -> bool {
-    if cfg!(windows) {
-        path::windows::is_sep(c)
-    } else {
-        path::posix::is_sep(c)
-    }
-}
-
-
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
  */
@@ -522,8 +535,9 @@ mod test {
         assert!(glob("//").next().is_none());
 
         // check windows absolute paths with host/device components
-        let root_with_device = (Path {components: ~[], .. os::getcwd()}).to_str() + "*";
-        assert!(glob(root_with_device).next().is_some());
+        let root_with_device = os::getcwd().root_path().unwrap().join("*");
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        assert!(glob(root_with_device.as_str().unwrap()).next().is_some());
     }
 
     #[test]
@@ -745,9 +759,9 @@ mod test {
 
     #[test]
     fn test_matches_path() {
-        // on windows, (Path("a/b").to_str() == "a\\b"), so this
+        // on windows, (Path::new("a/b").as_str().unwrap() == "a\\b"), so this
         // tests that / and \ are considered equivalent on windows
-        assert!(Pattern::new("a/b").matches_path(&Path("a/b")));
+        assert!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
     }
 }
 
