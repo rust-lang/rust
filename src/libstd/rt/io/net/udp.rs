@@ -13,11 +13,11 @@ use result::{Ok, Err};
 use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{RtioSocket, RtioUdpSocketObject, RtioUdpSocket, IoFactory, IoFactoryObject};
+use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, IoFactoryObject};
 use rt::local::Local;
 
 pub struct UdpSocket {
-    priv obj: ~RtioUdpSocketObject
+    priv obj: ~RtioUdpSocket
 }
 
 impl UdpSocket {

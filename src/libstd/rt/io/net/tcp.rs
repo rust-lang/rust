@@ -13,19 +13,16 @@ use result::{Ok, Err};
 use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer, Listener, Acceptor};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{IoFactory, IoFactoryObject,
-               RtioSocket,
-               RtioTcpListener, RtioTcpListenerObject,
-               RtioTcpAcceptor, RtioTcpAcceptorObject,
-               RtioTcpStream, RtioTcpStreamObject};
+use rt::rtio::{IoFactory, IoFactoryObject, RtioTcpListenerObject,
+               RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
 use rt::local::Local;
 
 pub struct TcpStream {
-    priv obj: ~RtioTcpStreamObject
+    priv obj: ~RtioTcpStream
 }
 
 impl TcpStream {
-    fn new(s: ~RtioTcpStreamObject) -> TcpStream {
+    fn new(s: ~RtioTcpStream) -> TcpStream {
         TcpStream { obj: s }
     }
 
@@ -142,7 +139,7 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
 }
 
 pub struct TcpAcceptor {
-    priv obj: ~RtioTcpAcceptorObject
+    priv obj: ~RtioTcpAcceptor
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {

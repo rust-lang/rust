@@ -215,11 +215,11 @@ impl EventLoop for UvEventLoop {
 
     fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback {
         let idle_watcher = IdleWatcher::new(self.uvio.uv_loop());
-        return ~UvPausibleIdleCallback {
+        ~UvPausibleIdleCallback {
             watcher: idle_watcher,
             idle_flag: false,
             closed: false
-        };
+        } as ~PausibleIdleCallback
     }
 
     fn callback_ms(&mut self, ms: u64, f: ~fn()) {
@@ -231,12 +231,12 @@ impl EventLoop for UvEventLoop {
         }
     }
 
-    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallbackObject {
-        ~UvRemoteCallback::new(self.uvio.uv_loop(), f)
+    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback{
+        ~UvRemoteCallback::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject> {
-        Some(&mut self.uvio)
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> {
+        Some(&mut self.uvio as &mut IoFactory)
     }
 }
 
@@ -246,30 +246,30 @@ pub struct UvPausibleIdleCallback {
     priv closed: bool
 }
 
-impl UvPausibleIdleCallback {
+impl RtioPausibleIdleCallback for UvPausibleIdleCallback {
     #[inline]
-    pub fn start(&mut self, f: ~fn()) {
+    fn start(&mut self, f: ~fn()) {
         do self.watcher.start |_idle_watcher, _status| {
             f();
         };
         self.idle_flag = true;
     }
     #[inline]
-    pub fn pause(&mut self) {
+    fn pause(&mut self) {
         if self.idle_flag == true {
             self.watcher.stop();
             self.idle_flag = false;
         }
     }
     #[inline]
-    pub fn resume(&mut self) {
+    fn resume(&mut self) {
         if self.idle_flag == false {
             self.watcher.restart();
             self.idle_flag = true;
         }
     }
     #[inline]
-    pub fn close(&mut self) {
+    fn close(&mut self) {
         self.pause();
         if !self.closed {
             self.closed = true;
@@ -447,11 +447,11 @@ impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
-    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStreamObject, IoError> {
+    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
         let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<~RtioTcpStream, IoError>> = &result_cell;
 
         // Block this task and take ownership, switch to scheduler context
         do task::unkillable { // FIXME(#8674)
@@ -467,7 +467,8 @@ impl IoFactory for UvIoFactory {
                         None => {
                             let tcp = NativeHandle::from_native_handle(stream.native_handle());
                             let home = get_handle_to_current_scheduler!();
-                            let res = Ok(~UvTcpStream { watcher: tcp, home: home });
+                            let res = Ok(~UvTcpStream { watcher: tcp, home: home }
+                                                as ~RtioTcpStream);
 
                             // Store the stream in the task's stack
                             unsafe { (*result_cell_ptr).put_back(res); }
@@ -517,12 +518,12 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError> {
+    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError> {
         let mut watcher = UdpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => {
                 let home = get_handle_to_current_scheduler!();
-                Ok(~UvUdpSocket { watcher: watcher, home: home })
+                Ok(~UvUdpSocket { watcher: watcher, home: home } as ~RtioUdpSocket)
             }
             Err(uverr) => {
                 do task::unkillable { // FIXME(#8674)
@@ -540,10 +541,10 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError> {
+    fn timer_init(&mut self) -> Result<~RtioTimer, IoError> {
         let watcher = TimerWatcher::new(self.uv_loop());
         let home = get_handle_to_current_scheduler!();
-        Ok(~UvTimer::new(watcher, home))
+        Ok(~UvTimer::new(watcher, home) as ~RtioTimer)
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream {
@@ -750,7 +751,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn spawn(&mut self, config: ProcessConfig)
-            -> Result<(~RtioProcessObject, ~[Option<~RtioPipeObject>]), IoError>
+            -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>
     {
         // Sadly, we must create the UvProcess before we actually call uv_spawn
         // so that the exit_cb can close over it and notify it when the process
@@ -792,7 +793,8 @@ impl IoFactory for UvIoFactory {
             Ok(io) => {
                 // Only now do we actually get a handle to this scheduler.
                 ret.home = Some(get_handle_to_current_scheduler!());
-                Ok((ret, io))
+                Ok((ret as ~RtioProcess,
+                    io.move_iter().map(|p| p.map(|p| p as ~RtioPipe)).collect()))
             }
             Err(uverr) => {
                 // We still need to close the process handle we created, but
@@ -827,12 +829,12 @@ impl IoFactory for UvIoFactory {
     }
 
     fn unix_connect<P: PathLike>(&mut self, path: &P) ->
-        Result<~RtioPipeObject, IoError>
+        Result<~RtioPipe, IoError>
     {
         let scheduler: ~Scheduler = Local::take();
         let mut pipe = Pipe::new(self.uv_loop(), false);
         let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~RtioPipeObject, IoError>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<~RtioPipe, IoError>> = &result_cell;
 
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
@@ -845,7 +847,7 @@ impl IoFactory for UvIoFactory {
                                         handle as *uvll::uv_pipe_t);
                         let home = get_handle_to_current_scheduler!();
                         let pipe = UvUnboundPipe::new(pipe, home);
-                        Ok(~UvPipeStream::new(pipe))
+                        Ok(~UvPipeStream::new(pipe) as ~RtioPipe)
                     }
                     Some(e) => { Err(uv_error_to_io_error(e)) }
                 };
@@ -871,13 +873,13 @@ impl IoFactory for UvIoFactory {
     }
 
     fn tty_open(&mut self, fd: c_int, readable: bool, close_on_drop: bool)
-            -> Result<~RtioTTYObject, IoError> {
+            -> Result<~RtioTTY, IoError> {
         match tty::TTY::new(self.uv_loop(), fd, readable) {
             Ok(tty) => Ok(~UvTTY {
                 home: get_handle_to_current_scheduler!(),
                 tty: tty,
                 close_on_drop: close_on_drop,
-            }),
+            } as ~RtioTTY),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }
@@ -921,7 +923,7 @@ impl RtioSocket for UvTcpListener {
 }
 
 impl RtioTcpListener for UvTcpListener {
-    fn listen(self) -> Result<~RtioTcpAcceptorObject, IoError> {
+    fn listen(self) -> Result<~RtioTcpAcceptor, IoError> {
         do self.home_for_io_consume |self_| {
             let acceptor = ~UvTcpAcceptor::new(self_);
             let incoming = Cell::new(acceptor.incoming.clone());
@@ -935,14 +937,15 @@ impl RtioTcpListener for UvTcpListener {
                             // first accept call in the callback guarenteed to succeed
                             server.accept(inc.as_stream());
                             let home = get_handle_to_current_scheduler!();
-                            Ok(~UvTcpStream { watcher: inc, home: home })
+                            Ok(~UvTcpStream { watcher: inc, home: home }
+                                    as ~RtioTcpStream)
                         }
                     };
                     incoming.send(inc);
                 }
             };
             match res {
-                Ok(()) => Ok(acceptor),
+                Ok(()) => Ok(acceptor as ~RtioTcpAcceptor),
                 Err(e) => Err(uv_error_to_io_error(e)),
             }
         }
@@ -951,7 +954,7 @@ impl RtioTcpListener for UvTcpListener {
 
 pub struct UvTcpAcceptor {
     priv listener: UvTcpListener,
-    priv incoming: Tube<Result<~RtioTcpStreamObject, IoError>>,
+    priv incoming: Tube<Result<~RtioTcpStream, IoError>>,
 }
 
 impl HomingIO for UvTcpAcceptor {
@@ -984,7 +987,7 @@ fn accept_simultaneously(stream: StreamWatcher, a: int) -> Result<(), IoError> {
 }
 
 impl RtioTcpAcceptor for UvTcpAcceptor {
-    fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError> {
+    fn accept(&mut self) -> Result<~RtioTcpStream, IoError> {
         do self.home_for_io |self_| {
             self_.incoming.recv()
         }
@@ -1718,7 +1721,7 @@ impl UvUnixListener {
 }
 
 impl RtioUnixListener for UvUnixListener {
-    fn listen(self) -> Result<~RtioUnixAcceptorObject, IoError> {
+    fn listen(self) -> Result<~RtioUnixAcceptor, IoError> {
         do self.home_for_io_consume |self_| {
             let acceptor = ~UvUnixAcceptor::new(self_);
             let incoming = Cell::new(acceptor.incoming.clone());
@@ -1732,14 +1735,14 @@ impl RtioUnixListener for UvUnixListener {
                             server.accept(inc.as_stream());
                             let home = get_handle_to_current_scheduler!();
                             let pipe = UvUnboundPipe::new(inc, home);
-                            Ok(~UvPipeStream::new(pipe))
+                            Ok(~UvPipeStream::new(pipe) as ~RtioPipe)
                         }
                     };
                     incoming.send(inc);
                 }
             };
             match res {
-                Ok(()) => Ok(acceptor),
+                Ok(()) => Ok(acceptor as ~RtioUnixAcceptor),
                 Err(e) => Err(uv_error_to_io_error(e)),
             }
         }
@@ -1776,7 +1779,7 @@ impl Drop for UvTTY {
 
 pub struct UvUnixAcceptor {
     listener: UvUnixListener,
-    incoming: Tube<Result<~RtioPipeObject, IoError>>,
+    incoming: Tube<Result<~RtioPipe, IoError>>,
 }
 
 impl HomingIO for UvUnixAcceptor {
@@ -1790,7 +1793,7 @@ impl UvUnixAcceptor {
 }
 
 impl RtioUnixAcceptor for UvUnixAcceptor {
-    fn accept(&mut self) -> Result<~RtioPipeObject, IoError> {
+    fn accept(&mut self) -> Result<~RtioPipe, IoError> {
         do self.home_for_io |self_| {
             self_.incoming.recv()
         }

@@ -11,12 +11,11 @@
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::io::{io_error};
-use rt::rtio::{IoFactory, IoFactoryObject,
-               RtioTimer, RtioTimerObject};
+use rt::rtio::{IoFactory, IoFactoryObject, RtioTimer};
 use rt::local::Local;
 
 pub struct Timer {
-    priv obj: ~RtioTimerObject
+    priv obj: ~RtioTimer
 }
 
 /// Sleep the current task for `msecs` milliseconds.

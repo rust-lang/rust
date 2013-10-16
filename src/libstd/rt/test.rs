@@ -22,6 +22,7 @@ use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec::{OwnedVector, MutableVector, ImmutableVector};
 use path::GenericPath;
 use rt::sched::Scheduler;
+use rt::rtio::EventLoop;
 use unstable::{run_in_bare_thread};
 use rt::thread::Thread;
 use rt::task::Task;
@@ -36,7 +37,7 @@ pub fn new_test_uv_sched() -> Scheduler {
     let queue = WorkQueue::new();
     let queues = ~[queue.clone()];
 
-    let mut sched = Scheduler::new(~UvEventLoop::new(),
+    let mut sched = Scheduler::new(~UvEventLoop::new() as ~EventLoop,
                                    queue,
                                    queues,
                                    SleeperList::new());
@@ -195,7 +196,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         for i in range(0u, nthreads) {
-            let loop_ = ~UvEventLoop::new();
+            let loop_ = ~UvEventLoop::new() as ~EventLoop;
             let mut sched = ~Scheduler::new(loop_,
                                             work_queues[i].clone(),
                                             work_queues.clone(),
