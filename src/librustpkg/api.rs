@@ -43,18 +43,18 @@ pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
 }
 
 fn file_is_fresh(path: &str, in_hash: &str) -> bool {
-    let path = Path(path);
+    let path = Path::new(path);
     os::path_exists(&path) && in_hash == digest_file_with_date(&path)
 }
 
 fn binary_is_fresh(path: &str, in_hash: &str) -> bool {
-    let path = Path(path);
+    let path = Path::new(path);
     os::path_exists(&path) && in_hash == digest_only_date(&path)
 }
 
 pub fn new_workcache_context(p: &Path) -> workcache::Context {
-    let db_file = p.push("rustpkg_db.json"); // ??? probably wrong
-    debug2!("Workcache database file: {}", db_file.to_str());
+    let db_file = p.join("rustpkg_db.json"); // ??? probably wrong
+    debug2!("Workcache database file: {}", db_file.display());
     let db = RWArc::new(Database::new(db_file));
     let lg = RWArc::new(Logger::new());
     let cfg = Arc::new(TreeMap::new());
@@ -73,7 +73,7 @@ pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Version,
         source_workspace: root.clone(),
         build_in_destination: false,
         destination_workspace: root.clone(),
-        start_dir: root.push("src").push(name),
+        start_dir: root.join_many(["src", name.as_slice()]),
         id: PkgId{ version: version, ..PkgId::new(name)},
         // n.b. This assumes the package only has one crate
         libs: ~[mk_crate(lib)],
@@ -91,7 +91,7 @@ pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Version,
         source_workspace: root.clone(),
         build_in_destination: false,
         destination_workspace: root.clone(),
-        start_dir: root.push("src").push(name),
+        start_dir: root.join_many(["src", name.as_slice()]),
         id: PkgId{ version: version, ..PkgId::new(name)},
         libs: ~[],
         // n.b. This assumes the package only has one crate

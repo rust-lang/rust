@@ -18,8 +18,8 @@ use std::io;
 use std::os;
 
 pub fn main() {
-    let dir = tempfile::TempDir::new_in(&Path("."), "").unwrap();
-    let path = dir.path().push("file");
+    let dir = tempfile::TempDir::new_in(&Path::new("."), "").unwrap();
+    let path = dir.path().join("file");
 
     {
         match io::file_writer(&path, [io::Create, io::Truncate]) {

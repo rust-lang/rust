@@ -39,7 +39,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: ~[Path]) -> DocContext {
 
     let sessopts = @driver::session::options {
         binary: @"rustdoc",
-        maybe_sysroot: Some(@os::self_exe_path().unwrap().pop()),
+        maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @mut libs,
         .. (*rustc::driver::session::basic_options()).clone()
     };

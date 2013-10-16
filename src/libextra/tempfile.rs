@@ -35,7 +35,7 @@ impl TempDir {
 
         let mut r = rand::rng();
         for _ in range(0u, 1000) {
-            let p = tmpdir.push(r.gen_ascii_str(16) + suffix);
+            let p = tmpdir.join(r.gen_ascii_str(16) + suffix);
             if os::make_dir(&p, 0x1c0) { // 700
                 return Some(TempDir { path: Some(p) });
             }

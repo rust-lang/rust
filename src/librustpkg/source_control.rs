@@ -24,14 +24,17 @@ use path_util::chmod_read_only;
 pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult {
     if os::path_exists(source) {
         debug2!("{} exists locally! Cloning it into {}",
-                source.to_str(), target.to_str());
+                source.display(), target.display());
         // Ok to use target here; we know it will succeed
         assert!(os::path_is_dir(source));
         assert!(is_git_dir(source));
 
         if !os::path_exists(target) {
-            debug2!("Running: git clone {} {}", source.to_str(), target.to_str());
-            let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
+            debug2!("Running: git clone {} {}", source.display(), target.display());
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            let outp = run::process_output("git", [~"clone",
+                                                   source.as_str().unwrap().to_owned(),
+                                                   target.as_str().unwrap().to_owned()]);
             if outp.status != 0 {
                 io::println(str::from_utf8_owned(outp.output.clone()));
                 io::println(str::from_utf8_owned(outp.error));
@@ -40,11 +43,13 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                 else {
                 match v {
                     &ExactRevision(ref s) => {
+                        let git_dir = target.join(".git");
                         debug2!("`Running: git --work-tree={} --git-dir={} checkout {}",
-                                *s, target.to_str(), target.push(".git").to_str());
+                                *s, target.display(), git_dir.display());
+                        // FIXME (#9639: This needs to handle non-utf8 paths
                         let outp = run::process_output("git",
-                            [format!("--work-tree={}", target.to_str()),
-                             format!("--git-dir={}", target.push(".git").to_str()),
+                            [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
+                             format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                              ~"checkout", format!("{}", *s)]);
                         if outp.status != 0 {
                             io::println(str::from_utf8_owned(outp.output.clone()));
@@ -59,11 +64,13 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             // Check that no version was specified. There's no reason to not handle the
             // case where a version was requested, but I haven't implemented it.
             assert!(*v == NoVersion);
+            let git_dir = target.join(".git");
             debug2!("Running: git --work-tree={} --git-dir={} pull --no-edit {}",
-                    target.to_str(), target.push(".git").to_str(), source.to_str());
-            let args = [format!("--work-tree={}", target.to_str()),
-                        format!("--git-dir={}", target.push(".git").to_str()),
-                        ~"pull", ~"--no-edit", source.to_str()];
+                    target.display(), git_dir.display(), source.display());
+            // FIXME (#9639: This needs to handle non-utf8 paths
+            let args = [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
+                        format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
+                        ~"pull", ~"--no-edit", source.as_str().unwrap().to_owned()];
             let outp = run::process_output("git", args);
             assert!(outp.status == 0);
         }
@@ -73,7 +80,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
 
         let scratch_dir = TempDir::new("rustpkg");
         let clone_target = match scratch_dir {
-            Some(d) => d.unwrap().push("rustpkg_temp"),
+            Some(d) => d.unwrap().join("rustpkg_temp"),
             None    => cond.raise(~"Failed to create temporary directory for fetching git sources")
         };
 
@@ -100,7 +107,9 @@ pub fn make_read_only(target: &Path) {
 pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     use conditions::git_checkout_failed::cond;
 
-    let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let outp = run::process_output("git", [~"clone", source.to_owned(),
+                                           target.as_str().unwrap().to_owned()]);
     if outp.status != 0 {
          debug2!("{}", str::from_utf8_owned(outp.output.clone()));
          debug2!("{}", str::from_utf8_owned(outp.error));
@@ -109,7 +118,7 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     else {
         match v {
             &ExactRevision(ref s) | &Tagged(ref s) => {
-                    let outp = process_output_in_cwd("git", [~"checkout", format!("{}", *s)],
+                    let outp = process_output_in_cwd("git", [~"checkout", s.to_owned()],
                                                          target);
                     if outp.status != 0 {
                         debug2!("{}", str::from_utf8_owned(outp.output.clone()));
@@ -129,5 +138,5 @@ fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput
 }
 
 pub fn is_git_dir(p: &Path) -> bool {
-    os::path_is_dir(&p.push(".git"))
+    os::path_is_dir(&p.join(".git"))
 }

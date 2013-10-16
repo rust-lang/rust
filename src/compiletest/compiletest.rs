@@ -102,15 +102,15 @@ pub fn parse_config(args: ~[~str]) -> config {
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
-        Path(m.opt_str(nm).unwrap())
+        Path::new(m.opt_str(nm).unwrap())
     }
 
     config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
         rustc_path: opt_path(matches, "rustc-path"),
-        clang_path: matches.opt_str("clang-path").map(|s| Path(s)),
-        llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| Path(s)),
+        clang_path: matches.opt_str("clang-path").map(|s| Path::new(s)),
+        llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| Path::new(s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
@@ -123,10 +123,10 @@ pub fn parse_config(args: ~[~str]) -> config {
             } else {
                 None
             },
-        logfile: matches.opt_str("logfile").map(|s| Path(s)),
-        save_metrics: matches.opt_str("save-metrics").map(|s| Path(s)),
+        logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
+        save_metrics: matches.opt_str("save-metrics").map(|s| Path::new(s)),
         ratchet_metrics:
-            matches.opt_str("ratchet-metrics").map(|s| Path(s)),
+            matches.opt_str("ratchet-metrics").map(|s| Path::new(s)),
         ratchet_noise_percent:
             matches.opt_str("ratchet-noise-percent").and_then(|s| from_str::<f64>(s)),
         runtool: matches.opt_str("runtool"),
@@ -155,9 +155,9 @@ pub fn log_config(config: &config) {
     logv(c, format!("configuration:"));
     logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {}", config.run_lib_path));
-    logv(c, format!("rustc_path: {}", config.rustc_path.to_str()));
-    logv(c, format!("src_base: {}", config.src_base.to_str()));
-    logv(c, format!("build_base: {}", config.build_base.to_str()));
+    logv(c, format!("rustc_path: {}", config.rustc_path.display()));
+    logv(c, format!("src_base: {}", config.src_base.display()));
+    logv(c, format!("build_base: {}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", mode_str(config.mode)));
     logv(c, format!("run_ignored: {}", config.run_ignored));
@@ -245,12 +245,12 @@ pub fn test_opts(config: &config) -> test::TestOpts {
 
 pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     debug2!("making tests from {}",
-           config.src_base.to_str());
+           config.src_base.display());
     let mut tests = ~[];
     let dirs = os::list_dir_path(&config.src_base);
     for file in dirs.iter() {
         let file = file.clone();
-        debug2!("inspecting file {}", file.to_str());
+        debug2!("inspecting file {}", file.display());
         if is_test(config, &file) {
             let t = do make_test(config, &file) {
                 match config.mode {
@@ -272,7 +272,7 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
           _ => ~[~".rc", ~".rs"]
         };
     let invalid_prefixes = ~[~".", ~"#", ~"~"];
-    let name = testfile.filename().unwrap();
+    let name = testfile.filename_str().unwrap();
 
     let mut valid = false;
 
@@ -303,9 +303,9 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 
     // Try to elide redundant long paths
     fn shorten(path: &Path) -> ~str {
-        let filename = path.filename();
-        let p = path.pop();
-        let dir = p.filename();
+        let filename = path.filename_str();
+        let p = path.dir_path();
+        let dir = p.filename_str();
         format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
     }
 
@@ -317,13 +317,15 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     use std::cell::Cell;
     let config = Cell::new((*config).clone());
-    let testfile = Cell::new(testfile.to_str());
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
     test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
 }
 
 pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     use std::cell::Cell;
     let config = Cell::new((*config).clone());
-    let testfile = Cell::new(testfile.to_str());
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
     test::DynMetricFn(|mm| { runtest::run_metrics(config.take(), testfile.take(), mm) })
 }

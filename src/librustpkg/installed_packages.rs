@@ -17,27 +17,33 @@ use std::os;
 pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     let workspaces = rust_path();
     for p in workspaces.iter() {
-        let binfiles = os::list_dir(&p.push("bin"));
+        let binfiles = os::list_dir(&p.join("bin"));
         for exec in binfiles.iter() {
-            let p = Path(*exec);
-            let exec_path = p.filestem();
-            do exec_path.iter().advance |s| {
-                f(&PkgId::new(*s))
-            };
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            match exec.filestem_str() {
+                None => (),
+                Some(exec_path) => {
+                    if !f(&PkgId::new(exec_path)) {
+                        return false;
+                    }
+                }
+            }
         }
-        let libfiles = os::list_dir(&p.push("lib"));
+        let libfiles = os::list_dir(&p.join("lib"));
         for lib in libfiles.iter() {
-            let lib = Path(*lib);
-            debug2!("Full name: {}", lib.to_str());
-            match has_library(&lib) {
+            debug2!("Full name: {}", lib.display());
+            match has_library(lib) {
                 Some(basename) => {
+                    let parent = p.join("lib");
                     debug2!("parent = {}, child = {}",
-                            p.push("lib").to_str(), lib.to_str());
-                    let rel_p = p.push("lib/").get_relative_to(&lib);
-                    debug2!("Rel: {}", rel_p.to_str());
-                    let rel_path = rel_p.push(basename).to_str();
-                    debug2!("Rel name: {}", rel_path);
-                    f(&PkgId::new(rel_path));
+                            parent.display(), lib.display());
+                    let rel_p = lib.path_relative_from(&parent).unwrap();
+                    debug2!("Rel: {}", rel_p.display());
+                    let rel_path = rel_p.join(basename);
+                    do rel_path.display().with_str |s| {
+                        debug2!("Rel name: {}", s);
+                        f(&PkgId::new(s));
+                    }
                 }
                 None => ()
             }
@@ -48,10 +54,9 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
 
 pub fn has_library(p: &Path) -> Option<~str> {
     let files = os::list_dir(p);
-    for q in files.iter() {
-        let as_path = Path(*q);
-        if as_path.filetype() == Some(os::consts::DLL_SUFFIX) {
-            let stuff : &str = as_path.filestem().expect("has_library: weird path");
+    for path in files.iter() {
+        if path.extension_str() == Some(os::consts::DLL_EXTENSION) {
+            let stuff : &str = path.filestem_str().expect("has_library: weird path");
             let mut stuff2 = stuff.split_str_iter(&"-");
             let stuff3: ~[&str] = stuff2.collect();
             // argh
@@ -67,8 +72,10 @@ pub fn package_is_installed(p: &PkgId) -> bool {
     do list_installed_packages() |installed| {
         if installed == p {
             is_installed = true;
+            false
+        } else {
+            true
         }
-        false
     };
     is_installed
 }

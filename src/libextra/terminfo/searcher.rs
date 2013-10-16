@@ -14,10 +14,9 @@
 use std::{os, str};
 use std::os::getenv;
 use std::io::{file_reader, Reader};
-use path = std::path::Path;
 
 /// Return path to database entry for `term`
-pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
+pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
     if term.len() == 0 {
         return None;
     }
@@ -29,25 +28,26 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
 
     // Find search directory
     match getenv("TERMINFO") {
-        Some(dir) => dirs_to_search.push(path(dir)),
+        Some(dir) => dirs_to_search.push(Path::new(dir)),
         None => {
             if homedir.is_some() {
-                dirs_to_search.push(homedir.unwrap().push(".terminfo")); // ncurses compatability
+                // ncurses compatability;
+                dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
             match getenv("TERMINFO_DIRS") {
                 Some(dirs) => for i in dirs.split_iter(':') {
                     if i == "" {
-                        dirs_to_search.push(path("/usr/share/terminfo"));
+                        dirs_to_search.push(Path::new("/usr/share/terminfo"));
                     } else {
-                        dirs_to_search.push(path(i.to_owned()));
+                        dirs_to_search.push(Path::new(i.to_owned()));
                     }
                 },
                 // Found nothing, use the default paths
                 // /usr/share/terminfo is the de facto location, but it seems
                 // Ubuntu puts it in /lib/terminfo
                 None => {
-                    dirs_to_search.push(path("/usr/share/terminfo"));
-                    dirs_to_search.push(path("/lib/terminfo"));
+                    dirs_to_search.push(Path::new("/usr/share/terminfo"));
+                    dirs_to_search.push(Path::new("/lib/terminfo"));
                 }
             }
         }
@@ -55,14 +55,18 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
 
     // Look for the terminal in all of the search directories
     for p in dirs_to_search.iter() {
-        let newp = ~p.push_many(&[str::from_char(first_char), term.to_owned()]);
-        if os::path_exists(p) && os::path_exists(newp) {
-            return Some(newp);
-        }
-        // on some installations the dir is named after the hex of the char (e.g. OS X)
-        let newp = ~p.push_many(&[format!("{:x}", first_char as uint), term.to_owned()]);
-        if os::path_exists(p) && os::path_exists(newp) {
-            return Some(newp);
+        if os::path_exists(p) {
+            let f = str::from_char(first_char);
+            let newp = p.join_many([f.as_slice(), term]);
+            if os::path_exists(&newp) {
+                return Some(~newp);
+            }
+            // on some installations the dir is named after the hex of the char (e.g. OS X)
+            let f = format!("{:x}", first_char as uint);
+            let newp = p.join_many([f.as_slice(), term]);
+            if os::path_exists(&newp) {
+                return Some(~newp);
+            }
         }
     }
     None
@@ -82,7 +86,11 @@ fn test_get_dbpath_for_term() {
     // woefully inadequate test coverage
     // note: current tests won't work with non-standard terminfo hierarchies (e.g. OS X's)
     use std::os::{setenv, unsetenv};
-    fn x(t: &str) -> ~str { get_dbpath_for_term(t).expect("no terminfo entry found").to_str() };
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    fn x(t: &str) -> ~str {
+        let p = get_dbpath_for_term(t).expect("no terminfo entry found");
+        p.as_str().unwrap().to_owned()
+    };
     assert!(x("screen") == ~"/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);
     setenv("TERMINFO_DIRS", ":");

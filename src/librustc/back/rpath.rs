@@ -45,23 +45,26 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
 
 fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
     let r = filesearch::relative_target_lib_path(sess.opts.target_triple);
-    sess.filesearch.sysroot().push_rel(&r).push(os::dll_filename("rustrt"))
+    let mut p = sess.filesearch.sysroot().join(&r);
+    p.push(os::dll_filename("rustrt"));
+    p
 }
 
-pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
-    rpaths.iter().map(|rpath| format!("-Wl,-rpath,{}",rpath.to_str())).collect()
+pub fn rpaths_to_flags(rpaths: &[~str]) -> ~[~str] {
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    rpaths.iter().map(|rpath| format!("-Wl,-rpath,{}",*rpath)).collect()
 }
 
 fn get_rpaths(os: session::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
-              target_triple: &str) -> ~[Path] {
-    debug2!("sysroot: {}", sysroot.to_str());
-    debug2!("output: {}", output.to_str());
+              target_triple: &str) -> ~[~str] {
+    debug2!("sysroot: {}", sysroot.display());
+    debug2!("output: {}", output.display());
     debug2!("libs:");
     for libpath in libs.iter() {
-        debug2!("    {}", libpath.to_str());
+        debug2!("    {}", libpath.display());
     }
     debug2!("target_triple: {}", target_triple);
 
@@ -77,10 +80,10 @@ fn get_rpaths(os: session::Os,
     // And a final backup rpath to the global library location.
     let fallback_rpaths = ~[get_install_prefix_rpath(target_triple)];
 
-    fn log_rpaths(desc: &str, rpaths: &[Path]) {
+    fn log_rpaths(desc: &str, rpaths: &[~str]) {
         debug2!("{} rpaths:", desc);
         for rpath in rpaths.iter() {
-            debug2!("    {}", rpath.to_str());
+            debug2!("    {}", *rpath);
         }
     }
 
@@ -99,14 +102,14 @@ fn get_rpaths(os: session::Os,
 
 fn get_rpaths_relative_to_output(os: session::Os,
                                  output: &Path,
-                                 libs: &[Path]) -> ~[Path] {
+                                 libs: &[Path]) -> ~[~str] {
     libs.iter().map(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
 pub fn get_rpath_relative_to_output(os: session::Os,
                                     output: &Path,
                                     lib: &Path)
-                                 -> Path {
+                                 -> ~str {
     use std::os;
 
     assert!(not_win32(os));
@@ -119,29 +122,43 @@ pub fn get_rpath_relative_to_output(os: session::Os,
         session::OsWin32 => unreachable!()
     };
 
-    Path(prefix).push_rel(&os::make_absolute(output).get_relative_to(&os::make_absolute(lib)))
+    let mut lib = os::make_absolute(lib);
+    lib.pop();
+    let mut output = os::make_absolute(output);
+    output.pop();
+    let relative = lib.path_relative_from(&output);
+    let relative = relative.expect("could not create rpath relative to output");
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    prefix+"/"+relative.as_str().expect("non-utf8 component in path")
 }
 
-fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
+fn get_absolute_rpaths(libs: &[Path]) -> ~[~str] {
     libs.iter().map(|a| get_absolute_rpath(a)).collect()
 }
 
-pub fn get_absolute_rpath(lib: &Path) -> Path {
-    os::make_absolute(lib).dir_path()
+pub fn get_absolute_rpath(lib: &Path) -> ~str {
+    let mut p = os::make_absolute(lib);
+    p.pop();
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    p.as_str().expect("non-utf8 component in rpath").to_owned()
 }
 
-pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
+pub fn get_install_prefix_rpath(target_triple: &str) -> ~str {
     let install_prefix = env!("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(target_triple);
-    os::make_absolute(&Path(install_prefix).push_rel(&tlib))
+    let mut path = Path::new(install_prefix);
+    path.push(&tlib);
+    let path = os::make_absolute(&path);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    path.as_str().expect("non-utf8 component in rpath").to_owned()
 }
 
-pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
+pub fn minimize_rpaths(rpaths: &[~str]) -> ~[~str] {
     let mut set = HashSet::new();
     let mut minimized = ~[];
     for rpath in rpaths.iter() {
-        if set.insert(rpath.to_str()) {
+        if set.insert(rpath.as_slice()) {
             minimized.push(rpath.clone());
         }
     }
@@ -162,43 +179,43 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags([Path("path1"),
-                                     Path("path2")]);
+        let flags = rpaths_to_flags([~"path1", ~"path2"]);
         assert_eq!(flags, ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
     }
 
     #[test]
     fn test_prefix_rpath() {
         let res = get_install_prefix_rpath("triple");
-        let d = Path(env!("CFG_PREFIX"))
-            .push_rel(&Path("lib/rustc/triple/lib"));
+        let mut d = Path::new(env!("CFG_PREFIX"));
+        d.push("lib/rustc/triple/lib");
         debug2!("test_prefix_path: {} vs. {}",
                res.to_str(),
-               d.to_str());
-        assert!(res.to_str().ends_with(d.to_str()));
+               d.display());
+        assert!(ends_with(res.as_bytes(), d.as_vec()));
+        fn ends_with(v: &[u8], needle: &[u8]) -> bool {
+            v.len() >= needle.len() && v.slice_from(v.len()-needle.len()) == needle
+        }
     }
 
     #[test]
     fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("triple");
-        assert!(res.is_absolute);
+        assert!(Path::new(res).is_absolute());
     }
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths([Path("rpath1"),
-                                   Path("rpath2"),
-                                   Path("rpath1")]);
-        assert_eq!(res, ~[Path("rpath1"), Path("rpath2")]);
+        let res = minimize_rpaths([~"rpath1", ~"rpath2", ~"rpath1"]);
+        assert_eq!(res.as_slice(), [~"rpath1", ~"rpath2"]);
     }
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths([Path("1a"), Path("2"), Path("2"),
-                                   Path("1a"), Path("4a"),Path("1a"),
-                                   Path("2"), Path("3"), Path("4a"),
-                                   Path("3")]);
-        assert_eq!(res, ~[Path("1a"), Path("2"), Path("4a"), Path("3")]);
+        let res = minimize_rpaths([~"1a", ~"2",  ~"2",
+                                   ~"1a", ~"4a", ~"1a",
+                                   ~"2",  ~"3",  ~"4a",
+                                   ~"3"]);
+        assert_eq!(res.as_slice(), [~"1a", ~"2", ~"4a", ~"3"]);
     }
 
     #[test]
@@ -207,8 +224,8 @@ mod test {
     fn test_rpath_relative() {
       let o = session::OsLinux;
       let res = get_rpath_relative_to_output(o,
-            &Path("bin/rustc"), &Path("lib/libstd.so"));
-      assert_eq!(res.to_str(), ~"$ORIGIN/../lib");
+            &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
+      assert_eq!(res.as_slice(), "$ORIGIN/../lib");
     }
 
     #[test]
@@ -216,8 +233,8 @@ mod test {
     fn test_rpath_relative() {
         let o = session::OsFreebsd;
         let res = get_rpath_relative_to_output(o,
-            &Path("bin/rustc"), &Path("lib/libstd.so"));
-        assert_eq!(res.to_str(), ~"$ORIGIN/../lib");
+            &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
+        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
     }
 
     #[test]
@@ -225,18 +242,19 @@ mod test {
     fn test_rpath_relative() {
         let o = session::OsMacos;
         let res = get_rpath_relative_to_output(o,
-                                               &Path("bin/rustc"),
-                                               &Path("lib/libstd.so"));
-        assert_eq!(res.to_str(), ~"@executable_path/../lib");
+                                               &Path::new("bin/rustc"),
+                                               &Path::new("lib/libstd.so"));
+        assert_eq!(res.as_slice(), "@executable_path/../lib");
     }
 
     #[test]
     fn test_get_absolute_rpath() {
-        let res = get_absolute_rpath(&Path("lib/libstd.so"));
+        let res = get_absolute_rpath(&Path::new("lib/libstd.so"));
+        let lib = os::make_absolute(&Path::new("lib"));
         debug2!("test_get_absolute_rpath: {} vs. {}",
-               res.to_str(),
-               os::make_absolute(&Path("lib")).to_str());
+               res.to_str(), lib.display());
 
-        assert_eq!(res, os::make_absolute(&Path("lib")));
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        assert_eq!(res.as_slice(), lib.as_str().expect("non-utf8 component in path"));
     }
 }

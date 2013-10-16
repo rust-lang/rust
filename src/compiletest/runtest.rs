@@ -62,8 +62,8 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str("\n\n");
     }
-    let testfile = Path(testfile);
-    debug2!("running {}", testfile.to_str());
+    let testfile = Path::new(testfile);
+    debug2!("running {}", testfile.display());
     let props = load_props(&testfile);
     debug2!("loaded props");
     match config.mode {
@@ -189,7 +189,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
 
     let mut expected = match props.pp_exact {
         Some(ref file) => {
-            let filepath = testfile.dir_path().push_rel(file);
+            let filepath = testfile.dir_path().join(file);
             io::read_whole_file_str(&filepath).unwrap()
           }
           None => { srcs[srcs.len() - 2u].clone() }
@@ -221,7 +221,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
 
     fn make_pp_args(config: &config, _testfile: &Path) -> ProcArgs {
         let args = ~[~"-", ~"--pretty", ~"normal"];
-        return ProcArgs {prog: config.rustc_path.to_str(), args: args};
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
 
     fn compare_source(expected: &str, actual: &str) {
@@ -251,14 +252,17 @@ actual:\n\
     }
 
     fn make_typecheck_args(config: &config, props: &TestProps, testfile: &Path) -> ProcArgs {
+        let aux_dir = aux_output_dir_name(config, testfile);
+        // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = ~[~"-",
                          ~"--no-trans", ~"--lib",
-                         ~"-L", config.build_base.to_str(),
+                         ~"-L", config.build_base.as_str().unwrap().to_owned(),
                          ~"-L",
-                         aux_output_dir_name(config, testfile).to_str()];
+                         aux_dir.as_str().unwrap().to_owned()];
         args.push_all_move(split_maybe_args(&config.rustcflags));
         args.push_all_move(split_maybe_args(&props.compile_flags));
-        return ProcArgs {prog: config.rustc_path.to_str(), args: args};
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
 }
 
@@ -294,9 +298,11 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     #[cfg(unix)]
     fn debugger() -> ~str { ~"gdb" }
     let debugger_script = make_out_name(config, testfile, "debugger.script");
+    let exe_file = make_exe_name(config, testfile);
+    // FIXME (#9639): This needs to handle non-utf8 paths
     let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
-                          ~"-command=" + debugger_script.to_str(),
-                          make_exe_name(config, testfile).to_str()];
+                          ~"-command=" + debugger_script.as_str().unwrap().to_owned(),
+                          exe_file.as_str().unwrap().to_owned()];
     let ProcArgs = ProcArgs {prog: debugger(), args: debugger_opts};
     ProcRes = compose_and_run(config, testfile, ProcArgs, ~[], "", None);
     if ProcRes.status != 0 {
@@ -328,7 +334,9 @@ fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
                         ProcRes: &ProcRes) {
     if props.error_patterns.is_empty() {
-        fatal(~"no error pattern specified in " + testfile.to_str());
+        do testfile.display().with_str |s| {
+            fatal(~"no error pattern specified in " + s);
+        }
     }
 
     if ProcRes.status == 0 {
@@ -378,7 +386,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        format!("{}:{}:", testfile.to_str(), ee.line)
+        format!("{}:{}:", testfile.display(), ee.line)
     }).collect::<~[~str]>();
 
     fn to_lower( s : &str ) -> ~str {
@@ -538,7 +546,9 @@ fn jit_test(config: &config, props: &TestProps, testfile: &Path) -> ProcRes {
 
 fn compile_test_(config: &config, props: &TestProps,
                  testfile: &Path, extra_args: &[~str]) -> ProcRes {
-    let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
+    let aux_dir = aux_output_dir_name(config, testfile);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
     let args = make_compile_args(config, props, link_args + extra_args,
                                  make_exe_name, testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
@@ -579,11 +589,12 @@ fn compose_and_run_compiler(
         ensure_dir(&aux_output_dir_name(config, testfile));
     }
 
-    let extra_link_args = ~[~"-L",
-                            aux_output_dir_name(config, testfile).to_str()];
+    let aux_dir = aux_output_dir_name(config, testfile);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let extra_link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
 
     for rel_ab in props.aux_builds.iter() {
-        let abs_ab = config.aux_base.push_rel(&Path(*rel_ab));
+        let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_args =
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
@@ -592,7 +603,7 @@ fn compose_and_run_compiler(
         if auxres.status != 0 {
             fatal_ProcRes(
                 format!("auxiliary build of {} failed to compile: ",
-                     abs_ab.to_str()),
+                     abs_ab.display()),
                 &auxres);
         }
 
@@ -615,7 +626,7 @@ fn compose_and_run_compiler(
 fn ensure_dir(path: &Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
-        fail2!("can't make dir {}", path.to_str());
+        fail2!("can't make dir {}", path.display());
     }
 }
 
@@ -631,24 +642,33 @@ fn compose_and_run(config: &config, testfile: &Path,
 fn make_compile_args(config: &config, props: &TestProps, extras: ~[~str],
                      xform: &fn(&config, (&Path)) -> Path,
                      testfile: &Path) -> ProcArgs {
-    let mut args = ~[testfile.to_str(),
-                     ~"-o", xform(config, testfile).to_str(),
-                     ~"-L", config.build_base.to_str()]
+    let xform_file = xform(config, testfile);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let mut args = ~[testfile.as_str().unwrap().to_owned(),
+                     ~"-o", xform_file.as_str().unwrap().to_owned(),
+                     ~"-L", config.build_base.as_str().unwrap().to_owned()]
         + extras;
     args.push_all_move(split_maybe_args(&config.rustcflags));
     args.push_all_move(split_maybe_args(&props.compile_flags));
-    return ProcArgs {prog: config.rustc_path.to_str(), args: args};
+    return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
 }
 
 fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
     // what we return here is not particularly important, as it
     // happens; rustc ignores everything except for the directory.
     let auxname = output_testname(auxfile);
-    aux_output_dir_name(config, testfile).push_rel(&auxname)
+    aux_output_dir_name(config, testfile).join(&auxname)
 }
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
-    Path(output_base_name(config, testfile).to_str() + os::EXE_SUFFIX)
+    let mut f = output_base_name(config, testfile);
+    if !os::EXE_SUFFIX.is_empty() {
+        match f.filename().map(|s| s + os::EXE_SUFFIX.as_bytes()) {
+            Some(v) => f.set_filename(v),
+            None => ()
+        }
+    }
+    f
 }
 
 fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
@@ -656,7 +676,9 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     // If we've got another tool to run under (valgrind),
     // then split apart its command
     let mut args = split_maybe_args(&config.runtool);
-    args.push(make_exe_name(config, testfile).to_str());
+    let exe_file = make_exe_name(config, testfile);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    args.push(exe_file.as_str().unwrap().to_owned());
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }
@@ -725,21 +747,26 @@ fn dump_output_file(config: &config, testfile: &Path,
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
-    output_base_name(config, testfile).with_filetype(extension)
+    output_base_name(config, testfile).with_extension(extension)
 }
 
 fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
-    Path(output_base_name(config, testfile).to_str() + ".libaux")
+    let mut f = output_base_name(config, testfile);
+    match f.filename().map(|s| s + bytes!(".libaux")) {
+        Some(v) => f.set_filename(v),
+        None => ()
+    }
+    f
 }
 
 fn output_testname(testfile: &Path) -> Path {
-    Path(testfile.filestem().unwrap())
+    Path::new(testfile.filestem().unwrap())
 }
 
 fn output_base_name(config: &config, testfile: &Path) -> Path {
     config.build_base
-        .push_rel(&output_testname(testfile))
-        .with_filetype(config.stage_id)
+        .join(&output_testname(testfile))
+        .with_extension(config.stage_id.as_slice())
 }
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
@@ -875,20 +902,19 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 }
 
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
-    let tstr = aux_output_dir_name(config, testfile).to_str();
+    let tdir = aux_output_dir_name(config, testfile);
 
-    let dirs = os::list_dir_path(&Path(tstr));
+    let dirs = os::list_dir_path(&tdir);
     for file in dirs.iter() {
-
-        if (file.filetype() == Some(".so")) {
-
+        if file.extension_str() == Some("so") {
+            // FIXME (#9639): This needs to handle non-utf8 paths
             let copy_result = procsrv::run("", config.adb_path,
-                [~"push", file.to_str(), config.adb_test_dir.clone()],
+                [~"push", file.as_str().unwrap().to_owned(), config.adb_test_dir.clone()],
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {
                 io::stdout().write_str(format!("push ({}) {} {} {}",
-                    config.target, file.to_str(),
+                    config.target, file.display(),
                     copy_result.out, copy_result.err));
             }
         }
@@ -898,7 +924,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
 // codegen tests (vs. clang)
 
 fn make_o_name(config: &config, testfile: &Path) -> Path {
-    output_base_name(config, testfile).with_filetype("o")
+    output_base_name(config, testfile).with_extension("o")
 }
 
 fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
@@ -906,13 +932,15 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
         (*p).clone()
     } else {
         let stem = p.filestem().unwrap();
-        p.with_filestem(stem + "-" + suffix)
+        p.with_filename(stem + bytes!("-") + suffix.as_bytes())
     }
 }
 
 fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
                                  testfile: &Path) -> ProcRes {
-    let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
+    let aux_dir = aux_output_dir_name(config, testfile);
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
     let llvm_args = ~[~"-c", ~"--lib", ~"--save-temps"];
     let args = make_compile_args(config, props,
                                  link_args + llvm_args,
@@ -922,14 +950,16 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
 
 fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
                                           testfile: &Path) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
+    let testcc = testfile.with_extension("cc");
     let ProcArgs = ProcArgs {
-        prog: config.clang_path.get_ref().to_str(),
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        prog: config.clang_path.get_ref().as_str().unwrap().to_owned(),
         args: ~[~"-c",
                 ~"-emit-llvm",
-                ~"-o", bitcodefile.to_str(),
-                testfile.with_filetype("cc").to_str() ]
+                ~"-o", bitcodefile.as_str().unwrap().to_owned(),
+                testcc.as_str().unwrap().to_owned() ]
     };
     compose_and_run(config, testfile, ProcArgs, ~[], "", None)
 }
@@ -937,35 +967,39 @@ fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
 fn extract_function_from_bitcode(config: &config, _props: &TestProps,
                                  fname: &str, testfile: &Path,
                                  suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
+    let prog = config.llvm_bin_path.get_ref().join("llvm-extract");
     let ProcArgs = ProcArgs {
-        prog: config.llvm_bin_path.get_ref().push("llvm-extract").to_str(),
-        args: ~[~"-func=" + fname,
-                ~"-o=" + extracted_bc.to_str(),
-                bitcodefile.to_str() ]
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        prog: prog.as_str().unwrap().to_owned(),
+        args: ~["-func=" + fname,
+                "-o=" + extracted_bc.as_str().unwrap(),
+                bitcodefile.as_str().unwrap().to_owned() ]
     };
     compose_and_run(config, testfile, ProcArgs, ~[], "", None)
 }
 
 fn disassemble_extract(config: &config, _props: &TestProps,
                        testfile: &Path, suffix: &str) -> ProcRes {
-    let bitcodefile = output_base_name(config, testfile).with_filetype("bc");
+    let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
     let extracted_bc = append_suffix_to_stem(&bitcodefile, "extract");
-    let extracted_ll = extracted_bc.with_filetype("ll");
+    let extracted_ll = extracted_bc.with_extension("ll");
+    let prog = config.llvm_bin_path.get_ref().join("llvm-dis");
     let ProcArgs = ProcArgs {
-        prog: config.llvm_bin_path.get_ref().push("llvm-dis").to_str(),
-        args: ~[~"-o=" + extracted_ll.to_str(),
-                extracted_bc.to_str() ]
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        prog: prog.as_str().unwrap().to_owned(),
+        args: ~["-o=" + extracted_ll.as_str().unwrap(),
+                extracted_bc.as_str().unwrap().to_owned() ]
     };
     compose_and_run(config, testfile, ProcArgs, ~[], "", None)
 }
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = io::read_whole_file_str(&p.with_filetype("ll")).unwrap();
+    let x = io::read_whole_file_str(&p.with_extension("ll")).unwrap();
     x.line_iter().len()
 }
 

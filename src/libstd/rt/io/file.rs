@@ -627,12 +627,13 @@ pub trait DirectoryInfo : FileSystemInfo {
     fn mkdir(&self) {
         match ignore_io_error(|| self.stat()) {
             Some(_) => {
+                let path = self.get_path();
                 io_error::cond.raise(IoError {
                     kind: PathAlreadyExists,
                     desc: "Path already exists",
                     detail:
                         Some(format!("{} already exists; can't mkdir it",
-                                     self.get_path().to_str()))
+                                     path.display()))
                 })
             },
             None => mkdir(self.get_path())
@@ -655,24 +656,27 @@ pub trait DirectoryInfo : FileSystemInfo {
                 match s.is_dir {
                     true => rmdir(self.get_path()),
                     false => {
+                        let path = self.get_path();
                         let ioerr = IoError {
                             kind: MismatchedFileTypeForOperation,
                             desc: "Cannot do rmdir() on a non-directory",
                             detail: Some(format!(
                                 "{} is a non-directory; can't rmdir it",
-                                self.get_path().to_str()))
+                                path.display()))
                         };
                         io_error::cond.raise(ioerr);
                     }
                 }
             },
-            None =>
+            None => {
+                let path = self.get_path();
                 io_error::cond.raise(IoError {
                     kind: PathDoesntExist,
                     desc: "Path doesn't exist",
                     detail: Some(format!("{} doesn't exist; can't rmdir it",
-                                         self.get_path().to_str()))
+                                         path.display()))
                 })
+            }
         }
     }
 
@@ -699,7 +703,7 @@ mod test {
     fn file_test_io_smoke_test() {
         do run_in_mt_newsched_task {
             let message = "it's alright. have a good time";
-            let filename = &Path("./tmp/file_rt_io_file_test.txt");
+            let filename = &Path::new("./tmp/file_rt_io_file_test.txt");
             {
                 let mut write_stream = open(filename, Create, ReadWrite).unwrap();
                 write_stream.write(message.as_bytes());
@@ -721,7 +725,7 @@ mod test {
     #[test]
     fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
         do run_in_mt_newsched_task {
-            let filename = &Path("./tmp/file_that_does_not_exist.txt");
+            let filename = &Path::new("./tmp/file_that_does_not_exist.txt");
             let mut called = false;
             do io_error::cond.trap(|_| {
                 called = true;
@@ -736,7 +740,7 @@ mod test {
     #[test]
     fn file_test_iounlinking_invalid_path_should_raise_condition() {
         do run_in_mt_newsched_task {
-            let filename = &Path("./tmp/file_another_file_that_does_not_exist.txt");
+            let filename = &Path::new("./tmp/file_another_file_that_does_not_exist.txt");
             let mut called = false;
             do io_error::cond.trap(|_| {
                 called = true;
@@ -753,7 +757,7 @@ mod test {
             use str;
             let message = "ten-four";
             let mut read_mem = [0, .. 8];
-            let filename = &Path("./tmp/file_rt_io_file_test_positional.txt");
+            let filename = &Path::new("./tmp/file_rt_io_file_test_positional.txt");
             {
                 let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
                 rw_stream.write(message.as_bytes());
@@ -784,7 +788,7 @@ mod test {
             let set_cursor = 4 as u64;
             let mut tell_pos_pre_read;
             let mut tell_pos_post_read;
-            let filename = &Path("./tmp/file_rt_io_file_test_seeking.txt");
+            let filename = &Path::new("./tmp/file_rt_io_file_test_seeking.txt");
             {
                 let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
                 rw_stream.write(message.as_bytes());
@@ -813,7 +817,7 @@ mod test {
             let final_msg =     "foo-the-bar!!";
             let seek_idx = 3;
             let mut read_mem = [0, .. 13];
-            let filename = &Path("./tmp/file_rt_io_file_test_seek_and_write.txt");
+            let filename = &Path::new("./tmp/file_rt_io_file_test_seek_and_write.txt");
             {
                 let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
                 rw_stream.write(initial_msg.as_bytes());
@@ -839,7 +843,7 @@ mod test {
             let chunk_two = "asdf";
             let chunk_three = "zxcv";
             let mut read_mem = [0, .. 4];
-            let filename = &Path("./tmp/file_rt_io_file_test_seek_shakedown.txt");
+            let filename = &Path::new("./tmp/file_rt_io_file_test_seek_shakedown.txt");
             {
                 let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
                 rw_stream.write(initial_msg.as_bytes());
@@ -869,7 +873,7 @@ mod test {
     #[test]
     fn file_test_stat_is_correct_on_is_file() {
         do run_in_mt_newsched_task {
-            let filename = &Path("./tmp/file_stat_correct_on_is_file.txt");
+            let filename = &Path::new("./tmp/file_stat_correct_on_is_file.txt");
             {
                 let mut fs = open(filename, Create, ReadWrite).unwrap();
                 let msg = "hw";
@@ -887,7 +891,7 @@ mod test {
     #[test]
     fn file_test_stat_is_correct_on_is_dir() {
         do run_in_mt_newsched_task {
-            let filename = &Path("./tmp/file_stat_correct_on_is_dir");
+            let filename = &Path::new("./tmp/file_stat_correct_on_is_dir");
             mkdir(filename);
             let stat_res = match stat(filename) {
                 Some(s) => s,
@@ -901,7 +905,7 @@ mod test {
     #[test]
     fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
         do run_in_mt_newsched_task {
-            let dir = &Path("./tmp/fileinfo_false_on_dir");
+            let dir = &Path::new("./tmp/fileinfo_false_on_dir");
             mkdir(dir);
             assert!(dir.is_file() == false);
             rmdir(dir);
@@ -911,7 +915,7 @@ mod test {
     #[test]
     fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
         do run_in_mt_newsched_task {
-            let file = &Path("./tmp/fileinfo_check_exists_b_and_a.txt");
+            let file = &Path::new("./tmp/fileinfo_check_exists_b_and_a.txt");
             {
                 let msg = "foo".as_bytes();
                 let mut w = file.open_writer(Create);
@@ -926,7 +930,7 @@ mod test {
     #[test]
     fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
         do run_in_mt_newsched_task {
-            let dir = &Path("./tmp/before_and_after_dir");
+            let dir = &Path::new("./tmp/before_and_after_dir");
             assert!(!dir.exists());
             dir.mkdir();
             assert!(dir.exists());
@@ -940,11 +944,11 @@ mod test {
     fn file_test_directoryinfo_readdir() {
         use str;
         do run_in_mt_newsched_task {
-            let dir = &Path("./tmp/di_readdir");
+            let dir = &Path::new("./tmp/di_readdir");
             dir.mkdir();
             let prefix = "foo";
             for n in range(0,3) {
-                let f = dir.push(format!("{}.txt", n));
+                let f = dir.join(format!("{}.txt", n));
                 let mut w = f.open_writer(Create);
                 let msg_str = (prefix + n.to_str().to_owned()).to_owned();
                 let msg = msg_str.as_bytes();
@@ -955,13 +959,13 @@ mod test {
                     let mut mem = [0u8, .. 4];
                     for f in files.iter() {
                         {
-                            let n = f.filestem();
+                            let n = f.filestem_str();
                             let mut r = f.open_reader(Open);
                             r.read(mem);
                             let read_str = str::from_utf8(mem);
                             let expected = match n {
-                                Some(n) => prefix+n,
-                                None => fail2!("really shouldn't happen..")
+                                None|Some("") => fail2!("really shouldn't happen.."),
+                                Some(n) => prefix+n
                             };
                             assert!(expected == read_str);
                         }
