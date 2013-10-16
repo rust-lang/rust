@@ -178,10 +178,6 @@ impl GenericPath for Path {
         self.repr
     }
 
-    fn into_str(self) -> Option<~str> {
-        str::from_utf8_owned_opt(self.repr)
-    }
-
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
             None if bytes!("..") == self.repr => self.repr.as_slice(),
@@ -614,12 +610,9 @@ mod tests {
         assert_eq!(Path::new(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
         assert_eq!(Path::new(b!("/foo/../../bar")).into_vec(),
                    b!("/bar").to_owned());
-        assert_eq!(Path::new("foo/bar").into_str(), Some(~"foo/bar"));
-        assert_eq!(Path::new("/foo/../../bar").into_str(), Some(~"/bar"));
 
         let p = Path::new(b!("foo/bar", 0x80));
         assert_eq!(p.as_str(), None);
-        assert_eq!(Path::new(b!("foo", 0xff, "/bar")).into_str(), None);
     }
 
     #[test]
