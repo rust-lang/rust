@@ -1025,8 +1025,7 @@ fn extract_vec_elems(bcx: @mut Block,
                       -> ExtractedBlock {
     let _icx = push_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
-    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span,
-                                                          pat_id, 0);
+    let (bcx, base, len) = vec_datum.get_vec_base_and_byte_len(bcx, pat_span, pat_id, 0);
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
 
     let mut elems = do vec::from_fn(elem_count) |i| {
@@ -1647,9 +1646,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
             vec_len(*) => {
                 let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
                 let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
-                let (_, len) = tvec::get_base_and_len(
-                    bcx, unboxed, vt.vec_ty
-                );
+                let (_, len) = tvec::get_base_and_byte_len(bcx, unboxed, vt.vec_ty);
                 test_val = SDiv(bcx, len, vt.llunit_size);
                 kind = compare_vec_len;
             }

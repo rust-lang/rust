@@ -265,7 +265,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         let unit_ty = ty::sequence_element_type(tcx, datum.ty);
 
         let (bcx, base, len) =
-            datum.get_vec_base_and_len(bcx, expr.span, expr.id, autoderefs+1);
+            datum.get_vec_base_and_byte_len(bcx, expr.span, expr.id, autoderefs+1);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -978,8 +978,8 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
 
         let (bcx, base, len) =
-            base_datum.get_vec_base_and_len(bcx, index_expr.span,
-                                            index_expr.id, 0);
+            base_datum.get_vec_base_and_byte_len(bcx, index_expr.span,
+                                                 index_expr.id, 0);
 
         debug2!("trans_index: base {}", bcx.val_to_str(base));
         debug2!("trans_index: len {}", bcx.val_to_str(len));
