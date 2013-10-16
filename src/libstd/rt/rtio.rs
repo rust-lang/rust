@@ -12,6 +12,7 @@ use libc;
 use option::*;
 use result::*;
 use libc::c_int;
+use c_str::CString;
 
 use ai = rt::io::net::addrinfo;
 use rt::io::IoError;
@@ -19,7 +20,6 @@ use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
 use rt::uv::uvio;
 use path::Path;
-use super::io::support::PathLike;
 use super::io::{SeekStyle};
 use super::io::{FileMode, FileAccess, FileStat};
 
@@ -65,15 +65,14 @@ pub trait IoFactory {
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError>;
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
     fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream;
-    fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
+    fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
-    fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
-    fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError>;
-    fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
-    fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
-    fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
+    fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError>;
+    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
         Result<~[Path], IoError>;
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;

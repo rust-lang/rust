@@ -62,7 +62,7 @@ pub fn close(fd: c_int) -> c_int {
 // which are for Windows and for non-Windows, if necessary.
 // See https://github.com/mozilla/rust/issues/9822 for more information.
 
-pub mod rustrt {
+mod rustrt {
     use libc::{c_char, c_int};
     use libc;
 
@@ -200,7 +200,10 @@ pub fn env() -> ~[(~str,~str)] {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
-            let result = str::raw::from_c_multistring(ch as *libc::c_char, None);
+            let mut result = ~[];
+            do c_str::from_c_multistring(ch as *libc::c_char, None) |cstr| {
+                result.push(cstr.as_str().to_owned());
+            };
             FreeEnvironmentStringsA(ch);
             result
         }

@@ -10,12 +10,13 @@
 
 use prelude::*;
 use ptr::null;
+use c_str;
+use c_str::CString;
 use libc::c_void;
 use rt::uv::{Request, NativeHandle, Loop, FsCallback, Buf,
              status_to_maybe_uv_error, UvError};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
-use super::super::io::support::PathLike;
 use cast::transmute;
 use libc;
 use libc::{c_int};
@@ -36,73 +37,63 @@ impl FsRequest {
         fs_req
     }
 
-    pub fn open<P: PathLike>(self, loop_: &Loop, path: &P, flags: int, mode: int,
-               cb: FsCallback) {
+    pub fn open(self, loop_: &Loop, path: &CString, flags: int, mode: int,
+                cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
+        path.with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                           self.native_handle(), p, flags, mode, complete_cb_ptr)
-            })
         });
     }
 
-    pub fn open_sync<P: PathLike>(self, loop_: &Loop, path: &P,
-                                  flags: int, mode: int) -> Result<c_int, UvError> {
+    pub fn open_sync(self, loop_: &Loop, path: &CString,
+                     flags: int, mode: int) -> Result<c_int, UvError> {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(None)
         };
-        let result = path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
+        let result = path.with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                     self.native_handle(), p, flags, mode, complete_cb_ptr)
-            })
         });
         self.sync_cleanup(result)
     }
 
-    pub fn unlink<P: PathLike>(self, loop_: &Loop, path: &P, cb: FsCallback) {
+    pub fn unlink(self, loop_: &Loop, path: &CString, cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
-                uvll::fs_unlink(loop_.native_handle(),
-                              self.native_handle(), p, complete_cb_ptr)
-            })
+        path.with_ref(|p| unsafe {
+            uvll::fs_unlink(loop_.native_handle(),
+                          self.native_handle(), p, complete_cb_ptr)
         });
     }
 
-    pub fn unlink_sync<P: PathLike>(self, loop_: &Loop, path: &P)
+    pub fn unlink_sync(self, loop_: &Loop, path: &CString)
       -> Result<c_int, UvError> {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(None)
         };
-        let result = path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
-                uvll::fs_unlink(loop_.native_handle(),
-                              self.native_handle(), p, complete_cb_ptr)
-            })
+        let result = path.with_ref(|p| unsafe {
+            uvll::fs_unlink(loop_.native_handle(),
+                          self.native_handle(), p, complete_cb_ptr)
         });
         self.sync_cleanup(result)
     }
 
-    pub fn stat<P: PathLike>(self, loop_: &Loop, path: &P, cb: FsCallback) {
+    pub fn stat(self, loop_: &Loop, path: &CString, cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
-                uvll::fs_stat(loop_.native_handle(),
-                              self.native_handle(), p, complete_cb_ptr)
-            })
+        path.with_ref(|p| unsafe {
+            uvll::fs_stat(loop_.native_handle(),
+                          self.native_handle(), p, complete_cb_ptr)
         });
     }
 
@@ -186,43 +177,37 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn mkdir<P: PathLike>(self, loop_: &Loop, path: &P, mode: int, cb: FsCallback) {
+    pub fn mkdir(self, loop_: &Loop, path: &CString, mode: int, cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
+        path.with_ref(|p| unsafe {
             uvll::fs_mkdir(loop_.native_handle(),
                           self.native_handle(), p, mode, complete_cb_ptr)
-            })
         });
     }
 
-    pub fn rmdir<P: PathLike>(self, loop_: &Loop, path: &P, cb: FsCallback) {
+    pub fn rmdir(self, loop_: &Loop, path: &CString, cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
+        path.with_ref(|p| unsafe {
             uvll::fs_rmdir(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
-            })
         });
     }
 
-    pub fn readdir<P: PathLike>(self, loop_: &Loop, path: &P,
-                                flags: c_int, cb: FsCallback) {
+    pub fn readdir(self, loop_: &Loop, path: &CString,
+                   flags: c_int, cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.path_as_str(|p| {
-            p.with_c_str(|p| unsafe {
+        path.with_ref(|p| unsafe {
             uvll::fs_readdir(loop_.native_handle(),
                           self.native_handle(), p, flags, complete_cb_ptr)
-            })
         });
     }
 
@@ -286,13 +271,11 @@ impl FsRequest {
         }
     }
 
-    pub fn get_paths(&mut self) -> ~[~str] {
+    pub fn each_path(&mut self, f: &fn(&CString)) {
         use str;
         let ptr = self.get_ptr();
         match self.get_result() {
-            n if (n <= 0) => {
-                ~[]
-            },
+            n if (n <= 0) => {}
             n => {
                 let n_len = n as uint;
                 // we pass in the len that uv tells us is there
@@ -301,11 +284,10 @@ impl FsRequest {
                 // correctly delimited and we stray into garbage memory?
                 // in any case, passing Some(n_len) fixes it and ensures
                 // good results
-                let raw_path_strs = unsafe {
-                    str::raw::from_c_multistring(ptr as *libc::c_char, Some(n_len)) };
-                let raw_len = raw_path_strs.len();
-                assert_eq!(raw_len, n_len);
-                raw_path_strs
+                unsafe {
+                    c_str::from_c_multistring(ptr as *libc::c_char,
+                                              Some(n_len), f);
+                }
             }
         }
     }
