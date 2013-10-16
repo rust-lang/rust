@@ -274,6 +274,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                                    ty::vstore_slice(ty::re_static));
 
         let scratch = scratch_datum(bcx, slice_ty, "__adjust", false);
+
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
         DatumBlock {bcx: bcx, datum: scratch}
@@ -972,21 +973,16 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
         let vt = tvec::vec_types(bcx, base_datum.ty);
         base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
-        let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
-        base::maybe_name_value(bcx.ccx(), scaled_ix, "scaled_ix");
 
         let (bcx, base, len) =
-            base_datum.get_vec_base_and_len(bcx, index_expr.span,
-                                            index_expr.id, 0);
+            base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id, 0);
 
         debug2!("trans_index: base {}", bcx.val_to_str(base));
         debug2!("trans_index: len {}", bcx.val_to_str(len));
 
-        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
+        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
         let bcx = do with_cond(bcx, bounds_check) |bcx| {
-            let unscaled_len = UDiv(bcx, len, vt.llunit_size);
-            controlflow::trans_fail_bounds_check(bcx, index_expr.span,
-                                                 ix_val, unscaled_len)
+            controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
         };
         let elt = InBoundsGEP(bcx, base, [ix_val]);
         let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());

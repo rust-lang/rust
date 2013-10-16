@@ -770,12 +770,36 @@ impl Datum {
         DatumBlock { bcx: bcx, datum: datum }
     }
 
+    pub fn get_vec_base_and_byte_len(&self,
+                                     mut bcx: @mut Block,
+                                     span: Span,
+                                     expr_id: ast::NodeId,
+                                     derefs: uint)
+                                     -> (@mut Block, ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair. Performs rooting
+        //! and write guards checks.
+
+        // only imp't for @[] and @str, but harmless
+        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs);
+        let (base, len) = self.get_vec_base_and_byte_len_no_root(bcx);
+        (bcx, base, len)
+    }
+
+    pub fn get_vec_base_and_byte_len_no_root(&self, bcx: @mut Block)
+                                             -> (ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair. Des not root
+        //! nor perform write guard checks.
+
+        let llval = self.to_appropriate_llval(bcx);
+        tvec::get_base_and_byte_len(bcx, llval, self.ty)
+    }
+
     pub fn get_vec_base_and_len(&self,
-                                mut bcx: @mut Block,
-                                span: Span,
-                                expr_id: ast::NodeId,
-                                derefs: uint)
-                                -> (@mut Block, ValueRef, ValueRef) {
+                                     mut bcx: @mut Block,
+                                     span: Span,
+                                     expr_id: ast::NodeId,
+                                     derefs: uint)
+                                     -> (@mut Block, ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Performs rooting
         //! and write guards checks.
 
@@ -786,7 +810,7 @@ impl Datum {
     }
 
     pub fn get_vec_base_and_len_no_root(&self, bcx: @mut Block)
-                                        -> (ValueRef, ValueRef) {
+                                             -> (ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Des not root
         //! nor perform write guard checks.
 

@@ -77,8 +77,8 @@ pub fn get_dataptr(bcx: @mut Block, vptr: ValueRef) -> ValueRef {
     GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
 }
 
-pub fn pointer_add(bcx: @mut Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("tvec::pointer_add");
+pub fn pointer_add_byte(bcx: @mut Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
+    let _icx = push_ctxt("tvec::pointer_add_byte");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, Type::i8p());
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
@@ -237,8 +237,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
         Ignore => {}
         SaveIn(lldest) => {
             Store(bcx, llfixed, GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
-            let lllen = Mul(bcx, llcount, vt.llunit_size);
-            Store(bcx, lllen, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
+            Store(bcx, llcount, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
         }
     }
 
@@ -502,9 +501,44 @@ pub fn elements_required(bcx: @mut Block, content_expr: &ast::Expr) -> uint {
     }
 }
 
-pub fn get_base_and_len(bcx: @mut Block,
-                        llval: ValueRef,
+pub fn get_base_and_byte_len(bcx: @mut Block, llval: ValueRef,
                         vec_ty: ty::t) -> (ValueRef, ValueRef) {
+    //!
+    //
+    // Converts a vector into the slice pair.  The vector should be stored in
+    // `llval` which should be either immediate or by-ref as appropriate for
+    // the vector type.  If you have a datum, you would probably prefer to
+    // call `Datum::get_base_and_byte_len()` which will handle any conversions for
+    // you.
+
+    let ccx = bcx.ccx();
+    let vt = vec_types(bcx, vec_ty);
+
+    let vstore = match ty::get(vt.vec_ty).sty {
+      ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
+      _ => ty::vstore_uniq
+    };
+
+    match vstore {
+        ty::vstore_fixed(n) => {
+            let base = GEPi(bcx, llval, [0u, 0u]);
+            let len = Mul(bcx, C_uint(ccx, n), vt.llunit_size);
+            (base, len)
+        }
+        ty::vstore_slice(_) => {
+            let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
+            let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
+            let len = Mul(bcx, count, vt.llunit_size);
+            (base, len)
+        }
+        ty::vstore_uniq | ty::vstore_box => {
+            let body = get_bodyptr(bcx, llval, vec_ty);
+            (get_dataptr(bcx, body), get_fill(bcx, body))
+        }
+    }
+}
+
+pub fn get_base_and_len(bcx: @mut Block, llval: ValueRef, vec_ty: ty::t) -> (ValueRef, ValueRef) {
     //!
     //
     // Converts a vector into the slice pair.  The vector should be stored in
@@ -524,17 +558,16 @@ pub fn get_base_and_len(bcx: @mut Block,
     match vstore {
         ty::vstore_fixed(n) => {
             let base = GEPi(bcx, llval, [0u, 0u]);
-            let len = Mul(bcx, C_uint(ccx, n), vt.llunit_size);
-            (base, len)
+            (base, C_uint(ccx, n))
         }
         ty::vstore_slice(_) => {
             let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
-            let len = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
-            (base, len)
+            let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
+            (base, count)
         }
         ty::vstore_uniq | ty::vstore_box => {
             let body = get_bodyptr(bcx, llval, vec_ty);
-            (get_dataptr(bcx, body), get_fill(bcx, body))
+            (get_dataptr(bcx, body), UDiv(bcx, get_fill(bcx, body), vt.llunit_size))
         }
     }
 }
@@ -551,7 +584,7 @@ pub fn iter_vec_raw(bcx: @mut Block, data_ptr: ValueRef, vec_ty: ty::t,
     // FIXME (#3729): Optimize this when the size of the unit type is
     // statically known to not use pointer casts, which tend to confuse
     // LLVM.
-    let data_end_ptr = pointer_add(bcx, data_ptr, fill);
+    let data_end_ptr = pointer_add_byte(bcx, data_ptr, fill);
 
     // Now perform the iteration.
     let header_bcx = base::sub_block(bcx, "iter_vec_loop_header");
