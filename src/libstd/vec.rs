@@ -974,6 +974,7 @@ pub trait ImmutableVector<'self, T> {
 
 impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     #[inline]
+    #[cfg(stage0)]
     fn slice(&self, start: uint, end: uint) -> &'self [T] {
         assert!(start <= end);
         assert!(end <= self.len());
@@ -986,10 +987,27 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             }
         }
     }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn slice(&self, start: uint, end: uint) -> &'self [T] {
+        assert!(start <= end);
+        assert!(end <= self.len());
+        do self.as_imm_buf |p, _len| {
+            unsafe {
+                cast::transmute(Slice {
+                    data: ptr::offset(p, start as int),
+                    len: (end - start)
+                })
+            }
+        }
+    }
+
     #[inline]
     fn slice_from(&self, start: uint) -> &'self [T] {
         self.slice(start, self.len())
     }
+
     #[inline]
     fn slice_to(&self, end: uint) -> &'self [T] {
         self.slice(0, end)
@@ -1130,9 +1148,17 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
+    #[cfg(stage0)]
     fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
         let s = self.repr();
         f(s.data, s.len / sys::nonzero_size_of::<T>())
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
+        let s = self.repr();
+        f(s.data, s.len)
     }
 }
 
@@ -1899,6 +1925,7 @@ pub trait MutableVector<'self, T> {
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
+    #[cfg(stage0)]
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
@@ -1907,6 +1934,21 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
                 cast::transmute(Slice {
                     data: ptr::mut_offset(p, start as int) as *T,
                     len: (end - start) * sys::nonzero_size_of::<T>()
+                })
+            }
+        }
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
+        assert!(start <= end);
+        assert!(end <= self.len());
+        do self.as_mut_buf |p, _len| {
+            unsafe {
+                cast::transmute(Slice {
+                    data: ptr::mut_offset(p, start as int) as *T,
+                    len: (end - start)
                 })
             }
         }
@@ -1991,11 +2033,18 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    #[cfg(stage0)]
     fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U {
         let Slice{ data, len } = self.repr();
         f(data as *mut T, len / sys::nonzero_size_of::<T>())
     }
 
+    #[inline]
+    #[cfg(not(stage0))]
+    fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U {
+        let Slice{ data, len } = self.repr();
+        f(data as *mut T, len)
+    }
 }
 
 /// Trait for &[T] where T is Cloneable
@@ -2083,6 +2132,7 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
+    #[cfg(stage0)]
     pub unsafe fn buf_as_slice<T,U>(p: *T,
                                     len: uint,
                                     f: &fn(v: &[T]) -> U) -> U {
@@ -2097,12 +2147,43 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn buf_as_slice<T,U>(p: *T,
+                                    len: uint,
+                                    f: &fn(v: &[T]) -> U) -> U {
+        f(cast::transmute(Slice {
+            data: p,
+            len: len
+        }))
+    }
+
+    /**
+     * Form a slice from a pointer and length (as a number of units,
+     * not bytes).
+     */
+    #[inline]
+    #[cfg(stage0)]
     pub unsafe fn mut_buf_as_slice<T,U>(p: *mut T,
                                         len: uint,
                                         f: &fn(v: &mut [T]) -> U) -> U {
         f(cast::transmute(Slice {
             data: p as *T,
             len: len * sys::nonzero_size_of::<T>()
+        }))
+    }
+
+    /**
+     * Form a slice from a pointer and length (as a number of units,
+     * not bytes).
+     */
+    #[inline]
+    #[cfg(not(stage0))]
+    pub unsafe fn mut_buf_as_slice<T,U>(p: *mut T,
+                                        len: uint,
+                                        f: &fn(v: &mut [T]) -> U) -> U {
+        f(cast::transmute(Slice {
+            data: p as *T,
+            len: len
         }))
     }
 

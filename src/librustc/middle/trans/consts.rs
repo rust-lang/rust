@@ -83,23 +83,18 @@ pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: Type) -> ValueRef {
     }
 }
 
-pub fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr])
-    -> (ValueRef, ValueRef, Type, bool) {
-    unsafe {
-        let vec_ty = ty::expr_ty(cx.tcx, e);
-        let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
-        let llunitty = type_of::type_of(cx, unit_ty);
-        let unit_sz = machine::llsize_of(cx, llunitty);
-        let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
-        let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e)));
-        // If the vector contains enums, an LLVM array won't work.
-        let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-            C_struct(vs, false)
-        } else {
-            C_array(llunitty, vs)
-        };
-        return (v, sz, llunitty, inlineable.iter().fold(true, |a, &b| a && b));
-    }
+fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr]) -> (ValueRef, Type, bool) {
+    let vec_ty = ty::expr_ty(cx.tcx, e);
+    let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
+    let llunitty = type_of::type_of(cx, unit_ty);
+    let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e)));
+    // If the vector contains enums, an LLVM array won't work.
+    let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
+        C_struct(vs, false)
+    } else {
+        C_array(llunitty, vs)
+    };
+    (v, llunitty, inlineable.iter().fold(true, |a, &b| a && b))
 }
 
 fn const_addr_of(cx: &mut CrateContext, cv: ValueRef) -> ValueRef {
@@ -225,9 +220,8 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
                             assert_eq!(abi::slice_elt_len, 1);
 
                             match ty::get(ty).sty {
-                                ty::ty_evec(_, ty::vstore_fixed(*)) => {
-                                    let size = machine::llsize_of(cx, val_ty(llconst));
-                                    llconst = C_struct([llptr, size], false);
+                                ty::ty_evec(_, ty::vstore_fixed(len)) => {
+                                    llconst = C_struct([llptr, C_uint(cx, len)], false);
                                 }
                                 _ => {}
                             }
@@ -412,14 +406,8 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                           (bv, C_uint(cx, u)),
 
                       ty::vstore_slice(_) => {
-                          let unit_ty = ty::sequence_element_type(cx.tcx, bt);
-                          let llunitty = type_of::type_of(cx, unit_ty);
-                          let unit_sz = machine::llsize_of(cx, llunitty);
-
                           let e1 = const_get_elt(cx, bv, [0]);
-                          (const_deref_ptr(cx, e1),
-                           llvm::LLVMConstUDiv(const_get_elt(cx, bv, [1]),
-                                               unit_sz))
+                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
                       },
                       _ => cx.sess.span_bug(base.span,
                                             "index-expr base must be fixed-size or slice")
@@ -538,7 +526,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
               }
           }
           ast::ExprVec(ref es, ast::MutImmutable) => {
-            let (v, _, _, inlineable) = const_vec(cx, e, *es);
+            let (v, _, inlineable) = const_vec(cx, e, *es);
             (v, inlineable)
           }
           ast::ExprVstore(sub, ast::ExprVstoreSlice) => {
@@ -550,7 +538,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                 }
               }
               ast::ExprVec(ref es, ast::MutImmutable) => {
-                let (cv, sz, llunitty, _) = const_vec(cx, e, *es);
+                let (cv, llunitty, _) = const_vec(cx, e, *es);
                 let llty = val_ty(cv);
                 let gv = do "const".with_c_str |name| {
                     llvm::LLVMAddGlobal(cx.llmod, llty.to_ref(), name)
@@ -559,7 +547,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                 llvm::LLVMSetGlobalConstant(gv, True);
                 SetLinkage(gv, PrivateLinkage);
                 let p = const_ptrcast(cx, gv, llunitty);
-                (C_struct([p, sz], false), false)
+                (C_struct([p, C_uint(cx, es.len())], false), false)
               }
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }

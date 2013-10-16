@@ -1867,7 +1867,7 @@ fn vec_slice_metadata(cx: &mut CrateContext,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"size_in_bytes",
+            name: @"length",
             llvm_type: member_llvm_types[1],
             type_metadata: type_metadata(cx, ty::mk_uint(), span),
             offset: ComputedMemberOffset,
