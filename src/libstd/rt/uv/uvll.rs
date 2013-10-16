@@ -131,6 +131,7 @@ pub type uv_udp_send_t = c_void;
 pub type uv_getaddrinfo_t = c_void;
 pub type uv_process_t = c_void;
 pub type uv_pipe_t = c_void;
+pub type uv_tty_t = c_void;
 
 pub struct uv_timespec_t {
     tv_sec: libc::c_long,
@@ -1107,6 +1108,12 @@ extern {
     pub fn uv_pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int;
     pub fn uv_pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
                            name: *c_char, cb: uv_connect_cb);
+    pub fn uv_tty_init(loop_ptr: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
+                       readable: c_int) -> c_int;
+    pub fn uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int;
+    pub fn uv_tty_reset_mode(tty: *uv_tty_t);
+    pub fn uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
+                              height: *c_int) -> c_int;
 
     // These should all really be constants...
     #[rust_stack] pub fn rust_SOCK_STREAM() -> c_int;

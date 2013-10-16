@@ -75,12 +75,21 @@ pub mod async;
 pub mod addrinfo;
 pub mod process;
 pub mod pipe;
+pub mod tty;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
     priv handle: *uvll::uv_loop_t
+}
+
+pub struct Handle(*uvll::uv_handle_t);
+
+impl Watcher for Handle {}
+impl NativeHandle<*uvll::uv_handle_t> for Handle {
+    fn from_native_handle(h: *uvll::uv_handle_t) -> Handle { Handle(h) }
+    fn native_handle(&self) -> *uvll::uv_handle_t { **self }
 }
 
 /// The trait implemented by uv 'watchers' (handles). Watchers are
@@ -160,6 +169,7 @@ pub trait WatcherInterop {
     fn install_watcher_data(&mut self);
     fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
     fn drop_watcher_data(&mut self);
+    fn close(self, cb: NullCallback);
 }
 
 impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
@@ -205,6 +215,24 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
             let _data = transmute::<*c_void, ~WatcherData>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
+        }
+    }
+
+    fn close(self, cb: NullCallback) {
+        let mut this = self;
+        {
+            let data = this.get_watcher_data();
+            assert!(data.close_cb.is_none());
+            data.close_cb = Some(cb);
+        }
+
+        unsafe { uvll::close(this.native_handle(), close_cb); }
+
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            let mut h: Handle = NativeHandle::from_native_handle(handle);
+            h.get_watcher_data().close_cb.take_unwrap()();
+            h.drop_watcher_data();
+            unsafe { uvll::free_handle(handle as *c_void) }
         }
     }
 }

@@ -123,25 +123,6 @@ impl Process {
     pub fn pid(&self) -> libc::pid_t {
         unsafe { uvll::process_pid(**self) as libc::pid_t }
     }
-
-    /// Closes this handle, invoking the specified callback once closed
-    pub fn close(self, cb: uv::NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_process_t) {
-            let mut process: Process = uv::NativeHandle::from_native_handle(handle);
-            process.get_watcher_data().close_cb.take_unwrap()();
-            process.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *libc::c_void) }
-        }
-    }
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,

@@ -13,7 +13,7 @@ use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::local::Local;
-use rt::rtio::{RtioFileStream, IoFactoryObject, IoFactory};
+use rt::rtio::{IoFactoryObject, IoFactory, RtioTTYObject, RtioTTY};
 use super::{Reader, Writer, io_error};
 
 /// Creates a new non-blocking handle to the stdin of the current process.
@@ -22,8 +22,8 @@ use super::{Reader, Writer, io_error};
 pub fn stdin() -> StdReader {
     let stream = unsafe {
         let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_from_raw_fd(libc::STDIN_FILENO, false)
-    };
+        (*io).tty_open(libc::STDIN_FILENO, true, false)
+    }.unwrap();
     StdReader { inner: stream }
 }
 
@@ -36,8 +36,8 @@ pub fn stdin() -> StdReader {
 pub fn stdout() -> StdWriter {
     let stream = unsafe {
         let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_from_raw_fd(libc::STDOUT_FILENO, false)
-    };
+        (*io).tty_open(libc::STDOUT_FILENO, false, false)
+    }.unwrap();
     StdWriter { inner: stream }
 }
 
@@ -47,8 +47,8 @@ pub fn stdout() -> StdWriter {
 pub fn stderr() -> StdWriter {
     let stream = unsafe {
         let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_from_raw_fd(libc::STDERR_FILENO, false)
-    };
+        (*io).tty_open(libc::STDERR_FILENO, false, false)
+    }.unwrap();
     StdWriter { inner: stream }
 }
 
@@ -87,7 +87,30 @@ pub fn println_args(fmt: &fmt::Arguments) {
 
 /// Representation of a reader of a standard input stream
 pub struct StdReader {
-    priv inner: ~RtioFileStream
+    priv inner: ~RtioTTYObject
+}
+
+impl StdReader {
+    /// Controls whether this output stream is a "raw stream" or simply a normal
+    /// stream.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if an error
+    /// happens.
+    pub fn set_raw(&mut self, raw: bool) {
+        match self.inner.set_raw(raw) {
+            Ok(()) => {},
+            Err(e) => io_error::cond.raise(e),
+        }
+    }
+
+    /// Resets the mode of this stream back to its original state.
+    ///
+    /// # Failure
+    ///
+    /// This function cannot fail.
+    pub fn reset_mode(&mut self) { self.inner.reset_mode(); }
 }
 
 impl Reader for StdReader {
@@ -106,7 +129,50 @@ impl Reader for StdReader {
 
 /// Representation of a writer to a standard output stream
 pub struct StdWriter {
-    priv inner: ~RtioFileStream
+    priv inner: ~RtioTTYObject
+}
+
+impl StdWriter {
+    /// Gets the size of this output window, if possible. This is typically used
+    /// when the writer is attached to something like a terminal, this is used
+    /// to fetch the dimensions of the terminal.
+    ///
+    /// If successful, returns Some((width, height)).
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if an error
+    /// happens.
+    pub fn winsize(&mut self) -> Option<(int, int)> {
+        match self.inner.get_winsize() {
+            Ok(p) => Some(p),
+            Err(e) => {
+                io_error::cond.raise(e);
+                None
+            }
+        }
+    }
+
+    /// Controls whether this output stream is a "raw stream" or simply a normal
+    /// stream.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if an error
+    /// happens.
+    pub fn set_raw(&mut self, raw: bool) {
+        match self.inner.set_raw(raw) {
+            Ok(()) => {},
+            Err(e) => io_error::cond.raise(e),
+        }
+    }
+
+    /// Resets the mode of this stream back to its original state.
+    ///
+    /// # Failure
+    ///
+    /// This function cannot fail.
+    pub fn reset_mode(&mut self) { self.inner.reset_mode(); }
 }
 
 impl Writer for StdWriter {
@@ -117,10 +183,18 @@ impl Writer for StdWriter {
         }
     }
 
-    fn flush(&mut self) {
-        match self.inner.flush() {
-            Ok(()) => {}
-            Err(e) => io_error::cond.raise(e)
-        }
+    fn flush(&mut self) { /* nothing to do */ }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn smoke() {
+        // Just make sure we can acquire handles
+        stdin();
+        stdout();
+        stderr();
     }
 }
