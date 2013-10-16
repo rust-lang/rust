@@ -745,7 +745,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
       }
       ty::ty_estr(ty::vstore_fixed(_)) |
       ty::ty_evec(_, ty::vstore_fixed(_)) => {
-        let (base, len) = tvec::get_base_and_len(cx, av, t);
+        let (base, len) = tvec::get_base_and_byte_len(cx, av, t);
         cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
       ty::ty_tup(ref args) => {

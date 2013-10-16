@@ -501,7 +501,7 @@ pub fn elements_required(bcx: @mut Block, content_expr: &ast::Expr) -> uint {
     }
 }
 
-pub fn get_base_and_len(bcx: @mut Block,
+pub fn get_base_and_byte_len(bcx: @mut Block,
                         llval: ValueRef,
                         vec_ty: ty::t) -> (ValueRef, ValueRef) {
     //!
@@ -509,7 +509,7 @@ pub fn get_base_and_len(bcx: @mut Block,
     // Converts a vector into the slice pair.  The vector should be stored in
     // `llval` which should be either immediate or by-ref as appropriate for
     // the vector type.  If you have a datum, you would probably prefer to
-    // call `Datum::get_base_and_len()` which will handle any conversions for
+    // call `Datum::get_base_and_byte_len()` which will handle any conversions for
     // you.
 
     let ccx = bcx.ccx();
