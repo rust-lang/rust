@@ -52,6 +52,8 @@ fn main () {
  ```
 */
 
+use sys::size_of;
+use unstable::raw::Slice;
 use cast;
 use container::Container;
 use iter::{Iterator, range};
@@ -133,10 +135,10 @@ pub trait Rng {
     ///    println!("{:?}", v);
     /// }
     /// ```
-    fn fill_bytes(&mut self, mut dest: &mut [u8]) {
-        // this relies on the lengths being transferred correctly when
-        // transmuting between vectors like this.
-        let as_u64: &mut &mut [u64] = unsafe { cast::transmute(&mut dest) };
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        let mut slice: Slice<u64> = unsafe { cast::transmute_copy(&dest) };
+        slice.len /= size_of::<u64>();
+        let as_u64: &mut [u64] = unsafe { cast::transmute(slice) };
         for dest in as_u64.mut_iter() {
             *dest = self.next_u64();
         }
@@ -147,7 +149,9 @@ pub trait Rng {
 
         // space for a u32
         if remaining >= 4 {
-            let as_u32: &mut &mut [u32] = unsafe { cast::transmute(&mut dest) };
+            let mut slice: Slice<u32> = unsafe { cast::transmute_copy(&dest) };
+            slice.len /= size_of::<u32>();
+            let as_u32: &mut [u32] = unsafe { cast::transmute(slice) };
             as_u32[as_u32.len() - 1] = self.next_u32();
             remaining -= 4;
         }

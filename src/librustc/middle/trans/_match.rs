@@ -1025,8 +1025,7 @@ fn extract_vec_elems(bcx: @mut Block,
                       -> ExtractedBlock {
     let _icx = push_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
-    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span,
-                                                          pat_id, 0);
+    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span, pat_id, 0);
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
 
     let mut elems = do vec::from_fn(elem_count) |i| {
@@ -1043,13 +1042,9 @@ fn extract_vec_elems(bcx: @mut Block,
     };
     if slice.is_some() {
         let n = slice.unwrap();
-        let slice_offset = Mul(bcx, vt.llunit_size,
-            C_int(bcx.ccx(), n as int)
-        );
-        let slice_begin = tvec::pointer_add(bcx, base, slice_offset);
-        let slice_len_offset = Mul(bcx, vt.llunit_size,
-            C_int(bcx.ccx(), (elem_count - 1u) as int)
-        );
+        let slice_byte_offset = Mul(bcx, vt.llunit_size, C_uint(bcx.ccx(), n));
+        let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
+        let slice_len_offset = C_uint(bcx.ccx(), elem_count - 1u);
         let slice_len = Sub(bcx, len, slice_len_offset);
         let slice_ty = ty::mk_evec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable},
@@ -1059,9 +1054,7 @@ fn extract_vec_elems(bcx: @mut Block,
         Store(bcx, slice_begin,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_base])
         );
-        Store(bcx, slice_len,
-            GEPi(bcx, scratch.val, [0u, abi::slice_elt_len])
-        );
+        Store(bcx, slice_len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
         elems[n] = scratch.val;
         scratch.add_clean(bcx);
     }
@@ -1647,10 +1640,8 @@ fn compile_submatch_continue(mut bcx: @mut Block,
             vec_len(*) => {
                 let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
                 let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
-                let (_, len) = tvec::get_base_and_len(
-                    bcx, unboxed, vt.vec_ty
-                );
-                test_val = SDiv(bcx, len, vt.llunit_size);
+                let (_, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
+                test_val = len;
                 kind = compare_vec_len;
             }
         }
