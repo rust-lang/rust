@@ -298,10 +298,6 @@ pub mod comm_adapters;
 /// Extension traits
 pub mod extensions;
 
-/// Non-I/O things needed by the I/O module
-// XXX: shouldn this really be pub?
-pub mod support;
-
 /// Basic Timer
 pub mod timer;
 

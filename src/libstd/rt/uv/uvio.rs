@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use c_str::ToCStr;
+use c_str::{ToCStr, CString};
 use cast::transmute;
 use cast;
 use cell::Cell;
@@ -36,7 +36,6 @@ use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use rt::uv::addrinfo::{GetAddrInfoRequest, accum_addrinfo};
 use unstable::sync::Exclusive;
 use path::{GenericPath, Path};
-use super::super::io::support::PathLike;
 use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
           S_IRUSR, S_IWUSR, S_IRWXU};
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
@@ -415,9 +414,9 @@ impl UvIoFactory {
 
 /// Helper for a variety of simple uv_fs_* functions that
 /// have no ret val
-fn uv_fs_helper<P: PathLike>(loop_: &mut Loop, path: &P,
-                             cb: ~fn(&mut FsRequest, &mut Loop, &P,
-                                     ~fn(&FsRequest, Option<UvError>)))
+fn uv_fs_helper(loop_: &mut Loop, path: &CString,
+                cb: ~fn(&mut FsRequest, &mut Loop, &CString,
+                        ~fn(&FsRequest, Option<UvError>)))
         -> Result<(), IoError> {
     let result_cell = Cell::new_empty();
     let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
@@ -553,7 +552,7 @@ impl IoFactory for UvIoFactory {
         ~UvFileStream::new(loop_, fd, close_on_drop, home) as ~RtioFileStream
     }
 
-    fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
+    fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError> {
         let mut flags = match fm {
             Open => 0,
@@ -608,14 +607,14 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+    fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |unlink_req, l, p, cb| {
             do unlink_req.unlink(l, p) |req, err| {
                 cb(req, err)
             };
         }
     }
-    fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError> {
+    fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError> {
         use str::StrSlice;
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<FileStat,
@@ -627,14 +626,13 @@ impl IoFactory for UvIoFactory {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                let path_str = path.path_as_str(|p| p.to_owned());
-                do stat_req.stat(self.uv_loop(), path)
-                      |req,err| {
+                let path_instance = Cell::new(Path::new(path.as_bytes()));
+                do stat_req.stat(self.uv_loop(), path) |req,err| {
                     let res = match err {
                         None => {
                             let stat = req.get_stat();
                             Ok(FileStat {
-                                path: Path::new(path_str.as_slice()),
+                                path: path_instance.take(),
                                 is_file: stat.is_file(),
                                 is_dir: stat.is_dir(),
                                 device: stat.st_dev,
@@ -694,7 +692,7 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
-    fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError> {
         let mode = S_IRWXU as int;
         do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
             do mkdir_req.mkdir(l, p, mode as int) |req, err| {
@@ -702,14 +700,14 @@ impl IoFactory for UvIoFactory {
             };
         }
     }
-    fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+    fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |rmdir_req, l, p, cb| {
             do rmdir_req.rmdir(l, p) |req, err| {
                 cb(req, err)
             };
         }
     }
-    fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
+    fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
         Result<~[Path], IoError> {
         use str::StrSlice;
         let result_cell = Cell::new_empty();
@@ -722,17 +720,14 @@ impl IoFactory for UvIoFactory {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                let path_str = path.path_as_str(|p| p.to_owned());
-                do stat_req.readdir(self.uv_loop(), path, flags)
-                      |req,err| {
+                let path_parent = Cell::new(Path::new(path.as_bytes()));
+                do stat_req.readdir(self.uv_loop(), path, flags) |req,err| {
+                    let parent = path_parent.take();
                     let res = match err {
                         None => {
-                            let rel_paths = req.get_paths();
                             let mut paths = ~[];
-                            for r in rel_paths.iter() {
-                                let mut p = Path::new(path_str.as_slice());
-                                p.push(r.as_slice());
-                                paths.push(p);
+                            do req.each_path |rel_path| {
+                                paths.push(parent.join(rel_path.as_bytes()));
                             }
                             Ok(paths)
                         },
@@ -2417,20 +2412,20 @@ fn file_test_uvio_full_simple_impl() {
         {
             let create_fm = Create;
             let create_fa = ReadWrite;
-            let mut fd = (*io).fs_open(&Path::new(path), create_fm, create_fa).unwrap();
+            let mut fd = (*io).fs_open(&path.to_c_str(), create_fm, create_fa).unwrap();
             let write_buf = write_val.as_bytes();
             fd.write(write_buf);
         }
         {
             let ro_fm = Open;
             let ro_fa = Read;
-            let mut fd = (*io).fs_open(&Path::new(path), ro_fm, ro_fa).unwrap();
+            let mut fd = (*io).fs_open(&path.to_c_str(), ro_fm, ro_fa).unwrap();
             let mut read_vec = [0, .. 1028];
             let nread = fd.read(read_vec).unwrap();
             let read_val = str::from_utf8(read_vec.slice(0, nread as uint));
             assert!(read_val == write_val.to_owned());
         }
-        (*io).fs_unlink(&Path::new(path));
+        (*io).fs_unlink(&path.to_c_str());
     }
 }
 

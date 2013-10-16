@@ -24,7 +24,7 @@ instances as clients.
 
 use prelude::*;
 
-use super::super::support::PathLike;
+use c_str::ToCStr;
 use rt::rtio::{IoFactory, IoFactoryObject, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe, RtioUnixListenerObject};
 use rt::io::pipe::PipeStream;
@@ -59,7 +59,7 @@ impl UnixStream {
     ///     let mut stream = UnixStream::connect(&server);
     ///     stream.write([1, 2, 3]);
     ///
-    pub fn connect<P: PathLike>(path: &P) -> Option<UnixStream> {
+    pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
         let pipe = unsafe {
             let io: *mut IoFactoryObject = Local::unsafe_borrow();
             (*io).unix_connect(path)
@@ -112,7 +112,7 @@ impl UnixListener {
     ///         client.write([1, 2, 3, 4]);
     ///     }
     ///
-    pub fn bind<P: PathLike>(path: &P) -> Option<UnixListener> {
+    pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
         let listener = unsafe {
             let io: *mut IoFactoryObject = Local::unsafe_borrow();
             (*io).unix_bind(path)
