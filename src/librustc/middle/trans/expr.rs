@@ -265,7 +265,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         let unit_ty = ty::sequence_element_type(tcx, datum.ty);
 
         let (bcx, base, len) =
-            datum.get_vec_base_and_byte_len(bcx, expr.span, expr.id, autoderefs+1);
+            datum.get_vec_base_and_len(bcx, expr.span, expr.id, autoderefs+1);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -275,11 +275,8 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
         let scratch = scratch_datum(bcx, slice_ty, "__adjust", false);
 
-        let vt = tvec::vec_types(bcx, datum.ty);
-        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
-
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
-        Store(bcx, unscaled_len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
+        Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
@@ -978,17 +975,14 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
 
         let (bcx, base, len) =
-            base_datum.get_vec_base_and_byte_len(bcx, index_expr.span,
-                                                 index_expr.id, 0);
+            base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id, 0);
 
         debug2!("trans_index: base {}", bcx.val_to_str(base));
         debug2!("trans_index: len {}", bcx.val_to_str(len));
 
-        let unscaled_len = UDiv(bcx, len, vt.llunit_size);
-        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, unscaled_len);
+        let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
         let bcx = do with_cond(bcx, bounds_check) |bcx| {
-            controlflow::trans_fail_bounds_check(bcx, index_expr.span,
-                                                 ix_val, unscaled_len)
+            controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
         };
         let elt = InBoundsGEP(bcx, base, [ix_val]);
         let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
