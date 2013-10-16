@@ -16,14 +16,14 @@
 use prelude::*;
 use super::{Reader, Writer};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{RtioPipe, RtioPipeObject};
+use rt::rtio::RtioPipe;
 
 pub struct PipeStream {
-    priv obj: ~RtioPipeObject
+    priv obj: ~RtioPipe,
 }
 
 impl PipeStream {
-    pub fn new_bound(inner: ~RtioPipeObject) -> PipeStream {
+    pub fn new_bound(inner: ~RtioPipe) -> PipeStream {
         PipeStream { obj: inner }
     }
 }

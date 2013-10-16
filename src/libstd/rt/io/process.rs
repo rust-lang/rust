@@ -16,7 +16,7 @@ use libc;
 use rt::io;
 use rt::io::io_error;
 use rt::local::Local;
-use rt::rtio::{RtioProcess, RtioProcessObject, IoFactoryObject, IoFactory};
+use rt::rtio::{RtioProcess, IoFactoryObject, IoFactory};
 
 // windows values don't matter as long as they're at least one of unix's
 // TERM/KILL/INT signals
@@ -26,7 +26,7 @@ use rt::rtio::{RtioProcess, RtioProcessObject, IoFactoryObject, IoFactory};
 #[cfg(not(windows))] pub static MustDieSignal: int = libc::SIGKILL as int;
 
 pub struct Process {
-    priv handle: ~RtioProcessObject,
+    priv handle: ~RtioProcess,
     io: ~[Option<io::PipeStream>],
 }
 

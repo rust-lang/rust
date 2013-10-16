@@ -13,7 +13,7 @@ use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::local::Local;
-use rt::rtio::{IoFactoryObject, IoFactory, RtioTTYObject, RtioTTY};
+use rt::rtio::{IoFactoryObject, IoFactory, RtioTTY};
 use super::{Reader, Writer, io_error};
 
 /// Creates a new non-blocking handle to the stdin of the current process.
@@ -87,7 +87,7 @@ pub fn println_args(fmt: &fmt::Arguments) {
 
 /// Representation of a reader of a standard input stream
 pub struct StdReader {
-    priv inner: ~RtioTTYObject
+    priv inner: ~RtioTTY
 }
 
 impl StdReader {
@@ -129,7 +129,7 @@ impl Reader for StdReader {
 
 /// Representation of a writer to a standard output stream
 pub struct StdWriter {
-    priv inner: ~RtioTTYObject
+    priv inner: ~RtioTTY
 }
 
 impl StdWriter {

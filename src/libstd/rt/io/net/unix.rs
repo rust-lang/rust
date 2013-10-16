@@ -25,9 +25,8 @@ instances as clients.
 use prelude::*;
 
 use super::super::support::PathLike;
-use rt::rtio::{IoFactory, IoFactoryObject, RtioUnixListenerObject};
-use rt::rtio::{RtioUnixAcceptorObject, RtioPipeObject, RtioUnixListener};
-use rt::rtio::RtioUnixAcceptor;
+use rt::rtio::{IoFactory, IoFactoryObject, RtioUnixListener};
+use rt::rtio::{RtioUnixAcceptor, RtioPipe, RtioUnixListenerObject};
 use rt::io::pipe::PipeStream;
 use rt::io::{io_error, Listener, Acceptor, Reader, Writer};
 use rt::local::Local;
@@ -38,7 +37,7 @@ pub struct UnixStream {
 }
 
 impl UnixStream {
-    fn new(obj: ~RtioPipeObject) -> UnixStream {
+    fn new(obj: ~RtioPipe) -> UnixStream {
         UnixStream { obj: PipeStream::new_bound(obj) }
     }
 
@@ -141,7 +140,7 @@ impl Listener<UnixStream, UnixAcceptor> for UnixListener {
 }
 
 pub struct UnixAcceptor {
-    priv obj: ~RtioUnixAcceptorObject,
+    priv obj: ~RtioUnixAcceptor,
 }
 
 impl Acceptor<UnixStream> for UnixAcceptor {
