@@ -13,6 +13,7 @@ use option::*;
 use result::*;
 use libc::c_int;
 
+use ai = rt::io::net::addrinfo;
 use rt::io::IoError;
 use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
@@ -80,7 +81,8 @@ pub trait IoFactory {
     fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
-    fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError>;
+    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
+                          hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
     fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError>;
     fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;

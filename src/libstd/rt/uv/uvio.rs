@@ -32,8 +32,8 @@ use rt::tube::Tube;
 use rt::task::SchedHome;
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
-use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr, accum_sockaddrs};
-use rt::uv::addrinfo::GetAddrInfoRequest;
+use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
+use rt::uv::addrinfo::{GetAddrInfoRequest, accum_addrinfo};
 use unstable::sync::Exclusive;
 use path::{GenericPath, Path};
 use super::super::io::support::PathLike;
@@ -43,6 +43,7 @@ use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
              CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
              FileStat};
 use task;
+use ai = rt::io::net::addrinfo;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -658,12 +659,16 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError> {
+    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
+                          hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
         let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~[IpAddr], IoError>> = &result_cell;
-        let host_ptr: *&str = &host;
+        let result_cell_ptr: *Cell<Result<~[ai::Info], IoError>> = &result_cell;
+        let host_ptr: *Option<&str> = &host;
+        let servname_ptr: *Option<&str> = &servname;
+        let hint_ptr: *Option<ai::Hint> = &hint;
         let addrinfo_req = GetAddrInfoRequest::new();
         let addrinfo_req_cell = Cell::new(addrinfo_req);
+
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
@@ -671,10 +676,10 @@ impl IoFactory for UvIoFactory {
                 let mut addrinfo_req = addrinfo_req_cell.take();
                 unsafe {
                     do addrinfo_req.getaddrinfo(self.uv_loop(),
-                                                Some(*host_ptr),
-                                                None, None) |_, addrinfo, err| {
+                                                *host_ptr, *servname_ptr,
+                                                *hint_ptr) |_, addrinfo, err| {
                         let res = match err {
-                            None => Ok(accum_sockaddrs(addrinfo).map(|addr| addr.ip.clone())),
+                            None => Ok(accum_addrinfo(addrinfo)),
                             Some(err) => Err(uv_error_to_io_error(err))
                         };
                         (*result_cell_ptr).put_back(res);

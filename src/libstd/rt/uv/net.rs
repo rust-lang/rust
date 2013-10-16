@@ -27,7 +27,7 @@ pub enum UvSocketAddr {
     UvIpv6SocketAddr(*sockaddr_in6),
 }
 
-fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
+pub fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
     unsafe {
         assert!((is_ip4_addr(addr) || is_ip6_addr(addr)));
         assert!(!(is_ip4_addr(addr) && is_ip6_addr(addr)));
@@ -94,28 +94,6 @@ fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T)
 pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {
     use util;
     uv_socket_addr_as_socket_addr(addr, util::id)
-}
-
-// Traverse the addrinfo linked list, producing a vector of Rust socket addresses
-pub fn accum_sockaddrs(addr: &UvAddrInfo) -> ~[SocketAddr] {
-    unsafe {
-        let &UvAddrInfo(addr) = addr;
-        let mut addr = addr;
-
-        let mut addrs = ~[];
-        loop {
-            let uvaddr = sockaddr_to_UvSocketAddr((*addr).ai_addr);
-            let rustaddr = uv_socket_addr_to_socket_addr(uvaddr);
-            addrs.push(rustaddr);
-            if (*addr).ai_next.is_not_null() {
-                addr = (*addr).ai_next;
-            } else {
-                break;
-            }
-        }
-
-        return addrs;
-    }
 }
 
 #[cfg(test)]
@@ -232,13 +210,13 @@ impl StreamWatcher {
             data.connect_cb = Some(cb);
         }
 
-        unsafe {
+        return unsafe {
             static BACKLOG: c_int = 128; // XXX should be configurable
             match uvll::listen(self.native_handle(), BACKLOG, connection_cb) {
                 0 => Ok(()),
                 n => Err(UvError(n))
             }
-        }
+        };
 
         extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
             rtdebug!("connection_cb");
@@ -466,12 +444,12 @@ impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
 }
 
 // uv_connect_t is a subclass of uv_req_t
-struct ConnectRequest(*uvll::uv_connect_t);
+pub struct ConnectRequest(*uvll::uv_connect_t);
 impl Request for ConnectRequest { }
 
 impl ConnectRequest {
 
-    fn new() -> ConnectRequest {
+    pub fn new() -> ConnectRequest {
         let connect_handle = unsafe { malloc_req(UV_CONNECT) };
         assert!(connect_handle.is_not_null());
         ConnectRequest(connect_handle as *uvll::uv_connect_t)
