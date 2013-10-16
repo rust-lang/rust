@@ -18,8 +18,6 @@ use std::cmp::Ord;
 use std::comm::{stream, Port, Chan};
 use std::comm;
 use std::hashmap::HashMap;
-use std::io::ReaderUtil;
-use std::io;
 use std::option;
 use std::os;
 use std::str;
@@ -240,6 +238,6 @@ fn main() {
 
    // now fetch and print result messages
     for (ii, _sz) in sizes.iter().enumerate() {
-      io::println(from_child[ii].recv());
+      println(from_child[ii].recv());
    }
 }

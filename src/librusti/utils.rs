@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+use std::rt::io;
+use std::rt::io::Decorator;
+use std::str;
+
 use syntax::ast;
 use syntax::print::pp;
 use syntax::print::pprust;
@@ -42,11 +45,11 @@ pub fn each_binding(l: @ast::Local, f: &fn(&ast::Path, ast::NodeId)) {
 
 /// A utility function that hands off a pretty printer to a callback.
 pub fn with_pp(intr: @token::ident_interner,
-               cb: &fn(@pprust::ps, @io::Writer)) -> ~str {
-    do io::with_str_writer |writer| {
-        let pp = pprust::rust_printer(writer, intr);
+               cb: &fn(@pprust::ps, @mut io::Writer)) -> ~str {
+    let writer = @mut io::mem::MemWriter::new();
+    let pp = pprust::rust_printer(writer as @mut io::Writer, intr);
 
-        cb(pp, writer);
-        pp::eof(pp.s);
-    }
+    cb(pp, writer as @mut io::Writer);
+    pp::eof(pp.s);
+    str::from_utf8(*writer.inner_ref())
 }

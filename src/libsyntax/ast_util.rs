@@ -962,7 +962,6 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
 mod test {
     use ast::*;
     use super::*;
-    use std::io;
     use opt_vec;
     use std::hashmap::HashMap;
 
@@ -1137,7 +1136,7 @@ mod test {
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
-        io::println("about to run bad test");
+        println("about to run bad test");
         { let sc = unfold_test_sc(~[R(id(a,EMPTY_CTXT),50),
                                     R(id(a,EMPTY_CTXT),51)],
                                   EMPTY_CTXT,&mut t);

@@ -13,13 +13,11 @@
 // rustc --test map_to_str.rs && ./map_to_str
 extern mod extra;
 
-use std::io::{WriterUtil};
-
 fn check_strs(actual: &str, expected: &str) -> bool
 {
     if actual != expected
     {
-        io::stderr().write_line(fmt!("Found %s, but expected %s", actual, expected));
+        println!("Found %s, but expected %s", actual, expected);
         return false;
     }
     return true;

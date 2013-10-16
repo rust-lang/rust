@@ -21,7 +21,6 @@ use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::hashmap::{HashSet, HashMap};
-use std::io;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
@@ -99,7 +98,7 @@ pub fn check_crate(
     visit::walk_crate(bccx, crate, ());
 
     if tcx.sess.borrowck_stats() {
-        io::println("--- borrowck stats ---");
+        println("--- borrowck stats ---");
         println!("paths requiring guarantees: {}",
                  bccx.stats.guaranteed_paths);
         println!("paths requiring loans     : {}",

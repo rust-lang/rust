@@ -22,7 +22,6 @@ extern mod extra;
 
 use std::comm::{Port, Chan, SharedChan};
 use std::comm;
-use std::io;
 use std::os;
 use std::task;
 use std::uint;
@@ -90,10 +89,10 @@ fn run(args: &[~str]) {
     let result = from_child.recv();
     let end = extra::time::precise_time_s();
     let elapsed = end - start;
-    io::stdout().write_str(format!("Count is {:?}\n", result));
-    io::stdout().write_str(format!("Test took {:?} seconds\n", elapsed));
+    print!("Count is {:?}\n", result);
+    print!("Test took {:?} seconds\n", elapsed);
     let thruput = ((size / workers * workers) as f64) / (elapsed as f64);
-    io::stdout().write_str(format!("Throughput={} per sec\n", thruput));
+    print!("Throughput={} per sec\n", thruput);
     assert_eq!(result, num_bytes * size);
 }
 

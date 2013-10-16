@@ -19,8 +19,10 @@ use parse;
 use parse::token::{get_ident_interner};
 use print::pprust;
 
-use std::io;
-use std::result;
+use std::rt::io;
+use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::file::FileInfo;
+use std::str;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -89,28 +91,46 @@ pub fn expand_include(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
-    let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path(file)));
-    match res {
-      result::Ok(res) => {
-          base::MRExpr(cx.expr_str(sp, res.to_managed()))
-      }
-      result::Err(e) => {
-        cx.span_fatal(sp, e);
-      }
+    let file = res_rel_file(cx, sp, &Path(file));
+    let mut error = None;
+    let bytes = do io::read_error::cond.trap(|e| error = Some(e)).inside {
+        file.open_reader(io::Open).read_to_end()
+    };
+    match error {
+        Some(e) => {
+            cx.span_fatal(sp, format!("couldn't read {}: {}",
+                                      file.to_str(), e.desc));
+        }
+        None => {}
+    }
+    match str::from_utf8_owned_opt(bytes) {
+        Some(s) => base::MRExpr(cx.expr_str(sp, s.to_managed())),
+        None => {
+            cx.span_fatal(sp, format!("{} wasn't a utf-8 file", file.to_str()));
+        }
     }
 }
 
 pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
-    match io::read_whole_file(&res_rel_file(cx, sp, &Path(file))) {
-      result::Ok(src) => {
-        let u8_exprs: ~[@ast::Expr] = src.iter().map(|char| cx.expr_u8(sp, *char)).collect();
-        base::MRExpr(cx.expr_vec(sp, u8_exprs))
-      }
-      result::Err(ref e) => {
-        cx.parse_sess().span_diagnostic.handler().fatal((*e))
-      }
+    let file = res_rel_file(cx, sp, &Path(file));
+
+    let mut error = None;
+    let bytes = do io::read_error::cond.trap(|e| error = Some(e)).inside {
+        do io::io_error::cond.trap(|e| error = Some(e)).inside {
+            file.open_reader(io::Open).read_to_end()
+        }
+    };
+    match error {
+        Some(e) => {
+            cx.span_fatal(sp, format!("couldn't read {}: {}",
+                                      file.to_str(), e.desc));
+        }
+        None => {
+            let u8_exprs = bytes.iter().map(|u| cx.expr_u8(sp, *u)).collect();
+            base::MRExpr(cx.expr_vec(sp, u8_exprs))
+        }
     }
 }
 

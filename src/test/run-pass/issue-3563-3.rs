@@ -20,8 +20,6 @@ extern mod extra;
 
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
-use std::io::WriterUtil;
-use std::io;
 use std::str;
 use std::vec;
 
@@ -150,7 +148,7 @@ impl Canvas for AsciiArt {
 // this little helper.
 pub fn check_strs(actual: &str, expected: &str) -> bool {
     if actual != expected {
-        io::stderr().write_line(format!("Found:\n{}\nbut expected\n{}", actual, expected));
+        println!("Found:\n{}\nbut expected\n{}", actual, expected);
         return false;
     }
     return true;

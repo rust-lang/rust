@@ -10,9 +10,6 @@
 
 extern mod extra;
 
-use std::io::WriterUtil;
-use std::io;
-
 enum Token {
         Text(@~str),
         ETag(@~[~str], @~str),
@@ -26,8 +23,7 @@ fn check_strs(actual: &str, expected: &str) -> bool
 {
         if actual != expected
         {
-            io::stderr().write_line(format!("Found {}, but expected {}", actual,
-                                            expected));
+            println!("Found {}, but expected {}", actual, expected);
             return false;
         }
         return true;

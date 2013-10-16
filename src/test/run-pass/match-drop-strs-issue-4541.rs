@@ -2,7 +2,6 @@
 // copying, and moving to ensure that we don't segfault
 // or double-free, as we were wont to do in the past.
 
-use std::io;
 use std::os;
 
 fn parse_args() -> ~str {
@@ -23,5 +22,5 @@ fn parse_args() -> ~str {
 }
 
 pub fn main() {
-    io::println(parse_args());
+    println(parse_args());
 }

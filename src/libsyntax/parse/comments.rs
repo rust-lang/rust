@@ -18,7 +18,8 @@ use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
 
-use std::io;
+use std::rt::io;
+use std::rt::io::extensions::ReaderUtil;
 use std::str;
 use std::uint;
 
@@ -346,9 +347,9 @@ pub struct lit {
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @mut diagnostic::span_handler,
                                     path: @str,
-                                    srdr: @io::Reader)
+                                    mut srdr: &mut io::Reader)
                                  -> (~[cmnt], ~[lit]) {
-    let src = str::from_utf8(srdr.read_whole_stream()).to_managed();
+    let src = str::from_utf8(srdr.read_to_end()).to_managed();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
