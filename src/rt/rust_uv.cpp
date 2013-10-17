@@ -650,3 +650,34 @@ extern "C" int rust_AI_NUMERICHOST()  { return AI_NUMERICHOST; }
 extern "C" int rust_AI_NUMERICSERV()  { return AI_NUMERICSERV; }
 extern "C" int rust_AI_PASSIVE()  { return AI_PASSIVE; }
 extern "C" int rust_AI_V4MAPPED()  { return AI_V4MAPPED; }
+
+extern "C" int
+rust_uv_pipe_open(uv_pipe_t *pipe, int file) {
+    return uv_pipe_open(pipe, file);
+}
+
+extern "C" int
+rust_uv_pipe_bind(uv_pipe_t *pipe, char *name) {
+    return uv_pipe_bind(pipe, name);
+}
+
+extern "C" void
+rust_uv_pipe_connect(uv_connect_t *req, uv_pipe_t *handle,
+                     char *name, uv_connect_cb cb) {
+    uv_pipe_connect(req, handle, name, cb);
+}
+
+extern "C" int
+rust_uv_tty_init(uv_loop_t *loop, uv_tty_t *tty, int fd, int readable) {
+    return uv_tty_init(loop, tty, fd, readable);
+}
+
+extern "C" int
+rust_uv_tty_set_mode(uv_tty_t *tty, int mode) {
+    return uv_tty_set_mode(tty, mode);
+}
+
+extern "C" int
+rust_uv_tty_get_winsize(uv_tty_t *tty, int *width, int *height) {
+    return uv_tty_get_winsize(tty, width, height);
+}

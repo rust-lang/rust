@@ -115,13 +115,6 @@ impl StdReader {
             Err(e) => io_error::cond.raise(e),
         }
     }
-
-    /// Resets the mode of this stream back to its original state.
-    ///
-    /// # Failure
-    ///
-    /// This function cannot fail.
-    pub fn reset_mode(&mut self) { self.inner.reset_mode(); }
 }
 
 impl Reader for StdReader {
@@ -177,13 +170,6 @@ impl StdWriter {
             Err(e) => io_error::cond.raise(e),
         }
     }
-
-    /// Resets the mode of this stream back to its original state.
-    ///
-    /// # Failure
-    ///
-    /// This function cannot fail.
-    pub fn reset_mode(&mut self) { self.inner.reset_mode(); }
 }
 
 impl Writer for StdWriter {

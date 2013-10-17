@@ -186,7 +186,6 @@ pub trait RtioTTY {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
     fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
-    fn reset_mode(&mut self);
     fn get_winsize(&mut self) -> Result<(int, int), IoError>;
 }
 

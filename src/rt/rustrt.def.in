@@ -211,10 +211,9 @@ rust_AI_NUMERICHOST
 rust_AI_NUMERICSERV
 rust_AI_PASSIVE
 rust_AI_V4MAPPED
-uv_pipe_open
-uv_pipe_bind
-uv_pipe_connect
-uv_tty_init
-uv_tty_set_mode
-uv_tty_reset_mode
-uv_tty_get_winsize
+rust_uv_pipe_open
+rust_uv_pipe_bind
+rust_uv_pipe_connect
+rust_uv_tty_init
+rust_uv_tty_set_mode
+rust_uv_tty_get_winsize
