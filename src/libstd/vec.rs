@@ -1186,9 +1186,9 @@ impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
         self.iter().rposition(|x| *x == *t)
     }
 
+    #[inline]
     fn contains(&self, x: &T) -> bool {
-        for elt in self.iter() { if *x == *elt { return true; } }
-        false
+        self.iter().any(|elt| *x == *elt)
     }
 }
 
