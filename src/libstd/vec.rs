@@ -1173,6 +1173,12 @@ pub trait ImmutableEqVector<T:Eq> {
 
     /// Return true if a vector contains an element with the given value
     fn contains(&self, x: &T) -> bool;
+
+    /// Returns true if `needle` is a prefix of the vector.
+    fn starts_with(&self, needle: &[T]) -> bool;
+
+    /// Returns true if `needle` is a suffix of the vector.
+    fn ends_with(&self, needle: &[T]) -> bool;
 }
 
 impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
@@ -1186,9 +1192,21 @@ impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
         self.iter().rposition(|x| *x == *t)
     }
 
+    #[inline]
     fn contains(&self, x: &T) -> bool {
-        for elt in self.iter() { if *x == *elt { return true; } }
-        false
+        self.iter().any(|elt| *x == *elt)
+    }
+
+    #[inline]
+    fn starts_with(&self, needle: &[T]) -> bool {
+        let n = needle.len();
+        self.len() >= n && needle == self.slice_to(n)
+    }
+
+    #[inline]
+    fn ends_with(&self, needle: &[T]) -> bool {
+        let (m, n) = (self.len(), needle.len());
+        m >= n && needle == self.slice_from(m - n)
     }
 }
 
@@ -3827,6 +3845,34 @@ mod tests {
         xs.shrink_to_fit();
         assert_eq!(xs.capacity(), 100);
         assert_eq!(xs, range(0, 100).to_owned_vec());
+    }
+
+    #[test]
+    fn test_starts_with() {
+        assert!(bytes!("foobar").starts_with(bytes!("foo")));
+        assert!(!bytes!("foobar").starts_with(bytes!("oob")));
+        assert!(!bytes!("foobar").starts_with(bytes!("bar")));
+        assert!(!bytes!("foo").starts_with(bytes!("foobar")));
+        assert!(!bytes!("bar").starts_with(bytes!("foobar")));
+        assert!(bytes!("foobar").starts_with(bytes!("foobar")));
+        let empty: &[u8] = [];
+        assert!(empty.starts_with(empty));
+        assert!(!empty.starts_with(bytes!("foo")));
+        assert!(bytes!("foobar").starts_with(empty));
+    }
+
+    #[test]
+    fn test_ends_with() {
+        assert!(bytes!("foobar").ends_with(bytes!("bar")));
+        assert!(!bytes!("foobar").ends_with(bytes!("oba")));
+        assert!(!bytes!("foobar").ends_with(bytes!("foo")));
+        assert!(!bytes!("foo").ends_with(bytes!("foobar")));
+        assert!(!bytes!("bar").ends_with(bytes!("foobar")));
+        assert!(bytes!("foobar").ends_with(bytes!("foobar")));
+        let empty: &[u8] = [];
+        assert!(empty.ends_with(empty));
+        assert!(!empty.ends_with(bytes!("foo")));
+        assert!(bytes!("foobar").ends_with(empty));
     }
 }
 
