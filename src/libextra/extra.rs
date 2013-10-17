@@ -94,7 +94,6 @@ pub mod term;
 pub mod time;
 pub mod arena;
 pub mod base64;
-pub mod rl;
 pub mod workcache;
 pub mod enum_set;
 #[path="num/bigint.rs"]

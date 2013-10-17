@@ -17,7 +17,6 @@ rt/sync            - Concurrency utils
 rt/util            - Small utility classes for the runtime.
 rt/vg              - Valgrind headers
 rt/msvc            - MSVC support
-rt/linenoise       - a readline-like line editing library
 
 test/              Testsuite
 test/compile-fail  - Tests that should fail to compile

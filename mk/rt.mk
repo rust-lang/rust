@@ -96,9 +96,7 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
-RUNTIME_CS_$(1)_$(2) := rt/linenoise/linenoise.c \
-			rt/linenoise/utf8.c \
-			rt/sundown/src/autolink.c \
+RUNTIME_CS_$(1)_$(2) := rt/sundown/src/autolink.c \
 			rt/sundown/src/buffer.c \
 			rt/sundown/src/stack.c \
 			rt/sundown/src/markdown.c \
@@ -116,7 +114,6 @@ RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
 RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1)) \
-                     -I $$(S)src/rt/linenoise \
                      -I $$(S)src/rt/sundown/src \
                      -I $$(S)src/rt/sundown/html \
                      -I $$(S)src/libuv/include
