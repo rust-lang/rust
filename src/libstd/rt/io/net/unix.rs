@@ -26,7 +26,7 @@ use prelude::*;
 
 use c_str::ToCStr;
 use rt::rtio::{IoFactory, RtioUnixListener, with_local_io};
-use rt::rtio::{RtioUnixAcceptor, RtioPipe, RtioUnixListenerObject};
+use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use rt::io::pipe::PipeStream;
 use rt::io::{io_error, Listener, Acceptor, Reader, Writer};
 
@@ -82,7 +82,7 @@ impl Writer for UnixStream {
 }
 
 pub struct UnixListener {
-    priv obj: ~RtioUnixListenerObject,
+    priv obj: ~RtioUnixListener,
 }
 
 impl UnixListener {

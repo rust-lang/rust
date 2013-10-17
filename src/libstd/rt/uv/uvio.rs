@@ -493,12 +493,12 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError> {
+    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError> {
         let mut watcher = TcpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => {
                 let home = get_handle_to_current_scheduler!();
-                Ok(~UvTcpListener::new(watcher, home))
+                Ok(~UvTcpListener::new(watcher, home) as ~RtioTcpListener)
             }
             Err(uverr) => {
                 do task::unkillable { // FIXME(#8674)
@@ -804,13 +804,13 @@ impl IoFactory for UvIoFactory {
     }
 
     fn unix_bind(&mut self, path: &CString) ->
-        Result<~RtioUnixListenerObject, IoError> {
+        Result<~RtioUnixListener, IoError> {
         let mut pipe = Pipe::new(self.uv_loop(), false);
         match pipe.bind(path) {
             Ok(()) => {
                 let handle = get_handle_to_current_scheduler!();
                 let pipe = UvUnboundPipe::new(pipe, handle);
-                Ok(~UvUnixListener::new(pipe))
+                Ok(~UvUnixListener::new(pipe) as ~RtioUnixListener)
             }
             Err(e) => {
                 let scheduler: ~Scheduler = Local::take();
@@ -919,7 +919,7 @@ impl RtioSocket for UvTcpListener {
 }
 
 impl RtioTcpListener for UvTcpListener {
-    fn listen(self) -> Result<~RtioTcpAcceptor, IoError> {
+    fn listen(~self) -> Result<~RtioTcpAcceptor, IoError> {
         do self.home_for_io_consume |self_| {
             let acceptor = ~UvTcpAcceptor::new(self_);
             let incoming = Cell::new(acceptor.incoming.clone());
@@ -1717,7 +1717,7 @@ impl UvUnixListener {
 }
 
 impl RtioUnixListener for UvUnixListener {
-    fn listen(self) -> Result<~RtioUnixAcceptor, IoError> {
+    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError> {
         do self.home_for_io_consume |self_| {
             let acceptor = ~UvUnixAcceptor::new(self_);
             let incoming = Cell::new(acceptor.incoming.clone());
