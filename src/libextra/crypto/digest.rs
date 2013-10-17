@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Common functionality related to cryptographic digest functions
+
 use std::vec;
 
 use hex::ToHex;

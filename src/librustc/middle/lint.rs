@@ -955,6 +955,11 @@ impl Visitor<()> for MissingDocLintVisitor {
                                  ~"missing documentation for a function");
             }
 
+            ast::item_mod(*) if it.vis == ast::public => {
+                self.check_attrs(it.attrs, it.id, it.span,
+                                 ~"missing documentation for a module");
+            }
+
             ast::item_enum(ref edef, _) if it.vis == ast::public => {
                 self.check_attrs(it.attrs, it.id, it.span,
                                  ~"missing documentation for an enum");

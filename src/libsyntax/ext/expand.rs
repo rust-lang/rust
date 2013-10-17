@@ -991,6 +991,7 @@ pub fn std_macros() -> @str {
             pub mod $c {
                 #[allow(unused_imports)];
                 #[allow(non_uppercase_statics)];
+                #[allow(missing_doc)];
 
                 use super::*;
 

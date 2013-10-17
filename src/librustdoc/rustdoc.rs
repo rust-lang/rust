@@ -24,6 +24,7 @@ extern mod rustc;
 extern mod extra;
 
 use std::cell::Cell;
+use std::local_data;
 use std::rt::io::Writer;
 use std::rt::io::file::FileInfo;
 use std::rt::io;
@@ -73,6 +74,7 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
 ];
 
 local_data_key!(pub ctxtkey: @core::DocContext)
+local_data_key!(pub analysiskey: core::CrateAnalysis)
 
 type Output = (clean::Crate, ~[plugins::PluginJson]);
 
@@ -191,11 +193,12 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let libs = Cell::new(matches.opt_strs("L").map(|s| Path::new(s.as_slice())));
     let cr = Cell::new(Path::new(cratefile));
     info2!("starting to run rustc");
-    let crate = do std::task::try {
+    let (crate, analysis) = do std::task::try {
         let cr = cr.take();
         core::run_core(libs.take(), &cr)
     }.unwrap();
     info2!("finished with rustc");
+    local_data::set(analysiskey, analysis);
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.

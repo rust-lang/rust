@@ -135,6 +135,7 @@ impl<T> Clone for @[T] {
 }
 
 #[cfg(not(test))]
+#[allow(missing_doc)]
 pub mod traits {
     use at_vec::append;
     use clone::Clone;
@@ -152,6 +153,7 @@ pub mod traits {
 #[cfg(test)]
 pub mod traits {}
 
+#[allow(missing_doc)]
 pub mod raw {
     use at_vec::capacity;
     use cast;
