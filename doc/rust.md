@@ -975,7 +975,7 @@ with `int`, and require the closure parameter to have type
 The type parameters can also be explicitly supplied in a trailing
 [path](#paths) component after the function name. This might be necessary
 if there is not sufficient context to determine the type parameters. For
-example, `sys::size_of::<u32>() == 4`.
+example, `mem::size_of::<u32>() == 4`.
 
 Since a parameter type is opaque to the generic function, the set of
 operations that can be performed on it is limited. Values of parameter

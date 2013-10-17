@@ -425,7 +425,7 @@ mod tests {
     use super::{Exclusive, UnsafeArc, atomically};
     use task;
     use util;
-    use sys::size_of;
+    use mem::size_of;
 
     //#[unsafe_no_drop_flag] FIXME: #9758
     #[ignore]

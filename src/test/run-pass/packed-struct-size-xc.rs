@@ -3,8 +3,8 @@
 
 extern mod packed;
 
-use std::sys;
+use std::mem;
 
 fn main() {
-    assert_eq!(sys::size_of::<packed::S>(), 5);
+    assert_eq!(mem::size_of::<packed::S>(), 5);
 }
