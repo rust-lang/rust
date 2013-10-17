@@ -18,6 +18,8 @@ use lib;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::expr::*;
+use middle::trans::type_of::*;
 use middle::ty;
 
 use middle::trans::type_::Type;
@@ -30,34 +32,15 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
     let mut bcx = bcx;
     let mut constraints = ~[];
     let mut cleanups = ~[];
-    let mut aoutputs = ~[];
+    let mut output_types = ~[];
 
     // Prepare the output operands
     let outputs = do ia.outputs.map |&(c, out)| {
         constraints.push(c);
 
-        aoutputs.push(unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx,
-                                   expr_ty(bcx, out),
-                                   ty::ByCopy,
-                                   out,
-                                   &mut cleanups,
-                                   callee::DontAutorefArg)
-        }));
-
-        let e = match out.node {
-            ast::ExprAddrOf(_, e) => e,
-            _ => fail2!("Expression must be addr of")
-        };
-
-        unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx,
-                                   expr_ty(bcx, e),
-                                   ty::ByCopy,
-                                   e,
-                                   &mut cleanups,
-                                   callee::DontAutorefArg)
-        })
+        let out_datum = unpack_datum!(bcx, trans_to_datum(bcx, out));
+        output_types.push(type_of(bcx.ccx(), out_datum.ty));
+        out_datum.val
 
     };
 
@@ -92,7 +75,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         clobbers = format!("{},{}", ia.clobbers, clobbers);
     } else {
         clobbers.push_str(ia.clobbers);
-    };
+    }
 
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
@@ -107,12 +90,12 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
     let numOutputs = outputs.len();
 
     // Depending on how many outputs we have, the return type is different
-    let output = if numOutputs == 0 {
+    let output_type = if numOutputs == 0 {
         Type::void()
     } else if numOutputs == 1 {
-        val_ty(outputs[0])
+        output_types[0]
     } else {
-        Type::struct_(outputs.map(|o| val_ty(*o)), false)
+        Type::struct_(output_types, false)
     };
 
     let dialect = match ia.dialect {
@@ -122,19 +105,17 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
 
     let r = do ia.asm.with_c_str |a| {
         do constraints.with_c_str |c| {
-            InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, dialect)
+            InlineAsmCall(bcx, a, c, inputs, output_type, ia.volatile, ia.alignstack, dialect)
         }
     };
 
     // Again, based on how many outputs we have
     if numOutputs == 1 {
-        let op = PointerCast(bcx, aoutputs[0], val_ty(outputs[0]).ptr_to());
-        Store(bcx, r, op);
+        Store(bcx, r, outputs[0]);
     } else {
-        for (i, o) in aoutputs.iter().enumerate() {
+        for (i, o) in outputs.iter().enumerate() {
             let v = ExtractValue(bcx, r, i);
-            let op = PointerCast(bcx, *o, val_ty(outputs[i]).ptr_to());
-            Store(bcx, v, op);
+            Store(bcx, v, *o);
         }
     }
 
