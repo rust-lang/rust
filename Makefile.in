@@ -440,7 +440,6 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	$$(HBIN$(1)_H_$(3))/rusti$$(X_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
