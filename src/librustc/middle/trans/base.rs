@@ -2226,6 +2226,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                              [path_name(item.ident)]),
                 decl,
                 body,
+                item.attrs,
                 llfndecl,
                 item.id);
         } else if !generics.is_type_parameterized() {

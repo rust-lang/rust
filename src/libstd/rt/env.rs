@@ -17,7 +17,7 @@ use os;
 // Note that these are all accessed without any synchronization.
 // They are expected to be initialized once then left alone.
 
-static mut MIN_STACK: uint = 2000000;
+static mut MIN_STACK: uint = 4000000;
 static mut DEBUG_BORROW: bool = false;
 
 pub fn init() {
