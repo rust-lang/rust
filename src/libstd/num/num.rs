@@ -861,7 +861,7 @@ impl_from_primitive!(f64, n.to_f64())
 /// # Example
 ///
 /// ```
-/// let twenty: f32 = num::cast(0x14);
+/// let twenty: f32 = num::cast(0x14).unwrap();
 /// assert_eq!(twenty, 20f32);
 /// ```
 ///
