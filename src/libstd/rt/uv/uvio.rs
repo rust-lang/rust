@@ -1829,10 +1829,6 @@ impl RtioTTY for UvTTY {
         }
     }
 
-    fn reset_mode(&mut self) {
-        do self.home_for_io |self_| { self_.tty.reset_mode() }
-    }
-
     fn get_winsize(&mut self) -> Result<(int, int), IoError> {
         do self.home_for_io |self_| {
             match self_.tty.get_winsize() {

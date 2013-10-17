@@ -959,6 +959,33 @@ pub unsafe fn freeaddrinfo(ai: *addrinfo) {
     #[fixed_stack_segment]; #[inline(never)];
     rust_uv_freeaddrinfo(ai);
 }
+pub unsafe fn pipe_open(pipe: *uv_pipe_t, file: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_pipe_open(pipe, file)
+}
+pub unsafe fn pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_pipe_bind(pipe, name)
+}
+pub unsafe fn pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
+                           name: *c_char, cb: uv_connect_cb) {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_pipe_connect(req, handle, name, cb)
+}
+pub unsafe fn tty_init(loop_ptr: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
+                       readable: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_tty_init(loop_ptr, tty, fd, readable)
+}
+pub unsafe fn tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_tty_set_mode(tty, mode)
+}
+pub unsafe fn tty_get_winsize(tty: *uv_tty_t, width: *c_int,
+                              height: *c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_tty_get_winsize(tty, width, height)
+}
 
 pub struct uv_err_data {
     priv err_name: ~str,
@@ -1104,16 +1131,15 @@ extern {
                                        stream: *uv_stream_t);
     fn rust_uv_pipe_init(loop_ptr: *c_void, p: *uv_pipe_t, ipc: c_int) -> c_int;
 
-    pub fn uv_pipe_open(pipe: *uv_pipe_t, file: c_int) -> c_int;
-    pub fn uv_pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int;
-    pub fn uv_pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
-                           name: *c_char, cb: uv_connect_cb);
-    pub fn uv_tty_init(loop_ptr: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
-                       readable: c_int) -> c_int;
-    pub fn uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int;
-    pub fn uv_tty_reset_mode(tty: *uv_tty_t);
-    pub fn uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
-                              height: *c_int) -> c_int;
+    fn rust_uv_pipe_open(pipe: *uv_pipe_t, file: c_int) -> c_int;
+    fn rust_uv_pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int;
+    fn rust_uv_pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
+                            name: *c_char, cb: uv_connect_cb);
+    fn rust_uv_tty_init(loop_ptr: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
+                        readable: c_int) -> c_int;
+    fn rust_uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int;
+    fn rust_uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
+                               height: *c_int) -> c_int;
 
     // These should all really be constants...
     #[rust_stack] pub fn rust_SOCK_STREAM() -> c_int;

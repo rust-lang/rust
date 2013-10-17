@@ -29,8 +29,8 @@ impl TTY {
         assert!(handle.is_not_null());
 
         let ret = unsafe {
-            uvll::uv_tty_init(loop_.native_handle(), handle, fd as libc::c_int,
-                              readable as libc::c_int)
+            uvll::tty_init(loop_.native_handle(), handle, fd as libc::c_int,
+                           readable as libc::c_int)
         };
         match ret {
             0 => {
@@ -52,15 +52,10 @@ impl TTY {
     #[fixed_stack_segment] #[inline(never)]
     pub fn set_mode(&self, raw: bool) -> Result<(), uv::UvError> {
         let raw = raw as libc::c_int;
-        match unsafe { uvll::uv_tty_set_mode(self.native_handle(), raw) } {
+        match unsafe { uvll::tty_set_mode(self.native_handle(), raw) } {
             0 => Ok(()),
             n => Err(uv::UvError(n))
         }
-    }
-
-    #[fixed_stack_segment] #[inline(never)]
-    pub fn reset_mode(&self) {
-        unsafe { uvll::uv_tty_reset_mode(self.native_handle()) }
     }
 
     #[fixed_stack_segment] #[inline(never)] #[allow(unused_mut)]
@@ -70,8 +65,8 @@ impl TTY {
         let widthptr: *libc::c_int = &width;
         let heightptr: *libc::c_int = &width;
 
-        match unsafe { uvll::uv_tty_get_winsize(self.native_handle(),
-                                                widthptr, heightptr) } {
+        match unsafe { uvll::tty_get_winsize(self.native_handle(),
+                                             widthptr, heightptr) } {
             0 => Ok((width as int, height as int)),
             n => Err(uv::UvError(n))
         }

@@ -40,7 +40,7 @@ impl Pipe {
 
     #[fixed_stack_segment] #[inline(never)]
     pub fn open(&mut self, file: libc::c_int) -> Result<(), uv::UvError> {
-        match unsafe { uvll::uv_pipe_open(self.native_handle(), file) } {
+        match unsafe { uvll::pipe_open(self.native_handle(), file) } {
             0 => Ok(()),
             n => Err(uv::UvError(n))
         }
@@ -49,7 +49,7 @@ impl Pipe {
     #[fixed_stack_segment] #[inline(never)]
     pub fn bind(&mut self, name: &CString) -> Result<(), uv::UvError> {
         do name.with_ref |name| {
-            match unsafe { uvll::uv_pipe_bind(self.native_handle(), name) } {
+            match unsafe { uvll::pipe_bind(self.native_handle(), name) } {
                 0 => Ok(()),
                 n => Err(uv::UvError(n))
             }
@@ -68,10 +68,10 @@ impl Pipe {
         let name = do name.with_ref |p| { p };
 
         unsafe {
-            uvll::uv_pipe_connect(connect.native_handle(),
-                                  self.native_handle(),
-                                  name,
-                                  connect_cb)
+            uvll::pipe_connect(connect.native_handle(),
+                               self.native_handle(),
+                               name,
+                               connect_cb)
         }
 
         extern "C" fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {
