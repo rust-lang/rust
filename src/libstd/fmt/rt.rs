@@ -34,16 +34,6 @@ pub struct Argument<'self> {
     method: Option<&'self Method<'self>>
 }
 
-#[cfg(stage0)]
-pub struct FormatSpec {
-    fill: char,
-    align: parse::Alignment,
-    flags: uint,
-    precision: parse::Count,
-    width: parse::Count,
-}
-
-#[cfg(not(stage0))]
 pub struct FormatSpec {
     fill: char,
     align: parse::Alignment,
@@ -52,7 +42,6 @@ pub struct FormatSpec {
     width: Count,
 }
 
-#[cfg(not(stage0))]
 pub enum Count {
     CountIs(uint), CountIsParam(uint), CountIsNextParam, CountImplied,
 }

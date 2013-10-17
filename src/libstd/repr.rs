@@ -367,16 +367,6 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         }
     }
 
-    #[cfg(stage0)]
-    fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<raw::Slice<()>> |this, s| {
-            this.writer.write(['&' as u8]);
-            this.write_mut_qualifier(mtbl);
-            this.write_vec_range(s.data, s.len, inner);
-        }
-    }
-
-    #[cfg(not(stage0))]
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Slice<()>> |this, s| {
             this.writer.write(['&' as u8]);
