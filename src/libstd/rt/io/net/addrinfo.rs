@@ -19,10 +19,9 @@ getaddrinfo()
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::io_error;
+use rt::io::{io_error};
 use rt::io::net::ip::{SocketAddr, IpAddr};
-use rt::rtio::{IoFactory, IoFactoryObject};
-use rt::local::Local;
+use rt::rtio::{IoFactory, with_local_io};
 
 /// Hints to the types of sockets that are desired when looking up hosts
 pub enum SocketType {
@@ -94,16 +93,13 @@ pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
 /// On failure, this will raise on the `io_error` condition.
 pub fn lookup(hostname: Option<&str>, servname: Option<&str>,
               hint: Option<Hint>) -> Option<~[Info]> {
-    let ipaddrs = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).get_host_addresses(hostname, servname, hint)
-    };
-
-    match ipaddrs {
-        Ok(i) => Some(i),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+    do with_local_io |io| {
+        match io.get_host_addresses(hostname, servname, hint) {
+            Ok(i) => Some(i),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }

@@ -905,6 +905,7 @@ mod test {
     use cell::Cell;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
+    use rt::rtio::EventLoop;
     use rt::util;
     use option::{Some};
 
@@ -1020,7 +1021,7 @@ mod test {
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
-                ~UvEventLoop::new(),
+                ~UvEventLoop::new() as ~EventLoop,
                 normal_queue,
                 queues.clone(),
                 sleepers.clone());
@@ -1031,7 +1032,7 @@ mod test {
 
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
-                ~UvEventLoop::new(),
+                ~UvEventLoop::new() as ~EventLoop,
                 special_queue.clone(),
                 queues.clone(),
                 sleepers.clone(),
@@ -1202,7 +1203,7 @@ mod test {
                 let queues = ~[queue.clone()];
 
                 let mut sched = ~Scheduler::new(
-                    ~UvEventLoop::new(),
+                    ~UvEventLoop::new() as ~EventLoop,
                     queue,
                     queues.clone(),
                     sleepers.clone());

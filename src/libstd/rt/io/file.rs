@@ -34,12 +34,11 @@ use prelude::*;
 use c_str::ToCStr;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write};
-use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
+use rt::rtio::{RtioFileStream, IoFactory, with_local_io};
 use rt::io::{io_error, read_error, EndOfFile,
             FileMode, FileAccess, FileStat, IoError,
             PathAlreadyExists, PathDoesntExist,
             MismatchedFileTypeForOperation, ignore_io_error};
-use rt::local::Local;
 use option::{Some, None};
 use path::Path;
 
@@ -90,19 +89,17 @@ use path::Path;
 pub fn open<P: ToCStr>(path: &P,
                        mode: FileMode,
                        access: FileAccess
-                       ) -> Option<FileStream> {
-    let open_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_open(&path.to_c_str(), mode, access)
-    };
-    match open_result {
-        Ok(fd) => Some(FileStream {
-            fd: fd,
-            last_nread: -1
-        }),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+                      ) -> Option<FileStream> {
+    do with_local_io |io| {
+        match io.fs_open(&path.to_c_str(), mode, access) {
+            Ok(fd) => Some(FileStream {
+                fd: fd,
+                last_nread: -1
+            }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }
@@ -129,16 +126,15 @@ pub fn open<P: ToCStr>(path: &P,
 /// This function will raise an `io_error` condition if the user lacks permissions to
 /// remove the file or if some other filesystem-level error occurs
 pub fn unlink<P: ToCStr>(path: &P) {
-    let unlink_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_unlink(&path.to_c_str())
-    };
-    match unlink_result {
-        Ok(_) => (),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
+    do with_local_io |io| {
+        match io.fs_unlink(&path.to_c_str()) {
+            Ok(_) => Some(()),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
-    }
+    };
 }
 
 /// Create a new, empty directory at the provided path
@@ -158,16 +154,15 @@ pub fn unlink<P: ToCStr>(path: &P) {
 /// This call will raise an `io_error` condition if the user lacks permissions to make a
 /// new directory at the provided path, or if the directory already exists
 pub fn mkdir<P: ToCStr>(path: &P) {
-    let mkdir_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_mkdir(&path.to_c_str())
-    };
-    match mkdir_result {
-        Ok(_) => (),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
+    do with_local_io |io| {
+        match io.fs_mkdir(&path.to_c_str()) {
+            Ok(_) => Some(()),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
-    }
+    };
 }
 
 /// Remove an existing, empty directory
@@ -187,16 +182,15 @@ pub fn mkdir<P: ToCStr>(path: &P) {
 /// This call will raise an `io_error` condition if the user lacks permissions to remove the
 /// directory at the provided path, or if the directory isn't empty
 pub fn rmdir<P: ToCStr>(path: &P) {
-    let rmdir_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_rmdir(&path.to_c_str())
-    };
-    match rmdir_result {
-        Ok(_) => (),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
+    do with_local_io |io| {
+        match io.fs_rmdir(&path.to_c_str()) {
+            Ok(_) => Some(()),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
-    }
+    };
 }
 
 /// Get information on the file, directory, etc at the provided path
@@ -235,17 +229,13 @@ pub fn rmdir<P: ToCStr>(path: &P) {
 /// permissions to perform a `stat` call on the given path or if there is no
 /// entry in the filesystem at the provided path.
 pub fn stat<P: ToCStr>(path: &P) -> Option<FileStat> {
-    let open_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_stat(&path.to_c_str())
-    };
-    match open_result {
-        Ok(p) => {
-            Some(p)
-        },
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+    do with_local_io |io| {
+        match io.fs_stat(&path.to_c_str()) {
+            Ok(p) => Some(p),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }
@@ -275,17 +265,13 @@ pub fn stat<P: ToCStr>(path: &P) -> Option<FileStat> {
 /// the process lacks permissions to view the contents or if the `path` points
 /// at a non-directory file
 pub fn readdir<P: ToCStr>(path: &P) -> Option<~[Path]> {
-    let readdir_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_readdir(&path.to_c_str(), 0)
-    };
-    match readdir_result {
-        Ok(p) => {
-            Some(p)
-        },
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+    do with_local_io |io| {
+        match io.fs_readdir(&path.to_c_str(), 0) {
+            Ok(p) => Some(p),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }

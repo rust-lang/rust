@@ -369,7 +369,8 @@ pub enum IoErrorKind {
     BrokenPipe,
     PathAlreadyExists,
     PathDoesntExist,
-    MismatchedFileTypeForOperation
+    MismatchedFileTypeForOperation,
+    IoUnavailable,
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -389,7 +390,8 @@ impl ToStr for IoErrorKind {
             BrokenPipe => ~"BrokenPipe",
             PathAlreadyExists => ~"PathAlreadyExists",
             PathDoesntExist => ~"PathDoesntExist",
-            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation"
+            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation",
+            IoUnavailable => ~"IoUnavailable",
         }
     }
 }

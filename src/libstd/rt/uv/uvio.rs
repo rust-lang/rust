@@ -18,7 +18,6 @@ use ops::Drop;
 use option::*;
 use ptr;
 use str;
-use str::Str;
 use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
@@ -234,8 +233,8 @@ impl EventLoop for UvEventLoop {
         ~UvRemoteCallback::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> {
-        Some(&mut self.uvio as &mut IoFactory)
+    fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory)) {
+        f(&mut self.uvio as &mut IoFactory)
     }
 }
 
@@ -245,7 +244,7 @@ pub struct UvPausibleIdleCallback {
     priv closed: bool
 }
 
-impl RtioPausibleIdleCallback for UvPausibleIdleCallback {
+impl PausibleIdleCallback for UvPausibleIdleCallback {
     #[inline]
     fn start(&mut self, f: ~fn()) {
         do self.watcher.start |_idle_watcher, _status| {
@@ -626,7 +625,9 @@ impl IoFactory for UvIoFactory {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                let path_instance = Cell::new(Path::new(path.as_bytes()));
+                // Don't pick up the null byte
+                let slice = path.as_bytes().slice(0, path.len());
+                let path_instance = Cell::new(Path::new(slice));
                 do stat_req.stat(self.uv_loop(), path) |req,err| {
                     let res = match err {
                         None => {
@@ -720,14 +721,17 @@ impl IoFactory for UvIoFactory {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                let path_parent = Cell::new(Path::new(path.as_bytes()));
+                // Don't pick up the null byte
+                let slice = path.as_bytes().slice(0, path.len());
+                let path_parent = Cell::new(Path::new(slice));
                 do stat_req.readdir(self.uv_loop(), path, flags) |req,err| {
                     let parent = path_parent.take();
                     let res = match err {
                         None => {
                             let mut paths = ~[];
                             do req.each_path |rel_path| {
-                                paths.push(parent.join(rel_path.as_bytes()));
+                                let p = rel_path.as_bytes();
+                                paths.push(parent.join(p.slice_to(rel_path.len())));
                             }
                             Ok(paths)
                         },
@@ -799,10 +803,10 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn unix_bind<P: PathLike>(&mut self, path: &P) ->
+    fn unix_bind(&mut self, path: &CString) ->
         Result<~RtioUnixListenerObject, IoError> {
         let mut pipe = Pipe::new(self.uv_loop(), false);
-        match pipe.bind(&path.path_as_str(|s| s.to_c_str())) {
+        match pipe.bind(path) {
             Ok(()) => {
                 let handle = get_handle_to_current_scheduler!();
                 let pipe = UvUnboundPipe::new(pipe, handle);
@@ -823,9 +827,7 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn unix_connect<P: PathLike>(&mut self, path: &P) ->
-        Result<~RtioPipe, IoError>
-    {
+    fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError> {
         let scheduler: ~Scheduler = Local::take();
         let mut pipe = Pipe::new(self.uv_loop(), false);
         let result_cell = Cell::new_empty();
@@ -833,8 +835,7 @@ impl IoFactory for UvIoFactory {
 
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
-            let cstr = do path.path_as_str |s| { s.to_c_str() };
-            do pipe.connect(&cstr) |stream, err| {
+            do pipe.connect(path) |stream, err| {
                 let res = match err {
                     None => {
                         let handle = stream.native_handle();
@@ -1841,13 +1842,22 @@ impl RtioTTY for UvTTY {
     }
 }
 
+// this function is full of lies
+unsafe fn local_io() -> &'static mut IoFactory {
+    do Local::borrow |sched: &mut Scheduler| {
+        let mut io = None;
+        sched.event_loop.io(|i| io = Some(i));
+        cast::transmute(io.unwrap())
+    }
+}
+
 #[test]
 fn test_simple_io_no_connect() {
     do run_in_mt_newsched_task {
         unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
+            let io = local_io();
             let addr = next_test_ip4();
-            let maybe_chan = (*io).tcp_connect(addr);
+            let maybe_chan = io.tcp_connect(addr);
             assert!(maybe_chan.is_err());
         }
     }
@@ -1857,9 +1867,9 @@ fn test_simple_io_no_connect() {
 fn test_simple_udp_io_bind_only() {
     do run_in_mt_newsched_task {
         unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
+            let io = local_io();
             let addr = next_test_ip4();
-            let maybe_socket = (*io).udp_bind(addr);
+            let maybe_socket = io.udp_bind(addr);
             assert!(maybe_socket.is_ok());
         }
     }
@@ -1878,9 +1888,11 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
         let work_queue2 = WorkQueue::new();
         let queues = ~[work_queue1.clone(), work_queue2.clone()];
 
-        let mut sched1 = ~Scheduler::new(~UvEventLoop::new(), work_queue1, queues.clone(),
+        let loop1 = ~UvEventLoop::new() as ~EventLoop;
+        let mut sched1 = ~Scheduler::new(loop1, work_queue1, queues.clone(),
                                          sleepers.clone());
-        let mut sched2 = ~Scheduler::new(~UvEventLoop::new(), work_queue2, queues.clone(),
+        let loop2 = ~UvEventLoop::new() as ~EventLoop;
+        let mut sched2 = ~Scheduler::new(loop2, work_queue2, queues.clone(),
                                          sleepers.clone());
 
         let handle1 = Cell::new(sched1.make_handle());
@@ -1894,11 +1906,9 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
         };
 
         let test_function: ~fn() = || {
-            let io: *mut IoFactoryObject = unsafe {
-                Local::unsafe_borrow()
-            };
+            let io = unsafe { local_io() };
             let addr = next_test_ip4();
-            let maybe_socket = unsafe { (*io).udp_bind(addr) };
+            let maybe_socket = io.udp_bind(addr);
             // this socket is bound to this event loop
             assert!(maybe_socket.is_ok());
 
@@ -1957,9 +1967,11 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
         let work_queue2 = WorkQueue::new();
         let queues = ~[work_queue1.clone(), work_queue2.clone()];
 
-        let mut sched1 = ~Scheduler::new(~UvEventLoop::new(), work_queue1, queues.clone(),
+        let loop1 = ~UvEventLoop::new() as ~EventLoop;
+        let mut sched1 = ~Scheduler::new(loop1, work_queue1, queues.clone(),
                                          sleepers.clone());
-        let mut sched2 = ~Scheduler::new(~UvEventLoop::new(), work_queue2, queues.clone(),
+        let loop2 = ~UvEventLoop::new() as ~EventLoop;
+        let mut sched2 = ~Scheduler::new(loop2, work_queue2, queues.clone(),
                                          sleepers.clone());
 
         let handle1 = Cell::new(sched1.make_handle());
@@ -1970,11 +1982,9 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
         let chan = Cell::new(chan);
 
         let body1: ~fn() = || {
-            let io: *mut IoFactoryObject = unsafe {
-                Local::unsafe_borrow()
-            };
+            let io = unsafe { local_io() };
             let addr = next_test_ip4();
-            let socket = unsafe { (*io).udp_bind(addr) };
+            let socket = io.udp_bind(addr);
             assert!(socket.is_ok());
             chan.take().send(socket);
         };
@@ -2028,8 +2038,8 @@ fn test_simple_tcp_server_and_client() {
         // Start the server first so it's listening when we connect
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let listener = (*io).tcp_bind(addr).unwrap();
+                let io = local_io();
+                let listener = io.tcp_bind(addr).unwrap();
                 let mut acceptor = listener.listen().unwrap();
                 chan.take().send(());
                 let mut stream = acceptor.accept().unwrap();
@@ -2046,8 +2056,8 @@ fn test_simple_tcp_server_and_client() {
         do spawntask {
             unsafe {
                 port.take().recv();
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let io = local_io();
+                let mut stream = io.tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             }
         }
@@ -2071,9 +2081,11 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         let client_work_queue = WorkQueue::new();
         let queues = ~[server_work_queue.clone(), client_work_queue.clone()];
 
-        let mut server_sched = ~Scheduler::new(~UvEventLoop::new(), server_work_queue,
+        let sloop = ~UvEventLoop::new() as ~EventLoop;
+        let mut server_sched = ~Scheduler::new(sloop, server_work_queue,
                                                queues.clone(), sleepers.clone());
-        let mut client_sched = ~Scheduler::new(~UvEventLoop::new(), client_work_queue,
+        let cloop = ~UvEventLoop::new() as ~EventLoop;
+        let mut client_sched = ~Scheduler::new(cloop, client_work_queue,
                                                queues.clone(), sleepers.clone());
 
         let server_handle = Cell::new(server_sched.make_handle());
@@ -2090,8 +2102,8 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         };
 
         let server_fn: ~fn() = || {
-            let io: *mut IoFactoryObject = unsafe { Local::unsafe_borrow() };
-            let listener = unsafe { (*io).tcp_bind(server_addr).unwrap() };
+            let io = unsafe { local_io() };
+            let listener = io.tcp_bind(server_addr).unwrap();
             let mut acceptor = listener.listen().unwrap();
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
@@ -2103,12 +2115,10 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         };
 
         let client_fn: ~fn() = || {
-            let io: *mut IoFactoryObject = unsafe {
-                Local::unsafe_borrow()
-            };
-            let mut stream = unsafe { (*io).tcp_connect(client_addr) };
+            let io = unsafe { local_io() };
+            let mut stream = io.tcp_connect(client_addr);
             while stream.is_err() {
-                stream = unsafe { (*io).tcp_connect(client_addr) };
+                stream = io.tcp_connect(client_addr);
             }
             stream.unwrap().write([0, 1, 2, 3, 4, 5, 6, 7]);
         };
@@ -2147,8 +2157,8 @@ fn test_simple_udp_server_and_client() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut server_socket = (*io).udp_bind(server_addr).unwrap();
+                let io = local_io();
+                let mut server_socket = io.udp_bind(server_addr).unwrap();
                 chan.take().send(());
                 let mut buf = [0, .. 2048];
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
@@ -2163,8 +2173,8 @@ fn test_simple_udp_server_and_client() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut client_socket = (*io).udp_bind(client_addr).unwrap();
+                let io = local_io();
+                let mut client_socket = io.udp_bind(client_addr).unwrap();
                 port.take().recv();
                 client_socket.sendto([0, 1, 2, 3, 4, 5, 6, 7], server_addr);
             }
@@ -2181,8 +2191,8 @@ fn test_read_and_block() {
         let chan = Cell::new(chan);
 
         do spawntask {
-            let io: *mut IoFactoryObject = unsafe { Local::unsafe_borrow() };
-            let listener = unsafe { (*io).tcp_bind(addr).unwrap() };
+            let io = unsafe { local_io() };
+            let listener = io.tcp_bind(addr).unwrap();
             let mut acceptor = listener.listen().unwrap();
             chan.take().send(());
             let mut stream = acceptor.accept().unwrap();
@@ -2220,8 +2230,8 @@ fn test_read_and_block() {
         do spawntask {
             unsafe {
                 port.take().recv();
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let io = local_io();
+                let mut stream = io.tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -2243,8 +2253,8 @@ fn test_read_read_read() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let listener = (*io).tcp_bind(addr).unwrap();
+                let io = local_io();
+                let listener = io.tcp_bind(addr).unwrap();
                 let mut acceptor = listener.listen().unwrap();
                 chan.take().send(());
                 let mut stream = acceptor.accept().unwrap();
@@ -2260,8 +2270,8 @@ fn test_read_read_read() {
         do spawntask {
             unsafe {
                 port.take().recv();
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let io = local_io();
+                let mut stream = io.tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let mut total_bytes_read = 0;
                 while total_bytes_read < MAX {
@@ -2289,8 +2299,8 @@ fn test_udp_twice() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut client = (*io).udp_bind(client_addr).unwrap();
+                let io = local_io();
+                let mut client = io.udp_bind(client_addr).unwrap();
                 port.take().recv();
                 assert!(client.sendto([1], server_addr).is_ok());
                 assert!(client.sendto([2], server_addr).is_ok());
@@ -2299,8 +2309,8 @@ fn test_udp_twice() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut server = (*io).udp_bind(server_addr).unwrap();
+                let io = local_io();
+                let mut server = io.udp_bind(server_addr).unwrap();
                 chan.take().send(());
                 let mut buf1 = [0];
                 let mut buf2 = [0];
@@ -2334,9 +2344,9 @@ fn test_udp_many_read() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
-                let mut server_in = (*io).udp_bind(server_in_addr).unwrap();
+                let io = local_io();
+                let mut server_out = io.udp_bind(server_out_addr).unwrap();
+                let mut server_in = io.udp_bind(server_in_addr).unwrap();
                 let (port, chan) = first.take();
                 chan.send(());
                 port.recv();
@@ -2360,9 +2370,9 @@ fn test_udp_many_read() {
 
         do spawntask {
             unsafe {
-                let io: *mut IoFactoryObject = Local::unsafe_borrow();
-                let mut client_out = (*io).udp_bind(client_out_addr).unwrap();
-                let mut client_in = (*io).udp_bind(client_in_addr).unwrap();
+                let io = local_io();
+                let mut client_out = io.udp_bind(client_out_addr).unwrap();
+                let mut client_in = io.udp_bind(client_in_addr).unwrap();
                 let (port, chan) = second.take();
                 port.recv();
                 chan.send(());
@@ -2392,8 +2402,8 @@ fn test_udp_many_read() {
 fn test_timer_sleep_simple() {
     do run_in_mt_newsched_task {
         unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            let timer = (*io).timer_init();
+            let io = local_io();
+            let timer = io.timer_init();
             do timer.map_move |mut t| { t.sleep(1) };
         }
     }
@@ -2403,29 +2413,28 @@ fn file_test_uvio_full_simple_impl() {
     use str::StrSlice; // why does this have to be explicitly imported to work?
                        // compiler was complaining about no trait for str that
                        // does .as_bytes() ..
-    use path::Path;
     use rt::io::{Open, Create, ReadWrite, Read};
     unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
+        let io = local_io();
         let write_val = "hello uvio!";
         let path = "./tmp/file_test_uvio_full.txt";
         {
             let create_fm = Create;
             let create_fa = ReadWrite;
-            let mut fd = (*io).fs_open(&path.to_c_str(), create_fm, create_fa).unwrap();
+            let mut fd = io.fs_open(&path.to_c_str(), create_fm, create_fa).unwrap();
             let write_buf = write_val.as_bytes();
             fd.write(write_buf);
         }
         {
             let ro_fm = Open;
             let ro_fa = Read;
-            let mut fd = (*io).fs_open(&path.to_c_str(), ro_fm, ro_fa).unwrap();
+            let mut fd = io.fs_open(&path.to_c_str(), ro_fm, ro_fa).unwrap();
             let mut read_vec = [0, .. 1028];
             let nread = fd.read(read_vec).unwrap();
             let read_val = str::from_utf8(read_vec.slice(0, nread as uint));
             assert!(read_val == write_val.to_owned());
         }
-        (*io).fs_unlink(&path.to_c_str());
+        io.fs_unlink(&path.to_c_str());
     }
 }
 
@@ -2440,9 +2449,9 @@ fn uvio_naive_print(input: &str) {
     use str::StrSlice;
     unsafe {
         use libc::{STDOUT_FILENO};
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
+        let io = local_io();
         {
-            let mut fd = (*io).fs_from_raw_fd(STDOUT_FILENO, false);
+            let mut fd = io.fs_from_raw_fd(STDOUT_FILENO, false);
             let write_buf = input.as_bytes();
             fd.write(write_buf);
         }

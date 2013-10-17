@@ -13,9 +13,8 @@ use result::{Ok, Err};
 use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer, Listener, Acceptor};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{IoFactory, IoFactoryObject, RtioTcpListenerObject,
+use rt::rtio::{IoFactory, RtioTcpListenerObject, with_local_io,
                RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
-use rt::local::Local;
 
 pub struct TcpStream {
     priv obj: ~RtioTcpStream
@@ -27,19 +26,13 @@ impl TcpStream {
     }
 
     pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
-        let stream = unsafe {
-            rtdebug!("borrowing io to connect");
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            rtdebug!("about to connect");
-            (*io).tcp_connect(addr)
-        };
-
-        match stream {
-            Ok(s) => Some(TcpStream::new(s)),
-            Err(ioerr) => {
-                rtdebug!("failed to connect: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
+        do with_local_io |io| {
+            match io.tcp_connect(addr) {
+                Ok(s) => Some(TcpStream::new(s)),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }
@@ -101,15 +94,13 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
-        let listener = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).tcp_bind(addr)
-        };
-        match listener {
-            Ok(l) => Some(TcpListener { obj: l }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                return None;
+        do with_local_io |io| {
+            match io.tcp_bind(addr) {
+                Ok(l) => Some(TcpListener { obj: l }),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }
