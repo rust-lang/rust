@@ -11,7 +11,7 @@
 use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
 use unstable::intrinsics::TyDesc;
 use unstable::raw;
-use sys::size_of;
+use mem::size_of;
 
 extern {
     #[rust_stack]

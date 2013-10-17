@@ -103,7 +103,7 @@ mod darwin_fd_limit {
         // The strategy here is to fetch the current resource limits, read the kern.maxfilesperproc
         // sysctl value, and bump the soft resource limit for maxfiles up to the sysctl value.
         use ptr::{to_unsafe_ptr, to_mut_unsafe_ptr, mut_null};
-        use sys::size_of_val;
+        use mem::size_of_val;
         use os::last_os_error;
 
         // Fetch the kern.maxfilesperproc value

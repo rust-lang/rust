@@ -14,7 +14,7 @@ use clone::Clone;
 use container::Container;
 use iter::Iterator;
 use option::{Option, Some, None};
-use sys;
+use mem;
 use unstable::raw::Repr;
 use vec::{ImmutableVector, OwnedVector};
 
@@ -26,7 +26,7 @@ use vec::{ImmutableVector, OwnedVector};
 pub fn capacity<T>(v: @[T]) -> uint {
     unsafe {
         let box = v.repr();
-        (*box).data.alloc / sys::size_of::<T>()
+        (*box).data.alloc / mem::size_of::<T>()
     }
 }
 
@@ -160,7 +160,7 @@ pub mod raw {
     use cast::{transmute, transmute_copy};
     use libc;
     use ptr;
-    use sys;
+    use mem;
     use uint;
     use unstable::intrinsics::{move_val_init, TyDesc};
     use unstable::intrinsics;
@@ -176,7 +176,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn set_len<T>(v: &mut @[T], new_len: uint) {
         let repr: *mut Box<Vec<T>> = cast::transmute_copy(v);
-        (*repr).data.fill = new_len * sys::size_of::<T>();
+        (*repr).data.fill = new_len * mem::size_of::<T>();
     }
 
     /**
@@ -199,7 +199,7 @@ pub mod raw {
     unsafe fn push_fast<T>(v: &mut @[T], initval: T) {
         let repr: *mut Box<Vec<T>> = cast::transmute_copy(v);
         let amt = v.len();
-        (*repr).data.fill += sys::size_of::<T>();
+        (*repr).data.fill += mem::size_of::<T>();
         let p = ptr::offset(&(*repr).data.data as *T, amt as int) as *mut T;
         move_val_init(&mut(*p), initval);
     }
@@ -236,7 +236,7 @@ pub mod raw {
         unsafe {
             if n > (**ptr).data.alloc / (*ty).size {
                 let alloc = n * (*ty).size;
-                let total_size = alloc + sys::size_of::<Vec<()>>();
+                let total_size = alloc + mem::size_of::<Vec<()>>();
                 if alloc / (*ty).size != n || total_size < alloc {
                     fail2!("vector size is too large: {}", n);
                 }

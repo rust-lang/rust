@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sys;
+use std::mem;
 
 #[packed]
 struct S<T, S> {
@@ -18,10 +18,10 @@ struct S<T, S> {
 }
 
 pub fn main() {
-    assert_eq!(sys::size_of::<S<u8, u8>>(), 3);
+    assert_eq!(mem::size_of::<S<u8, u8>>(), 3);
 
-    assert_eq!(sys::size_of::<S<u64, u16>>(), 11);
+    assert_eq!(mem::size_of::<S<u64, u16>>(), 11);
 
-    assert_eq!(sys::size_of::<S<~str, @mut [int]>>(),
-               1 + sys::size_of::<~str>() + sys::size_of::<@mut [int]>());
+    assert_eq!(mem::size_of::<S<~str, @mut [int]>>(),
+               1 + mem::size_of::<~str>() + mem::size_of::<@mut [int]>());
 }

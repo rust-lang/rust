@@ -52,7 +52,7 @@ fn main () {
  ```
 */
 
-use sys::size_of;
+use mem::size_of;
 use unstable::raw::Slice;
 use cast;
 use container::Container;
@@ -952,7 +952,7 @@ mod test {
 mod bench {
     use extra::test::BenchHarness;
     use rand::*;
-    use sys::size_of;
+    use mem::size_of;
 
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {

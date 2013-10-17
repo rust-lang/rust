@@ -18,7 +18,7 @@ Runtime type reflection
 
 use unstable::intrinsics::{Opaque, TyDesc, TyVisitor};
 use libc::c_void;
-use sys;
+use mem;
 use unstable::raw;
 
 /**
@@ -64,12 +64,12 @@ impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
 
     #[inline]
     pub fn align_to<T>(&mut self) {
-        self.align(sys::min_align_of::<T>());
+        self.align(mem::min_align_of::<T>());
     }
 
     #[inline]
     pub fn bump_past<T>(&mut self) {
-        self.bump(sys::size_of::<T>());
+        self.bump(mem::size_of::<T>());
     }
 }
 

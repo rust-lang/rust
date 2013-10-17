@@ -189,6 +189,7 @@ pub mod condition;
 pub mod logging;
 pub mod util;
 pub mod routine;
+pub mod mem;
 
 /* Unsupported interfaces */
 

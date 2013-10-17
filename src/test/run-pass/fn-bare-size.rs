@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sys;
+use std::mem;
 
 pub fn main() {
     // Bare functions should just be a pointer
-    assert_eq!(sys::size_of::<extern "Rust" fn()>(), sys::size_of::<int>());
+    assert_eq!(mem::size_of::<extern "Rust" fn()>(), mem::size_of::<int>());
 }
