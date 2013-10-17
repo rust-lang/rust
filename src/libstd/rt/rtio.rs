@@ -18,14 +18,9 @@ use ai = rt::io::net::addrinfo;
 use rt::io::IoError;
 use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
-use rt::uv::uvio;
 use path::Path;
 use super::io::{SeekStyle};
 use super::io::{FileMode, FileAccess, FileStat};
-
-// FIXME(#9893) cannot call by-value self method on a trait object
-pub type RtioTcpListenerObject = uvio::UvTcpListener;
-pub type RtioUnixListenerObject = uvio::UvUnixListener;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -82,7 +77,7 @@ pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
 
 pub trait IoFactory {
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
-    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError>;
+    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError>;
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
@@ -100,14 +95,14 @@ pub trait IoFactory {
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
 
     fn unix_bind(&mut self, path: &CString) ->
-        Result<~RtioUnixListenerObject, IoError>;
+        Result<~RtioUnixListener, IoError>;
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool, close_on_drop: bool)
             -> Result<~RtioTTY, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
-    fn listen(self) -> Result<~RtioTcpAcceptor, IoError>;
+    fn listen(~self) -> Result<~RtioTcpAcceptor, IoError>;
 }
 
 pub trait RtioTcpAcceptor : RtioSocket {
@@ -173,7 +168,7 @@ pub trait RtioPipe {
 }
 
 pub trait RtioUnixListener {
-    fn listen(self) -> Result<~RtioUnixAcceptor, IoError>;
+    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError>;
 }
 
 pub trait RtioUnixAcceptor {
