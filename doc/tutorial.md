@@ -113,9 +113,7 @@ for more information on them.
 
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool; `rustpkg`, the Rust package manager;
-`rusti`, the Rust REPL; and `rust`, a tool which acts both as a unified
-interface for them, and for a few common command line scenarios.
+API-documentation tool; and `rustpkg`, the Rust package manager.
 
 [tarball]: http://static.rust-lang.org/dist/rust-0.8.tar.gz
 [win-exe]: http://static.rust-lang.org/dist/rust-0.8-install.exe

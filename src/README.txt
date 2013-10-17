@@ -31,8 +31,6 @@ compiletest/       The test runner
 
 librustpkg/        The package manager and build system
 
-librusti/          The JIT REPL
-
 librustdoc/        The Rust API documentation tool
 
 llvm/              The LLVM submodule
