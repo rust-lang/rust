@@ -1917,7 +1917,7 @@ fn trans_match_inner(scope_cx: @mut Block,
             Infallible
         }
     };
-    let lldiscr = discr_datum.to_zeroable_ref_llval(bcx);
+    let lldiscr = discr_datum.to_ref_llval(bcx);
     compile_submatch(bcx, matches, [lldiscr], chk);
 
     let mut arm_cxs = ~[];
@@ -1996,7 +1996,7 @@ pub fn store_local(bcx: @mut Block,
                 if bcx.sess().asm_comments() {
                     add_comment(bcx, "creating zeroable ref llval");
                 }
-                let llptr = init_datum.to_zeroable_ref_llval(bcx);
+                let llptr = init_datum.to_ref_llval(bcx);
                 return bind_irrefutable_pat(bcx, pat, llptr, BindLocal);
             }
         }

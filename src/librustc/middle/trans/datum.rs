@@ -473,34 +473,21 @@ impl Datum {
                     C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
                     let slot = alloc_ty(bcx, self.ty, "");
+                    // The store created here can be modified through a reference, for example:
+                    //
+                    //     // free the old allocation, and change the pointer to a new allocation
+                    //     fn foo(x: &mut ~u8) {
+                    //         *x = ~5;
+                    //     }
+                    //
+                    //     foo(&mut ~5);
                     Store(bcx, self.val, slot);
+                    // The old cleanup needs to be cancelled, in order for the destructor to observe
+                    // any changes made through the reference.
+                    self.cancel_clean(bcx);
+                    add_clean_temp_mem(bcx, slot, self.ty);
                     slot
                 }
-            }
-        }
-    }
-
-    pub fn to_zeroable_ref_llval(&self, bcx: @mut Block) -> ValueRef {
-        /*!
-         * Returns a by-ref llvalue that can be zeroed in order to
-         * cancel cleanup. This is a kind of hokey bridge used
-         * to adapt to the match code. Please don't use it for new code.
-         */
-
-        match self.mode {
-            // All by-ref datums are zeroable, even if we *could* just
-            // cancel the cleanup.
-            ByRef(_) => self.val,
-
-            // By value datums can't be zeroed (where would you store
-            // the zero?) so we have to spill them. Add a temp cleanup
-            // for this spilled value and cancel the cleanup on this
-            // current value.
-            ByValue => {
-                let slot = self.to_ref_llval(bcx);
-                self.cancel_clean(bcx);
-                add_clean_temp_mem(bcx, slot, self.ty);
-                slot
             }
         }
     }
