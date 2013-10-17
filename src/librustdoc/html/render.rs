@@ -219,7 +219,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     };
     mkdir(&cx.dst);
 
-    match crate.module.get_ref().doc_list() {
+    match crate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
         Some(attrs) => {
             for attr in attrs.iter() {
                 match *attr {
@@ -581,7 +581,7 @@ impl DocFolder for Cache {
             clean::StructItem(*) | clean::EnumItem(*) |
             clean::TypedefItem(*) | clean::TraitItem(*) |
             clean::FunctionItem(*) | clean::ModuleItem(*) |
-            clean::VariantItem(*) => {
+            clean::ForeignFunctionItem(*) | clean::VariantItem(*) => {
                 self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
             }
             _ => {}
