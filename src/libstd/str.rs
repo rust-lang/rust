@@ -828,17 +828,6 @@ pub fn eq(a: &~str, b: &~str) -> bool {
 }
 
 /*
-Section: Searching
-*/
-
-// Utility used by various searching functions
-fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
-    let mut i = at;
-    for c in needle.byte_iter() { if haystack[i] != c { return false; } i += 1u; }
-    return true;
-}
-
-/*
 Section: Misc
 */
 
@@ -2018,18 +2007,16 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
+    #[inline]
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
-        let (self_len, needle_len) = (self.len(), needle.len());
-        if needle_len == 0u { true }
-        else if needle_len > self_len { false }
-        else { match_at(*self, needle, 0u) }
+        let n = needle.len();
+        self.len() >= n && needle == self.slice_to(n)
     }
 
+    #[inline]
     fn ends_with(&self, needle: &str) -> bool {
-        let (self_len, needle_len) = (self.len(), needle.len());
-        if needle_len == 0u { true }
-        else if needle_len > self_len { false }
-        else { match_at(*self, needle, self_len - needle_len) }
+        let (m, n) = (self.len(), needle.len());
+        m >= n && needle == self.slice_from(m - n)
     }
 
     fn escape_default(&self) -> ~str {

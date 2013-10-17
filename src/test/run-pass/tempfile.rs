@@ -30,13 +30,10 @@ fn test_tempdir() {
     let path = {
         let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
         let p = p.path();
-        assert!(ends_with(p.as_vec(), bytes!("foobar")));
+        assert!(p.as_vec().ends_with(bytes!("foobar")));
         p.clone()
     };
     assert!(!os::path_exists(&path));
-    fn ends_with(v: &[u8], needle: &[u8]) -> bool {
-        v.len() >= needle.len() && v.slice_from(v.len()-needle.len()) == needle
-    }
 }
 
 fn test_rm_tempdir() {
