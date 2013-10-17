@@ -306,7 +306,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8811
     fn read_eof_twice_ip4() {
         do run_in_mt_newsched_task {
             let addr = next_test_ip4();
@@ -321,8 +320,16 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                let nread = stream.read(buf);
-                assert!(nread.is_none());
+                do read_error::cond.trap(|e| {
+                    if cfg!(windows) {
+                        assert_eq!(e.kind, NotConnected);
+                    } else {
+                        fail2!();
+                    }
+                }).inside {
+                    let nread = stream.read(buf);
+                    assert!(nread.is_none());
+                }
             }
 
             do spawntask {
@@ -334,7 +341,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8811
     fn read_eof_twice_ip6() {
         do run_in_mt_newsched_task {
             let addr = next_test_ip6();
@@ -349,8 +355,16 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                let nread = stream.read(buf);
-                assert!(nread.is_none());
+                do read_error::cond.trap(|e| {
+                    if cfg!(windows) {
+                        assert_eq!(e.kind, NotConnected);
+                    } else {
+                        fail2!();
+                    }
+                }).inside {
+                    let nread = stream.read(buf);
+                    assert!(nread.is_none());
+                }
             }
 
             do spawntask {
