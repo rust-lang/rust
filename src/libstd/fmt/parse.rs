@@ -48,27 +48,6 @@ pub struct Argument<'self> {
 
 /// Specification for the formatting of an argument in the format string.
 #[deriving(Eq)]
-#[cfg(stage0)]
-pub struct FormatSpec<'self> {
-    /// Optionally specified character to fill alignment with
-    fill: Option<char>,
-    /// Optionally specified alignment
-    align: Alignment,
-    /// Packed version of various flags provided
-    flags: uint,
-    /// The integer precision to use
-    precision: Count,
-    /// The string width requested for the resulting format
-    width: Count,
-    /// The descriptor string representing the name of the format desired for
-    /// this argument, this can be empty or any number of characters, although
-    /// it is required to be one word.
-    ty: &'self str
-}
-
-/// Specification for the formatting of an argument in the format string.
-#[deriving(Eq)]
-#[cfg(not(stage0))]
 pub struct FormatSpec<'self> {
     /// Optionally specified character to fill alignment with
     fill: Option<char>,
@@ -113,18 +92,6 @@ pub enum Flag {
 /// can reference either an argument or a literal integer.
 #[deriving(Eq)]
 #[allow(missing_doc)]
-#[cfg(stage0)]
-pub enum Count {
-    CountIs(uint),
-    CountIsParam(uint),
-    CountIsName(&'static str), // not actually used, see stage1
-    CountIsNextParam,
-    CountImplied,
-}
-
-#[deriving(Eq)]
-#[allow(missing_doc)]
-#[cfg(not(stage0))]
 pub enum Count<'self> {
     CountIs(uint),
     CountIsName(&'self str),
@@ -594,20 +561,6 @@ impl<'self> Parser<'self> {
     /// Parses a Count parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    #[cfg(stage0)]
-    fn count(&mut self) -> Count {
-        match self.integer() {
-            Some(i) => {
-                if self.consume('$') {
-                    CountIsParam(i)
-                } else {
-                    CountIs(i)
-                }
-            }
-            None => { CountImplied }
-        }
-    }
-    #[cfg(not(stage0))]
     fn count(&mut self) -> Count<'self> {
         match self.integer() {
             Some(i) => {
