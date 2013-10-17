@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -508,12 +508,10 @@ impl mem_categorization_ctxt {
                       let var_is_refd = match (closure_ty.sigil, closure_ty.onceness) {
                           // Many-shot stack closures can never move out.
                           (ast::BorrowedSigil, ast::Many) => true,
-                          // 1-shot stack closures can move out with "-Z once-fns".
-                          (ast::BorrowedSigil, ast::Once)
-                              if self.tcx.sess.once_fns() => false,
-                          (ast::BorrowedSigil, ast::Once) => true,
+                          // 1-shot stack closures can move out.
+                          (ast::BorrowedSigil, ast::Once) => false,
                           // Heap closures always capture by copy/move, and can
-                          // move out iff they are once.
+                          // move out if they are once.
                           (ast::OwnedSigil, _) |
                           (ast::ManagedSigil, _) => false,
 

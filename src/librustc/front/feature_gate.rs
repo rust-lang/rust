@@ -33,6 +33,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
     ("macro_rules", Active),
     ("struct_variant", Active),
+    ("once_fns", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -125,6 +126,20 @@ impl Visitor<()> for Context {
         }
 
         visit::walk_item(self, i, ());
+    }
+
+    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+        match t.node {
+            ast::ty_closure(closure) if closure.onceness == ast::Once => {
+                self.gate_feature("once_fns", t.span,
+                                  "once functions are \
+                                   experimental and likely to be removed");
+
+            },
+            _ => {}
+        }
+
+        visit::walk_ty(self, t, ());
     }
 }
 
