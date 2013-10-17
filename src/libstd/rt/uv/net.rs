@@ -14,7 +14,7 @@ use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
-             status_to_maybe_uv_error};
+             status_to_maybe_uv_error, vec_to_uv_buf};
 use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec;
 use str;
@@ -147,7 +147,18 @@ impl StreamWatcher {
             data.read_cb = Some(cb);
         }
 
-        unsafe { uvll::read_start(self.native_handle(), alloc_cb, read_cb); }
+        let ret = unsafe { uvll::read_start(self.native_handle(), alloc_cb, read_cb) };
+
+        if ret != 0 {
+            // uvll::read_start failed, so read_cb will not be called.
+            // Call it manually for scheduling.
+            call_read_cb(self.native_handle(), ret as ssize_t);
+        }
+
+        fn call_read_cb(stream: *uvll::uv_stream_t, errno: ssize_t) {
+            #[fixed_stack_segment]; #[inline(never)];
+            read_cb(stream, errno, vec_to_uv_buf(~[]));
+        }
 
         extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
