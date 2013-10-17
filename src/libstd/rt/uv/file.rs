@@ -272,7 +272,6 @@ impl FsRequest {
     }
 
     pub fn each_path(&mut self, f: &fn(&CString)) {
-        use str;
         let ptr = self.get_ptr();
         match self.get_result() {
             n if (n <= 0) => {}
@@ -350,7 +349,6 @@ mod test {
     use vec;
     use str;
     use unstable::run_in_bare_thread;
-    use path::Path;
     use rt::uv::{Loop, Buf, slice_to_uv_buf};
     use libc::{O_CREAT, O_RDWR, O_RDONLY, S_IWUSR, S_IRUSR};
 
@@ -373,10 +371,9 @@ mod test {
             let read_mem = vec::from_elem(read_buf_len, 0u8);
             let read_buf = slice_to_uv_buf(read_mem);
             let read_buf_ptr: *Buf = &read_buf;
-            let p = Path::new(path_str);
             let open_req = FsRequest::new();
-            do open_req.open(&loop_, &p, create_flags as int, mode as int)
-            |req, uverr| {
+            do open_req.open(&loop_, &path_str.to_c_str(), create_flags as int,
+                             mode as int) |req, uverr| {
                 assert!(uverr.is_none());
                 let fd = req.get_result();
                 let buf = unsafe { *write_buf_ptr };
@@ -387,8 +384,8 @@ mod test {
                         assert!(uverr.is_none());
                         let loop_ = req.get_loop();
                         let open_req = FsRequest::new();
-                        do open_req.open(&loop_, &Path::new(path_str), read_flags as int,0)
-                            |req, uverr| {
+                        do open_req.open(&loop_, &path_str.to_c_str(),
+                                         read_flags as int,0) |req, uverr| {
                             assert!(uverr.is_none());
                             let loop_ = req.get_loop();
                             let fd = req.get_result();
@@ -413,7 +410,8 @@ mod test {
                                         assert!(uverr.is_none());
                                         let loop_ = &req.get_loop();
                                         let unlink_req = FsRequest::new();
-                                        do unlink_req.unlink(loop_, &Path::new(path_str))
+                                        do unlink_req.unlink(loop_,
+                                                             &path_str.to_c_str())
                                         |_,uverr| {
                                             assert!(uverr.is_none());
                                         };
@@ -447,8 +445,8 @@ mod test {
             let write_buf = slice_to_uv_buf(write_val);
             // open/create
             let open_req = FsRequest::new();
-            let result = open_req.open_sync(&loop_, &Path::new(path_str),
-                                                   create_flags as int, mode as int);
+            let result = open_req.open_sync(&loop_, &path_str.to_c_str(),
+                                            create_flags as int, mode as int);
             assert!(result.is_ok());
             let fd = result.unwrap();
             // write
@@ -461,7 +459,7 @@ mod test {
             assert!(result.is_ok());
             // re-open
             let open_req = FsRequest::new();
-            let result = open_req.open_sync(&loop_, &Path::new(path_str),
+            let result = open_req.open_sync(&loop_, &path_str.to_c_str(),
                                                    read_flags as int,0);
             assert!(result.is_ok());
             let len = 1028;
@@ -485,7 +483,7 @@ mod test {
                 assert!(result.is_ok());
                 // unlink
                 let unlink_req = FsRequest::new();
-                let result = unlink_req.unlink_sync(&loop_, &Path::new(path_str));
+                let result = unlink_req.unlink_sync(&loop_, &path_str.to_c_str());
                 assert!(result.is_ok());
             } else { fail!("nread was 0.. wudn't expectin' that."); }
             loop_.close();
@@ -521,8 +519,8 @@ mod test {
             let write_buf  = slice_to_uv_buf(write_val);
             let write_buf_ptr: *Buf = &write_buf;
             let open_req = FsRequest::new();
-            do open_req.open(&loop_, &path, create_flags as int, mode as int)
-            |req, uverr| {
+            do open_req.open(&loop_, &path.to_c_str(), create_flags as int,
+                             mode as int) |req, uverr| {
                 assert!(uverr.is_none());
                 let fd = req.get_result();
                 let buf = unsafe { *write_buf_ptr };
@@ -531,7 +529,7 @@ mod test {
                     assert!(uverr.is_none());
                     let loop_ = req.get_loop();
                     let stat_req = FsRequest::new();
-                    do stat_req.stat(&loop_, &path) |req, uverr| {
+                    do stat_req.stat(&loop_, &path.to_c_str()) |req, uverr| {
                         assert!(uverr.is_none());
                         let loop_ = req.get_loop();
                         let stat = req.get_stat();
@@ -542,11 +540,13 @@ mod test {
                             assert!(uverr.is_none());
                             let loop_ = req.get_loop();
                             let unlink_req = FsRequest::new();
-                            do unlink_req.unlink(&loop_, &path) |req,uverr| {
+                            do unlink_req.unlink(&loop_,
+                                                 &path.to_c_str()) |req,uverr| {
                                 assert!(uverr.is_none());
                                 let loop_ = req.get_loop();
                                 let stat_req = FsRequest::new();
-                                do stat_req.stat(&loop_, &path) |_, uverr| {
+                                do stat_req.stat(&loop_,
+                                                 &path.to_c_str()) |_, uverr| {
                                     // should cause an error because the
                                     // file doesn't exist anymore
                                     assert!(uverr.is_some());
@@ -569,22 +569,23 @@ mod test {
             let mode = S_IWUSR |
                 S_IRUSR;
             let mkdir_req = FsRequest::new();
-            do mkdir_req.mkdir(&loop_, &path, mode as int) |req,uverr| {
+            do mkdir_req.mkdir(&loop_, &path.to_c_str(),
+                               mode as int) |req,uverr| {
                 assert!(uverr.is_none());
                 let loop_ = req.get_loop();
                 let stat_req = FsRequest::new();
-                do stat_req.stat(&loop_, &path) |req, uverr| {
+                do stat_req.stat(&loop_, &path.to_c_str()) |req, uverr| {
                     assert!(uverr.is_none());
                     let loop_ = req.get_loop();
                     let stat = req.get_stat();
                     naive_print(&loop_, format!("{:?}", stat));
                     assert!(stat.is_dir());
                     let rmdir_req = FsRequest::new();
-                    do rmdir_req.rmdir(&loop_, &path) |req,uverr| {
+                    do rmdir_req.rmdir(&loop_, &path.to_c_str()) |req,uverr| {
                         assert!(uverr.is_none());
                         let loop_ = req.get_loop();
                         let stat_req = FsRequest::new();
-                        do stat_req.stat(&loop_, &path) |_req, uverr| {
+                        do stat_req.stat(&loop_, &path.to_c_str()) |_req, uverr| {
                             assert!(uverr.is_some());
                         }
                     }
@@ -602,16 +603,17 @@ mod test {
             let mode = S_IWUSR |
                 S_IRUSR;
             let mkdir_req = FsRequest::new();
-            do mkdir_req.mkdir(&loop_, &path, mode as int) |req,uverr| {
+            do mkdir_req.mkdir(&loop_, &path.to_c_str(), mode as int) |req,uverr| {
                 assert!(uverr.is_none());
                 let loop_ = req.get_loop();
                 let mkdir_req = FsRequest::new();
-                do mkdir_req.mkdir(&loop_, &path, mode as int) |req,uverr| {
+                do mkdir_req.mkdir(&loop_, &path.to_c_str(),
+                                   mode as int) |req,uverr| {
                     assert!(uverr.is_some());
                     let loop_ = req.get_loop();
                     let _stat = req.get_stat();
                     let rmdir_req = FsRequest::new();
-                    do rmdir_req.rmdir(&loop_, &path) |req,uverr| {
+                    do rmdir_req.rmdir(&loop_, &path.to_c_str()) |req,uverr| {
                         assert!(uverr.is_none());
                         let _loop = req.get_loop();
                     }
@@ -627,7 +629,7 @@ mod test {
             let mut loop_ = Loop::new();
             let path = "./tmp/never_existed_dir";
             let rmdir_req = FsRequest::new();
-            do rmdir_req.rmdir(&loop_, &path) |_req, uverr| {
+            do rmdir_req.rmdir(&loop_, &path.to_c_str()) |_req, uverr| {
                 assert!(uverr.is_some());
             }
             loop_.run();

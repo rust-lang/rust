@@ -12,19 +12,22 @@ use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::local::Local;
-use rt::rtio::{IoFactoryObject, IoFactory, RtioTTY};
+use rt::rtio::{IoFactory, RtioTTY, with_local_io};
 use super::{Reader, Writer, io_error};
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
 /// See `stdout()` for notes about this function.
 pub fn stdin() -> StdReader {
-    let stream = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).tty_open(libc::STDIN_FILENO, true, false)
-    }.unwrap();
-    StdReader { inner: stream }
+    do with_local_io |io| {
+        match io.tty_open(libc::STDIN_FILENO, true, false) {
+            Ok(tty) => Some(StdReader { inner: tty }),
+            Err(e) => {
+                io_error::cond.raise(e);
+                None
+            }
+        }
+    }.unwrap()
 }
 
 /// Creates a new non-blocking handle to the stdout of the current process.
@@ -34,22 +37,30 @@ pub fn stdin() -> StdReader {
 /// task context because the stream returned will be a non-blocking object using
 /// the local scheduler to perform the I/O.
 pub fn stdout() -> StdWriter {
-    let stream = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).tty_open(libc::STDOUT_FILENO, false, false)
-    }.unwrap();
-    StdWriter { inner: stream }
+    do with_local_io |io| {
+        match io.tty_open(libc::STDOUT_FILENO, false, false) {
+            Ok(tty) => Some(StdWriter { inner: tty }),
+            Err(e) => {
+                io_error::cond.raise(e);
+                None
+            }
+        }
+    }.unwrap()
 }
 
 /// Creates a new non-blocking handle to the stderr of the current process.
 ///
 /// See `stdout()` for notes about this function.
 pub fn stderr() -> StdWriter {
-    let stream = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).tty_open(libc::STDERR_FILENO, false, false)
-    }.unwrap();
-    StdWriter { inner: stream }
+    do with_local_io |io| {
+        match io.tty_open(libc::STDERR_FILENO, false, false) {
+            Ok(tty) => Some(StdWriter { inner: tty }),
+            Err(e) => {
+                io_error::cond.raise(e);
+                None
+            }
+        }
+    }.unwrap()
 }
 
 /// Prints a string to the stdout of the current process. No newline is emitted

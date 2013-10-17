@@ -11,12 +11,12 @@
 //! Bindings for executing child processes
 
 use prelude::*;
+use cell::Cell;
 
 use libc;
 use rt::io;
 use rt::io::io_error;
-use rt::local::Local;
-use rt::rtio::{RtioProcess, IoFactoryObject, IoFactory};
+use rt::rtio::{RtioProcess, IoFactory, with_local_io};
 
 // windows values don't matter as long as they're at least one of unix's
 // TERM/KILL/INT signals
@@ -83,20 +83,19 @@ impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
     pub fn new(config: ProcessConfig) -> Option<Process> {
-        let process = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).spawn(config)
-        };
-        match process {
-            Ok((p, io)) => Some(Process{
-                handle: p,
-                io: io.move_iter().map(|p|
-                    p.map(|p| io::PipeStream::new_bound(p))
-                ).collect()
-            }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
+        let config = Cell::new(config);
+        do with_local_io |io| {
+            match io.spawn(config.take()) {
+                Ok((p, io)) => Some(Process{
+                    handle: p,
+                    io: io.move_iter().map(|p|
+                        p.map(|p| io::PipeStream::new_bound(p))
+                    ).collect()
+                }),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }

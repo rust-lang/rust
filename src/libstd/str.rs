@@ -1018,7 +1018,6 @@ static TAG_CONT_U8: u8 = 128u8;
 
 /// Unsafe operations
 pub mod raw {
-    use option::{Option, Some};
     use cast;
     use libc;
     use ptr;

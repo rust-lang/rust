@@ -13,7 +13,7 @@ use rand::Rng;
 use os;
 use libc;
 use option::{Some, None};
-use path::{Path, GenericPath};
+use path::Path;
 use cell::Cell;
 use clone::Clone;
 use container::Container;
@@ -335,7 +335,7 @@ pub fn next_test_port() -> u16 {
 /// Get a temporary path which could be the location of a unix socket
 #[fixed_stack_segment] #[inline(never)]
 pub fn next_test_unix() -> Path {
-    os::tmpdir().push(rand::task_rng().gen_ascii_str(20))
+    os::tmpdir().join(rand::task_rng().gen_ascii_str(20))
 }
 
 /// Get a unique IPv4 localhost:port pair starting at 9600

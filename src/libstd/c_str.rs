@@ -382,6 +382,7 @@ mod tests {
     use libc;
     use ptr;
     use option::{Some, None};
+    use vec;
 
     #[test]
     fn test_str_multistring_parsing() {
@@ -391,7 +392,8 @@ mod tests {
             let expected = ["zero", "one"];
             let mut it = expected.iter();
             let result = do from_c_multistring(ptr as *libc::c_char, None) |c| {
-                assert_eq!(c.as_str(), expected.next().unwrap());
+                let cbytes = c.as_bytes().slice_to(c.len());
+                assert_eq!(cbytes, it.next().unwrap().as_bytes());
             };
             assert_eq!(result, 2);
             assert!(it.next().is_none());

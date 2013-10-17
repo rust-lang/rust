@@ -25,11 +25,10 @@ instances as clients.
 use prelude::*;
 
 use c_str::ToCStr;
-use rt::rtio::{IoFactory, IoFactoryObject, RtioUnixListener};
+use rt::rtio::{IoFactory, RtioUnixListener, with_local_io};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe, RtioUnixListenerObject};
 use rt::io::pipe::PipeStream;
 use rt::io::{io_error, Listener, Acceptor, Reader, Writer};
-use rt::local::Local;
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -60,16 +59,13 @@ impl UnixStream {
     ///     stream.write([1, 2, 3]);
     ///
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
-        let pipe = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).unix_connect(path)
-        };
-
-        match pipe {
-            Ok(s) => Some(UnixStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
+        do with_local_io |io| {
+            match io.unix_connect(&path.to_c_str()) {
+                Ok(s) => Some(UnixStream::new(s)),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }
@@ -113,15 +109,13 @@ impl UnixListener {
     ///     }
     ///
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
-        let listener = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).unix_bind(path)
-        };
-        match listener {
-            Ok(s) => Some(UnixListener{ obj: s }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
+        do with_local_io |io| {
+            match io.unix_bind(&path.to_c_str()) {
+                Ok(s) => Some(UnixListener{ obj: s }),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }

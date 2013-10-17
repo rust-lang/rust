@@ -12,8 +12,6 @@ use option::{Option, Some, None};
 use rt::sched::Scheduler;
 use rt::task::Task;
 use rt::local_ptr;
-use rt::rtio::{EventLoop, IoFactoryObject};
-//use borrow::to_uint;
 use cell::Cell;
 
 pub trait Local {
@@ -121,24 +119,6 @@ impl Local for Scheduler {
         }
     }
 }
-
-// XXX: This formulation won't work once ~IoFactoryObject is a real trait pointer
-impl Local for IoFactoryObject {
-    fn put(_value: ~IoFactoryObject) { rtabort!("unimpl") }
-    fn take() -> ~IoFactoryObject { rtabort!("unimpl") }
-    fn exists(_: Option<IoFactoryObject>) -> bool { rtabort!("unimpl") }
-    fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
-    unsafe fn unsafe_take() -> ~IoFactoryObject { rtabort!("unimpl") }
-    unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
-        let sched: *mut Scheduler = Local::unsafe_borrow();
-        let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
-        return io;
-    }
-    unsafe fn try_unsafe_borrow() -> Option<*mut IoFactoryObject> {
-        rtabort!("unimpl")
-    }
-}
-
 
 #[cfg(test)]
 mod test {
