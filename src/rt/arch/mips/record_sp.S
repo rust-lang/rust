@@ -38,15 +38,3 @@ get_sp_limit:
         jr $31
         nop
 .end get_sp_limit
-
-.globl get_sp
-.align 2
-.set nomips16
-.ent get_sp
-get_sp:
-        .set noreorder
-        .set nomacro
-        move $2, $29
-        jr $31
-        nop
-.end get_sp

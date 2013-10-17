@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #[crate_type = "lib"];
-#[no_std];
 
 static private: int = 0;
 pub static public: int = 0;

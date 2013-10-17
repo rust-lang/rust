@@ -10,14 +10,11 @@
 
 // aux-build:static_priv_by_default.rs
 
-#[no_std]; // helps if debugging resolve
-
 extern mod static_priv_by_default;
 
 fn foo<T>() {}
 
-#[start]
-fn main(_: int, _: **u8) -> int {
+fn main() {
     // Actual public items should be public
     static_priv_by_default::a;
     static_priv_by_default::b;
@@ -49,6 +46,4 @@ fn main(_: int, _: **u8) -> int {
     //~^ ERROR: struct `c` is private
     foo::<static_priv_by_default::foo::d>();
     //~^ ERROR: type `d` is private
-
-    3
 }

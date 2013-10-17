@@ -23,11 +23,9 @@ class rust_thread {
 #else
     pthread_t thread;
 #endif
-    size_t stack_sz;
  public:
 
     rust_thread();
-    rust_thread(size_t stack_sz);
     virtual ~rust_thread();
 
     void start();

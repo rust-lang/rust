@@ -10,8 +10,6 @@
 
 // aux-build:static_priv_by_default.rs
 
-#[no_std];
-
 extern mod static_priv_by_default;
 
 mod child {
