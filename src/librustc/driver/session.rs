@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -74,12 +74,11 @@ pub static statik:                  uint = 1 << 21;
 pub static print_link_args:         uint = 1 << 22;
 pub static no_debug_borrows:        uint = 1 << 23;
 pub static lint_llvm:               uint = 1 << 24;
-pub static once_fns:                uint = 1 << 25;
-pub static print_llvm_passes:       uint = 1 << 26;
-pub static no_vectorize_loops:      uint = 1 << 27;
-pub static no_vectorize_slp:        uint = 1 << 28;
-pub static no_prepopulate_passes:   uint = 1 << 29;
-pub static use_softfp:              uint = 1 << 30;
+pub static print_llvm_passes:       uint = 1 << 25;
+pub static no_vectorize_loops:      uint = 1 << 26;
+pub static no_vectorize_slp:        uint = 1 << 27;
+pub static no_prepopulate_passes:   uint = 1 << 28;
+pub static use_softfp:              uint = 1 << 29;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -118,9 +117,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("lint-llvm",
       "Run the LLVM lint pass on the pre-optimization IR",
       lint_llvm),
-     ("once-fns",
-      "Allow 'once fn' closures to deinitialize captured variables",
-      once_fns),
      ("print-llvm-passes",
       "Prints the llvm optimization passes being run",
       print_llvm_passes),
@@ -326,7 +322,6 @@ impl Session_ {
     pub fn debug_borrows(&self) -> bool {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
-    pub fn once_fns(&self) -> bool { self.debugging_opt(once_fns) }
     pub fn print_llvm_passes(&self) -> bool {
         self.debugging_opt(print_llvm_passes)
     }

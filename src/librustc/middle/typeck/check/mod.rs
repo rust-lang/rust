@@ -3645,7 +3645,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
               let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
                   purity: ast::impure_fn,
                   sigil: ast::BorrowedSigil,
-                  onceness: ast::Once,
+                  onceness: ast::Many,
                   region: ty::re_bound(ty::br_anon(0)),
                   bounds: ty::EmptyBuiltinBounds(),
                   sig: ty::FnSig {

@@ -12,6 +12,7 @@
 
 // xfail-fast
 
+#[feature(once_fns)];
 extern mod extra;
 use extra::arc;
 use std::util;
