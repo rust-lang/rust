@@ -1,3 +1,11 @@
+Version 0.9 (XXX 2013)
+--------------------------
+
+   * ~XXX changes, numerous bugfixes
+
+   * Tooling
+      * The `rust` and `rusti` commands have been removed, due to lack of maintenance.
+
 Version 0.8 (September 2013)
 --------------------------
 
