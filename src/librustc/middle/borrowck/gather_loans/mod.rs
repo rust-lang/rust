@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -306,6 +306,23 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprFnBlock(*) => {
           gather_moves::gather_captures(this.bccx, this.move_data, ex);
+          visit::walk_expr(this, ex, ());
+      }
+
+      ast::ExprInlineAsm(ref ia) => {
+          for &(_, out) in ia.outputs.iter() {
+              let out_cmt = this.bccx.cat_expr(out);
+              match opt_loan_path(out_cmt) {
+                  Some(out_lp) => {
+                      gather_moves::gather_assignment(this.bccx, this.move_data,
+                                                      ex.id, ex.span,
+                                                      out_lp, out.id);
+                  }
+                  None => {
+                      // See the comment for ExprAssign.
+                  }
+              }
+          }
           visit::walk_expr(this, ex, ());
       }
 
