@@ -673,24 +673,6 @@ impl<'self> Formatter<'self> {
         }
     }
 
-    #[cfg(stage0)]
-    fn getcount(&mut self, cnt: &parse::Count) -> Option<uint> {
-        match *cnt {
-            parse::CountIs(n) => { Some(n) }
-            parse::CountImplied => { None }
-            parse::CountIsParam(i) => {
-                let v = self.args[i].value;
-                unsafe { Some(*(v as *util::Void as *uint)) }
-            }
-            parse::CountIsNextParam => {
-                let v = self.curarg.next().unwrap().value;
-                unsafe { Some(*(v as *util::Void as *uint)) }
-            }
-            parse::CountIsName(*) => unreachable!()
-        }
-    }
-
-    #[cfg(not(stage0))]
     fn getcount(&mut self, cnt: &rt::Count) -> Option<uint> {
         match *cnt {
             rt::CountIs(n) => { Some(n) }
