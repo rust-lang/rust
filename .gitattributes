@@ -7,5 +7,4 @@
 src/etc/pkg/rust-logo.ico binary
 src/rt/msvc/* -whitespace
 src/rt/vg/* -whitespace
-src/rt/linenoise/* -whitespace
 src/rt/jemalloc/**/* -whitespace

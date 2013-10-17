@@ -133,13 +133,6 @@ tinfl_decompress_mem_to_heap
 rust_uv_ip4_port
 rust_uv_ip6_port
 rust_uv_tcp_getpeername
-linenoise
-linenoiseSetCompletionCallback
-linenoiseAddCompletion
-linenoiseHistoryAdd
-linenoiseHistorySetMaxLen
-linenoiseHistorySave
-linenoiseHistoryLoad
 rust_raw_thread_start
 rust_raw_thread_join
 rust_raw_thread_delete
@@ -187,8 +180,6 @@ rust_get_num_cpus
 rust_get_global_args_ptr
 rust_take_global_args_lock
 rust_drop_global_args_lock
-rust_take_linenoise_lock
-rust_drop_linenoise_lock
 rust_get_test_int
 rust_get_task
 rust_uv_get_loop_from_getaddrinfo_req
