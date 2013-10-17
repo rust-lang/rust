@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Parsing of format strings
+//!
+//! These structures are used when parsing format strings for the compiler.
+//! Parsing does not currently happen at runtime (structures of std::fmt::rt are
+//! generated instead).
+
 use prelude::*;
 
 use char;
@@ -42,6 +48,7 @@ pub struct Argument<'self> {
 
 /// Specification for the formatting of an argument in the format string.
 #[deriving(Eq)]
+#[cfg(stage0)]
 pub struct FormatSpec<'self> {
     /// Optionally specified character to fill alignment with
     fill: Option<char>,
@@ -53,6 +60,26 @@ pub struct FormatSpec<'self> {
     precision: Count,
     /// The string width requested for the resulting format
     width: Count,
+    /// The descriptor string representing the name of the format desired for
+    /// this argument, this can be empty or any number of characters, although
+    /// it is required to be one word.
+    ty: &'self str
+}
+
+/// Specification for the formatting of an argument in the format string.
+#[deriving(Eq)]
+#[cfg(not(stage0))]
+pub struct FormatSpec<'self> {
+    /// Optionally specified character to fill alignment with
+    fill: Option<char>,
+    /// Optionally specified alignment
+    align: Alignment,
+    /// Packed version of various flags provided
+    flags: uint,
+    /// The integer precision to use
+    precision: Count<'self>,
+    /// The string width requested for the resulting format
+    width: Count<'self>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
@@ -86,8 +113,21 @@ pub enum Flag {
 /// can reference either an argument or a literal integer.
 #[deriving(Eq)]
 #[allow(missing_doc)]
+#[cfg(stage0)]
 pub enum Count {
     CountIs(uint),
+    CountIsParam(uint),
+    CountIsName(&'static str), // not actually used, see stage1
+    CountIsNextParam,
+    CountImplied,
+}
+
+#[deriving(Eq)]
+#[allow(missing_doc)]
+#[cfg(not(stage0))]
+pub enum Count<'self> {
+    CountIs(uint),
+    CountIsName(&'self str),
     CountIsParam(uint),
     CountIsNextParam,
     CountImplied,
@@ -338,10 +378,22 @@ impl<'self> Parser<'self> {
             spec.flags |= 1 << (FlagAlternate as uint);
         }
         // Width and precision
+        let mut havewidth = false;
         if self.consume('0') {
-            spec.flags |= 1 << (FlagSignAwareZeroPad as uint);
+            // small ambiguity with '0$' as a format string. In theory this is a
+            // '0' flag and then an ill-formatted format string with just a '$'
+            // and no count, but this is better if we instead interpret this as
+            // no '0' flag and '0$' as the width instead.
+            if self.consume('$') {
+                spec.width = CountIsParam(0);
+                havewidth = true;
+            } else {
+                spec.flags |= 1 << (FlagSignAwareZeroPad as uint);
+            }
         }
-        spec.width = self.count();
+        if !havewidth {
+            spec.width = self.count();
+        }
         if self.consume('.') {
             if self.consume('*') {
                 spec.precision = CountIsNextParam;
@@ -542,6 +594,7 @@ impl<'self> Parser<'self> {
     /// Parses a Count parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
+    #[cfg(stage0)]
     fn count(&mut self) -> Count {
         match self.integer() {
             Some(i) => {
@@ -552,6 +605,30 @@ impl<'self> Parser<'self> {
                 }
             }
             None => { CountImplied }
+        }
+    }
+    #[cfg(not(stage0))]
+    fn count(&mut self) -> Count<'self> {
+        match self.integer() {
+            Some(i) => {
+                if self.consume('$') {
+                    CountIsParam(i)
+                } else {
+                    CountIs(i)
+                }
+            }
+            None => {
+                let tmp = self.cur.clone();
+                match self.word() {
+                    word if word.len() > 0 && self.consume('$') => {
+                        CountIsName(word)
+                    }
+                    _ => {
+                        self.cur = tmp;
+                        CountImplied
+                    }
+                }
+            }
         }
     }
 
@@ -773,6 +850,18 @@ mod tests {
                 flags: 0,
                 precision: CountIsParam(10),
                 width: CountImplied,
+                ty: "s",
+            },
+            method: None,
+        })]);
+        same("{:a$.b$s}", ~[Argument(Argument {
+            position: ArgumentNext,
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIsName("b"),
+                width: CountIsName("a"),
                 ty: "s",
             },
             method: None,

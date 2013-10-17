@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 use std::iter::range_step;
 
 use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, add_bytes_to_bits,

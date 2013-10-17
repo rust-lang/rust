@@ -200,6 +200,7 @@ pub fn phase_2_configure_and_expand(sess: Session,
 
 pub struct CrateAnalysis {
     exp_map2: middle::resolve::ExportMap2,
+    exported_items: middle::privacy::ExportedItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
     reachable: @mut HashSet<ast::NodeId>
@@ -311,6 +312,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     CrateAnalysis {
         exp_map2: exp_map2,
         ty_cx: ty_cx,
+        exported_items: exported_items,
         maps: astencode::Maps {
             root_map: root_map,
             method_map: method_map,
