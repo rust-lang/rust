@@ -217,10 +217,6 @@ fn is_read_only(p: &Path) -> bool {
     }
 }
 
-fn ends_with(v: &[u8], needle: &[u8]) -> bool {
-    v.len() >= needle.len() && v.slice_from(v.len() - needle.len()) == needle
-}
-
 fn test_sysroot() -> Path {
     // Totally gross hack but it's just for test cases.
     // Infer the sysroot from the exe name and pray that it's right.
@@ -747,7 +743,7 @@ fn test_package_version() {
                                              &ws) {
         Some(p) => {
             let suffix = format!("0.4{}", os::consts::DLL_SUFFIX);
-            ends_with(p.as_vec(), suffix.as_bytes())
+            p.as_vec().ends_with(suffix.as_bytes())
         }
         None    => false
     });
@@ -785,7 +781,7 @@ fn test_package_request_version() {
         Some(p) => {
             debug2!("installed: {}", p.display());
             let suffix = format!("0.3{}", os::consts::DLL_SUFFIX);
-            ends_with(p.as_vec(), suffix.as_bytes())
+            p.as_vec().ends_with(suffix.as_bytes())
         }
         None    => false
     });

@@ -189,12 +189,9 @@ mod test {
         let mut d = Path::new(env!("CFG_PREFIX"));
         d.push("lib/rustc/triple/lib");
         debug2!("test_prefix_path: {} vs. {}",
-               res.to_str(),
+               res,
                d.display());
-        assert!(ends_with(res.as_bytes(), d.as_vec()));
-        fn ends_with(v: &[u8], needle: &[u8]) -> bool {
-            v.len() >= needle.len() && v.slice_from(v.len()-needle.len()) == needle
-        }
+        assert!(res.as_bytes().ends_with(d.as_vec()));
     }
 
     #[test]
