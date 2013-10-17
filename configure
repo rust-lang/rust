@@ -686,7 +686,7 @@ do
     make_dir $t/rt/libuv/src/ev
     make_dir $t/rt/jemalloc
     for i in                                          \
-      isaac linenoise sync test \
+      isaac sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
       sundown/src sundown/html
     do
