@@ -570,18 +570,6 @@ rust_drop_env_lock() {
     env_lock.unlock();
 }
 
-static lock_and_signal linenoise_lock;
-
-extern "C" CDECL void
-rust_take_linenoise_lock() {
-    linenoise_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_linenoise_lock() {
-    linenoise_lock.unlock();
-}
-
 static lock_and_signal dlerror_lock;
 
 extern "C" CDECL void
