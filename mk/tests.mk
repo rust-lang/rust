@@ -265,7 +265,6 @@ tidy:
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
-		| grep '^$(S)src/rt/jemalloc' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif
