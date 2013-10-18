@@ -997,6 +997,7 @@ pub fn utf8_char_width(b: u8) -> uint {
 /// the utf8 bytes of a string.
 pub struct CharRange {
     /// Current `char`
+	/// This field should be public making it private causes error while compiling!!
     ch: char,
 
     /// Index of the first byte of the next `char`
