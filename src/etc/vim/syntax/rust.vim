@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Sep 4
+" Last Change:  2013 Oct 19
 
 if version < 600
   syntax clear
@@ -61,6 +61,7 @@ syn keyword   rustEnumVariant Ok Err
 " Functions {{{3
 "syn keyword rustFunction print println
 "syn keyword rustFunction range
+"syn keyword rustFunction from_str
 
 " Types and traits {{{3
 syn keyword rustTrait ToCStr
@@ -79,22 +80,23 @@ syn keyword rustTrait Orderable Signed Unsigned Round
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
 syn keyword rustTrait Integer Fractional Real RealExt
 syn keyword rustTrait Bitwise BitCount Bounded
-syn keyword rustTrait Primitive Int Float ToStrRadix
+syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
 syn keyword rustTrait GenericPath
 syn keyword rustTrait Path
 syn keyword rustTrait PosixPath
 syn keyword rustTrait WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr ToBytesConsume
+syn keyword rustTrait SendStr SendStrOwned SendStrStatic IntoSendStr
 syn keyword rustTrait Str StrVector StrSlice OwnedStr
 syn keyword rustTrait FromStr
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr ToStrConsume
 syn keyword rustTrait CopyableTuple ImmutableTuple
-syn keyword rustTrait CloneableTuple1 ImmutableTuple1
-syn keyword rustTrait CloneableTuple2 CloneableTuple3 CloneableTuple4 CloneableTuple5
-syn keyword rustTrait CloneableTuple6 CloneableTuple7 CloneableTuple8 CloneableTuple9
-syn keyword rustTrait CloneableTuple10 CloneableTuple11 CloneableTuple12
+syn keyword rustTrait Tuple1 ImmutableTuple1
+syn keyword rustTrait Tuple2 Tuple3 Tuple4 Tuple5
+syn keyword rustTrait Tuple6 Tuple7 Tuple8 Tuple9
+syn keyword rustTrait Tuple10 Tuple11 Tuple12
 syn keyword rustTrait ImmutableTuple2 ImmutableTuple3 ImmutableTuple4 ImmutableTuple5
 syn keyword rustTrait ImmutableTuple6 ImmutableTuple7 ImmutableTuple8 ImmutableTuple9
 syn keyword rustTrait ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
