@@ -1391,8 +1391,8 @@ Both vectors and strings support a number of useful
 [methods](#methods), defined in [`std::vec`]
 and [`std::str`]. Here are some examples.
 
-[`std::vec`]: std/vec.html
-[`std::str`]: std/str.html
+[`std::vec`]: std/vec/index.html
+[`std::str`]: std/str/index.html
 
 ~~~
 # enum Crayon {
@@ -2966,30 +2966,30 @@ The full documentation for `std` can be found here: [standard library].
 
 [standard library]: std/index.html
 [`std`]: std/index.html
-[`bool`]: std/bool.html
-[tuples]: std/tuple.html
-[characters]: std/char.html
-[strings]: std/str.html
-[vectors]: std/vec.html
-[managed boxes]: std/managed.html
-[owned boxes]: std/owned.html
-[pointers]: std/ptr.html
-[`option`]: std/option.html
-[`result`]: std/result.html
-[task]: std/task.html
-[communication]: std/comm.html
-[`os`]: std/os.html
-[`path`]: std/path.html
-[`io`]: std/io.html
-[containers]: std/container.html
-[`hashmap`]: std/hashmap.html
-[`kinds`]: std/kinds.html
-[`ops`]: std/ops.html
-[`cmp`]: std/cmp.html
-[`num`]: std/num.html
-[`to_str`]: std/to_str.html
-[`clone`]: std/clone.html
-[`libc`]: std/libc.html
+[`bool`]: std/bool/index.html
+[tuples]: std/tuple/index.html
+[characters]: std/char/index.html
+[strings]: std/str/index.html
+[vectors]: std/vec/index.html
+[managed boxes]: std/managed/index.html
+[owned boxes]: std/owned/index.html
+[pointers]: std/ptr/index.html
+[`option`]: std/option/index.html
+[`result`]: std/result/index.html
+[task]: std/task/index.html
+[communication]: std/comm/index.html
+[`os`]: std/os/index.html
+[`path`]: std/path/index.html
+[`io`]: std/io/index.html
+[containers]: std/container/index.html
+[`hashmap`]: std/hashmap/index.html
+[`kinds`]: std/kinds/index.html
+[`ops`]: std/ops/index.html
+[`cmp`]: std/cmp/index.html
+[`num`]: std/num/index.html
+[`to_str`]: std/to_str/index.html
+[`clone`]: std/clone/index.html
+[`libc`]: std/libc/index.html
 
 ## The extra library
 
@@ -3012,8 +3012,8 @@ tutorials on individual topics.
 * [Tasks and communication][tasks]
 * [Macros][macros]
 * [The foreign function interface][ffi]
-* [Containers and iterators](tutorial-container.html)
-* [Error-handling and Conditions](tutorial-conditions.html)
+* [Containers and iterators][container]
+* [Error-handling and Conditions][conditions]
 * [Packaging up Rust code][rustpkg]
 
 There is further documentation on the [wiki], however those tend to be even more out of date as this document.
@@ -3022,6 +3022,8 @@ There is further documentation on the [wiki], however those tend to be even more
 [tasks]: tutorial-tasks.html
 [macros]: tutorial-macros.html
 [ffi]: tutorial-ffi.html
+[container]: tutorial-container.html
+[conditions]: tutorial-conditions.html
 [rustpkg]: tutorial-rustpkg.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
