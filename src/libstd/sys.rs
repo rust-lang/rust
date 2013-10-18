@@ -13,21 +13,11 @@
 #[allow(missing_doc)];
 
 use c_str::ToCStr;
-use cast;
 use libc::size_t;
 use libc;
 use repr;
 use rt::task;
 use str;
-
-/// Returns the refcount of a shared box (as just before calling this)
-#[inline]
-pub fn refcount<T>(t: @T) -> uint {
-    unsafe {
-        let ref_ptr: *uint = cast::transmute_copy(&t);
-        *ref_ptr - 1
-    }
-}
 
 pub fn log_str<T>(t: &T) -> ~str {
     use rt::io;
