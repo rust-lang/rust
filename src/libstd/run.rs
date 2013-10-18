@@ -19,6 +19,7 @@ use libc;
 use prelude::*;
 use rt::io::native::process;
 use rt::io;
+use rt::io::extensions::ReaderUtil;
 use task;
 
 /**
@@ -189,18 +190,6 @@ impl Process {
         let output = Cell::new(self.inner.take_output());
         let error = Cell::new(self.inner.take_error());
 
-        fn read_everything(r: &mut io::Reader) -> ~[u8] {
-            let mut ret = ~[];
-            let mut buf = [0, ..1024];
-            loop {
-                match r.read(buf) {
-                    Some(n) => { ret.push_all(buf.slice_to(n)); }
-                    None => break
-                }
-            }
-            return ret;
-        }
-
         // Spawn two entire schedulers to read both stdout and sterr
         // in parallel so we don't deadlock while blocking on one
         // or the other. FIXME (#2625): Surely there's a much more
@@ -210,13 +199,13 @@ impl Process {
         let ch_clone = ch.clone();
         do task::spawn_sched(task::SingleThreaded) {
             match error.take() {
-                Some(ref mut e) => ch.send((2, read_everything(*e))),
+                Some(ref mut e) => ch.send((2, e.read_to_end())),
                 None => ch.send((2, ~[]))
             }
         }
         do task::spawn_sched(task::SingleThreaded) {
             match output.take() {
-                Some(ref mut e) => ch_clone.send((1, read_everything(*e))),
+                Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
                 None => ch_clone.send((1, ~[]))
             }
         }

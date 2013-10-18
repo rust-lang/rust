@@ -1146,17 +1146,18 @@ extern {
                                height: *c_int) -> c_int;
     fn rust_uv_guess_handle(fd: c_int) -> uv_handle_type;
 
+    // XXX: see comments in addrinfo.rs
     // These should all really be constants...
-    #[rust_stack] pub fn rust_SOCK_STREAM() -> c_int;
-    #[rust_stack] pub fn rust_SOCK_DGRAM() -> c_int;
-    #[rust_stack] pub fn rust_SOCK_RAW() -> c_int;
-    #[rust_stack] pub fn rust_IPPROTO_UDP() -> c_int;
-    #[rust_stack] pub fn rust_IPPROTO_TCP() -> c_int;
-    #[rust_stack] pub fn rust_AI_ADDRCONFIG() -> c_int;
-    #[rust_stack] pub fn rust_AI_ALL() -> c_int;
-    #[rust_stack] pub fn rust_AI_CANONNAME() -> c_int;
-    #[rust_stack] pub fn rust_AI_NUMERICHOST() -> c_int;
-    #[rust_stack] pub fn rust_AI_NUMERICSERV() -> c_int;
-    #[rust_stack] pub fn rust_AI_PASSIVE() -> c_int;
-    #[rust_stack] pub fn rust_AI_V4MAPPED() -> c_int;
+    //#[rust_stack] pub fn rust_SOCK_STREAM() -> c_int;
+    //#[rust_stack] pub fn rust_SOCK_DGRAM() -> c_int;
+    //#[rust_stack] pub fn rust_SOCK_RAW() -> c_int;
+    //#[rust_stack] pub fn rust_IPPROTO_UDP() -> c_int;
+    //#[rust_stack] pub fn rust_IPPROTO_TCP() -> c_int;
+    //#[rust_stack] pub fn rust_AI_ADDRCONFIG() -> c_int;
+    //#[rust_stack] pub fn rust_AI_ALL() -> c_int;
+    //#[rust_stack] pub fn rust_AI_CANONNAME() -> c_int;
+    //#[rust_stack] pub fn rust_AI_NUMERICHOST() -> c_int;
+    //#[rust_stack] pub fn rust_AI_NUMERICSERV() -> c_int;
+    //#[rust_stack] pub fn rust_AI_PASSIVE() -> c_int;
+    //#[rust_stack] pub fn rust_AI_V4MAPPED() -> c_int;
 }

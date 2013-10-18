@@ -17,9 +17,18 @@ use os;
 use prelude::*;
 use super::super::*;
 
-fn raise_error() {
+#[cfg(windows)]
+fn get_err(errno: i32) -> (IoErrorKind, &'static str) {
+    match errno {
+        libc::EOF => (EndOfFile, "end of file"),
+        _ => (OtherIoError, "unknown error"),
+    }
+}
+
+#[cfg(not(windows))]
+fn get_err(errno: i32) -> (IoErrorKind, &'static str) {
     // XXX: this should probably be a bit more descriptive...
-    let (kind, desc) = match os::errno() as i32 {
+    match errno {
         libc::EOF => (EndOfFile, "end of file"),
 
         // These two constants can have the same value on some systems, but
@@ -28,8 +37,11 @@ fn raise_error() {
             (ResourceUnavailable, "resource temporarily unavailable"),
 
         _ => (OtherIoError, "unknown error"),
-    };
+    }
+}
 
+fn raise_error() {
+    let (kind, desc) = get_err(os::errno() as i32);
     io_error::cond.raise(IoError {
         kind: kind,
         desc: desc,

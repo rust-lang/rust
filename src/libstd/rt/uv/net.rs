@@ -14,7 +14,7 @@ use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle,
-             status_to_maybe_uv_error, vec_to_uv_buf};
+             status_to_maybe_uv_error, empty_buf};
 use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec;
 use str;
@@ -119,23 +119,17 @@ impl Watcher for StreamWatcher { }
 
 impl StreamWatcher {
     pub fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
-        {
-            let data = self.get_watcher_data();
-            data.alloc_cb = Some(alloc);
-            data.read_cb = Some(cb);
-        }
-
-        let ret = unsafe { uvll::read_start(self.native_handle(), alloc_cb, read_cb) };
-
-        if ret != 0 {
-            // uvll::read_start failed, so read_cb will not be called.
-            // Call it manually for scheduling.
-            call_read_cb(self.native_handle(), ret as ssize_t);
-        }
-
-        fn call_read_cb(stream: *uvll::uv_stream_t, errno: ssize_t) {
-            #[fixed_stack_segment]; #[inline(never)];
-            read_cb(stream, errno, vec_to_uv_buf(~[]));
+        unsafe {
+            match uvll::read_start(self.native_handle(), alloc_cb, read_cb) {
+                0 => {
+                    let data = self.get_watcher_data();
+                    data.alloc_cb = Some(alloc);
+                    data.read_cb = Some(cb);
+                }
+                n => {
+                    cb(*self, 0, empty_buf(), Some(UvError(n)))
+                }
+            }
         }
 
         extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
@@ -163,16 +157,21 @@ impl StreamWatcher {
     }
 
     pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.write_cb.is_none());
-            data.write_cb = Some(cb);
-        }
-
         let req = WriteRequest::new();
-        unsafe {
-        assert_eq!(0, uvll::write(req.native_handle(), self.native_handle(), [buf], write_cb));
-        }
+        return unsafe {
+            match uvll::write(req.native_handle(), self.native_handle(),
+                              [buf], write_cb) {
+                0 => {
+                    let data = self.get_watcher_data();
+                    assert!(data.write_cb.is_none());
+                    data.write_cb = Some(cb);
+                }
+                n => {
+                    req.delete();
+                    cb(*self, Some(UvError(n)))
+                }
+            }
+        };
 
         extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);

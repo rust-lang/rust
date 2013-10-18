@@ -73,13 +73,14 @@ impl GetAddrInfoRequest {
             cb(req, addrinfo, err)
         };
 
-        let hint = hints.map(|hint| unsafe {
+        let hint = hints.map(|hint| {
             let mut flags = 0;
             do each_ai_flag |cval, aival| {
                 if hint.flags & (aival as uint) != 0 {
                     flags |= cval as i32;
                 }
             }
+            /* XXX: do we really want to support these?
             let socktype = match hint.socktype {
                 Some(ai::Stream) => uvll::rust_SOCK_STREAM(),
                 Some(ai::Datagram) => uvll::rust_SOCK_DGRAM(),
@@ -91,6 +92,9 @@ impl GetAddrInfoRequest {
                 Some(ai::TCP) => uvll::rust_IPPROTO_TCP(),
                 _ => 0,
             };
+            */
+            let socktype = 0;
+            let protocol = 0;
 
             uvll::addrinfo {
                 ai_flags: flags,
@@ -167,7 +171,8 @@ impl GetAddrInfoRequest {
     }
 }
 
-fn each_ai_flag(f: &fn(c_int, ai::Flag)) {
+fn each_ai_flag(_f: &fn(c_int, ai::Flag)) {
+    /* XXX: do we really want to support these?
     unsafe {
         f(uvll::rust_AI_ADDRCONFIG(), ai::AddrConfig);
         f(uvll::rust_AI_ALL(), ai::All);
@@ -177,6 +182,7 @@ fn each_ai_flag(f: &fn(c_int, ai::Flag)) {
         f(uvll::rust_AI_PASSIVE(), ai::Passive);
         f(uvll::rust_AI_V4MAPPED(), ai::V4Mapped);
     }
+    */
 }
 
 // Traverse the addrinfo linked list, producing a vector of Rust socket addresses
@@ -197,6 +203,7 @@ pub fn accum_addrinfo(addr: &net::UvAddrInfo) -> ~[ai::Info] {
                 }
             }
 
+            /* XXX: do we really want to support these
             let protocol = match (*addr).ai_protocol {
                 p if p == uvll::rust_IPPROTO_UDP() => Some(ai::UDP),
                 p if p == uvll::rust_IPPROTO_TCP() => Some(ai::TCP),
@@ -208,6 +215,9 @@ pub fn accum_addrinfo(addr: &net::UvAddrInfo) -> ~[ai::Info] {
                 p if p == uvll::rust_SOCK_RAW() => Some(ai::Raw),
                 _ => None,
             };
+            */
+            let protocol = None;
+            let socktype = None;
 
             addrs.push(ai::Info {
                 address: rustaddr,

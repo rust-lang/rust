@@ -336,6 +336,13 @@ pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError>
 /// The uv buffer type
 pub type Buf = uvll::uv_buf_t;
 
+pub fn empty_buf() -> Buf {
+    uvll::uv_buf_t {
+        base: null(),
+        len: 0,
+    }
+}
+
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     let data = vec::raw::to_ptr(v);
