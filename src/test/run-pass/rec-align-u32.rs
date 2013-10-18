@@ -12,7 +12,7 @@
 
 // Issue #2303
 
-use std::sys;
+use std::mem;
 
 mod rusti {
     extern "rust-intrinsic" {
@@ -55,7 +55,7 @@ pub fn main() {
         let y = format!("{:?}", x);
 
         info2!("align inner = {:?}", rusti::min_align_of::<Inner>());
-        info2!("size outer = {:?}", sys::size_of::<Outer>());
+        info2!("size outer = {:?}", mem::size_of::<Outer>());
         info2!("y = {}", y);
 
         // per clang/gcc the alignment of `inner` is 4 on x86.
@@ -63,7 +63,7 @@ pub fn main() {
 
         // per clang/gcc the size of `outer` should be 12
         // because `inner`s alignment was 4.
-        assert_eq!(sys::size_of::<Outer>(), m::size());
+        assert_eq!(mem::size_of::<Outer>(), m::size());
 
         assert_eq!(y, ~"Outer{c8: 22u8, t: Inner{c64: 44u32}}");
     }

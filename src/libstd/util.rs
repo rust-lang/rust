@@ -93,7 +93,7 @@ mod tests {
     use ops::Drop;
     use option::{None, Some};
     use either::{Either, Left, Right};
-    use sys::size_of;
+    use mem::size_of;
 
     #[test]
     fn identity_crisis() {

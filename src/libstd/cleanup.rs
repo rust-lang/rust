@@ -68,7 +68,7 @@ fn debug_mem() -> bool {
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
 pub unsafe fn annihilate() {
     use rt::local_heap::local_free;
-    use sys;
+    use mem;
     use managed;
 
     let mut stats = AnnihilateStats {
@@ -115,7 +115,7 @@ pub unsafe fn annihilate() {
         if !uniq {
             stats.n_bytes_freed +=
                 (*((*box).type_desc)).size
-                + sys::size_of::<raw::Box<()>>();
+                + mem::size_of::<raw::Box<()>>();
             local_free(box as *i8);
         }
         true

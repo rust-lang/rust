@@ -12,7 +12,7 @@
 
 use std::libc::c_void;
 use std::ptr;
-use std::sys;
+use std::mem;
 use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
 use std::unstable::raw::Vec;
 
@@ -49,12 +49,12 @@ impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     pub fn align_to<T>(&mut self) {
-        self.align(sys::min_align_of::<T>());
+        self.align(mem::min_align_of::<T>());
     }
 
     #[inline(always)]
     pub fn bump_past<T>(&mut self) {
-        self.bump(sys::size_of::<T>());
+        self.bump(mem::size_of::<T>());
     }
 
 }

@@ -337,7 +337,7 @@ mod tests {
     use super::*;
 
     use num;
-    use sys;
+    use mem;
     use u16;
 
     #[test]
@@ -431,8 +431,8 @@ mod tests {
     #[test]
     fn test_primitive() {
         let none: Option<$T> = None;
-        assert_eq!(Primitive::bits(none), sys::size_of::<$T>() * 8);
-        assert_eq!(Primitive::bytes(none), sys::size_of::<$T>());
+        assert_eq!(Primitive::bits(none), mem::size_of::<$T>() * 8);
+        assert_eq!(Primitive::bytes(none), mem::size_of::<$T>());
     }
 
     #[test]
