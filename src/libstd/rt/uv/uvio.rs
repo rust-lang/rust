@@ -868,13 +868,13 @@ impl IoFactory for UvIoFactory {
         return ret;
     }
 
-    fn tty_open(&mut self, fd: c_int, readable: bool, close_on_drop: bool)
+    fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError> {
         match tty::TTY::new(self.uv_loop(), fd, readable) {
             Ok(tty) => Ok(~UvTTY {
                 home: get_handle_to_current_scheduler!(),
                 tty: tty,
-                close_on_drop: close_on_drop,
+                fd: fd,
             } as ~RtioTTY),
             Err(e) => Err(uv_error_to_io_error(e))
         }
@@ -1748,7 +1748,7 @@ impl RtioUnixListener for UvUnixListener {
 pub struct UvTTY {
     tty: tty::TTY,
     home: SchedHandle,
-    close_on_drop: bool,
+    fd: c_int,
 }
 
 impl HomingIO for UvTTY {
@@ -1757,19 +1757,47 @@ impl HomingIO for UvTTY {
 
 impl Drop for UvTTY {
     fn drop(&mut self) {
-        if self.close_on_drop {
-            let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task = Cell::new(task);
-                do self.tty.close {
-                    let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task.take());
-                }
-            }
-        } else {
-            self.tty.drop_watcher_data();
-            unsafe { uvll::free_handle(self.tty.native_handle()) }
+        // TTY handles are used for the logger in a task, so this destructor is
+        // run when a task is destroyed. When a task is being destroyed, a local
+        // scheduler isn't available, so we can't do the normal "take the
+        // scheduler and resume once close is done". Instead close operations on
+        // a TTY are asynchronous.
+
+        self.tty.close_async();
+    }
+}
+
+impl RtioTTY for UvTTY {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+        do self.home_for_io_with_sched |self_, scheduler| {
+            read_stream(self_.tty.as_stream(), scheduler, buf)
         }
+    }
+
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+        do self.home_for_io_with_sched |self_, scheduler| {
+            write_stream(self_.tty.as_stream(), scheduler, buf)
+        }
+    }
+
+    fn set_raw(&mut self, raw: bool) -> Result<(), IoError> {
+        do self.home_for_io |self_| {
+            match self_.tty.set_mode(raw) {
+                Ok(p) => Ok(p), Err(e) => Err(uv_error_to_io_error(e))
+            }
+        }
+    }
+
+    fn get_winsize(&mut self) -> Result<(int, int), IoError> {
+        do self.home_for_io |self_| {
+            match self_.tty.get_winsize() {
+                Ok(p) => Ok(p), Err(e) => Err(uv_error_to_io_error(e))
+            }
+        }
+    }
+
+    fn isatty(&self) -> bool {
+        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY }
     }
 }
 
@@ -1804,36 +1832,6 @@ impl RtioUnixAcceptor for UvUnixAcceptor {
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
             accept_simultaneously(self_.listener.inner.pipe.as_stream(), 0)
-        }
-    }
-}
-
-impl RtioTTY for UvTTY {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        do self.home_for_io_with_sched |self_, scheduler| {
-            read_stream(self_.tty.as_stream(), scheduler, buf)
-        }
-    }
-
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        do self.home_for_io_with_sched |self_, scheduler| {
-            write_stream(self_.tty.as_stream(), scheduler, buf)
-        }
-    }
-
-    fn set_raw(&mut self, raw: bool) -> Result<(), IoError> {
-        do self.home_for_io |self_| {
-            match self_.tty.set_mode(raw) {
-                Ok(p) => Ok(p), Err(e) => Err(uv_error_to_io_error(e))
-            }
-        }
-    }
-
-    fn get_winsize(&mut self) -> Result<(int, int), IoError> {
-        do self.home_for_io |self_| {
-            match self_.tty.get_winsize() {
-                Ok(p) => Ok(p), Err(e) => Err(uv_error_to_io_error(e))
-            }
         }
     }
 }

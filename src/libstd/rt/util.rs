@@ -71,9 +71,18 @@ pub fn default_sched_threads() -> uint {
 
 pub fn dumb_println(args: &fmt::Arguments) {
     use rt::io::native::stdio::stderr;
-    use rt::io::Writer;
+    use rt::io::{Writer, io_error, ResourceUnavailable};
     let mut out = stderr();
-    fmt::writeln(&mut out as &mut Writer, args);
+
+    let mut again = true;
+    do io_error::cond.trap(|e| {
+        again = e.kind == ResourceUnavailable;
+    }).inside {
+        while again {
+            again = false;
+            fmt::writeln(&mut out as &mut Writer, args);
+        }
+    }
 }
 
 pub fn abort(msg: &str) -> ! {

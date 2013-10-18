@@ -97,7 +97,7 @@ pub trait IoFactory {
     fn unix_bind(&mut self, path: &CString) ->
         Result<~RtioUnixListener, IoError>;
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
-    fn tty_open(&mut self, fd: c_int, readable: bool, close_on_drop: bool)
+    fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;
 }
 
@@ -182,6 +182,7 @@ pub trait RtioTTY {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
     fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
     fn get_winsize(&mut self) -> Result<(int, int), IoError>;
+    fn isatty(&self) -> bool;
 }
 
 pub trait PausibleIdleCallback {

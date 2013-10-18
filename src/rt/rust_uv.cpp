@@ -681,3 +681,8 @@ extern "C" int
 rust_uv_tty_get_winsize(uv_tty_t *tty, int *width, int *height) {
     return uv_tty_get_winsize(tty, width, height);
 }
+
+extern "C" uv_handle_type
+rust_uv_guess_handle(int fd) {
+    return uv_guess_handle(fd);
+}

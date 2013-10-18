@@ -8,6 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+
+This modules provides bindings to the local event loop's TTY interface, using it
+to have synchronous, but non-blocking versions of stdio. These handles can be
+inspected for information about terminal dimensions or related information
+about the stream or terminal that it is attached to.
+
+# Example
+
+```rust
+use std::rt::io;
+
+let mut out = io::stdout();
+out.write(bytes!("Hello, world!"));
+```
+
+*/
+
 use fmt;
 use libc;
 use option::{Option, Some, None};
@@ -15,19 +33,27 @@ use result::{Ok, Err};
 use rt::rtio::{IoFactory, RtioTTY, with_local_io};
 use super::{Reader, Writer, io_error};
 
-/// Creates a new non-blocking handle to the stdin of the current process.
-///
-/// See `stdout()` for notes about this function.
-pub fn stdin() -> StdReader {
+#[fixed_stack_segment] #[inline(never)]
+fn tty<T>(fd: libc::c_int, f: &fn(~RtioTTY) -> T) -> T {
     do with_local_io |io| {
-        match io.tty_open(libc::STDIN_FILENO, true, false) {
-            Ok(tty) => Some(StdReader { inner: tty }),
+        // Always pass in readable as true, otherwise libuv turns our writes
+        // into blocking writes. We also need to dup the file descriptor because
+        // the tty will be closed when it's dropped.
+        match io.tty_open(unsafe { libc::dup(fd) }, true) {
+            Ok(tty) => Some(f(tty)),
             Err(e) => {
                 io_error::cond.raise(e);
                 None
             }
         }
     }.unwrap()
+}
+
+/// Creates a new non-blocking handle to the stdin of the current process.
+///
+/// See `stdout()` for notes about this function.
+pub fn stdin() -> StdReader {
+    do tty(libc::STDIN_FILENO) |tty| { StdReader { inner: tty } }
 }
 
 /// Creates a new non-blocking handle to the stdout of the current process.
@@ -37,30 +63,14 @@ pub fn stdin() -> StdReader {
 /// task context because the stream returned will be a non-blocking object using
 /// the local scheduler to perform the I/O.
 pub fn stdout() -> StdWriter {
-    do with_local_io |io| {
-        match io.tty_open(libc::STDOUT_FILENO, false, false) {
-            Ok(tty) => Some(StdWriter { inner: tty }),
-            Err(e) => {
-                io_error::cond.raise(e);
-                None
-            }
-        }
-    }.unwrap()
+    do tty(libc::STDOUT_FILENO) |tty| { StdWriter { inner: tty } }
 }
 
 /// Creates a new non-blocking handle to the stderr of the current process.
 ///
 /// See `stdout()` for notes about this function.
 pub fn stderr() -> StdWriter {
-    do with_local_io |io| {
-        match io.tty_open(libc::STDERR_FILENO, false, false) {
-            Ok(tty) => Some(StdWriter { inner: tty }),
-            Err(e) => {
-                io_error::cond.raise(e);
-                None
-            }
-        }
-    }.unwrap()
+    do tty(libc::STDERR_FILENO) |tty| { StdWriter { inner: tty } }
 }
 
 /// Prints a string to the stdout of the current process. No newline is emitted
@@ -115,6 +125,11 @@ impl StdReader {
             Err(e) => io_error::cond.raise(e),
         }
     }
+
+    /// Returns whether this tream is attached to a TTY instance or not.
+    ///
+    /// This is similar to libc's isatty() function
+    pub fn isatty(&self) -> bool { self.inner.isatty() }
 }
 
 impl Reader for StdReader {
@@ -170,6 +185,11 @@ impl StdWriter {
             Err(e) => io_error::cond.raise(e),
         }
     }
+
+    /// Returns whether this tream is attached to a TTY instance or not.
+    ///
+    /// This is similar to libc's isatty() function
+    pub fn isatty(&self) -> bool { self.inner.isatty() }
 }
 
 impl Writer for StdWriter {

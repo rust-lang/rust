@@ -21,6 +21,12 @@ fn raise_error() {
     // XXX: this should probably be a bit more descriptive...
     let (kind, desc) = match os::errno() as i32 {
         libc::EOF => (EndOfFile, "end of file"),
+
+        // These two constants can have the same value on some systems, but
+        // different values on others, so we can't use a match clause
+        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
+            (ResourceUnavailable, "resource temporarily unavailable"),
+
         _ => (OtherIoError, "unknown error"),
     };
 
