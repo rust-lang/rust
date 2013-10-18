@@ -823,7 +823,7 @@ mod tests {
         do 5.times {
             let arc3 = arc.clone();
             let mut builder = task::task();
-            builder.future_result(|r| children.push(r));
+            children.push(builder.future_result());
             do builder.spawn {
                 do arc3.read |num| {
                     assert!(*num >= 0);

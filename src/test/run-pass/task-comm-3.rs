@@ -45,7 +45,7 @@ fn test00() {
     while i < number_of_tasks {
         let ch = ch.clone();
         let mut builder = task::task();
-        builder.future_result(|r| results.push(r));
+        results.push(builder.future_result());
         builder.spawn({
             let i = i;
             || test00_start(&ch, i, number_of_messages)
