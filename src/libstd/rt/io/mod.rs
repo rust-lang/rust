@@ -370,6 +370,7 @@ pub enum IoErrorKind {
     PathAlreadyExists,
     PathDoesntExist,
     MismatchedFileTypeForOperation,
+    ResourceUnavailable,
     IoUnavailable,
 }
 
@@ -392,6 +393,7 @@ impl ToStr for IoErrorKind {
             PathDoesntExist => ~"PathDoesntExist",
             MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation",
             IoUnavailable => ~"IoUnavailable",
+            ResourceUnavailable => ~"ResourceUnavailable",
         }
     }
 }

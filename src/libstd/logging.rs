@@ -112,7 +112,7 @@ pub fn log(_level: u32, args: &fmt::Arguments) {
             }
             None => {
                 // There is no logger anywhere, just write to stderr
-                let mut logger = StdErrLogger;
+                let mut logger = StdErrLogger::new();
                 logger.log(args);
             }
         }

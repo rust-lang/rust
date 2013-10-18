@@ -132,7 +132,7 @@ impl Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: StdErrLogger,
+            logger: StdErrLogger::new(),
             unwinder: Unwinder { unwinding: false },
             taskgroup: None,
             death: Death::new(),
@@ -166,7 +166,7 @@ impl Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: StdErrLogger,
+            logger: StdErrLogger::new(),
             unwinder: Unwinder { unwinding: false },
             taskgroup: None,
             death: Death::new(),
@@ -188,7 +188,7 @@ impl Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: StdErrLogger,
+            logger: StdErrLogger::new(),
             unwinder: Unwinder { unwinding: false },
             taskgroup: None,
             // FIXME(#7544) make watching optional
@@ -549,6 +549,7 @@ pub fn begin_unwind(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use rt::logging::Logger;
     use str::Str;
     use c_str::CString;
+    use unstable::intrinsics;
 
     unsafe {
         let msg = CString::new(msg, false);
@@ -557,35 +558,32 @@ pub fn begin_unwind(msg: *c_char, file: *c_char, line: size_t) -> ! {
             Some(s) => s, None => rtabort!("message wasn't utf8?")
         };
 
-        if in_green_task_context() {
-            // Be careful not to allocate in this block, if we're failing we may
-            // have been failing due to a lack of memory in the first place...
-            do Local::borrow |task: &mut Task| {
-                let n = task.name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
-
-                match file.as_str() {
-                    Some(file) => {
-                        format_args!(|args| { task.logger.log(args) },
-                                     "task '{}' failed at '{}', {}:{}",
-                                     n, msg, file, line);
-                    }
-                    None => {
-                        format_args!(|args| { task.logger.log(args) },
-                                     "task '{}' failed at '{}'", n, msg);
-                    }
-                }
-            }
-        } else {
+        if !in_green_task_context() {
             match file.as_str() {
                 Some(file) => {
                     rterrln!("failed in non-task context at '{}', {}:{}",
                              msg, file, line as int);
                 }
-                None => rterrln!("failed in non-task context at '{}'", msg),
+                None => rterrln!("failed in non-task context at '{}'", msg)
             }
+            intrinsics::abort();
         }
 
+        // Be careful not to allocate in this block, if we're failing we may
+        // have been failing due to a lack of memory in the first place...
         let task: *mut Task = Local::unsafe_borrow();
+        let n = (*task).name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
+        match file.as_str() {
+            Some(file) => {
+                format_args!(|args| { (*task).logger.log(args) },
+                             "task '{}' failed at '{}', {}:{}",
+                             n, msg, file, line);
+            }
+            None => {
+                format_args!(|args| { (*task).logger.log(args) },
+                             "task '{}' failed at '{}'", n, msg);
+            }
+        }
         if (*task).unwinder.unwinding {
             rtabort!("unwinding again");
         }

@@ -170,6 +170,7 @@ pub trait WatcherInterop {
     fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
     fn drop_watcher_data(&mut self);
     fn close(self, cb: NullCallback);
+    fn close_async(self);
 }
 
 impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
@@ -231,6 +232,16 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         extern fn close_cb(handle: *uvll::uv_handle_t) {
             let mut h: Handle = NativeHandle::from_native_handle(handle);
             h.get_watcher_data().close_cb.take_unwrap()();
+            h.drop_watcher_data();
+            unsafe { uvll::free_handle(handle as *c_void) }
+        }
+    }
+
+    fn close_async(self) {
+        unsafe { uvll::close(self.native_handle(), close_cb); }
+
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            let mut h: Handle = NativeHandle::from_native_handle(handle);
             h.drop_watcher_data();
             unsafe { uvll::free_handle(handle as *c_void) }
         }

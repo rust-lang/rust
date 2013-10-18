@@ -986,6 +986,10 @@ pub unsafe fn tty_get_winsize(tty: *uv_tty_t, width: *c_int,
     #[fixed_stack_segment]; #[inline(never)];
     rust_uv_tty_get_winsize(tty, width, height)
 }
+pub unsafe fn guess_handle(fd: c_int) -> uv_handle_type {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_guess_handle(fd)
+}
 
 pub struct uv_err_data {
     priv err_name: ~str,
@@ -1140,6 +1144,7 @@ extern {
     fn rust_uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int;
     fn rust_uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
                                height: *c_int) -> c_int;
+    fn rust_uv_guess_handle(fd: c_int) -> uv_handle_type;
 
     // These should all really be constants...
     #[rust_stack] pub fn rust_SOCK_STREAM() -> c_int;
