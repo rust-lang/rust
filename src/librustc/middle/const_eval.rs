@@ -297,6 +297,7 @@ pub enum const_val {
     const_int(i64),
     const_uint(u64),
     const_str(@str),
+    const_binary(@[u8]),
     const_bool(bool)
 }
 
@@ -476,6 +477,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
 pub fn lit_to_const(lit: &lit) -> const_val {
     match lit.node {
       lit_str(s, _) => const_str(s),
+      lit_binary(data) => const_binary(data),
       lit_char(n) => const_uint(n as u64),
       lit_int(n, _) => const_int(n),
       lit_uint(n, _) => const_uint(n),
