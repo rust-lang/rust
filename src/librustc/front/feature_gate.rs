@@ -35,6 +35,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("struct_variant", Active),
     ("once_fns", Active),
     ("asm", Active),
+    ("managed_boxes", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -137,6 +138,15 @@ impl Visitor<()> for Context {
                                    experimental and likely to be removed");
 
             },
+            // NOTE: enable after snapshot
+            ast::ty_box(_) if false => {
+                self.gate_feature("managed_boxes", t.span, "The managed box syntax may be replaced \
+                                                            by a library type, and a garbage \
+                                                            collector is not yet implemented. \
+                                                            Consider using the `std::rc` module \
+                                                            as it performs much better as a \
+                                                            reference counting implementation.");
+            }
             _ => {}
         }
 
