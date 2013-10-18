@@ -12,13 +12,12 @@
 use std::task;
 
 pub fn main() {
-    let mut result = None;
     let mut builder = task::task();
-    builder.future_result(|r| { result = Some(r); });
+    let result = builder.future_result();
     builder.spawn(child);
     error2!("1");
     task::deschedule();
-    result.unwrap().recv();
+    result.recv();
 }
 
 fn child() { error2!("2"); }

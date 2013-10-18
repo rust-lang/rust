@@ -463,7 +463,6 @@ mod tests {
     use str::OwnedStr;
     use vec::ImmutableVector;
     use to_str::ToStr;
-    use fmt::Default;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
     pub fn op2() -> Result<int, ~str> { Err(~"sadface") }
