@@ -89,7 +89,7 @@ impl Process {
                 Ok((p, io)) => Some(Process{
                     handle: p,
                     io: io.move_iter().map(|p|
-                        p.map(|p| io::PipeStream::new_bound(p))
+                        p.map(|p| io::PipeStream::new(p))
                     ).collect()
                 }),
                 Err(ioerr) => {

@@ -94,6 +94,7 @@ pub trait IoFactory {
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
 
+    fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
     fn unix_bind(&mut self, path: &CString) ->
         Result<~RtioUnixListener, IoError>;
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;

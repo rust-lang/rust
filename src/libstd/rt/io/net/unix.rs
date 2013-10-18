@@ -37,7 +37,7 @@ pub struct UnixStream {
 
 impl UnixStream {
     fn new(obj: ~RtioPipe) -> UnixStream {
-        UnixStream { obj: PipeStream::new_bound(obj) }
+        UnixStream { obj: PipeStream::new(obj) }
     }
 
     /// Connect to a pipe named by `path`. This will attempt to open a

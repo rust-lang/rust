@@ -23,7 +23,7 @@ pub struct PipeStream {
 }
 
 impl PipeStream {
-    pub fn new_bound(inner: ~RtioPipe) -> PipeStream {
+    pub fn new(inner: ~RtioPipe) -> PipeStream {
         PipeStream { obj: inner }
     }
 }
@@ -42,7 +42,7 @@ impl Reader for PipeStream {
         }
     }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { false }
 }
 
 impl Writer for PipeStream {
@@ -55,5 +55,5 @@ impl Writer for PipeStream {
         }
     }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) {}
 }
