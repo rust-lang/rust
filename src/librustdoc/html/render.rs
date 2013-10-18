@@ -44,6 +44,7 @@ use std::rt::io::file::{FileInfo, DirectoryInfo};
 use std::rt::io::file;
 use std::rt::io;
 use std::rt::io::Reader;
+use std::os;
 use std::str;
 use std::task;
 use std::unstable::finally::Finally;
@@ -686,7 +687,15 @@ impl Context {
             Process(Context, clean::Item),
         }
         enum Progress { JobNew, JobDone }
-        static WORKERS: int = 10;
+
+        let workers = match os::getenv("RUSTDOC_WORKERS") {
+            Some(s) => {
+                match from_str::<uint>(s) {
+                    Some(n) => n, None => fail2!("{} not a number", s)
+                }
+            }
+            None => 10,
+        };
 
         let mut item = match crate.module.take() {
             Some(i) => i,
@@ -706,7 +715,7 @@ impl Context {
         // using the same channel/port. Through this, the crate is recursed on
         // in a hierarchical fashion, and parallelization is only achieved if
         // one node in the hierarchy has more than one child (very common).
-        for i in range(0, WORKERS) {
+        for i in range(0, workers) {
             let port = port.clone();
             let chan = chan.clone();
             let prog_chan = prog_chan.clone();
@@ -761,7 +770,7 @@ impl Context {
             if jobs == 0 { break }
         }
 
-        for _ in range(0, WORKERS) {
+        for _ in range(0, workers) {
             chan.send(Die);
         }
     }
