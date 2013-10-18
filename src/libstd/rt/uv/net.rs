@@ -159,7 +159,7 @@ impl StreamWatcher {
         // but read_stop may be called from inside one of them and we
         // would end up freeing the in-use environment
         let handle = self.native_handle();
-        unsafe { uvll::read_stop(handle); }
+        unsafe { assert_eq!(uvll::read_stop(handle), 0); }
     }
 
     pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {

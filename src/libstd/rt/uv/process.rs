@@ -146,7 +146,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
-            let pipe = UvUnboundPipe::new_fresh(loop_);
+            let pipe = UvUnboundPipe::new(loop_);
             let handle = pipe.pipe.as_stream().native_handle();
             uvll::set_stdio_container_flags(dst, flags);
             uvll::set_stdio_container_stream(dst, handle);

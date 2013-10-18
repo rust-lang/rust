@@ -19,7 +19,7 @@ on a `ToCStr` object. This trait is already defined for common
 objects such as strings and `Path` instances.
 
 All operations in this module, including those as part of `FileStream` et al
-block the task during execution. Most will raise `std::rt::io::{io_error,io_error}`
+block the task during execution. Most will raise `std::rt::io::io_error`
 conditions in the event of failure.
 
 Also included in this module are the `FileInfo` and `DirectoryInfo` traits. When

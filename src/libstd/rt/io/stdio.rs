@@ -30,7 +30,7 @@ use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::rtio::{IoFactory, RtioTTY, with_local_io};
+use rt::rtio::{IoFactory, RtioTTY, with_local_io, RtioPipe};
 use super::{Reader, Writer, io_error};
 
 #[fixed_stack_segment] #[inline(never)]
@@ -52,8 +52,17 @@ fn tty<T>(fd: libc::c_int, f: &fn(~RtioTTY) -> T) -> T {
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
 /// See `stdout()` for notes about this function.
+#[fixed_stack_segment] #[inline(never)]
 pub fn stdin() -> StdReader {
-    do tty(libc::STDIN_FILENO) |tty| { StdReader { inner: tty } }
+    do with_local_io |io| {
+        match io.pipe_open(unsafe { libc::dup(libc::STDIN_FILENO) }) {
+            Ok(stream) => Some(StdReader { inner: stream }),
+            Err(e) => {
+                io_error::cond.raise(e);
+                None
+            }
+        }
+    }.unwrap()
 }
 
 /// Creates a new non-blocking handle to the stdout of the current process.
@@ -108,28 +117,7 @@ pub fn println_args(fmt: &fmt::Arguments) {
 
 /// Representation of a reader of a standard input stream
 pub struct StdReader {
-    priv inner: ~RtioTTY
-}
-
-impl StdReader {
-    /// Controls whether this output stream is a "raw stream" or simply a normal
-    /// stream.
-    ///
-    /// # Failure
-    ///
-    /// This function will raise on the `io_error` condition if an error
-    /// happens.
-    pub fn set_raw(&mut self, raw: bool) {
-        match self.inner.set_raw(raw) {
-            Ok(()) => {},
-            Err(e) => io_error::cond.raise(e),
-        }
-    }
-
-    /// Returns whether this tream is attached to a TTY instance or not.
-    ///
-    /// This is similar to libc's isatty() function
-    pub fn isatty(&self) -> bool { self.inner.isatty() }
+    priv inner: ~RtioPipe
 }
 
 impl Reader for StdReader {
