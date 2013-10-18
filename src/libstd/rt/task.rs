@@ -621,29 +621,4 @@ mod test {
             a.next = Some(b);
         }
     }
-
-    // XXX: This is a copy of test_future_result in std::task.
-    // It can be removed once the scheduler is turned on by default.
-    #[test]
-    fn future_result() {
-        do run_in_newsched_task {
-            use option::{Some, None};
-            use task::*;
-
-            let mut result = None;
-            let mut builder = task();
-            builder.future_result(|r| result = Some(r));
-            do builder.spawn {}
-            assert_eq!(result.unwrap().recv(), Success);
-
-            result = None;
-            let mut builder = task();
-            builder.future_result(|r| result = Some(r));
-            builder.unlinked();
-            do builder.spawn {
-                fail2!();
-            }
-            assert_eq!(result.unwrap().recv(), Failure);
-        }
-    }
 }
