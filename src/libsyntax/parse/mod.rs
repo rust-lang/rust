@@ -271,9 +271,7 @@ pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<Span>)
     };
     let mut error = None;
     let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
-        do io::read_error::cond.trap(|e| error = Some(e)).inside {
-            path.open_reader(io::Open).read_to_end()
-        }
+        path.open_reader(io::Open).read_to_end()
     };
     match error {
         Some(e) => {

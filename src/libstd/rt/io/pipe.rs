@@ -15,7 +15,7 @@
 
 use prelude::*;
 use super::{Reader, Writer};
-use rt::io::{io_error, read_error, EndOfFile};
+use rt::io::{io_error, EndOfFile};
 use rt::rtio::RtioPipe;
 
 pub struct PipeStream {
@@ -35,7 +35,7 @@ impl Reader for PipeStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 return None;
             }

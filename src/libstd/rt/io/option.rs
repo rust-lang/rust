@@ -16,7 +16,7 @@
 
 use option::*;
 use super::{Reader, Writer, Listener, Acceptor, Seek, SeekStyle};
-use super::{standard_error, PreviousIoError, io_error, read_error, IoError};
+use super::{standard_error, PreviousIoError, io_error, IoError};
 
 fn prev_io_error() -> IoError {
     standard_error(PreviousIoError)
@@ -43,7 +43,7 @@ impl<R: Reader> Reader for Option<R> {
         match *self {
             Some(ref mut reader) => reader.read(buf),
             None => {
-                read_error::cond.raise(prev_io_error());
+                io_error::cond.raise(prev_io_error());
                 None
             }
         }
@@ -107,7 +107,7 @@ mod test {
     use option::*;
     use super::super::mem::*;
     use rt::test::*;
-    use super::super::{PreviousIoError, io_error, read_error};
+    use super::super::{PreviousIoError, io_error, io_error};
 
     #[test]
     fn test_option_writer() {
@@ -161,7 +161,7 @@ mod test {
         let mut buf = [];
 
         let mut called = false;
-        do read_error::cond.trap(|err| {
+        do io_error::cond.trap(|err| {
             assert_eq!(err.kind, PreviousIoError);
             called = true;
         }).inside {
