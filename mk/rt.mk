@@ -145,10 +145,10 @@ $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$
 	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
 $$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
-                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)) $$(JEMALLOC_LIB_$(1))
+                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
-	    $$(JEMALLOC_LIB_$(1)) $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(LIBUV_LIB_$(1)) \
+	    $$(LIBUV_LIB_$(1)) \
 	    $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
@@ -197,18 +197,15 @@ define DEF_THIRD_PARTY_TARGETS
 # $(1) is the target triple
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
-JEMALLOC_TARGET_$(1) := jemalloc_pic
 
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1) := win
-  JEMALLOC_TARGET_$(1) := jemalloc
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := freebsd
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
   LIBUV_OSTYPE_$(1) := android
-  JEMALLOC_ARGS_$(1) := --disable-tls
   LIBUV_ARGS_$(1) := PLATFORM=android host=android OS=linux
 else
   LIBUV_OSTYPE_$(1) := linux
@@ -216,8 +213,6 @@ endif
 
 LIBUV_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv)
 LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv/$$(LIBUV_NAME_$(1))
-JEMALLOC_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$$(JEMALLOC_TARGET_$(1)))
-JEMALLOC_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/jemalloc/lib/$$(JEMALLOC_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
 
@@ -252,16 +247,6 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 endif
-
-$$(JEMALLOC_LIB_$(1)):
-	cd $$(RT_OUTPUT_DIR_$(1))/jemalloc; $(S)src/rt/jemalloc/configure \
-		$$(JEMALLOC_ARGS_$(1)) \
-		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) \
-		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CC_$(1))" \
-		CXX="$$(CXX_$(1))" \
-		AR="$$(AR_$(1))"
-	$$(Q)$$(MAKE) -C $$(RT_OUTPUT_DIR_$(1))/jemalloc build_lib_static
 
 endef
 

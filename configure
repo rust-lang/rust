@@ -684,7 +684,6 @@ do
     make_dir $t/rt/libuv/src/ares
     make_dir $t/rt/libuv/src/eio
     make_dir $t/rt/libuv/src/ev
-    make_dir $t/rt/jemalloc
     for i in                                          \
       isaac sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
