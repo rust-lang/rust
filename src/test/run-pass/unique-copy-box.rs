@@ -10,14 +10,14 @@
 
 #[allow(unused_variable)];
 
-use std::sys;
+use std::managed;
 
 pub fn main() {
     let i = ~@1;
     let j = ~@2;
-    let rc1 = sys::refcount(*i);
+    let rc1 = managed::refcount(*i);
     let j = i.clone();
-    let rc2 = sys::refcount(*i);
+    let rc2 = managed::refcount(*i);
     error2!("rc1: {} rc2: {}", rc1, rc2);
     assert_eq!(rc1 + 1u, rc2);
 }
