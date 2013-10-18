@@ -50,16 +50,16 @@ pub trait Peekable<T> {
     fn peek(&self) -> bool;
 }
 
-pub struct PortOne<T> { x: rtcomm::PortOne<T> }
-pub struct ChanOne<T> { x: rtcomm::ChanOne<T> }
+pub struct PortOne<T> { priv x: rtcomm::PortOne<T> }
+pub struct ChanOne<T> { priv x: rtcomm::ChanOne<T> }
 
 pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
     let (p, c) = rtcomm::oneshot();
     (PortOne { x: p }, ChanOne { x: c })
 }
 
-pub struct Port<T> { x: rtcomm::Port<T> }
-pub struct Chan<T> { x: rtcomm::Chan<T> }
+pub struct Port<T> { priv x: rtcomm::Port<T> }
+pub struct Chan<T> { priv x: rtcomm::Chan<T> }
 
 pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
     let (p, c) = rtcomm::stream();
@@ -153,7 +153,7 @@ impl<T: Send> Peekable<T> for Port<T> {
 }
 
 
-pub struct SharedChan<T> { x: rtcomm::SharedChan<T> }
+pub struct SharedChan<T> { priv x: rtcomm::SharedChan<T> }
 
 impl<T: Send> SharedChan<T> {
     pub fn new(c: Chan<T>) -> SharedChan<T> {
@@ -195,7 +195,7 @@ impl<T> Clone for SharedChan<T> {
     }
 }
 
-pub struct SharedPort<T> { x: rtcomm::SharedPort<T> }
+pub struct SharedPort<T> { priv x: rtcomm::SharedPort<T> }
 
 impl<T: Send> SharedPort<T> {
     pub fn new(p: Port<T>) -> SharedPort<T> {
