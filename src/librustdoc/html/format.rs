@@ -115,12 +115,7 @@ impl fmt::Default for clean::Path {
 fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
                  print_all: bool) {
     path(w, p, print_all,
-        |_cache, loc| {
-            match p.segments[0].name.as_slice() {
-                "super" => Some("../".repeat(loc.len() - 1)),
-                _ => Some("../".repeat(loc.len())),
-            }
-        },
+        |_cache, loc| { Some("../".repeat(loc.len())) },
         |cache| {
             match cache.paths.find(&id) {
                 None => None,
