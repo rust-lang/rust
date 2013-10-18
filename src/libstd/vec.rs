@@ -116,8 +116,8 @@ use ptr;
 use ptr::RawPtr;
 use rt::global_heap::malloc_raw;
 use rt::global_heap::realloc_raw;
-use sys;
-use sys::size_of;
+use mem;
+use mem::size_of;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
@@ -185,8 +185,8 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
             vec.reserve(capacity);
             vec
         } else {
-            let alloc = capacity * sys::nonzero_size_of::<T>();
-            let ptr = malloc_raw(alloc + sys::size_of::<Vec<()>>()) as *mut Vec<()>;
+            let alloc = capacity * mem::nonzero_size_of::<T>();
+            let ptr = malloc_raw(alloc + mem::size_of::<Vec<()>>()) as *mut Vec<()>;
             (*ptr).alloc = alloc;
             (*ptr).fill = 0;
             cast::transmute(ptr)
@@ -1002,7 +1002,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn iter(self) -> VecIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_ptr(self);
-            if sys::size_of::<T>() == 0 {
+            if mem::size_of::<T>() == 0 {
                 VecIterator{ptr: p,
                             end: (p as uint + self.len()) as *T,
                             lifetime: None}
@@ -1406,9 +1406,9 @@ impl<T> OwnedVector<T> for ~[T] {
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
                     let ptr: *mut *mut Vec<()> = cast::transmute(self);
-                    let alloc = n * sys::nonzero_size_of::<T>();
-                    let size = alloc + sys::size_of::<Vec<()>>();
-                    if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
+                    let alloc = n * mem::nonzero_size_of::<T>();
+                    let size = alloc + mem::size_of::<Vec<()>>();
+                    if alloc / mem::nonzero_size_of::<T>() != n || size < alloc {
                         fail2!("vector size is too large: {}", n);
                     }
                     *ptr = realloc_raw(*ptr as *mut c_void, size)
@@ -1439,10 +1439,10 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe {
             if contains_managed::<T>() {
                 let repr: **Box<Vec<()>> = cast::transmute(self);
-                (**repr).data.alloc / sys::nonzero_size_of::<T>()
+                (**repr).data.alloc / mem::nonzero_size_of::<T>()
             } else {
                 let repr: **Vec<()> = cast::transmute(self);
-                (**repr).alloc / sys::nonzero_size_of::<T>()
+                (**repr).alloc / mem::nonzero_size_of::<T>()
             }
         }
     }
@@ -1451,7 +1451,7 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe {
             let ptr: *mut *mut Vec<()> = cast::transmute(self);
             let alloc = (**ptr).fill;
-            let size = alloc + sys::size_of::<Vec<()>>();
+            let size = alloc + mem::size_of::<Vec<()>>();
             *ptr = realloc_raw(*ptr as *mut c_void, size) as *mut Vec<()>;
             (**ptr).alloc = alloc;
         }
@@ -1485,14 +1485,14 @@ impl<T> OwnedVector<T> for ~[T] {
             if contains_managed::<T>() {
                 let repr: **mut Box<Vec<u8>> = cast::transmute(this);
                 let fill = (**repr).data.fill;
-                (**repr).data.fill += sys::nonzero_size_of::<T>();
+                (**repr).data.fill += mem::nonzero_size_of::<T>();
                 let p = to_unsafe_ptr(&((**repr).data.data));
                 let p = ptr::offset(p, fill as int) as *mut T;
                 intrinsics::move_val_init(&mut(*p), t);
             } else {
                 let repr: **mut Vec<u8> = cast::transmute(this);
                 let fill = (**repr).fill;
-                (**repr).fill += sys::nonzero_size_of::<T>();
+                (**repr).fill += mem::nonzero_size_of::<T>();
                 let p = to_unsafe_ptr(&((**repr).data));
                 let p = ptr::offset(p, fill as int) as *mut T;
                 intrinsics::move_val_init(&mut(*p), t);
@@ -1957,7 +1957,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     fn mut_iter(self) -> VecMutIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
-            if sys::size_of::<T>() == 0 {
+            if mem::size_of::<T>() == 0 {
                 VecMutIterator{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
                                lifetime: None}
@@ -2054,7 +2054,7 @@ pub mod raw {
     use clone::Clone;
     use option::Some;
     use ptr;
-    use sys;
+    use mem;
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
     use unstable::intrinsics::contains_managed;
@@ -2071,10 +2071,10 @@ pub mod raw {
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
         if contains_managed::<T>() {
             let repr: **mut Box<Vec<()>> = cast::transmute(v);
-            (**repr).data.fill = new_len * sys::nonzero_size_of::<T>();
+            (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
         } else {
             let repr: **mut Vec<()> = cast::transmute(v);
-            (**repr).fill = new_len * sys::nonzero_size_of::<T>();
+            (**repr).fill = new_len * mem::nonzero_size_of::<T>();
         }
     }
 
@@ -2323,7 +2323,7 @@ macro_rules! iterator {
                         None
                     } else {
                         let old = self.ptr;
-                        self.ptr = if sys::size_of::<T>() == 0 {
+                        self.ptr = if mem::size_of::<T>() == 0 {
                             // purposefully don't use 'ptr.offset' because for
                             // vectors with 0-size elements this would return the
                             // same pointer.
@@ -2340,7 +2340,7 @@ macro_rules! iterator {
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
                 let diff = (self.end as uint) - (self.ptr as uint);
-                let exact = diff / sys::nonzero_size_of::<T>();
+                let exact = diff / mem::nonzero_size_of::<T>();
                 (exact, Some(exact))
             }
         }
@@ -2357,7 +2357,7 @@ macro_rules! double_ended_iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        self.end = if sys::size_of::<T>() == 0 {
+                        self.end = if mem::size_of::<T>() == 0 {
                             // See above for why 'ptr.offset' isn't used
                             cast::transmute(self.end as uint - 1)
                         } else {
@@ -2497,7 +2497,7 @@ impl<A> Extendable<A> for ~[A] {
 #[cfg(test)]
 mod tests {
     use option::{None, Option, Some};
-    use sys;
+    use mem;
     use vec::*;
     use cmp::*;
     use prelude::*;
@@ -2597,7 +2597,7 @@ mod tests {
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];
-        assert_eq!(sys::size_of::<Z>(), 0);
+        assert_eq!(mem::size_of::<Z>(), 0);
         assert_eq!(v0.len(), 0);
         assert_eq!(v1.len(), 1);
         assert_eq!(v2.len(), 2);

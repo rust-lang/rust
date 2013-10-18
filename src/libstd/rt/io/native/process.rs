@@ -271,12 +271,12 @@ fn spawn_process_os(prog: &str, args: &[~str],
     };
     use libc::funcs::extra::msvcrt::get_osfhandle;
 
-    use sys;
+    use mem;
 
     unsafe {
 
         let mut si = zeroed_startupinfo();
-        si.cb = sys::size_of::<STARTUPINFO>() as DWORD;
+        si.cb = mem::size_of::<STARTUPINFO>() as DWORD;
         si.dwFlags = STARTF_USESTDHANDLES;
 
         let cur_proc = GetCurrentProcess();

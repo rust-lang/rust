@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sys;
+use std::mem;
 
 pub fn main() {
     enum E { V = 0x1717171717171717 }
     static C: E = V;
-    let expected: u64 = if sys::size_of::<uint>() < 8 {
+    let expected: u64 = if mem::size_of::<uint>() < 8 {
         0x17171717
     } else {
         0x1717171717171717

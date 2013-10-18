@@ -857,7 +857,7 @@ fn new_sched_rng() -> XorShiftRng {
 #[fixed_stack_segment] #[inline(never)]
 fn new_sched_rng() -> XorShiftRng {
     use libc;
-    use sys;
+    use mem;
     use c_str::ToCStr;
     use vec::MutableVector;
     use iter::Iterator;
@@ -871,7 +871,7 @@ fn new_sched_rng() -> XorShiftRng {
     }
 
     let mut seeds = [0u32, .. 4];
-    let size = sys::size_of_val(&seeds);
+    let size = mem::size_of_val(&seeds);
     loop {
         let nbytes = do seeds.as_mut_buf |buf, _| {
             unsafe {

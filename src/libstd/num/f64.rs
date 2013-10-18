@@ -976,7 +976,7 @@ mod tests {
 
     use num::*;
     use num;
-    use sys;
+    use mem;
 
     #[test]
     fn test_num() {
@@ -1249,8 +1249,8 @@ mod tests {
     #[test]
     fn test_primitive() {
         let none: Option<f64> = None;
-        assert_eq!(Primitive::bits(none), sys::size_of::<f64>() * 8);
-        assert_eq!(Primitive::bytes(none), sys::size_of::<f64>());
+        assert_eq!(Primitive::bits(none), mem::size_of::<f64>() * 8);
+        assert_eq!(Primitive::bytes(none), mem::size_of::<f64>());
     }
 
     #[test]

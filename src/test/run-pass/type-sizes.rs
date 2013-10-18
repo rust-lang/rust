@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod std;
-use std::sys::size_of;
+use std::mem::size_of;
 
 struct t {a: u8, b: i8}
 struct u {a: u8, b: i8, c: u8}

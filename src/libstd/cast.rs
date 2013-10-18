@@ -11,7 +11,7 @@
 //! Unsafe casting functions
 
 use ptr::RawPtr;
-use sys;
+use mem;
 use unstable::intrinsics;
 
 /// Casts the value at `src` to U. The two types must have the same length.
@@ -21,7 +21,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     let mut dest: U = intrinsics::uninit();
     let dest_ptr: *mut u8 = transmute(&mut dest);
     let src_ptr: *u8 = transmute(src);
-    intrinsics::memcpy32(dest_ptr, src_ptr, sys::size_of::<U>() as u32);
+    intrinsics::memcpy32(dest_ptr, src_ptr, mem::size_of::<U>() as u32);
     dest
 }
 
@@ -32,7 +32,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     let mut dest: U = intrinsics::uninit();
     let dest_ptr: *mut u8 = transmute(&mut dest);
     let src_ptr: *u8 = transmute(src);
-    intrinsics::memcpy64(dest_ptr, src_ptr, sys::size_of::<U>() as u64);
+    intrinsics::memcpy64(dest_ptr, src_ptr, mem::size_of::<U>() as u64);
     dest
 }
 

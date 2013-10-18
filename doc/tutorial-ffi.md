@@ -300,7 +300,7 @@ impl<T: Send> Unique<T> {
         #[inline(never)];
 
         unsafe {
-            let ptr = malloc(std::sys::size_of::<T>() as size_t) as *mut T;
+            let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             intrinsics::move_val_init(&mut *ptr, value);

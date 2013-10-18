@@ -11,7 +11,7 @@
 // error-pattern:index out of bounds: the len is 3 but the index is
 
 use std::uint::max_value;
-use std::sys::size_of;
+use std::mem::size_of;
 
 fn main() {
     let xs = [1, 2, 3];
