@@ -870,14 +870,12 @@ pub fn run_test(force_ignore: bool,
                       testfn: ~fn()) {
         let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
-            let mut result_future = None; // task::future_result(builder);
-
             let mut task = task::task();
             task.unlinked();
-            task.future_result(|r| { result_future = Some(r) });
+            let result_future = task.future_result();
             task.spawn(testfn_cell.take());
 
-            let task_result = result_future.unwrap().recv();
+            let task_result = result_future.recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
             monitor_ch.send((desc.clone(), test_result));

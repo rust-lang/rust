@@ -580,32 +580,29 @@ mod tests {
         // Now try the same thing, but with the child task blocking.
         let x = Exclusive::new(~~"hello");
         let x2 = Cell::new(x.clone());
-        let mut res = None;
         let mut builder = task::task();
-        builder.future_result(|r| res = Some(r));
+        let res = builder.future_result();
         do builder.spawn {
             let x2 = x2.take();
             assert!(x2.unwrap() == ~~"hello");
         }
         // Have to get rid of our reference before blocking.
         util::ignore(x);
-        res.unwrap().recv();
+        res.recv();
     }
 
     #[test] #[should_fail]
     fn exclusive_new_unwrap_conflict() {
         let x = Exclusive::new(~~"hello");
         let x2 = Cell::new(x.clone());
-        let mut res = None;
         let mut builder = task::task();
-        builder.future_result(|r| res = Some(r));
+        let res = builder.future_result();
         do builder.spawn {
             let x2 = x2.take();
             assert!(x2.unwrap() == ~~"hello");
         }
         assert!(x.unwrap() == ~~"hello");
-        // See #4689 for why this can't be just "res.recv()".
-        assert!(res.unwrap().recv() == task::Success);
+        assert!(res.recv() == task::Success);
     }
 
     #[test]

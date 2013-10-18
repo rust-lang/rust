@@ -258,24 +258,22 @@ impl TaskBuilder {
         self.opts.indestructible = true;
     }
 
-    /**
-     * Get a future representing the exit status of the task.
-     *
-     * Taking the value of the future will block until the child task
-     * terminates. The future-receiving callback specified will be called
-     * *before* the task is spawned; as such, do not invoke .get() within the
-     * closure; rather, store it in an outer variable/list for later use.
-     *
-     * Note that the future returning by this function is only useful for
-     * obtaining the value of the next task to be spawning with the
-     * builder. If additional tasks are spawned with the same builder
-     * then a new result future must be obtained prior to spawning each
-     * task.
-     *
-     * # Failure
-     * Fails if a future_result was already set for this task.
-     */
-    pub fn future_result(&mut self, blk: &fn(v: Port<TaskResult>)) {
+    /// Get a future representing the exit status of the task.
+    ///
+    /// Taking the value of the future will block until the child task
+    /// terminates. The future result return value will be created *before* the task is
+    /// spawned; as such, do not invoke .get() on it directly;
+    /// rather, store it in an outer variable/list for later use.
+    ///
+    /// Note that the future returned by this function is only useful for
+    /// obtaining the value of the next task to be spawning with the
+    /// builder. If additional tasks are spawned with the same builder
+    /// then a new result future must be obtained prior to spawning each
+    /// task.
+    ///
+    /// # Failure
+    /// Fails if a future_result was already set for this task.
+    pub fn future_result(&mut self) -> Port<TaskResult> {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -288,10 +286,10 @@ impl TaskBuilder {
         // Construct the future and give it to the caller.
         let (notify_pipe_po, notify_pipe_ch) = stream::<TaskResult>();
 
-        blk(notify_pipe_po);
-
         // Reconfigure self to use a notify channel.
         self.opts.notify_chan = Some(notify_pipe_ch);
+
+        notify_pipe_po
     }
 
     /// Name the task-to-be. Currently the name is used for identification
@@ -398,15 +396,14 @@ impl TaskBuilder {
      */
     pub fn try<T:Send>(&mut self, f: ~fn() -> T) -> Result<T,()> {
         let (po, ch) = stream::<T>();
-        let mut result = None;
 
-        self.future_result(|r| { result = Some(r); });
+        let result = self.future_result();
 
         do self.spawn {
             ch.send(f());
         }
 
-        match result.unwrap().recv() {
+        match result.recv() {
             Success => result::Ok(po.recv()),
             Failure => result::Err(())
         }
@@ -1024,27 +1021,25 @@ fn test_add_wrapper() {
 
 #[test]
 fn test_future_result() {
-    let mut result = None;
     let mut builder = task();
-    builder.future_result(|r| result = Some(r));
+    let result = builder.future_result();
     do builder.spawn {}
-    assert_eq!(result.unwrap().recv(), Success);
+    assert_eq!(result.recv(), Success);
 
-    result = None;
     let mut builder = task();
-    builder.future_result(|r| result = Some(r));
+    let result = builder.future_result();
     builder.unlinked();
     do builder.spawn {
         fail2!();
     }
-    assert_eq!(result.unwrap().recv(), Failure);
+    assert_eq!(result.recv(), Failure);
 }
 
 #[test] #[should_fail]
 fn test_back_to_the_future_result() {
     let mut builder = task();
-    builder.future_result(util::ignore);
-    builder.future_result(util::ignore);
+    builder.future_result();
+    builder.future_result();
 }
 
 #[test]

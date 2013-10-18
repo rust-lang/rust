@@ -61,7 +61,7 @@ fn run(args: &[~str]) {
     for _ in range(0u, workers) {
         let to_child = to_child.clone();
         let mut builder = task::task();
-        builder.future_result(|r| worker_results.push(r));
+        worker_results.push(builder.future_result());
         do builder.spawn {
             for _ in range(0u, size / workers) {
                 //error2!("worker {:?}: sending {:?} bytes", i, num_bytes);
