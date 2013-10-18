@@ -189,6 +189,8 @@ pub fn env() -> ~[(~str,~str)] {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> ~[~str] {
             #[fixed_stack_segment]; #[inline(never)];
+            use c_str;
+            use str::StrSlice;
 
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsA,
@@ -201,7 +203,7 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let mut result = ~[];
             do c_str::from_c_multistring(ch as *libc::c_char, None) |cstr| {
-                result.push(cstr.as_str().to_owned());
+                result.push(cstr.as_str().unwrap().to_owned());
             };
             FreeEnvironmentStringsA(ch);
             result

@@ -229,7 +229,7 @@ impl EventLoop for UvEventLoop {
         }
     }
 
-    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback{
+    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback {
         ~UvRemoteCallback::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 

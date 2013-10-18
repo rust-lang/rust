@@ -43,7 +43,7 @@ $ ./example numbers.txt
 
 An example program that does this task reads like this:
 
-~~~~
+~~~~{.xfail-test}
 # #[allow(unused_imports)];
 extern mod extra;
 use extra::fileinput::FileInput;
@@ -430,7 +430,7 @@ To trap a condition, use `Condition::trap` in some caller of the site that calls
 For example, this version of the program traps the `malformed_line` condition
 and replaces bad input lines with the pair `(-1,-1)`:
 
-~~~~
+~~~~{.xfail-test}
 # #[allow(unused_imports)];
 extern mod extra;
 use extra::fileinput::FileInput;
@@ -507,7 +507,7 @@ In the example program, the first form of the `malformed_line` API implicitly as
 This assumption may not be correct; some callers may wish to skip malformed lines, for example.
 Changing the condition's return type from `(int,int)` to `Option<(int,int)>` will suffice to support this type of recovery:
 
-~~~~
+~~~~{.xfail-test}
 # #[allow(unused_imports)];
 extern mod extra;
 use extra::fileinput::FileInput;
@@ -594,7 +594,7 @@ until all relevant combinations encountered in practice are encoded.
 In the example, suppose a third possible recovery form arose: reusing the previous value read.
 This can be encoded in the handler API by introducing a helper type: `enum MalformedLineFix`.
 
-~~~~
+~~~~{.xfail-test}
 # #[allow(unused_imports)];
 extern mod extra;
 use extra::fileinput::FileInput;
@@ -720,7 +720,7 @@ task <unnamed> failed at 'called `Option::unwrap()` on a `None` value', .../libs
 To make the program robust -- or at least flexible -- in the face of this potential failure,
 a second condition and a helper function will suffice:
 
-~~~~
+~~~~{.xfail-test}
 # #[allow(unused_imports)];
 extern mod extra;
 use extra::fileinput::FileInput;

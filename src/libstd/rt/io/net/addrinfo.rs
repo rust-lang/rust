@@ -91,8 +91,11 @@ pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
 /// # Failure
 ///
 /// On failure, this will raise on the `io_error` condition.
-pub fn lookup(hostname: Option<&str>, servname: Option<&str>,
-              hint: Option<Hint>) -> Option<~[Info]> {
+///
+/// XXX: this is not public because the `Hint` structure is not ready for public
+///      consumption just yet.
+fn lookup(hostname: Option<&str>, servname: Option<&str>,
+          hint: Option<Hint>) -> Option<~[Info]> {
     do with_local_io |io| {
         match io.get_host_addresses(hostname, servname, hint) {
             Ok(i) => Some(i),

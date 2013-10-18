@@ -638,19 +638,6 @@ rust_uv_pipe_init(uv_loop_t *loop, uv_pipe_t* p, int ipc) {
   return uv_pipe_init(loop, p, ipc);
 }
 
-extern "C" int rust_SOCK_STREAM()  { return SOCK_STREAM; }
-extern "C" int rust_SOCK_DGRAM()  { return SOCK_DGRAM; }
-extern "C" int rust_SOCK_RAW()  { return SOCK_RAW; }
-extern "C" int rust_IPPROTO_UDP()  { return IPPROTO_UDP; }
-extern "C" int rust_IPPROTO_TCP()  { return IPPROTO_TCP; }
-extern "C" int rust_AI_ADDRCONFIG()  { return AI_ADDRCONFIG; }
-extern "C" int rust_AI_ALL()  { return AI_ALL; }
-extern "C" int rust_AI_CANONNAME()  { return AI_CANONNAME; }
-extern "C" int rust_AI_NUMERICHOST()  { return AI_NUMERICHOST; }
-extern "C" int rust_AI_NUMERICSERV()  { return AI_NUMERICSERV; }
-extern "C" int rust_AI_PASSIVE()  { return AI_PASSIVE; }
-extern "C" int rust_AI_V4MAPPED()  { return AI_V4MAPPED; }
-
 extern "C" int
 rust_uv_pipe_open(uv_pipe_t *pipe, int file) {
     return uv_pipe_open(pipe, file);

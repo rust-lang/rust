@@ -129,6 +129,7 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                                       file.display(), e.desc));
         }
         None => {
+            let bytes = at_vec::to_managed_move(bytes);
             base::MRExpr(cx.expr_lit(sp, ast::lit_binary(bytes)))
         }
     }
