@@ -671,9 +671,13 @@ pub fn to_str(url: &Url) -> ~str {
     };
 
     let authority = if url.host.is_empty() {
+        // If port is Some, we're in a nonsensical situation. Too bad.
         ~""
     } else {
-        format!("//{}{}", user, url.host)
+        match url.port {
+            Some(ref port) => format!("//{}{}:{}", user, url.host, *port),
+            None => format!("//{}{}", user, url.host),
+        }
     };
 
     let query = if url.query.is_empty() {
@@ -892,6 +896,12 @@ mod tests {
     #[test]
     fn test_minimal_url_parse_and_format() {
         let url = ~"http://rust-lang.org/doc";
+        assert_eq!(from_str(url).unwrap().to_str(), url);
+    }
+
+    #[test]
+    fn test_url_with_port_parse_and_format() {
+        let url = ~"http://rust-lang.org:80/doc";
         assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
