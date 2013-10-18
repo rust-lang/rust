@@ -170,9 +170,7 @@ impl<'self> Iterator<Piece<'self>> for Parser<'self> {
             Some((_, '{')) => {
                 self.cur.next();
                 let ret = Some(Argument(self.argument()));
-                if !self.consume('}') {
-                    self.err(~"unterminated format string");
-                }
+                self.must_consume('}');
                 ret
             }
             Some((pos, '\\')) => {
@@ -220,6 +218,25 @@ impl<'self> Parser<'self> {
                 true
             }
             Some(*) | None => false,
+        }
+    }
+
+    /// Forces consumption of the specified character. If the character is not
+    /// found, an error is emitted.
+    fn must_consume(&mut self, c: char) {
+        self.ws();
+        match self.cur.clone().next() {
+            Some((_, maybe)) if c == maybe => {
+                self.cur.next();
+            }
+            Some((_, other)) => {
+                parse_error::cond.raise(
+                    format!("expected `{}` but found `{}`", c, other));
+            }
+            None => {
+                parse_error::cond.raise(
+                    format!("expected `{}` but string was terminated", c));
+            }
         }
     }
 
@@ -386,15 +403,11 @@ impl<'self> Parser<'self> {
         self.ws();
         match self.word() {
             "select" => {
-                if !self.wsconsume(',') {
-                    self.err(~"`select` must be followed by `,`");
-                }
+                self.must_consume(',');
                 Some(self.select())
             }
             "plural" => {
-                if !self.wsconsume(',') {
-                    self.err(~"`plural` must be followed by `,`");
-                }
+                self.must_consume(',');
                 Some(self.plural())
             }
             "" => {
@@ -420,15 +433,11 @@ impl<'self> Parser<'self> {
                 self.err(~"cannot have an empty selector");
                 break
             }
-            if !self.wsconsume('{') {
-                self.err(~"selector must be followed by `{`");
-            }
+            self.must_consume('{');
             self.depth += 1;
             let pieces = self.collect();
             self.depth -= 1;
-            if !self.wsconsume('}') {
-                self.err(~"selector case must be terminated by `}`");
-            }
+            self.must_consume('}');
             if selector == "other" {
                 if !other.is_none() {
                     self.err(~"multiple `other` statements in `select");
@@ -475,9 +484,7 @@ impl<'self> Parser<'self> {
                             self.err(format!("expected `offset`, found `{}`",
                                              word));
                         } else {
-                            if !self.consume(':') {
-                                self.err(~"`offset` must be followed by `:`");
-                            }
+                            self.must_consume(':');
                             match self.integer() {
                                 Some(i) => { offset = Some(i); }
                                 None => {
@@ -524,15 +531,11 @@ impl<'self> Parser<'self> {
                     }
                 }
             };
-            if !self.wsconsume('{') {
-                self.err(~"selector must be followed by `{`");
-            }
+            self.must_consume('{');
             self.depth += 1;
             let pieces = self.collect();
             self.depth -= 1;
-            if !self.wsconsume('}') {
-                self.err(~"selector case must be terminated by `}`");
-            }
+            self.must_consume('}');
             if isother {
                 if !other.is_none() {
                     self.err(~"multiple `other` statements in `select");
