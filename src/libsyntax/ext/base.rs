@@ -222,7 +222,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 span: None,
                             } as @SyntaxExpanderTTItemTrait,
                             None)));
-    syntax_expanders.insert(intern(&"oldfmt"),
+    syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt_no_ctxt(
                                 ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern(&"format_args"),
