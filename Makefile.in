@@ -88,7 +88,7 @@ ifneq ($(wildcard $(NON_BUILD_TARGET_TRIPLES)),)
 CFG_INFO := $(info cfg: non-build target triples $(NON_BUILD_TARGET_TRIPLES))
 endif
 
-CFG_RUSTC_FLAGS := $(RUSTFLAGS) --cfg nofmt
+CFG_RUSTC_FLAGS := $(RUSTFLAGS)
 CFG_GCCISH_CFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
