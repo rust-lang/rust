@@ -40,9 +40,10 @@ pub fn expand_deriving_to_str(cx: @ExtCtxt,
 }
 
 // It used to be the case that this deriving implementation invoked
-// std::sys::log_str, but this isn't sufficient because it doesn't invoke the
-// to_str() method on each field. Hence we mirror the logic of the log_str()
-// method, but with tweaks to call to_str() on sub-fields.
+// std::repr::repr_to_str, but this isn't sufficient because it
+// doesn't invoke the to_str() method on each field. Hence we mirror
+// the logic of the repr_to_str() method, but with tweaks to call to_str()
+// on sub-fields.
 fn to_str_substructure(cx: @ExtCtxt, span: Span,
                        substr: &Substructure) -> @Expr {
     let to_str = cx.ident_of("to_str");

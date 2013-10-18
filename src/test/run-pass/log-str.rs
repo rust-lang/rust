@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sys;
+use std::repr;
 
 pub fn main() {
-    let act = sys::log_str(&~[1, 2, 3]);
+    let act = repr::repr_to_str(&~[1, 2, 3]);
     assert_eq!(~"~[1, 2, 3]", act);
 
     let act = format!("{:?}/{:6?}", ~[1, 2, 3], ~"hi");
