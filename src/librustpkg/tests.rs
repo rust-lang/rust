@@ -516,7 +516,9 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // should be able to do this w/o a process
             // FIXME (#9639): This needs to handle non-utf8 paths
             // n.b. Bumps time up by 2 seconds to get around granularity issues
-            if run::process_output("touch", [~"-A", ~"02", p.as_str().unwrap().to_owned()]).status != 0 {
+            if run::process_output("touch", [~"--date",
+                                             ~"+2 seconds",
+                                             p.as_str().unwrap().to_owned()]).status != 0 {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
