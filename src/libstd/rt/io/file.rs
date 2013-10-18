@@ -19,7 +19,7 @@ on a `ToCStr` object. This trait is already defined for common
 objects such as strings and `Path` instances.
 
 All operations in this module, including those as part of `FileStream` et al
-block the task during execution. Most will raise `std::rt::io::{io_error,read_error}`
+block the task during execution. Most will raise `std::rt::io::{io_error,io_error}`
 conditions in the event of failure.
 
 Also included in this module are the `FileInfo` and `DirectoryInfo` traits. When
@@ -35,7 +35,7 @@ use c_str::ToCStr;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write};
 use rt::rtio::{RtioFileStream, IoFactory, with_local_io};
-use rt::io::{io_error, read_error, EndOfFile,
+use rt::io::{io_error, EndOfFile,
             FileMode, FileAccess, FileStat, IoError,
             PathAlreadyExists, PathDoesntExist,
             MismatchedFileTypeForOperation, ignore_io_error};
@@ -361,7 +361,7 @@ impl Reader for FileStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 return None;
             }
@@ -388,7 +388,7 @@ impl Writer for FileStream {
         match self.fd.flush() {
             Ok(_) => (),
             Err(ioerr) => {
-                read_error::cond.raise(ioerr);
+                io_error::cond.raise(ioerr);
             }
         }
     }
@@ -401,7 +401,7 @@ impl Seek for FileStream {
         match res {
             Ok(cursor) => cursor,
             Err(ioerr) => {
-                read_error::cond.raise(ioerr);
+                io_error::cond.raise(ioerr);
                 return -1;
             }
         }
@@ -415,7 +415,7 @@ impl Seek for FileStream {
                 ()
             },
             Err(ioerr) => {
-                read_error::cond.raise(ioerr);
+                io_error::cond.raise(ioerr);
             }
         }
     }

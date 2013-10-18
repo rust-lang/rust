@@ -12,7 +12,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer, Listener, Acceptor};
-use rt::io::{io_error, read_error, EndOfFile};
+use rt::io::{io_error, EndOfFile};
 use rt::rtio::{IoFactory, with_local_io,
                RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
 
@@ -67,7 +67,7 @@ impl Reader for TcpStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 return None;
             }
@@ -308,7 +308,7 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                do read_error::cond.trap(|e| {
+                do io_error::cond.trap(|e| {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {
@@ -343,7 +343,7 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                do read_error::cond.trap(|e| {
+                do io_error::cond.trap(|e| {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {

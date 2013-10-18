@@ -404,12 +404,6 @@ condition! {
     pub io_error: IoError -> ();
 }
 
-// XXX: Can't put doc comments on macros
-// Raised by `read` on error
-condition! {
-    pub read_error: IoError -> ();
-}
-
 /// Helper for wrapper calls where you want to
 /// ignore any io_errors that might be raised
 pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
@@ -429,7 +423,7 @@ pub trait Reader {
     ///
     /// # Failure
     ///
-    /// Raises the `read_error` condition on error. If the condition
+    /// Raises the `io_error` condition on error. If the condition
     /// is handled then no guarantee is made about the number of bytes
     /// read and the contents of `buf`. If the condition is handled
     /// returns `None` (XXX see below).

@@ -12,7 +12,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer};
-use rt::io::{io_error, read_error, EndOfFile};
+use rt::io::{io_error, EndOfFile};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, with_local_io};
 
 pub struct UdpSocket {
@@ -38,7 +38,7 @@ impl UdpSocket {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 None
             }

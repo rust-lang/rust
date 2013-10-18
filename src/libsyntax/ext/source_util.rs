@@ -93,7 +93,7 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
     let file = res_rel_file(cx, sp, &Path::new(file));
     let mut error = None;
-    let bytes = do io::read_error::cond.trap(|e| error = Some(e)).inside {
+    let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
         file.open_reader(io::Open).read_to_end()
     };
     match error {
@@ -120,10 +120,8 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let file = res_rel_file(cx, sp, &Path::new(file));
 
     let mut error = None;
-    let bytes = do io::read_error::cond.trap(|e| error = Some(e)).inside {
-        do io::io_error::cond.trap(|e| error = Some(e)).inside {
-            file.open_reader(io::Open).read_to_end()
-        }
+    let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
+        file.open_reader(io::Open).read_to_end()
     };
     match error {
         Some(e) => {
