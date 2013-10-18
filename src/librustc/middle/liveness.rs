@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1227,12 +1227,15 @@ impl Liveness {
             self.propagate_through_expr(e, succ)
           }
 
-          ExprInlineAsm(ref ia) =>{
+          ExprInlineAsm(ref ia) => {
             let succ = do ia.inputs.rev_iter().fold(succ) |succ, &(_, expr)| {
                 self.propagate_through_expr(expr, succ)
             };
             do ia.outputs.rev_iter().fold(succ) |succ, &(_, expr)| {
-                self.propagate_through_expr(expr, succ)
+                // see comment on lvalues in
+                // propagate_through_lvalue_components()
+                let succ = self.write_lvalue(expr, succ, ACC_WRITE);
+                self.propagate_through_lvalue_components(expr, succ)
             }
           }
 
@@ -1478,12 +1481,7 @@ fn check_expr(this: &mut Liveness, expr: @Expr) {
 
         // Output operands must be lvalues
         for &(_, out) in ia.outputs.iter() {
-          match out.node {
-            ExprAddrOf(_, inner) => {
-              this.check_lvalue(inner);
-            }
-            _ => {}
-          }
+          this.check_lvalue(out);
           this.visit_expr(out, ());
         }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -838,6 +838,11 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
                         callee_id,
                         expr.span,
                         []);
+      }
+      ast::ExprInlineAsm(ref ia) => {
+          for &(_, out) in ia.outputs.iter() {
+              this.check_assignment(out);
+          }
       }
       _ => { }
     }
