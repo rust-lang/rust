@@ -2092,6 +2092,14 @@ pub fn print_literal(s: @ps, lit: &ast::lit) {
       ast::lit_bool(val) => {
         if val { word(s.s, "true"); } else { word(s.s, "false"); }
       }
+      ast::lit_binary(arr) => {
+        ibox(s, indent_unit);
+        word(s.s, "[");
+        commasep_cmnt(s, inconsistent, arr, |s, u| word(s.s, format!("{}", *u)),
+                      |_| lit.span);
+        word(s.s, "]");
+        end(s);
+      }
     }
 }
 

@@ -4442,6 +4442,12 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
                                          repeat count but found boolean");
             return 0;
         }
+        const_eval::const_binary(_) => {
+            tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                        "expected positive integer for \
+                                         repeat count but found binary array");
+            return 0;
+        }
       },
       Err(*) => {
         tcx.ty_ctxt().sess.span_err(count_expr.span,

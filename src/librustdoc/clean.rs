@@ -1121,6 +1121,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_str(lit: &ast::lit) -> ~str {
     match lit.node {
         ast::lit_str(st, _) => st.to_owned(),
+        ast::lit_binary(data) => format!("{:?}", data.as_slice()),
         ast::lit_char(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::lit_int(i, _t) => i.to_str(),
         ast::lit_uint(u, _t) => u.to_str(),

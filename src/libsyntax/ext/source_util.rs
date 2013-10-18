@@ -101,16 +101,19 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 }
 
 pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
-    -> base::MacResult {
+        -> base::MacResult
+{
+    use std::at_vec;
+
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
     match io::read_whole_file(&res_rel_file(cx, sp, &Path::new(file))) {
-      result::Ok(src) => {
-        let u8_exprs: ~[@ast::Expr] = src.iter().map(|char| cx.expr_u8(sp, *char)).collect();
-        base::MRExpr(cx.expr_vec(sp, u8_exprs))
-      }
-      result::Err(ref e) => {
-        cx.parse_sess().span_diagnostic.handler().fatal((*e))
-      }
+        result::Ok(src) => {
+            let v = at_vec::to_managed_move(src);
+            base::MRExpr(cx.expr_lit(sp, ast::lit_binary(v)))
+        }
+        result::Err(ref e) => {
+            cx.parse_sess().span_diagnostic.handler().fatal((*e))
+        }
     }
 }
 

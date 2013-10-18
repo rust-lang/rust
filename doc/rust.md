@@ -1589,7 +1589,7 @@ explain, here's a few use cases and what they would entail.
 * A crate needs a global available "helper module" to itself, but it doesn't
   want to expose the helper module as a public API. To accomplish this, the root
   of the crate's hierarchy would have a private module which then internally has
-  a "public api". Because the entire crate is an ancestor of the root, then the
+  a "public api". Because the entire crate is a descendant of the root, then the
   entire local crate can access this private module through the second case.
 
 * When writing unit tests for a module, it's often a common idiom to have an
@@ -1602,7 +1602,10 @@ In the second case, it mentions that a private item "can be accessed" by the
 current module and its descendants, but the exact meaning of accessing an item
 depends on what the item is. Accessing a module, for example, would mean looking
 inside of it (to import more items). On the other hand, accessing a function
-would mean that it is invoked.
+would mean that it is invoked. Additionally, path expressions and import
+statements are considered to access an item in the sense that the
+import/expression is only valid if the destination is in the current visibility
+scope.
 
 Here's an example of a program which exemplifies the three cases outlined above.
 

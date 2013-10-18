@@ -917,6 +917,24 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     }
 }
 
+pub fn C_binary_slice(cx: &mut CrateContext, data: &[u8]) -> ValueRef {
+    unsafe {
+        let len = data.len();
+        let lldata = C_bytes(data);
+
+        let gsym = token::gensym("binary");
+        let g = do format!("binary{}", gsym).with_c_str |buf| {
+            llvm::LLVMAddGlobal(cx.llmod, val_ty(lldata).to_ref(), buf)
+        };
+        llvm::LLVMSetInitializer(g, lldata);
+        llvm::LLVMSetGlobalConstant(g, True);
+        lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+
+        let cs = llvm::LLVMConstPointerCast(g, Type::i8p().to_ref());
+        C_struct([cs, C_uint(cx, len)], false)
+    }
+}
+
 pub fn C_zero_byte_arr(size: uint) -> ValueRef {
     unsafe {
         let mut i = 0u;
