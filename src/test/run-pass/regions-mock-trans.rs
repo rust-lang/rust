@@ -10,7 +10,7 @@
 
 use std::cast;
 use std::libc;
-use std::sys;
+use std::mem;
 
 struct arena(());
 
@@ -30,7 +30,7 @@ struct Ccx {
 #[fixed_stack_segment] #[inline(never)]
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
-        cast::transmute(libc::malloc(sys::size_of::<Bcx<'blk>>()
+        cast::transmute(libc::malloc(mem::size_of::<Bcx<'blk>>()
             as libc::size_t))
     }
 }
