@@ -2010,13 +2010,13 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         let n = needle.len();
-        self.len() >= n && needle == self.slice_to(n)
+        self.len() >= n && needle.as_bytes() == self.as_bytes().slice_to(n)
     }
 
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle == self.slice_from(m - n)
+        m >= n && needle.as_bytes() == self.as_bytes().slice_from(m - n)
     }
 
     fn escape_default(&self) -> ~str {
@@ -2886,6 +2886,8 @@ mod tests {
         assert!(("abc".starts_with("a")));
         assert!((!"a".starts_with("abc")));
         assert!((!"".starts_with("abc")));
+        assert!((!"ödd".starts_with("-")));
+        assert!(("ödd".starts_with("öd")));
     }
 
     #[test]
@@ -2895,6 +2897,8 @@ mod tests {
         assert!(("abc".ends_with("c")));
         assert!((!"a".ends_with("abc")));
         assert!((!"".ends_with("abc")));
+        assert!((!"ddö".ends_with("-")));
+        assert!(("ddö".ends_with("dö")));
     }
 
     #[test]
