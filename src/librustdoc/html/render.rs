@@ -1344,6 +1344,26 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
             write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
                    name = variant.name.get_ref().as_slice());
             document(w, variant);
+            match variant.inner {
+                clean::VariantItem(ref var) => {
+                    match var.kind {
+                        clean::StructVariant(ref s) => {
+                            write!(w, "<h3 class='fields'>Fields</h3>\n<table>");
+                            for field in s.fields.iter() {
+                                write!(w, "<tr><td id='variant.{v}.field.{f}'>\
+                                           <code>{f}</code></td><td>",
+                                       v = variant.name.get_ref().as_slice(),
+                                       f = field.name.get_ref().as_slice());
+                                document(w, field);
+                                write!(w, "</td></tr>");
+                            }
+                            write!(w, "</table>");
+                        }
+                        _ => ()
+                    }
+                }
+                _ => ()
+            }
             write!(w, "</td></tr>");
         }
         write!(w, "</table>");
