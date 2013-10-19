@@ -89,12 +89,6 @@ SWAP_REGISTERS:
 #if defined(__MINGW32__) || defined(_WINDOWS)
         mov %rdi, (RUSTRT_RDI*8)(ARG0)
         mov %rsi, (RUSTRT_RSI*8)(ARG0)
-
-        // Save stack range
-        mov %gs:0x08, %r8
-        mov %r8, (RUSTRT_ST1*8)(ARG0)
-        mov %gs:0x10, %r9
-        mov %r9, (RUSTRT_ST2*8)(ARG0)
 #endif
 
         // Save 0th argument register:
@@ -134,12 +128,6 @@ SWAP_REGISTERS:
 #if defined(__MINGW32__) || defined(_WINDOWS)
         mov (RUSTRT_RDI*8)(ARG1), %rdi
         mov (RUSTRT_RSI*8)(ARG1), %rsi
-
-        // Restore stack range
-        mov (RUSTRT_ST1*8)(ARG1), %r8
-        mov %r8, %gs:0x08
-        mov (RUSTRT_ST2*8)(ARG1), %r9
-        mov %r9, %gs:0x10
 #endif
 
         // Restore 0th argument register:
