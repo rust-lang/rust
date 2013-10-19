@@ -219,7 +219,7 @@ impl Logger {
     }
 
     pub fn info(&self, i: &str) {
-        io::println(~"workcache: " + i);
+        info2!("workcache: {}", i);
     }
 }
 

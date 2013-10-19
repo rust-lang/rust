@@ -21,10 +21,11 @@ use source_control::{safe_git_clone, git_clone_url, DirToUse, CheckedOutSources}
 use source_control::make_read_only;
 use path_util::{find_dir_using_rust_path_hack, make_dir_rwx_recursive};
 use path_util::{target_build_dir, versionize};
-use util::compile_crate;
+use util::{compile_crate, DepMap};
 use workcache_support;
 use workcache_support::crate_tag;
 use extra::workcache;
+use extra::treemap::TreeMap;
 
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
@@ -370,6 +371,7 @@ impl PkgSrc {
 
     fn build_crates(&self,
                     ctx: &BuildContext,
+                    deps: &mut DepMap,
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
@@ -389,12 +391,14 @@ impl PkgSrc {
                 let id = self.id.clone();
                 let sub_dir = self.build_workspace().clone();
                 let sub_flags = crate.flags.clone();
+                let sub_deps = deps.clone();
                 do prep.exec |exec| {
                     let result = compile_crate(&subcx,
                                                exec,
                                                &id,
                                                &subpath,
                                                &sub_dir,
+                                               &mut (sub_deps.clone()),
                                                sub_flags,
                                                subcfgs,
                                                false,
@@ -428,24 +432,27 @@ impl PkgSrc {
         }
     }
 
-    // It would be better if build returned a Path, but then Path would have to derive
-    // Encodable.
     pub fn build(&self,
                  build_context: &BuildContext,
-                 cfgs: ~[~str]) {
+                 // DepMap is a map from str (crate name) to (kind, name) --
+                 // it tracks discovered dependencies per-crate
+                 cfgs: ~[~str]) -> DepMap {
+        let mut deps = TreeMap::new();
+
         let libs = self.libs.clone();
         let mains = self.mains.clone();
         let tests = self.tests.clone();
         let benchs = self.benchs.clone();
         debug2!("Building libs in {}, destination = {}",
                self.source_workspace.display(), self.build_workspace().display());
-        self.build_crates(build_context, libs, cfgs, Lib);
+        self.build_crates(build_context, &mut deps, libs, cfgs, Lib);
         debug2!("Building mains");
-        self.build_crates(build_context, mains, cfgs, Main);
+        self.build_crates(build_context, &mut deps, mains, cfgs, Main);
         debug2!("Building tests");
-        self.build_crates(build_context, tests, cfgs, Test);
+        self.build_crates(build_context, &mut deps, tests, cfgs, Test);
         debug2!("Building benches");
-        self.build_crates(build_context, benchs, cfgs, Bench);
+        self.build_crates(build_context, &mut deps, benchs, cfgs, Bench);
+        deps
     }
 
     /// Return the workspace to put temporary files in. See the comment on `PkgSrc`
