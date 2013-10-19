@@ -134,20 +134,20 @@ actually requesting that an argument ascribes to a particular trait. This allows
 multiple actual types to be formatted via `{:d}` (like `i8` as well as `int`).
 The current mapping of types to traits is:
 
-* `?` => Poly
-* `d` => Signed
-* `i` => Signed
-* `u` => Unsigned
-* `b` => Bool
-* `c` => Char
-* `o` => Octal
-* `x` => LowerHex
-* `X` => UpperHex
-* `s` => String
-* `p` => Pointer
-* `t` => Binary
-* `f` => Float
-* `` (nothing) => Default
+* `?` ⇒ `Poly`
+* `d` ⇒ `Signed`
+* `i` ⇒ `Signed`
+* `u` ⇒ `Unsigned`
+* `b` ⇒ `Bool`
+* `c` ⇒ `Char`
+* `o` ⇒ `Octal`
+* `x` ⇒ `LowerHex`
+* `X` ⇒ `UpperHex`
+* `s` ⇒ `String`
+* `p` ⇒ `Pointer`
+* `t` ⇒ `Binary`
+* `f` ⇒ `Float`
+* *nothing* ⇒ `Default`
 
 What this means is that any type of argument which implements the
 `std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
