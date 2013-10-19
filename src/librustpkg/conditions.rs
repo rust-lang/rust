@@ -24,6 +24,10 @@ condition! {
 }
 
 condition! {
+    pub bad_kind: (~str) -> ();
+}
+
+condition! {
     pub nonexistent_package: (PkgId, ~str) -> Path;
 }
 

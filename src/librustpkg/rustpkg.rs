@@ -197,7 +197,8 @@ pub trait CtxMethods {
     fn install(&self, src: PkgSrc, what: &WhatToBuild) -> (~[Path], ~[(~str, ~str)]);
     /// Returns a list of installed files
     fn install_no_build(&self,
-                        source_workspace: &Path,
+                        build_workspace: &Path,
+                        build_inputs: &[Path],
                         target_workspace: &Path,
                         id: &PkgId) -> ~[~str];
     fn prefer(&self, _id: &str, _vers: Option<~str>);
@@ -542,6 +543,7 @@ impl CtxMethods for BuildContext {
 
         let mut installed_files = ~[];
         let mut inputs = ~[];
+        let mut build_inputs = ~[];
 
         debug2!("Installing package source: {}", pkg_src.to_str());
 
@@ -558,10 +560,12 @@ impl CtxMethods for BuildContext {
                 debug2!("Recording input: {}", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 inputs.push((~"file", path.as_str().unwrap().to_owned()));
+                build_inputs.push(path);
             }
         }
 
         let result = self.install_no_build(pkg_src.build_workspace(),
+                                           build_inputs,
                                            &pkg_src.destination_workspace,
                                            &id).map(|s| Path::new(s.as_slice()));
         debug2!("install: id = {}, about to call discover_outputs, {:?}",
@@ -576,6 +580,7 @@ impl CtxMethods for BuildContext {
     // again, working around lack of Encodable for Path
     fn install_no_build(&self,
                         build_workspace: &Path,
+                        build_inputs: &[Path],
                         target_workspace: &Path,
                         id: &PkgId) -> ~[~str] {
         use conditions::copy_failed::cond;
@@ -612,9 +617,28 @@ impl CtxMethods for BuildContext {
             let sublib = maybe_library.clone();
             let sub_target_ex = target_exec.clone();
             let sub_target_lib = target_lib.clone();
-
+            let sub_build_inputs = build_inputs.to_owned();
             do prep.exec |exe_thing| {
                 let mut outputs = ~[];
+                // Declare all the *inputs* to the declared input too, as inputs
+                for executable in subex.iter() {
+                    exe_thing.discover_input("binary",
+                                             executable.as_str().unwrap().to_owned(),
+                                             workcache_support::digest_only_date(executable));
+                }
+                for library in sublib.iter() {
+                    exe_thing.discover_input("binary",
+                                             library.as_str().unwrap().to_owned(),
+                                             workcache_support::digest_only_date(library));
+                }
+
+                for transitive_dependency in sub_build_inputs.iter() {
+                    exe_thing.discover_input(
+                        "file",
+                        transitive_dependency.as_str().unwrap().to_owned(),
+                        workcache_support::digest_file_with_date(transitive_dependency));
+                }
+
 
                 for exec in subex.iter() {
                     debug2!("Copying: {} -> {}", exec.display(), sub_target_ex.display());

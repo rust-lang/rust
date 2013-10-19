@@ -37,7 +37,6 @@ use target::*;
 use package_source::PkgSrc;
 use source_control::{CheckedOutSources, DirToUse, safe_git_clone};
 use exit_codes::{BAD_FLAG_CODE, COPY_FAILED_CODE};
-use util::datestamp;
 
 fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
     let context = workcache::Context::new(
@@ -507,6 +506,7 @@ fn output_file_name(workspace: &Path, short_name: ~str) -> Path {
                                                                          os::EXE_SUFFIX))
 }
 
+#[cfg(target_os = "linux")]
 fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.join_many([~"src", pkgid.to_str()]);
@@ -515,7 +515,28 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
         if p.extension_str() == Some("rs") {
             // should be able to do this w/o a process
             // FIXME (#9639): This needs to handle non-utf8 paths
-            if run::process_output("touch", [p.as_str().unwrap().to_owned()]).status != 0 {
+            // n.b. Bumps time up by 2 seconds to get around granularity issues
+            if run::process_output("touch", [~"--date",
+                                             ~"+2 seconds",
+                                             p.as_str().unwrap().to_owned()]).status != 0 {
+                let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
+            }
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
+    use conditions::bad_path::cond;
+    let pkg_src_dir = workspace.join_many([~"src", pkgid.to_str()]);
+    let contents = os::list_dir_path(&pkg_src_dir);
+    for p in contents.iter() {
+        if p.extension_str() == Some("rs") {
+            // should be able to do this w/o a process
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            // n.b. Bumps time up by 2 seconds to get around granularity issues
+            if run::process_output("touch", [~"-A02",
+                                             p.as_str().unwrap().to_owned()]).status != 0 {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -1033,12 +1054,17 @@ fn no_rebuilding() {
     let workspace = create_local_package(&p_id);
     let workspace = workspace.path();
     command_line_test([~"build", ~"foo"], workspace);
-    let date = datestamp(&built_library_in_workspace(&p_id,
-                                                     workspace).expect("no_rebuilding"));
+    let foo_lib = lib_output_file_name(workspace, "foo");
+    // Now make `foo` read-only so that subsequent rebuilds of it will fail
+    assert!(chmod_read_only(&foo_lib));
+
     command_line_test([~"build", ~"foo"], workspace);
-    let newdate = datestamp(&built_library_in_workspace(&p_id,
-                                                        workspace).expect("no_rebuilding (2)"));
-    assert_eq!(date, newdate);
+
+    match command_line_test_partial([~"build", ~"foo"], workspace) {
+        Success(*) => (), // ok
+        Fail(status) if status == 65 => fail2!("no_rebuilding failed: it tried to rebuild bar"),
+        Fail(_) => fail2!("no_rebuilding failed for some other reason")
+    }
 }
 
 #[test]
@@ -1049,25 +1075,17 @@ fn no_rebuilding_dep() {
     let workspace = workspace.path();
     command_line_test([~"build", ~"foo"], workspace);
     let bar_lib = lib_output_file_name(workspace, "bar");
-    let bar_date_1 = datestamp(&bar_lib);
-
     frob_source_file(workspace, &p_id, "main.rs");
-
     // Now make `bar` read-only so that subsequent rebuilds of it will fail
     assert!(chmod_read_only(&bar_lib));
-
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
         Fail(status) if status == 65 => fail2!("no_rebuilding_dep failed: it tried to rebuild bar"),
         Fail(_) => fail2!("no_rebuilding_dep failed for some other reason")
     }
-
-    let bar_date_2 = datestamp(&bar_lib);
-    assert_eq!(bar_date_1, bar_date_2);
 }
 
 #[test]
-#[ignore]
 fn do_rebuild_dep_dates_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
@@ -1075,29 +1093,37 @@ fn do_rebuild_dep_dates_change() {
     let workspace = workspace.path();
     command_line_test([~"build", ~"foo"], workspace);
     let bar_lib_name = lib_output_file_name(workspace, "bar");
-    let bar_date = datestamp(&bar_lib_name);
-    debug2!("Datestamp on {} is {:?}", bar_lib_name.display(), bar_date);
     touch_source_file(workspace, &dep_id);
-    command_line_test([~"build", ~"foo"], workspace);
-    let new_bar_date = datestamp(&bar_lib_name);
-    debug2!("Datestamp on {} is {:?}", bar_lib_name.display(), new_bar_date);
-    assert!(new_bar_date > bar_date);
+
+    // Now make `bar` read-only so that subsequent rebuilds of it will fail
+    assert!(chmod_read_only(&bar_lib_name));
+
+    match command_line_test_partial([~"build", ~"foo"], workspace) {
+        Success(*) => fail2!("do_rebuild_dep_dates_change failed: it didn't rebuild bar"),
+        Fail(status) if status == 65 => (), // ok
+        Fail(_) => fail2!("do_rebuild_dep_dates_change failed for some other reason")
+    }
 }
 
 #[test]
-#[ignore]
 fn do_rebuild_dep_only_contents_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     let workspace = workspace.path();
     command_line_test([~"build", ~"foo"], workspace);
-    let bar_date = datestamp(&lib_output_file_name(workspace, "bar"));
     frob_source_file(workspace, &dep_id, "lib.rs");
+    let bar_lib_name = lib_output_file_name(workspace, "bar");
+
+    // Now make `bar` read-only so that subsequent rebuilds of it will fail
+    assert!(chmod_read_only(&bar_lib_name));
+
     // should adjust the datestamp
-    command_line_test([~"build", ~"foo"], workspace);
-    let new_bar_date = datestamp(&lib_output_file_name(workspace, "bar"));
-    assert!(new_bar_date > bar_date);
+    match command_line_test_partial([~"build", ~"foo"], workspace) {
+        Success(*) => fail2!("do_rebuild_dep_only_contents_change failed: it didn't rebuild bar"),
+        Fail(status) if status == 65 => (), // ok
+        Fail(_) => fail2!("do_rebuild_dep_only_contents_change failed for some other reason")
+    }
 }
 
 #[test]
@@ -2003,7 +2029,7 @@ fn test_rustpkg_test_output() {
 }
 
 #[test]
-#[ignore(reason = "See issue #9441")]
+#[ignore(reason = "Issue 9441")]
 fn test_rebuild_when_needed() {
     let foo_id = PkgId::new("foo");
     let foo_workspace = create_local_package(&foo_id);
