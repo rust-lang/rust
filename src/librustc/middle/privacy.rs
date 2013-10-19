@@ -563,6 +563,20 @@ impl<'self> PrivacyVisitor<'self> {
                 }
             }
         };
+        let check_struct = |def: &@ast::struct_def| {
+            for f in def.fields.iter() {
+               match f.node.kind {
+                    ast::named_field(_, ast::public) => {
+                        tcx.sess.span_err(f.span, "unnecessary `pub` \
+                                                   visibility");
+                    }
+                    ast::named_field(_, ast::private) => {
+                        // Fields should really be private by default...
+                    }
+                    ast::named_field(*) | ast::unnamed_field => {}
+                }
+            }
+        };
         match item.node {
             // implementations of traits don't need visibility qualifiers because
             // that's controlled by having the trait in scope.
@@ -610,23 +624,15 @@ impl<'self> PrivacyVisitor<'self> {
                         }
                         ast::inherited => {}
                     }
-                }
-            }
 
-            ast::item_struct(ref def, _) => {
-                for f in def.fields.iter() {
-                   match f.node.kind {
-                        ast::named_field(_, ast::public) => {
-                            tcx.sess.span_err(f.span, "unnecessary `pub` \
-                                                       visibility");
-                        }
-                        ast::named_field(_, ast::private) => {
-                            // Fields should really be private by default...
-                        }
-                        ast::named_field(*) | ast::unnamed_field => {}
+                    match v.node.kind {
+                        ast::struct_variant_kind(ref s) => check_struct(s),
+                        ast::tuple_variant_kind(*) => {}
                     }
                 }
             }
+
+            ast::item_struct(ref def, _) => check_struct(def),
 
             ast::item_trait(_, _, ref methods) => {
                 for m in methods.iter() {
