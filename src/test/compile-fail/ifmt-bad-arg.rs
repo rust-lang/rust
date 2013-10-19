@@ -36,20 +36,20 @@ fn main() {
 
     // bad syntax of the format string
 
-    format!("{"); //~ ERROR: unterminated format string
+    format!("{"); //~ ERROR: expected `}` but string was terminated
     format!("\\ "); //~ ERROR: invalid escape
     format!("\\"); //~ ERROR: expected an escape
 
     format!("{0, }", 1); //~ ERROR: expected method
     format!("{0, foo}", 1); //~ ERROR: unknown method
-    format!("{0, select}", "a"); //~ ERROR: must be followed by
-    format!("{0, plural}", 1); //~ ERROR: must be followed by
+    format!("{0, select}", "a"); //~ ERROR: expected `,` but found `}`
+    format!("{0, plural}", 1); //~ ERROR: expected `,` but found `}`
 
-    format!("{0, select, a{{}", 1); //~ ERROR: must be terminated
+    format!("{0, select, a{{}", 1); //~ ERROR: expected `}` but string was terminated
     format!("{0, select, {} other{}}", "a"); //~ ERROR: empty selector
     format!("{0, select, other{} other{}}", "a"); //~ ERROR: multiple `other`
     format!("{0, plural, offset: other{}}", "a"); //~ ERROR: must be an integer
-    format!("{0, plural, offset 1 other{}}", "a"); //~ ERROR: be followed by `:`
+    format!("{0, plural, offset 1 other{}}", "a"); //~ ERROR: expected `:` but found `1`
     format!("{0, plural, =a{} other{}}", "a"); //~ ERROR: followed by an integer
     format!("{0, plural, a{} other{}}", "a"); //~ ERROR: unexpected plural
     format!("{0, select, a{}}", "a"); //~ ERROR: must provide an `other`
