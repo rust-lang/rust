@@ -809,51 +809,7 @@ pub fn std_macros() -> @str {
 
     macro_rules! ignore (($($x:tt)*) => (()))
 
-    #[cfg(not(nofmt))]
-    mod fmt_extension {
-        #[macro_escape];
-
-        macro_rules! fmt(($($arg:tt)*) => (oldfmt!($($arg)*)))
-
-        macro_rules! log(
-            ($lvl:expr, $arg:expr) => ({
-                let lvl = $lvl;
-                if lvl <= __log_level() {
-                    format_args!(|args| {
-                        ::std::logging::log(lvl, args)
-                    }, \"{}\", fmt!(\"%?\", $arg))
-                }
-            });
-            ($lvl:expr, $($arg:expr),+) => ({
-                let lvl = $lvl;
-                if lvl <= __log_level() {
-                    format_args!(|args| {
-                        ::std::logging::log(lvl, args)
-                    }, \"{}\", fmt!($($arg),+))
-                }
-            })
-        )
-        macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
-        macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
-        macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
-        macro_rules! debug( ($($arg:tt)*) => (
-            if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
-        ))
-
-        macro_rules! fail(
-            () => (
-                fail2!(\"explicit failure\")
-            );
-            ($msg:expr) => (
-                ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
-            );
-            ($( $arg:expr ),+) => (
-                ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
-            )
-        )
-    }
-
-    macro_rules! log2(
+    macro_rules! log(
         ($lvl:expr, $($arg:tt)+) => ({
             let lvl = $lvl;
             if lvl <= __log_level() {
@@ -863,16 +819,16 @@ pub fn std_macros() -> @str {
             }
         })
     )
-    macro_rules! error2( ($($arg:tt)*) => (log2!(1u32, $($arg)*)) )
-    macro_rules! warn2 ( ($($arg:tt)*) => (log2!(2u32, $($arg)*)) )
-    macro_rules! info2 ( ($($arg:tt)*) => (log2!(3u32, $($arg)*)) )
-    macro_rules! debug2( ($($arg:tt)*) => (
-        if cfg!(not(ndebug)) { log2!(4u32, $($arg)*) }
+    macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
+    macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
+    macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
+    macro_rules! debug( ($($arg:tt)*) => (
+        if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
     ))
 
-    macro_rules! fail2(
+    macro_rules! fail(
         () => (
-            fail2!(\"explicit failure\")
+            fail!(\"explicit failure\")
         );
         ($fmt:expr) => (
             ::std::sys::FailWithCause::fail_with($fmt, file!(), line!())
@@ -881,6 +837,14 @@ pub fn std_macros() -> @str {
             ::std::sys::FailWithCause::fail_with(format!($fmt, $($arg)*), file!(), line!())
         )
     )
+
+    // NOTE (acrichto): remove these after the next snapshot
+    macro_rules! log2( ($($arg:tt)*) => (log!($($arg)*)) )
+    macro_rules! error2( ($($arg:tt)*) => (error!($($arg)*)) )
+    macro_rules! warn2 ( ($($arg:tt)*) => (warn!($($arg)*)) )
+    macro_rules! info2 ( ($($arg:tt)*) => (info!($($arg)*)) )
+    macro_rules! debug2( ($($arg:tt)*) => (debug!($($arg)*)) )
+    macro_rules! fail2( ($($arg:tt)*) => (fail!($($arg)*)) )
 
     macro_rules! assert(
         ($cond:expr) => {
