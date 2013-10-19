@@ -14,12 +14,6 @@ extern mod this(name = "rustpkg");
 #[cfg(rustdoc)]
 extern mod this(name = "rustdoc");
 
-#[cfg(rusti)]
-extern mod this(name = "rusti");
-
-#[cfg(rust)]
-extern mod this(name = "rust");
-
 #[cfg(rustc)]
 extern mod this(name = "rustc");
 
