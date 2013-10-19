@@ -17,7 +17,7 @@ use vec::ImmutableVector;
 // and instead look them up at runtime, which we need to resolve
 // the crate_map properly.
 #[cfg(target_os = "macos")]
-#[link_args = "-undefined dynamic_lookup"]
+#[link_args = "-Wl,-U,__rust_crate_map_toplevel"]
 extern {}
 
 pub struct ModEntry<'self> {

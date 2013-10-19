@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cast;
 use libc;
 use ops::Drop;
+use unstable::raw;
+use uint;
 
 #[allow(non_camel_case_types)] // runtime type
 type raw_thread = libc::c_void;
@@ -17,21 +20,38 @@ type raw_thread = libc::c_void;
 pub struct Thread {
     main: ~fn(),
     raw_thread: *raw_thread,
-    joined: bool
+    joined: bool,
 }
 
 impl Thread {
+    #[fixed_stack_segment] #[inline(never)]
     pub fn start(main: ~fn()) -> Thread {
-        fn substart(main: &~fn()) -> *raw_thread {
-            #[fixed_stack_segment]; #[inline(never)];
-
-            unsafe { rust_raw_thread_start(main) }
+        // This is the starting point of rust os threads. The first thing we do
+        // is make sure that we don't trigger __morestack (also why this has a
+        // no_split_stack annotation), and then we re-build the main function
+        // and invoke it from there.
+        #[no_split_stack]
+        extern "C" fn thread_start(code: *(), env: *()) {
+            use rt::context;
+            unsafe {
+                context::record_stack_bounds(0, uint::max_value);
+                let f: &fn() = cast::transmute(raw::Closure {
+                    code: code,
+                    env: env,
+                });
+                f();
+            }
         }
-        let raw = substart(&main);
+
+        let raw_thread = unsafe {
+            let c: raw::Closure = cast::transmute_copy(&main);
+            let raw::Closure { code, env } = c;
+            rust_raw_thread_start(thread_start, code, env)
+        };
         Thread {
             main: main,
-            raw_thread: raw,
-            joined: false
+            raw_thread: raw_thread,
+            joined: false,
         }
     }
 
@@ -55,7 +75,8 @@ impl Drop for Thread {
 }
 
 extern {
-    pub fn rust_raw_thread_start(f: &(~fn())) -> *raw_thread;
-    pub fn rust_raw_thread_join(thread: *raw_thread);
-    pub fn rust_raw_thread_delete(thread: *raw_thread);
+    fn rust_raw_thread_start(f: extern "C" fn(*(), *()),
+                             code: *(), env: *()) -> *raw_thread;
+    fn rust_raw_thread_join(thread: *raw_thread);
+    fn rust_raw_thread_delete(thread: *raw_thread);
 }

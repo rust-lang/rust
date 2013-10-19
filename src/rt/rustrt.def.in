@@ -181,7 +181,6 @@ rust_get_global_args_ptr
 rust_take_global_args_lock
 rust_drop_global_args_lock
 rust_get_test_int
-rust_get_task
 rust_uv_get_loop_from_getaddrinfo_req
 rust_uv_spawn
 rust_uv_process_kill

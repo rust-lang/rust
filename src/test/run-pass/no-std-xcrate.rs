@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// xfail-test #9839
 // aux-build:no_std_crate.rs
 
 // This tests that crates which link to std can also be linked to crates with
