@@ -173,7 +173,7 @@ impl Scheduler {
 
         // Now that we have an empty task struct for the scheduler
         // task, put it in TLS.
-        Local::put::(sched_task);
+        Local::put(sched_task);
 
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is

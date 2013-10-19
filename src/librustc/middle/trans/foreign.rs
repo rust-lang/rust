@@ -386,6 +386,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
                                       path: &ast_map::path,
                                       decl: &ast::fn_decl,
                                       body: &ast::Block,
+                                      attrs: &[ast::Attribute],
                                       llwrapfn: ValueRef,
                                       id: ast::NodeId) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
@@ -393,7 +394,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
 
     unsafe { // unsafe because we call LLVM operations
         // Build up the Rust function (`foo0` above).
-        let llrustfn = build_rust_fn(ccx, path, decl, body, id);
+        let llrustfn = build_rust_fn(ccx, path, decl, body, attrs, id);
 
         // Build up the foreign wrapper (`foo` above).
         return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys);
@@ -403,6 +404,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
                      path: &ast_map::path,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
+                     attrs: &[ast::Attribute],
                      id: ast::NodeId)
                      -> ValueRef {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
@@ -434,6 +436,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
                t.repr(tcx));
 
         let llfndecl = base::decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, ps);
+        base::set_llvm_fn_attrs(attrs, llfndecl);
         base::trans_fn(ccx,
                        (*path).clone(),
                        decl,

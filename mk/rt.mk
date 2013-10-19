@@ -91,8 +91,6 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/miniz.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
-              rt/arch/$$(HOST_$(1))/context.cpp \
-              rt/arch/$$(HOST_$(1))/gpr.cpp \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
@@ -106,7 +104,6 @@ RUNTIME_CS_$(1)_$(2) := rt/sundown/src/autolink.c \
 			rt/sundown/html/html.c
 
 RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
-			rt/arch/$$(HOST_$(1))/ccall.S \
 			rt/arch/$$(HOST_$(1))/record_sp.S
 
 RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
@@ -122,7 +119,7 @@ RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=$$(RT_BUILD_DIR_$(1
                      $$(RUNTIME_S_$(1)_$(2):rt/%.S=$$(RT_BUILD_DIR_$(1)_$(2))/%.o)
 ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 
-MORESTACK_OBJ_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
+MORESTACK_OBJS_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
 
 $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.cpp $$(MKFILE_DEPS)
@@ -140,9 +137,9 @@ $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.S  $$(MKFILE_DEPS) \
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 
-$$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1)_$(2))
+$$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJS_$(1)_$(2))
 	@$$(call E, link: $$@)
-	$$(Q)$(AR_$(1)) rcs $$@ $$<
+	$$(Q)$(AR_$(1)) rcs $$@ $$^
 
 $$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
                         $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1))

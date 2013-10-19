@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// This is loosely kept in sync with src/libstd/rt/context.rs
+
 #define RUSTRT_RBX   0
 #define RUSTRT_RSP   1
 #define RUSTRT_RBP   2

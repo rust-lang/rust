@@ -6,29 +6,27 @@
 /*
 	__morestack
 
-	This function implements stack growth using the mechanism
-	devised by Ian Lance Taylor for gccgo, described here:
+        This function is normally used to implement stack growth using the
+        mechanism devised by Ian Lance Taylor for gccgo, described here:
 
 	http://gcc.gnu.org/wiki/SplitStacks
 
-	The Rust stack is composed of a linked list of stack segments,
-	and each stack segment contains two parts: the work area,
-	where Rust functions are allowed to execute; and the red zone,
-	where no Rust code can execute, but where short runtime
-	functions (including __morestack), the dynamic linker, signal
-	handlers, and the unwinder can run.
+        Each Rust function contains an LLVM-generated prologue that compares the
+        stack space required for the current function to the space remaining in
+        the current stack segment, maintained in a platform-specific TLS slot.
+        The stack limit is strategically maintained by the Rust runtime so that
+        it is always in place whenever a Rust function is running.
 
-	Each Rust function contains an LLVM-generated prologue that
-	compares the stack space required for the current function to
-	the space remaining in the current stack segment,
-	maintained in a platform-specific TLS slot.  The stack limit
-	is strategically maintained by the Rust runtime so that it is
-	always in place whenever a Rust function is running.
+        In Rust, however, we currently do not use __morestack for stack growth
+        purposes.  Rather each task has one large stack segment. When this
+        __morestack function is run, we interpret this as a "stack overflow"
+        event rather than an event requiring an allocation of a new stack.
 
-	When there is not enough room to run the function, the function
-	prologue makes a call to __morestack to allocate a new stack
-	segment, copy any stack-based arguments to it, switch stacks,
-	then resume execution of the original function.
+        In the early days, this implementation did indeed have all of the fiddly
+        bits in order to manage split stacks in the sense of always growing
+        stacks. For posterity, the implementation can be found at commit
+        c8e77d5586aed50821e0b9361b2e24c96ade816c if we ever need to refer back
+        to it.
 
 	-- The __morestack calling convention --
 
@@ -72,30 +70,20 @@
 .text
 
 #if defined(__APPLE__)
-#define RUST_GET_TASK           L_rust_get_task$stub
-#define UPCALL_NEW_STACK        L_upcall_new_stack$stub
-#define UPCALL_DEL_STACK        L_upcall_del_stack$stub
 #define MORESTACK               ___morestack
+#define EXHAUSTED               _rust_stack_exhausted
 #else
 #if defined(__linux__) || defined(__FreeBSD__)
-#define UPCALL_NEW_STACK        upcall_new_stack
-#define UPCALL_DEL_STACK        upcall_del_stack
-#define RUST_GET_TASK           rust_get_task
 #define MORESTACK               __morestack
+#define EXHAUSTED               rust_stack_exhausted
 #else
-#define UPCALL_NEW_STACK        _upcall_new_stack
-#define UPCALL_DEL_STACK        _upcall_del_stack
-#define RUST_GET_TASK           _rust_get_task
 #define MORESTACK               ___morestack
+#define EXHAUSTED               _rust_stack_exhausted
 #endif
 #endif
 
-#ifndef __APPLE__
-.globl UPCALL_NEW_STACK
-.globl UPCALL_DEL_STACK
-.globl RUST_GET_TASK
-#endif
 .globl MORESTACK
+.globl EXHAUSTED
 
 // FIXME: What about __WIN32__?
 #if defined(__linux__) || defined(__FreeBSD__)
@@ -111,9 +99,7 @@
 #endif
 
 MORESTACK:
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_startproc
-#endif
 
 	// This base pointer setup differs from most in that we are
 	// telling the unwinder to consider the Canonical Frame
@@ -129,129 +115,21 @@ MORESTACK:
 	// would normally be, accounting for the two arguments to
 	// __morestack, and an extra return address.
 
+        // FIXME(#9854) these cfi directives don't work on windows.
+
 	pushl %ebp
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	// The CFA is 20 bytes above the register that it is
 	// associated with for this frame (which will be %ebp)
 	.cfi_def_cfa_offset 20
 	// %ebp is -20 bytes from the CFA
 	.cfi_offset %ebp, -20
-#endif
 	movl %esp, %ebp
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	// Calculate the CFA as an offset from %ebp
 	.cfi_def_cfa_register %ebp
-#endif
 
-	// NB: This can be called with the fastcc convention so we
-	// have to preserve any argument registers
+        // re-align the stack
+        subl $12,%esp
+        calll EXHAUSTED
+        // the exhaustion function guarantees that it can't return
 
-	// NB: __morestack is called misaligned by 4 bytes, i.e.
-	// subl $4, %esp would get us to a normal alignment
-
-	subl $28,%esp
-
-	// Save fastcc arguments
-	movl %ecx, 16(%esp)
-	movl %edx, 12(%esp)
-
-	// FIXME (1388): it's possible we also need to save/restore some
-	// SSE2 registers here, if floats-go-in-regs on x86+SSE2. Unclear.
-
-	// FIXME (1226): main is compiled with the split-stack prologue,
-	// causing it to call __morestack, so we have to jump back out
-	calll RUST_GET_TASK
-	testl %eax,%eax
-	jz .L$bail
-
-	// The arguments to upcall_new_stack
-
-	// The size of the stack arguments to copy to the new stack,
-	// and of the arguments to __morestack
-	movl 40(%esp),%eax
-	movl %eax,8(%esp)
-	// The address of the stack arguments to the original function
-	leal 48(%esp),%eax
-	movl %eax,4(%esp)
-	// The amount of stack needed for the original function,
-	// the other argument to __morestack
-	movl 36(%esp),%eax // The amount of stack needed
-	movl %eax,(%esp)
-
-	call UPCALL_NEW_STACK
-
-	// Save the address of the new stack
-	movl %eax, (%esp)
-
-	// Grab the __morestack return pointer
-	movl 32(%esp),%eax
-	// Skip past the ret instruction in the parent fn
-	inc  %eax
-
-	// Restore the fastcc arguments to the original function
-	movl 16(%esp), %ecx
-	movl 12(%esp), %edx
-
-        // Switch stacks
-	movl (%esp),%esp
-        // Re-enter the function that called us
-	call *%eax
-
-	// Now the function that called us has returned, so we need to
-	// delete the old stack space
-
-	// Switch back to the rust stack
-	movl %ebp, %esp
-
-	// Realign stack - remember that __morestack was called misaligned
-	subl $12, %esp
-
-	// Save the return value of the function we allocated space for
-	movl %edx, 4(%esp)
-	movl %eax, (%esp)
-
-	call UPCALL_DEL_STACK
-
-	// And restore it
-	movl (%esp), %eax
-	movl 4(%esp), %edx
-
-	addl $12,%esp
-
-	popl %ebp
-
-	retl $8
-
-.L$bail:
-	movl 32(%esp),%eax
-	inc %eax
-
-	addl $44, %esp
-	popl %ebp
-	addl $4+8,%esp
-
-	jmpl *%eax
-
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_endproc
-#endif
-
-#ifdef __APPLE__
-
-.section __IMPORT,__jump_table,symbol_stubs,pure_instructions+self_modifying_code,5
-
-	// Linker will replace the hlts (the ascii) with jmp
-L_rust_get_task$stub:
-	.indirect_symbol _rust_get_task
-	.ascii	 "\364\364\364\364\364"
-
-L_upcall_new_stack$stub:
-	.indirect_symbol _upcall_new_stack
-	.ascii	 "\364\364\364\364\364"
-
-L_upcall_del_stack$stub:
-	.indirect_symbol _upcall_del_stack
-	.ascii	 "\364\364\364\364\364"
-
-	.subsections_via_symbols
-#endif

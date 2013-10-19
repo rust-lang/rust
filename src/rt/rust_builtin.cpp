@@ -16,7 +16,6 @@
 #include "memory_region.h"
 #include "boxed_region.h"
 #include "vg/valgrind.h"
-#include "sp.h"
 
 #include <time.h>
 
@@ -340,22 +339,26 @@ rust_unlock_little_lock(lock_and_signal *lock) {
     lock->unlock();
 }
 
+typedef void(startfn)(void*, void*);
+
 class raw_thread: public rust_thread {
 public:
-    fn_env_pair fn;
+    startfn *raw_start;
+    void *rust_fn;
+    void *rust_env;
 
-    raw_thread(fn_env_pair fn) : fn(fn) { }
+    raw_thread(startfn *raw_start, void *rust_fn, void *rust_env)
+        : raw_start(raw_start), rust_fn(rust_fn), rust_env(rust_env) { }
 
     virtual void run() {
-        record_sp_limit(0);
-        fn.f(fn.env, NULL);
+        raw_start(rust_fn, rust_env);
     }
 };
 
 extern "C" raw_thread*
-rust_raw_thread_start(fn_env_pair *fn) {
-    assert(fn);
-    raw_thread *thread = new raw_thread(*fn);
+rust_raw_thread_start(startfn *raw_start, void *rust_start, void *rust_env) {
+    assert(raw_start && rust_start);
+    raw_thread *thread = new raw_thread(raw_start, rust_start, rust_env);
     thread->start();
     return thread;
 }
@@ -550,12 +553,6 @@ rust_drop_global_args_lock() {
 extern "C" CDECL uintptr_t*
 rust_get_global_args_ptr() {
     return &global_args_ptr;
-}
-
-// Used by i386 __morestack
-extern "C" CDECL uintptr_t
-rust_get_task() {
-    return 0;
 }
 
 static lock_and_signal env_lock;
