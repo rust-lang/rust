@@ -337,7 +337,7 @@ impl Clean<Item> for ast::method {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean(),
             source: self.span.clean(),
-            id: self.self_id.clone(),
+            id: self.id.clone(),
             visibility: self.vis.clean(),
             inner: MethodItem(Method {
                 generics: self.generics.clean(),
