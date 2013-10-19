@@ -265,6 +265,62 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     }
 }
 
+#[deriving(Eq)]
+pub enum LinkageAttr {
+    LinkageDefault,
+    LinkageExternal,
+    LinkageAvailableExternally,
+    LinkageLinkOnceAny,
+    LinkageLinkOnceODR,
+    LinkageLinkOnceODRAutoHide,
+    LinkageWeakAny,
+    LinkageWeakODR,
+    LinkageAppending,
+    LinkageInternal,
+    LinkagePrivate,
+    LinkageDLLImport,
+    LinkageDLLExport,
+    LinkageExternalWeak,
+    LinkageGhost,
+    LinkageCommon,
+    LinkageLinkerPrivate,
+    LinkageLinkerPrivateWeak
+}
+
+/// Find and translate #[linkage(name)] in the list of attrs.
+pub fn find_linkage_attr(attrs: &[Attribute]) -> LinkageAttr {
+    do attrs.iter().fold(LinkageDefault) |la,attr| {
+        match attr.node.value.node {
+            MetaList(n, ref items) if "linkage" == n => {
+                do items.iter().fold(la) |la,item| {
+                    let linkage : &str = item.name();
+                    match linkage {
+                        "external" => LinkageExternal,
+                        "available_externally" => LinkageAvailableExternally,
+                        "link_once_any" => LinkageLinkOnceAny,
+                        "link_once_odr" => LinkageLinkOnceODR,
+                        "link_once_odr_auto_hide" => LinkageLinkOnceODRAutoHide,
+                        "weak_any" => LinkageWeakAny,
+                        "weak_odr" => LinkageWeakODR,
+                        "appending" => LinkageAppending,
+                        "internal" => LinkageInternal,
+                        "private" => LinkagePrivate,
+                        "dll_import" => LinkageDLLImport,
+                        "dll_export" => LinkageDLLExport,
+                        "external_weak" => LinkageExternalWeak,
+                        "ghost" => LinkageGhost,
+                        "common" => LinkageCommon,
+                        "linker_private" => LinkageLinkerPrivate,
+                        "linker_private_weak" => LinkageLinkerPrivateWeak,
+                        _ => la
+                    }
+                }
+            }
+            _ => la
+        }
+    }
+}
+
 /// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.
 ///
 /// test_cfg(`[foo="a", bar]`, `[cfg(foo), cfg(bar)]`) == true

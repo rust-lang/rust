@@ -34,7 +34,8 @@ pub struct CrateMap<'self> {
 #[cfg(not(windows))]
 pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
     extern {
-        #[weak_linkage]
+        #[weak_linkage] // NOTE: remove after next snapshot
+        #[linkage(external_weak)]
         #[link_name = "_rust_crate_map_toplevel"]
         static CRATE_MAP: CrateMap<'static>;
     }
