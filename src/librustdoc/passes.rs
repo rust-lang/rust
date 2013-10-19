@@ -135,8 +135,14 @@ impl<'self> fold::DocFolder for Stripper<'self> {
                 }
             }
 
-            clean::ViewItemItem(*) | clean::StructFieldItem(*) => {
+            clean::ViewItemItem(*) => {
                 if i.visibility != Some(ast::public) {
+                    return None
+                }
+            }
+
+            clean::StructFieldItem(*) => {
+                if i.visibility == Some(ast::private) {
                     return None;
                 }
             }
