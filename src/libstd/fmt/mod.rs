@@ -147,12 +147,14 @@ The current mapping of types to traits is:
 * `p` => Pointer
 * `t` => Binary
 * `f` => Float
+* `` (nothing) => Default
 
 What this means is that any type of argument which implements the
 `std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
 provided for these traits for a number of primitive types by the standard
-library as well. Again, the default formatting type (if no other is specified)
-is `?` which is defined for all types by default.
+library as well. If no format is specified (as in `{}` or `{:6}`), then the
+format trait used is the `Default` trait. This is one of the more commonly
+implemented traits when formatting a custom type.
 
 When implementing a format trait for your own time, you will have to implement a
 method of the signature:
@@ -166,7 +168,50 @@ emit output into the `f.buf` stream. It is up to each format trait
 implementation to correctly adhere to the requested formatting parameters. The
 values of these parameters will be listed in the fields of the `Formatter`
 struct. In order to help with this, the `Formatter` struct also provides some
-helper methods.
+helper methods. An example of implementing the formatting traits would look
+like:
+
+```rust
+use std::fmt;
+use std::f64;
+
+struct Vector2D {
+    x: int,
+    y: int,
+}
+
+impl fmt::Default for Vector2D {
+    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) {
+        // The `f.buf` value is of the type `&mut io::Writer`, which is what th
+        // write! macro is expecting. Note that this formatting ignores the
+        // various flags provided to format strings.
+        write!(f.buf, "({}, {})", obj.x, obj.y)
+    }
+}
+
+// Different traits allow different forms of output of a type. The meaning of
+// this format is to print the magnitude of a vector.
+impl fmt::Binary for Vector2D {
+    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) {
+        let magnitude = (obj.x * obj.x + obj.y * obj.y) as f64;
+        let magnitude = magnitude.sqrt();
+
+        // Respect the formatting flags by using the helper method
+        // `pad_integral` on the Formatter object. See the method documentation
+        // for details, and the function `pad` can be used to pad strings.
+        let decimals = f.precision.unwrap_or(3);
+        let string = f64::to_str_exact(magnitude, decimals);
+        f.pad_integral(string.as_bytes(), "", true);
+    }
+}
+
+fn main() {
+    let myvector = Vector2D { x: 3, y: 4 };
+
+    println!("{}", myvector);       // => "(3, 4)"
+    println!("{:10.3t}", myvector); // => "     5.000"
+}
+```
 
 ### Related macros
 
