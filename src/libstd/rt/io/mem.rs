@@ -22,6 +22,7 @@ use vec;
 
 /// Writes to an owned, growable byte vector
 pub struct MemWriter {
+    // already priv
     priv buf: ~[u8]
 }
 
@@ -66,6 +67,7 @@ impl Decorator<~[u8]> for MemWriter {
 
 /// Reads from an owned byte vector
 pub struct MemReader {
+    // already priv
     priv buf: ~[u8],
     priv pos: uint
 }
@@ -129,6 +131,7 @@ impl Decorator<~[u8]> for MemReader {
 
 /// Writes to a fixed-size byte slice
 pub struct BufWriter<'self> {
+    // already priv
     priv buf: &'self mut [u8],
     priv pos: uint
 }
@@ -157,6 +160,7 @@ impl<'self> Seek for BufWriter<'self> {
 
 /// Reads from a fixed-size byte slice
 pub struct BufReader<'self> {
+    // already priv
     priv buf: &'self [u8],
     priv pos: uint
 }

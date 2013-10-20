@@ -477,8 +477,9 @@ pub mod rt;
 /// should be formatted. A mutable version of this is passed to all formatting
 /// traits.
 pub struct Formatter<'self> {
+    // made by reedlepee
     /// Flags for formatting (packed version of rt::Flag)
-    flags: uint,
+     flags: uint,
     /// Character used as 'fill' whenever there is alignment
     fill: char,
     /// Boolean indication of whether the output should be left-aligned
@@ -486,11 +487,12 @@ pub struct Formatter<'self> {
     /// Optionally specified integer width that the output should be
     width: Option<uint>,
     /// Optionally specified precision for numeric types
-    precision: Option<uint>,
+     precision: Option<uint>,
 
     /// Output buffer.
     buf: &'self mut io::Writer,
 
+    // already priv
     priv curarg: vec::VecIterator<'self, Argument<'self>>,
     priv args: &'self [Argument<'self>],
 }
@@ -500,6 +502,7 @@ pub struct Formatter<'self> {
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 pub struct Argument<'self> {
+    // already priv
     priv formatter: extern "Rust" fn(&util::Void, &mut Formatter),
     priv value: &'self util::Void,
 }
@@ -526,6 +529,7 @@ impl<'self> Arguments<'self> {
 /// string at compile-time so usage of the `write` and `format` functions can
 /// be safely performed.
 pub struct Arguments<'self> {
+    // already priv
     priv fmt: &'self [rt::Piece<'self>],
     priv args: &'self [Argument<'self>],
 }

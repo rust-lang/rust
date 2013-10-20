@@ -32,6 +32,7 @@ use container::Deque;
 
 /// A doubly-linked list.
 pub struct DList<T> {
+    // all were already priv
     priv length: uint,
     priv list_head: Link<T>,
     priv list_tail: Rawlink<Node<T>>,
@@ -49,6 +50,7 @@ struct Node<T> {
 /// Double-ended DList iterator
 #[deriving(Clone)]
 pub struct DListIterator<'self, T> {
+    // all were already priv
     priv head: &'self Link<T>,
     priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
@@ -56,6 +58,7 @@ pub struct DListIterator<'self, T> {
 
 /// Double-ended mutable DList iterator
 pub struct MutDListIterator<'self, T> {
+    // all were already priv
     priv list: &'self mut DList<T>,
     priv head: Rawlink<Node<T>>,
     priv tail: Rawlink<Node<T>>,
@@ -65,6 +68,7 @@ pub struct MutDListIterator<'self, T> {
 /// DList consuming iterator
 #[deriving(Clone)]
 pub struct MoveIterator<T> {
+    // all were already priv
     priv list: DList<T>
 }
 

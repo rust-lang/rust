@@ -48,14 +48,16 @@ struct Packet<T> {
 
 // A one-shot channel.
 pub struct ChanOne<T> {
-    void_packet: *mut Void,
-    suppress_finalize: bool
+    //  all made priv by reeldepee
+    priv void_packet: *mut Void,
+    priv suppress_finalize: bool
 }
 
 /// A one-shot port.
 pub struct PortOne<T> {
-    void_packet: *mut Void,
-    suppress_finalize: bool
+    //  all made priv by reeldepee
+    priv void_packet: *mut Void,
+    priv suppress_finalize: bool
 }
 
 pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
@@ -443,12 +445,14 @@ type StreamPortOne<T> = PortOne<StreamPayload<T>>;
 
 /// A channel with unbounded size.
 pub struct Chan<T> {
+    //  all made priv by reeldepee
     // FIXME #5372. Using Cell because we don't take &mut self
     next: Cell<StreamChanOne<T>>
 }
 
 /// An port with unbounded size.
 pub struct Port<T> {
+    //  all made priv by reeldepee
     // FIXME #5372. Using Cell because we don't take &mut self
     next: Cell<StreamPortOne<T>>
 }
@@ -577,6 +581,7 @@ impl<'self, T> SelectPortInner<T> for &'self Port<T> {
 impl<'self, T> SelectPort<T> for &'self Port<T> { }
 
 pub struct SharedChan<T> {
+    // already priv
     // Just like Chan, but a shared AtomicOption instead of Cell
     priv next: UnsafeArc<AtomicOption<StreamChanOne<T>>>
 }
@@ -630,6 +635,7 @@ impl<T> Clone for SharedChan<T> {
 }
 
 pub struct SharedPort<T> {
+    // already priv
     // The next port on which we will receive the next port on which we will receive T
     priv next_link: UnsafeArc<AtomicOption<PortOne<StreamPortOne<T>>>>
 }

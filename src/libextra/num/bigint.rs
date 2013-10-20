@@ -86,6 +86,7 @@ A `BigUint`-typed value `BigUint { data: @[a, b, c] }` represents a number
 */
 #[deriving(Clone)]
 pub struct BigUint {
+    // already priv
     priv data: ~[BigDigit]
 }
 
@@ -893,6 +894,7 @@ impl Neg<Sign> for Sign {
 /// A big signed integer type.
 #[deriving(Clone)]
 pub struct BigInt {
+    // already priv
     priv sign: Sign,
     priv data: BigUint
 }

@@ -21,11 +21,13 @@ static DEFAULT_GENERATION_THRESHOLD: uint = 32 * 1024;
 /// A wrapper around any RNG which reseeds the underlying RNG after it
 /// has generated a certain number of random bytes.
 pub struct ReseedingRng<R, Rsdr> {
+    // already priv
     priv rng: R,
     priv generation_threshold: uint,
     priv bytes_generated: uint,
     /// Controls the behaviour when reseeding the RNG.
-    reseeder: Rsdr
+    // made by reedlepee
+    priv reseeder: Rsdr
 }
 
 impl<R: Rng, Rsdr: Reseeder<R>> ReseedingRng<R, Rsdr> {

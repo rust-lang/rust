@@ -25,6 +25,7 @@ use super::file;
  * for the process to terminate.
  */
 pub struct Process {
+    // aleady priv
     /// The unique id of the process (this should never be negative).
     priv pid: pid_t,
 

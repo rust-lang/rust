@@ -43,20 +43,22 @@ use send_str::SendStr;
 // the type-specific state.
 
 pub struct Task {
-    heap: LocalHeap,
-    gc: GarbageCollector,
-    storage: LocalStorage,
-    logger: StdErrLogger,
-    unwinder: Unwinder,
-    taskgroup: Option<Taskgroup>,
-    death: Death,
-    destroyed: bool,
-    name: Option<SendStr>,
-    coroutine: Option<Coroutine>,
-    sched: Option<~Scheduler>,
-    task_type: TaskType,
+     //all priv made br reedlepe
+     heap: LocalHeap,
+     priv gc: GarbageCollector,
+     storage: LocalStorage,
+     logger: StdErrLogger,
+     unwinder: Unwinder,
+     taskgroup: Option<Taskgroup>,
+     death: Death,
+     destroyed: bool,
+     name: Option<SendStr>,
+     coroutine: Option<Coroutine>,
+     sched: Option<~Scheduler>,
+     task_type: TaskType,
     // Dynamic borrowck debugging info
-    borrow_list: Option<~[BorrowRecord]>
+     // should be public
+     borrow_list: Option<~[BorrowRecord]>
 }
 
 pub enum TaskType {
@@ -69,7 +71,8 @@ pub struct Coroutine {
     /// The segment of stack on which the task is currently running or
     /// if the task is blocked, on which the task will resume
     /// execution.
-    current_stack_segment: StackSegment,
+    //all priv made br reedlepe
+    priv current_stack_segment: StackSegment,
     /// Always valid if the task is alive and not running.
     saved_context: Context
 }
@@ -84,6 +87,7 @@ pub struct GarbageCollector;
 pub struct LocalStorage(Option<local_data::Map>);
 
 pub struct Unwinder {
+    //all priv made br reedlepe
     unwinding: bool,
 }
 

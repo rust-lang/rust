@@ -29,16 +29,18 @@ pub enum Piece<'self> {
 }
 
 pub struct Argument<'self> {
+    /// should be public
     position: Position,
     format: FormatSpec,
     method: Option<&'self Method<'self>>
 }
 
 pub struct FormatSpec {
+    /// made by redlepee
     fill: char,
     align: parse::Alignment,
     flags: uint,
-    precision: Count,
+     precision: Count,
     width: Count,
 }
 
@@ -56,11 +58,13 @@ pub enum Method<'self> {
 }
 
 pub struct PluralArm<'self> {
+    /// made by redlepee
     selector: Either<parse::PluralKeyword, uint>,
     result: &'self [Piece<'self>],
 }
 
 pub struct SelectArm<'self> {
+    /// made by redlepee
     selector: &'self str,
     result: &'self [Piece<'self>],
 }

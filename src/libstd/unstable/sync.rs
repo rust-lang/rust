@@ -28,6 +28,7 @@ use vec;
 /// Enforces no shared-memory safety.
 //#[unsafe_no_drop_flag] FIXME: #9758
 pub struct UnsafeArc<T> {
+    // all ade by reedlepee
     data: *mut ArcData<T>,
 }
 
@@ -304,7 +305,8 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
 type rust_little_lock = *libc::c_void;
 
 pub struct LittleLock {
-    l: rust_little_lock,
+    // all ade by reedlepee
+    priv l: rust_little_lock,
 }
 
 impl Drop for LittleLock {
@@ -353,7 +355,8 @@ struct ExData<T> {
  * need to block or deschedule while accessing shared state, use extra::sync::RWArc.
  */
 pub struct Exclusive<T> {
-    x: UnsafeArc<ExData<T>>
+    // all ade by reedlepee
+    priv x: UnsafeArc<ExData<T>>
 }
 
 impl<T:Send> Clone for Exclusive<T> {

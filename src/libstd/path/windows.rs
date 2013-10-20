@@ -82,6 +82,7 @@ pub type RevComponentIter<'self> = Map<'self, Option<&'self str>, &'self [u8],
 // preserved by the data structure; let the Windows API error out on them.
 #[deriving(Clone, DeepClone)]
 pub struct Path {
+    /// already priv
     priv repr: ~str, // assumed to never be empty
     priv prefix: Option<PathPrefix>,
     priv sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr

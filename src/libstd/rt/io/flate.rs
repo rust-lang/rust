@@ -17,7 +17,8 @@ use super::*;
 
 /// A Writer decorator that compresses using the 'deflate' scheme
 pub struct DeflateWriter<W> {
-    inner_writer: W
+    // all made by reedlepee
+    priv inner_writer: W
 }
 
 impl<W: Writer> DeflateWriter<W> {
@@ -56,7 +57,8 @@ impl<W: Writer> Decorator<W> for DeflateWriter<W> {
 
 /// A Reader decorator that decompresses using the 'deflate' scheme
 pub struct InflateReader<R> {
-    inner_reader: R
+    // all made by reedlepee
+    priv inner_reader: R
 }
 
 impl<R: Reader> InflateReader<R> {

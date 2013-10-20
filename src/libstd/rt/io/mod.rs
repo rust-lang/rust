@@ -341,6 +341,7 @@ pub static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 ///
 /// Is something like this sufficient? It's kind of archaic
 pub struct IoError {
+    // all made by reedlepee
     kind: IoErrorKind,
     desc: &'static str,
     detail: Option<~str>
@@ -648,6 +649,7 @@ pub enum FileAccess {
 }
 
 pub struct FileStat {
+    // all made by reedlepee
     /// A `Path` object containing information about the `PathInfo`'s location
     path: Path,
     /// `true` if the file pointed at by the `PathInfo` is a regular file

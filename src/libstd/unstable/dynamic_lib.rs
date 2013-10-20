@@ -23,6 +23,7 @@ use ops::*;
 use option::*;
 use result::*;
 
+// already
 pub struct DynamicLibrary { priv handle: *libc::c_void }
 
 impl Drop for DynamicLibrary {

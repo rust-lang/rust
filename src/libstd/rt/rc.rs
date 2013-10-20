@@ -24,7 +24,8 @@ use libc::c_void;
 use cast;
 
 pub struct RC<T> {
-    p: *c_void // ~(uint, T)
+    // all made priv by reedlepe
+    priv p: *c_void // ~(uint, T)
 }
 
 impl<T> RC<T> {

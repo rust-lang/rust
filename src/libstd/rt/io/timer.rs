@@ -16,6 +16,7 @@ use rt::rtio::{IoFactory, IoFactoryObject,
 use rt::local::Local;
 
 pub struct Timer {
+    // aleady priv
     priv obj: ~RtioTimerObject
 }
 

@@ -30,6 +30,7 @@ struct EbmlState {
 
 #[deriving(Clone)]
 pub struct Doc {
+    // all these should be public
     data: @~[u8],
     start: uint,
     end: uint,
@@ -50,7 +51,9 @@ impl Doc {
 }
 
 pub struct TaggedDoc {
-    tag: uint,
+    // was made privv by reedlepee
+    priv tag: uint,
+    // should be public
     doc: Doc,
 }
 
@@ -284,6 +287,7 @@ pub mod reader {
     pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
     pub struct Decoder {
+        // all were already  priv
         priv parent: Doc,
         priv pos: uint,
     }
@@ -618,8 +622,10 @@ pub mod writer {
 
     // ebml writing
     pub struct Encoder {
-        writer: @io::Writer,
-        priv size_positions: ~[uint],
+    /// should be public!!
+    writer: @io::Writer,
+    /// this was already privv!!
+    priv size_positions: ~[uint],
     }
 
     impl Clone for Encoder {

@@ -20,6 +20,7 @@ use rt::sched::SchedHandle;
 use clone::Clone;
 
 pub struct SleeperList {
+    // already priv
     priv state: UnsafeArc<State>
 }
 

@@ -24,10 +24,11 @@ use std::num::{Zero,One,ToStrRadix};
 /// A complex number in Cartesian form.
 #[deriving(Eq,Clone)]
 pub struct Cmplx<T> {
+    // all made real by reedlepee
     /// Real portion of the complex number
-    re: T,
+    priv re: T,
     /// Imaginary portion of the complex number
-    im: T
+    priv im: T
 }
 
 pub type Complex32 = Cmplx<f32>;

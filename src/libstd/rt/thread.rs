@@ -18,9 +18,9 @@ use uint;
 type raw_thread = libc::c_void;
 
 pub struct Thread {
-    main: ~fn(),
-    raw_thread: *raw_thread,
-    joined: bool,
+    priv main: ~fn(),
+    priv raw_thread: *raw_thread,
+    priv joined: bool
 }
 
 impl Thread {

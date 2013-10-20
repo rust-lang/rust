@@ -23,6 +23,7 @@ static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 ///
 /// The ISAAC algorithm is suitable for cryptographic purposes.
 pub struct IsaacRng {
+    /// already priv
     priv cnt: u32,
     priv rsl: [u32, .. RAND_SIZE],
     priv mem: [u32, .. RAND_SIZE],
@@ -218,6 +219,7 @@ static RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 ///
 /// The ISAAC algorithm is suitable for cryptographic purposes.
 pub struct Isaac64Rng {
+    /// already priv
     priv cnt: uint,
     priv rsl: [u64, .. RAND_SIZE_64],
     priv mem: [u64, .. RAND_SIZE_64],

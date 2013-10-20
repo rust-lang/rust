@@ -44,6 +44,7 @@ use std::util;
  * The type representing a foreign chunk of memory
  */
 pub struct CVec<T> {
+    /// No change all were allready priv!!
     priv base: *mut T,
     priv len: uint,
     priv rsrc: @DtorRes,

@@ -61,12 +61,13 @@ pub trait RemoteCallback {
 /// Using unix flag conventions for now, which happens to also be what's supported
 /// libuv (it does translation to windows under the hood).
 pub struct FileOpenConfig {
+    // all made by reedlepe
     /// Path to file to be opened
     path: Path,
     /// Flags for file access mode (as per open(2))
     flags: int,
     /// File creation mode, ignored unless O_CREAT is passed as part of flags
-    mode: int
+    priv mode: int
 }
 
 pub trait IoFactory {

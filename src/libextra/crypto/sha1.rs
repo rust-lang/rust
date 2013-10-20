@@ -43,6 +43,7 @@ static K3: u32 = 0xCA62C1D6u32;
 
 /// Structure representing the state of a Sha1 computation
 pub struct Sha1 {
+    // already priv
     priv h: [u32, ..DIGEST_BUF_LEN],
     priv length_bits: u64,
     priv buffer: FixedBuffer64,
