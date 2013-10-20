@@ -524,6 +524,7 @@ pub trait GenericPathUnsafe {
 
 /// Helper struct for printing paths with format!()
 pub struct Display<'self, P> {
+    /// already priv
     priv path: &'self P,
     priv filename: bool
 }

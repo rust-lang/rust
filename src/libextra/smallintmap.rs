@@ -22,6 +22,7 @@ use std::vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
+    /// all were already priv!!
     priv v: ~[Option<T>],
 }
 
@@ -233,6 +234,7 @@ macro_rules! double_ended_iterator {
 }
 
 pub struct SmallIntMapIterator<'self, T> {
+    /// all were already priv!!
     priv front: uint,
     priv back: uint,
     priv iter: VecIterator<'self, Option<T>>
@@ -243,6 +245,7 @@ double_ended_iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
 pub type SmallIntMapRevIterator<'self, T> = Invert<SmallIntMapIterator<'self, T>>;
 
 pub struct SmallIntMapMutIterator<'self, T> {
+    /// all were already priv!!
     priv front: uint,
     priv back: uint,
     priv iter: VecMutIterator<'self, Option<T>>

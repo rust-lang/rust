@@ -72,6 +72,7 @@ use unstable::raw::Closure;
 
 #[doc(hidden)]
 pub struct Handler<T, U> {
+    //already priv
     priv handle: Closure,
     priv prev: Option<@Handler<T, U>>,
 }
@@ -83,6 +84,7 @@ pub struct Handler<T, U> {
 /// This struct should never be created directly, but rather only through the
 /// `condition!` macro provided to all libraries using libstd.
 pub struct Condition<T, U> {
+    // all made priv by reedlepee
     /// Name of the condition handler
     name: &'static str,
     /// TLS key used to insert/remove values in TLS.

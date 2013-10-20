@@ -28,6 +28,7 @@ use ops::Drop;
  * A simple atomic flag, that can be set and cleared. The most basic atomic type.
  */
 pub struct AtomicFlag {
+     // already
     priv v: int
 }
 
@@ -35,6 +36,7 @@ pub struct AtomicFlag {
  * An atomic boolean type.
  */
 pub struct AtomicBool {
+     // already
     priv v: uint
 }
 
@@ -42,6 +44,7 @@ pub struct AtomicBool {
  * A signed atomic integer type, supporting basic atomic arithmetic operations
  */
 pub struct AtomicInt {
+     // already
     priv v: int
 }
 
@@ -49,6 +52,7 @@ pub struct AtomicInt {
  * An unsigned atomic integer type, supporting basic atomic arithmetic operations
  */
 pub struct AtomicUint {
+     // already
     priv v: uint
 }
 
@@ -56,6 +60,7 @@ pub struct AtomicUint {
  * An unsafe atomic pointer. Only supports basic atomic operations
  */
 pub struct AtomicPtr<T> {
+     // already
     priv p: *mut T
 }
 
@@ -64,6 +69,7 @@ pub struct AtomicPtr<T> {
  */
 #[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
+     // already
     priv p: *mut c_void
 }
 

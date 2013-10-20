@@ -36,6 +36,7 @@ use std::cmp::Ordering;
 #[allow(missing_doc)]
 #[deriving(Clone)]
 pub struct TreeMap<K, V> {
+    /// all were already priv!!
     priv root: Option<~TreeNode<K, V>>,
     priv length: uint
 }
@@ -229,6 +230,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<'self, K, V> {
+    // all were already priv
     priv stack: ~[&'self ~TreeNode<K, V>],
     priv node: &'self Option<~TreeNode<K, V>>,
     priv remaining_min: uint,
@@ -275,6 +277,7 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
 
 /// Lazy backward iterator over a map
 pub struct TreeMapRevIterator<'self, K, V> {
+    // all were  already priv
     priv iter: TreeMapIterator<'self, K, V>,
 }
 
@@ -333,6 +336,7 @@ fn iter_traverse_complete<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
 
 /// Lazy forward iterator over a map that consumes the map while iterating
 pub struct TreeMapMoveIterator<K, V> {
+    // all were laready priv!!
     priv stack: ~[TreeNode<K, V>],
     priv remaining: uint
 }
@@ -401,6 +405,7 @@ impl<'self, T> Iterator<&'self T> for TreeSetRevIterator<'self, T> {
 /// only requirement is that the type of the elements contained ascribes to the
 /// `TotalOrd` trait.
 pub struct TreeSet<T> {
+    //all were already priv
     priv map: TreeMap<T, ()>
 }
 
@@ -553,34 +558,40 @@ impl<T: TotalOrd> TreeSet<T> {
 
 /// Lazy forward iterator over a set
 pub struct TreeSetIterator<'self, T> {
+    // all were already priv
     priv iter: TreeMapIterator<'self, T, ()>
 }
 
 /// Lazy backward iterator over a set
 pub struct TreeSetRevIterator<'self, T> {
+    // all were already priv
     priv iter: TreeMapRevIterator<'self, T, ()>
 }
 
 /// Lazy iterator producing elements in the set difference (in-order)
 pub struct Difference<'self, T> {
+    // all were already priv
     priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
     priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }
 
 /// Lazy iterator producing elements in the set symmetric difference (in-order)
 pub struct SymDifference<'self, T> {
+    // all were already priv
     priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
     priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct Intersection<'self, T> {
+    // all were already priv
     priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
     priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct Union<'self, T> {
+    // all were already priv
     priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
     priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }

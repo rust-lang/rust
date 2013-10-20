@@ -35,6 +35,7 @@ struct RcBox<T> {
 #[unsafe_no_drop_flag]
 #[no_send]
 pub struct Rc<T> {
+    // already priv
     priv ptr: *mut RcBox<T>
 }
 
@@ -167,6 +168,7 @@ struct RcMutBox<T> {
 #[no_freeze]
 #[unsafe_no_drop_flag]
 pub struct RcMut<T> {
+    // already priv
     priv ptr: *mut RcMutBox<T>,
 }
 

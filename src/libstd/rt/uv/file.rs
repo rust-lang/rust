@@ -25,7 +25,8 @@ pub struct FsRequest(*uvll::uv_fs_t);
 impl Request for FsRequest {}
 
 pub struct RequestData {
-    complete_cb: Option<FsCallback>
+    // all made by reedlepee
+    priv complete_cb: Option<FsCallback>
 }
 
 impl FsRequest {

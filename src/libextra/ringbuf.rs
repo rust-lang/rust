@@ -25,6 +25,7 @@ static MINIMUM_CAPACITY: uint = 2u;
 /// RingBuf is a circular buffer that implements Deque.
 #[deriving(Clone)]
 pub struct RingBuf<T> {
+    // all were already priv
     priv nelts: uint,
     priv lo: uint,
     priv elts: ~[Option<T>]
@@ -248,6 +249,7 @@ macro_rules! iterator_rev {
 
 /// RingBuf iterator
 pub struct RingBufIterator<'self, T> {
+    // all were already priv
     priv lo: uint,
     priv index: uint,
     priv rindex: uint,
@@ -275,6 +277,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for RingBufIterator<'self, T> {
 
 /// RingBuf mutable iterator
 pub struct RingBufMutIterator<'self, T> {
+    // all were already priv
     priv lo: uint,
     priv index: uint,
     priv rindex: uint,

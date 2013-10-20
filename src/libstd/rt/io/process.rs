@@ -26,13 +26,16 @@ use rt::rtio::{RtioProcess, RtioProcessObject, IoFactoryObject, IoFactory};
 #[cfg(not(windows))] pub static MustDieSignal: int = libc::SIGKILL as int;
 
 pub struct Process {
+    // already priv
     priv handle: ~RtioProcessObject,
+    // made by reedlepee
     io: ~[Option<io::PipeStream>],
 }
 
 /// This configuration describes how a new process should be spawned. This is
 /// translated to libuv's own configuration
 pub struct ProcessConfig<'self> {
+    // all made by reedlepee
     /// Path to the program to run
     program: &'self str,
 

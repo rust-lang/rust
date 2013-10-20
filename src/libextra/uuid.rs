@@ -102,6 +102,7 @@ pub enum UuidVariant {
 /// A Universally Unique Identifier (UUID)
 pub struct Uuid {
     /// The 128-bit number stored in 16 bytes
+    /// should be public
     bytes: UuidBytes
 }
 

@@ -108,7 +108,8 @@ pub enum SchedMode {
  *
  */
 pub struct SchedOpts {
-    mode: SchedMode,
+     // all made by reedelpee
+    priv mode: SchedMode,
 }
 
 /**
@@ -144,14 +145,15 @@ pub struct SchedOpts {
  *           scheduler other tasks will be impeded or even blocked indefinitely.
  */
 pub struct TaskOpts {
-    linked: bool,
-    supervised: bool,
-    watched: bool,
-    indestructible: bool,
-    notify_chan: Option<Chan<TaskResult>>,
-    name: Option<SendStr>,
-    sched: SchedOpts,
-    stack_size: Option<uint>
+     // all made by reedelpee
+     priv linked: bool,
+     priv supervised: bool,
+     priv watched: bool,
+     priv indestructible: bool,
+     priv notify_chan: Option<Chan<TaskResult>>,
+     name: Option<SendStr>,
+     sched: SchedOpts,
+     stack_size: Option<uint>
 }
 
 /**
@@ -169,10 +171,11 @@ pub struct TaskOpts {
 
 // FIXME (#3724): Replace the 'consumed' bit with move mode on self
 pub struct TaskBuilder {
+    //all made priv by reedlepee
     opts: TaskOpts,
-    gen_body: Option<~fn(v: ~fn()) -> ~fn()>,
-    can_not_copy: Option<util::NonCopyable>,
-    consumed: bool,
+    priv gen_body: Option<~fn(v: ~fn()) -> ~fn()>,
+    priv can_not_copy: Option<util::NonCopyable>,
+    priv consumed: bool,
 }
 
 /**

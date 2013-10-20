@@ -25,11 +25,11 @@ pub static RED_ZONE: uint = 20 * 1024;
 // then misalign the regs again.
 pub struct Context {
     /// The context entry point, saved here for later destruction
-    start: Option<~~fn()>,
+    priv start: Option<~~fn()>,
     /// Hold the registers while the task or scheduler is suspended
-    regs: ~Registers,
+    priv regs: ~Registers,
     /// Lower bound and upper bound for the stack
-    stack_bounds: Option<(uint, uint)>,
+    priv stack_bounds: Option<(uint, uint)>,
 }
 
 impl Context {

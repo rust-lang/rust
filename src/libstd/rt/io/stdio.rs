@@ -87,6 +87,7 @@ pub fn println_args(fmt: &fmt::Arguments) {
 
 /// Representation of a reader of a standard input stream
 pub struct StdReader {
+    // aleady priv
     priv inner: ~RtioFileStream
 }
 
@@ -106,6 +107,7 @@ impl Reader for StdReader {
 
 /// Representation of a writer to a standard output stream
 pub struct StdWriter {
+    // aleady priv
     priv inner: ~RtioFileStream
 }
 

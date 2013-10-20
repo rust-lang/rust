@@ -33,6 +33,7 @@ use rand::Rng;
 /// }
 /// ```
 pub struct ReaderRng<R> {
+    // already priv
     priv reader: R
 }
 

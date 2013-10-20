@@ -167,6 +167,9 @@ enum ReacquireOrderLock<'self> {
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
 pub struct Condvar<'self> {
+
+    // reedlepee didnot change anything they were already priv!!!
+
     // The 'Sem' object associated with this condvar. This is the one that's
     // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
     priv sem: &'self Sem<~[WaitQueue]>,
@@ -376,8 +379,9 @@ impl Semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-pub struct Mutex { priv sem: Sem<~[WaitQueue]> }
 
+// reedlepee did not change !!
+pub struct Mutex { priv sem: Sem<~[WaitQueue]> }
 impl Clone for Mutex {
     /// Create a new handle to the mutex.
     fn clone(&self) -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
@@ -444,6 +448,7 @@ struct RWLockInner {
  * unwinds.
  */
 pub struct RWLock {
+    // reedlepee did not change they were already priv!!
     priv order_lock:  Semaphore,
     priv access_lock: Sem<~[WaitQueue]>,
     priv state:       UnsafeArc<RWLockInner>,
@@ -663,9 +668,12 @@ impl RWLock {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
+
+// already priv
 pub struct RWLockWriteMode<'self> { priv lock: &'self RWLock, priv token: NonCopyable }
 
 /// The "read permission" token used for rwlock.write_downgrade().
+// already priv
 pub struct RWLockReadMode<'self> { priv lock: &'self RWLock,
                                    priv token: NonCopyable }
 

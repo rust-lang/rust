@@ -412,6 +412,7 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
 }
 
 pub struct Pipe {
+    // made priv by reedlepee
     input: c_int,
     out: c_int
 }
@@ -1380,6 +1381,7 @@ pub fn page_size() -> uint {
 }
 
 pub struct MemoryMap {
+    // made priv by reedlepee
     data: *mut u8,
     len: size_t,
     kind: MemoryMapKind

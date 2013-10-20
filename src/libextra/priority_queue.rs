@@ -20,6 +20,7 @@ use std::vec;
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
 pub struct PriorityQueue<T> {
+    // all were already priv
     priv data: ~[T],
 }
 
@@ -178,6 +179,7 @@ impl<T:Ord> PriorityQueue<T> {
 
 /// PriorityQueue iterator
 pub struct PriorityQueueIterator <'self, T> {
+    // all were already priv
     priv iter: vec::VecIterator<'self, T>,
 }
 

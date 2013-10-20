@@ -216,6 +216,7 @@ pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function.
 pub struct SplitIterator<'self, T> {
+    // already priv
     priv v: &'self [T],
     priv n: uint,
     priv pred: &'self fn(t: &T) -> bool,
@@ -265,6 +266,7 @@ impl<'self, T> Iterator<&'self [T]> for SplitIterator<'self, T> {
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function, from back to front.
 pub struct RSplitIterator<'self, T> {
+    // already priv
     priv v: &'self [T],
     priv n: uint,
     priv pred: &'self fn(t: &T) -> bool,
@@ -403,6 +405,7 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
 pub struct ElementSwaps {
+    // already priv
     priv sdir: ~[SizeDirection],
     /// If true, emit the last swap that returns the sequence to initial state
     priv emit_reset: bool,
@@ -478,6 +481,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
 ///
 /// Generates even and odd permutations alternatingly.
 pub struct Permutations<T> {
+    // already priv
     priv swaps: ElementSwaps,
     priv v: ~[T],
 }
@@ -500,6 +504,7 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
 /// a vector.
 #[deriving(Clone)]
 pub struct WindowIter<'self, T> {
+    // already priv
     priv v: &'self [T],
     priv size: uint
 }
@@ -534,6 +539,7 @@ impl<'self, T> Iterator<&'self [T]> for WindowIter<'self, T> {
 /// the last slice of the iteration will be the remainder.
 #[deriving(Clone)]
 pub struct ChunkIter<'self, T> {
+    // already priv
     priv v: &'self [T],
     priv size: uint
 }
@@ -2393,6 +2399,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
 //iterator!{struct VecIterator -> *T, &'self T}
 /// An iterator for iterating over a vector.
 pub struct VecIterator<'self, T> {
+    // already priv
     priv ptr: *T,
     priv end: *T,
     priv lifetime: Option<&'self ()> // FIXME: #5922
@@ -2411,6 +2418,7 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 //iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 /// An iterator for mutating the elements of a vector.
 pub struct VecMutIterator<'self, T> {
+    // already priv
     priv ptr: *mut T,
     priv end: *mut T,
     priv lifetime: Option<&'self mut ()> // FIXME: #5922
@@ -2422,6 +2430,7 @@ pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 /// An iterator that moves out of a vector.
 #[deriving(Clone)]
 pub struct MoveIterator<T> {
+    // already priv
     priv v: ~[T],
     priv idx: uint,
 }
@@ -2456,6 +2465,7 @@ impl<T> Iterator<T> for MoveIterator<T> {
 /// An iterator that moves out of a vector in reverse order.
 #[deriving(Clone)]
 pub struct MoveRevIterator<T> {
+    // already priv
     priv v: ~[T]
 }
 

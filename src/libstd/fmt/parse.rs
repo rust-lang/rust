@@ -38,17 +38,20 @@ pub enum Piece<'self> {
 /// Representation of an argument specification.
 #[deriving(Eq)]
 pub struct Argument<'self> {
+    // made by reedlepee
     /// Where to find this argument
     position: Position<'self>,
-    /// How to format the argument
+    ///  How to format the argument
     format: FormatSpec<'self>,
     /// If not `None`, what method to invoke on the argument
+    // should be public
     method: Option<~Method<'self>>
 }
 
 /// Specification for the formatting of an argument in the format string.
 #[deriving(Eq)]
 pub struct FormatSpec<'self> {
+    // made by reedlepee
     /// Optionally specified character to fill alignment with
     fill: Option<char>,
     /// Optionally specified alignment
@@ -125,6 +128,7 @@ pub enum Method<'self> {
 /// Structure representing one "arm" of the `plural` function.
 #[deriving(Eq)]
 pub struct PluralArm<'self> {
+    // made by reedlepee
     /// A selector can either be specified by a keyword or with an integer
     /// literal.
     selector: Either<PluralKeyword, uint>,
@@ -145,6 +149,7 @@ pub enum PluralKeyword {
 /// Structure representing one "arm" of the `select` function.
 #[deriving(Eq)]
 pub struct SelectArm<'self> {
+    // made by reedlepee
     /// String selector which guards this arm
     selector: &'self str,
     /// Array of pieces which are the format of this arm
@@ -158,6 +163,7 @@ pub struct SelectArm<'self> {
 /// This is a recursive-descent parser for the sake of simplicity, and if
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'self> {
+    // already priv
     priv input: &'self str,
     priv cur: str::CharOffsetIterator<'self>,
     priv depth: uint,

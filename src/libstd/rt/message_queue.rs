@@ -20,6 +20,7 @@ use unstable::sync::{UnsafeArc, LittleLock};
 use clone::Clone;
 
 pub struct MessageQueue<T> {
+    // already priv
     priv state: UnsafeArc<State<T>>
 }
 

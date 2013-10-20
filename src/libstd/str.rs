@@ -355,6 +355,7 @@ Section: Iterators
 /// Use with the `std::iterator` module.
 #[deriving(Clone)]
 pub struct CharIterator<'self> {
+    // already priv
     /// The slice remaining to be iterated
     priv string: &'self str,
 }
@@ -400,6 +401,7 @@ impl<'self> DoubleEndedIterator<char> for CharIterator<'self> {
 /// Use with the `std::iterator` module.
 #[deriving(Clone)]
 pub struct CharOffsetIterator<'self> {
+    // already priv
     /// The original string to be iterated
     priv string: &'self str,
     priv iter: CharIterator<'self>,
@@ -458,6 +460,7 @@ pub type ByteRevIterator<'self> = Invert<ByteIterator<'self>>;
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
 pub struct CharSplitIterator<'self, Sep> {
+    // already priv
     /// The slice remaining to be iterated
     priv string: &'self str,
     priv sep: Sep,
@@ -475,6 +478,7 @@ pub type CharRSplitIterator<'self, Sep> = Invert<CharSplitIterator<'self, Sep>>;
 /// splitting at most `count` times.
 #[deriving(Clone)]
 pub struct CharSplitNIterator<'self, Sep> {
+    // already priv
     priv iter: CharSplitIterator<'self, Sep>,
     /// The number of splits remaining
     priv count: uint,
@@ -591,6 +595,7 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitNIterator<'self, Sep>
 /// substring within a larger string
 #[deriving(Clone)]
 pub struct MatchesIndexIterator<'self> {
+    // already priv
     priv haystack: &'self str,
     priv needle: &'self str,
     priv position: uint,
@@ -600,6 +605,7 @@ pub struct MatchesIndexIterator<'self> {
 /// search string
 #[deriving(Clone)]
 pub struct StrSplitIterator<'self> {
+    // already priv
     priv it: MatchesIndexIterator<'self>,
     priv last_end: uint,
     priv finished: bool
@@ -997,9 +1003,9 @@ pub fn utf8_char_width(b: u8) -> uint {
 /// the utf8 bytes of a string.
 pub struct CharRange {
     /// Current `char`
-	/// This field should be public making it private causes error while compiling!!
+    /// This field should be public making it private causes error while compiling!!
     ch: char,
-
+    // made by reedlepee
     /// Index of the first byte of the next `char`
     next: uint
 }

@@ -40,13 +40,15 @@ use vec::{OwnedVector};
 /// in too much allocation and too many events.
 pub struct Scheduler {
     /// There are N work queues, one per scheduler.
-    priv work_queue: WorkQueue<~Task>,
+    // already priv
+    work_queue: WorkQueue<~Task>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
     work_queues: ~[WorkQueue<~Task>],
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
+    // already priv
     priv message_queue: MessageQueue<SchedMessage>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
@@ -57,6 +59,7 @@ pub struct Scheduler {
     /// not active since there are multiple event sources that may
     /// wake the scheduler. It just prevents the scheduler from pushing
     /// multiple handles onto the sleeper list.
+    // already priv
     priv sleepy: bool,
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
@@ -66,26 +69,26 @@ pub struct Scheduler {
     event_loop: ~EventLoopObject,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
-    sched_task: Option<~Task>,
+    priv sched_task: Option<~Task>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
-    cleanup_job: Option<CleanupJob>,
+    priv cleanup_job: Option<CleanupJob>,
     /// Should this scheduler run any task, or only pinned tasks?
     run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
     /// them to.
-    friend_handle: Option<SchedHandle>,
+    priv friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A toggleable idle callback
-    idle_callback: Option<~PausibleIdleCallback>,
+    priv idle_callback: Option<~PausibleIdleCallback>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
     /// will yield.
-    yield_check_count: uint,
+    priv yield_check_count: uint,
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
-    steal_for_yield: bool
+    priv steal_for_yield: bool
 }
 
 /// An indication of how hard to work on a given operation, the difference
@@ -793,8 +796,10 @@ pub enum SchedMessage {
 }
 
 pub struct SchedHandle {
+    //already priv
     priv remote: ~RemoteCallbackObject,
     priv queue: MessageQueue<SchedMessage>,
+    // made by reedlepee
     sched_id: uint
 }
 

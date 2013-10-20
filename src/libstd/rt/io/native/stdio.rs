@@ -31,6 +31,7 @@ pub fn println(s: &str) {
 }
 
 pub struct StdIn {
+    // aleady priv
     priv fd: file::FileDesc
 }
 
@@ -49,6 +50,7 @@ impl Reader for StdIn {
 }
 
 pub struct StdOut {
+    // aleady priv
     priv fd: file::FileDesc
 }
 

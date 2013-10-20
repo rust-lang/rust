@@ -22,19 +22,21 @@ use std::uint;
 
 #[deriving(Clone, Eq)]
 pub struct Url {
-    scheme: ~str,
-    user: Option<UserInfo>,
-    host: ~str,
-    port: Option<~str>,
-    path: ~str,
-    query: Query,
-    fragment: Option<~str>
+    // all were made privv bt reedlepee
+    priv scheme: ~str,
+    priv user: Option<UserInfo>,
+    priv host: ~str,
+    priv port: Option<~str>,
+    priv path: ~str,
+    priv query: Query,
+    priv fragment: Option<~str>
 }
 
 #[deriving(Clone, Eq)]
 pub struct UserInfo {
-    user: ~str,
-    pass: Option<~str>
+    // all were made privv bt reedlepee
+    priv user: ~str,
+    priv pass: Option<~str>
 }
 
 pub type Query = ~[(~str, ~str)];

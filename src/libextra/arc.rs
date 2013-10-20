@@ -50,6 +50,7 @@ use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
+    // all were already priv
     priv is_mutex: bool,
     priv failed: &'self mut bool,
     priv cond: &'self sync::Condvar<'self>
@@ -108,6 +109,7 @@ impl<'self> Condvar<'self> {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
+// all were already priv
 pub struct Arc<T> { priv x: UnsafeArc<T> }
 
 
@@ -162,6 +164,7 @@ struct MutexArcInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
 
 /// An Arc with mutable data protected by a blocking mutex.
 #[no_freeze]
+//All were already priv
 pub struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
 
 
@@ -344,6 +347,7 @@ struct RWArcInner<T> { priv lock: RWLock, priv failed: bool, priv data: T }
  */
 #[no_freeze]
 pub struct RWArc<T> {
+    // all were already priv
     priv x: UnsafeArc<RWArcInner<T>>,
 }
 
@@ -521,15 +525,18 @@ fn borrow_rwlock<T:Freeze + Send>(state: *mut RWArcInner<T>) -> *RWLock {
 
 /// The "write permission" token used for RWArc.write_downgrade().
 pub struct RWWriteMode<'self, T> {
-    data: &'self mut T,
-    token: sync::RWLockWriteMode<'self>,
-    poison: PoisonOnFail,
+
+/// reedlepee added priv in all the feilds below
+    priv data: &'self mut T,
+    priv token: sync::RWLockWriteMode<'self>,
+    priv poison: PoisonOnFail,
 }
 
 /// The "read permission" token used for RWArc.write_downgrade().
 pub struct RWReadMode<'self, T> {
-    data: &'self T,
-    token: sync::RWLockReadMode<'self>,
+/// reedlepee added priv in all the feilds below
+    priv data: &'self T,
+    priv token: sync::RWLockReadMode<'self>,
 }
 
 impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {

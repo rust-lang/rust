@@ -28,7 +28,8 @@ struct TubeState<T> {
 }
 
 pub struct Tube<T> {
-    p: RC<TubeState<T>>
+    //all priv made br reedlepe
+    priv p: RC<TubeState<T>>
 }
 
 impl<T> Tube<T> {
