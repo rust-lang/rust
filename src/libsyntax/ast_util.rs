@@ -66,7 +66,7 @@ pub fn def_id_of_def(d: Def) -> DefId {
       DefUse(id) | DefStruct(id) | DefTrait(id) | DefMethod(id, _) => {
         id
       }
-      DefArg(id, _) | DefLocal(id, _) | DefSelf(id) | DefSelfTy(id)
+      DefArg(id, _) | DefLocal(id, _) | DefSelf(id, _) | DefSelfTy(id)
       | DefUpvar(id, _, _, _) | DefBinding(id, _) | DefRegion(id)
       | DefTyParamBinder(id) | DefLabel(id) => {
         local_def(id)

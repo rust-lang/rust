@@ -672,7 +672,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
     {
         match self_info.explicit_self.node {
             ast::sty_static => None,
-            ast::sty_value => {
+            ast::sty_value(_) => {
                 Some(self_info.untransformed_self_ty)
             }
             ast::sty_region(ref lifetime, mutability) => {

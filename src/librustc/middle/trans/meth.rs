@@ -120,7 +120,7 @@ pub fn trans_method(ccx: @mut CrateContext,
         debug!("calling trans_fn with self_ty {}",
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
-          ast::sty_value => impl_self(self_ty, ty::ByRef),
+          ast::sty_value(_) => impl_self(self_ty, ty::ByRef),
           _ => impl_self(self_ty, ty::ByCopy),
         }
       }
