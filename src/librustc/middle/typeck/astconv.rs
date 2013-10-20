@@ -689,7 +689,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
                                 ty::mt {ty: self_info.untransformed_self_ty,
                                         mutbl: mutability}))
             }
-            ast::sty_uniq => {
+            ast::sty_uniq(_) => {
                 Some(ty::mk_uniq(this.tcx(),
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: ast::MutImmutable}))

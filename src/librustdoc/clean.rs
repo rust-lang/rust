@@ -389,7 +389,7 @@ impl Clean<SelfTy> for ast::explicit_self {
         match self.node {
             ast::sty_static => SelfStatic,
             ast::sty_value(_) => SelfValue,
-            ast::sty_uniq => SelfOwned,
+            ast::sty_uniq(_) => SelfOwned,
             ast::sty_region(lt, mt) => SelfBorrowed(lt.clean(), mt.clean()),
             ast::sty_box(mt) => SelfManaged(mt.clean()),
         }

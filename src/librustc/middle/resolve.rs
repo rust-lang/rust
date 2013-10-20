@@ -3801,7 +3801,7 @@ impl Resolver {
                 }
                 HasSelfBinding(self_node_id, explicit_self) => {
                     let mutable = match explicit_self.node {
-                        sty_value(m) if m == MutMutable => true,
+                        sty_uniq(m) | sty_value(m) if m == MutMutable => true,
                         _ => false
                     };
                     let def_like = DlDef(DefSelf(self_node_id, mutable));
