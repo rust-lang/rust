@@ -1690,7 +1690,10 @@ pub fn print_explicit_self(s: @ps, explicit_self: ast::explicit_self_) -> bool {
             print_mutability(s, m);
             word(s.s, "self");
         }
-        ast::sty_uniq => { word(s.s, "~self"); }
+        ast::sty_uniq(m) => {
+            print_mutability(s, m);
+            word(s.s, "~self");
+        }
         ast::sty_region(ref lt, m) => {
             word(s.s, "&");
             print_opt_lifetime(s, lt);

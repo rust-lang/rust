@@ -924,7 +924,7 @@ pub enum explicit_self_ {
     sty_value(Mutability),                     // `self`
     sty_region(Option<Lifetime>, Mutability),  // `&'lt self`
     sty_box(Mutability),                       // `@self`
-    sty_uniq                                   // `~self`
+    sty_uniq(Mutability)                       // `~self`
 }
 
 pub type explicit_self = Spanned<explicit_self_>;

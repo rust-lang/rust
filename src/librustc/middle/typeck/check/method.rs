@@ -1236,7 +1236,7 @@ impl<'self> LookupContext<'self> {
                 }
             }
 
-            sty_uniq => {
+            sty_uniq(_) => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {

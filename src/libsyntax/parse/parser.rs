@@ -3520,7 +3520,7 @@ impl Parser {
                     self.span_err(*self.last_span,
                                   "mutability declaration not allowed here");
                 }
-                sty_uniq
+                sty_uniq(MutImmutable)
             }, self)
           }
           token::IDENT(*) if self.is_self_ident() => {
@@ -3545,6 +3545,14 @@ impl Parser {
             let mutability = self.parse_mutability();
             self.expect_self_ident();
             sty_value(mutability)
+          }
+          _ if self.token_is_mutability(self.token) &&
+               self.look_ahead(1, |t| *t == token::TILDE) &&
+               self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
+            let mutability = self.parse_mutability();
+            self.bump();
+            self.expect_self_ident();
+            sty_uniq(mutability)
           }
           _ => {
             sty_static
