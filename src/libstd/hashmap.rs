@@ -48,7 +48,6 @@ struct Bucket<K,V> {
 /// `IterBytes` traits as `Hash` is automatically implemented for types that
 /// implement `IterBytes`.
 pub struct HashMap<K,V> {
-    // already priv
     priv k0: u64,
     priv k1: u64,
     priv resize_at: uint,
@@ -518,32 +517,27 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 /// HashMap iterator
 #[deriving(Clone)]
 pub struct HashMapIterator<'self, K, V> {
-    // already priv
     priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
 }
 
 /// HashMap mutable values iterator
 pub struct HashMapMutIterator<'self, K, V> {
-    // already priv
     priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
 }
 
 /// HashMap move iterator
 pub struct HashMapMoveIterator<K, V> {
-    // already priv
     priv iter: vec::MoveRevIterator<Option<Bucket<K, V>>>,
 }
 
 /// HashSet iterator
 #[deriving(Clone)]
 pub struct HashSetIterator<'self, K> {
-    // already priv
     priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
 }
 
 /// HashSet move iterator
 pub struct HashSetMoveIterator<K> {
-    // already priv
     priv iter: vec::MoveRevIterator<Option<Bucket<K, ()>>>,
 }
 
@@ -637,7 +631,6 @@ impl<K: Eq + Hash, V> Default for HashMap<K, V> {
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
 pub struct HashSet<T> {
-    // already priv
     priv map: HashMap<T, ()>
 }
 

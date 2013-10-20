@@ -32,7 +32,6 @@ pub mod rustrt {
 
 /// A record specifying a time value in seconds and nanoseconds.
 
-/// all were made priv reedlepee
 
 #[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
 pub struct Timespec { priv sec: i64, priv nsec: i32 }
@@ -107,7 +106,6 @@ pub fn tzset() {
 
 #[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
 pub struct Tm {
-    /// all were made priv by reedlepee
     priv tm_sec: i32, // seconds after the minute ~[0-60]
     priv tm_min: i32, // minutes after the hour ~[0-59]
     priv tm_hour: i32, // hours after midnight ~[0-23]

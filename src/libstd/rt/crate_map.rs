@@ -21,13 +21,11 @@ use vec::ImmutableVector;
 extern {}
 
 pub struct ModEntry<'self> {
-    // made priv by reedlepee
     name: &'self str,
     log_level: *mut u32
 }
 
 pub struct CrateMap<'self> {
-    // made priv by reedlepee
      priv version: i32,
      priv entries: &'self [ModEntry<'self>],
      priv children: &'self [&'self CrateMap<'self>]

@@ -14,7 +14,6 @@ use std::hashmap::HashMap;
 
 /// A parsed terminfo entry.
 pub struct TermInfo {
-    // made priv by redlpee
     /// Names for the terminal
     priv names: ~[~str],
     /// Map of capability name to boolean value

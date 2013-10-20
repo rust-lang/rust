@@ -21,7 +21,6 @@ use rt::rtio::{RtioPipe, RtioPipeObject, IoFactoryObject, IoFactory};
 use rt::rtio::RtioUnboundPipeObject;
 
 pub struct PipeStream {
-    // already priv
     priv obj: RtioPipeObject
 }
 

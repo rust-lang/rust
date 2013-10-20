@@ -298,7 +298,6 @@ pub fn readdir<P: PathLike>(path: &P) -> Option<~[Path]> {
 /// Constrained version of `FileStream` that only exposes read-specific operations.
 ///
 /// Can be retreived via `FileInfo.open_reader()`.
-/// all already priv
 pub struct FileReader { priv stream: FileStream }
 
 /// a `std::rt::io::Reader` trait impl for file I/O.
@@ -326,7 +325,6 @@ impl Seek for FileReader {
 /// Constrained version of `FileStream` that only exposes write-specific operations.
 ///
 /// Can be retreived via `FileInfo.open_writer()`.
-// already priv
 pub struct FileWriter { priv stream: FileStream }
 
 /// a `std::rt::io::Writer` trait impl for file I/O.
@@ -364,7 +362,6 @@ impl Seek for FileWriter {
 /// For this reason, it is best to use the access-constrained wrappers that are
 /// exposed via `FileInfo.open_reader()` and `FileInfo.open_writer()`.
 pub struct FileStream {
-    // all made by reedlepee
     priv fd: ~RtioFileStream,
     priv last_nread: int,
 }

@@ -47,7 +47,6 @@ pub enum Param {
 
 /// Container for static and dynamic variable arrays
 pub struct Variables {
-    // made priv by redlpee
     /// Static variables A-Z
     priv sta: [Param, ..26],
     /// Dynamic variables a-z

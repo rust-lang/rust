@@ -80,7 +80,6 @@ pub mod pipe;
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
-    // all made by reedlepee
     priv handle: *uvll::uv_loop_t
 }
 

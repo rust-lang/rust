@@ -20,7 +20,6 @@ use super::bigint::BigInt;
 #[deriving(Clone)]
 #[allow(missing_doc)]
 pub struct Ratio<T> {
-    // made priv by reedlepee
     priv numer: T,
     priv denom: T
 }

@@ -765,8 +765,6 @@ impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
 pub struct Invert<T> {
-    // already priv
-    // already priv
     priv iter: T
 }
 

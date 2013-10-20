@@ -48,7 +48,6 @@ pub type Object = TreeMap<~str, Json>;
 /// If an error occurs while parsing some JSON, this is the structure which is
 /// returned
 pub struct Error {
-    // all were made privv by reedlepee
     /// The line number at which the error occurred
     priv line: uint,
     /// The column number at which the error occurred
@@ -87,7 +86,6 @@ fn spaces(n: uint) -> ~str {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder {
-    // all were already priv
     priv wr: @io::Writer,
 }
 
@@ -245,7 +243,6 @@ impl serialize::Encoder for Encoder {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder {
-    // all were already priv
     priv wr: @io::Writer,
     priv indent: uint,
 }
@@ -482,7 +479,6 @@ impl Json{
 }
 
 pub struct Parser<T> {
-    // all were already priv
     priv rdr: ~T,
     priv ch: char,
     priv line: uint,
@@ -872,7 +868,6 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
 
 /// A structure to decode JSON to values in rust.
 pub struct Decoder {
-    // all were already priv
     priv stack: ~[Json],
 }
 

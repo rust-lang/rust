@@ -15,7 +15,6 @@ use ops::Drop;
 use libc::{c_uint, uintptr_t};
 
 pub struct StackSegment {
-    // all made by reedlepee
     priv buf: ~[u8],
     priv valgrind_id: c_uint
 }

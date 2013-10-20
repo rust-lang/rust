@@ -12,7 +12,6 @@ use option::{Option, None};
 use rt::io::{Reader, Writer};
 
 pub struct MockReader {
-    // all made by reedlepee
     read: ~fn(buf: &mut [u8]) -> Option<uint>,
     priv eof: ~fn() -> bool
 }

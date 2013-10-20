@@ -70,7 +70,6 @@ impl ToStr for Identifier {
 /// Represents a version number conforming to the semantic versioning scheme.
 #[deriving(Clone, Eq)]
 pub struct Version {
-    /// reedlepee added priv in all
     /// The major version, to be incremented on incompatible changes.
     priv major: uint,
     /// The minor version, to be incremented when functionality is added in a

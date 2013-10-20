@@ -32,7 +32,6 @@ use std::util::replace;
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {
-    // all were already privv!!
     priv state: FutureState<A>,
 }
 

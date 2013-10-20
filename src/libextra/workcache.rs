@@ -128,7 +128,6 @@ impl WorkMap {
 }
 
 pub struct Database {
-    /// all were made by reedlepee
     priv db_filename: Path,
     priv db_cache: TreeMap<~str, ~str>,
     db_dirty: bool
@@ -210,7 +209,6 @@ impl Drop for Database {
 
 pub struct Logger {
     // FIXME #4432: Fill in
-    /// alll were made priv reeldepee
     priv a: ()
 }
 
@@ -229,7 +227,6 @@ pub type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
 
 #[deriving(Clone)]
 pub struct Context {
-//// all were made priv by reedlepee
     db: RWArc<Database>,
     priv logger: RWArc<Logger>,
     priv cfg: Arc<json::Object>,
@@ -243,14 +240,12 @@ pub struct Context {
 }
 
 pub struct Prep<'self> {
-//// all were made priv by reedlepee
     priv ctxt: &'self Context,
     priv fn_name: &'self str,
     priv declared_inputs: WorkMap,
 }
 
 pub struct Exec {
-//// all were made priv by reedlepee
     priv discovered_inputs: WorkMap,
     priv discovered_outputs: WorkMap
 }

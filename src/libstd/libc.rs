@@ -226,16 +226,15 @@ pub mod types {
                 use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, size_t};
                 pub struct glob_t {
-                    // all made by reedlepee
-                    priv gl_pathc: size_t,
-                    priv gl_pathv: **c_char,
-                    priv gl_offs:  size_t,
+                    gl_pathc: size_t,
+                    gl_pathv: **c_char,
+                    gl_offs:  size_t,
 
-                    priv __unused1: *c_void,
-                    priv __unused2: *c_void,
-                    priv __unused3: *c_void,
-                     __unused4: *c_void,
-                     __unused5: *c_void,
+                    __unused1: *c_void,
+                    __unused2: *c_void,
+                    __unused3: *c_void,
+                    __unused4: *c_void,
+                    __unused5: *c_void,
                 }
             }
         }
@@ -305,16 +304,15 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    // all made by reedlepee
                     st_dev: dev_t,
-                     __pad1: c_short,
+                    __pad1: c_short,
                     st_ino: ino_t,
                     st_mode: mode_t,
                     st_nlink: nlink_t,
-                     st_uid: uid_t,
+                    st_uid: uid_t,
                     st_gid: gid_t,
-                     st_rdev: dev_t,
-                     __pad2: c_short,
+                    st_rdev: dev_t,
+                    __pad2: c_short,
                     st_size: off_t,
                     st_blksize: blksize_t,
                     st_blocks: blkcnt_t,
@@ -325,7 +323,7 @@ pub mod types {
                     st_ctime: time_t,
                     st_ctime_nsec: c_long,
                     __unused4: c_long,
-                     __unused5: c_long,
+                    __unused5: c_long,
                 }
             }
             #[cfg(target_arch = "arm")]
@@ -339,16 +337,15 @@ pub mod types {
                 pub type blkcnt_t = u32;
 
                 pub struct stat {
-                    // all made priv by reedlepee
                     st_dev: c_ulonglong,
-                    priv __pad0: [c_uchar, ..4],
-                    priv __st_ino: ino_t,
+                    __pad0: [c_uchar, ..4],
+                    __st_ino: ino_t,
                     st_mode: c_uint,
                     st_nlink: c_uint,
-                     st_uid: uid_t,
-                     st_gid: gid_t,
-                     st_rdev: c_ulonglong,
-                    priv __pad3: [c_uchar, ..4],
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: c_ulonglong,
+                    __pad3: [c_uchar, ..4],
                     st_size: c_longlong,
                     st_blksize: blksize_t,
                     st_blocks: c_ulonglong,
@@ -356,8 +353,8 @@ pub mod types {
                     st_atime_nsec: c_ulong,
                     st_mtime: time_t,
                     st_mtime_nsec: c_ulong,
-                     st_ctime: time_t,
-                     st_ctime_nsec: c_ulong,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_ulong,
                     st_ino: c_ulonglong
                 }
             }
@@ -373,18 +370,17 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    /// all made priv by reedlepee
                     st_dev: c_ulong,
-                    priv st_pad1: [c_long, ..3],
+                    st_pad1: [c_long, ..3],
                     st_ino: ino_t,
                     st_mode: mode_t,
                     st_nlink: nlink_t,
                     st_uid: uid_t,
                     st_gid: gid_t,
                     st_rdev: c_ulong,
-                    priv st_pad2: [c_long, ..2],
+                    st_pad2: [c_long, ..2],
                     st_size: off_t,
-                    priv st_pad3: c_long,
+                    st_pad3: c_long,
                     st_atime: time_t,
                     st_atime_nsec: c_long,
                     st_mtime: time_t,
@@ -393,7 +389,7 @@ pub mod types {
                     st_ctime_nsec: c_long,
                     st_blksize: blksize_t,
                     st_blocks: blkcnt_t,
-                    priv st_pad5: [c_long, ..14],
+                    st_pad5: [c_long, ..14],
                 }
             }
             pub mod posix08 {}
@@ -448,25 +444,24 @@ pub mod types {
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
                 pub struct stat {
-                    // all made by reedlepee
                     st_dev: dev_t,
                     st_ino: ino_t,
                     st_nlink: nlink_t,
                     st_mode: mode_t,
                     st_uid: uid_t,
                     st_gid: gid_t,
-                    priv __pad0: c_int,
-                     st_rdev: dev_t,
+                    __pad0: c_int,
+                    st_rdev: dev_t,
                     st_size: off_t,
                     st_blksize: blksize_t,
                     st_blocks: blkcnt_t,
-                     st_atime: time_t,
+                    st_atime: time_t,
                     st_atime_nsec: c_long,
                     st_mtime: time_t,
                     st_mtime_nsec: c_long,
                     st_ctime: time_t,
                     st_ctime_nsec: c_long,
-                    priv __unused: [c_long, ..3],
+                    __unused: [c_long, ..3],
                 }
             }
             pub mod posix08 {
@@ -485,20 +480,19 @@ pub mod types {
                 use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, c_int, size_t};
                 pub struct glob_t {
-                    // all made priv by reedlepee
-                    priv gl_pathc:  size_t,
-                    priv __unused1: size_t,
-                    priv gl_offs:   size_t,
-                    priv __unused2: c_int,
-                    priv gl_pathv:  **c_char,
+                    gl_pathc:  size_t,
+                    __unused1: size_t,
+                    gl_offs:   size_t,
+                    __unused2: c_int,
+                    gl_pathv:  **c_char,
 
-                    priv __unused3: *c_void,
+                    __unused3: *c_void,
 
-                     __unused4: *c_void,
-                     __unused5: *c_void,
-                    priv __unused6: *c_void,
-                    priv __unused7: *c_void,
-                    priv __unused8: *c_void,
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                    __unused6: *c_void,
+                    __unused7: *c_void,
+                    __unused8: *c_void,
                 }
             }
         }
@@ -552,14 +546,13 @@ pub mod types {
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
                 pub struct stat {
-                    // all made by reedlepee
                     st_dev: dev_t,
                     st_ino: ino_t,
                     st_mode: mode_t,
                     st_nlink: nlink_t,
-                     st_uid: uid_t,
-                     st_gid: gid_t,
-                     st_rdev: dev_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
                     st_atime: time_t,
                     st_atime_nsec: c_long,
                     st_mtime: time_t,
@@ -569,12 +562,12 @@ pub mod types {
                     st_size: off_t,
                     st_blocks: blkcnt_t,
                     st_blksize: blksize_t,
-                    priv st_flags: fflags_t,
-                    priv st_gen: uint32_t,
-                    priv st_lspare: int32_t,
-                    priv st_birthtime: time_t,
-                    priv st_birthtime_nsec: c_long,
-                    priv __unused: [uint8_t, ..2],
+                    st_flags: fflags_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
+                    __unused: [uint8_t, ..2],
                 }
             }
             pub mod posix08 {
@@ -598,14 +591,13 @@ pub mod types {
                 // Note: this is the struct called stat64 in win32. Not stat,
                 // nor stati64.
                 pub struct stat {
-                    // all made privv by reedlepee
                     st_dev: dev_t,
                     st_ino: ino_t,
                     st_mode: mode_t,
                     st_nlink: c_short,
-                     st_uid: c_short,
+                    st_uid: c_short,
                     st_gid: c_short,
-                     st_rdev: dev_t,
+                    st_rdev: dev_t,
                     st_size: int64,
                     st_atime: time64_t,
                     st_mtime: time64_t,
@@ -705,49 +697,47 @@ pub mod types {
                 pub type int64 = i64;
 
                 pub struct STARTUPINFO {
-                    // all made by reedlepee
-                    priv cb: DWORD,
-                    priv lpReserved: LPTSTR,
-                    priv lpDesktop: LPTSTR,
-                    priv lpTitle: LPTSTR,
-                    priv dwX: DWORD,
-                    priv dwY: DWORD,
-                    priv dwXSize: DWORD,
-                    priv dwYSize: DWORD,
-                    priv dwXCountChars: DWORD,
-                    priv dwYCountCharts: DWORD,
-                    priv dwFillAttribute: DWORD,
-                    priv dwFlags: DWORD,
-                    priv wShowWindow: WORD,
-                    priv cbReserved2: WORD,
-                    priv lpReserved2: LPBYTE,
-                    priv hStdInput: HANDLE,
-                    priv hStdOutput: HANDLE,
-                    priv hStdError: HANDLE
+                    cb: DWORD,
+                    lpReserved: LPTSTR,
+                    lpDesktop: LPTSTR,
+                    lpTitle: LPTSTR,
+                    dwX: DWORD,
+                    dwY: DWORD,
+                    dwXSize: DWORD,
+                    dwYSize: DWORD,
+                    dwXCountChars: DWORD,
+                    dwYCountCharts: DWORD,
+                    dwFillAttribute: DWORD,
+                    dwFlags: DWORD,
+                    wShowWindow: WORD,
+                    cbReserved2: WORD,
+                    lpReserved2: LPBYTE,
+                    hStdInput: HANDLE,
+                    hStdOutput: HANDLE,
+                    hStdError: HANDLE
                 }
                 pub type LPSTARTUPINFO = *mut STARTUPINFO;
+
                 pub struct PROCESS_INFORMATION {
-                    // all made by reedlepee
-                    priv hProcess: HANDLE,
-                    priv hThread: HANDLE,
-                    priv dwProcessId: DWORD,
-                    priv dwThreadId: DWORD
+                    hProcess: HANDLE,
+                    hThread: HANDLE,
+                    dwProcessId: DWORD,
+                    dwThreadId: DWORD
                 }
                 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 
                 pub struct SYSTEM_INFO {
-                    // all made by reedlepee
-                    priv wProcessorArchitecture: WORD,
-                    priv wReserved: WORD,
-                    priv dwPageSize: DWORD,
-                    priv lpMinimumApplicationAddress: LPVOID,
-                    priv lpMaximumApplicationAddress: LPVOID,
-                    priv dwActiveProcessorMask: DWORD,
-                    priv dwNumberOfProcessors: DWORD,
-                    priv dwProcessorType: DWORD,
-                    priv dwAllocationGranularity: DWORD,
-                    priv wProcessorLevel: WORD,
-                    priv wProcessorRevision: WORD
+                    wProcessorArchitecture: WORD,
+                    wReserved: WORD,
+                    dwPageSize: DWORD,
+                    lpMinimumApplicationAddress: LPVOID,
+                    lpMaximumApplicationAddress: LPVOID,
+                    dwActiveProcessorMask: DWORD,
+                    dwNumberOfProcessors: DWORD,
+                    dwProcessorType: DWORD,
+                    dwAllocationGranularity: DWORD,
+                    wProcessorLevel: WORD,
+                    wProcessorRevision: WORD
                 }
                 pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 
@@ -770,14 +760,13 @@ pub mod types {
                 }
 
                 pub struct MEMORY_BASIC_INFORMATION {
-                    // all made by reedlepee
-                    priv BaseAddress: LPVOID,
-                    priv AllocationBase: LPVOID,
-                    priv AllocationProtect: DWORD,
-                    priv RegionSize: SIZE_T,
-                    priv State: DWORD,
-                    priv Protect: DWORD,
-                    priv Type: DWORD
+                    BaseAddress: LPVOID,
+                    AllocationBase: LPVOID,
+                    AllocationProtect: DWORD,
+                    RegionSize: SIZE_T,
+                    State: DWORD,
+                    Protect: DWORD,
+                    Type: DWORD
                 }
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
             }
@@ -874,50 +863,47 @@ pub mod types {
                 pub type int64 = i64;
 
                 pub struct STARTUPINFO {
-                     // all made by reedlepee
-                     priv cb: DWORD,
-                     priv lpReserved: LPTSTR,
-                     priv lpDesktop: LPTSTR,
-                     priv lpTitle: LPTSTR,
-                     priv dwX: DWORD,
-                     priv dwY: DWORD,
-                     priv dwXSize: DWORD,
-                     priv dwYSize: DWORD,
-                     priv dwXCountChars: DWORD,
-                     priv dwYCountCharts: DWORD,
-                     priv dwFillAttribute: DWORD,
-                     priv dwFlags: DWORD,
-                     priv wShowWindow: WORD,
-                     priv cbReserved2: WORD,
-                     priv lpReserved2: LPBYTE,
-                     priv hStdInput: HANDLE,
-                     priv hStdOutput: HANDLE,
-                     priv hStdError: HANDLE
+                    cb: DWORD,
+                    lpReserved: LPTSTR,
+                    lpDesktop: LPTSTR,
+                    lpTitle: LPTSTR,
+                    dwX: DWORD,
+                    dwY: DWORD,
+                    dwXSize: DWORD,
+                    dwYSize: DWORD,
+                    dwXCountChars: DWORD,
+                    dwYCountCharts: DWORD,
+                    dwFillAttribute: DWORD,
+                    dwFlags: DWORD,
+                    wShowWindow: WORD,
+                    cbReserved2: WORD,
+                    lpReserved2: LPBYTE,
+                    hStdInput: HANDLE,
+                    hStdOutput: HANDLE,
+                    hStdError: HANDLE
                 }
                 pub type LPSTARTUPINFO = *mut STARTUPINFO;
 
                 pub struct PROCESS_INFORMATION {
-                    // all made by reedlepee
-                    priv hProcess: HANDLE,
-                    priv hThread: HANDLE,
-                    priv dwProcessId: DWORD,
-                    priv dwThreadId: DWORD
+                    hProcess: HANDLE,
+                    hThread: HANDLE,
+                    dwProcessId: DWORD,
+                    dwThreadId: DWORD
                 }
                 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 
                 pub struct SYSTEM_INFO {
-                     // all made by reedlepee
-                     priv wProcessorArchitecture: WORD,
-                     priv wReserved: WORD,
-                     priv dwPageSize: DWORD,
-                     priv lpMinimumApplicationAddress: LPVOID,
-                     priv lpMaximumApplicationAddress: LPVOID,
-                     priv dwActiveProcessorMask: DWORD,
-                     priv dwNumberOfProcessors: DWORD,
-                     priv dwProcessorType: DWORD,
-                     priv dwAllocationGranularity: DWORD,
-                     priv wProcessorLevel: WORD,
-                     priv wProcessorRevision: WORD
+                    wProcessorArchitecture: WORD,
+                    wReserved: WORD,
+                    dwPageSize: DWORD,
+                    lpMinimumApplicationAddress: LPVOID,
+                    lpMaximumApplicationAddress: LPVOID,
+                    dwActiveProcessorMask: DWORD,
+                    dwNumberOfProcessors: DWORD,
+                    dwProcessorType: DWORD,
+                    dwAllocationGranularity: DWORD,
+                    wProcessorLevel: WORD,
+                    wProcessorRevision: WORD
                 }
                 pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 
@@ -940,14 +926,13 @@ pub mod types {
                 }
 
                 pub struct MEMORY_BASIC_INFORMATION {
-                     // all made by reedlepee
-                     priv BaseAddress: LPVOID,
-                     priv AllocationBase: LPVOID,
-                     priv AllocationProtect: DWORD,
-                     priv RegionSize: SIZE_T,
-                     priv State: DWORD,
-                     priv Protect: DWORD,
-                     priv Type: DWORD
+                    BaseAddress: LPVOID,
+                    AllocationBase: LPVOID,
+                    AllocationProtect: DWORD,
+                    RegionSize: SIZE_T,
+                    State: DWORD,
+                    Protect: DWORD,
+                    Type: DWORD
                 }
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
             }
@@ -961,20 +946,19 @@ pub mod types {
                 use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, c_int, size_t};
                 pub struct glob_t {
-                    // all made by reedlepee
-                    priv gl_pathc:  size_t,
-                    priv __unused1: c_int,
-                    priv gl_offs:   size_t,
-                    priv __unused2: c_int,
-                    priv gl_pathv:  **c_char,
+                    gl_pathc:  size_t,
+                    __unused1: c_int,
+                    gl_offs:   size_t,
+                    __unused2: c_int,
+                    gl_pathv:  **c_char,
 
-                    priv __unused3: *c_void,
+                    __unused3: *c_void,
 
-                     __unused4: *c_void,
-                     __unused5: *c_void,
-                    priv __unused6: *c_void,
-                    priv __unused7: *c_void,
-                    priv __unused8: *c_void,
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                    __unused6: *c_void,
+                    __unused7: *c_void,
+                    __unused8: *c_void,
                 }
             }
         }
@@ -1027,29 +1011,28 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    // all made by reedlepee
                     st_dev: dev_t,
                     st_mode: mode_t,
                     st_nlink: nlink_t,
                     st_ino: ino_t,
-                     st_uid: uid_t,
-                     st_gid: gid_t,
-                     st_rdev: dev_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
                     st_atime: time_t,
                     st_atime_nsec: c_long,
                     st_mtime: time_t,
                     st_mtime_nsec: c_long,
                     st_ctime: time_t,
                     st_ctime_nsec: c_long,
-                    priv st_birthtime: time_t,
-                    priv st_birthtime_nsec: c_long,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
                     st_size: off_t,
                     st_blocks: blkcnt_t,
                     st_blksize: blksize_t,
-                    priv st_flags: uint32_t,
-                    priv st_gen: uint32_t,
-                    priv st_lspare: int32_t,
-                    priv st_qspare: [int64_t, ..2],
+                    st_flags: uint32_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_qspare: [int64_t, ..2],
                 }
             }
             pub mod posix08 {
@@ -1109,29 +1092,28 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                     // all made by reedlepee
-                     st_dev: dev_t,
-                     st_mode: mode_t,
-                     st_nlink: nlink_t,
-                     st_ino: ino_t,
-                     st_uid: uid_t,
-                     st_gid: gid_t,
-                     st_rdev: dev_t,
-                     st_atime: time_t,
-                     st_atime_nsec: c_long,
-                     st_mtime: time_t,
-                     st_mtime_nsec: c_long,
-                     st_ctime: time_t,
-                     st_ctime_nsec: c_long,
-                     priv st_birthtime: time_t,
-                     priv st_birthtime_nsec: c_long,
-                     st_size: off_t,
-                     st_blocks: blkcnt_t,
-                     st_blksize: blksize_t,
-                     priv st_flags: uint32_t,
-                     priv st_gen: uint32_t,
-                     priv st_lspare: int32_t,
-                     priv st_qspare: [int64_t, ..2],
+                    st_dev: dev_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_ino: ino_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: dev_t,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_birthtime: time_t,
+                    st_birthtime_nsec: c_long,
+                    st_size: off_t,
+                    st_blocks: blkcnt_t,
+                    st_blksize: blksize_t,
+                    st_flags: uint32_t,
+                    st_gen: uint32_t,
+                    st_lspare: int32_t,
+                    st_qspare: [int64_t, ..2],
                 }
             }
             pub mod posix08 {

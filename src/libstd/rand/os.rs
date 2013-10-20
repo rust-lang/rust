@@ -36,7 +36,6 @@ type HCRYPTPROV = c_long;
 /// This does not block.
 #[cfg(unix)]
 pub struct OSRng {
-    // already priv
     priv inner: ReaderRng<file::FileStream>
 }
 /// A random number generator that retrieves randomness straight from
@@ -46,7 +45,6 @@ pub struct OSRng {
 /// This does not block.
 #[cfg(windows)]
 pub struct OSRng {
-    // already priv
     priv hcryptprov: HCRYPTPROV
 }
 

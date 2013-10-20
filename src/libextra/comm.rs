@@ -23,7 +23,6 @@ use std::comm;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {
-// all were already priv
     priv chan: Chan<T>,
     priv port: Port<U>,
 }
@@ -95,7 +94,6 @@ pub fn DuplexStream<T:Send,U:Send>()
 // all were already priv
 pub struct SyncChan<T> { priv duplex_stream: DuplexStream<T, ()> }
 /// An extension of `pipes::stream` that acknowledges each message received.
-// all were already priv
 pub struct SyncPort<T> { priv duplex_stream: DuplexStream<(), T> }
 
 impl<T: Send> GenericChan<T> for SyncChan<T> {

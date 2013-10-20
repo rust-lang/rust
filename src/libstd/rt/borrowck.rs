@@ -29,7 +29,6 @@ static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 #[deriving(Eq)]
 pub struct BorrowRecord {
-    // all made byt reedlepee
     priv box: *mut raw::Box<()>,
     file: *c_char,
     priv line: size_t

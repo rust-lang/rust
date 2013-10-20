@@ -102,11 +102,9 @@ impl TestFn {
 
 // Structure passed to BenchFns
 pub struct BenchHarness {
-    // all changed to priv by reedlepee
     priv iterations: u64,
     priv ns_start: u64,
     priv ns_end: u64,
-    // should be public
     bytes: u64
 }
 
@@ -114,27 +112,23 @@ pub struct BenchHarness {
 // these.
 #[deriving(Clone)]
 pub struct TestDesc {
-    // all changed to priv by reedlepee
     name: TestName,
     ignore: bool,
     should_fail: bool
 }
 
 pub struct TestDescAndFn {
-    // all changed to priv by reedlepee
     desc: TestDesc,
     testfn: TestFn,
 }
 
 #[deriving(Clone, Encodable, Decodable, Eq)]
 pub struct Metric {
-    // all changed to priv by reedlepee
     priv value: f64,
     priv noise: f64
 }
 
 #[deriving(Eq)]
-/// not adding priv infront of this struct b/c its a tuple struct!! - reedlepee
 pub struct MetricMap(TreeMap<~str,Metric>);
 
 impl Clone for MetricMap {
@@ -192,7 +186,6 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
 }
 
 pub struct TestOpts {
-    /// priv added in all by reedlepee!!
     filter: Option<~str>,
     run_ignored: bool,
     run_tests: bool,
@@ -329,7 +322,6 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
 
 #[deriving(Clone, Eq)]
 pub struct BenchSamples {
-    /// priv added in all by reedlepee
     priv ns_iter_summ: stats::Summary,
     priv mb_s: uint
 }

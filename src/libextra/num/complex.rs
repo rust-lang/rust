@@ -24,7 +24,6 @@ use std::num::{Zero,One,ToStrRadix};
 /// A complex number in Cartesian form.
 #[deriving(Eq,Clone)]
 pub struct Cmplx<T> {
-    // all made real by reedlepee
     /// Real portion of the complex number
     priv re: T,
     /// Imaginary portion of the complex number

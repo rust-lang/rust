@@ -225,7 +225,6 @@ enum Op {Union, Intersect, Assign, Difference}
 /// The bitvector type
 #[deriving(Clone)]
 pub struct Bitv {
-    /// all were made priv by reedlepee
     /// Internal representation of the bit vector (small or large)
     priv rep: BitvVariant,
     /// The number of valid bits in the internal representation
@@ -574,7 +573,6 @@ fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
 
 /// An iterator for `Bitv`.
 pub struct BitvIterator<'self> {
-    /// all were already priv
     priv bitv: &'self Bitv,
     priv next_idx: uint,
     priv end_idx: uint,
@@ -636,7 +634,6 @@ impl<'self> RandomAccessIterator<bool> for BitvIterator<'self> {
 /// as a `uint`.
 #[deriving(Clone)]
 pub struct BitvSet {
-    // all were already priv!!
     priv size: uint,
 
     // In theory this is a `Bitv` instead of always a `BigBitv`, but knowing that
@@ -903,7 +900,6 @@ impl BitvSet {
 }
 
 pub struct BitvSetIterator<'self> {
-    // all were already priv
     priv set: &'self BitvSet,
     priv next_idx: uint
 }

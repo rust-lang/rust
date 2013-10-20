@@ -17,7 +17,6 @@ use rt::rtio::{RtioSocket, RtioUdpSocketObject, RtioUdpSocket, IoFactory, IoFact
 use rt::local::Local;
 
 pub struct UdpSocket {
-    // aleady priv
     priv obj: ~RtioUdpSocketObject
 }
 
@@ -73,7 +72,6 @@ impl UdpSocket {
 }
 
 pub struct UdpStream {
-    // aleady priv
     priv socket: UdpSocket,
     priv connectedTo: SocketAddr
 }

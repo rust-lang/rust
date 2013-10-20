@@ -21,7 +21,6 @@ pub enum CharacterSet {
 
 /// Contains configuration parameters for `to_base64`.
 pub struct Config {
-    /// all were made priv by reedlepee
     /// Character set to use
     priv char_set: CharacterSet,
     /// True to pad output with `=` characters

@@ -105,7 +105,6 @@ pub trait Stats {
 #[deriving(Clone, Eq)]
 #[allow(missing_doc)]
 pub struct Summary {
-  /// all were made privv by reedlepee
     priv sum: f64,
     // public
     min: f64,

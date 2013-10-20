@@ -28,7 +28,6 @@ enum Msg<T> {
 }
 
 pub struct TaskPool<T> {
-    /// all were made priv by reedlepee
     priv channels: ~[Chan<Msg<T>>],
     priv next_index: uint,
 }

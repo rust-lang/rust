@@ -48,7 +48,6 @@ impl ToStr for IpAddr {
 
 #[deriving(Eq, TotalEq, Clone)]
 pub struct SocketAddr {
-    // all made by reedlpee
     ip: IpAddr,
     port: Port,
 }

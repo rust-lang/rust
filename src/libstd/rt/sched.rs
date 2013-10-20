@@ -40,7 +40,6 @@ use vec::{OwnedVector};
 /// in too much allocation and too many events.
 pub struct Scheduler {
     /// There are N work queues, one per scheduler.
-    // already priv
     work_queue: WorkQueue<~Task>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
@@ -48,7 +47,6 @@ pub struct Scheduler {
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
-    // already priv
     priv message_queue: MessageQueue<SchedMessage>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
@@ -59,7 +57,6 @@ pub struct Scheduler {
     /// not active since there are multiple event sources that may
     /// wake the scheduler. It just prevents the scheduler from pushing
     /// multiple handles onto the sleeper list.
-    // already priv
     priv sleepy: bool,
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
@@ -796,10 +793,8 @@ pub enum SchedMessage {
 }
 
 pub struct SchedHandle {
-    //already priv
     priv remote: ~RemoteCallbackObject,
     priv queue: MessageQueue<SchedMessage>,
-    // made by reedlepee
     sched_id: uint
 }
 
