@@ -61,7 +61,6 @@ dialect of EBNF supported by common automated LL(k) parsing tools such as
 defined self-referentially as follows:
 
 ~~~~~~~~ {.ebnf .notation}
-
 grammar : rule + ;
 rule    : nonterminal ':' productionrule ';' ;
 productionrule : production [ '|' production ] * ;
@@ -69,7 +68,6 @@ production : term * ;
 term : element repeats ;
 element : LITERAL | IDENTIFIER | '[' productionrule ']' ;
 repeats : [ '*' | '+' ] NUMBER ? | NUMBER ? | '?' ;
-
 ~~~~~~~~
 
 Where:
@@ -305,7 +303,7 @@ many `U+0023` (`#`) characters as were used to start the raw string literal) or
 
 Examples for string literals:
 
-~~~
+~~~~~~~~
 "foo"; r"foo";                     // foo
 "\"foo\""; r#""foo""#;             // "foo"
 
@@ -314,12 +312,11 @@ r##"foo #"# bar"##;                // foo #"# bar
 
 "\x52"; "R"; r"R";                 // R
 "\\x52"; r"\x52";                  // \x52
-~~~
+~~~~~~~~
 
 #### Number literals
 
 ~~~~~~~~ {.ebnf .gram}
-
 num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
         | '0' [       [ dec_digit | '_' ] + num_suffix ?
               | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
@@ -429,7 +426,6 @@ operators](#binary-operator-expressions), or [keywords](#keywords).
 ## Paths
 
 ~~~~~~~~ {.ebnf .gram}
-
 expr_path : ident [ "::" expr_path_tail ] + ;
 expr_path_tail : '<' type_expr [ ',' type_expr ] + '>'
                | expr_path ;
@@ -437,7 +433,6 @@ expr_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 type_path : ident [ type_path_tail ] + ;
 type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
                | "::" type_path ;
-
 ~~~~~~~~
 
 A _path_ is a sequence of one or more path components _logically_ separated by
@@ -496,7 +491,6 @@ with values. `proto!` is an item, defining a new name.
 ## Macros
 
 ~~~~~~~~ {.ebnf .gram}
-
 expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
 macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';'
 matcher : '(' matcher * ')' | '[' matcher * ']'
@@ -507,7 +501,6 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
             | '{' transcriber * '}' | '$' ident
             | '$' '(' transcriber * ')' sep_token? [ '*' | '+' ]
             | non_special_token
-
 ~~~~~~~~
 
 User-defined syntax extensions are called "macros",
@@ -839,7 +832,7 @@ Use declarations support a number of convenient shortcuts:
 
 An example of `use` declarations:
 
-~~~~
+~~~~~~~~
 use std::num::sin;
 use std::option::{Some, None};
 
@@ -852,7 +845,7 @@ fn main() {
     // Equivalent to 'foo(~[std::option::Some(1.0), std::option::None]);'
     foo(~[Some(1.0), None]);
 }
-~~~~
+~~~~~~~~
 
 Like items, `use` declarations are private to the containing module, by default.
 Also like items, a `use` declaration can be public, if qualified by the `pub` keyword.
@@ -863,7 +856,7 @@ If a sequence of such redirections form a cycle or cannot be resolved unambiguou
 they represent a compile-time error.
 
 An example of re-exporting:
-~~~~
+~~~~~~~~
 # fn main() { }
 mod quux {
     pub use quux::foo::*;
@@ -873,7 +866,7 @@ mod quux {
         pub fn baz() { }
     }
 }
-~~~~
+~~~~~~~~
 
 In this example, the module `quux` re-exports all of the public names defined in `foo`.
 
@@ -886,7 +879,7 @@ All rules regarding accessing declared modules in `use` declarations applies to 
 and `extern mod` declarations.
 
 An example of what will and will not work for `use` items:
-~~~~
+~~~~~~~~
 # #[allow(unused_imports)];
 use foo::extra;          // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
@@ -910,7 +903,7 @@ mod foo {
 }
 
 fn main() {}
-~~~~
+~~~~~~~~
 
 ### Functions
 
@@ -931,18 +924,18 @@ final-expression.
 
 An example of a function:
 
-~~~~
+~~~~~~~~
 fn add(x: int, y: int) -> int {
     return x + y;
 }
-~~~~
+~~~~~~~~
 
 As with `let` bindings, function arguments are irrefutable patterns,
 so any pattern that is valid in a let binding is also valid as an argument.
 
-~~~
+~~~~~~~~
 fn first((value, _): (int, int)) -> int { value }
-~~~
+~~~~~~~~
 
 
 #### Generic functions
@@ -952,7 +945,7 @@ appear in its signature. Each type parameter must be explicitly
 declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
-~~~~ {.xfail-test}
+~~~~~~~~ {.xfail-test}
 fn iter<T>(seq: &[T], f: &fn(T)) {
     for elt in seq.iter() { f(elt); }
 }
@@ -961,7 +954,7 @@ fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {
     for elt in seq.iter() { acc.push(f(elt)); }
     acc
 }
-~~~~
+~~~~~~~~
 
 Inside the function signature and body, the name of the type parameter
 can be used as a type name.
@@ -981,9 +974,9 @@ Since a parameter type is opaque to the generic function, the set of
 operations that can be performed on it is limited. Values of parameter
 type can only be moved, not copied.
 
-~~~~
+~~~~~~~~
 fn id<T>(x: T) -> T { x }
-~~~~
+~~~~~~~~
 
 Similarly, [trait](#traits) bounds can be specified for type
 parameters to allow methods with that trait to be called on values
@@ -1066,12 +1059,12 @@ This is a list of behaviour not considered *unsafe* in Rust terms, but that may 
 A special kind of function can be declared with a `!` character where the
 output slot type would normally be. For example:
 
-~~~~
+~~~~~~~~
 fn my_err(s: &str) -> ! {
     info2!("{}", s);
     fail2!();
 }
-~~~~
+~~~~~~~~
 
 We call such functions "diverging" because they never return a value to the
 caller. Every control path in a diverging function must end with a
@@ -1086,7 +1079,7 @@ with a [`return`](#return-expressions) or diverging expression. So, if `my_err`
 were declared without the `!` annotation, the following code would not
 typecheck:
 
-~~~~
+~~~~~~~~
 # fn my_err(s: &str) -> ! { fail2!() }
 
 fn f(i: int) -> int {
@@ -1097,7 +1090,7 @@ fn f(i: int) -> int {
      my_err("Bad number!");
    }
 }
-~~~~
+~~~~~~~~
 
 This will not compile without the `!` annotation on `my_err`,
 since the `else` branch of the conditional in `f` does not return an `int`,
@@ -1117,22 +1110,22 @@ extern functions with bodies defined in Rust code _can be called by foreign
 code_. They are defined in the same way as any other Rust function,
 except that they have the `extern` modifier.
 
-~~~
+~~~~~~~~
 // Declares an extern fn, the ABI defaults to "C"
 extern fn new_vec() -> ~[int] { ~[] }
 
 // Declares an extern fn with "stdcall" ABI
 extern "stdcall" fn new_vec_stdcall() -> ~[int] { ~[] }
-~~~
+~~~~~~~~
 
 Unlike normal functions, extern fns have an `extern "ABI" fn()`.
 This is the same type as the functions declared in an extern
 block.
 
-~~~
+~~~~~~~~
 # extern fn new_vec() -> ~[int] { ~[] }
 let fptr: extern "C" fn() -> ~[int] = new_vec;
-~~~
+~~~~~~~~
 
 Extern functions may be called from Rust code, but
 caution must be taken with respect to the size of the stack
@@ -1159,29 +1152,29 @@ A _structure_ is a nominal [structure type](#structure-types) defined with the k
 
 An example of a `struct` item and its use:
 
-~~~~
+~~~~~~~~
 struct Point {x: int, y: int}
 let p = Point {x: 10, y: 11};
 let px: int = p.x;
-~~~~
+~~~~~~~~
 
 A _tuple structure_ is a nominal [tuple type](#tuple-types), also defined with the keyword `struct`.
 For example:
 
-~~~~
+~~~~~~~~
 struct Point(int, int);
 let p = Point(10, 11);
 let px: int = match p { Point(x, _) => x };
-~~~~
+~~~~~~~~
 
 A _unit-like struct_ is a structure without any fields, defined by leaving off the list of fields entirely.
 Such types will have a single value, just like the [unit value `()`](#unit-and-boolean-literals) of the unit type.
 For example:
 
-~~~~
+~~~~~~~~
 struct Cookie;
 let c = [Cookie, Cookie, Cookie, Cookie];
-~~~~
+~~~~~~~~
 
 ### Enumerations
 
@@ -1192,7 +1185,7 @@ Enumerations are declared with the keyword `enum`.
 
 An example of an `enum` item and its use:
 
-~~~~
+~~~~~~~~
 enum Animal {
   Dog,
   Cat
@@ -1200,10 +1193,10 @@ enum Animal {
 
 let mut a: Animal = Dog;
 a = Cat;
-~~~~
+~~~~~~~~
 
 Enumeration constructors can have either named or unnamed fields:
-~~~~
+~~~~~~~~
 enum Animal {
     Dog (~str, f64),
     Cat { name: ~str, weight: f64 }
@@ -1211,7 +1204,7 @@ enum Animal {
 
 let mut a: Animal = Dog(~"Cocoa", 37.2);
 a = Cat{ name: ~"Spotty", weight: 2.7 };
-~~~~
+~~~~~~~~
 
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
@@ -1234,7 +1227,7 @@ The type may be ```bool```, ```char```, a number, or a type derived from those p
 The derived types are borrowed pointers with the `'static` lifetime,
 fixed-size arrays, tuples, and structs.
 
-~~~~
+~~~~~~~~
 static BIT1: uint = 1 << 0;
 static BIT2: uint = 1 << 1;
 
@@ -1250,7 +1243,7 @@ static bits_n_strings: BitsNStrings<'static> = BitsNStrings {
     mybits: BITS,
     mystring: STRING
 };
-~~~~
+~~~~~~~~
 
 #### Mutable statics
 
@@ -1265,13 +1258,13 @@ running in the same process.
 Mutable statics are still very useful, however. They can be used with C
 libraries and can also be bound from C libraries (in an ```extern``` block).
 
-~~~
+~~~~~~~~
 # fn atomic_add(_: &mut uint, _: uint) -> uint { 2 }
 
 static mut LEVELS: uint = 0;
 
 // This violates the idea of no shared state, and this doesn't internally
-// protect against races, so this function is `unsafe`
+// protect against races, so this function is `unsafe`.
 unsafe fn bump_levels_unsafe1() -> uint {
     let ret = LEVELS;
     LEVELS += 1;
@@ -1280,12 +1273,11 @@ unsafe fn bump_levels_unsafe1() -> uint {
 
 // Assuming that we have an atomic_add function which returns the old value,
 // this function is "safe" but the meaning of the return value may not be what
-// callers expect, so it's still marked as `unsafe`
+// callers expect, so it's still marked as `unsafe`.
 unsafe fn bump_levels_unsafe2() -> uint {
     return atomic_add(&mut LEVELS, 1);
 }
-
-~~~
+~~~~~~~~
 
 ### Traits
 
@@ -1298,7 +1290,7 @@ or constrained by some other trait.
 
 Traits are implemented for specific types through separate [implementations](#implementations).
 
-~~~~
+~~~~~~~~
 # type Surface = int;
 # type BoundingBox = int;
 
@@ -1306,7 +1298,7 @@ trait Shape {
     fn draw(&self, Surface);
     fn bounding_box(&self) -> BoundingBox;
 }
-~~~~
+~~~~~~~~
 
 This defines a trait with two methods.
 All values that have [implementations](#implementations) of this trait in scope can have their `draw` and `bounding_box` methods called,
@@ -1315,13 +1307,13 @@ using `value.bounding_box()` [syntax](#method-call-expressions).
 Type parameters can be specified for a trait to make it generic.
 These appear after the trait name, using the same syntax used in [generic functions](#generic-functions).
 
-~~~~
+~~~~~~~~
 trait Seq<T> {
    fn len(&self) -> uint;
    fn elt_at(&self, n: uint) -> T;
    fn iter(&self, &fn(T));
 }
-~~~~
+~~~~~~~~
 
 Generic functions may use traits as _bounds_ on their type parameters.
 This will have two effects: only types that have the trait may instantiate the parameter,
@@ -1329,7 +1321,7 @@ and within the generic function,
 the methods of the trait can be called on values that have the parameter's type.
 For example:
 
-~~~~
+~~~~~~~~
 # type Surface = int;
 # trait Shape { fn draw(&self, Surface); }
 
@@ -1337,20 +1329,20 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
     sh.draw(surface);
     sh.draw(surface);
 }
-~~~~
+~~~~~~~~
 
 Traits also define an [object type](#object-types) with the same name as the trait.
 Values of this type are created by [casting](#type-cast-expressions) pointer values
 (pointing to a type for which an implementation of the given trait is in scope)
 to pointers to the trait name, used as a type.
 
-~~~~
+~~~~~~~~
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0;
 
 let myshape: @Shape = @mycircle as @Shape;
-~~~~
+~~~~~~~~
 
 The resulting value is a managed box containing the value that was cast,
 along with information that identifies the methods of the implementation that was used.
@@ -1366,7 +1358,7 @@ The way to refer to the name of a static method is to qualify it with the trait 
 treating the trait name like a module.
 For example:
 
-~~~~
+~~~~~~~~
 trait Num {
     fn from_int(n: int) -> Self;
 }
@@ -1374,14 +1366,14 @@ impl Num for f64 {
     fn from_int(n: int) -> f64 { n as f64 }
 }
 let x: f64 = Num::from_int(42);
-~~~~
+~~~~~~~~
 
 Traits may inherit from other traits. For example, in
 
-~~~~
+~~~~~~~~
 trait Shape { fn area() -> f64; }
 trait Circle : Shape { fn radius() -> f64; }
-~~~~
+~~~~~~~~
 
 the syntax `Circle : Shape` means that types that implement `Circle` must also have an implementation for `Shape`.
 Multiple supertraits are separated by spaces, `trait Circle : Shape Eq { }`.
@@ -1392,18 +1384,18 @@ In type-parameterized functions,
 methods of the supertrait may be called on values of subtrait-bound type parameters.
 Referring to the previous example of `trait Circle : Shape`:
 
-~~~
+~~~~~~~~
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 fn radius_times_area<T: Circle>(c: T) -> f64 {
     // `c` is both a Circle and a Shape
     c.radius() * c.area()
 }
-~~~
+~~~~~~~~
 
 Likewise, supertrait methods may also be called on trait objects.
 
-~~~ {.xfail-test}
+~~~~~~~~ {.xfail-test}
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
@@ -1412,7 +1404,7 @@ Likewise, supertrait methods may also be called on trait objects.
 
 let mycircle: Circle = @mycircle as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
-~~~
+~~~~~~~~
 
 ### Implementations
 
@@ -1420,7 +1412,7 @@ An _implementation_ is an item that implements a [trait](#traits) for a specific
 
 Implementations are defined with the keyword `impl`.
 
-~~~~
+~~~~~~~~
 # struct Point {x: f64, y: f64};
 # type Surface = int;
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
@@ -1440,7 +1432,7 @@ impl Shape for Circle {
          width: 2.0 * r, height: 2.0 * r}
     }
 }
-~~~~
+~~~~~~~~
 
 It is possible to define an implementation without referring to a trait.
 The methods in such an implementation can only be used
@@ -1457,7 +1449,7 @@ An implementation can take type parameters,
 which can be different from the type parameters taken by the trait it implements.
 Implementation parameters are written after the `impl` keyword.
 
-~~~~
+~~~~~~~~
 # trait Seq<T> { }
 
 impl<T> Seq<T> for ~[T] {
@@ -1466,14 +1458,14 @@ impl<T> Seq<T> for ~[T] {
 impl Seq<bool> for u32 {
    /* Treat the integer as a sequence of bits */
 }
-~~~~
+~~~~~~~~
 
 ### External blocks
 
-~~~ {.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 extern_block_item : "extern" '{' extern_block '} ;
 extern_block : [ foreign_fn ] * ;
-~~~
+~~~~~~~~
 
 External blocks form the basis for Rust's foreign function interface.
 Declarations in an external block describe symbols
@@ -1484,14 +1476,14 @@ are declared in the same way as other Rust functions,
 with the exception that they may not have a body
 and are instead terminated by a semicolon.
 
-~~~
+~~~~~~~~
 # use std::libc::{c_char, FILE};
 # #[nolink]
 
 extern {
     fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
 }
-~~~
+~~~~~~~~
 
 Functions within external blocks may be called by Rust code,
 just like functions defined in Rust.
@@ -1505,17 +1497,17 @@ By default external blocks assume that the library they are calling
 uses the standard C "cdecl" ABI.  Other ABIs may be specified using
 an `abi` string, as shown here:
 
-~~~{.xfail-test}
+~~~~~~~~ {.xfail-test}
 // Interface to the Windows API
 extern "stdcall" { }
-~~~
+~~~~~~~~
 
 The `link_name` attribute allows the name of the library to be specified.
 
-~~~{.xfail-test}
+~~~~~~~~ {.xfail-test}
 #[link_name = "crypto"]
 extern { }
-~~~
+~~~~~~~~
 
 The `nolink` attribute tells the Rust compiler
 not to do any linking for the external block.
@@ -1553,7 +1545,7 @@ allowed to alter this default visibility with the `pub` keyword (or `priv`
 keyword for struct fields and enum variants). When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
-~~~
+~~~~~~~~
 // Declare a private struct
 struct Foo;
 
@@ -1567,7 +1559,7 @@ pub enum State {
     PubliclyAccessibleState,
     priv PrivatelyAccessibleState
 }
-~~~
+~~~~~~~~
 
 With the notion of an item being either public or private, Rust allows item
 accesses in two cases:
@@ -1609,13 +1601,13 @@ scope.
 
 Here's an example of a program which exemplifies the three cases outlined above.
 
-~~~
+~~~~~~~~
 // This module is private, meaning that no external crate can access this
 // module. Because it is private at the root of this current crate, however, any
 // module in the crate may access any publicly visible item in this module.
 mod crate_helper_module {
 
-    // This function can be used by anything in the current crate
+    // This function can be used by anything in the current crate.
     pub fn crate_helper() {}
 
     // This function *cannot* be used by anything else in the crate. It is not
@@ -1640,7 +1632,7 @@ pub mod submodule {
     }
 
     // This function is hidden to any module which is not a descendant of
-    // `submodule`
+    // `submodule`.
     fn my_implementation() {}
 
     #[cfg(test)]
@@ -1657,7 +1649,7 @@ pub mod submodule {
 }
 
 # fn main() {}
-~~~
+~~~~~~~~
 
 For a rust program to pass the privacy checking pass, all paths must be valid
 accesses given the two rules above. This includes all use statements,
@@ -1670,7 +1662,7 @@ this is a public directive, this allows the item to be used in the current
 module through the rules above. It essentially allows public access into the
 re-exported item. For example, this program is valid:
 
-~~~
+~~~~~~~~
 pub use api = self::implementation;
 
 mod implementation {
@@ -1678,7 +1670,7 @@ mod implementation {
 }
 
 # fn main() {}
-~~~
+~~~~~~~~
 
 This means that any external crate referencing `implementation::f` would receive
 a privacy violation, while the path `api::f` would be allowed.
@@ -1699,7 +1691,7 @@ import public items from their destination, not private items.
 
 ## Attributes
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 attribute : '#' '[' attr_list ']' ;
 attr_list : attr [ ',' attr_list ]*
 attr : ident [ '=' literal
@@ -1721,7 +1713,7 @@ within. Attributes that are not terminated by a semi-colon apply to the next ent
 
 An example of attributes:
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~ {.xfail-test}
 // General metadata applied to the enclosing module or crate.
 #[license = "BSD"];
 
@@ -1779,7 +1771,7 @@ For any lint check `C`:
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.
 
-~~~{.xfail-test}
+~~~~~~~~ {.xfail-test}
 mod m1 {
     // Missing documentation is ignored here
     #[allow(missing_doc)]
@@ -1793,12 +1785,12 @@ mod m1 {
     #[deny(missing_doc)]
     pub fn undocumented_end() -> int { 3 }
 }
-~~~
+~~~~~~~~
 
 This example shows how one can use `allow` and `warn` to toggle
 a particular check on and off.
 
-~~~{.xfail-test}
+~~~~~~~~ {.xfail-test}
 #[warn(missing_doc)]
 mod m2{
     #[allow(missing_doc)]
@@ -1815,12 +1807,12 @@ mod m2{
     // Missing documentation signals a warning here
     pub fn undocumented_too() -> int { 3 }
 }
-~~~
+~~~~~~~~
 
 This example shows how one can use `forbid` to disallow uses
 of `allow` for that lint check.
 
-~~~{.xfail-test}
+~~~~~~~~ {.xfail-test}
 #[forbid(missing_doc)]
 mod m3 {
     // Attempting to toggle warning signals an error here
@@ -1828,7 +1820,7 @@ mod m3 {
     /// Returns 2.
     pub fn undocumented_too() -> int { 2 }
 }
-~~~
+~~~~~~~~
 
 ### Language items
 
@@ -1838,12 +1830,12 @@ The definitions of these operations have to be easy for the compiler to find.
 The `lang` attribute makes it possible to declare these operations.
 For example, the `str` module in the Rust standard library defines the string equality function:
 
-~~~ {.xfail-test}
+~~~~~~~~ {.xfail-test}
 #[lang="str_eq"]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     // details elided
 }
-~~~
+~~~~~~~~
 
 The name `str_eq` has a special meaning to the Rust compiler,
 and the presence of this definition means that it will use this definition
@@ -1935,17 +1927,17 @@ create an `impl` for the `Eq` and `Clone` traits for `Foo`, the type
 parameter `T` will be given the `Eq` or `Clone` constraints for the
 appropriate `impl`:
 
-~~~
+~~~~~~~~
 #[deriving(Eq, Clone)]
 struct Foo<T> {
     a: int,
     b: T
 }
-~~~
+~~~~~~~~
 
 The generated `impl` for `Eq` is equivalent to
 
-~~~
+~~~~~~~~
 # struct Foo<T> { a: int, b: T }
 impl<T: Eq> Eq for Foo<T> {
     fn eq(&self, other: &Foo<T>) -> bool {
@@ -1956,7 +1948,7 @@ impl<T: Eq> Eq for Foo<T> {
         self.a != other.a || self.b != other.b
     }
 }
-~~~
+~~~~~~~~
 
 Supported traits for `deriving` are:
 
@@ -1999,7 +1991,7 @@ by default. Items with not marked with a stability are considered to
 be unstable for the purposes of the lint. One can give an optional
 string that will be displayed when the lint flags the use of an item.
 
-~~~ {.xfail-test}
+~~~~~~~~ {.xfail-test}
 #[warn(unstable)];
 
 #[deprecated="replaced by `best`"]
@@ -2023,7 +2015,7 @@ fn main() {
 
     best(); // no warning
 }
-~~~
+~~~~~~~~
 
 > **Note:** Currently these are only checked when applied to
 > individual functions, structs, methods and enum variants, *not* to
@@ -2038,9 +2030,9 @@ considered a full-fleged language feature.
 
 For this reason, rust recognizes a special crate-level attribute of the form:
 
-~~~ {.xfail-test}
+~~~~~~~~ {.xfail-test}
 #[feature(feature1, feature2, feature3)]
-~~~
+~~~~~~~~
 
 This directive informs the compiler that the feature list: `feature1`,
 `feature2`, and `feature3` should all be enabled. This is only recognized at a
@@ -2126,7 +2118,7 @@ declaring a function-local item.
 
 #### Slot declarations
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
 init : [ '=' ] expr ;
 ~~~~~~~~
@@ -2227,7 +2219,7 @@ values.
 
 ### Structure expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 struct_expr : expr_path '{' ident ':' expr
                       [ ',' ident ':' expr ] *
                       [ ".." expr ] '}' |
@@ -2252,7 +2244,7 @@ A _unit-like structure expression_ consists only of the [path](#paths) of a [str
 
 The following are examples of structure expressions:
 
-~~~~
+~~~~~~~~
 # struct Point { x: f64, y: f64 }
 # struct TuplePoint(f64, f64);
 # mod game { pub struct User<'self> { name: &'self str, age: uint, score: uint } }
@@ -2261,7 +2253,7 @@ Point {x: 10.0, y: 20.0};
 TuplePoint(10.0, 20.0);
 let u = game::User {name: "Joe", age: 35, score: 100_000};
 some_fn::<Cookie>(Cookie);
-~~~~
+~~~~~~~~
 
 A structure expression forms a new value of the named structure type.
 Note that for a given *unit-like* structure type, this will always be the same value.
@@ -2273,15 +2265,15 @@ The entire expression denotes the result of allocating a new structure
 with the given values for the fields that were explicitly specified
 and the values in the base record for all other fields.
 
-~~~~
+~~~~~~~~
 # struct Point3d { x: int, y: int, z: int }
 let base = Point3d {x: 1, y: 2, z: 3};
 Point3d {y: 0, z: 10, .. base};
-~~~~
+~~~~~~~~
 
 ### Record expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 rec_expr : '{' ident ':' expr
                [ ',' ident ':' expr ] *
                [ ".." expr ] '}'
@@ -2289,7 +2281,7 @@ rec_expr : '{' ident ':' expr
 
 ### Method-call expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 method_call_expr : expr '.' ident paren_expr_list ;
 ~~~~~~~~
 
@@ -2301,7 +2293,7 @@ or dynamically dispatching if the left-hand-side expression is an indirect [obje
 
 ### Field expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 field_expr : expr '.' ident
 ~~~~~~~~
 
@@ -2323,7 +2315,7 @@ it is automatically dereferenced to make the field access possible.
 
 ### Vector expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 vec_expr : '[' "mut" ? vec_elems? ']'
 
 vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
@@ -2345,7 +2337,7 @@ as a [literal](#literals) or a [static item](#static-items).
 
 ### Index expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 idx_expr : expr '[' expr ']'
 ~~~~~~~~
 
@@ -2358,7 +2350,7 @@ Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
-~~~~
+~~~~~~~~
 # use std::task;
 # do task::spawn_unlinked {
 
@@ -2366,7 +2358,7 @@ task in a _failing state_.
 (["a", "b"])[10]; // fails
 
 # }
-~~~~
+~~~~~~~~
 
 ### Unary operator expressions
 
@@ -2395,7 +2387,7 @@ before the expression they apply to.
 
 ### Binary operator expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 binop_expr : expr binop expr ;
 ~~~~~~~~
 
@@ -2498,7 +2490,7 @@ Any other cast is unsupported and will fail to compile.
 
 An example of an `as` expression:
 
-~~~~
+~~~~~~~~
 # fn sum(v: &[f64]) -> f64 { 0.0 }
 # fn len(v: &[f64]) -> int { 0 }
 
@@ -2507,7 +2499,7 @@ fn avg(v: &[f64]) -> f64 {
   let sz: f64 = len(v) as f64;
   return sum / sz;
 }
-~~~~
+~~~~~~~~
 
 #### Assignment expressions
 
@@ -2516,12 +2508,12 @@ equals sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
 
 Evaluating an assignment expression [either copies or moves](#moved-and-copied-types) its right-hand operand to its left-hand operand.
 
-~~~~
+~~~~~~~~
 # let mut x = 0;
 # let y = 0;
 
 x = y;
-~~~~
+~~~~~~~~
 
 #### Compound assignment expressions
 
@@ -2537,7 +2529,7 @@ Any such expression always has the [`unit`](#primitive-types) type.
 The precedence of Rust binary operators is ordered as follows, going
 from strong to weak:
 
-~~~~ {.precedence}
+~~~~~~~~ {.precedence}
 * / %
 as
 + -
@@ -2550,7 +2542,7 @@ as
 &&
 ||
 =
-~~~~
+~~~~~~~~
 
 Operators at the same precedence level are evaluated left-to-right. [Unary operators](#unary-operator-expressions)
 have the same precedence level and it is stronger than any of the binary operators'.
@@ -2561,15 +2553,15 @@ An expression enclosed in parentheses evaluates to the result of the enclosed
 expression.  Parentheses can be used to explicitly specify evaluation order
 within an expression.
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 paren_expr : '(' expr ')' ;
 ~~~~~~~~
 
 An example of a parenthesized expression:
 
-~~~~
+~~~~~~~~
 let x = (2 + 3) * 4;
-~~~~
+~~~~~~~~
 
 
 ### Call expressions
@@ -2587,13 +2579,13 @@ then the expression completes.
 
 Some examples of call expressions:
 
-~~~~
+~~~~~~~~
 # use std::from_str::FromStr;
 # fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
 let pi: Option<f32> = FromStr::from_str("3.14");
-~~~~
+~~~~~~~~
 
 ### Lambda expressions
 
@@ -2626,7 +2618,7 @@ from the environment into the lambda expression's captured environment.
 In this example, we define a function `ten_times` that takes a higher-order function argument,
 and call it with a lambda expression as an argument.
 
-~~~~
+~~~~~~~~
 fn ten_times(f: &fn(int)) {
     let mut i = 0;
     while i < 10 {
@@ -2636,12 +2628,11 @@ fn ten_times(f: &fn(int)) {
 }
 
 ten_times(|j| println!("hello, {}", j));
-
-~~~~
+~~~~~~~~
 
 ### While loops
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 while_expr : "while" expr '{' block '}' ;
 ~~~~~~~~
 
@@ -2652,14 +2643,14 @@ conditional expression evaluates to `false`, the `while` expression completes.
 
 An example:
 
-~~~~
+~~~~~~~~
 let mut i = 0;
 
 while i < 10 {
     println("hello\n");
     i = i + 1;
 }
-~~~~
+~~~~~~~~
 
 ### Infinite loops
 
@@ -2667,7 +2658,7 @@ The keyword `loop` in Rust appears both in _loop expressions_ and in _continue e
 A loop expression denotes an infinite loop;
 see [Continue expressions](#continue-expressions) for continue expressions.
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 loop_expr : [ lifetime ':' ] "loop" '{' block '}';
 ~~~~~~~~
 
@@ -2678,7 +2669,7 @@ See [Break expressions](#break-expressions).
 
 ### Break expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 break_expr : "break" [ lifetime ];
 ~~~~~~~~
 
@@ -2691,7 +2682,7 @@ but must enclose it.
 
 ### Continue expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 continue_expr : "loop" [ lifetime ];
 ~~~~~~~~
 
@@ -2711,7 +2702,7 @@ A `loop` expression is only permitted in the body of a loop.
 
 ### Do expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 do_expr : "do" expr [ '|' ident_list '|' ] ? '{' block '}' ;
 ~~~~~~~~
 
@@ -2737,7 +2728,7 @@ If the `expr` is a [field expression](#field-expressions), it is parsed as thoug
 
 In this example, both calls to `f` are equivalent:
 
-~~~~
+~~~~~~~~
 # fn f(f: &fn(int)) { }
 # fn g(i: int) { }
 
@@ -2746,11 +2737,11 @@ f(|j| g(j));
 do f |j| {
     g(j);
 }
-~~~~
+~~~~~~~~
 
 In this example, both calls to the (binary) function `k` are equivalent:
 
-~~~~
+~~~~~~~~
 # fn k(x:int, f: &fn(int)) { }
 # fn l(i: int) { }
 
@@ -2759,12 +2750,12 @@ k(3, |j| l(j));
 do k(3) |j| {
    l(j);
 }
-~~~~
+~~~~~~~~
 
 
 ### For expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 for_expr : "for" pat "in" expr '{' block '}' ;
 ~~~~~~~~
 
@@ -2774,7 +2765,7 @@ over elements provided by an implementation of
 
 An example of a for loop over the contents of a vector:
 
-~~~~
+~~~~~~~~
 # type foo = int;
 # fn bar(f: foo) { }
 # let a = 0;
@@ -2786,20 +2777,20 @@ let v: &[foo] = &[a, b, c];
 for e in v.iter() {
     bar(*e);
 }
-~~~~
+~~~~~~~~
 
 An example of a for loop over a series of integers:
 
-~~~~
+~~~~~~~~
 # fn bar(b:uint) { }
 for i in range(0u, 256) {
     bar(i);
 }
-~~~~
+~~~~~~~~
 
 ### If expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 if_expr : "if" expr '{' block '}'
           else_tail ? ;
 
@@ -2821,7 +2812,7 @@ then any `else` block is executed.
 
 ### Match expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
 
 match_arm : match_pat '=>' [ expr "," | '{' block '}' ] ;
@@ -2841,7 +2832,7 @@ In a pattern whose head expression has an `enum` type, a placeholder (`_`) stand
 *single* data field, whereas a wildcard `*` stands for *all* the fields of a particular
 variant. For example:
 
-~~~~
+~~~~~~~~
 enum List<X> { Nil, Cons(X, @List<X>) }
 
 let x: List<int> = Cons(10, @Cons(11, @Nil));
@@ -2851,7 +2842,7 @@ match x {
     Cons(*)       => return,
     Nil           => fail2!("empty list")
 }
-~~~~
+~~~~~~~~
 
 The first pattern matches lists constructed by applying `Cons` to any head value, and a
 tail value of `@Nil`. The second pattern matches _any_ list constructed with `Cons`,
@@ -2866,8 +2857,7 @@ variables in the arm's block, and control enters the block.
 
 An example of an `match` expression:
 
-
-~~~~
+~~~~~~~~
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
@@ -2889,7 +2879,7 @@ match x {
         fail2!();
     }
 }
-~~~~
+~~~~~~~~
 
 Patterns that bind variables
 default to binding to a copy or move of the matched value
@@ -2913,7 +2903,7 @@ Multiple match patterns may be joined with the `|` operator.
 A range of values may be specified with `..`.
 For example:
 
-~~~~
+~~~~~~~~
 # let x = 2;
 
 let message = match x {
@@ -2921,7 +2911,7 @@ let message = match x {
   2 .. 9 => "a few",
   _      => "lots"
 };
-~~~~
+~~~~~~~~
 
 Range patterns only work on scalar types
 (like integers and characters; not like vectors and structs, which have sub-components).
@@ -2932,7 +2922,7 @@ criteria for matching a case. Pattern guards appear after the pattern and
 consist of a bool-typed expression following the `if` keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
 
-~~~~
+~~~~~~~~
 # let maybe_digit = Some(0);
 # fn process_digit(i: int) { }
 # fn process_other(i: int) { }
@@ -2942,11 +2932,11 @@ let message = match maybe_digit {
   Some(x) => process_other(x),
   None => fail2!()
 };
-~~~~
+~~~~~~~~
 
 ### Return expressions
 
-~~~~~~~~{.ebnf .gram}
+~~~~~~~~ {.ebnf .gram}
 return_expr : "return" expr ? ;
 ~~~~~~~~
 
@@ -2957,15 +2947,14 @@ control to the caller frame.
 
 An example of a `return` expression:
 
-~~~~
+~~~~~~~~
 fn max(a: int, b: int) -> int {
    if a > b {
       return a;
    }
    return b;
 }
-~~~~
-
+~~~~~~~~
 
 # Type system
 
@@ -2992,7 +2981,6 @@ The primitive types are the following:
 
 The machine types are the following:
 
-
 * The unsigned word types `u8`, `u16`, `u32` and `u64`, with values drawn from
   the integer intervals $[0, 2^8 - 1]$, $[0, 2^{16} - 1]$, $[0, 2^{32} - 1]$ and
   $[0, 2^{64} - 1]$ respectively.
@@ -3017,7 +3005,6 @@ two's complement signed integer type with target-machine-dependent size. Its
 size, in bits, is equal to the size of the rust type `uint` on the same target
 machine.
 
-
 ### Textual types
 
 The types `char` and `str` hold textual data.
@@ -3030,7 +3017,6 @@ represented as a vector of 8-bit unsigned bytes holding a sequence of UTF-8 code
 Since `str` is of unknown size, it is not a _first class_ type,
 but can only be instantiated through a pointer type,
 such as `&str`, `@str` or `~str`.
-
 
 ### Tuple types
 
@@ -3049,13 +3035,12 @@ order specified by the tuple type.
 
 An example of a tuple type and its use:
 
-~~~~
+~~~~~~~~
 type Pair<'self> = (int,&'self str);
 let p: Pair<'static> = (10,"hello");
 let (a, b) = p;
 assert!(b != "world");
-~~~~
-
+~~~~~~~~
 
 ### Vector types
 
@@ -3078,15 +3063,14 @@ definite-sized vector contents into a distinct vector of indefinite size.
 
 An example of a vector type and its use:
 
-~~~~
+~~~~~~~~
 let v: &[int] = &[7, 5, 3];
 let i: int = v[2];
 assert!(i == 3);
-~~~~
+~~~~~~~~
 
 All in-bounds elements of a vector are always initialized,
 and access to a vector is always bounds-checked.
-
 
 ### Structure types
 
@@ -3146,15 +3130,14 @@ Such recursion has restrictions:
 
 An example of a *recursive* type and its use:
 
-~~~~
+~~~~~~~~
 enum List<T> {
   Nil,
   Cons(T, @List<T>)
 }
 
 let a: List<int> = Cons(7, @Cons(13, @Nil));
-~~~~
-
+~~~~~~~~
 
 ### Pointer types
 
@@ -3203,7 +3186,6 @@ Raw pointers (`*`)
     Raw pointers are generally discouraged in Rust code;
     they exist to support interoperability with foreign code,
     and writing performance-critical or low-level functions.
-
 
 ### Function types
 
@@ -3266,7 +3248,7 @@ and the cast expression in `main`.
 
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
-~~~~~~~
+~~~~~~~~
 fn map<A: Clone, B: Clone>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
     if xs.len() == 0 {
        return ~[];
@@ -3275,7 +3257,7 @@ fn map<A: Clone, B: Clone>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
     let rest: ~[B] = map(f, xs.slice(1, xs.len()));
     return ~[first] + rest;
 }
-~~~~~~~
+~~~~~~~~
 
 Here, `first` has type `B`, referring to `map`'s `B` type parameter;
 and `rest` has type `~[B]`, a vector type with element type `B`.
@@ -3374,7 +3356,6 @@ the heap may be shared between tasks, mutable portions may not.
 Allocations in the stack consist of *slots*, and allocations in the heap
 consist of *boxes*.
 
-
 ### Memory allocation and lifetime
 
 The _items_ of a program are those functions, modules and types
@@ -3417,7 +3398,6 @@ unmanaged kinds of data.
 When a task finishes, its stack is necessarily empty and it therefore has no
 references to any boxes; the remainder of its heap is immediately freed.
 
-
 ### Memory slots
 
 A task's stack contains slots.
@@ -3443,7 +3423,6 @@ local variables are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
 initialized; this is enforced by the compiler.
-
 
 ### Memory boxes
 
@@ -3529,7 +3508,6 @@ in contexts where threads are too resource-intensive to use in large number.
 The cost of threads varies substantially per operating system, and is sometimes quite low,
 so this flexibility is not always worth exploiting.]
 
-
 ### Communication between tasks
 
 Rust tasks are isolated and generally unable to interfere with one another's memory directly,
@@ -3548,7 +3526,6 @@ When such facilities carry values, the values are restricted to the [`Send` type
 Restricting communication interfaces to this kind ensures that no borrowed or managed pointers move between tasks.
 Thus access to an entire data structure can be mediated through its owning "root" value;
 no further locking or copying is required to avoid data races within the substructure of such a value.
-
 
 ### Task lifecycle
 
@@ -3593,7 +3570,6 @@ A task in the *dead* state cannot transition to other states; it exists
 only to have its termination status inspected by other tasks, and/or to await
 reclamation when the last reference to it drops.
 
-
 ### Task scheduling
 
 The currently scheduled task is given a finite *time slice* in which to
@@ -3604,9 +3580,7 @@ An executing task can yield control at any time, by making a library call to
 `std::task::yield`, which deschedules it immediately. Entering any other
 non-executing state (blocked, dead) similarly deschedules the task.
 
-
 # Runtime services, linkage and debugging
-
 
 The Rust _runtime_ is a relatively compact collection of C++ and Rust code
 that provides fundamental services and datatypes to all Rust tasks at
@@ -3637,8 +3611,6 @@ channels, tasks).
 Support for other built-in types such as simple types, tuples, records, and
 enums is open-coded by the Rust compiler.
 
-
-
 ### Task scheduling and communication
 
 The runtime provides code to manage inter-task communication.  This includes
@@ -3646,7 +3618,6 @@ the system of task-lifecycle state transitions depending on the contents of
 queues, as well as code to copy values between queues and their recipients and
 to serialize values for transmission over operating-system inter-process
 communication facilities.
-
 
 ### Logging system
 
@@ -3710,14 +3681,14 @@ of runtime logging modules follows.
 Rust provides several macros to log information. Here's a simple Rust program
 that demonstrates all four of them:
 
-```rust
+~~~~~~~~
 fn main() {
     error2!("This is an error log")
     warn2!("This is a warn log")
     info2!("this is an info log")
     debug2!("This is a debug log")
 }
-```
+~~~~~~~~
 
 These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
 
@@ -3736,15 +3707,13 @@ this is an info log
 
 ## Influences
 
-
 >  The essential problem that must be solved in making a fault-tolerant
 >  software system is therefore that of fault-isolation. Different programmers
 >  will write different modules, some modules will be correct, others will have
 >  errors. We do not want the errors in one module to adversely affect the
 >  behaviour of a module which does not have any errors.
 >
->  &mdash; Joe Armstrong
-
+>  <small>&mdash; Joe Armstrong</small>
 
 >  In our approach, all data is private to some process, and processes can
 >  only communicate through communications channels. *Security*, as used
@@ -3755,16 +3724,14 @@ this is an info log
 >  in isolation can be guaranteed to hold when that module is embedded in a
 >  system [...]
 >
->  &mdash;  Robert Strom and Shaula Yemini
-
+>  <small>&mdash; Robert Strom and Shaula Yemini</small>
 
 >  Concurrent and applicative programming complement each other. The
 >  ability to send messages on channels provides I/O without side effects,
 >  while the avoidance of shared data helps keep concurrent processes from
 >  colliding.
 >
->  &mdash; Rob Pike
-
+>  <small>&mdash; Rob Pike</small>
 
 Rust is not a particularly original language. It may however appear unusual
 by contemporary standards, as its design elements are drawn from a number of

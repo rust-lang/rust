@@ -9,7 +9,6 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
-
 @import "normalize.css";
 
 * {
@@ -18,29 +17,33 @@
           box-sizing: border-box;
 }
 
-/* Fonts */
+/* General structure and fonts */
 
 body {
-    font: 13px Arial, sans-serif;
+    min-height: 100%;
+    min-width: 500px;
+    height: 100%;
+    font: 13px "Helvetica Neue", Helvetica, Arial, sans-serif;
     line-height: 165%;
+    position: relative;
+    height: auto;
+    padding-bottom: 20px;
 }
 
 h1, .sidebar .location {
     font: 700 22px "Oswald", Arial, sans-serif;
 }
-
 h2, h3, h4 {
     font: 700 16px "Oswald", Arial, sans-serif;
     text-transform: uppercase;
 }
-
 h2 code, h3 code, h4 code {
     text-transform: none;
     font-size: 1.2em;
 }
 
 code, pre, h1.fqn {
-    font: 15px "Inconsolata", "Consolas", "Courier New", monospace;
+    font: 15px Monaco, Menlo, "Inconsolata", Consolas, "Courier New", monospace;
 }
 h1.fqn {
     font-size: 26px;
@@ -48,28 +51,13 @@ h1.fqn {
 }
 
 nav {
-    font: 700 26px "Oswald", Arial, sans-serif;
+    font: 700 26px "Oswald", "Helvetica Neue", Helvetica, Arial, sans-serif;
     text-transform: uppercase;
 }
-
 nav.sub {
-    padding-top: 20px;
-    font: 700 16px "Oswald", Arial, sans-serif;
+    padding-top: 10px;
+    font-size: 16px;
     text-transform: uppercase;
-    text-align: right;
-}
-
-/* General structure */
-
-html, body {
-    min-height: 100%;
-    height: 100%;
-}
-
-body {
-    position: relative;
-    height: auto;
-    padding-bottom: 20px;
 }
 
 .sidebar {
@@ -90,7 +78,6 @@ body {
     background: #e9e9e9;
     padding: 10px;
 }
-
 .sidebar img {
     margin: 20px auto;
     display: block;
@@ -156,7 +143,6 @@ body {
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
     margin-left: 0;
 }
-
 .docblock h1 { font-size: 1.1em; }
 .docblock h2 { font-size: 1.05em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
@@ -234,9 +220,13 @@ a {
 .content .fnname { color: #8c6067; }
 
 .search-input {
-    border: 2px solid #f2f2f2;
+    border: 2px solid #e9e9e9;
     border-radius: 2px;
-    width: 350px;
+    width: calc(100% - 66px);
+}
+.do-search {
+    float: right;
+    width: 62px;
 }
 .search-results .desc {
     white-space: nowrap;
@@ -249,7 +239,6 @@ a {
     background: #e9e9e9;
     border-radius: 4px;
     box-shadow: 0 0 6px rgba(0,0,0,.2);
-
     position: absolute;
     top: 300px;
     left: 50%;
