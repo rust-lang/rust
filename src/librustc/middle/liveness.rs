@@ -429,7 +429,7 @@ fn visit_fn(v: &mut LivenessVisitor,
 
 fn visit_local(v: &mut LivenessVisitor, local: @Local, this: @mut IrMaps) {
     let def_map = this.tcx.def_map;
-    do pat_util::pat_bindings(def_map, local.pat) |_bm, p_id, sp, path| {
+    do pat_util::pat_bindings(def_map, local.pat) |bm, p_id, sp, path| {
         debug!("adding local variable {}", p_id);
         let name = ast_util::path_to_ident(path);
         this.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -437,10 +437,14 @@ fn visit_local(v: &mut LivenessVisitor, local: @Local, this: @mut IrMaps) {
           Some(_) => FromLetWithInitializer,
           None => FromLetNoInitializer
         };
+        let mutbl = match bm {
+            BindByValue(MutMutable) => true,
+            _ => false
+        };
         this.add_variable(Local(LocalInfo {
           id: p_id,
           ident: name,
-          is_mutbl: local.is_mutbl,
+          is_mutbl: mutbl,
           kind: kind
         }));
     }
@@ -454,11 +458,15 @@ fn visit_arm(v: &mut LivenessVisitor, arm: &Arm, this: @mut IrMaps) {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = ast_util::path_to_ident(path);
+            let mutbl = match bm {
+                BindByValue(MutMutable) => true,
+                _ => false
+            };
             this.add_live_node_for_node(p_id, VarDefNode(sp));
             this.add_variable(Local(LocalInfo {
                 id: p_id,
                 ident: name,
-                is_mutbl: false,
+                is_mutbl: mutbl,
                 kind: FromMatch(bm)
             }));
         }

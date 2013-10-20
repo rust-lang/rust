@@ -473,12 +473,15 @@ impl mem_categorization_ctxt {
               }
           }
 
-          ast::DefArg(vid, mutbl) => {
+          ast::DefArg(vid, binding_mode) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
             // m: mutability of the argument
-            let m = if mutbl {McDeclared} else {McImmutable};
+            let m = match binding_mode {
+                ast::BindByValue(ast::MutMutable) => McDeclared,
+                _ => McImmutable
+            };
             @cmt_ {
                 id: id,
                 span: span,
@@ -548,25 +551,20 @@ impl mem_categorization_ctxt {
               }
           }
 
-          ast::DefLocal(vid, mutbl) => {
-            let m = if mutbl {McDeclared} else {McImmutable};
-            @cmt_ {
-                id:id,
-                span:span,
-                cat:cat_local(vid),
-                mutbl:m,
-                ty:expr_ty
-            }
-          }
-
-          ast::DefBinding(vid, _) => {
+          ast::DefLocal(vid, binding_mode) |
+          ast::DefBinding(vid, binding_mode) => {
             // by-value/by-ref bindings are local variables
+            let m = match binding_mode {
+                ast::BindByValue(ast::MutMutable) => McDeclared,
+                _ => McImmutable
+            };
+
             @cmt_ {
-                id:id,
-                span:span,
-                cat:cat_local(vid),
-                mutbl:McImmutable,
-                ty:expr_ty
+                id: id,
+                span: span,
+                cat: cat_local(vid),
+                mutbl: m,
+                ty: expr_ty
             }
           }
         }

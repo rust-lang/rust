@@ -476,7 +476,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
             demand::eqtype(fcx, pat.span, region_ty, typ);
           }
           // otherwise the type of x is the expected type T
-          ast::BindInfer => {
+          ast::BindByValue(_) => {
             demand::eqtype(fcx, pat.span, expected, typ);
           }
         }
