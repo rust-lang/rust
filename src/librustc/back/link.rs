@@ -297,7 +297,7 @@ pub mod write {
             if !sess.no_prepopulate_passes() {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-                populate_llvm_passess(fpm, mpm, llmod, OptLevel);
+                populate_llvm_passes(fpm, mpm, llmod, OptLevel);
             }
 
             for pass in sess.opts.custom_passes.iter() {
@@ -422,10 +422,10 @@ pub mod write {
         }
     }
 
-    unsafe fn populate_llvm_passess(fpm: lib::llvm::PassManagerRef,
-                                    mpm: lib::llvm::PassManagerRef,
-                                    llmod: ModuleRef,
-                                    opt: lib::llvm::CodeGenOptLevel) {
+    unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,
+                                   mpm: lib::llvm::PassManagerRef,
+                                   llmod: ModuleRef,
+                                   opt: lib::llvm::CodeGenOptLevel) {
         // Create the PassManagerBuilder for LLVM. We configure it with
         // reasonable defaults and prepare it to actually populate the pass
         // manager.
