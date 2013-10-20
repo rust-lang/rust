@@ -1208,7 +1208,7 @@ pub mod consts {
             pub static ERROR_ALREADY_EXISTS : c_int = 183;
             pub static ERROR_INVALID_ADDRESS : c_int = 487;
             pub static ERROR_FILE_INVALID : c_int = 1006;
-            pub static INVALID_HANDLE_VALUE: c_int = -1;
+            pub static INVALID_HANDLE_VALUE : c_int = -1;
 
             pub static DELETE : DWORD = 0x00010000;
             pub static READ_CONTROL : DWORD = 0x00020000;
@@ -3352,11 +3352,14 @@ pub mod funcs {
                                         LPSECURITY_ATTRIBUTES)
                                         -> BOOL;
                 pub fn CopyFileW(lpExistingFileName: LPCWSTR,
-                                        lpNewFileName: LPCWSTR,
-                                        bFailIfExists: BOOL)
-                                        -> BOOL;
+                                 lpNewFileName: LPCWSTR,
+                                 bFailIfExists: BOOL)
+                                 -> BOOL;
                 pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn GetCurrentDirectoryW(nBufferLength: DWORD,
+                                            lpBuffer: LPWSTR)
+                                            -> DWORD;
                 pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn GetLastError() -> DWORD;
                 pub fn FindFirstFileW(fileName: *u16, findFileData: HANDLE)
@@ -3462,6 +3465,9 @@ pub mod funcs {
                                         -> BOOL;
                 pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn GetCurrentDirectoryW(nBufferLength: DWORD,
+                                            lpBuffer: LPWSTR)
+                                            -> DWORD;
                 pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn GetLastError() -> DWORD;
                 pub fn FindFirstFileW(fileName: *u16, findFileData: HANDLE)
