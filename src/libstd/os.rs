@@ -28,7 +28,8 @@
 
 #[allow(missing_doc)];
 
-use c_str::{CString, ToCStr};
+#[cfg(unix)]
+use c_str::CString;
 use clone::Clone;
 use container::Container;
 use io;
@@ -56,6 +57,11 @@ pub fn close(fd: c_int) -> c_int {
     }
 }
 
+// On Windows, wide character version of function must be used to support
+// unicode, so functions should be split into at least two versions,
+// which are for Windows and for non-Windows, if necessary.
+// See https://github.com/mozilla/rust/issues/9822 for more information.
+
 pub mod rustrt {
     use libc::{c_char, c_int};
     use libc;
@@ -64,11 +70,19 @@ pub mod rustrt {
         pub fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         pub fn rust_path_exists(path: *libc::c_char) -> c_int;
     }
+
+    // Uses _wstat instead of stat.
+    #[cfg(windows)]
+    extern {
+        pub fn rust_path_is_dir_u16(path: *u16) -> c_int;
+        pub fn rust_path_exists_u16(path: *u16) -> c_int;
+    }
 }
 
 pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;
 
+#[cfg(unix)]
 pub fn getcwd() -> Path {
     #[fixed_stack_segment]; #[inline(never)];
     let mut buf = [0 as libc::c_char, ..BUF_BYTES];
@@ -81,6 +95,22 @@ pub fn getcwd() -> Path {
             Path::new(CString::new(buf as *c_char, false))
         }
     }
+}
+
+#[cfg(windows)]
+pub fn getcwd() -> Path {
+    #[fixed_stack_segment]; #[inline(never)];
+    use libc::DWORD;
+    use libc::GetCurrentDirectoryW;
+    let mut buf = [0 as u16, ..BUF_BYTES];
+    do buf.as_mut_buf |buf, len| {
+        unsafe {
+            if libc::GetCurrentDirectoryW(len as DWORD, buf) == 0 as DWORD {
+                fail2!();
+            }
+        }
+    }
+    Path::new(str::from_utf16(buf))
 }
 
 #[cfg(windows)]
@@ -613,6 +643,7 @@ pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
     })
 }
 
+#[cfg(unix)]
 /// Indicates whether a path represents a directory
 pub fn path_is_dir(p: &Path) -> bool {
     #[fixed_stack_segment]; #[inline(never)];
@@ -623,12 +654,34 @@ pub fn path_is_dir(p: &Path) -> bool {
     }
 }
 
+
+#[cfg(windows)]
+pub fn path_is_dir(p: &Path) -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+    unsafe {
+        do os::win32::as_utf16_p(p.as_str().unwrap()) |buf| {
+            rustrt::rust_path_is_dir_u16(buf) != 0 as c_int
+        }
+    }
+}
+
+#[cfg(unix)]
 /// Indicates whether a path exists
 pub fn path_exists(p: &Path) -> bool {
     #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         do p.with_c_str |buf| {
             rustrt::rust_path_exists(buf) != 0 as c_int
+        }
+    }
+}
+
+#[cfg(windows)]
+pub fn path_exists(p: &Path) -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+    unsafe {
+        do os::win32::as_utf16_p(p.as_str().unwrap()) |buf| {
+            rustrt::rust_path_exists_u16(buf) != 0 as c_int
         }
     }
 }
@@ -1922,8 +1975,31 @@ mod tests {
 
     #[test]
     fn path_is_dir() {
+        use rt::io::file::open;
+        use rt::io::{OpenOrCreate, Read};
+
         assert!((os::path_is_dir(&Path::new("."))));
         assert!((!os::path_is_dir(&Path::new("test/stdtest/fs.rs"))));
+
+        let mut dirpath = os::tmpdir();
+        dirpath.push(format!("rust-test-{}/test-\uac00\u4e00\u30fc\u4f60\u597d",
+            rand::random::<u32>())); // 가一ー你好
+        debug2!("path_is_dir dirpath: {}", dirpath.display());
+
+        let mkdir_result = os::mkdir_recursive(&dirpath, (S_IRUSR | S_IWUSR | S_IXUSR) as i32);
+        debug2!("path_is_dir mkdir_result: {}", mkdir_result);
+
+        assert!((os::path_is_dir(&dirpath)));
+
+        let mut filepath = dirpath;
+        filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
+        debug2!("path_is_dir filepath: {}", filepath.display());
+
+        open(&filepath, OpenOrCreate, Read); // ignore return; touch only
+        assert!((!os::path_is_dir(&filepath)));
+
+        assert!((!os::path_is_dir(&Path::new(
+                     "test/unicode-bogus-dir-\uac00\u4e00\u30fc\u4f60\u597d"))));
     }
 
     #[test]
@@ -1931,6 +2007,15 @@ mod tests {
         assert!((os::path_exists(&Path::new("."))));
         assert!((!os::path_exists(&Path::new(
                      "test/nonexistent-bogus-path"))));
+
+        let mut dirpath = os::tmpdir();
+        dirpath.push(format!("rust-test-{}/test-\uac01\u4e01\u30fc\u518d\u89c1",
+            rand::random::<u32>())); // 각丁ー再见
+
+        os::mkdir_recursive(&dirpath, (S_IRUSR | S_IWUSR | S_IXUSR) as i32);
+        assert!((os::path_exists(&dirpath)));
+        assert!((!os::path_exists(&Path::new(
+                     "test/unicode-bogus-path-\uac01\u4e01\u30fc\u518d\u89c1"))));
     }
 
     #[test]
