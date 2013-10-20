@@ -28,7 +28,6 @@ enum Child<T> {
 
 #[allow(missing_doc)]
 pub struct TrieMap<T> {
-    // already priv
     priv root: TrieNode<T>,
     priv length: uint
 }
@@ -223,7 +222,6 @@ impl<T> Extendable<(uint, T)> for TrieMap<T> {
 
 #[allow(missing_doc)]
 pub struct TrieSet {
-    // already priv
     priv map: TrieMap<()>
 }
 
@@ -445,7 +443,6 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 
 /// Forward iterator over a map
 pub struct TrieMapIterator<'self, T> {
-    // already priv
     priv stack: ~[vec::VecIterator<'self, Child<T>>],
     priv remaining_min: uint,
     priv remaining_max: uint
@@ -486,7 +483,6 @@ impl<'self, T> Iterator<(uint, &'self T)> for TrieMapIterator<'self, T> {
 
 /// Forward iterator over a set
 pub struct TrieSetIterator<'self> {
-    // already priv
     priv iter: TrieMapIterator<'self, ()>
 }
 

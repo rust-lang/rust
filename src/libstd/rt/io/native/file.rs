@@ -61,7 +61,6 @@ fn keep_going(data: &[u8], f: &fn(*u8, uint) -> i64) -> i64 {
 pub type fd_t = libc::c_int;
 
 pub struct FileDesc {
-    // aleady priv
     priv fd: fd_t,
 }
 
@@ -127,7 +126,6 @@ impl Drop for FileDesc {
 }
 
 pub struct CFile {
-    // aleady priv
     priv file: *libc::FILE
 }
 

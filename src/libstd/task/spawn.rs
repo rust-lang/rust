@@ -307,7 +307,6 @@ fn each_ancestor(list:        &mut AncestorList,
 
 // One of these per task.
 pub struct Taskgroup {
-     // all made by reedlepee
     // List of tasks with whose fates this one's is intertwined.
     priv tasks:      TaskGroupArc, // 'none' means the group has failed.
     // Lists of tasks who will kill us if they fail, but whom we won't kill.

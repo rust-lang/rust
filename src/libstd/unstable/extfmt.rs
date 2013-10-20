@@ -149,7 +149,6 @@ pub mod ct {
     // A formatted conversion from an expression to a string
     #[deriving(Eq)]
     pub struct Conv {
-        // all ade by reedlepee
         param: Option<uint>,
         flags: ~[Flag],
         width: Count,
@@ -500,7 +499,6 @@ pub mod rt {
     pub enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
 
     pub struct Conv {
-        // all ade by reedlepee
         flags: u32,
         width: Count,
         precision: Count,

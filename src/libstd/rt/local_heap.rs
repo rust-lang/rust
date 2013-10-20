@@ -32,7 +32,6 @@ pub type OpaqueBox = c_void;
 pub type TypeDesc = c_void;
 
 pub struct LocalHeap {
-    // all made by reedlepee
     priv memory_region: *MemoryRegion,
     priv boxed_region: *BoxedRegion
 }

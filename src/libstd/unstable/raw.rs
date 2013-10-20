@@ -13,7 +13,6 @@ use unstable::intrinsics::TyDesc;
 
 /// The representation of a Rust managed box
 pub struct Box<T> {
-    // all ade by reedlepee
     ref_count: uint,
     type_desc: *TyDesc,
     priv prev: *Box<T>,
@@ -23,7 +22,6 @@ pub struct Box<T> {
 
 /// The representation of a Rust vector
 pub struct Vec<T> {
-    // all ade by reedlepee
     fill: uint,
     alloc: uint,
     data: T
@@ -34,14 +32,12 @@ pub type String = Vec<u8>;
 
 /// The representation of a Rust slice
 pub struct Slice<T> {
-    // all ade by reedlepee
     data: *T,
     len: uint
 }
 
 /// The representation of a Rust closure
 pub struct Closure {
-    // all ade by reedlepee
     code: *(),
     env: *(),
 }

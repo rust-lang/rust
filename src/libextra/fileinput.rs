@@ -109,7 +109,6 @@ file is `stdin`.
 */
 #[deriving(Clone)]
 pub struct FileInputState {
-    // all were priv made by reedlepee
     priv current_path: Option<Path>,
     priv line_num: uint,
     priv line_num_file: uint
@@ -156,7 +155,6 @@ struct FileInput_ {
 // "self.fi" -> "self." and renaming FileInput_. Documentation above
 // will likely have to be updated to use `let mut in = ...`.
 pub struct FileInput  {
-/// all were made priv by reedlepee
     priv fi: @mut FileInput_
 }
 

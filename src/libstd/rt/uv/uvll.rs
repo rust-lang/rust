@@ -84,7 +84,6 @@ pub static STDIO_WRITABLE_PIPE: c_int = 0x20;
 // see libuv/include/uv-unix.h
 #[cfg(unix)]
 pub struct uv_buf_t {
-    // all made by reedelpee
     base: *u8,
     len: libc::size_t,
 }
@@ -92,29 +91,26 @@ pub struct uv_buf_t {
 // see libuv/include/uv-win.h
 #[cfg(windows)]
 pub struct uv_buf_t {
-    // all made by reedelpee
     len: u32,
     base: *u8,
 }
 
 pub struct uv_process_options_t {
-     // all made by reedelpee
-     exit_cb: uv_exit_cb,
-     file: *libc::c_char,
-     args: **libc::c_char,
-     env: **libc::c_char,
-     cwd: *libc::c_char,
-     flags: libc::c_uint,
-     stdio_count: libc::c_int,
-     stdio: *uv_stdio_container_t,
-     uid: uv_uid_t,
-     gid: uv_gid_t,
+    exit_cb: uv_exit_cb,
+    file: *libc::c_char,
+    args: **libc::c_char,
+    env: **libc::c_char,
+    cwd: *libc::c_char,
+    flags: libc::c_uint,
+    stdio_count: libc::c_int,
+    stdio: *uv_stdio_container_t,
+    uid: uv_uid_t,
+    gid: uv_gid_t,
 }
 
 // These fields are private because they must be interfaced with through the
 // functions below.
 pub struct uv_stdio_container_t {
-    // already priv
     priv flags: libc::c_int,
     priv stream: *uv_stream_t,
 }
@@ -137,13 +133,11 @@ pub type uv_process_t = c_void;
 pub type uv_pipe_t = c_void;
 
 pub struct uv_timespec_t {
-    // all made by reedelpee
     tv_sec: libc::c_long,
     priv tv_nsec: libc::c_long
 }
 
 pub struct uv_stat_t {
-    // all made by reedelpee
     priv st_dev: libc::uint64_t,
     st_mode: libc::uint64_t,
     priv st_nlink: libc::uint64_t,
@@ -237,21 +231,19 @@ pub type socklen_t = c_int;
 #[cfg(target_os = "android")]
 #[cfg(target_os = "linux")]
 pub struct addrinfo {
-     // all made by reedelpee
-     priv ai_flags: c_int,
-     priv ai_family: c_int,
-     priv ai_socktype: c_int,
-     priv ai_protocol: c_int,
-     priv ai_addrlen: socklen_t,
-     ai_addr: *sockaddr,
-     priv ai_canonname: *char,
-     ai_next: *addrinfo
+    priv ai_flags: c_int,
+    priv ai_family: c_int,
+    priv ai_socktype: c_int,
+    priv ai_protocol: c_int,
+    priv ai_addrlen: socklen_t,
+    ai_addr: *sockaddr,
+    priv ai_canonname: *char,
+    ai_next: *addrinfo
 }
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 pub struct addrinfo {
-     // all made by reedelpee
     priv ai_flags: c_int,
     priv ai_family: c_int,
     priv ai_socktype: c_int,
@@ -264,7 +256,6 @@ pub struct addrinfo {
 
 #[cfg(windows)]
 pub struct addrinfo {
-     // all made by reedelpee
     priv ai_flags: c_int,
     priv ai_family: c_int,
     priv ai_socktype: c_int,
@@ -272,7 +263,7 @@ pub struct addrinfo {
     priv ai_addrlen: size_t,
     priv ai_canonname: *char,
     ai_addr: *sockaddr,
-    priv vai_next: *addrinfo
+    priv ai_next: *addrinfo
 }
 
 #[cfg(unix)] pub type uv_uid_t = libc::types::os::arch::posix88::uid_t;
@@ -969,7 +960,6 @@ pub unsafe fn freeaddrinfo(ai: *addrinfo) {
 }
 
 pub struct uv_err_data {
-     // all made by reedelpee
     priv err_name: ~str,
     priv err_msg: ~str,
 }

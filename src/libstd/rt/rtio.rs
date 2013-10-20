@@ -61,7 +61,6 @@ pub trait RemoteCallback {
 /// Using unix flag conventions for now, which happens to also be what's supported
 /// libuv (it does translation to windows under the hood).
 pub struct FileOpenConfig {
-    // all made by reedlepe
     /// Path to file to be opened
     path: Path,
     /// Flags for file access mode (as per open(2))

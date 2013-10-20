@@ -180,7 +180,6 @@ fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
 
 // Obviously an Event Loop is always home.
 pub struct UvEventLoop {
-    // all made by reedlepee
     priv uvio: UvIoFactory
 }
 
@@ -241,7 +240,6 @@ impl EventLoop for UvEventLoop {
 }
 
 pub struct UvPausibleIdleCallback {
-    // all made by reedlepee
     priv watcher: IdleWatcher,
     priv idle_flag: bool,
     priv closed: bool
@@ -295,7 +293,6 @@ fn test_callback_run_once() {
 
 // The entire point of async is to call into a loop from other threads so it does not need to home.
 pub struct UvRemoteCallback {
-    // all made by reedlepee
     // The uv async handle for triggering the callback
     priv async: AsyncWatcher,
     // A flag to tell the callback to exit, set from the dtor. This is
@@ -804,7 +801,6 @@ impl IoFactory for UvIoFactory {
 }
 
 pub struct UvTcpListener {
-    // all made by reedlepee
     priv watcher : TcpWatcher,
     priv home: SchedHandle,
 }
@@ -867,7 +863,6 @@ impl RtioTcpListener for UvTcpListener {
 }
 
 pub struct UvTcpAcceptor {
-    // all made by reedlepee
     priv listener: UvTcpListener,
     priv incoming: Tube<Result<~RtioTcpStreamObject, IoError>>,
 }
@@ -992,7 +987,6 @@ fn write_stream(mut watcher: StreamWatcher,
 }
 
 pub struct UvUnboundPipe {
-    // all made by reedlepee
     pipe: Pipe,
     priv home: SchedHandle,
 }
@@ -1023,7 +1017,6 @@ impl UvUnboundPipe {
 }
 
 pub struct UvPipeStream {
-    // already
     priv inner: ~UvUnboundPipe,
 }
 
@@ -1047,7 +1040,6 @@ impl RtioPipe for UvPipeStream {
 }
 
 pub struct UvTcpStream {
-    // all made by reedlepee
     priv watcher: TcpWatcher,
     priv home: SchedHandle,
 }
@@ -1148,7 +1140,6 @@ impl RtioTcpStream for UvTcpStream {
 }
 
 pub struct UvUdpSocket {
-    // all made by reedelpee
     priv watcher: UdpWatcher,
     priv home: SchedHandle,
 }
@@ -1359,7 +1350,6 @@ impl RtioUdpSocket for UvUdpSocket {
 }
 
 pub struct UvTimer {
-    // all made by reedelpee
     priv watcher: timer::TimerWatcher,
     priv home: SchedHandle,
 }
@@ -1407,7 +1397,6 @@ impl RtioTimer for UvTimer {
 }
 
 pub struct UvFileStream {
-    // all made by reedelpee
     priv loop_: Loop,
     priv fd: c_int,
     priv close_on_drop: bool,
@@ -1541,7 +1530,6 @@ impl RtioFileStream for UvFileStream {
 }
 
 pub struct UvProcess {
-    // two made by reedelpee
     priv process: process::Process,
 
     // Sadly, this structure must be created before we return it, so in that
@@ -1549,7 +1537,6 @@ pub struct UvProcess {
     priv home: Option<SchedHandle>,
 
     // All None until the process exits (exit_error may stay None)
-   // Rest were already priv
     priv exit_status: Option<int>,
     priv term_signal: Option<int>,
     priv exit_error: Option<UvError>,

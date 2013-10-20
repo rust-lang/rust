@@ -368,7 +368,6 @@ impl<T: Reader> ReaderUtil for T {
 /// each call to its `.next()` method.
 /// Yields `None` if the condition is handled.
 pub struct ByteIterator<T> {
-    // all already priv
     priv reader: T,
 }
 

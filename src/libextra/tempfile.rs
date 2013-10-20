@@ -18,7 +18,6 @@ use std::rand;
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-pased deletion.
 pub struct TempDir {
-    // all were already priv!!
     priv path: Option<Path>
 }
 

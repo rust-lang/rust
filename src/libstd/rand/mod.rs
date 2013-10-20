@@ -82,11 +82,10 @@ pub trait Rand {
 
 /// A value with a particular weight compared to other values
 pub struct Weighted<T> {
-    /// made priv by reedlepee
     /// The numerical weight of this item
-    priv weight: uint,
+    weight: uint,
     /// The actual item which is being weighted
-    priv item: T,
+    item: T,
 }
 
 /// A random number generator
@@ -538,13 +537,11 @@ pub fn rng() -> StdRng {
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
 #[cfg(not(target_word_size="64"))]
-// already priv
 pub struct StdRng { priv rng: IsaacRng }
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
 #[cfg(target_word_size="64")]
-// already priv
 pub struct StdRng { priv rng: Isaac64Rng }
 
 impl StdRng {
@@ -606,7 +603,6 @@ pub fn weak_rng() -> XorShiftRng {
 /// but is very fast. If you do not know for sure that it fits your
 /// requirements, use a more secure one such as `IsaacRng`.
 pub struct XorShiftRng {
-    // already priv
     priv x: u32,
     priv y: u32,
     priv z: u32,

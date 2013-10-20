@@ -1009,7 +1009,6 @@ impl<R:Reader,C> Reader for Wrapper<R, C> {
 }
 
 pub struct FILERes {
-    // all by reedlepee
     priv f: *libc::FILE,
 }
 
@@ -1081,7 +1080,6 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
 
 // Byte readers
 pub struct BytesReader {
-    // all by reedlepee
     // FIXME(#5723) see other FIXME below
     // FIXME(#7268) this should also be parameterized over <'self>
     bytes: &'static [u8],
@@ -1284,7 +1282,6 @@ impl Writer for fd_t {
 }
 
 pub struct FdRes {
-    // all by reedlepee
     priv fd: fd_t,
 }
 
@@ -1677,7 +1674,6 @@ pub fn println(s: &str) {
 }
 
 pub struct BytesWriter {
-    // all by reedlepee
     bytes: @mut ~[u8],
     pos: @mut uint,
 }
@@ -1796,7 +1792,6 @@ pub mod fsync {
 
     // Artifacts that need to fsync on destruction
     pub struct Res<t> {
-        // all by reedlepee
         priv arg: Arg<t>,
     }
 
@@ -1820,7 +1815,6 @@ pub mod fsync {
     }
 
     pub struct Arg<t> {
-       // all by reedlepee
        priv val: t,
        priv opt_level: Option<Level>,
        priv fsync_fn: extern "Rust" fn(f: &t, Level) -> int,

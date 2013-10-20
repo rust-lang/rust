@@ -64,7 +64,6 @@ static DEFAULT_CAPACITY: uint = 64 * 1024;
 
 /// Wraps a Reader and buffers input from it
 pub struct BufferedReader<R> {
-    // all already priv
     priv inner: R,
     priv buf: ~[u8],
     priv pos: uint,
@@ -176,7 +175,6 @@ impl<R: Reader> Decorator<R> for BufferedReader<R> {
 ///
 /// Note that `BufferedWriter` will NOT flush its buffer when dropped.
 pub struct BufferedWriter<W> {
-    // all already priv
     priv inner: W,
     priv buf: ~[u8],
     priv pos: uint
@@ -252,7 +250,6 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 ///
 /// Note that `BufferedStream` will NOT flush its output buffer when dropped.
 pub struct BufferedStream<S> {
-    // all already priv
     priv inner: BufferedReader<InternalBufferedWriter<S>>
 }
 

@@ -96,18 +96,14 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 #[cfg(not(target_os = "win32"))]
 pub struct Terminal {
 
-// this was made priv by reedlepee
     priv num_colors: u16,
-    // These were already priv
     priv out: @io::Writer,
     priv ti: ~TermInfo
 }
 
 #[cfg(target_os = "win32")]
 pub struct Terminal {
-    // this was made priv by reedlepee
     priv num_colors: u16,
-   // These were already priv
     priv out: @io::Writer,
 }
 

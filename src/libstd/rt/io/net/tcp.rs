@@ -21,7 +21,6 @@ use rt::rtio::{IoFactory, IoFactoryObject,
 use rt::local::Local;
 
 pub struct TcpStream {
-    // aleady priv
     priv obj: ~RtioTcpStreamObject
 }
 
@@ -100,7 +99,6 @@ impl Writer for TcpStream {
 }
 
 pub struct TcpListener {
-    // aleady priv
     priv obj: ~RtioTcpListenerObject
 }
 
@@ -144,7 +142,6 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
 }
 
 pub struct TcpAcceptor {
-    // aleady priv
     priv obj: ~RtioTcpAcceptorObject
 }
 

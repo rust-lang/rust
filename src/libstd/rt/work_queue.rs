@@ -17,7 +17,6 @@ use kinds::Send;
 use clone::Clone;
 
 pub struct WorkQueue<T> {
-    // already priv
     // XXX: Another mystery bug fixed by boxing this lock
     priv queue: ~Exclusive<~[T]>
 }

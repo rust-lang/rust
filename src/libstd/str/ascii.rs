@@ -23,7 +23,6 @@ use option::{Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
-//already priv
 pub struct Ascii { priv chr: u8 }
 
 impl Ascii {

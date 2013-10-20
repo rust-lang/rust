@@ -92,7 +92,6 @@ condition! {
 /// This structure wraps a `*libc::c_char`, and will automatically free the
 /// memory it is pointing to when it goes out of scope.
 pub struct CString {
-    // already priv
     priv buf: *libc::c_char,
     priv owns_buffer_: bool,
 }
@@ -333,7 +332,6 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 ///
 /// Use with the `std::iterator` module.
 pub struct CStringIterator<'self> {
-    // already priv
     priv ptr: *libc::c_char,
     priv lifetime: &'self libc::c_char, // FIXME: #5922
 }

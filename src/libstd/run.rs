@@ -29,13 +29,11 @@ use task;
  * for the process to terminate.
  */
 pub struct Process {
-    // already priv
     priv inner: process::Process,
 }
 
 /// Options that can be given when starting a Process.
 pub struct ProcessOptions<'self> {
-    // All were made priv by reedlepee
     /**
      * If this is None then the new process will have the same initial
      * environment as the parent process.
@@ -100,7 +98,6 @@ impl <'self> ProcessOptions<'self> {
 
 /// The output of a finished process.
 pub struct ProcessOutput {
-    /// made priv by reedlepee
     /// The status (exit code) of the process.
     status: int,
 

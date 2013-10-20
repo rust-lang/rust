@@ -33,7 +33,6 @@ use sort;
  * pattern - see the `glob` function for more details.
  */
 pub struct GlobIterator {
-    /// no change by reedlepee all were priv already!!
     priv root: Path,
     priv dir_patterns: ~[Pattern],
     priv options: MatchOptions,
@@ -157,7 +156,6 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
  */
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
 pub struct Pattern {
-    // already priv
     priv tokens: ~[PatternToken]
 }
 
@@ -476,7 +474,6 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
  */
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
 pub struct MatchOptions {
-/// all were made priv  by reedlepee
 
     /**
      * Whether or not patterns should be matched in a case-sensitive manner. This

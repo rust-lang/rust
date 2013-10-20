@@ -112,8 +112,6 @@ pub enum Occur {
 /// A description of a possible option.
 #[deriving(Clone, Eq)]
 pub struct Opt {
-
-    /// reedlepee added priv infront of them!!
     /// Name of the option
     name: Name,
     /// Wheter it has an argument...  should be public!!
@@ -136,7 +134,6 @@ enum Optval {
 #[deriving(Clone, Eq)]
 pub struct Matches {
 
-/// reedlepee added priv infront of all
     /// Options that matched
     priv opts: ~[Opt],
     /// Values of the Options that matched

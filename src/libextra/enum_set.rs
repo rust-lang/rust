@@ -18,7 +18,6 @@
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
-    // all were already priv
     priv bits: uint
 }
 
@@ -101,7 +100,6 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 /// An iterator over an EnumSet
 pub struct EnumSetIterator<E> {
-    // all were already priv
     priv index: uint,
     priv bits: uint,
 }

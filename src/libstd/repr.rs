@@ -98,7 +98,6 @@ enum VariantState {
 }
 
 pub struct ReprVisitor<'self> {
-    // made priv by reedlpee
     priv ptr: *c_void,
     priv ptr_stk: ~[*c_void],
     priv var_stk: ~[VariantState],

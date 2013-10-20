@@ -42,7 +42,6 @@ pub type RevStrComponentIter<'self> = Map<'self, &'self [u8], Option<&'self str>
 /// Represents a POSIX file path
 #[deriving(Clone, DeepClone)]
 pub struct Path {
-    /// already priv
     priv repr: ~[u8], // assumed to never be empty or contain NULs
     priv sepidx: Option<uint> // index of the final separator in repr
 }

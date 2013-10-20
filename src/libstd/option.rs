@@ -454,7 +454,6 @@ impl<T: Zero> Option<T> {
 /// An iterator that yields either one or zero elements
 #[deriving(Clone, DeepClone)]
 pub struct OptionIterator<A> {
-    // already priv
     priv opt: Option<A>
 }
 

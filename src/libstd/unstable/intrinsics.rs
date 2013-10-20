@@ -42,9 +42,8 @@ pub type GlueFn = extern "Rust" fn(*i8);
 #[lang="ty_desc"]
 #[cfg(not(test))]
 pub struct TyDesc {
-    // all ade by reedlepee
     // sizeof(T)
-     size: uint,
+    size: uint,
 
     // alignof(T)
     align: uint,

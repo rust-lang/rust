@@ -62,7 +62,6 @@ pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-/// no change  by reedlepee all were already priv
     priv head: Chunk,
     priv pod_head: Chunk,
     priv chunks: @mut MutList<Chunk>,

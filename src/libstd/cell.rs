@@ -26,7 +26,6 @@ Similar to a mutable option type, but friendlier.
 #[deriving(Clone, DeepClone, Eq)]
 #[allow(missing_doc)]
 pub struct Cell<T> {
-    // already priv
     priv value: Option<T>
 }
 
