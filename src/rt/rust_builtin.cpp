@@ -106,7 +106,7 @@ rust_list_dir_wfd_fp_buf(void* wfd) {
 #endif
 
 extern "C" CDECL int
-rust_path_is_dir(char *path) {
+rust_path_is_dir(const char *path) {
     struct stat buf;
     if (stat(path, &buf)) {
         return 0;
@@ -115,13 +115,47 @@ rust_path_is_dir(char *path) {
 }
 
 extern "C" CDECL int
-rust_path_exists(char *path) {
+#if defined(__WIN32__)
+rust_path_is_dir_u16(const wchar_t *path) {
+    struct _stat buf;
+    // Don't use GetFileAttributesW, it cannot get attributes of
+    // some system files (e.g. pagefile.sys).
+    if (_wstat(path, &buf)) {
+        return 0;
+    }
+    return S_ISDIR(buf.st_mode);
+}
+#else
+rust_path_is_dir_u16(const void *path) {
+    // Wide version of function is only used on Windows.
+    return 0;
+}
+#endif
+
+extern "C" CDECL int
+rust_path_exists(const char *path) {
     struct stat buf;
     if (stat(path, &buf)) {
         return 0;
     }
     return 1;
 }
+
+extern "C" CDECL int
+#if defined(__WIN32__)
+rust_path_exists_u16(const wchar_t *path) {
+    struct _stat buf;
+    if (_wstat(path, &buf)) {
+        return 0;
+    }
+    return 1;
+}
+#else
+rust_path_exists_u16(const void *path) {
+    // Wide version of function is only used on Windows.
+    return 0;
+}
+#endif
 
 extern "C" CDECL FILE* rust_get_stdin() {return stdin;}
 extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
@@ -293,8 +327,12 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     const char* zone = NULL;
 #if defined(__WIN32__)
     int32_t gmtoff = -timezone;
-    char buffer[64];
-    if (strftime(buffer, sizeof(buffer), "%Z", &tm) > 0) {
+    wchar_t wbuffer[64];
+    char buffer[256];
+    // strftime("%Z") can contain non-UTF-8 characters on non-English locale (issue #9418),
+    // so time zone should be converted from UTF-16 string set by wcsftime.
+    if (wcsftime(wbuffer, sizeof(wbuffer) / sizeof(wchar_t), L"%Z", &tm) > 0) {
+        WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, sizeof(buffer), NULL, NULL);
         zone = buffer;
     }
 #else

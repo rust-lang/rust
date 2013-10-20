@@ -54,6 +54,14 @@
 #include <assert.h>
 
 #if defined(__WIN32__)
+// Prevent unnecessary #include's from <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+// Prevent defining min and max macro
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 extern "C" {
 #include <windows.h>
 #include <tchar.h>

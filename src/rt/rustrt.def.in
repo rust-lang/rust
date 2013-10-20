@@ -10,7 +10,9 @@ rust_timegm
 rust_mktime
 precise_time_ns
 rust_path_is_dir
+rust_path_is_dir_u16
 rust_path_exists
+rust_path_exists_u16
 rust_get_stdin
 rust_get_stdout
 rust_get_stderr
