@@ -999,16 +999,11 @@ pub fn std_macros() -> @str {
     macro_rules! writeln(($dst:expr, $($arg:tt)*) => (
         format_args!(|args| { ::std::fmt::writeln($dst, args) }, $($arg)*)
     ))
-    // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
-    //              allocation but should rather delegate to an invocation of
-    //              write! instead of format!
     macro_rules! print (
-        ($($arg:tt)*) => (::std::io::print(format!($($arg)*)))
+        ($($arg:tt)*) => (format_args!(::std::rt::io::stdio::print_args, $($arg)*))
     )
-    // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
-    //              allocation but should rather delegate to an io::Writer
     macro_rules! println (
-        ($($arg:tt)*) => (::std::io::println(format!($($arg)*)))
+        ($($arg:tt)*) => (format_args!(::std::rt::io::stdio::println_args, $($arg)*))
     )
 
     macro_rules! local_data_key (
