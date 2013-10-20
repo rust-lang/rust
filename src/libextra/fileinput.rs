@@ -109,9 +109,9 @@ file is `stdin`.
 */
 #[deriving(Clone)]
 pub struct FileInputState {
-    priv current_path: Option<Path>,
-    priv line_num: uint,
-    priv line_num_file: uint
+    current_path: Option<Path>,
+    line_num: uint,
+    line_num_file: uint
 }
 
 impl FileInputState {

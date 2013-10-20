@@ -91,7 +91,6 @@ pub fn DuplexStream<T:Send,U:Send>()
 }
 
 /// An extension of `pipes::stream` that provides synchronous message sending.
-// all were already priv
 pub struct SyncChan<T> { priv duplex_stream: DuplexStream<T, ()> }
 /// An extension of `pipes::stream` that acknowledges each message received.
 pub struct SyncPort<T> { priv duplex_stream: DuplexStream<(), T> }

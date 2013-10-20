@@ -38,7 +38,7 @@ pub struct FormatSpec {
     fill: char,
     align: parse::Alignment,
     flags: uint,
-     precision: Count,
+    precision: Count,
     width: Count,
 }
 
