@@ -1842,7 +1842,7 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::Pat) -> BindingsMap {
         let llmatch;
         let trmode;
         match bm {
-            ast::BindInfer => {
+            ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above
@@ -2130,7 +2130,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
                     bcx, pat.id, path, binding_mode,
                     |bcx, variable_ty, llvariable_val| {
                         match pat_binding_mode {
-                            ast::BindInfer => {
+                            ast::BindByValue(_) => {
                                 // By value binding: move the value that `val`
                                 // points at into the binding's stack slot.
                                 let datum = Datum {val: val,
@@ -2241,7 +2241,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
 
 fn simple_identifier<'a>(pat: &'a ast::Pat) -> Option<&'a ast::Path> {
     match pat.node {
-        ast::PatIdent(ast::BindInfer, ref path, None) => {
+        ast::PatIdent(ast::BindByValue(_), ref path, None) => {
             Some(path)
         }
         _ => {

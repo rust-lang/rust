@@ -17,7 +17,7 @@ use ast::{CallSugar, NoSugar, DoSugar};
 use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
-use ast::{_mod, BiAdd, arg, Arm, Attribute, BindByRef, BindInfer};
+use ast::{_mod, BiAdd, arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, Block};
 use ast::{BlockCheckMode, UnBox};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
@@ -1193,6 +1193,7 @@ impl Parser {
                     1
                 }
             },
+            _ if token::is_keyword(keywords::Mut, self.token) => 1,
             _ => 0
         };
 
@@ -1210,15 +1211,10 @@ impl Parser {
     // This version of parse arg doesn't necessarily require
     // identifier names.
     pub fn parse_arg_general(&self, require_name: bool) -> arg {
-        let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{:?})",
                    require_name);
             let pat = self.parse_pat();
-
-            if is_mutbl && !ast_util::pat_is_ident(pat) {
-                self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
-            }
 
             self.expect(&token::COLON);
             pat
@@ -1232,7 +1228,6 @@ impl Parser {
         let t = self.parse_ty(false);
 
         ast::arg {
-            is_mutbl: is_mutbl,
             ty: t,
             pat: pat,
             id: ast::DUMMY_NODE_ID,
@@ -1246,7 +1241,6 @@ impl Parser {
 
     // parse an argument in a lambda header e.g. |arg, arg|
     pub fn parse_fn_block_arg(&self) -> arg {
-        let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = self.parse_pat();
         let t = if self.eat(&token::COLON) {
             self.parse_ty(false)
@@ -1258,7 +1252,6 @@ impl Parser {
             }
         };
         ast::arg {
-            is_mutbl: is_mutbl,
             ty: t,
             pat: pat,
             id: ast::DUMMY_NODE_ID
@@ -2681,7 +2674,7 @@ impl Parser {
             } else {
                 subpat = @ast::Pat {
                     id: ast::DUMMY_NODE_ID,
-                    node: PatIdent(BindInfer, fieldpath, None),
+                    node: PatIdent(BindByValue(MutImmutable), fieldpath, None),
                     span: *self.last_span
                 };
             }
@@ -2863,6 +2856,8 @@ impl Parser {
             } else {
                 pat = PatLit(val);
             }
+        } else if self.eat_keyword(keywords::Mut) {
+            pat = self.parse_pat_ident(BindByValue(MutMutable));
         } else if self.eat_keyword(keywords::Ref) {
             // parse ref pat
             let mutbl = self.parse_mutability();
@@ -2891,7 +2886,7 @@ impl Parser {
                     // or just foo
                     sub = None;
                 }
-                pat = PatIdent(BindInfer, name, sub);
+                pat = PatIdent(BindByValue(MutImmutable), name, sub);
             } else {
                 // parse an enum pat
                 let enum_path = self.parse_path(LifetimeAndTypesWithColons)
@@ -2935,7 +2930,7 @@ impl Parser {
                                   // it could still be either an enum
                                   // or an identifier pattern, resolve
                                   // will sort it out:
-                                  pat = PatIdent(BindInfer,
+                                  pat = PatIdent(BindByValue(MutImmutable),
                                                   enum_path,
                                                   None);
                               } else {
@@ -2989,13 +2984,9 @@ impl Parser {
     }
 
     // parse a local variable declaration
-    fn parse_local(&self, is_mutbl: bool) -> @Local {
+    fn parse_local(&self) -> @Local {
         let lo = self.span.lo;
         let pat = self.parse_pat();
-
-        if is_mutbl && !ast_util::pat_is_ident(pat) {
-            self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
-        }
 
         let mut ty = Ty {
             id: ast::DUMMY_NODE_ID,
@@ -3005,7 +2996,6 @@ impl Parser {
         if self.eat(&token::COLON) { ty = self.parse_ty(false); }
         let init = self.parse_initializer();
         @ast::Local {
-            is_mutbl: is_mutbl,
             ty: ty,
             pat: pat,
             init: init,
@@ -3016,11 +3006,10 @@ impl Parser {
 
     // parse a "let" stmt
     fn parse_let(&self) -> @Decl {
-        let is_mutbl = self.eat_keyword(keywords::Mut);
         let lo = self.span.lo;
-        let local = self.parse_local(is_mutbl);
+        let local = self.parse_local();
         while self.eat(&token::COMMA) {
-            let _ = self.parse_local(is_mutbl);
+            let _ = self.parse_local();
             self.obsolete(*self.span, ObsoleteMultipleLocalDecl);
         }
         return @spanned(lo, self.last_span.hi, DeclLocal(local));

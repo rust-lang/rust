@@ -232,8 +232,8 @@ pub enum Def {
     DefMod(DefId),
     DefForeignMod(DefId),
     DefStatic(DefId, bool /* is_mutbl */),
-    DefArg(NodeId, bool /* is_mutbl */),
-    DefLocal(NodeId, bool /* is_mutbl */),
+    DefArg(NodeId, BindingMode),
+    DefLocal(NodeId, BindingMode),
     DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
     DefTy(DefId),
     DefTrait(DefId),
@@ -324,7 +324,7 @@ pub struct FieldPat {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum BindingMode {
     BindByRef(Mutability),
-    BindInfer
+    BindByValue(Mutability),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -445,7 +445,6 @@ pub enum Stmt_ {
 // a refinement on pat.
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct Local {
-    is_mutbl: bool,
     ty: Ty,
     pat: @Pat,
     init: Option<@Expr>,
@@ -880,7 +879,6 @@ pub struct inline_asm {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct arg {
-    is_mutbl: bool,
     ty: Ty,
     pat: @Pat,
     id: NodeId,

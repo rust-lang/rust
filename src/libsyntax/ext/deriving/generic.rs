@@ -922,7 +922,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
     if struct_def.fields.is_empty() {
         return (
             cx.pat_ident_binding_mode(
-                span, struct_ident, ast::BindInfer),
+                span, struct_ident, ast::BindByValue(ast::MutImmutable)),
             ~[]);
     }
 
@@ -985,7 +985,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
         ast::tuple_variant_kind(ref variant_args) => {
             if variant_args.is_empty() {
                 return (cx.pat_ident_binding_mode(
-                    span, variant_ident, ast::BindInfer), ~[]);
+                    span, variant_ident, ast::BindByValue(ast::MutImmutable)), ~[]);
             }
 
             let matching_path = cx.path_ident(span, variant_ident);

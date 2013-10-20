@@ -3817,11 +3817,8 @@ impl Resolver {
                 Some(declaration) => {
                     for argument in declaration.inputs.iter() {
                         let binding_mode = ArgumentIrrefutableMode;
-                        let mutability =
-                            if argument.is_mutbl {Mutable} else {Immutable};
                         this.resolve_pattern(argument.pat,
                                              binding_mode,
-                                             mutability,
                                              None);
 
                         this.resolve_type(&argument.ty);
@@ -4036,8 +4033,6 @@ impl Resolver {
     }
 
     fn resolve_local(&mut self, local: @Local) {
-        let mutability = if local.is_mutbl {Mutable} else {Immutable};
-
         // Resolve the type.
         self.resolve_type(&local.ty);
 
@@ -4052,7 +4047,7 @@ impl Resolver {
         }
 
         // Resolve the pattern.
-        self.resolve_pattern(local.pat, LocalIrrefutableMode, mutability, None);
+        self.resolve_pattern(local.pat, LocalIrrefutableMode, None);
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -4116,8 +4111,7 @@ impl Resolver {
 
         let bindings_list = @mut HashMap::new();
         for pattern in arm.pats.iter() {
-            self.resolve_pattern(*pattern, RefutableMode, Immutable,
-                                 Some(bindings_list));
+            self.resolve_pattern(*pattern, RefutableMode, Some(bindings_list));
         }
 
         // This has to happen *after* we determine which
@@ -4261,7 +4255,6 @@ impl Resolver {
     fn resolve_pattern(&mut self,
                        pattern: @Pat,
                        mode: PatternBindingMode,
-                       mutability: Mutability,
                        // Maps idents to the node ID for the (outermost)
                        // pattern that binds them
                        bindings_list: Option<@mut HashMap<Name,NodeId>>) {
@@ -4324,8 +4317,6 @@ impl Resolver {
                             debug!("(resolving pattern) binding `{}`",
                                    interner_get(renamed));
 
-                            let is_mutable = mutability == Mutable;
-
                             let def = match mode {
                                 RefutableMode => {
                                     // For pattern arms, we must use
@@ -4335,11 +4326,11 @@ impl Resolver {
                                 }
                                 LocalIrrefutableMode => {
                                     // But for locals, we use `def_local`.
-                                    DefLocal(pattern.id, is_mutable)
+                                    DefLocal(pattern.id, binding_mode)
                                 }
                                 ArgumentIrrefutableMode => {
                                     // And for function arguments, `def_arg`.
-                                    DefArg(pattern.id, is_mutable)
+                                    DefArg(pattern.id, binding_mode)
                                 }
                             };
 
@@ -5361,7 +5352,7 @@ impl Resolver {
                                         pat_binding_mode: BindingMode,
                                         descr: &str) {
         match pat_binding_mode {
-            BindInfer => {}
+            BindByValue(_) => {}
             BindByRef(*) => {
                 self.resolve_error(
                     pat.span,

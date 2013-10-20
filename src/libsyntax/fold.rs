@@ -356,7 +356,6 @@ pub trait ast_fold {
 
     fn fold_local(&self, l: @Local) -> @Local {
         @Local {
-            is_mutbl: l.is_mutbl,
             ty: self.fold_ty(&l.ty),
             pat: self.fold_pat(l.pat),
             init: l.init.map(|e| self.fold_expr(e)),
@@ -426,7 +425,6 @@ fn fold_attribute_<T:ast_fold>(at: Attribute, fld: &T) -> Attribute {
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_<T:ast_fold>(a: &arg, fld: &T) -> arg {
     ast::arg {
-        is_mutbl: a.is_mutbl,
         ty: fld.fold_ty(&a.ty),
         pat: fld.fold_pat(a.pat),
         id: fld.new_id(a.id),

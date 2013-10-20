@@ -399,9 +399,12 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: @ast::Expr) -> @ast::Stmt {
-        let pat = self.pat_ident(sp, ident);
+        let pat = if mutbl {
+            self.pat_ident_binding_mode(sp, ident, ast::BindByValue(ast::MutMutable))
+        } else {
+            self.pat_ident(sp, ident)
+        };
         let local = @ast::Local {
-            is_mutbl: mutbl,
             ty: self.ty_infer(sp),
             pat: pat,
             init: Some(ex),
@@ -419,9 +422,12 @@ impl AstBuilder for @ExtCtxt {
                       typ: ast::Ty,
                       ex: @ast::Expr)
                       -> @ast::Stmt {
-        let pat = self.pat_ident(sp, ident);
+        let pat = if mutbl {
+            self.pat_ident_binding_mode(sp, ident, ast::BindByValue(ast::MutMutable))
+        } else {
+            self.pat_ident(sp, ident)
+        };
         let local = @ast::Local {
-            is_mutbl: mutbl,
             ty: typ,
             pat: pat,
             init: Some(ex),
@@ -624,7 +630,7 @@ impl AstBuilder for @ExtCtxt {
         self.pat(span, ast::PatLit(expr))
     }
     fn pat_ident(&self, span: Span, ident: ast::Ident) -> @ast::Pat {
-        self.pat_ident_binding_mode(span, ident, ast::BindInfer)
+        self.pat_ident_binding_mode(span, ident, ast::BindByValue(ast::MutImmutable))
     }
 
     fn pat_ident_binding_mode(&self,
@@ -710,7 +716,6 @@ impl AstBuilder for @ExtCtxt {
     fn arg(&self, span: Span, ident: ast::Ident, ty: ast::Ty) -> ast::arg {
         let arg_pat = self.pat_ident(span, ident);
         ast::arg {
-            is_mutbl: false,
             ty: ty,
             pat: arg_pat,
             id: ast::DUMMY_NODE_ID

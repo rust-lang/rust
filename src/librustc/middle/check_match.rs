@@ -884,7 +884,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 BindByRef(_) => {
                     by_ref_span = Some(span);
                 }
-                BindInfer => {
+                BindByValue(_) => {
                     if cx.moves_map.contains(&id) {
                         any_by_move = true;
                     }
