@@ -40,7 +40,7 @@ use vec::{OwnedVector};
 /// in too much allocation and too many events.
 pub struct Scheduler {
     /// There are N work queues, one per scheduler.
-    work_queue: WorkQueue<~Task>,
+    priv work_queue: WorkQueue<~Task>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
     work_queues: ~[WorkQueue<~Task>],

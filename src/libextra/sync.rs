@@ -167,8 +167,6 @@ enum ReacquireOrderLock<'self> {
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
 pub struct Condvar<'self> {
-
-
     // The 'Sem' object associated with this condvar. This is the one that's
     // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
     priv sem: &'self Sem<~[WaitQueue]>,
@@ -667,7 +665,6 @@ impl RWLock {
 /// The "write permission" token used for rwlock.write_downgrade().
 
 pub struct RWLockWriteMode<'self> { priv lock: &'self RWLock, priv token: NonCopyable }
-
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWLockReadMode<'self> { priv lock: &'self RWLock,
                                    priv token: NonCopyable }

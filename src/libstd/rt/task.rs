@@ -43,20 +43,20 @@ use send_str::SendStr;
 // the type-specific state.
 
 pub struct Task {
-     heap: LocalHeap,
-     priv gc: GarbageCollector,
-     storage: LocalStorage,
-     logger: StdErrLogger,
-     unwinder: Unwinder,
-     taskgroup: Option<Taskgroup>,
-     death: Death,
-     destroyed: bool,
-     name: Option<SendStr>,
-     coroutine: Option<Coroutine>,
-     sched: Option<~Scheduler>,
-     task_type: TaskType,
+    heap: LocalHeap,
+    priv gc: GarbageCollector,
+    storage: LocalStorage,
+    logger: StdErrLogger,
+    unwinder: Unwinder,
+    taskgroup: Option<Taskgroup>,
+    death: Death,
+    destroyed: bool,
+    name: Option<SendStr>,
+    coroutine: Option<Coroutine>,
+    sched: Option<~Scheduler>,
+    task_type: TaskType,
     // Dynamic borrowck debugging info
-     borrow_list: Option<~[BorrowRecord]>
+    borrow_list: Option<~[BorrowRecord]>
 }
 
 pub enum TaskType {

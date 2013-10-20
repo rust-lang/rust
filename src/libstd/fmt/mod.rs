@@ -478,7 +478,7 @@ pub mod rt;
 /// traits.
 pub struct Formatter<'self> {
     /// Flags for formatting (packed version of rt::Flag)
-     flags: uint,
+    flags: uint,
     /// Character used as 'fill' whenever there is alignment
     fill: char,
     /// Boolean indication of whether the output should be left-aligned
@@ -486,12 +486,10 @@ pub struct Formatter<'self> {
     /// Optionally specified integer width that the output should be
     width: Option<uint>,
     /// Optionally specified precision for numeric types
-     precision: Option<uint>,
+    precision: Option<uint>,
 
     /// Output buffer.
     buf: &'self mut io::Writer,
-
-    // already priv
     priv curarg: vec::VecIterator<'self, Argument<'self>>,
     priv args: &'self [Argument<'self>],
 }

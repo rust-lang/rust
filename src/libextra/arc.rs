@@ -521,7 +521,6 @@ fn borrow_rwlock<T:Freeze + Send>(state: *mut RWArcInner<T>) -> *RWLock {
 
 /// The "write permission" token used for RWArc.write_downgrade().
 pub struct RWWriteMode<'self, T> {
-
     priv data: &'self mut T,
     priv token: sync::RWLockWriteMode<'self>,
     priv poison: PoisonOnFail,

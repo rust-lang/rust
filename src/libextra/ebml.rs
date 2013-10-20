@@ -618,8 +618,8 @@ pub mod writer {
 
     // ebml writing
     pub struct Encoder {
-    writer: @io::Writer,
-    priv size_positions: ~[uint],
+        writer: @io::Writer,
+        priv size_positions: ~[uint],
     }
 
     impl Clone for Encoder {

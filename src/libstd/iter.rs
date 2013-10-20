@@ -792,7 +792,6 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
 
 /// A mutable reference to an iterator
 pub struct ByRef<'self, T> {
-    // already priv
     priv iter: &'self mut T
 }
 
@@ -928,7 +927,6 @@ impl<A, T: Clone + Iterator<A>> ClonableIterator for T {
 /// An iterator that repeats endlessly
 #[deriving(Clone)]
 pub struct Cycle<T> {
-    // already priv
     priv orig: T,
     priv iter: T,
 }
@@ -980,7 +978,6 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
 /// An iterator which strings two iterators together
 #[deriving(Clone)]
 pub struct Chain<T, U> {
-    // already priv
     priv a: T,
     priv b: U,
     priv flag: bool
@@ -1050,7 +1047,6 @@ for Chain<T, U> {
 /// An iterator which iterates two other iterators simultaneously
 #[deriving(Clone)]
 pub struct Zip<T, U> {
-    // already priv
     priv a: T,
     priv b: U
 }
@@ -1129,7 +1125,6 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 
 /// An iterator which maps the values of `iter` with `f`
 pub struct Map<'self, A, B, T> {
-    // already priv
     priv iter: T,
     priv f: &'self fn(A) -> B
 }
@@ -1179,7 +1174,6 @@ impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'s
 
 /// An iterator which filters the elements of `iter` with `predicate`
 pub struct Filter<'self, A, T> {
-    // already priv
     priv iter: T,
     priv predicate: &'self fn(&A) -> bool
 }
@@ -1224,7 +1218,6 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'sel
 
 /// An iterator which uses `f` to both filter and map elements from `iter`
 pub struct FilterMap<'self, A, B, T> {
-    // already priv
     priv iter: T,
     priv f: &'self fn(A) -> Option<B>
 }
@@ -1269,7 +1262,6 @@ for FilterMap<'self, A, B, T> {
 /// An iterator which yields the current count and the element during iteration
 #[deriving(Clone)]
 pub struct Enumerate<T> {
-    // already priv
     priv iter: T,
     priv count: uint
 }
@@ -1324,7 +1316,6 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
 
 /// An iterator with a `peek()` that returns an optional reference to the next element.
 pub struct Peekable<A, T> {
-    // already priv
     priv iter: T,
     priv peeked: Option<A>,
 }
@@ -1369,7 +1360,6 @@ impl<'self, A, T: Iterator<A>> Peekable<A, T> {
 
 /// An iterator which rejects elements while `predicate` is true
 pub struct SkipWhile<'self, A, T> {
-    // already priv
     priv iter: T,
     priv flag: bool,
     priv predicate: &'self fn(&A) -> bool
@@ -1408,7 +1398,6 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
 
 /// An iterator which only accepts elements while `predicate` is true
 pub struct TakeWhile<'self, A, T> {
-    // already priv
     priv iter: T,
     priv flag: bool,
     priv predicate: &'self fn(&A) -> bool
@@ -1444,7 +1433,6 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhile<'self, A, T> {
 /// An iterator which skips over `n` elements of `iter`.
 #[deriving(Clone)]
 pub struct Skip<T> {
-    // already priv
     priv iter: T,
     priv n: uint
 }
@@ -1509,7 +1497,6 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 #[deriving(Clone)]
 pub struct Take<T> {
-    // already priv
     priv iter: T,
     priv n: uint
 }
@@ -1559,13 +1546,11 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
 
 /// An iterator to maintain state while iterating another iterator
 pub struct Scan<'self, A, B, T, St> {
-    // already priv
     priv iter: T,
     priv f: &'self fn(&mut St, A) -> Option<B>,
 
     /// The current internal state to be passed to the closure next.
-    // priv by reedlepee
-    priv state: St
+    state: St
 }
 
 impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
@@ -1585,7 +1570,6 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
 /// and yields the elements of the produced iterators
 ///
 pub struct FlatMap<'self, A, T, U> {
-    // already priv
     priv iter: T,
     priv f: &'self fn(A) -> U,
     priv frontiter: Option<U>,
@@ -1645,7 +1629,6 @@ impl<'self,
 /// yields `None` once.
 #[deriving(Clone, DeepClone)]
 pub struct Fuse<T> {
-    // already priv
     priv iter: T,
     priv done: bool
 }
@@ -1718,7 +1701,6 @@ impl<T> Fuse<T> {
 /// An iterator that calls a function with a reference to each
 /// element before yielding it.
 pub struct Inspect<'self, A, T> {
-    // already priv
     priv iter: T,
     priv f: &'self fn(&A)
 }
@@ -1772,10 +1754,8 @@ for Inspect<'self, A, T> {
 
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct Unfold<'self, A, St> {
-    // already priv
     priv f: &'self fn(&mut St) -> Option<A>,
     /// Internal state that will be yielded on the next iteration
-    /// priv reedlepee
     state: St
 }
 
@@ -1809,7 +1789,6 @@ impl<'self, A, St> Iterator<A> for Unfold<'self, A, St> {
 /// iteration
 #[deriving(Clone)]
 pub struct Counter<A> {
-    // by reedlepee
     /// The current state the counter is at (next value to be yielded)
     priv state: A,
     /// The amount that this iterator is stepping by
@@ -1839,7 +1818,6 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 /// An iterator over the range [start, stop)
 #[deriving(Clone, DeepClone)]
 pub struct Range<A> {
-    // already priv
     priv state: A,
     priv stop: A,
     priv one: A
@@ -1884,7 +1862,6 @@ impl<A: Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
 /// An iterator over the range [start, stop]
 #[deriving(Clone, DeepClone)]
 pub struct RangeInclusive<A> {
-    // already priv
     priv range: Range<A>,
     priv done: bool
 }
@@ -1946,7 +1923,6 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclu
 /// An iterator over the range [start, stop) by `step`. It handles overflow by stopping.
 #[deriving(Clone, DeepClone)]
 pub struct RangeStep<A> {
-    // already priv
     priv state: A,
     priv stop: A,
     priv step: A,
@@ -1979,7 +1955,6 @@ impl<A: CheckedAdd + Ord + Clone> Iterator<A> for RangeStep<A> {
 /// An iterator over the range [start, stop] by `step`. It handles overflow by stopping.
 #[deriving(Clone, DeepClone)]
 pub struct RangeStepInclusive<A> {
-    // already priv
     priv state: A,
     priv stop: A,
     priv step: A,
@@ -2015,7 +1990,6 @@ impl<A: CheckedAdd + Ord + Clone + Eq> Iterator<A> for RangeStepInclusive<A> {
 /// An iterator that repeats an element endlessly
 #[deriving(Clone, DeepClone)]
 pub struct Repeat<A> {
-    // already priv
     priv element: A
 }
 

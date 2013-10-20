@@ -1815,9 +1815,9 @@ pub mod fsync {
     }
 
     pub struct Arg<t> {
-       priv val: t,
-       priv opt_level: Option<Level>,
-       priv fsync_fn: extern "Rust" fn(f: &t, Level) -> int,
+        priv val: t,
+        priv opt_level: Option<Level>,
+        priv fsync_fn: extern "Rust" fn(f: &t, Level) -> int,
     }
 
     // fsync file after executing blk

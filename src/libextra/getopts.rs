@@ -114,9 +114,9 @@ pub enum Occur {
 pub struct Opt {
     /// Name of the option
     name: Name,
-    /// Wheter it has an argument...  should be public!!
+    /// Wheter it has an argument
     hasarg: HasArg,
-    /// How often it can occur... should be private !!
+    /// How often it can occur
     occur: Occur,
     /// Which options it aliases
     priv aliases: ~[Opt],
@@ -133,13 +133,11 @@ enum Optval {
 /// of matches and a vector of free strings.
 #[deriving(Clone, Eq)]
 pub struct Matches {
-
     /// Options that matched
     priv opts: ~[Opt],
     /// Values of the Options that matched
     priv vals: ~[~[Optval]],
     /// Free string fragments
-    // public
     free: ~[~str]
 }
 
