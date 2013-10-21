@@ -18,14 +18,14 @@ fn box_imm() {
     let v = ~3;
     let _w = &v;
     do task::spawn {
-        info2!("v={}", *v);
+        info!("v={}", *v);
         //~^ ERROR cannot move `v` into closure
     }
 
     let v = ~3;
     let _w = &v;
     task::spawn(|| {
-        info2!("v={}", *v);
+        info!("v={}", *v);
         //~^ ERROR cannot move
     });
 }

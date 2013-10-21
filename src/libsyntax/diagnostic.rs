@@ -69,7 +69,7 @@ struct CodemapT {
 impl span_handler for CodemapT {
     fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
-        fail2!();
+        fail!();
     }
     fn span_err(@mut self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
@@ -95,7 +95,7 @@ impl span_handler for CodemapT {
 impl handler for HandlerT {
     fn fatal(@mut self, msg: &str) -> ! {
         self.emit.emit(None, msg, fatal);
-        fail2!();
+        fail!();
     }
     fn err(@mut self, msg: &str) {
         self.emit.emit(None, msg, error);

@@ -13,23 +13,23 @@
 
 fn main() {
     // check
-    if ! cfg!(foo) { fail2!() }
-    if   cfg!(not(foo)) { fail2!() }
+    if ! cfg!(foo) { fail!() }
+    if   cfg!(not(foo)) { fail!() }
 
-    if ! cfg!(bar(baz)) { fail2!() }
-    if   cfg!(not(bar(baz))) { fail2!() }
+    if ! cfg!(bar(baz)) { fail!() }
+    if   cfg!(not(bar(baz))) { fail!() }
 
-    if ! cfg!(qux="foo") { fail2!() }
-    if   cfg!(not(qux="foo")) { fail2!() }
+    if ! cfg!(qux="foo") { fail!() }
+    if   cfg!(not(qux="foo")) { fail!() }
 
-    if ! cfg!(foo, bar(baz), qux="foo") { fail2!() }
-    if   cfg!(not(foo, bar(baz), qux="foo")) { fail2!() }
+    if ! cfg!(foo, bar(baz), qux="foo") { fail!() }
+    if   cfg!(not(foo, bar(baz), qux="foo")) { fail!() }
 
-    if cfg!(not_a_cfg) { fail2!() }
-    if cfg!(not_a_cfg, foo, bar(baz), qux="foo") { fail2!() }
+    if cfg!(not_a_cfg) { fail!() }
+    if cfg!(not_a_cfg, foo, bar(baz), qux="foo") { fail!() }
 
-    if ! cfg!(not(not_a_cfg)) { fail2!() }
-    if ! cfg!(not(not_a_cfg), foo, bar(baz), qux="foo") { fail2!() }
+    if ! cfg!(not(not_a_cfg)) { fail!() }
+    if ! cfg!(not(not_a_cfg), foo, bar(baz), qux="foo") { fail!() }
 
-    if cfg!(trailing_comma, ) { fail2!() }
+    if cfg!(trailing_comma, ) { fail!() }
 }

@@ -141,7 +141,7 @@ impl<'self> ToBase64 for &'self [u8] {
                     v.push('=' as u8);
                 }
             }
-            _ => fail2!("Algebra is broken, please alert the math police")
+            _ => fail!("Algebra is broken, please alert the math police")
         }
 
         unsafe {

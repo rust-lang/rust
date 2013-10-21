@@ -1229,7 +1229,7 @@ pub mod raw {
                 match ctr {
                     0 => assert_eq!(x, &~"zero"),
                     1 => assert_eq!(x, &~"one"),
-                    _ => fail2!("shouldn't happen!")
+                    _ => fail!("shouldn't happen!")
                 }
                 ctr += 1;
             }
@@ -2001,8 +2001,8 @@ impl<'self> StrSlice<'self> for &'self str {
         if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
 
         match (begin_byte, end_byte) {
-            (None, _) => fail2!("slice_chars: `begin` is beyond end of string"),
-            (_, None) => fail2!("slice_chars: `end` is beyond end of string"),
+            (None, _) => fail!("slice_chars: `begin` is beyond end of string"),
+            (_, None) => fail!("slice_chars: `end` is beyond end of string"),
             (Some(a), Some(b)) => unsafe { raw::slice_bytes(*self, a, b) }
         }
     }
@@ -3246,7 +3246,7 @@ mod tests {
         // original problem code path anymore.)
         let s = ~"";
         let _bytes = s.as_bytes();
-        fail2!();
+        fail!();
     }
 
     #[test]
@@ -3304,8 +3304,8 @@ mod tests {
         while i < n1 {
             let a: u8 = s1[i];
             let b: u8 = s2[i];
-            debug2!("{}", a);
-            debug2!("{}", b);
+            debug!("{}", a);
+            debug!("{}", b);
             assert_eq!(a, b);
             i += 1u;
         }

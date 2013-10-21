@@ -12,8 +12,8 @@ enum maybe<T> { nothing, just(T), }
 
 fn foo(x: maybe<int>) {
     match x {
-        nothing => { error2!("A"); }
-        just(_a) => { error2!("B"); }
+        nothing => { error!("A"); }
+        just(_a) => { error!("B"); }
     }
 }
 

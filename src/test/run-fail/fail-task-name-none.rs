@@ -12,6 +12,6 @@
 
 fn main() {
     do spawn {
-        fail2!("test");
+        fail!("test");
     }
 }

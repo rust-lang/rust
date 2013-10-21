@@ -129,13 +129,13 @@ pub mod jit {
             let cstore = sess.cstore;
             let r = cstore::get_used_crate_files(cstore);
             for cratepath in r.iter() {
-                debug2!("linking: {}", cratepath.display());
+                debug!("linking: {}", cratepath.display());
 
                 do cratepath.with_c_str |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
-                    debug2!("linked: {}", cratepath.display());
+                    debug!("linked: {}", cratepath.display());
                 }
             }
 
@@ -915,20 +915,20 @@ pub fn link_binary(sess: Session,
 
     let output = if *sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
-        debug2!("link_meta.name:  {}", lm.name);
-        debug2!("long_libname: {}", long_libname);
-        debug2!("out_filename: {}", out_filename.display());
+        debug!("link_meta.name:  {}", lm.name);
+        debug!("long_libname: {}", long_libname);
+        debug!("out_filename: {}", out_filename.display());
         let out_dirname = out_filename.dir_path();
-        debug2!("dirname(out_filename): {}", out_dirname.display());
+        debug!("dirname(out_filename): {}", out_dirname.display());
 
         out_filename.with_filename(long_libname)
     } else {
         out_filename.clone()
     };
 
-    debug2!("output: {}", output.display());
+    debug!("output: {}", output.display());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
-    debug2!("{} link args: {}", cc_prog, cc_args.connect(" "));
+    debug!("{} link args: {}", cc_prog, cc_args.connect(" "));
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
         io::println(format!("{} link args: {}", cc_prog, cc_args.connect(" ")));
     }

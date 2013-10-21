@@ -23,7 +23,7 @@ pub fn main() {
 
         *x = @F {f: ~4};
 
-        info2!("ptr::to_unsafe_ptr(*b_x) = {:x}",
+        info!("ptr::to_unsafe_ptr(*b_x) = {:x}",
                ptr::to_unsafe_ptr(&(**b_x)) as uint);
         assert_eq!(**b_x, 3);
         assert!(ptr::to_unsafe_ptr(&(*x.f)) != ptr::to_unsafe_ptr(&(**b_x)));

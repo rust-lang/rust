@@ -25,8 +25,8 @@ fn f<T:Clone>(t: T) -> Pair<T> {
 
 pub fn main() {
     let b = f::<int>(10);
-    info2!("{:?}" ,b.a);
-    info2!("{:?}", b.b);
+    info!("{:?}" ,b.a);
+    info!("{:?}", b.b);
     assert_eq!(b.a, 10);
     assert_eq!(b.b, 10);
 }

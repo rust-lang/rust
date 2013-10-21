@@ -175,7 +175,7 @@ pub trait Rng {
                 *b = (rand >> 8) as u8;
                 *c = (rand >> 16) as u8;
             }
-            _ => fail2!("Rng.fill_bytes: the impossible occurred: remaining != 1, 2 or 3")
+            _ => fail!("Rng.fill_bytes: the impossible occurred: remaining != 1, 2 or 3")
         }
     }
 
@@ -797,7 +797,7 @@ mod test {
         let mut r = rng();
         let a = r.gen::<f64>();
         let b = r.gen::<f64>();
-        debug2!("{:?}", (a, b));
+        debug!("{:?}", (a, b));
     }
 
     #[test]
@@ -810,9 +810,9 @@ mod test {
     #[test]
     fn test_gen_ascii_str() {
         let mut r = rng();
-        debug2!("{}", r.gen_ascii_str(10u));
-        debug2!("{}", r.gen_ascii_str(10u));
-        debug2!("{}", r.gen_ascii_str(10u));
+        debug!("{}", r.gen_ascii_str(10u));
+        debug!("{}", r.gen_ascii_str(10u));
+        debug!("{}", r.gen_ascii_str(10u));
         assert_eq!(r.gen_ascii_str(0u).len(), 0u);
         assert_eq!(r.gen_ascii_str(10u).len(), 10u);
         assert_eq!(r.gen_ascii_str(16u).len(), 16u);

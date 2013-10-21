@@ -34,7 +34,7 @@ pub fn replace_bound_regions_in_fn_sig(
 
     for &t in opt_self_ty.iter() { all_tys.push(t) }
 
-    debug2!("replace_bound_regions_in_fn_sig(self_ty={:?}, fn_sig={}, \
+    debug!("replace_bound_regions_in_fn_sig(self_ty={:?}, fn_sig={}, \
             all_tys={:?})",
            opt_self_ty.map(|t| ppaux::ty_to_str(tcx, t)),
            ppaux::fn_sig_to_str(tcx, fn_sig),
@@ -42,7 +42,7 @@ pub fn replace_bound_regions_in_fn_sig(
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
-        debug2!("br={:?}", br);
+        debug!("br={:?}", br);
         mapf(br)
     };
     let new_fn_sig = ty::fold_sig(fn_sig, |t| {
@@ -50,7 +50,7 @@ pub fn replace_bound_regions_in_fn_sig(
     });
     let new_self_ty = opt_self_ty.map(|t| replace_bound_regions(tcx, isr, t));
 
-    debug2!("result of replace_bound_regions_in_fn_sig: \
+    debug!("result of replace_bound_regions_in_fn_sig: \
             new_self_ty={:?}, \
             fn_sig={}",
            new_self_ty.map(|t| ppaux::ty_to_str(tcx, t)),
@@ -251,7 +251,7 @@ pub fn relate_free_regions(
      * Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
      */
 
-    debug2!("relate_free_regions >>");
+    debug!("relate_free_regions >>");
 
     let mut all_tys = ~[];
     for arg in fn_sig.inputs.iter() {
@@ -262,7 +262,7 @@ pub fn relate_free_regions(
     }
 
     for &t in all_tys.iter() {
-        debug2!("relate_free_regions(t={})", ppaux::ty_to_str(tcx, t));
+        debug!("relate_free_regions(t={})", ppaux::ty_to_str(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {
                 (&ty::re_free(free_a), &ty::re_free(free_b)) => {
@@ -273,5 +273,5 @@ pub fn relate_free_regions(
         })
     }
 
-    debug2!("<< relate_free_regions");
+    debug!("<< relate_free_regions");
 }

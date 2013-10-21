@@ -11,8 +11,8 @@
 pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
-    for i in x.iter() { info2!("{:?}", *i); y += *i; }
-    info2!("{:?}", y);
+    for i in x.iter() { info!("{:?}", *i); y += *i; }
+    info!("{:?}", y);
     assert_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
@@ -25,8 +25,8 @@ pub fn main() {
         // ...
 
         i += 1;
-        info2!("{:?}", i);
-        info2!("{:?}", c);
+        info!("{:?}", i);
+        info!("{:?}", c);
     }
     assert_eq!(i, 11);
 }

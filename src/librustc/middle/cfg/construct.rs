@@ -239,7 +239,7 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::ExprForLoop(*) => fail2!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
             ast::ExprLoop(ref body, _) => {
                 //

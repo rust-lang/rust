@@ -79,7 +79,7 @@ impl Sudoku {
                 g[row][col] = from_str::<uint>(comps[2]).unwrap() as u8;
             }
             else {
-                fail2!("Invalid sudoku file");
+                fail!("Invalid sudoku file");
             }
         }
         return Sudoku::new(g)
@@ -117,7 +117,7 @@ impl Sudoku {
                 ptr = ptr + 1u;
             } else {
                 // no: redo this field aft recoloring pred; unless there is none
-                if ptr == 0u { fail2!("No solution found for this sudoku"); }
+                if ptr == 0u { fail!("No solution found for this sudoku"); }
                 ptr = ptr - 1u;
             }
         }

@@ -11,5 +11,5 @@
 // error-pattern:failed at 'test-fail-fmt 42 rust'
 
 fn main() {
-    fail2!("test-fail-fmt {} {}", 42, "rust");
+    fail!("test-fail-fmt {} {}", 42, "rust");
 }

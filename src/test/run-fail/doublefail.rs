@@ -12,6 +12,6 @@
 
 //error-pattern:One
 fn main() {
-    fail2!("One");
-    fail2!("Two");
+    fail!("One");
+    fail!("Two");
 }

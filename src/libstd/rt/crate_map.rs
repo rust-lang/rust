@@ -93,7 +93,7 @@ fn do_iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry),
                     do_iter_crate_map(*child, |x| f(x), visited);
                 }
             },
-            _ => fail2!("invalid crate map version")
+            _ => fail!("invalid crate map version")
         }
     }
 }

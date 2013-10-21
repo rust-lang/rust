@@ -15,5 +15,5 @@ fn main() {
         Bar = foo //~ ERROR attempt to use a non-constant value in a constant
     }
 
-    error2!("{:?}", Bar);
+    error!("{:?}", Bar);
 }

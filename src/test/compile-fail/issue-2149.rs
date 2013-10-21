@@ -14,7 +14,7 @@ trait vec_monad<A> {
 
 impl<A> vec_monad<A> for ~[A] {
     fn bind<B>(&self, f: &fn(A) -> ~[B]) {
-        let mut r = fail2!();
+        let mut r = fail!();
         for elt in self.iter() { r = r + f(*elt); }
         //~^ ERROR the type of this value must be known
    }

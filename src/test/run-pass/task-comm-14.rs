@@ -20,7 +20,7 @@ pub fn main() {
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
-        info2!("{}", i);
+        info!("{}", i);
         let ch = ch.clone();
         task::spawn({let i = i; || child(i, &ch)});
         i = i - 1;
@@ -31,15 +31,15 @@ pub fn main() {
 
     i = 10;
     while (i > 0) {
-        info2!("{}", i);
+        info!("{}", i);
         po.recv();
         i = i - 1;
     }
 
-    info2!("main thread exiting");
+    info!("main thread exiting");
 }
 
 fn child(x: int, ch: &comm::SharedChan<int>) {
-    info2!("{}", x);
+    info!("{}", x);
     ch.send(x);
 }

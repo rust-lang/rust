@@ -152,7 +152,7 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         let vers = decoder::get_crate_vers(cdata.data);
-        debug2!("Add hash[{}]: {} {}", cdata.name, vers, hash);
+        debug!("Add hash[{}]: {} {}", cdata.name, vers, hash);
         result.push(crate_hash {
             name: cdata.name,
             vers: vers,
@@ -164,9 +164,9 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
     };
 
-    debug2!("sorted:");
+    debug!("sorted:");
     for x in sorted.iter() {
-        debug2!("  hash[{}]: {}", x.name, x.hash);
+        debug!("  hash[{}]: {}", x.name, x.hash);
     }
 
     sorted.map(|ch| ch.hash)

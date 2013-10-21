@@ -29,9 +29,9 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: &fn(U) -> T) -> T {
 pub fn indent<R>(op: &fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
-    debug2!(">>");
+    debug!(">>");
     let r = op();
-    debug2!("<< (Result = {:?})", r);
+    debug!("<< (Result = {:?})", r);
     r
 }
 
@@ -40,7 +40,7 @@ pub struct _indenter {
 }
 
 impl Drop for _indenter {
-    fn drop(&mut self) { debug2!("<<"); }
+    fn drop(&mut self) { debug!("<<"); }
 }
 
 pub fn _indenter(_i: ()) -> _indenter {
@@ -50,7 +50,7 @@ pub fn _indenter(_i: ()) -> _indenter {
 }
 
 pub fn indenter() -> _indenter {
-    debug2!(">>");
+    debug!(">>");
     _indenter(())
 }
 

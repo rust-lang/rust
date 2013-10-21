@@ -16,10 +16,10 @@ use module_of_many_things::*;
 use dug::too::greedily::and::too::deep::*;
 
 mod module_of_many_things {
-    pub fn f1() { info2!("f1"); }
-    pub fn f2() { info2!("f2"); }
-    fn f3() { info2!("f3"); }
-    pub fn f4() { info2!("f4"); }
+    pub fn f1() { info!("f1"); }
+    pub fn f2() { info!("f2"); }
+    fn f3() { info!("f3"); }
+    pub fn f4() { info!("f4"); }
 }
 
 mod dug {
@@ -28,8 +28,8 @@ mod dug {
             pub mod and {
                 pub mod too {
                     pub mod deep {
-                        pub fn nameless_fear() { info2!("Boo!"); }
-                        pub fn also_redstone() { info2!("Whatever."); }
+                        pub fn nameless_fear() { info!("Boo!"); }
+                        pub fn also_redstone() { info!("Whatever."); }
                     }
                 }
             }

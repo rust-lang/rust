@@ -66,7 +66,7 @@ fn parse_opts(argv: ~[~str]) -> Config {
       Ok(ref m) => {
           return Config {stress: m.opt_present("stress")}
       }
-      Err(_) => { fail2!(); }
+      Err(_) => { fail!(); }
     }
 }
 
@@ -76,7 +76,7 @@ fn stress_task(id: int) {
         let n = 15;
         assert_eq!(fib(n), fib(n));
         i += 1;
-        error2!("{}: Completed {} iterations", id, i);
+        error!("{}: Completed {} iterations", id, i);
     }
 }
 

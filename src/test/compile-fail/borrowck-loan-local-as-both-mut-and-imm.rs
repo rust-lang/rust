@@ -16,7 +16,7 @@ use std::either::{Either, Left, Right};
                 *x = Right(1.0);
                 *z
             }
-            _ => fail2!()
+            _ => fail!()
         }
     }
 

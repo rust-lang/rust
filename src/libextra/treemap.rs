@@ -831,7 +831,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
       }
     }
     return match node.take() {
-        Some(~TreeNode{value, _}) => Some(value), None => fail2!()
+        Some(~TreeNode{value, _}) => Some(value), None => fail!()
     };
 }
 
@@ -900,7 +900,7 @@ mod test_treemap {
         assert!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
-          None => fail2!(), Some(x) => *x = new
+          None => fail!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
     }

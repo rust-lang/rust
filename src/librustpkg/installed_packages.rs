@@ -31,17 +31,17 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
         }
         let libfiles = os::list_dir(&p.join("lib"));
         for lib in libfiles.iter() {
-            debug2!("Full name: {}", lib.display());
+            debug!("Full name: {}", lib.display());
             match has_library(lib) {
                 Some(basename) => {
                     let parent = p.join("lib");
-                    debug2!("parent = {}, child = {}",
+                    debug!("parent = {}, child = {}",
                             parent.display(), lib.display());
                     let rel_p = lib.path_relative_from(&parent).unwrap();
-                    debug2!("Rel: {}", rel_p.display());
+                    debug!("Rel: {}", rel_p.display());
                     let rel_path = rel_p.join(basename);
                     do rel_path.display().with_str |s| {
-                        debug2!("Rel name: {}", s);
+                        debug!("Rel name: {}", s);
                         f(&PkgId::new(s));
                     }
                 }

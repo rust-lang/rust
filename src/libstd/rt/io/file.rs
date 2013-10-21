@@ -59,7 +59,7 @@ use path::Path;
 ///     }).inside {
 ///         let stream = match open(p, Create, ReadWrite) {
 ///             Some(s) => s,
-///             None => fail2!("whoops! I'm sure this raised, anyways..");
+///             None => fail!("whoops! I'm sure this raised, anyways..");
 ///         }
 ///         // do some stuff with that stream
 ///
@@ -223,7 +223,7 @@ pub fn rmdir<P: PathLike>(path: &P) {
 ///     }).inside {
 ///         let info = match stat(p) {
 ///             Some(s) => s,
-///             None => fail2!("whoops! I'm sure this raised, anyways..");
+///             None => fail!("whoops! I'm sure this raised, anyways..");
 ///         }
 ///         if stat.is_file {
 ///             // just imagine the possibilities ...
@@ -271,7 +271,7 @@ pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
 ///                 else { cb(entry); }
 ///             }
 ///         }
-///         else { fail2!("nope"); }
+///         else { fail!("nope"); }
 ///     }
 ///
 /// # Errors
@@ -596,7 +596,7 @@ impl FileInfo for Path { }
 ///             else { cb(entry); }
 ///         }
 ///     }
-///     else { fail2!("nope"); }
+///     else { fail!("nope"); }
 /// }
 /// ```
 pub trait DirectoryInfo : FileSystemInfo {
@@ -713,7 +713,7 @@ mod test {
                 let mut read_stream = open(filename, Open, Read).unwrap();
                 let mut read_buf = [0, .. 1028];
                 let read_str = match read_stream.read(read_buf).unwrap() {
-                    -1|0 => fail2!("shouldn't happen"),
+                    -1|0 => fail!("shouldn't happen"),
                     n => str::from_utf8(read_buf.slice_to(n))
                 };
                 assert!(read_str == message.to_owned());
@@ -881,7 +881,7 @@ mod test {
             }
             let stat_res = match stat(filename) {
                 Some(s) => s,
-                None => fail2!("shouldn't happen")
+                None => fail!("shouldn't happen")
             };
             assert!(stat_res.is_file);
             unlink(filename);
@@ -895,7 +895,7 @@ mod test {
             mkdir(filename);
             let stat_res = match stat(filename) {
                 Some(s) => s,
-                None => fail2!("shouldn't happen")
+                None => fail!("shouldn't happen")
             };
             assert!(stat_res.is_dir);
             rmdir(filename);
@@ -964,7 +964,7 @@ mod test {
                             r.read(mem);
                             let read_str = str::from_utf8(mem);
                             let expected = match n {
-                                None|Some("") => fail2!("really shouldn't happen.."),
+                                None|Some("") => fail!("really shouldn't happen.."),
                                 Some(n) => prefix+n
                             };
                             assert!(expected == read_str);
@@ -972,7 +972,7 @@ mod test {
                         f.unlink();
                     }
                 },
-                None => fail2!("shouldn't happen")
+                None => fail!("shouldn't happen")
             }
             dir.rmdir();
         }

@@ -29,7 +29,7 @@ fn complainer(c: @int) -> complainer {
 
 fn f() {
     let _c = complainer(@0);
-    fail2!();
+    fail!();
 }
 
 pub fn main() {

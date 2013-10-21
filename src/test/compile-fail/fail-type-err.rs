@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern:failed to find an implementation of trait std::sys::FailWithCause for ~[int]
-fn main() { fail2!(~[0i]); }
+fn main() { fail!(~[0i]); }

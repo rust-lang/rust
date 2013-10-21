@@ -244,7 +244,7 @@ impl<T> Option<T> {
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
             Some(ref x) => x,
-            None => fail2!("called `Option::get_ref()` on a `None` value"),
+            None => fail!("called `Option::get_ref()` on a `None` value"),
         }
     }
 
@@ -264,7 +264,7 @@ impl<T> Option<T> {
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
             Some(ref mut x) => x,
-            None => fail2!("called `Option::get_mut_ref()` on a `None` value"),
+            None => fail!("called `Option::get_mut_ref()` on a `None` value"),
         }
     }
 
@@ -286,7 +286,7 @@ impl<T> Option<T> {
     pub fn unwrap(self) -> T {
         match self {
             Some(x) => x,
-            None => fail2!("called `Option::unwrap()` on a `None` value"),
+            None => fail!("called `Option::unwrap()` on a `None` value"),
         }
     }
 
@@ -299,7 +299,7 @@ impl<T> Option<T> {
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
         if self.is_none() {
-            fail2!("called `Option::take_unwrap()` on a `None` value")
+            fail!("called `Option::take_unwrap()` on a `None` value")
         }
         self.take().unwrap()
     }
@@ -314,7 +314,7 @@ impl<T> Option<T> {
     pub fn expect(self, reason: &str) -> T {
         match self {
             Some(val) => val,
-            None => fail2!("{}", reason.to_owned()),
+            None => fail!("{}", reason.to_owned()),
         }
     }
 
@@ -630,7 +630,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_unwrap_fail2() {
+    fn test_unwrap_fail() {
         let x: Option<~str> = None;
         x.unwrap();
     }

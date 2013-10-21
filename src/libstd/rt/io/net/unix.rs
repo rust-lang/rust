@@ -16,36 +16,36 @@ pub struct UnixStream;
 
 impl UnixStream {
     pub fn connect<P: PathLike>(_path: &P) -> Option<UnixStream> {
-        fail2!()
+        fail!()
     }
 }
 
 impl Reader for UnixStream {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail2!() }
+    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
 
-    fn eof(&mut self) -> bool { fail2!() }
+    fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for UnixStream {
-    fn write(&mut self, _v: &[u8]) { fail2!() }
+    fn write(&mut self, _v: &[u8]) { fail!() }
 
-    fn flush(&mut self) { fail2!() }
+    fn flush(&mut self) { fail!() }
 }
 
 pub struct UnixListener;
 
 impl UnixListener {
     pub fn bind<P: PathLike>(_path: &P) -> Option<UnixListener> {
-        fail2!()
+        fail!()
     }
 }
 
 impl Listener<UnixStream, UnixAcceptor> for UnixListener {
-    fn listen(self) -> Option<UnixAcceptor> { fail2!() }
+    fn listen(self) -> Option<UnixAcceptor> { fail!() }
 }
 
 pub struct UnixAcceptor;
 
 impl Acceptor<UnixStream> for UnixAcceptor {
-    fn accept(&mut self) -> Option<UnixStream> { fail2!() }
+    fn accept(&mut self) -> Option<UnixStream> { fail!() }
 }

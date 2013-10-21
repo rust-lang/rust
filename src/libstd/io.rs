@@ -946,8 +946,8 @@ impl Reader for *libc::FILE {
                   match libc::ferror(*self) {
                     0 => (),
                     _ => {
-                      error2!("error reading buffer: {}", os::last_os_error());
-                      fail2!();
+                      error!("error reading buffer: {}", os::last_os_error());
+                      fail!();
                     }
                   }
                 }
@@ -1194,8 +1194,8 @@ impl Writer for *libc::FILE {
                                         len as size_t,
                                         *self);
                 if nout != len as size_t {
-                    error2!("error writing buffer: {}", os::last_os_error());
-                    fail2!();
+                    error!("error writing buffer: {}", os::last_os_error());
+                    fail!();
                 }
             }
         }
@@ -1255,8 +1255,8 @@ impl Writer for fd_t {
                     let vb = ptr::offset(vbuf, count as int) as *c_void;
                     let nout = libc::write(*self, vb, len as IoSize);
                     if nout < 0 as IoRet {
-                        error2!("error writing buffer: {}", os::last_os_error());
-                        fail2!();
+                        error!("error writing buffer: {}", os::last_os_error());
+                        fail!();
                     }
                     count += nout as uint;
                 }
@@ -1264,12 +1264,12 @@ impl Writer for fd_t {
         }
     }
     fn seek(&self, _offset: int, _whence: SeekStyle) {
-        error2!("need 64-bit foreign calls for seek, sorry");
-        fail2!();
+        error!("need 64-bit foreign calls for seek, sorry");
+        fail!();
     }
     fn tell(&self) -> uint {
-        error2!("need 64-bit foreign calls for tell, sorry");
-        fail2!();
+        error!("need 64-bit foreign calls for tell, sorry");
+        fail!();
     }
     fn flush(&self) -> int { 0 }
     fn get_type(&self) -> WriterType {
@@ -1895,17 +1895,17 @@ mod tests {
     #[test]
     fn test_simple() {
         let tmpfile = &Path::new("tmp/lib-io-test-simple.tmp");
-        debug2!("{}", tmpfile.display());
+        debug!("{}", tmpfile.display());
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
-        debug2!("{}", frood.clone());
+        debug!("{}", frood.clone());
         {
             let out = io::file_writer(tmpfile, [io::Create, io::Truncate]).unwrap();
             out.write_str(frood);
         }
         let inp = io::file_reader(tmpfile).unwrap();
         let frood2: ~str = inp.read_c_str();
-        debug2!("{}", frood2.clone());
+        debug!("{}", frood2.clone());
         assert_eq!(frood, frood2);
     }
 
@@ -1922,14 +1922,14 @@ mod tests {
         {
             let file = io::file_reader(&path).unwrap();
             do file.each_byte() |_| {
-                fail2!("must be empty")
+                fail!("must be empty")
             };
         }
 
         {
             let file = io::file_reader(&path).unwrap();
             do file.each_char() |_| {
-                fail2!("must be empty")
+                fail!("must be empty")
             };
         }
     }
@@ -2016,7 +2016,7 @@ mod tests {
           Err(e) => {
             assert_eq!(e, ~"error opening not a file");
           }
-          Ok(_) => fail2!()
+          Ok(_) => fail!()
         }
     }
 
@@ -2056,7 +2056,7 @@ mod tests {
           Err(e) => {
             assert!(e.starts_with("error opening"));
           }
-          Ok(_) => fail2!()
+          Ok(_) => fail!()
         }
     }
 

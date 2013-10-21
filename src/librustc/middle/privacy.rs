@@ -192,7 +192,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
             // Trait implementation methods are all completely public
             ast::item_impl(_, Some(*), _, ref methods) => {
                 for method in methods.iter() {
-                    debug2!("exporting: {}", method.id);
+                    debug!("exporting: {}", method.id);
                     self.exported_items.insert(method.id);
                 }
             }
@@ -203,11 +203,11 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
                 for method in methods.iter() {
                     match *method {
                         ast::provided(ref m) => {
-                            debug2!("provided {}", m.id);
+                            debug!("provided {}", m.id);
                             self.exported_items.insert(m.id);
                         }
                         ast::required(ref m) => {
-                            debug2!("required {}", m.id);
+                            debug!("required {}", m.id);
                             self.exported_items.insert(m.id);
                         }
                     }
@@ -267,26 +267,26 @@ impl<'self> PrivacyVisitor<'self> {
     fn def_privacy(&self, did: ast::DefId) -> PrivacyResult {
         if !is_local(did) {
             if self.external_exports.contains(&did) {
-                debug2!("privacy - {:?} was externally exported", did);
+                debug!("privacy - {:?} was externally exported", did);
                 return Allowable;
             }
-            debug2!("privacy - is {:?} a public method", did);
+            debug!("privacy - is {:?} a public method", did);
             return match self.tcx.methods.find(&did) {
                 Some(meth) => {
-                    debug2!("privacy - well at least it's a method: {:?}", meth);
+                    debug!("privacy - well at least it's a method: {:?}", meth);
                     match meth.container {
                         ty::TraitContainer(id) => {
-                            debug2!("privacy - recursing on trait {:?}", id);
+                            debug!("privacy - recursing on trait {:?}", id);
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
-                                    debug2!("privacy - impl of trait {:?}", id);
+                                    debug!("privacy - impl of trait {:?}", id);
                                     self.def_privacy(t.def_id)
                                 }
                                 None => {
-                                    debug2!("privacy - found a method {:?}",
+                                    debug!("privacy - found a method {:?}",
                                             meth.vis);
                                     if meth.vis == ast::public {
                                         Allowable
@@ -299,19 +299,19 @@ impl<'self> PrivacyVisitor<'self> {
                     }
                 }
                 None => {
-                    debug2!("privacy - nope, not even a method");
+                    debug!("privacy - nope, not even a method");
                     ExternallyDenied
                 }
             };
         } else if self.exported_items.contains(&did.node) {
-            debug2!("privacy - exported item {}", self.nodestr(did.node));
+            debug!("privacy - exported item {}", self.nodestr(did.node));
             return Allowable;
         }
 
-        debug2!("privacy - local {:?} not public all the way down", did);
+        debug!("privacy - local {:?} not public all the way down", did);
         // return quickly for things in the same module
         if self.parents.find(&did.node) == self.parents.find(&self.curitem) {
-            debug2!("privacy - same parent, we're done here");
+            debug!("privacy - same parent, we're done here");
             return Allowable;
         }
 
@@ -319,7 +319,7 @@ impl<'self> PrivacyVisitor<'self> {
         // destination and the root.
         let mut closest_private_id = did.node;
         loop {
-            debug2!("privacy - examining {}", self.nodestr(closest_private_id));
+            debug!("privacy - examining {}", self.nodestr(closest_private_id));
             let vis = match self.tcx.items.find(&closest_private_id) {
                 Some(&ast_map::node_item(it, _)) => it.vis,
                 Some(&ast_map::node_method(ref m, _, _)) => m.vis,
@@ -339,7 +339,7 @@ impl<'self> PrivacyVisitor<'self> {
             // way down in the first place...
             assert!(closest_private_id != ast::DUMMY_NODE_ID);
         }
-        debug2!("privacy - closest priv {}", self.nodestr(closest_private_id));
+        debug!("privacy - closest priv {}", self.nodestr(closest_private_id));
         if self.private_accessible(closest_private_id) {
             Allowable
         } else {
@@ -352,7 +352,7 @@ impl<'self> PrivacyVisitor<'self> {
     /// inside.
     fn private_accessible(&self, id: ast::NodeId) -> bool {
         let parent = *self.parents.get(&id);
-        debug2!("privacy - accessible parent {}", self.nodestr(parent));
+        debug!("privacy - accessible parent {}", self.nodestr(parent));
 
         // After finding `did`'s closest private member, we roll ourselves back
         // to see if this private member's parent is anywhere in our ancestry.
@@ -360,7 +360,7 @@ impl<'self> PrivacyVisitor<'self> {
         // members, so that's why we test the parent, and not the did itself.
         let mut cur = self.curitem;
         loop {
-            debug2!("privacy - questioning {}", self.nodestr(cur));
+            debug!("privacy - questioning {}", self.nodestr(cur));
             match cur {
                 // If the relevant parent is in our history, then we're allowed
                 // to look inside any of our ancestor's immediate private items,
@@ -458,7 +458,7 @@ impl<'self> PrivacyVisitor<'self> {
 
     // Checks that a path is in scope.
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
-        debug2!("privacy - path {}", self.nodestr(path_id));
+        debug!("privacy - path {}", self.nodestr(path_id));
         let def = self.tcx.def_map.get_copy(&path_id);
         let ck = |tyname: &str| {
             let origdid = def_id_of_def(def);
@@ -703,7 +703,7 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                             }
                             Some(entry) => entry
                         };
-                        debug2!("(privacy checking) checking impl method");
+                        debug!("(privacy checking) checking impl method");
                         self.check_method(expr.span, &entry.origin, ident);
                     }
                     _ => {}
@@ -773,12 +773,12 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                     match vpath.node {
                         ast::view_path_simple(_, ref path, id) |
                         ast::view_path_glob(ref path, id) => {
-                            debug2!("privacy - glob/simple {}", id);
+                            debug!("privacy - glob/simple {}", id);
                             self.check_path(vpath.span, id, path);
                         }
                         ast::view_path_list(_, ref list, _) => {
                             for pid in list.iter() {
-                                debug2!("privacy - list {}", pid.node.id);
+                                debug!("privacy - list {}", pid.node.id);
                                 let seg = ast::PathSegment {
                                     identifier: pid.node.name,
                                     lifetime: None,

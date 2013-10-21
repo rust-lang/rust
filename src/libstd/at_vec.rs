@@ -238,7 +238,7 @@ pub mod raw {
                 let alloc = n * (*ty).size;
                 let total_size = alloc + mem::size_of::<Vec<()>>();
                 if alloc / (*ty).size != n || total_size < alloc {
-                    fail2!("vector size is too large: {}", n);
+                    fail!("vector size is too large: {}", n);
                 }
                 (*ptr) = local_realloc(*ptr as *(), total_size) as *mut Box<Vec<()>>;
                 (**ptr).data.alloc = alloc;

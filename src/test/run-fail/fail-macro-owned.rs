@@ -11,5 +11,5 @@
 // error-pattern:failed at 'test-fail-owned'
 
 fn main() {
-    fail2!("test-fail-owned");
+    fail!("test-fail-owned");
 }

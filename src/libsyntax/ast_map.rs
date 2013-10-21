@@ -185,7 +185,7 @@ impl Ctx {
                                                          item,
                                                          p));
                     }
-                    _ => fail2!("struct def parent wasn't an item")
+                    _ => fail!("struct def parent wasn't an item")
                 }
             }
         }
@@ -485,6 +485,6 @@ pub fn node_item_query<Result>(items: map, id: NodeId,
                                error_msg: ~str) -> Result {
     match items.find(&id) {
         Some(&node_item(it, _)) => query(it),
-        _ => fail2!("{}", error_msg)
+        _ => fail!("{}", error_msg)
     }
 }

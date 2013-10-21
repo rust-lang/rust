@@ -245,7 +245,7 @@ impl CrateContext {
     pub fn const_inbounds_gepi(&self,
                                pointer: ValueRef,
                                indices: &[uint]) -> ValueRef {
-        debug2!("const_inbounds_gepi: pointer={} indices={:?}",
+        debug!("const_inbounds_gepi: pointer={} indices={:?}",
                self.tn.val_to_str(pointer), indices);
         let v: ~[ValueRef] =
             indices.iter().map(|i| C_i32(*i as i32)).collect();

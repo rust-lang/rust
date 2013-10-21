@@ -43,13 +43,13 @@ fn grandchild_group(num_tasks: uint) {
             p.recv(); // block forever
         }
     }
-    error2!("Grandchild group getting started");
+    error!("Grandchild group getting started");
     for _ in range(0, num_tasks) {
         // Make sure all above children are fully spawned; i.e., enlisted in
         // their ancestor groups.
         po.recv();
     }
-    error2!("Grandchild group ready to go.");
+    error!("Grandchild group ready to go.");
     // Master grandchild task exits early.
 }
 
@@ -58,7 +58,7 @@ fn spawn_supervised_blocking(myname: &str, f: ~fn()) {
     let res = builder.future_result();
     builder.supervised();
     builder.spawn(f);
-    error2!("{} group waiting", myname);
+    error!("{} group waiting", myname);
     let x = res.recv();
     assert_eq!(x, task::Success);
 }
@@ -84,11 +84,11 @@ fn main() {
                 grandchild_group(num_tasks);
             }
             // When grandchild group is ready to go, make the middle group exit.
-            error2!("Middle group wakes up and exits");
+            error!("Middle group wakes up and exits");
         }
         // Grandparent group waits for middle group to be gone, then fails
-        error2!("Grandparent group wakes up and fails");
-        fail2!();
+        error!("Grandparent group wakes up and fails");
+        fail!();
     };
     assert!(x.is_err());
 }
