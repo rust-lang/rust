@@ -15,18 +15,7 @@
 use c_str::ToCStr;
 use libc::size_t;
 use libc;
-use repr;
 use rt::task;
-use str;
-
-pub fn log_str<T>(t: &T) -> ~str {
-    use rt::io;
-    use rt::io::Decorator;
-
-    let mut result = io::mem::MemWriter::new();
-    repr::write_repr(&mut result as &mut io::Writer, t);
-    str::from_utf8_owned(result.inner())
-}
 
 /// Trait for initiating task failure.
 pub trait FailWithCause {

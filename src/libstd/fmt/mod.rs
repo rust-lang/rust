@@ -466,7 +466,7 @@ use rt::io::Decorator;
 use rt::io::mem::MemWriter;
 use rt::io;
 use str;
-use sys;
+use repr;
 use util;
 use vec;
 
@@ -1087,17 +1087,13 @@ impl<T> Poly for T {
     fn fmt(t: &T, f: &mut Formatter) {
         match (f.width, f.precision) {
             (None, None) => {
-                // XXX: sys::log_str should have a variant which takes a stream
-                //      and we should directly call that (avoids unnecessary
-                //      allocations)
-                let s = sys::log_str(t);
-                f.buf.write(s.as_bytes());
+                repr::write_repr(f.buf, t);
             }
 
             // If we have a specified width for formatting, then we have to make
             // this allocation of a new string
             _ => {
-                let s = sys::log_str(t);
+                let s = repr::repr_to_str(t);
                 f.pad(s);
             }
         }
