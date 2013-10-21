@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
@@ -56,7 +57,9 @@ pub fn stderr() -> StdWriter {
 pub fn print(s: &str) {
     // XXX: need to see if not caching stdin() is the cause of performance
     //      issues, it should be possible to cache a stdout handle in each Task
-    //      and then re-use that across calls to print/println
+    //      and then re-use that across calls to print/println. Note that the
+    //      resolution of this comment will affect all of the prints below as
+    //      well.
     stdout().write(s.as_bytes());
 }
 
@@ -66,6 +69,20 @@ pub fn println(s: &str) {
     let mut out = stdout();
     out.write(s.as_bytes());
     out.write(['\n' as u8]);
+}
+
+/// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
+/// with the `format_args!` macro.
+pub fn print_args(fmt: &fmt::Arguments) {
+    let mut out = stdout();
+    fmt::write(&mut out as &mut Writer, fmt);
+}
+
+/// Similar to `println`, but takes a `fmt::Arguments` structure to be
+/// compatible with the `format_args!` macro.
+pub fn println_args(fmt: &fmt::Arguments) {
+    let mut out = stdout();
+    fmt::writeln(&mut out as &mut Writer, fmt);
 }
 
 /// Representation of a reader of a standard input stream
