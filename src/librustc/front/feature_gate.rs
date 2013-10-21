@@ -124,11 +124,8 @@ impl Visitor<()> for Context {
         }
 
         else if path.segments.last().identifier == self.sess.ident_of("asm") {
-            // NOTE: remove the false once the ASM feature is in the next snapshot
-            if false {
-                self.gate_feature("asm", path.span, "inline assembly is not \
-                    stable enough for use and is subject to change");
-            }
+            self.gate_feature("asm", path.span, "inline assembly is not \
+                stable enough for use and is subject to change");
         }
     }
 
