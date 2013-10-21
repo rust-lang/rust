@@ -21,9 +21,9 @@ use middle::privacy;
 use middle::resolve;
 
 use std::hashmap::HashSet;
-use syntax::ast::*;
+use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, is_local};
+use syntax::ast_util::{def_id_of_def, is_local, local_def};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::visit::Visitor;
@@ -31,26 +31,26 @@ use syntax::visit;
 
 // Returns true if the given set of attributes contains the `#[inline]`
 // attribute.
-fn attributes_specify_inlining(attrs: &[Attribute]) -> bool {
+fn attributes_specify_inlining(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "inline")
 }
 
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
-fn generics_require_inlining(generics: &Generics) -> bool {
+fn generics_require_inlining(generics: &ast::Generics) -> bool {
     !generics.ty_params.is_empty()
 }
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(item: @item) -> bool {
+fn item_might_be_inlined(item: @ast::item) -> bool {
     if attributes_specify_inlining(item.attrs) {
         return true
     }
 
     match item.node {
-        item_fn(_, _, _, ref generics, _) => {
+        ast::item_fn(_, _, _, ref generics, _) => {
             generics_require_inlining(generics)
         }
         _ => false,
@@ -59,17 +59,17 @@ fn item_might_be_inlined(item: @item) -> bool {
 
 // Returns true if the given type method must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`.
-fn ty_method_might_be_inlined(ty_method: &TypeMethod) -> bool {
+fn ty_method_might_be_inlined(ty_method: &ast::TypeMethod) -> bool {
     attributes_specify_inlining(ty_method.attrs) ||
         generics_require_inlining(&ty_method.generics)
 }
 
 // Returns true if the given trait method must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`.
-fn trait_method_might_be_inlined(trait_method: &trait_method) -> bool {
+fn trait_method_might_be_inlined(trait_method: &ast::trait_method) -> bool {
     match *trait_method {
-        required(ref ty_method) => ty_method_might_be_inlined(ty_method),
-        provided(_) => true
+        ast::required(ref ty_method) => ty_method_might_be_inlined(ty_method),
+        ast::provided(_) => true
     }
 }
 
@@ -81,27 +81,27 @@ struct ReachableContext {
     // methods they've been resolved to.
     method_map: typeck::method_map,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: @mut HashSet<NodeId>,
+    reachable_symbols: @mut HashSet<ast::NodeId>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: @mut ~[NodeId],
+    worklist: @mut ~[ast::NodeId],
     // Known reexports of modules
     exp_map2: resolve::ExportMap2,
 }
 
 struct MarkSymbolVisitor {
-    worklist: @mut ~[NodeId],
+    worklist: @mut ~[ast::NodeId],
     method_map: typeck::method_map,
     tcx: ty::ctxt,
-    reachable_symbols: @mut HashSet<NodeId>,
+    reachable_symbols: @mut HashSet<ast::NodeId>,
 }
 
 impl Visitor<()> for MarkSymbolVisitor {
 
-    fn visit_expr(&mut self, expr:@Expr, _:()) {
+    fn visit_expr(&mut self, expr:@ast::Expr, _:()) {
 
                 match expr.node {
-                    ExprPath(_) => {
+                    ast::ExprPath(_) => {
                         let def = match self.tcx.def_map.find(&expr.id) {
                             Some(&def) => def,
                             None => {
@@ -118,7 +118,7 @@ impl Visitor<()> for MarkSymbolVisitor {
                         }
                         self.reachable_symbols.insert(def_id.node);
                     }
-                    ExprMethodCall(*) => {
+                    ast::ExprMethodCall(*) => {
                         match self.method_map.find(&expr.id) {
                             Some(&typeck::method_map_entry {
                                 origin: typeck::method_static(def_id),
@@ -162,9 +162,9 @@ impl ReachableContext {
 
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
-    fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: DefId)
+    fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: ast::DefId)
                                             -> bool {
-        if def_id.crate != LOCAL_CRATE {
+        if def_id.crate != ast::LOCAL_CRATE {
             return false
         }
 
@@ -172,14 +172,14 @@ impl ReachableContext {
         match tcx.items.find(&node_id) {
             Some(&ast_map::node_item(item, _)) => {
                 match item.node {
-                    item_fn(*) => item_might_be_inlined(item),
+                    ast::item_fn(*) => item_might_be_inlined(item),
                     _ => false,
                 }
             }
             Some(&ast_map::node_trait_method(trait_method, _, _)) => {
                 match *trait_method {
-                    required(_) => false,
-                    provided(_) => true,
+                    ast::required(_) => false,
+                    ast::provided(_) => true,
                 }
             }
             Some(&ast_map::node_method(method, impl_did, _)) => {
@@ -189,11 +189,11 @@ impl ReachableContext {
                 } else {
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
-                    assert!(impl_did.crate == LOCAL_CRATE);
+                    assert!(impl_did.crate == ast::LOCAL_CRATE);
                     match tcx.items.find(&impl_did.node) {
                         Some(&ast_map::node_item(item, _)) => {
                             match item.node {
-                                item_impl(ref generics, _, _, _) => {
+                                ast::item_impl(ref generics, _, _, _) => {
                                     generics_require_inlining(generics)
                                 }
                                 _ => false
@@ -231,7 +231,7 @@ impl ReachableContext {
         }
     }
 
-    fn propagate_mod(&self, id: NodeId) {
+    fn propagate_mod(&self, id: ast::NodeId) {
         match self.exp_map2.find(&id) {
             Some(l) => {
                 for reexport in l.iter() {
@@ -262,7 +262,7 @@ impl ReachableContext {
             match self.tcx.items.find(&search_item) {
                 Some(&ast_map::node_item(item, _)) => {
                     match item.node {
-                        item_fn(_, _, _, _, ref search_block) => {
+                        ast::item_fn(_, _, _, _, ref search_block) => {
                             visit::walk_block(&mut visitor, search_block, ())
                         }
                         // Our recursion into modules involves looking up their
@@ -270,13 +270,50 @@ impl ReachableContext {
                         // exports. Privacy will put them in the worklist, but
                         // we won't find them in the ast_map, so this is where
                         // we deal with publicly re-exported items instead.
-                        item_mod(*) => { self.propagate_mod(item.id); }
+                        ast::item_mod(*) => self.propagate_mod(item.id),
+
+                        // Implementations of exported structs/enums need to get
+                        // added to the worklist (as all their methods should be
+                        // accessible)
+                        ast::item_struct(*) | ast::item_enum(*) => {
+                            let def = local_def(item.id);
+                            let impls = match self.tcx.inherent_impls.find(&def) {
+                                Some(&impls) => impls,
+                                None => continue
+                            };
+                            for imp in impls.iter() {
+                                if is_local(imp.did) {
+                                    self.worklist.push(imp.did.node);
+                                }
+                            }
+                        }
+
+                        // Propagate through this impl
+                        ast::item_impl(_, _, _, ref methods) => {
+                            for method in methods.iter() {
+                                self.worklist.push(method.id);
+                            }
+                        }
+
+                        // Default methods of exported traits need to all be
+                        // accessible.
+                        ast::item_trait(_, _, ref methods) => {
+                            for method in methods.iter() {
+                                match *method {
+                                    ast::required(*) => {}
+                                    ast::provided(ref method) => {
+                                        self.worklist.push(method.id);
+                                    }
+                                }
+                            }
+                        }
+
                         // These are normal, nothing reachable about these
                         // inherently and their children are already in the
                         // worklist
-                        item_struct(*) | item_impl(*) | item_static(*) |
-                        item_enum(*) | item_ty(*) | item_trait(*) |
-                        item_foreign_mod(*) => {}
+                        ast::item_static(*) | ast::item_ty(*) |
+                            ast::item_foreign_mod(*) => {}
+
                         _ => {
                             self.tcx.sess.span_bug(item.span,
                                                    "found non-function item \
@@ -286,10 +323,10 @@ impl ReachableContext {
                 }
                 Some(&ast_map::node_trait_method(trait_method, _, _)) => {
                     match *trait_method {
-                        required(*) => {
+                        ast::required(*) => {
                             // Keep going, nothing to get exported
                         }
-                        provided(ref method) => {
+                        ast::provided(ref method) => {
                             visit::walk_block(&mut visitor, &method.body, ())
                         }
                     }
@@ -310,7 +347,7 @@ impl ReachableContext {
                                                worklist: {}",
                                                desc))
                 }
-                None if search_item == CRATE_NODE_ID => {
+                None if search_item == ast::CRATE_NODE_ID => {
                     self.propagate_mod(search_item);
                 }
                 None => {
@@ -329,7 +366,7 @@ impl ReachableContext {
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&self) {
         for (_, destructor_def_id) in self.tcx.destructor_for_type.iter() {
-            if destructor_def_id.crate == LOCAL_CRATE {
+            if destructor_def_id.crate == ast::LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }
         }
@@ -340,7 +377,7 @@ pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
                       exp_map2: resolve::ExportMap2,
                       exported_items: &privacy::ExportedItems)
-                      -> @mut HashSet<NodeId> {
+                      -> @mut HashSet<ast::NodeId> {
     // XXX(pcwalton): We only need to mark symbols that are exported. But this
     // is more complicated than just looking at whether the symbol is `pub`,
     // because it might be the target of a `pub use` somewhere. For now, I
