@@ -120,7 +120,9 @@ impl<T:Freeze+Send> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         Arc { x: UnsafeArc::new(data) }
     }
+}
 
+impl<T> Arc<T> {
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
@@ -138,9 +140,56 @@ impl<T:Freeze+Send> Arc<T> {
         let Arc { x: x } = self;
         x.unwrap()
     }
+
+    pub fn try_get_mut<'a>(&'a mut self) -> Either<&'a mut Arc<T>, &'a mut T> {
+        unsafe {
+            if !self.x.is_owned() {
+                Left(self)
+            } else {
+                Right(&mut *self.x.get())
+            }
+        }
+    }
+
+    pub fn try_unwrap(self) -> Either<Arc<T>, T> {
+        match self.x.try_unwrap() {
+            Left(this) => Left(Arc {x: this}),
+            Right(v) => Right(v)
+        }
+    }
 }
 
-impl<T:Freeze + Send> Clone for Arc<T> {
+impl<T: Clone> Arc<T> {
+    /// Clones the content if there is more than one reference, and returns a
+    /// mutable reference to the data once this is the only refence
+    #[inline]
+    pub fn cow<'r>(&'r mut self) -> &'r mut T {
+        unsafe {
+            if !self.x.is_owned() {
+                self.cow_clone()
+            } else {
+                &mut *self.x.get()
+            }
+        }
+    }
+
+    #[inline(never)]
+    unsafe fn cow_clone<'r>(&'r mut self) -> &'r mut T {
+        self.x = UnsafeArc::new_unsafe((*self.x.get_immut()).clone());
+        &mut *self.x.get()
+    }
+
+    pub fn value(self) -> T {
+        unsafe {
+            match self.x.try_unwrap() {
+                Left(this) => (*this.get()).clone(),
+                Right(v) => v
+            }
+        }
+    }
+}
+
+impl<T> Clone for Arc<T> {
     /**
     * Duplicate an atomically reference counted wrapper.
     *
@@ -620,6 +669,15 @@ mod tests {
         assert_eq!(arc_v.get()[4], 5);
 
         info2!("{:?}", arc_v);
+    }
+
+    #[test]
+    fn test_arc_mut() {
+        let mut x = Arc::new(5);
+        let y = x.clone();
+        *x.cow() = 9;
+        assert_eq!(*x.get(), 9);
+        assert_eq!(*y.get(), 5);
     }
 
     #[test]

@@ -21,10 +21,12 @@ reference is a unique handle and the type is marked as non-`Freeze`.
 */
 
 use ptr::RawPtr;
-use unstable::intrinsics::transmute;
+use unstable::intrinsics::{forget, transmute};
+use cast;
 use ops::Drop;
 use kinds::{Freeze, Send};
 use clone::{Clone, DeepClone};
+use either::{Either, Left, Right};
 
 struct RcBox<T> {
     value: T,
@@ -61,8 +63,70 @@ impl<T> Rc<T> {
 
     /// Borrow the value contained in the reference-counted box
     #[inline]
-    pub fn borrow<'r>(&'r self) -> &'r T {
+    pub fn get<'r>(&'r self) -> &'r T {
         unsafe { &(*self.ptr).value }
+    }
+
+    /// Return a mutable reference that only alters this Rc if possible,
+    /// or return self
+    pub fn try_get_mut<'r>(&'r mut self) -> Either<&'r mut Rc<T>, &'r mut T> {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                Left(self)
+            } else {
+                Right(cast::copy_mut_lifetime(self, &mut (*self.ptr).value))
+            }
+        }
+    }
+
+    /// Return the contents while altering only this Rc if possible,
+    /// or return self
+    pub fn try_unwrap(self) -> Either<Rc<T>, T> {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                Left(self)
+            } else {
+                let box: ~RcBox<T> = transmute(self.ptr);
+                forget(self);
+                Right(box.value)
+            }
+        }
+    }
+}
+
+impl<T: Clone> Rc<T> {
+    /// Clones the content if there is more than one reference, and returns a
+    /// mutable reference to the data once this is the only refence
+    #[inline]
+    pub fn cow<'r>(&'r mut self) -> &'r mut T {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                self.cow_clone()
+            } else {
+                cast::copy_mut_lifetime(self, &mut (*self.ptr).value)
+            }
+        }
+    }
+
+    #[inline(never)]
+    unsafe fn cow_clone<'r>(&'r mut self) -> &'r mut T {
+        (*self.ptr).count -= 1;
+        self.ptr = transmute(~RcBox{value: (*self.ptr).value.clone(), count: 1});
+        cast::copy_mut_lifetime(self, &mut (*self.ptr).value)
+    }
+
+    /// Clones the content if there is more than one reference, or unwraps
+    /// the data if this is the only reference
+    pub fn value<'r>(self) -> T {
+        unsafe {
+            if (*self.ptr).count > 1 {
+                (*self.ptr).value.clone()
+            } else {
+                let box: ~RcBox<T> = transmute(self.ptr);
+                forget(self);
+                box.value
+            }
+        }
     }
 }
 
@@ -79,7 +143,7 @@ impl<T> Clone for Rc<T> {
 impl<T: DeepClone> DeepClone for Rc<T> {
     #[inline]
     fn deep_clone(&self) -> Rc<T> {
-        unsafe { Rc::new_unchecked(self.borrow().deep_clone()) }
+        unsafe { Rc::new_unchecked(self.get().deep_clone()) }
     }
 }
 
@@ -107,10 +171,10 @@ mod test_rc {
         unsafe {
             let x = Rc::new_unchecked(Cell::new(5));
             let y = x.clone();
-            do x.borrow().with_mut_ref |inner| {
+            do x.get().with_mut_ref |inner| {
                 *inner = 20;
             }
-            assert_eq!(y.borrow().take(), 20);
+            assert_eq!(y.get().take(), 20);
         }
     }
 
@@ -119,33 +183,42 @@ mod test_rc {
         unsafe {
             let x = Rc::new_unchecked(Cell::new(5));
             let y = x.deep_clone();
-            do x.borrow().with_mut_ref |inner| {
+            do x.get().with_mut_ref |inner| {
                 *inner = 20;
             }
-            assert_eq!(y.borrow().take(), 5);
+            assert_eq!(y.get().take(), 5);
         }
     }
 
     #[test]
     fn test_simple() {
         let x = Rc::new(5);
-        assert_eq!(*x.borrow(), 5);
+        assert_eq!(*x.get(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
         let x = Rc::new(5);
         let y = x.clone();
-        assert_eq!(*x.borrow(), 5);
-        assert_eq!(*y.borrow(), 5);
+        assert_eq!(*x.get(), 5);
+        assert_eq!(*y.get(), 5);
     }
 
     #[test]
     fn test_destructor() {
         unsafe {
             let x = Rc::new_unchecked(~5);
-            assert_eq!(**x.borrow(), 5);
+            assert_eq!(**x.get(), 5);
         }
+    }
+
+    #[test]
+    fn test_mut() {
+        let mut x = Rc::from_freeze(5);
+        let y = x.clone();
+        *x.cow() = 9;
+        assert_eq!(*x.get(), 9);
+        assert_eq!(*y.get(), 5);
     }
 }
 
@@ -159,7 +232,7 @@ enum Borrow {
 struct RcMutBox<T> {
     value: T,
     count: uint,
-    borrow: Borrow
+    get: Borrow
 }
 
 /// Mutable reference counted pointer type
@@ -193,32 +266,32 @@ impl<T> RcMut<T> {
     /// poorly with managed pointers.
     #[inline]
     pub unsafe fn new_unchecked(value: T) -> RcMut<T> {
-        RcMut{ptr: transmute(~RcMutBox{value: value, count: 1, borrow: Nothing})}
+        RcMut{ptr: transmute(~RcMutBox{value: value, count: 1, get: Nothing})}
     }
 }
 
 impl<T> RcMut<T> {
-    /// Fails if there is already a mutable borrow of the box
+    /// Fails if there is already a mutable get of the box
     #[inline]
-    pub fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
+    pub fn with_get<U>(&self, f: &fn(&T) -> U) -> U {
         unsafe {
-            assert!((*self.ptr).borrow != Mutable);
-            let previous = (*self.ptr).borrow;
-            (*self.ptr).borrow = Immutable;
+            assert!((*self.ptr).get != Mutable);
+            let previous = (*self.ptr).get;
+            (*self.ptr).get = Immutable;
             let res = f(&(*self.ptr).value);
-            (*self.ptr).borrow = previous;
+            (*self.ptr).get = previous;
             res
         }
     }
 
-    /// Fails if there is already a mutable or immutable borrow of the box
+    /// Fails if there is already a mutable or immutable get of the box
     #[inline]
-    pub fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
+    pub fn with_mut_get<U>(&self, f: &fn(&mut T) -> U) -> U {
         unsafe {
-            assert_eq!((*self.ptr).borrow, Nothing);
-            (*self.ptr).borrow = Mutable;
+            assert_eq!((*self.ptr).get, Nothing);
+            (*self.ptr).get = Mutable;
             let res = f(&mut (*self.ptr).value);
-            (*self.ptr).borrow = Nothing;
+            (*self.ptr).get = Nothing;
             res
         }
     }
@@ -253,7 +326,7 @@ impl<T: DeepClone> DeepClone for RcMut<T> {
     /// Return a deep copy of the reference counted pointer.
     #[inline]
     fn deep_clone(&self) -> RcMut<T> {
-        do self.with_borrow |x| {
+        do self.with_get |x| {
             // FIXME: #6497: should avoid freeze (slow)
             unsafe { RcMut::new_unchecked(x.deep_clone()) }
         }
@@ -268,10 +341,10 @@ mod test_rc_mut {
     fn test_clone() {
         let x = RcMut::from_send(5);
         let y = x.clone();
-        do x.with_mut_borrow |value| {
+        do x.with_mut_get |value| {
             *value = 20;
         }
-        do y.with_borrow |value| {
+        do y.with_get |value| {
             assert_eq!(*value, 20);
         }
     }
@@ -280,24 +353,24 @@ mod test_rc_mut {
     fn test_deep_clone() {
         let x = RcMut::new(5);
         let y = x.deep_clone();
-        do x.with_mut_borrow |value| {
+        do x.with_mut_get |value| {
             *value = 20;
         }
-        do y.with_borrow |value| {
+        do y.with_get |value| {
             assert_eq!(*value, 5);
         }
     }
 
     #[test]
-    fn borrow_many() {
+    fn get_many() {
         let x = RcMut::from_send(5);
         let y = x.clone();
 
-        do x.with_borrow |a| {
+        do x.with_get |a| {
             assert_eq!(*a, 5);
-            do y.with_borrow |b| {
+            do y.with_get |b| {
                 assert_eq!(*b, 5);
-                do x.with_borrow |c| {
+                do x.with_get |c| {
                     assert_eq!(*c, 5);
                 }
             }
@@ -309,12 +382,12 @@ mod test_rc_mut {
         let x = RcMut::new(5);
         let y = x.clone();
 
-        do y.with_mut_borrow |a| {
+        do y.with_mut_get |a| {
             assert_eq!(*a, 5);
             *a = 6;
         }
 
-        do x.with_borrow |a| {
+        do x.with_get |a| {
             assert_eq!(*a, 6);
         }
     }
@@ -322,15 +395,15 @@ mod test_rc_mut {
     #[test]
     fn release_immutable() {
         let x = RcMut::from_send(5);
-        do x.with_borrow |_| {}
-        do x.with_mut_borrow |_| {}
+        do x.with_get |_| {}
+        do x.with_mut_get |_| {}
     }
 
     #[test]
     fn release_mutable() {
         let x = RcMut::new(5);
-        do x.with_mut_borrow |_| {}
-        do x.with_borrow |_| {}
+        do x.with_mut_get |_| {}
+        do x.with_get |_| {}
     }
 
     #[test]
@@ -339,8 +412,8 @@ mod test_rc_mut {
         let x = RcMut::from_send(5);
         let y = x.clone();
 
-        do x.with_borrow |_| {
-            do y.with_mut_borrow |_| {
+        do x.with_get |_| {
+            do y.with_mut_get |_| {
             }
         }
     }
@@ -351,8 +424,8 @@ mod test_rc_mut {
         let x = RcMut::new(5);
         let y = x.clone();
 
-        do x.with_mut_borrow |_| {
-            do y.with_mut_borrow |_| {
+        do x.with_mut_get |_| {
+            do y.with_mut_get |_| {
             }
         }
     }
@@ -363,8 +436,8 @@ mod test_rc_mut {
         let x = RcMut::from_send(5);
         let y = x.clone();
 
-        do x.with_mut_borrow |_| {
-            do y.with_borrow |_| {
+        do x.with_mut_get |_| {
+            do y.with_get |_| {
             }
         }
     }
@@ -375,9 +448,9 @@ mod test_rc_mut {
         let x = RcMut::new(5);
         let y = x.clone();
 
-        do x.with_borrow |_| {
-            do x.with_borrow |_| {}
-            do y.with_mut_borrow |_| {}
+        do x.with_get |_| {
+            do x.with_get |_| {}
+            do y.with_mut_get |_| {}
         }
     }
 }
