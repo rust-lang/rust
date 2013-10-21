@@ -57,6 +57,7 @@ pub fn clear_task_borrow_list() {
     let _ = try_take_task_borrow_list();
 }
 
+#[cold]
 unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) -> ! {
     debug_borrow("fail_borrowed: ", box, 0, 0, file, line);
 
