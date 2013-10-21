@@ -838,14 +838,6 @@ pub fn std_macros() -> @str {
         )
     )
 
-    // NOTE (acrichto): remove these after the next snapshot
-    macro_rules! log2( ($($arg:tt)*) => (log!($($arg)*)) )
-    macro_rules! error( ($($arg:tt)*) => (error!($($arg)*)) )
-    macro_rules! warn ( ($($arg:tt)*) => (warn!($($arg)*)) )
-    macro_rules! info ( ($($arg:tt)*) => (info!($($arg)*)) )
-    macro_rules! debug( ($($arg:tt)*) => (debug!($($arg)*)) )
-    macro_rules! fail( ($($arg:tt)*) => (fail!($($arg)*)) )
-
     macro_rules! assert(
         ($cond:expr) => {
             if !$cond {
