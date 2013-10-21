@@ -1,4 +1,4 @@
-# Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -18,7 +18,6 @@ else
               $(wildcard $(S)src/test/*/*.rs    \
                          $(S)src/test/*/*/*.rs) \
               $(wildcard $(S)src/rustpkg/*.rs) \
-              $(wildcard $(S)src/rusti/*.rs) \
               $(wildcard $(S)src/rust/*.rs)
 
   PP_INPUTS_FILTERED = $(shell echo $(PP_INPUTS) | xargs grep -L \
