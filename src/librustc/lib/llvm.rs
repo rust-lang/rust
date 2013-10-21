@@ -693,6 +693,8 @@ pub mod llvm {
         pub fn LLVMAddReturnAttribute(Fn: ValueRef, PA: c_uint);
         pub fn LLVMRemoveReturnAttribute(Fn: ValueRef, PA: c_uint);
 
+        pub fn LLVMAddColdAttribute(Fn: ValueRef);
+
         pub fn LLVMRemoveFunctionAttr(Fn: ValueRef,
                                       PA: c_ulonglong,
                                       HighPA: c_ulonglong);

@@ -202,19 +202,21 @@ pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
     f
 }
 
-pub fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
-                          name: &str) -> ValueRef {
+fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
+                      name: &str, did: ast::DefId) -> ValueRef {
     match ccx.externs.find_equiv(&name) {
         Some(n) => return *n,
         None => ()
     }
     let f = decl_rust_fn(ccx, inputs, output, name);
+    do csearch::get_item_attrs(ccx.tcx.cstore, did) |meta_items| {
+        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
+    }
     ccx.externs.insert(name.to_owned(), f);
     f
 }
 
-pub fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
-                    name: &str) -> ValueRef {
+fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t, name: &str) -> ValueRef {
     let llfty = type_of_rust_fn(ccx, inputs, output);
     let llfn = decl_cdecl_fn(ccx.llmod, name, llfty);
 
@@ -480,6 +482,10 @@ pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
     // Add the no-split-stack attribute if requested
     if contains_name(attrs, "no_split_stack") {
         set_no_split_stack(llfn);
+    }
+
+    if contains_name(attrs, "cold") {
+        unsafe { llvm::LLVMAddColdAttribute(llfn) }
     }
 }
 
@@ -840,7 +846,7 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
         ty::ty_bare_fn(ref fn_ty) => {
             match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
                 Some(Rust) | Some(RustIntrinsic) => {
-                    get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name)
+                    get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name, did)
                 }
                 Some(*) | None => {
                     let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
@@ -851,7 +857,7 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
             }
         }
         ty::ty_closure(ref f) => {
-            get_extern_rust_fn(ccx, f.sig.inputs, f.sig.output, name)
+            get_extern_rust_fn(ccx, f.sig.inputs, f.sig.output, name, did)
         }
         _ => {
             let llty = type_of(ccx, t);
