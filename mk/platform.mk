@@ -16,15 +16,15 @@
 define DEF_HOST_VAR
   HOST_$(1) = $(subst i686,i386,$(word 1,$(subst -, ,$(1))))
 endef
-$(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
-$(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: host for $(t) is $(HOST_$(t))))
+$(foreach t,$(CFG_TARGET),$(eval $(call DEF_HOST_VAR,$(t))))
+$(foreach t,$(CFG_TARGET),$(info cfg: host for $(t) is $(HOST_$(t))))
 
 # Ditto for OSTYPE
 define DEF_OSTYPE_VAR
   OSTYPE_$(1) = $(subst $(firstword $(subst -, ,$(1)))-,,$(1))
 endef
-$(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_OSTYPE_VAR,$(t))))
-$(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
+$(foreach t,$(CFG_TARGET),$(eval $(call DEF_OSTYPE_VAR,$(t))))
+$(foreach t,$(CFG_TARGET),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
 
 # FIXME: no-omit-frame-pointer is just so that task_start_wrapper
 # has a frame pointer and the stack walker can understand it. Turning off
@@ -378,7 +378,7 @@ CFG_UNIXY_i686-pc-mingw32 :=
 CFG_PATH_MUNGE_i686-pc-mingw32 :=
 CFG_LDPATH_i686-pc-mingw32 :=$(CFG_LDPATH_i686-pc-mingw32):$(PATH)
 CFG_RUN_i686-pc-mingw32=PATH="$(CFG_LDPATH_i686-pc-mingw32):$(1)" $(2)
-CFG_RUN_TARG_i686-pc-mingw32=$(call CFG_RUN_i686-pc-mingw32,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
+CFG_RUN_TARG_i686-pc-mingw32=$(call CFG_RUN_i686-pc-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
 
 # i586-mingw32msvc configuration
 CC_i586-mingw32msvc=$(CFG_MINGW32_CROSS_PATH)/bin/i586-mingw32msvc-gcc
@@ -432,7 +432,7 @@ CFG_UNIXY_x86_64-w64-mingw32 :=
 CFG_PATH_MUNGE_x86_64-w64-mingw32 :=
 CFG_LDPATH_x86_64-w64-mingw32 :=$(CFG_LDPATH_x86_64-w64-mingw32):$(PATH)
 CFG_RUN_x86_64-w64-mingw32=PATH="$(CFG_LDPATH_x86_64-w64-mingw32):$(1)" $(2)
-CFG_RUN_TARG_x86_64-w64-mingw32=$(call CFG_RUN_x86_64-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
+CFG_RUN_TARG_x86_64-w64-mingw32=$(call CFG_RUN_x86_64-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
 
 # x86_64-unknown-freebsd configuration
 CC_x86_64-unknown-freebsd=$(CC)
@@ -498,7 +498,7 @@ define CFG_MAKE_TOOLCHAIN
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
   CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
-                    $$(LLVM_MC_$$(CFG_BUILD_TRIPLE)) \
+                    $$(LLVM_MC_$$(CFG_BUILD)) \
                     -assemble \
                     -filetype=obj \
                     -triple=$(1) \
@@ -514,5 +514,5 @@ define CFG_MAKE_TOOLCHAIN
 
 endef
 
-$(foreach target,$(CFG_TARGET_TRIPLES),\
+$(foreach target,$(CFG_TARGET),\
   $(eval $(call CFG_MAKE_TOOLCHAIN,$(target))))

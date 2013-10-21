@@ -127,14 +127,14 @@ $$(HBIN$(2)_H_$(4))/rustdoc$$(X_$(4)):				\
 
 endef
 
-$(foreach host,$(CFG_HOST_TRIPLES),				\
-$(foreach target,$(CFG_TARGET_TRIPLES),				\
+$(foreach host,$(CFG_HOST),				\
+$(foreach target,$(CFG_TARGET),				\
  $(eval $(call TOOLS_STAGE_N_TARGET,0,1,$(host),$(target)))	\
  $(eval $(call TOOLS_STAGE_N_TARGET,1,2,$(host),$(target)))	\
  $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(host),$(target)))	\
  $(eval $(call TOOLS_STAGE_N_TARGET,3,bogus,$(host),$(target)))))
 
-$(foreach host,$(CFG_HOST_TRIPLES),				\
+$(foreach host,$(CFG_HOST),				\
  $(eval $(call TOOLS_STAGE_N_HOST,0,1,$(host),$(host)))	\
  $(eval $(call TOOLS_STAGE_N_HOST,1,2,$(host),$(host)))	\
  $(eval $(call TOOLS_STAGE_N_HOST,2,3,$(host),$(host))))

@@ -24,10 +24,10 @@ else
                        "no-reformat\|xfail-pretty\|xfail-test")
 endif
 
-reformat: $(SREQ1$(CFG_BUILD_TRIPLE))
+reformat: $(SREQ1$(CFG_BUILD))
 	@$(call E, reformat [stage1]: $@)
 	for i in $(PP_INPUTS_FILTERED);  \
-    do $(call CFG_RUN_TARG_$(CFG_BUILD_TRIPLE),1,$(CFG_BUILD_TRIPLE)/stage1/rustc$(X_$(CFG_BUILD_TRIPLE))) \
+    do $(call CFG_RUN_TARG_$(CFG_BUILD),1,$(CFG_BUILD)/stage1/rustc$(X_$(CFG_BUILD))) \
        --pretty normal $$i >$$i.tmp; \
     if [ $$? -ne 0 ]; \
         then echo failed to print $$i; rm $$i.tmp; \
