@@ -413,6 +413,11 @@ extern "rust-intrinsic" {
     pub fn fabsf32(x: f32) -> f32;
     pub fn fabsf64(x: f64) -> f64;
 
+    #[cfg(not(stage0))]
+    pub fn copysignf32(x: f32) -> f32;
+    #[cfg(not(stage0))]
+    pub fn copysignf64(x: f64) -> f64;
+
     pub fn floorf32(x: f32) -> f32;
     pub fn floorf64(x: f64) -> f64;
 
@@ -421,6 +426,21 @@ extern "rust-intrinsic" {
 
     pub fn truncf32(x: f32) -> f32;
     pub fn truncf64(x: f64) -> f64;
+
+    #[cfg(not(stage0))]
+    pub fn rintf32(x: f32) -> f32;
+    #[cfg(not(stage0))]
+    pub fn rintf64(x: f64) -> f64;
+
+    #[cfg(not(stage0))]
+    pub fn nearbyintf32(x: f32) -> f32;
+    #[cfg(not(stage0))]
+    pub fn nearbyintf64(x: f64) -> f64;
+
+    #[cfg(not(stage0))]
+    pub fn roundf32(x: f32) -> f32;
+    #[cfg(not(stage0))]
+    pub fn roundf64(x: f64) -> f64;
 
     pub fn ctpop8(x: i8) -> i8;
     pub fn ctpop16(x: i16) -> i16;

@@ -2797,12 +2797,22 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
 
     ifn!(intrinsics, "llvm.fabs.f32", [Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.fabs.f64", [Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.copysign.f32", [Type::f32()], Type::f32());
+    ifn!(intrinsics, "llvm.copysign.f64", [Type::f64()], Type::f64());
+
     ifn!(intrinsics, "llvm.floor.f32",[Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.floor.f64",[Type::f64()], Type::f64());
     ifn!(intrinsics, "llvm.ceil.f32", [Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.ceil.f64", [Type::f64()], Type::f64());
     ifn!(intrinsics, "llvm.trunc.f32",[Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.trunc.f64",[Type::f64()], Type::f64());
+
+    ifn!(intrinsics, "llvm.rint.f32",[Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.rint.f64",[Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.nearbyint.f32",[Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.nearbyint.f64",[Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.round.f32",[Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.round.f64",[Type::f64()], Type::f64());
 
     ifn!(intrinsics, "llvm.ctpop.i8", [Type::i8()], Type::i8());
     ifn!(intrinsics, "llvm.ctpop.i16",[Type::i16()], Type::i16());
