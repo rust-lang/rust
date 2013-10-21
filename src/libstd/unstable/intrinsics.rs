@@ -414,9 +414,9 @@ extern "rust-intrinsic" {
     pub fn fabsf64(x: f64) -> f64;
 
     #[cfg(not(stage0))]
-    pub fn copysignf32(x: f32) -> f32;
+    pub fn copysignf32(x: f32, y: f32) -> f32;
     #[cfg(not(stage0))]
-    pub fn copysignf64(x: f64) -> f64;
+    pub fn copysignf64(x: f64, y: f64) -> f64;
 
     pub fn floorf32(x: f32) -> f32;
     pub fn floorf64(x: f64) -> f64;
