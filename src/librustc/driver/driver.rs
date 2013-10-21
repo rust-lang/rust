@@ -643,7 +643,7 @@ pub fn host_triple() -> ~str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    (env!("CFG_COMPILER_TRIPLE")).to_owned()
+    (env!("CFG_COMPILER")).to_owned()
 }
 
 pub fn build_session_options(binary: @str,
