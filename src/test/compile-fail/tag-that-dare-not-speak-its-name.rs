@@ -16,7 +16,7 @@
 extern mod std;
 
 fn last<T>(v: ~[&T]) -> std::option::Option<T> {
-    fail2!();
+    fail!();
 }
 
 fn main() {

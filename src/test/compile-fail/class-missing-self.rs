@@ -15,7 +15,7 @@ struct cat {
 impl cat {
     fn sleep(&self) { loop{} }
     fn meow(&self) {
-      error2!("Meow");
+      error!("Meow");
       meows += 1u; //~ ERROR unresolved name
       sleep();     //~ ERROR unresolved name
     }

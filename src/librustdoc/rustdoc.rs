@@ -134,7 +134,7 @@ pub fn main_args(args: &[~str]) -> int {
         }
     };
 
-    info2!("going to format");
+    info!("going to format");
     let started = time::precise_time_ns();
     let output = matches.opt_str("o").map(|s| Path::new(s));
     match matches.opt_str("w") {
@@ -150,7 +150,7 @@ pub fn main_args(args: &[~str]) -> int {
         }
     }
     let ended = time::precise_time_ns();
-    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
+    info!("Took {:.03f}s", (ended as f64 - started as f64) / 1e9f64);
 
     return 0;
 }
@@ -192,12 +192,12 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     // First, parse the crate and extract all relevant information.
     let libs = Cell::new(matches.opt_strs("L").map(|s| Path::new(s.as_slice())));
     let cr = Cell::new(Path::new(cratefile));
-    info2!("starting to run rustc");
+    info!("starting to run rustc");
     let (crate, analysis) = do std::task::try {
         let cr = cr.take();
         core::run_core(libs.take(), &cr)
     }.unwrap();
-    info2!("finished with rustc");
+    info!("finished with rustc");
     local_data::set(analysiskey, analysis);
 
     // Process all of the crate attributes, extracting plugin metadata along
@@ -238,19 +238,19 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
         let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
             Some(i) => PASSES[i].n1(),
             None => {
-                error2!("unknown pass {}, skipping", *pass);
+                error!("unknown pass {}, skipping", *pass);
                 continue
             },
         };
         pm.add_plugin(plugin);
     }
-    info2!("loading plugins...");
+    info!("loading plugins...");
     for pname in plugins.move_iter() {
         pm.load_plugin(pname);
     }
 
     // Run everything!
-    info2!("Executing passes/plugins");
+    info!("Executing passes/plugins");
     return pm.run_plugins(crate);
 }
 
@@ -311,7 +311,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,
-        Err(_) => fail2!("Rust generated JSON is invalid??")
+        Err(_) => fail!("Rust generated JSON is invalid??")
     };
 
     json.insert(~"crate", crate_json);

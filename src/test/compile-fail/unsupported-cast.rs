@@ -13,5 +13,5 @@
 use std::libc;
 
 fn main() {
-  info2!("{:?}", 1.0 as *libc::FILE); // Can't cast float to foreign.
+  info!("{:?}", 1.0 as *libc::FILE); // Can't cast float to foreign.
 }

@@ -236,16 +236,16 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
   SAFETY NOTE: Pointer-arithmetic. Dragons be here.
 */
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
-    debug2!("array_each_with_len: before iterate");
+    debug!("array_each_with_len: before iterate");
     if (arr as uint == 0) {
-        fail2!("ptr::array_each_with_len failure: arr input is null pointer");
+        fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     //let start_ptr = *arr;
     for e in range(0, len) {
         let n = offset(arr, e as int);
         cb(*n);
     }
-    debug2!("array_each_with_len: after iterate");
+    debug!("array_each_with_len: after iterate");
 }
 
 /**
@@ -259,10 +259,10 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
 */
 pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
     if (arr as uint == 0) {
-        fail2!("ptr::array_each_with_len failure: arr input is null pointer");
+        fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     let len = buf_len(arr);
-    debug2!("array_each inferred len: {}", len);
+    debug!("array_each inferred len: {}", len);
     array_each_with_len(arr, len, cb);
 }
 
@@ -669,7 +669,7 @@ pub mod ptr_tests {
                      let expected = do expected_arr[ctr].with_ref |buf| {
                          str::raw::from_c_str(buf)
                      };
-                     debug2!(
+                     debug!(
                          "test_ptr_array_each_with_len e: {}, a: {}",
                          expected, actual);
                      assert_eq!(actual, expected);
@@ -706,7 +706,7 @@ pub mod ptr_tests {
                      let expected = do expected_arr[ctr].with_ref |buf| {
                          str::raw::from_c_str(buf)
                      };
-                     debug2!(
+                     debug!(
                          "test_ptr_array_each e: {}, a: {}",
                          expected, actual);
                      assert_eq!(actual, expected);

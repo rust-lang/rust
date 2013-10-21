@@ -14,10 +14,10 @@ static C: &'static [E] = &[V0, V1(0xDEADBEE), V0];
 pub fn main() {
     match C[1] {
         V1(n) => assert!(n == 0xDEADBEE),
-        _ => fail2!()
+        _ => fail!()
     }
     match C[2] {
         V0 => (),
-        _ => fail2!()
+        _ => fail!()
     }
 }

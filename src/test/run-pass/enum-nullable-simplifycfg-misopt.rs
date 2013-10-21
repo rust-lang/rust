@@ -19,6 +19,6 @@ pub fn main() {
     match Cons(10, @Nil) {
         Cons(10, _) => {}
         Nil => {}
-        _ => fail2!()
+        _ => fail!()
     }
 }

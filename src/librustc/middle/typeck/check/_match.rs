@@ -428,8 +428,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
             fcx.infcx().resolve_type_vars_if_possible(fcx.expr_ty(begin));
         let e_ty =
             fcx.infcx().resolve_type_vars_if_possible(fcx.expr_ty(end));
-        debug2!("pat_range beginning type: {:?}", b_ty);
-        debug2!("pat_range ending type: {:?}", e_ty);
+        debug!("pat_range beginning type: {:?}", b_ty);
+        debug!("pat_range ending type: {:?}", e_ty);
         if !require_same_types(
             tcx, Some(fcx.infcx()), false, pat.span, b_ty, e_ty,
             || ~"mismatched types in range")
@@ -488,7 +488,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, typ);
 
-        debug2!("(checking match) writing type for pat id {}", pat.id);
+        debug!("(checking match) writing type for pat id {}", pat.id);
 
         match sub {
           Some(p) => check_pat(pcx, p, expected),

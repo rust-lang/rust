@@ -14,7 +14,7 @@ fn test1() {
     let x = u(~10);
     assert!(match x {
       u(a) => {
-        error2!("{:?}", a);
+        error!("{:?}", a);
         *a
       }
       _ => { 66 }

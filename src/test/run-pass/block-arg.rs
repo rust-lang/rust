@@ -14,7 +14,7 @@ pub fn main() {
 
     // Statement form does not require parentheses:
     for i in v.iter() {
-        info2!("{:?}", *i);
+        info!("{:?}", *i);
     }
 
     // Usable at all:
@@ -35,14 +35,14 @@ pub fn main() {
         assert!(false);
     }
     match do v.iter().all |e| { e.is_negative() } {
-        true => { fail2!("incorrect answer."); }
+        true => { fail!("incorrect answer."); }
         false => { }
     }
     match 3 {
       _ if do v.iter().any |e| { e.is_negative() } => {
       }
       _ => {
-        fail2!("wrong answer.");
+        fail!("wrong answer.");
       }
     }
 

@@ -15,15 +15,15 @@ pub fn main() { task::spawn(|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
 
 fn child(args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
-    error2!("{}", i1);
-    error2!("{}", i2);
-    error2!("{}", i3);
-    error2!("{}", i4);
-    error2!("{}", i5);
-    error2!("{}", i6);
-    error2!("{}", i7);
-    error2!("{}", i8);
-    error2!("{}", i9);
+    error!("{}", i1);
+    error!("{}", i2);
+    error!("{}", i3);
+    error!("{}", i4);
+    error!("{}", i5);
+    error!("{}", i6);
+    error!("{}", i7);
+    error!("{}", i8);
+    error!("{}", i9);
     assert_eq!(i1, 10);
     assert_eq!(i2, 20);
     assert_eq!(i3, 30);

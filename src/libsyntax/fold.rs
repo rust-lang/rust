@@ -891,7 +891,7 @@ mod test {
                 let a_val = $a;
                 let b_val = $b;
                 if !(pred_val(a_val,b_val)) {
-                    fail2!("expected args satisfying {}, got {:?} and {:?}",
+                    fail!("expected args satisfying {}, got {:?} and {:?}",
                           $predname, a_val, b_val);
                 }
             }

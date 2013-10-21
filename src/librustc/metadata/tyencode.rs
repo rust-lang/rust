@@ -335,18 +335,18 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
       }
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_struct(def, ref substs) => {
-          debug2!("~~~~ {}", "a[");
+          debug!("~~~~ {}", "a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);
-          debug2!("~~~~ {}", s);
+          debug!("~~~~ {}", s);
           w.write_str(s);
-          debug2!("~~~~ {}", "|");
+          debug!("~~~~ {}", "|");
           w.write_char('|');
           enc_substs(w, cx, substs);
-          debug2!("~~~~ {}", "]");
+          debug!("~~~~ {}", "]");
           w.write_char(']');
       }
-      ty::ty_err => fail2!("Shouldn't encode error type")
+      ty::ty_err => fail!("Shouldn't encode error type")
     }
 }
 

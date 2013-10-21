@@ -31,9 +31,9 @@ pub fn main() {
     add_int(ints, 44);
 
     do iter_ints(ints) |i| {
-        error2!("int = {}", *i);
+        error!("int = {}", *i);
         true
     };
 
-    error2!("ints={:?}", ints);
+    error!("ints={:?}", ints);
 }

@@ -172,7 +172,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
-    debug2!("type_of {:?}: {:?}", t, ty::get(t));
+    debug!("type_of {:?}: {:?}", t, ty::get(t));
 
     // Check the cache.
     match cx.lltypes.find(&t) {

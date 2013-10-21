@@ -127,7 +127,7 @@ impl<T> RingBuf<T> {
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         let idx = self.raw_index(i);
         match self.elts[idx] {
-            None => fail2!(),
+            None => fail!(),
             Some(ref v) => v
         }
     }
@@ -138,7 +138,7 @@ impl<T> RingBuf<T> {
     pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
         let idx = self.raw_index(i);
         match self.elts[idx] {
-            None => fail2!(),
+            None => fail!(),
             Some(ref mut v) => v
         }
     }
@@ -373,21 +373,21 @@ mod tests {
         assert_eq!(d.len(), 3u);
         d.push_back(137);
         assert_eq!(d.len(), 4u);
-        debug2!("{:?}", d.front());
+        debug!("{:?}", d.front());
         assert_eq!(*d.front().unwrap(), 42);
-        debug2!("{:?}", d.back());
+        debug!("{:?}", d.back());
         assert_eq!(*d.back().unwrap(), 137);
         let mut i = d.pop_front();
-        debug2!("{:?}", i);
+        debug!("{:?}", i);
         assert_eq!(i, Some(42));
         i = d.pop_back();
-        debug2!("{:?}", i);
+        debug!("{:?}", i);
         assert_eq!(i, Some(137));
         i = d.pop_back();
-        debug2!("{:?}", i);
+        debug!("{:?}", i);
         assert_eq!(i, Some(137));
         i = d.pop_back();
-        debug2!("{:?}", i);
+        debug!("{:?}", i);
         assert_eq!(i, Some(17));
         assert_eq!(d.len(), 0u);
         d.push_back(3);
@@ -398,10 +398,10 @@ mod tests {
         assert_eq!(d.len(), 3u);
         d.push_front(1);
         assert_eq!(d.len(), 4u);
-        debug2!("{:?}", d.get(0));
-        debug2!("{:?}", d.get(1));
-        debug2!("{:?}", d.get(2));
-        debug2!("{:?}", d.get(3));
+        debug!("{:?}", d.get(0));
+        debug!("{:?}", d.get(1));
+        debug!("{:?}", d.get(2));
+        debug!("{:?}", d.get(3));
         assert_eq!(*d.get(0), 1);
         assert_eq!(*d.get(1), 2);
         assert_eq!(*d.get(2), 3);

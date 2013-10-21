@@ -63,9 +63,9 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
         io::stdout().write_str("\n\n");
     }
     let testfile = Path::new(testfile);
-    debug2!("running {}", testfile.display());
+    debug!("running {}", testfile.display());
     let props = load_props(&testfile);
-    debug2!("loaded props");
+    debug!("loaded props");
     match config.mode {
       mode_compile_fail => run_cfail_test(&config, &props, &testfile),
       mode_run_fail => run_rfail_test(&config, &props, &testfile),
@@ -241,7 +241,7 @@ actual:\n\
 \n",
                      expected, actual);
             io::stdout().write_str(msg);
-            fail2!();
+            fail!();
         }
     }
 
@@ -289,7 +289,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let script_str = [~"set charset UTF-8",
                       cmds,
                       ~"quit\n"].connect("\n");
-    debug2!("script_str = {}", script_str);
+    debug!("script_str = {}", script_str);
     dump_output_file(config, testfile, script_str, "debugger.script");
 
     // run debugger script with gdb
@@ -348,10 +348,10 @@ fn check_error_patterns(props: &TestProps,
     let mut done = false;
     for line in ProcRes.stderr.line_iter() {
         if line.contains(*next_err_pat) {
-            debug2!("found error pattern {}", *next_err_pat);
+            debug!("found error pattern {}", *next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == props.error_patterns.len() {
-                debug2!("found all error patterns");
+                debug!("found all error patterns");
                 done = true;
                 break;
             }
@@ -423,7 +423,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         let mut was_expected = false;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
-                debug2!("prefix={} ee.kind={} ee.msg={} line={}",
+                debug!("prefix={} ee.kind={} ee.msg={} line={}",
                        prefixes[i], ee.kind, ee.msg, line);
                 if (prefix_matches(line, prefixes[i]) &&
                     line.contains(ee.kind) &&
@@ -626,7 +626,7 @@ fn compose_and_run_compiler(
 fn ensure_dir(path: &Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
-        fail2!("can't make dir {}", path.display());
+        fail!("can't make dir {}", path.display());
     }
 }
 
@@ -784,7 +784,7 @@ fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
 
 fn error(err: ~str) { io::stdout().write_line(format!("\nerror: {}", err)); }
 
-fn fatal(err: ~str) -> ! { error(err); fail2!(); }
+fn fatal(err: ~str) -> ! { error(err); fail!(); }
 
 fn fatal_ProcRes(err: ~str, ProcRes: &ProcRes) -> ! {
     let msg =
@@ -802,7 +802,7 @@ stderr:\n\
 \n",
              err, ProcRes.cmdline, ProcRes.stdout, ProcRes.stderr);
     io::stdout().write_str(msg);
-    fail2!();
+    fail!();
 }
 
 fn _arm_exec_compiled_test(config: &config, props: &TestProps,

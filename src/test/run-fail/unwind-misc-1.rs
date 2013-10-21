@@ -19,7 +19,7 @@ fn main() {
         arr.push(@~"key stuff");
         map.insert(arr.clone(), arr + &[@~"value stuff"]);
         if arr.len() == 5 {
-            fail2!();
+            fail!();
         }
     }
 }

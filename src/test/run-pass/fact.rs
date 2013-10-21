@@ -15,7 +15,7 @@
 fn f(x: int) -> int {
     // info!("in f:");
 
-    info2!("{}", x);
+    info!("{}", x);
     if x == 1 {
         // info!("bottoming out");
 
@@ -26,7 +26,7 @@ fn f(x: int) -> int {
         let y: int = x * f(x - 1);
         // info!("returned");
 
-        info2!("{}", y);
+        info!("{}", y);
         return y;
     }
 }

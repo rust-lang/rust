@@ -30,7 +30,7 @@ fn innocent_looking_victim() {
                     (f.c)(f, true);
                     println!("{:?}", msg);
                 },
-                None => fail2!("oops"),
+                None => fail!("oops"),
             }
         }
     }

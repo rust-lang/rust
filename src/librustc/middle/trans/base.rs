@@ -122,7 +122,7 @@ impl Drop for _InsnCtxt {
 }
 
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
-    debug2!("new InsnCtxt: {}", s);
+    debug!("new InsnCtxt: {}", s);
     do local_data::modify(task_local_insn_key) |c| {
         do c.map |mut ctx| {
             ctx.push(s);
@@ -379,7 +379,7 @@ pub fn malloc_raw_dyn(bcx: @mut Block,
                 (ty::mk_imm_box,
                  require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem))
             }
-            _ => fail2!("heap_exchange already handled")
+            _ => fail!("heap_exchange already handled")
         };
 
         // Grab the TypeRef type of box_ptr_ty.
@@ -911,18 +911,18 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
     }
 
     match bcx.node_info {
-        None => debug2!("invoke at ???"),
+        None => debug!("invoke at ???"),
         Some(node_info) => {
-            debug2!("invoke at {}",
+            debug!("invoke at {}",
                    bcx.sess().codemap.span_to_str(node_info.span));
         }
     }
 
     if need_invoke(bcx) {
         unsafe {
-            debug2!("invoking {} at {}", llfn, bcx.llbb);
+            debug!("invoking {} at {}", llfn, bcx.llbb);
             for &llarg in llargs.iter() {
-                debug2!("arg: {}", llarg);
+                debug!("arg: {}", llarg);
             }
         }
         let normal_bcx = sub_block(bcx, "normal return");
@@ -935,9 +935,9 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
         return (llresult, normal_bcx);
     } else {
         unsafe {
-            debug2!("calling {} at {}", llfn, bcx.llbb);
+            debug!("calling {} at {}", llfn, bcx.llbb);
             for &llarg in llargs.iter() {
-                debug2!("arg: {}", llarg);
+                debug!("arg: {}", llarg);
             }
         }
         let llresult = Call(bcx, llfn, llargs, attributes);
@@ -1157,7 +1157,7 @@ pub fn ignore_lhs(_bcx: @mut Block, local: &ast::Local) -> bool {
 
 pub fn init_local(bcx: @mut Block, local: &ast::Local) -> @mut Block {
 
-    debug2!("init_local(bcx={}, local.id={:?})",
+    debug!("init_local(bcx={}, local.id={:?})",
            bcx.to_str(), local.id);
     let _indenter = indenter();
 
@@ -1178,7 +1178,7 @@ pub fn init_local(bcx: @mut Block, local: &ast::Local) -> @mut Block {
 
 pub fn trans_stmt(cx: @mut Block, s: &ast::Stmt) -> @mut Block {
     let _icx = push_ctxt("trans_stmt");
-    debug2!("trans_stmt({})", stmt_to_str(s, cx.tcx().sess.intr()));
+    debug!("trans_stmt({})", stmt_to_str(s, cx.tcx().sess.intr()));
 
     if cx.sess().asm_comments() {
         add_span_comment(cx, s.span, stmt_to_str(s, cx.ccx().sess.intr()));
@@ -1341,7 +1341,7 @@ pub fn cleanup_and_leave(bcx: @mut Block,
     let mut bcx = bcx;
     let is_lpad = leave == None;
     loop {
-        debug2!("cleanup_and_leave: leaving {}", cur.to_str());
+        debug!("cleanup_and_leave: leaving {}", cur.to_str());
 
         if bcx.sess().trace() {
             trans_trace(
@@ -1415,7 +1415,7 @@ pub fn cleanup_block(bcx: @mut Block, upto: Option<BasicBlockRef>) -> @mut Block
     let mut cur = bcx;
     let mut bcx = bcx;
     loop {
-        debug2!("cleanup_block: {}", cur.to_str());
+        debug!("cleanup_block: {}", cur.to_str());
 
         if bcx.sess().trace() {
             trans_trace(
@@ -1465,7 +1465,7 @@ pub fn with_scope(bcx: @mut Block,
                   f: &fn(@mut Block) -> @mut Block) -> @mut Block {
     let _icx = push_ctxt("with_scope");
 
-    debug2!("with_scope(bcx={}, opt_node_info={:?}, name={})",
+    debug!("with_scope(bcx={}, opt_node_info={:?}, name={})",
            bcx.to_str(), opt_node_info, name);
     let _indenter = indenter();
 
@@ -1684,7 +1684,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                      -> @mut FunctionContext {
     for p in param_substs.iter() { p.validate(); }
 
-    debug2!("new_fn_ctxt_w_id(path={}, id={:?}, \
+    debug!("new_fn_ctxt_w_id(path={}, id={:?}, \
             param_substs={})",
            path_str(ccx.sess, path),
            id,
@@ -1798,7 +1798,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
                             args: &[ast::arg],
                             raw_llargs: &[ValueRef],
                             arg_tys: &[ty::t]) -> @mut Block {
-    debug2!("copy_args_to_allocas: raw_llargs={} arg_tys={}",
+    debug!("copy_args_to_allocas: raw_llargs={} arg_tys={}",
            raw_llargs.llrepr(fcx.ccx),
            arg_tys.repr(fcx.ccx.tcx));
 
@@ -1922,7 +1922,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     let _icx = push_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
-    debug2!("trans_closure(..., param_substs={})",
+    debug!("trans_closure(..., param_substs={})",
            param_substs.repr(ccx.tcx));
 
     let fcx = new_fn_ctxt_w_id(ccx,
@@ -2002,7 +2002,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
 
     let the_path_str = path_str(ccx.sess, path);
     let _s = StatRecorder::new(ccx, the_path_str);
-    debug2!("trans_fn(self_arg={:?}, param_substs={})",
+    debug!("trans_fn(self_arg={:?}, param_substs={})",
            self_arg,
            param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
@@ -2038,7 +2038,7 @@ fn insert_synthetic_type_entries(bcx: @mut Block,
 
     let tcx = bcx.tcx();
     for i in range(0u, fn_args.len()) {
-        debug2!("setting type of argument {} (pat node {}) to {}",
+        debug!("setting type of argument {} (pat node {}) to {}",
                i, fn_args[i].pat.id, bcx.ty_to_str(arg_tys[i]));
 
         let pat_id = fn_args[i].pat.id;
@@ -2214,7 +2214,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
     let path = match ccx.tcx.items.get_copy(&item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
-        _ => fail2!("trans_item"),
+        _ => fail!("trans_item"),
     };
     match item.node {
       ast::item_fn(ref decl, purity, _abis, ref generics, ref body) => {
@@ -2357,7 +2357,7 @@ pub fn register_fn(ccx: @mut CrateContext,
             assert!(f.abis.is_rust() || f.abis.is_intrinsic());
             f
         }
-        _ => fail2!("expected bare rust fn or an intrinsic")
+        _ => fail!("expected bare rust fn or an intrinsic")
     };
 
     let llfn = decl_rust_fn(ccx, f.sig.inputs, f.sig.output, sym);
@@ -2373,7 +2373,7 @@ pub fn register_fn_llvmty(ccx: @mut CrateContext,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
                           -> ValueRef {
-    debug2!("register_fn_fuller creating fn for item {} with path {}",
+    debug!("register_fn_fuller creating fn for item {} with path {}",
            node_id,
            ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
 
@@ -2452,7 +2452,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 };
                 (start_fn, args)
             } else {
-                debug2!("using user-defined start fn");
+                debug!("using user-defined start fn");
                 let args = ~[
                     C_null(Type::opaque_box(ccx).ptr_to()),
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
@@ -2500,7 +2500,7 @@ fn exported_name(ccx: &mut CrateContext, path: path, ty: ty::t, attrs: &[ast::At
 }
 
 pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
-    debug2!("get_item_val(id=`{:?}`)", id);
+    debug!("get_item_val(id=`{:?}`)", id);
 
     let val = ccx.item_vals.find_copy(&id);
     match val {
@@ -2522,10 +2522,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // we need to get the symbol from csearch instead of
                             // using the current crate's name/version
                             // information in the hash of the symbol
-                            debug2!("making {}", sym);
+                            debug!("making {}", sym);
                             let sym = match ccx.external_srcs.find(&i.id) {
                                 Some(&did) => {
-                                    debug2!("but found in other crate...");
+                                    debug!("but found in other crate...");
                                     csearch::get_symbol(ccx.sess.cstore, did)
                                 }
                                 None => sym
@@ -2575,7 +2575,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                 }
 
                                 if !inlineable {
-                                    debug2!("{} not inlined", sym);
+                                    debug!("{} not inlined", sym);
                                     ccx.non_inlineable_statics.insert(id);
                                 }
                                 ccx.item_symbols.insert(i.id, sym);
@@ -2596,7 +2596,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             llfn
                         }
 
-                        _ => fail2!("get_item_val: weird result in table")
+                        _ => fail!("get_item_val: weird result in table")
                     };
 
                     match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
@@ -2612,7 +2612,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                 }
 
                 ast_map::node_trait_method(trait_method, _, pth) => {
-                    debug2!("get_item_val(): processing a node_trait_method");
+                    debug!("get_item_val(): processing a node_trait_method");
                     match *trait_method {
                         ast::required(_) => {
                             ccx.sess.bug("unexpected variant: required trait method in \
@@ -2669,11 +2669,11 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                 ast::item_enum(_, _) => {
                                     register_fn(ccx, (*v).span, sym, id, ty)
                                 }
-                                _ => fail2!("node_variant, shouldn't happen")
+                                _ => fail!("node_variant, shouldn't happen")
                             };
                         }
                         ast::struct_variant_kind(_) => {
-                            fail2!("struct variant kind unexpected in get_item_val")
+                            fail!("struct variant kind unexpected in get_item_val")
                         }
                     }
                     set_inline_hint(llfn);

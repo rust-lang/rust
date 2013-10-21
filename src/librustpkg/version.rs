@@ -107,7 +107,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         let outp = run::process_output("git",
                                    ["--git-dir=" + git_dir.as_str().unwrap(), ~"tag", ~"-l"]);
 
-        debug2!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
+        debug!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
 
         if outp.status != 0 {
             continue;
@@ -136,7 +136,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
         let tmp_dir = TempDir::new("test");
         let tmp_dir = tmp_dir.expect("try_getting_version: couldn't create temp dir");
         let tmp_dir = tmp_dir.path();
-        debug2!("(to get version) executing \\{git clone https://{} {}\\}",
+        debug!("(to get version) executing \\{git clone https://{} {}\\}",
                remote_path.display(),
                tmp_dir.display());
         // FIXME (#9639): This needs to handle non-utf8 paths
@@ -144,21 +144,21 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
                                                                   remote_path.as_str().unwrap()),
                                                 tmp_dir.as_str().unwrap().to_owned()]);
         if outp.status == 0 {
-            debug2!("Cloned it... ( {}, {} )",
+            debug!("Cloned it... ( {}, {} )",
                    str::from_utf8(outp.output),
                    str::from_utf8(outp.error));
             let mut output = None;
             let git_dir = tmp_dir.join(".git");
-            debug2!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
+            debug!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
                    git_dir.display());
             // FIXME (#9639): This needs to handle non-utf8 paths
             let outp = run::process_output("git",
                                            ["--git-dir=" + git_dir.as_str().unwrap(),
                                             ~"tag", ~"-l"]);
             let output_text = str::from_utf8(outp.output);
-            debug2!("Full output: ( {} ) [{:?}]", output_text, outp.status);
+            debug!("Full output: ( {} ) [{:?}]", output_text, outp.status);
             for l in output_text.line_iter() {
-                debug2!("A line of output: {}", l);
+                debug!("A line of output: {}", l);
                 if !l.is_whitespace() {
                     output = Some(l);
                 }
@@ -185,7 +185,7 @@ enum ParseState {
 
 pub fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
-    debug2!("Attempting to parse: {}", s);
+    debug!("Attempting to parse: {}", s);
     let mut parse_state = Start;
     for c in s.iter() {
         if char::is_digit(c) {
@@ -248,7 +248,7 @@ fn test_parse_version() {
 #[test]
 fn test_split_version() {
     let s = "a/b/c#0.1";
-    debug2!("== {:?} ==", split_version(s));
+    debug!("== {:?} ==", split_version(s));
     assert!(split_version(s) == Some((s.slice(0, 5), ExactRevision(~"0.1"))));
     assert!(split_version("a/b/c") == None);
     let s = "a#1.2";

@@ -16,7 +16,7 @@ use cci_class_cast::kitty::cat;
 
 fn print_out(thing: @ToStr, expected: ~str) {
   let actual = thing.to_str();
-  info2!("{}", actual);
+  info!("{}", actual);
   assert_eq!(actual, expected);
 }
 

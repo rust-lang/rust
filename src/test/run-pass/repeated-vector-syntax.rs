@@ -17,6 +17,6 @@ pub fn main() {
     let x = [ @[true], ..512 ];
     let y = [ 0, ..1 ];
 
-    error2!("{:?}", x);
-    error2!("{:?}", y);
+    error!("{:?}", x);
+    error!("{:?}", y);
 }

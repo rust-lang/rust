@@ -89,7 +89,7 @@ pub fn getcwd() -> Path {
     do buf.as_mut_buf |buf, len| {
         unsafe {
             if libc::getcwd(buf, len as size_t).is_null() {
-                fail2!()
+                fail!()
             }
 
             Path::new(CString::new(buf as *c_char, false))
@@ -106,7 +106,7 @@ pub fn getcwd() -> Path {
     do buf.as_mut_buf |buf, len| {
         unsafe {
             if libc::GetCurrentDirectoryW(len as DWORD, buf) == 0 as DWORD {
-                fail2!();
+                fail!();
             }
         }
     }
@@ -197,7 +197,7 @@ pub fn env() -> ~[(~str,~str)] {
             };
             let ch = GetEnvironmentStringsA();
             if (ch as uint == 0) {
-                fail2!("os::env() failure getting env string from OS: {}",
+                fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
             let result = str::raw::from_c_multistring(ch as *libc::c_char, None);
@@ -213,13 +213,13 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let environ = rust_env_pairs();
             if (environ as uint == 0) {
-                fail2!("os::env() failure getting env string from OS: {}",
+                fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
             let mut result = ~[];
             ptr::array_each(environ, |e| {
                 let env_pair = str::raw::from_c_str(e);
-                debug2!("get_env_pairs: {}", env_pair);
+                debug!("get_env_pairs: {}", env_pair);
                 result.push(env_pair);
             });
             result
@@ -229,7 +229,7 @@ pub fn env() -> ~[(~str,~str)] {
             let mut pairs = ~[];
             for p in input.iter() {
                 let vs: ~[&str] = p.splitn_iter('=', 1).collect();
-                debug2!("splitting: len: {}", vs.len());
+                debug!("splitting: len: {}", vs.len());
                 assert_eq!(vs.len(), 2);
                 pairs.push((vs[0].to_owned(), vs[1].to_owned()));
             }
@@ -767,14 +767,14 @@ pub fn list_dir(p: &Path) -> ~[Path] {
                 fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
             }
             let mut paths = ~[];
-            debug2!("os::list_dir -- BEFORE OPENDIR");
+            debug!("os::list_dir -- BEFORE OPENDIR");
 
             let dir_ptr = do p.with_c_str |buf| {
                 opendir(buf)
             };
 
             if (dir_ptr as uint != 0) {
-                debug2!("os::list_dir -- opendir() SUCCESS");
+                debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     let cstr = CString::new(rust_list_dir_val(entry_ptr), false);
@@ -784,9 +784,9 @@ pub fn list_dir(p: &Path) -> ~[Path] {
                 closedir(dir_ptr);
             }
             else {
-                debug2!("os::list_dir -- opendir() FAILURE");
+                debug!("os::list_dir -- opendir() FAILURE");
             }
-            debug2!("os::list_dir -- AFTER -- \\#: {}", paths.len());
+            debug!("os::list_dir -- AFTER -- \\#: {}", paths.len());
             paths
         }
         #[cfg(windows)]
@@ -820,7 +820,7 @@ pub fn list_dir(p: &Path) -> ~[Path] {
                     while more_files != 0 {
                         let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
                         if fp_buf as uint == 0 {
-                            fail2!("os::list_dir() failure: got null ptr from wfd");
+                            fail!("os::list_dir() failure: got null ptr from wfd");
                         }
                         else {
                             let fp_vec = vec::from_buf(
@@ -1143,7 +1143,7 @@ pub fn last_os_error() -> ~str {
         do buf.as_mut_buf |buf, len| {
             unsafe {
                 if strerror_r(errno() as c_int, buf, len as size_t) < 0 {
-                    fail2!("strerror_r failure");
+                    fail!("strerror_r failure");
                 }
 
                 str::raw::from_c_str(buf as *c_char)
@@ -1207,7 +1207,7 @@ pub fn last_os_error() -> ~str {
                                          len as DWORD,
                                          ptr::null());
                 if res == 0 {
-                    fail2!("[{}] FormatMessage failure", errno());
+                    fail!("[{}] FormatMessage failure", errno());
                 }
             }
 
@@ -1263,7 +1263,7 @@ fn real_args() -> ~[~str] {
 
     match rt::args::clone() {
         Some(args) => args,
-        None => fail2!("process arguments not initialized")
+        None => fail!("process arguments not initialized")
     }
 }
 
@@ -1508,10 +1508,10 @@ impl Drop for MemoryMap {
             match libc::munmap(self.data as *c_void, self.len) {
                 0 => (),
                 -1 => match errno() as c_int {
-                    libc::EINVAL => error2!("invalid addr or len"),
-                    e => error2!("unknown errno={}", e)
+                    libc::EINVAL => error!("invalid addr or len"),
+                    e => error!("unknown errno={}", e)
                 },
-                r => error2!("Unexpected result {}", r)
+                r => error!("Unexpected result {}", r)
             }
         }
     }
@@ -1639,15 +1639,15 @@ impl Drop for MemoryMap {
                     if libc::VirtualFree(self.data as *mut c_void,
                                          self.len,
                                          libc::MEM_RELEASE) == FALSE {
-                        error2!("VirtualFree failed: {}", errno());
+                        error!("VirtualFree failed: {}", errno());
                     }
                 },
                 MapFile(mapping) => {
                     if libc::UnmapViewOfFile(self.data as LPCVOID) == FALSE {
-                        error2!("UnmapViewOfFile failed: {}", errno());
+                        error!("UnmapViewOfFile failed: {}", errno());
                     }
                     if libc::CloseHandle(mapping as HANDLE) == FALSE {
-                        error2!("CloseHandle failed: {}", errno());
+                        error!("CloseHandle failed: {}", errno());
                     }
                 }
             }
@@ -1778,7 +1778,7 @@ mod tests {
 
     #[test]
     pub fn last_os_error() {
-        debug2!("{}", os::last_os_error());
+        debug!("{}", os::last_os_error());
     }
 
     #[test]
@@ -1833,7 +1833,7 @@ mod tests {
         }
         let n = make_rand_name();
         setenv(n, s);
-        debug2!("{}", s.clone());
+        debug!("{}", s.clone());
         assert_eq!(getenv(n), option::Some(s));
     }
 
@@ -1842,7 +1842,7 @@ mod tests {
         let path = os::self_exe_path();
         assert!(path.is_some());
         let path = path.unwrap();
-        debug2!("{:?}", path.clone());
+        debug!("{:?}", path.clone());
 
         // Hard to test this function
         assert!(path.is_absolute());
@@ -1855,7 +1855,7 @@ mod tests {
         assert!(e.len() > 0u);
         for p in e.iter() {
             let (n, v) = (*p).clone();
-            debug2!("{:?}", n.clone());
+            debug!("{:?}", n.clone());
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
@@ -1881,10 +1881,10 @@ mod tests {
         assert!((!Path::new("test-path").is_absolute()));
 
         let cwd = getcwd();
-        debug2!("Current working directory: {}", cwd.display());
+        debug!("Current working directory: {}", cwd.display());
 
-        debug2!("{:?}", make_absolute(&Path::new("test-path")));
-        debug2!("{:?}", make_absolute(&Path::new("/usr/bin")));
+        debug!("{:?}", make_absolute(&Path::new("test-path")));
+        debug!("{:?}", make_absolute(&Path::new("/usr/bin")));
     }
 
     #[test]
@@ -1949,7 +1949,7 @@ mod tests {
         assert!(dirs.len() > 0u);
 
         for dir in dirs.iter() {
-            debug2!("{:?}", (*dir).clone());
+            debug!("{:?}", (*dir).clone());
         }
     }
 
@@ -1978,16 +1978,16 @@ mod tests {
         let mut dirpath = os::tmpdir();
         dirpath.push(format!("rust-test-{}/test-\uac00\u4e00\u30fc\u4f60\u597d",
             rand::random::<u32>())); // 가一ー你好
-        debug2!("path_is_dir dirpath: {}", dirpath.display());
+        debug!("path_is_dir dirpath: {}", dirpath.display());
 
         let mkdir_result = os::mkdir_recursive(&dirpath, (S_IRUSR | S_IWUSR | S_IXUSR) as i32);
-        debug2!("path_is_dir mkdir_result: {}", mkdir_result);
+        debug!("path_is_dir mkdir_result: {}", mkdir_result);
 
         assert!((os::path_is_dir(&dirpath)));
 
         let mut filepath = dirpath;
         filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
-        debug2!("path_is_dir filepath: {}", filepath.display());
+        debug!("path_is_dir filepath: {}", filepath.display());
 
         open(&filepath, OpenOrCreate, Read); // ignore return; touch only
         assert!((!os::path_is_dir(&filepath)));
@@ -2048,7 +2048,7 @@ mod tests {
             let in_mode = input.get_mode();
             let rs = os::copy_file(&input, &out);
             if (!os::path_exists(&input)) {
-                fail2!("{} doesn't exist", input.display());
+                fail!("{} doesn't exist", input.display());
             }
             assert!((rs));
             // FIXME (#9639): This needs to handle non-utf8 paths
@@ -2076,7 +2076,7 @@ mod tests {
             os::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail2!(msg.to_str())
+            Err(msg) => fail!(msg.to_str())
         };
         assert!(chunk.len >= 16);
 
@@ -2133,7 +2133,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail2!(msg.to_str())
+            Err(msg) => fail!(msg.to_str())
         };
         assert!(chunk.len > 0);
 

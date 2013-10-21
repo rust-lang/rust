@@ -14,7 +14,7 @@ struct C {
 
 impl Drop for C {
     fn drop(&mut self) {
-        error2!("dropping: {:?}", self.x);
+        error!("dropping: {:?}", self.x);
     }
 }
 

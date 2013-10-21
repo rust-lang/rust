@@ -15,7 +15,7 @@ struct shrinky_pointer {
 #[unsafe_destructor]
 impl Drop for shrinky_pointer {
     fn drop(&mut self) {
-        error2!("Hello!"); **(self.i) -= 1;
+        error!("Hello!"); **(self.i) -= 1;
     }
 }
 
@@ -32,6 +32,6 @@ fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {
 pub fn main() {
     let my_total = @@mut 10;
     { let pt = shrinky_pointer(my_total); assert!((pt.look_at() == 10)); }
-    error2!("my_total = {}", **my_total);
+    error!("my_total = {}", **my_total);
     assert_eq!(**my_total, 9);
 }

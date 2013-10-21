@@ -13,7 +13,7 @@
 #[allow(unused_variable)];
 #[allow(dead_assignment)];
 
-fn cond() -> bool { fail2!() }
+fn cond() -> bool { fail!() }
 fn link<'a>(v: &'a uint, w: &mut &'a uint) -> bool { *w = v; true }
 
 fn separate_arms() {

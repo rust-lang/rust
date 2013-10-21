@@ -16,7 +16,7 @@ use std::task;
 
 fn goodfail() {
     task::deschedule();
-    fail2!("goodfail");
+    fail!("goodfail");
 }
 
 fn main() {
@@ -25,5 +25,5 @@ fn main() {
     // We shouldn't be able to get past this recv since there's no
     // message available
     let i: int = po.recv();
-    fail2!("badfail");
+    fail!("badfail");
 }

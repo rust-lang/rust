@@ -12,5 +12,5 @@
 
 // error-pattern:unexpected token
 fn main() {
-  fail2!(@);
+  fail!(@);
 }

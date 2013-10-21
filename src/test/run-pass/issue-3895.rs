@@ -13,6 +13,6 @@ pub fn main() {
 
     match BadChar {
         _ if true => BadChar,
-        BadChar | BadSyntax => fail2!() ,
+        BadChar | BadSyntax => fail!() ,
     };
 }

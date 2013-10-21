@@ -241,7 +241,7 @@ mod tests {
                     assert_eq!(buf[2], 's' as u8);
                     assert_eq!(buf[3], 't' as u8);
                 }
-                r => fail2!("invalid read: {:?}", r)
+                r => fail!("invalid read: {:?}", r)
             }
 
             let mut raised = false;
@@ -276,7 +276,7 @@ mod tests {
                     assert_eq!(buf[2], 's' as u8);
                     assert_eq!(buf[3], 't' as u8);
                 }
-                r => fail2!("invalid read: {:?}", r)
+                r => fail!("invalid read: {:?}", r)
             }
         }
     }

@@ -100,7 +100,7 @@ impl Env {
         return match search_mod(self, &self.crate.node.module, 0, names) {
             Some(id) => id,
             None => {
-                fail2!("No item found: `%s`", names.connect("::"));
+                fail!("No item found: `%s`", names.connect("::"));
             }
         };
 
@@ -153,7 +153,7 @@ impl Env {
 
     pub fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
-            fail2!("%s is not a subtype of %s, but it should be",
+            fail!("%s is not a subtype of %s, but it should be",
                   self.ty_to_str(a),
                   self.ty_to_str(b));
         }
@@ -161,7 +161,7 @@ impl Env {
 
     pub fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
-            fail2!("%s is a subtype of %s, but it shouldn't be",
+            fail!("%s is a subtype of %s, but it shouldn't be",
                   self.ty_to_str(a),
                   self.ty_to_str(b));
         }
@@ -223,12 +223,12 @@ impl Env {
     pub fn glb() -> Glb { Glb(self.infcx.combine_fields(true, dummy_sp())) }
 
     pub fn resolve_regions(exp_count: uint) {
-        debug2!("resolve_regions(%u)", exp_count);
+        debug!("resolve_regions(%u)", exp_count);
 
         self.infcx.resolve_regions();
         if self.err_messages.len() != exp_count {
             for msg in self.err_messages.iter() {
-                debug2!("Error encountered: %s", *msg);
+                debug!("Error encountered: %s", *msg);
             }
             format!("Resolving regions encountered %u errors but expected %u!",
                  self.err_messages.len(),
@@ -240,7 +240,7 @@ impl Env {
     pub fn check_lub(&self, t1: ty::t, t2: ty::t, t_lub: ty::t) {
         match self.lub().tys(t1, t2) {
             Err(e) => {
-                fail2!("Unexpected error computing LUB: %?", e)
+                fail!("Unexpected error computing LUB: %?", e)
             }
             Ok(t) => {
                 self.assert_eq(t, t_lub);
@@ -256,13 +256,13 @@ impl Env {
 
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
-        debug2!("check_glb(t1=%s, t2=%s, t_glb=%s)",
+        debug!("check_glb(t1=%s, t2=%s, t_glb=%s)",
                self.ty_to_str(t1),
                self.ty_to_str(t2),
                self.ty_to_str(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
-                fail2!("Unexpected error computing LUB: %?", e)
+                fail!("Unexpected error computing LUB: %?", e)
             }
             Ok(t) => {
                 self.assert_eq(t, t_glb);
@@ -281,7 +281,7 @@ impl Env {
         match self.lub().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail2!("Unexpected success computing LUB: %?", self.ty_to_str(t))
+                fail!("Unexpected success computing LUB: %?", self.ty_to_str(t))
             }
         }
     }
@@ -291,7 +291,7 @@ impl Env {
         match self.glb().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail2!("Unexpected success computing GLB: %?", self.ty_to_str(t))
+                fail!("Unexpected success computing GLB: %?", self.ty_to_str(t))
             }
         }
     }

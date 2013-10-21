@@ -18,6 +18,6 @@ pub fn main() {
     let rc1 = managed::refcount(*i);
     let j = i.clone();
     let rc2 = managed::refcount(*i);
-    error2!("rc1: {} rc2: {}", rc1, rc2);
+    error!("rc1: {} rc2: {}", rc1, rc2);
     assert_eq!(rc1 + 1u, rc2);
 }

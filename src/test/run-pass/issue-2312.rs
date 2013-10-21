@@ -15,7 +15,7 @@ trait clam<A> { }
 struct foo(int);
 
 impl foo {
-    pub fn bar<B,C:clam<B>>(&self, _c: C) -> B { fail2!(); }
+    pub fn bar<B,C:clam<B>>(&self, _c: C) -> B { fail!(); }
 }
 
 pub fn main() { }

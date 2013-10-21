@@ -55,7 +55,7 @@ pub fn main() {
     let z = f(~x, y);
     make_cycle(z);
     let (a, b) = z.f();
-    info2!("a={} b={}", *a as uint, b as uint);
+    info!("a={} b={}", *a as uint, b as uint);
     assert_eq!(*a, x);
     assert_eq!(b, y);
 }

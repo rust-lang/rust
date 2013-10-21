@@ -362,7 +362,7 @@ impl Visitor<()> for GatherLocalsVisitor {
               _ => Some(self.fcx.to_ty(&local.ty))
             };
             self.assign(local.id, o_ty);
-            debug2!("Local variable {} is assigned type {}",
+            debug!("Local variable {} is assigned type {}",
                    self.fcx.pat_to_str(local.pat),
                    self.fcx.infcx().ty_to_str(
                        self.fcx.inh.locals.get_copy(&local.id)));
@@ -375,7 +375,7 @@ impl Visitor<()> for GatherLocalsVisitor {
               ast::PatIdent(_, ref path, _)
                   if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
-                debug2!("Pattern binding {} is assigned to {}",
+                debug!("Pattern binding {} is assigned to {}",
                        self.tcx.sess.str_of(path.segments[0].identifier),
                        self.fcx.infcx().ty_to_str(
                            self.fcx.inh.locals.get_copy(&p.id)));
@@ -450,7 +450,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     let arg_tys = fn_sig.inputs.map(|a| *a);
     let ret_ty = fn_sig.output;
 
-    debug2!("check_fn(arg_tys={:?}, ret_ty={:?}, opt_self_ty={:?})",
+    debug!("check_fn(arg_tys={:?}, ret_ty={:?}, opt_self_ty={:?})",
            arg_tys.map(|&a| ppaux::ty_to_str(tcx, a)),
            ppaux::ty_to_str(tcx, ret_ty),
            opt_self_info.map(|si| ppaux::ty_to_str(tcx, si.self_ty)));
@@ -510,7 +510,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         // Add the self parameter
         for self_info in opt_self_info.iter() {
             visit.assign(self_info.self_id, Some(self_info.self_ty));
-            debug2!("self is assigned to {}",
+            debug!("self is assigned to {}",
                    fcx.infcx().ty_to_str(
                        fcx.inh.locals.get_copy(&self_info.self_id)));
         }
@@ -588,7 +588,7 @@ pub fn check_struct(ccx: @mut CrateCtxt, id: ast::NodeId, span: Span) {
 }
 
 pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
-    debug2!("check_item(it.id={}, it.ident={})",
+    debug!("check_item(it.id={}, it.ident={})",
            it.id,
            ty::item_path_str(ccx.tcx, local_def(it.id)));
     let _indenter = indenter();
@@ -606,7 +606,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       }
       ast::item_impl(_, _, _, ref ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id).map(|x| *x);
-        debug2!("item_impl {} with id {} rp {:?}",
+        debug!("item_impl {} with id {} rp {:?}",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
         for m in ms.iter() {
             check_method(ccx, *m);
@@ -742,14 +742,14 @@ impl FnCtxt {
 
     #[inline]
     pub fn write_ty(&self, node_id: ast::NodeId, ty: ty::t) {
-        debug2!("write_ty({}, {}) in fcx {}",
+        debug!("write_ty({}, {}) in fcx {}",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
         self.inh.node_types.insert(node_id, ty);
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
-            debug2!("write_substs({}, {}) in fcx {}",
+            debug!("write_substs({}, {}) in fcx {}",
                    node_id,
                    ty::substs_to_str(self.tcx(), &substs),
                    self.tag());
@@ -781,7 +781,7 @@ impl FnCtxt {
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
                             adj: @ty::AutoAdjustment) {
-        debug2!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
+        debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
         self.inh.adjustments.insert(node_id, adj);
     }
 
@@ -1306,7 +1306,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::Expr,
                                expected: Option<ty::t>,
                                unifier: &fn()) {
-    debug2!(">> typechecking");
+    debug!(">> typechecking");
 
     fn check_method_argument_types(
         fcx: @mut FnCtxt,
@@ -1384,7 +1384,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             vec::from_elem(supplied_arg_count, ty::mk_err())
         };
 
-        debug2!("check_argument_types: formal_tys={:?}",
+        debug!("check_argument_types: formal_tys={:?}",
                formal_tys.map(|t| fcx.infcx().ty_to_str(*t)));
 
         // Check the arguments.
@@ -1396,7 +1396,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let xs = [false, true];
         for check_blocks in xs.iter() {
             let check_blocks = *check_blocks;
-            debug2!("check_blocks={}", check_blocks);
+            debug!("check_blocks={}", check_blocks);
 
             // More awful hacks: before we check the blocks, try to do
             // an "opportunistic" vtable resolution of any trait
@@ -1413,7 +1413,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 };
 
                 if is_block == check_blocks {
-                    debug2!("checking the argument");
+                    debug!("checking the argument");
                     let mut formal_ty = formal_tys[i];
 
                     match deref_args {
@@ -1567,7 +1567,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 method_map.insert(expr.id, (*entry));
             }
             None => {
-                debug2!("(checking method call) failing expr is {}", expr.id);
+                debug!("(checking method call) failing expr is {}", expr.id);
 
                 fcx.type_error_message(expr.span,
                   |actual| {
@@ -1921,7 +1921,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             ty::mk_closure(tcx, fn_ty_copy)
         };
 
-        debug2!("check_expr_fn_with_unifier fty={}",
+        debug!("check_expr_fn_with_unifier fty={}",
                fcx.infcx().ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
@@ -1955,7 +1955,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                 // (1) verify that the class id actually has a field called
                 // field
-                debug2!("class named {}", ppaux::ty_to_str(tcx, base_t));
+                debug!("class named {}", ppaux::ty_to_str(tcx, base_t));
                 let cls_items = ty::lookup_struct_fields(tcx, base_id);
                 match lookup_field_ty(tcx, base_id, cls_items,
                                       field, &(*substs)) {
@@ -2570,7 +2570,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::ExprForLoop(*) =>
-          fail2!("non-desugared expr_for_loop"),
+          fail!("non-desugared expr_for_loop"),
       ast::ExprLoop(ref body, _) => {
         check_block_no_value(fcx, (body));
         if !may_break(tcx, expr.id, body) {
@@ -2618,7 +2618,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
           }
           // argh
-          _ => fail2!("expected fn ty")
+          _ => fail!("expected fn ty")
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }
@@ -2662,8 +2662,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
 
-        debug2!("t_1={}", fcx.infcx().ty_to_str(t_1));
-        debug2!("t_e={}", fcx.infcx().ty_to_str(t_e));
+        debug!("t_1={}", fcx.infcx().ty_to_str(t_1));
+        debug!("t_e={}", fcx.infcx().ty_to_str(t_e));
 
         if ty::type_is_error(t_e) {
             fcx.write_error(id);
@@ -2892,9 +2892,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
        }
     }
 
-    debug2!("type of expr({}) {} is...", expr.id,
+    debug!("type of expr({}) {} is...", expr.id,
            syntax::print::pprust::expr_to_str(expr, tcx.sess.intr()));
-    debug2!("... {}, expected is {}",
+    debug!("... {}, expected is {}",
            ppaux::ty_to_str(tcx, fcx.expr_ty(expr)),
            match expected {
                Some(t) => ppaux::ty_to_str(tcx, t),
@@ -3175,7 +3175,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
 
             match v.node.disr_expr {
                 Some(e) => {
-                    debug2!("disr expr, checking {}", pprust::expr_to_str(e, ccx.tcx.sess.intr()));
+                    debug!("disr expr, checking {}", pprust::expr_to_str(e, ccx.tcx.sess.intr()));
 
                     let fcx = blank_fn_ctxt(ccx, rty, e.id);
                     let declty = ty::mk_int_var(ccx.tcx, fcx.infcx().next_int_var_id());
@@ -3305,7 +3305,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         def: ast::Def,
                         span: Span,
                         node_id: ast::NodeId) {
-    debug2!(">>> instantiate_path");
+    debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
     let mut ty_substs_len = 0;
@@ -3313,7 +3313,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         ty_substs_len += segment.types.len()
     }
 
-    debug2!("tpt={} ty_param_count={:?} ty_substs_len={:?}",
+    debug!("tpt={} ty_param_count={:?} ty_substs_len={:?}",
            tpt.repr(fcx.tcx()),
            ty_param_count,
            ty_substs_len);
@@ -3412,7 +3412,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
     };
     fcx.write_ty_substs(node_id, tpt.ty, substs);
 
-    debug2!("<<<");
+    debug!("<<<");
 }
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
@@ -3508,7 +3508,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
                              span: Span,
                              tps: &OptVec<ast::TyParam>,
                              ty: ty::t) {
-    debug2!("check_bounds_are_used(n_tps={}, ty={})",
+    debug!("check_bounds_are_used(n_tps={}, ty={})",
            tps.len(), ppaux::ty_to_str(ccx.tcx, ty));
 
     // make a vector of booleans initially false, set to true when used
@@ -3521,7 +3521,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
         |t| {
             match ty::get(t).sty {
               ty::ty_param(param_ty {idx, _}) => {
-                  debug2!("Found use of ty param \\#{}", idx);
+                  debug!("Found use of ty param \\#{}", idx);
                   tps_used[idx] = true;
               }
               _ => ()

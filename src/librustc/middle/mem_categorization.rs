@@ -383,7 +383,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_expr_unadjusted(&self, expr: @ast::Expr) -> cmt {
-        debug2!("cat_expr: id={} expr={}",
+        debug!("cat_expr: id={} expr={}",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
         let expr_ty = self.expr_ty(expr);
@@ -436,7 +436,7 @@ impl mem_categorization_ctxt {
             return self.cat_rvalue_node(expr, expr_ty);
           }
 
-          ast::ExprForLoop(*) => fail2!("non-desugared expr_for_loop")
+          ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop")
         }
     }
 
@@ -870,7 +870,7 @@ impl mem_categorization_ctxt {
         // get the type of the *subpattern* and use that.
 
         let tcx = self.tcx;
-        debug2!("cat_pattern: id={} pat={} cmt={}",
+        debug!("cat_pattern: id={} pat={} cmt={}",
                pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
                cmt.repr(tcx));
         let _i = indenter();

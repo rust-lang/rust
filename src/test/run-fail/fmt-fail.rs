@@ -11,4 +11,4 @@
 // error-pattern:meh
 extern mod extra;
 
-fn main() { let str_var: ~str = ~"meh"; fail2!("{}", str_var); }
+fn main() { let str_var: ~str = ~"meh"; fail!("{}", str_var); }
