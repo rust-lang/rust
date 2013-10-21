@@ -15,6 +15,9 @@ use std::io;
 use std::local_data;
 use extra::term;
 
+static BUG_REPORT_URL: &'static str =
+    "https://github.com/mozilla/rust/wiki/HOWTO-submit-a-Rust-bug-report";
+
 pub trait Emitter {
     fn emit(&self,
             cmsp: Option<(@codemap::CodeMap, Span)>,
@@ -143,7 +146,8 @@ impl handler for HandlerT {
 }
 
 pub fn ice_msg(msg: &str) -> ~str {
-    format!("internal compiler error: {}", msg)
+    format!("internal compiler error: {}\nThis message reflects a bug in the Rust compiler. \
+            \nWe would appreciate a bug report: {}", msg, BUG_REPORT_URL)
 }
 
 pub fn mk_span_handler(handler: @mut handler, cm: @codemap::CodeMap)
