@@ -616,6 +616,16 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
     }
 }
 
+pub fn repr_to_str<T>(t: &T) -> ~str {
+    use str;
+    use rt::io;
+    use rt::io::Decorator;
+
+    let mut result = io::mem::MemWriter::new();
+    write_repr(&mut result as &mut io::Writer, t);
+    str::from_utf8_owned(result.inner())
+}
+
 #[cfg(test)]
 struct P {a: int, b: f64}
 
