@@ -546,12 +546,6 @@ pub fn self_exe_path() -> Option<Path> {
     load_self().and_then(|path| Path::new_opt(path).map(|mut p| { p.pop(); p }))
 }
 
-
-/**
- * Returns the path to the user's home directory, if known.
-}
-
-
 /**
  * Returns the path to the user's home directory, if known.
  *

@@ -39,32 +39,32 @@ pub struct GlobIterator {
     priv todo: ~[(Path,uint)]
 }
 
-/**
- * Return an iterator that produces all the Paths that match the given pattern,
- * which may be absolute or relative to the current working directory.
- *
- * This method uses the default match options and is equivalent to calling
- * `glob_with(pattern, MatchOptions::new())`. Use `glob_with` directly if you
- * want to use non-default match options.
- *
- * # Example
- *
- * Consider a directory `/media/pictures` containing only the files `kittens.jpg`,
- * `puppies.jpg` and `hamsters.gif`:
- *
- * ```rust
- * for path in glob("/media/pictures/*.jpg") {
- *     println(path.to_str());
- * }
- * ```
- *
- * The above code will print:
- *
- * ```
- * /media/pictures/kittens.jpg
- * /media/pictures/puppies.jpg
- * ```
- */
+///
+/// Return an iterator that produces all the Paths that match the given pattern,
+/// which may be absolute or relative to the current working directory.
+///
+/// is method uses the default match options and is equivalent to calling
+/// `glob_with(pattern, MatchOptions::new())`. Use `glob_with` directly if you
+/// want to use non-default match options.
+///
+/// # Example
+///
+/// Consider a directory `/media/pictures` containing only the files `kittens.jpg`,
+/// `puppies.jpg` and `hamsters.gif`:
+///
+/// ```rust
+/// for path in glob("/media/pictures/*.jpg") {
+///     println(path.to_str());
+/// }
+/// ```
+///
+/// The above code will print:
+///
+/// ```
+/// /media/pictures/kittens.jpg
+/// /media/pictures/puppies.jpg
+/// ```
+///
 pub fn glob(pattern: &str) -> GlobIterator {
     glob_with(pattern, MatchOptions::new())
 }
