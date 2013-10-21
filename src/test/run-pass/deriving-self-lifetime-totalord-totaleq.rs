@@ -14,7 +14,7 @@ use std::cmp::{Less,Equal,Greater};
 struct A<'self> {
     x: &'self int
 }
-fn main() {
+pub fn main() {
     let (a, b) = (A { x: &1 }, A { x: &2 });
 
     assert!(a.equals(&a));
