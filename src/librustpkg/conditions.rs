@@ -48,10 +48,6 @@ condition! {
 }
 
 condition! {
-    pub not_a_workspace: (~str) -> Path;
-}
-
-condition! {
     pub failed_to_create_temp_dir: (~str) -> Path;
 }
 

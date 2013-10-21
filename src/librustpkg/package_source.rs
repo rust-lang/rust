@@ -19,8 +19,8 @@ use crate::Crate;
 use messages::*;
 use source_control::{safe_git_clone, git_clone_url, DirToUse, CheckedOutSources};
 use source_control::make_read_only;
-use path_util::{find_dir_using_rust_path_hack, make_dir_rwx_recursive};
-use path_util::{target_build_dir, versionize};
+use path_util::{find_dir_using_rust_path_hack, make_dir_rwx_recursive, default_workspace};
+use path_util::{target_build_dir, versionize, dir_has_crate_file};
 use util::{compile_crate, DepMap};
 use workcache_support;
 use workcache_support::crate_tag;
@@ -197,7 +197,23 @@ impl PkgSrc {
                 match ok_d {
                     Some(d) => d,
                     None => {
-                        if use_rust_path_hack {
+                        // See if the sources are in $CWD
+                        let cwd = os::getcwd();
+                        if dir_has_crate_file(&cwd) {
+                            return PkgSrc {
+                                // In this case, source_workspace isn't really a workspace.
+                                // This data structure needs yet more refactoring.
+                                source_workspace: cwd.clone(),
+                                destination_workspace: default_workspace(),
+                                build_in_destination: true,
+                                start_dir: cwd,
+                                id: id,
+                                libs: ~[],
+                                mains: ~[],
+                                benchs: ~[],
+                                tests: ~[]
+                            }
+                        } else if use_rust_path_hack {
                             match find_dir_using_rust_path_hack(&id) {
                                 Some(d) => d,
                                 None => {

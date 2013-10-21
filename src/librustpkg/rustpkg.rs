@@ -38,7 +38,7 @@ use messages::{error, warn, note};
 use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
 use path_util::{U_RWX, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
-use path_util::{target_executable_in_workspace, target_library_in_workspace};
+use path_util::{target_executable_in_workspace, target_library_in_workspace, dir_has_crate_file};
 use source_control::{CheckedOutSources, is_git_dir, make_read_only};
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspace};
 use workspace::determine_destination;
@@ -48,7 +48,6 @@ use context::{Context, BuildContext,
 use package_id::PkgId;
 use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench, Tests};
-// use workcache_support::{discover_outputs, digest_only_date};
 use workcache_support::digest_only_date;
 use exit_codes::{COPY_FAILED_CODE, BAD_FLAG_CODE};
 
@@ -210,10 +209,11 @@ pub trait CtxMethods {
 
 impl CtxMethods for BuildContext {
     fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(PkgId, Path)> {
+        let cwd = os::getcwd();
+
         if args.len() < 1 {
             match cwd_to_workspace() {
-                None if self.context.use_rust_path_hack => {
-                    let cwd = os::getcwd();
+                None  if dir_has_crate_file(&cwd) => {
                     // FIXME (#9639): This needs to handle non-utf8 paths
                     let pkgid = PkgId::new(cwd.filename_str().unwrap());
                     let mut pkg_src = PkgSrc::new(cwd, default_workspace(), true, pkgid);
@@ -260,6 +260,7 @@ impl CtxMethods for BuildContext {
         }
     }
     fn run(&self, cmd: &str, args: ~[~str]) {
+        let cwd = os::getcwd();
         match cmd {
             "build" => {
                 self.build_args(args, &Everything);
@@ -278,7 +279,6 @@ impl CtxMethods for BuildContext {
                     // The package id is presumed to be the first command-line
                     // argument
                     let pkgid = PkgId::new(args[0].clone());
-                    let cwd = os::getcwd();
                     self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
                 }
             }
@@ -295,9 +295,9 @@ impl CtxMethods for BuildContext {
             "install" => {
                if args.len() < 1 {
                     match cwd_to_workspace() {
-                        None if self.context.use_rust_path_hack => {
-                            let cwd = os::getcwd();
+                        None if dir_has_crate_file(&cwd) => {
                             // FIXME (#9639): This needs to handle non-utf8 paths
+
                             let inferred_pkgid =
                                 PkgId::new(cwd.filename_str().unwrap());
                             self.install(PkgSrc::new(cwd, default_workspace(),
