@@ -3809,8 +3809,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             }
             "fabsf32"      => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
             "fabsf64"      => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "copysignf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "copysignf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+            "copysignf32"  => (0, ~[ ty::mk_f32(), ty::mk_f32() ], ty::mk_f32()),
+            "copysignf64"  => (0, ~[ ty::mk_f64(), ty::mk_f64() ], ty::mk_f64()),
             "floorf32"     => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
             "floorf64"     => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
             "ceilf32"      => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
