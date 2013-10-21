@@ -330,9 +330,6 @@ extern "rust-intrinsic" {
 
     pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
 
-    #[cfg(not(stage0))]
-    pub fn frame_address(f: &fn(*u8));
-
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
 
