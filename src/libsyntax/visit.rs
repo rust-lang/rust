@@ -90,6 +90,7 @@ pub trait Visitor<E:Clone> {
         walk_struct_def(self, s, i, g, n, e)
     }
     fn visit_struct_field(&mut self, s:@struct_field, e:E) { walk_struct_field(self, s, e) }
+    fn visit_mac(&mut self, m:&mac, e:E) { walk_mac(self, m, e); }
 }
 
 impl<E:Clone> Visitor<E> for @mut Visitor<E> {
@@ -149,6 +150,9 @@ impl<E:Clone> Visitor<E> for @mut Visitor<E> {
     }
     fn visit_struct_field(&mut self, a:@struct_field, e:E) {
         (*self).visit_struct_field(a, e)
+    }
+    fn visit_mac(&mut self, macro:&mac, e:E) {
+        (*self).visit_mac(macro, e);
     }
 }
 
@@ -247,7 +251,7 @@ pub fn walk_item<E:Clone, V:Visitor<E>>(visitor: &mut V, item: &item, env: E) {
                 visitor.visit_trait_method(method, env.clone())
             }
         }
-        item_mac(ref macro) => walk_mac(visitor, macro, env),
+        item_mac(ref macro) => visitor.visit_mac(macro, env),
     }
 }
 
@@ -507,7 +511,7 @@ pub fn walk_stmt<E:Clone, V:Visitor<E>>(visitor: &mut V, statement: &Stmt, env: 
         StmtExpr(expression, _) | StmtSemi(expression, _) => {
             visitor.visit_expr(expression, env)
         }
-        StmtMac(ref macro, _) => walk_mac(visitor, macro, env),
+        StmtMac(ref macro, _) => visitor.visit_mac(macro, env),
     }
 }
 
@@ -644,7 +648,7 @@ pub fn walk_expr<E:Clone, V:Visitor<E>>(visitor: &mut V, expression: @Expr, env:
             walk_expr_opt(visitor, optional_expression, env.clone())
         }
         ExprLogLevel => {}
-        ExprMac(ref macro) => walk_mac(visitor, macro, env.clone()),
+        ExprMac(ref macro) => visitor.visit_mac(macro, env.clone()),
         ExprParen(subexpression) => {
             visitor.visit_expr(subexpression, env.clone())
         }
