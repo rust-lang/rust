@@ -137,7 +137,7 @@ install-host: LIB_DESTIN_DIR=$(PHL)
 install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call MK_INSTALL_DIR,$(PREFIX_BIN))
 	$(Q)$(call MK_INSTALL_DIR,$(PREFIX_LIB))
-	$(Q)$(call MK_INSTALL_DIR,$(PREFIX_ROOT)/$(CFG_MANDIR)/man1)
+	$(Q)$(call MK_INSTALL_DIR,$(CFG_MANDIR)/man1)
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X_$(CFG_BUILD_)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustpkg$(X_$(CFG_BUILD_)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD_)))
@@ -149,9 +149,9 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD_)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME_$(CFG_BUILD_)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD_)))
-	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/$(CFG_MANDIR)/man1,rustc.1)
-	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/$(CFG_MANDIR)/man1,rustdoc.1)
-	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/$(CFG_MANDIR)/man1,rustpkg.1)
+	$(Q)$(call INSTALL,$(S)/man, $(CFG_MANDIR)/man1,rustc.1)
+	$(Q)$(call INSTALL,$(S)/man, $(CFG_MANDIR)/man1,rustdoc.1)
+	$(Q)$(call INSTALL,$(S)/man, $(CFG_MANDIR)/man1,rustpkg.1)
 
 install-targets: $(INSTALL_TARGET_RULES)
 
@@ -177,10 +177,10 @@ uninstall:
         do rm -f $$i ; \
         done
 	$(Q)rm -Rf $(PHL)/rustc
-	$(Q)rm -f $(PREFIX_ROOT)/$(CFG_MANDIR)/man1/rustc.1
-	$(Q)rm -f $(PREFIX_ROOT)/$(CFG_MANDIR)/man1/rustdoc.1
-	$(Q)rm -f $(PREFIX_ROOT)/$(CFG_MANDIR)/man1/rusti.1
-	$(Q)rm -f $(PREFIX_ROOT)/$(CFG_MANDIR)/man1/rustpkg.1
+	$(Q)rm -f $(CFG_MANDIR)/man1/rustc.1
+	$(Q)rm -f $(CFG_MANDIR)/man1/rustdoc.1
+	$(Q)rm -f $(CFG_MANDIR)/man1/rusti.1
+	$(Q)rm -f $(CFG_MANDIR)/man1/rustpkg.1
 
 # target platform specific variables
 # for arm-linux-androidabi
