@@ -334,6 +334,23 @@ impl LittleLock {
             }
         }
     }
+
+    pub unsafe fn signal(&self) {
+        rust_signal_little_lock(self.l);
+    }
+
+    pub unsafe fn lock_and_wait(&self, f: &fn() -> bool) {
+        do atomically {
+            rust_lock_little_lock(self.l);
+            do (|| {
+                if f() {
+                    rust_wait_little_lock(self.l);
+                }
+            }).finally {
+                rust_unlock_little_lock(self.l);
+            }
+        }
+    }
 }
 
 struct ExData<T> {
@@ -402,6 +419,34 @@ impl<T:Send> Exclusive<T> {
         }
     }
 
+    #[inline]
+    pub unsafe fn hold_and_signal(&self, f: &fn(x: &mut T)) {
+        let rec = self.x.get();
+        do (*rec).lock.lock {
+            if (*rec).failed {
+                fail!("Poisoned Exclusive::new - another task failed inside!");
+            }
+            (*rec).failed = true;
+            f(&mut (*rec).data);
+            (*rec).failed = false;
+            (*rec).lock.signal();
+        }
+    }
+
+    #[inline]
+    pub unsafe fn hold_and_wait(&self, f: &fn(x: &T) -> bool) {
+        let rec = self.x.get();
+        do (*rec).lock.lock_and_wait {
+            if (*rec).failed {
+                fail!("Poisoned Exclusive::new - another task failed inside!");
+            }
+            (*rec).failed = true;
+            let result = f(&(*rec).data);
+            (*rec).failed = false;
+            result
+        }
+    }
+
     pub fn unwrap(self) -> T {
         let Exclusive { x: x } = self;
         // Someday we might need to unkillably unwrap an Exclusive, but not today.
@@ -415,6 +460,8 @@ externfn!(fn rust_create_little_lock() -> rust_little_lock)
 externfn!(fn rust_destroy_little_lock(lock: rust_little_lock))
 externfn!(fn rust_lock_little_lock(lock: rust_little_lock))
 externfn!(fn rust_unlock_little_lock(lock: rust_little_lock))
+externfn!(fn rust_signal_little_lock(lock: rust_little_lock))
+externfn!(fn rust_wait_little_lock(lock: rust_little_lock))
 
 #[cfg(test)]
 mod tests {
