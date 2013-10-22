@@ -43,7 +43,7 @@ impl IsaacRng {
         let mut rng = EMPTY;
 
         {
-            let bytes = unsafe {cast::transmute::<&mut [u32], &mut [u8]>(rng.rsl)};
+            let bytes = unsafe { cast::transmute_mut_slice::<u32,u8>(rng.rsl) };
             OSRng::new().fill_bytes(bytes);
         }
 
@@ -239,7 +239,7 @@ impl Isaac64Rng {
     pub fn new() -> Isaac64Rng {
         let mut rng = EMPTY_64;
         {
-            let bytes = unsafe {cast::transmute::<&mut [u64], &mut [u8]>(rng.rsl)};
+            let bytes = unsafe { cast::transmute_mut_slice::<u64,u8>(rng.rsl) };
             OSRng::new().fill_bytes(bytes);
         }
         rng.init(true);
