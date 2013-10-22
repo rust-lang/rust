@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast #[feature] doesn't work with check-fast
 // pp-exact
+
+#[feature(asm)];
 
 #[cfg = r#"just parse this"#]
 extern mod blah = r##"blah"##;
