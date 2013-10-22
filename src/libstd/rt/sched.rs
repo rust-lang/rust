@@ -62,8 +62,6 @@ pub struct Scheduler {
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
     stack_pool: StackPool,
-    /// The event loop used to drive the scheduler and perform I/O
-    event_loop: ~EventLoop,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
     priv sched_task: Option<~Task>,
@@ -95,7 +93,7 @@ pub struct Scheduler {
     //      destroyed before it's actually destroyed.
 
     /// The event loop used to drive the scheduler and perform I/O
-    event_loop: ~EventLoopObject,
+    event_loop: ~EventLoop,
 }
 
 /// An indication of how hard to work on a given operation, the difference
@@ -915,7 +913,7 @@ mod test {
     use cell::Cell;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
-    use rt::rtio::EventLoop;
+    use rt::basic;
     use rt::util;
     use option::{Some};
 
@@ -1015,7 +1013,6 @@ mod test {
     #[test]
     fn test_schedule_home_states() {
 
-        use rt::uv::uvio::UvEventLoop;
         use rt::sleeper_list::SleeperList;
         use rt::work_queue::WorkQueue;
         use rt::sched::Shutdown;
@@ -1031,7 +1028,7 @@ mod test {
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
-                ~UvEventLoop::new() as ~EventLoop,
+                basic::event_loop(),
                 normal_queue,
                 queues.clone(),
                 sleepers.clone());
@@ -1042,7 +1039,7 @@ mod test {
 
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
-                ~UvEventLoop::new() as ~EventLoop,
+                basic::event_loop(),
                 special_queue.clone(),
                 queues.clone(),
                 sleepers.clone(),
@@ -1153,7 +1150,7 @@ mod test {
         // in the work queue, but we are performing I/O, that once we do put
         // something in the work queue again the scheduler picks it up and doesn't
         // exit before emptying the work queue
-        do run_in_newsched_task {
+        do run_in_uv_task {
             do spawntask {
                 timer::sleep(10);
             }
@@ -1195,7 +1192,6 @@ mod test {
         use rt::work_queue::WorkQueue;
         use rt::sleeper_list::SleeperList;
         use rt::stack::StackPool;
-        use rt::uv::uvio::UvEventLoop;
         use rt::sched::{Shutdown, TaskFromFriend};
         use util;
 
@@ -1206,7 +1202,7 @@ mod test {
                 let queues = ~[queue.clone()];
 
                 let mut sched = ~Scheduler::new(
-                    ~UvEventLoop::new() as ~EventLoop,
+                    basic::event_loop(),
                     queue,
                     queues.clone(),
                     sleepers.clone());

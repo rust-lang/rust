@@ -102,6 +102,9 @@ pub mod shouldnt_be_public {
 // Internal macros used by the runtime.
 mod macros;
 
+/// Basic implementation of an EventLoop, provides no I/O interfaces
+mod basic;
+
 /// The global (exchange) heap.
 pub mod global_heap;
 
