@@ -57,7 +57,7 @@ pub struct ProcessConfig<'self> {
     ///     0 - stdin
     ///     1 - stdout
     ///     2 - stderr
-    io: ~[StdioContainer]
+    io: &'self [StdioContainer]
 }
 
 /// Describes what to do with a standard io stream for a child process.

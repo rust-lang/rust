@@ -17,7 +17,7 @@ use comm::{stream, SharedChan};
 use libc::{pid_t, c_int};
 use libc;
 use prelude::*;
-use rt::io::native::process;
+use rt::io::process;
 use rt::io;
 use rt::io::extensions::ReaderUtil;
 use task;
@@ -122,8 +122,24 @@ impl Process {
      */
     pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Process {
         let ProcessOptions { env, dir, in_fd, out_fd, err_fd } = options;
-        let inner = process::Process::new(prog, args, env, dir,
-                                          in_fd, out_fd, err_fd);
+        let env = env.as_ref().map(|a| a.as_slice());
+        let cwd = dir.as_ref().map(|a| a.as_str().unwrap());
+        fn rtify(fd: Option<c_int>, input: bool) -> process::StdioContainer {
+            match fd {
+                Some(fd) => process::InheritFd(fd),
+                None => process::CreatePipe(input, !input),
+            }
+        }
+        let rtio = [rtify(in_fd, true), rtify(out_fd, false),
+                    rtify(err_fd, false)];
+        let rtconfig = process::ProcessConfig {
+            program: prog,
+            args: args,
+            env: env,
+            cwd: cwd,
+            io: rtio,
+        };
+        let inner = process::Process::new(rtconfig).unwrap();
         Process { inner: inner }
     }
 
@@ -136,7 +152,9 @@ impl Process {
      * Fails if there is no stdin available (it's already been removed by
      * take_input)
      */
-    pub fn input<'a>(&'a mut self) -> &'a mut io::Writer { self.inner.input() }
+    pub fn input<'a>(&'a mut self) -> &'a mut io::Writer {
+        self.inner.io[0].get_mut_ref() as &mut io::Writer
+    }
 
     /**
      * Returns an io::Reader that can be used to read from this Process's stdout.
@@ -144,7 +162,9 @@ impl Process {
      * Fails if there is no stdout available (it's already been removed by
      * take_output)
      */
-    pub fn output<'a>(&'a mut self) -> &'a mut io::Reader { self.inner.output() }
+    pub fn output<'a>(&'a mut self) -> &'a mut io::Reader {
+        self.inner.io[1].get_mut_ref() as &mut io::Reader
+    }
 
     /**
      * Returns an io::Reader that can be used to read from this Process's stderr.
@@ -152,18 +172,20 @@ impl Process {
      * Fails if there is no stderr available (it's already been removed by
      * take_error)
      */
-    pub fn error<'a>(&'a mut self) -> &'a mut io::Reader { self.inner.error() }
+    pub fn error<'a>(&'a mut self) -> &'a mut io::Reader {
+        self.inner.io[2].get_mut_ref() as &mut io::Reader
+    }
 
     /**
      * Closes the handle to the child process's stdin.
      */
     pub fn close_input(&mut self) {
-        self.inner.take_input();
+        self.inner.io[0].take();
     }
 
     fn close_outputs(&mut self) {
-        self.inner.take_output();
-        self.inner.take_error();
+        self.inner.io[1].take();
+        self.inner.io[2].take();
     }
 
     /**
@@ -186,9 +208,9 @@ impl Process {
      * were redirected to existing file descriptors.
      */
     pub fn finish_with_output(&mut self) -> ProcessOutput {
-        self.inner.take_input(); // close stdin
-        let output = Cell::new(self.inner.take_output());
-        let error = Cell::new(self.inner.take_error());
+        self.close_input();
+        let output = Cell::new(self.inner.io[1].take());
+        let error = Cell::new(self.inner.io[2].take());
 
         // Spawn two entire schedulers to read both stdout and sterr
         // in parallel so we don't deadlock while blocking on one
