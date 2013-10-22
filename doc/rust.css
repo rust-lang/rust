@@ -1,82 +1,148 @@
+/**
+ * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ * With elements taken from Bootstrap v3.0.0 (Apache v2.0 licensed).
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+/* Global page semantics
+   ========================================================================== */
 body {
-    padding: 1em 6em;
-    margin: 0;
-    margin-bottom: 4em;
-    font-family: "Helvetica Neue", Helvetica, sans-serif;
-    font-size: 12pt;
-    background-color: white;
-    color: black;
-    line-height: 1.6em;
-    min-width: 45em;
-    max-width: 60em;
+	background-color: #fff;
+	margin: 0 auto;
+	padding: 0 15px;
+	margin-bottom: 4em;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	color: #333;
+	line-height: 1.428571429;
+}
+@media (min-width: 768px) {
+	body {
+		max-width: 750px;
+	}
+}
+@media (min-width: 992px) {
+	body {
+		max-width: 970px;
+	}
+}
+@media (min-width: 1200px) {
+	body {
+		max-width: 1170px;
+	}
+}
+
+h1, h2, h3, h4, h5, h6 {
+	color: black;
+	font-weight: 500;
+	line-height: 1.1;
+}
+h1, h2, h3 {
+	margin-top: 20px;
+	margin-bottom: 10px;
+}
+h4, h5, h6 {
+	margin-top: 12px;
+	margin-bottom: 10px;
 }
 
 h1 {
-    font-size: 24pt;
-    margin-top: 1.6em;
-    padding-left: 0.4em;
-    line-height: 1.6em;
-    background-color:#FFF2CE;
-    border-radius: 0.2em;
+	font-size: 36px;
+	padding: .1em .4em;
+	margin: 0.67em 0;
+	background-color: #E9E9E9;
+	border-radius: .2em;
 }
-
+h1.title {
+	line-height: 1.5em;
+}
 h2 {
-    font-size: 16pt;
-    margin-top: 1.6em;
-    padding: 0.2em 0.5em;
-    background-color:#FFF2CE;
-    border-radius: 0.4em;
+	font-size: 30px;
+	padding: .2em .5em;
+	background-color: #E9E9E9;
+	border-radius: .3em;
 }
-
-h2 code {
-    color: #097334;
-    font-size: 16pt;
-}
-
 h3 {
-    font-size: 14pt;
-    color: black;
-    background-color:#D9E7FF;
-    border-radius: 0.4em;
-    padding: 0.2em 0.5em;
+	font-size: 24px;
+	padding: .2em .5em;
+	background-color: #DDE8FC;
+	border-radius: .4em;
 }
-
-h3 code {
-    color: #541800;
-    font-size: 14pt;
-    font-style: italic;
-}
-
 h4 {
-    font-size: 11pt;
-    margin-top: 0em;
-    margin-bottom: 0em;
+	font-size: 18px;
+}
+h5 {
+	font-size: 16px;
+}
+h6 {
+	font-size: 14px;
 }
 
-code {
-    font-size: 11pt;
+p {
+	margin: 0 0 10px;
 }
 
-pre {
-    margin-left: 1.1em;
-    padding: .4em .4em .4em .8em;
-    font-size: 10pt;
-    background-color: #F5F5F5;
-    border-radius: 0.5em;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+/* Links layout
+   ========================================================================== */
+a {
+	text-decoration: none;
+	color: #428BCA;
 }
-
-pre.rust {
-    background-color: #F3F6FF;
+a:hover, a:focus {
+	color: #2A6496;
+	text-decoration: underline;
 }
-
-a, a:visited, a:link {
-    text-decoration: none;
-    color: rgb(0, 105, 214);
+a:focus {
+	outline: thin dotted #333;
+	outline: 5px auto -webkit-focus-ring-color;
+	outline-offset: -2px;
+}
+a:hover, a:active {
+	outline: 0;
 }
 
 h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
-h3 a:link, h3 a:visited { color: black; }
+h3 a:link, h3 a:visited, h4 a:link, h4 a:visited,
+h5 a:link, h5 a:visited {color: black;}
+
+/* Code
+   ========================================================================== */
+pre, code {
+	font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+	border-radius: 4px;
+}
+pre {
+	background-color: #F5F5F5;
+	border: 1px solid #CCC;
+	border-radius: 0.5em;
+	white-space: pre-wrap;
+	padding: 9.5px;
+	margin: 10px 0;
+	font-size: 13px;
+	word-break: break-all;
+	word-wrap: break-word;
+}
+code {
+	padding: 2px 4px;
+	font-size: 90%;
+	color: #C7254E;
+	background-color: #F9F2F4;
+	white-space: nowrap;
+}
+pre code {
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
+	white-space: pre-wrap;
+	background-color: transparent;
+	border: 0;
+}
 
 /* Code highlighting */
 .cm-s-default span.cm-keyword {color: #708;}
@@ -99,58 +165,142 @@ h3 a:link, h3 a:visited { color: black; }
 .cm-s-default span.cm-tag {color: #170;}
 .cm-s-default span.cm-attribute {color: #00c;}
 
+/* The rest
+   ========================================================================== */
 #versioninfo {
-  position: fixed;
-  bottom: 0px;
-  right: 0px;
-
-  background-color: white;
-  padding: 0.5em;
+	text-align: center;
+	margin: 0.5em;
+	font-size: 1.1em;
 }
-
-a.lessimportant {
-  color: gray;
-  font-size: 60%;
+@media (min-width: 768px) {
+	#versioninfo {
+		position: fixed;
+		bottom: 0px;
+		right: 0px;
+	}
+	.white-sticker {
+		background-color: #fff;
+		margin: 2px;
+		padding: 0 2px;
+		border-radius: .3em;
+	}
+}
+#versioninfo a.hash {
+	color: gray;
+	font-size: 60%;
 }
 
 blockquote {
-    color: black;
-    border-left: solid 1px silver;
-    margin: 1em;
-    padding: 0.5em 1em 0.5em 1em;
+	color: black;
+	border-left: 5px solid #eee;
+	margin: 0 0 20px;
+	padding: 10px 20px;
+}
+blockquote p {
+	font-size: 17px;
+	font-weight: 300;
+	line-height: 1.25;
+}
+blockquote p:last-child {
+	margin-bottom: 0;
 }
 
 /* Make the table under the tutorial's 'Types' section look nicer */
 table {
-    border-top: 1px solid silver;
-    border-bottom: 1px solid silver;
-    padding: 0.8em;
-    font-size: smaller;
+	border-top: 1px solid silver;
+	border-bottom: 1px solid silver;
+	padding: 0.8em;
+	font-size: smaller;
 }
 /* Also for the benefit of the type table */
 td {
-    padding-right: 1em;
+	padding-right: 1em;
 }
 
-/* Only display one level of hierarchy in the TOC */
-#TOC ul ul {
-    display: none;
+ul,
+ol {
+	margin-top: 0;
+	margin-bottom: 10px;
+}
+ul ul,
+ol ul,
+ul ol,
+ol ol {
+	margin-bottom: 0;
+}
+dl {
+	margin-bottom: 20px;
+}
+dd {
+	margin-left: 0;
 }
 
 #TOC ul {
-    list-style: none;
-    padding-left: 0px;
+	list-style-type: none;
+	padding-left: 0px;
+}
+/* Only display one level of hierarchy in the TOC */
+#TOC ul ul {
+	display: none;
 }
 
 /* Adjust list alignment so rustdoc indexes don't align with blockquotes */
 div.index ul {
-    padding-left: 1em;
+	padding-left: 1em;
 }
 
-ul {
-    margin-top: 0em
+div.section.level3 {
+	margin-left: 1em;
 }
 
-div.section.level3  {
-    margin-left: 1.0em;
+sub,
+sup {
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
+}
+
+hr {
+	margin-top: 20px;
+	margin-bottom: 20px;
+	border: 0;
+	border-top: 1px solid #eeeeee;
+}
+
+@media print {
+	* {
+		text-shadow: none !important;
+		color: #000 !important;
+		background: transparent !important;
+		box-shadow: none !important;
+	}
+	a, a:visited {
+		text-decoration: underline;
+	}
+	a[href]:after {
+		content: " (" attr(href) ")";
+	}
+	a[href^="javascript:"]:after, a[href^="#"]:after {
+		content: "";
+	}
+	pre, blockquote {
+		border: 1px solid #999;
+		page-break-inside: avoid;
+	}
+	@page {
+		margin: 2cm .5cm;
+	}
+	p, h2, h3 {
+		orphans: 3;
+		widows: 3;
+	}
+	h2, h3 {
+		page-break-after: avoid;
+	}
+	table {
+		border-collapse: collapse !important;
+	}
+	table td, table th {
+		background-color: #fff !important;
+	}
 }
