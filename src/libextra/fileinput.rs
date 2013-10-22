@@ -36,13 +36,13 @@ of `"-"` to `stdin`.
 In many cases, one can use the `input_*` functions without having
 to handle any `FileInput` structs. E.g. a simple `cat` program
 
-    for input |line| {
+    do input |line| {
         io::println(line)
     }
 
 or a program that numbers lines after concatenating two files
 
-    for input_vec_state(make_path_option_vec([~"a.txt", ~"b.txt"])) |line, state| {
+    do input_vec_state(make_path_option_vec([~"a.txt", ~"b.txt"])) |line, state| {
         io::println(format!("{}: %s", state.line_num,
                                    line));
     }
@@ -72,10 +72,11 @@ input, skips the current file and then numbers the remaining lines
 (where the numbers are from the start of each file, rather than the
 total line count).
 
-    let input = FileInput::from_vec(pathify([~"a.txt", ~"b.txt", ~"c.txt"],
-                                             true));
+    let input = FileInput::from_vec(
+      make_path_option_vec([~"a.txt", ~"b.txt", ~"c.txt"], true)
+    );
 
-    for input.each_line |line| {
+    do input.each_line |line| {
         if line.is_empty() {
             break
         }
@@ -87,7 +88,7 @@ total line count).
     if io::stdin().read_line() == ~"yes" {
         input.next_file(); // skip!
 
-        for input.each_line_state |line, state| {
+        do input.each_line_state |line, state| {
            io::println(format!("{}: %s", state.line_num_file,
                                       line))
         }
