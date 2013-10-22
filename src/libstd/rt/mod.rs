@@ -68,7 +68,6 @@ use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
 use rt::task::UnwindResult;
 use rt::task::{Task, SchedTask, GreenTask, Sched};
-use rt::uv::uvio::UvEventLoop;
 use unstable::atomics::{AtomicInt, AtomicBool, SeqCst};
 use unstable::sync::UnsafeArc;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
@@ -123,6 +122,7 @@ pub mod io;
 pub mod rtio;
 
 /// libuv and default rtio implementation.
+#[cfg(stage0)]
 pub mod uv;
 
 /// The Local trait for types that are accessible via thread-local
@@ -287,7 +287,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         rtdebug!("inserting a regular scheduler");
 
         // Every scheduler is driven by an I/O event loop.
-        let loop_ = ~UvEventLoop::new() as ~rtio::EventLoop;
+        let loop_ = new_event_loop();
         let mut sched = ~Scheduler::new(loop_,
                                         work_queue.clone(),
                                         work_queues.clone(),
@@ -311,7 +311,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         // set.
         let work_queue = WorkQueue::new();
 
-        let main_loop = ~UvEventLoop::new() as ~rtio::EventLoop;
+        let main_loop = new_event_loop();
         let mut main_sched = ~Scheduler::new_special(main_loop,
                                                      work_queue,
                                                      work_queues.clone(),
@@ -461,4 +461,30 @@ pub fn in_green_task_context() -> bool {
             None => false
         }
     }
+}
+
+#[cfg(stage0)]
+pub fn new_event_loop() -> ~rtio::EventLoop {
+    use rt::uv::uvio::UvEventLoop;
+    ~UvEventLoop::new() as ~rtio::EventLoop
+}
+
+#[cfg(not(stage0))]
+pub fn new_event_loop() -> ~rtio::EventLoop {
+    #[fixed_stack_segment]; #[allow(cstack)];
+
+    match crate_map::get_crate_map() {
+        None => {}
+        Some(map) => {
+            match map.event_loop_factory {
+                None => {}
+                Some(factory) => return factory()
+            }
+        }
+    }
+
+    // If the crate map didn't specify a factory to create an event loop, then
+    // instead just use a basic event loop missing all I/O services to at least
+    // get the scheduler running.
+    return basic::event_loop();
 }

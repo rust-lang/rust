@@ -148,7 +148,7 @@ $$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MK
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
-# This regexp has a single $, escaped twice
+# This regexp has a single $$ escaped twice
 $(1)/%.bsd.def:    %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@

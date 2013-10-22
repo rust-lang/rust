@@ -1013,7 +1013,6 @@ mod test {
 
     #[test]
     fn test_schedule_home_states() {
-
         use rt::sleeper_list::SleeperList;
         use rt::work_queue::WorkQueue;
         use rt::sched::Shutdown;

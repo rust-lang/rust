@@ -12,6 +12,8 @@ use container::MutableSet;
 use hashmap::HashSet;
 use option::{Some, None, Option};
 use vec::ImmutableVector;
+#[cfg(not(stage0))]
+use rt::rtio::EventLoop;
 
 // Need to tell the linker on OS X to not barf on undefined symbols
 // and instead look them up at runtime, which we need to resolve
@@ -25,17 +27,31 @@ pub struct ModEntry<'self> {
     log_level: *mut u32
 }
 
+#[cfg(stage0)]
 pub struct CrateMap<'self> {
-     priv version: i32,
-     priv entries: &'self [ModEntry<'self>],
-     priv children: &'self [&'self CrateMap<'self>]
+    version: i32,
+    entries: &'self [ModEntry<'self>],
+    children: &'self [&'self CrateMap<'self>]
+}
+
+#[cfg(not(stage0))]
+pub struct CrateMap<'self> {
+    version: i32,
+    entries: &'self [ModEntry<'self>],
+    children: &'self [&'self CrateMap<'self>],
+    event_loop_factory: Option<extern "C" fn() -> ~EventLoop>,
 }
 
 #[cfg(not(windows))]
 pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
     extern {
+        #[cfg(stage0)]
         #[weak_linkage]
         #[link_name = "_rust_crate_map_toplevel"]
+        static CRATE_MAP: CrateMap<'static>;
+
+        #[cfg(not(stage0))]
+        #[crate_map]
         static CRATE_MAP: CrateMap<'static>;
     }
 
@@ -108,6 +124,7 @@ pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry)) {
 
 #[cfg(test)]
 mod tests {
+    use option::None;
     use rt::crate_map::{CrateMap, ModEntry, iter_crate_map};
 
     #[test]
@@ -121,13 +138,15 @@ mod tests {
         let child_crate = CrateMap {
             version: 2,
             entries: entries,
-            children: []
+            children: [],
+            event_loop_factory: None,
         };
 
         let root_crate = CrateMap {
             version: 2,
             entries: [],
-            children: [&child_crate, &child_crate]
+            children: [&child_crate, &child_crate],
+            event_loop_factory: None,
         };
 
         let mut cnt = 0;
@@ -150,7 +169,8 @@ mod tests {
                 ModEntry { name: "c::m1", log_level: &mut level2},
                 ModEntry { name: "c::m2", log_level: &mut level3},
             ],
-            children: []
+            children: [],
+            event_loop_factory: None,
         };
 
         let child_crate1 = CrateMap {
@@ -158,7 +178,8 @@ mod tests {
             entries: [
                 ModEntry { name: "t::f1", log_level: &mut 1},
             ],
-            children: [&child_crate2]
+            children: [&child_crate2],
+            event_loop_factory: None,
         };
 
         let root_crate = CrateMap {
@@ -166,7 +187,8 @@ mod tests {
             entries: [
                 ModEntry { name: "t::f2", log_level: &mut 0},
             ],
-            children: [&child_crate1]
+            children: [&child_crate1],
+            event_loop_factory: None,
         };
 
         let mut cnt = 0;
