@@ -13,6 +13,7 @@ use cast::transmute;
 use cast;
 use cell::Cell;
 use clone::Clone;
+use comm::{SendDeferred, SharedChan};
 use libc::{c_int, c_uint, c_void, pid_t};
 use ops::Drop;
 use option::*;
@@ -42,6 +43,7 @@ use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
              CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
              FileStat};
+use rt::io::signal::Signum;
 use task;
 
 #[cfg(test)] use container::Container;
@@ -236,6 +238,20 @@ impl EventLoop for UvEventLoop {
 
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject> {
         Some(&mut self.uvio)
+    }
+
+    fn signal(&mut self, signum: Signum, channel: SharedChan<Signum>)
+        -> Result<~RtioSignalObject, IoError> {
+        match self.uvio.signal_init() {
+            Ok(uv) => {
+                let mut w = uv;
+                match w.watcher.start(signum, |_, _| channel.send_deferred(signum)) {
+                    Ok(*) => Ok(w),
+                    Err(e) => Err(e),
+                }
+            },
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -797,6 +813,12 @@ impl IoFactory for UvIoFactory {
                 Err(uv_error_to_io_error(uverr))
             }
         }
+    }
+
+    fn signal_init(&mut self) -> Result<~RtioSignalObject, IoError> {
+        let watcher = SignalWatcher::new(self.uv_loop());
+        let home = get_handle_to_current_scheduler!();
+        Ok(~UvSignal::new(watcher, home))
     }
 }
 
@@ -1606,6 +1628,38 @@ impl RtioProcess for UvProcess {
         }
 
         self.exit_status.unwrap()
+    }
+}
+
+pub struct UvSignal {
+    watcher: signal::SignalWatcher,
+    home: SchedHandle,
+}
+
+impl HomingIO for UvSignal {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl UvSignal {
+    fn new(w: signal::SignalWatcher, home: SchedHandle) -> UvSignal {
+        UvSignal { watcher: w, home: home }
+    }
+}
+
+impl RtioSignal for UvSignal {}
+
+impl Drop for UvSignal {
+    fn drop(&mut self) {
+        do self.home_for_io_with_sched |self_, scheduler| {
+            rtdebug!("closing UvSignal");
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task_cell = Cell::new(task);
+                do self_.watcher.close {
+                    let scheduler: ~Scheduler = Local::take();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                }
+            }
+        }
     }
 }
 

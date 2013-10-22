@@ -331,6 +331,9 @@ pub mod native {
 /// Mock implementations for testing
 mod mock;
 
+/// Signal handling
+pub mod signal;
+
 /// The default buffer size for various I/O operations
 /// XXX: Not pub
 pub static DEFAULT_BUF_SIZE: uint = 1024 * 64;

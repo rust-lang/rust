@@ -637,3 +637,18 @@ extern "C" int
 rust_uv_pipe_init(uv_loop_t *loop, uv_pipe_t* p, int ipc) {
   return uv_pipe_init(loop, p, ipc);
 }
+
+extern "C" int
+rust_uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
+  return uv_signal_init(loop, handle);
+}
+
+extern "C" int
+rust_uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
+  return uv_signal_start(handle, signal_cb, signum);
+}
+
+extern "C" int
+rust_uv_signal_stop(uv_signal_t* handle) {
+  return uv_signal_stop(handle);
+}

@@ -48,6 +48,7 @@ use cast::transmute;
 use ptr::null;
 use unstable::finally::Finally;
 use rt::io::net::ip::SocketAddr;
+use rt::io::signal::Signum;
 
 use rt::io::IoError;
 
@@ -60,6 +61,7 @@ pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
 pub use self::process::Process;
 pub use self::pipe::Pipe;
+pub use self::signal::SignalWatcher;
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -75,6 +77,7 @@ pub mod async;
 pub mod addrinfo;
 pub mod process;
 pub mod pipe;
+pub mod signal;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
@@ -137,6 +140,7 @@ pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
+pub type SignalCallback = ~fn(SignalWatcher, Signum);
 
 
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle.
@@ -153,6 +157,7 @@ struct WatcherData {
     udp_recv_cb: Option<UdpReceiveCallback>,
     udp_send_cb: Option<UdpSendCallback>,
     exit_cb: Option<ExitCallback>,
+    signal_cb: Option<SignalCallback>,
 }
 
 pub trait WatcherInterop {
@@ -186,6 +191,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 udp_recv_cb: None,
                 udp_send_cb: None,
                 exit_cb: None,
+                signal_cb: None,
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);

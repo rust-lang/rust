@@ -11,9 +11,11 @@
 use libc;
 use option::*;
 use result::*;
+use comm::SharedChan;
 use libc::c_int;
 
 use rt::io::IoError;
+use rt::io::signal::Signum;
 use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
 use rt::uv::uvio;
@@ -36,6 +38,7 @@ pub type PausibleIdleCallback = uvio::UvPausibleIdleCallback;
 pub type RtioPipeObject = uvio::UvPipeStream;
 pub type RtioUnboundPipeObject = uvio::UvUnboundPipe;
 pub type RtioProcessObject = uvio::UvProcess;
+pub type RtioSignalObject = uvio::UvSignal;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -45,6 +48,8 @@ pub trait EventLoop {
     fn remote_callback(&mut self, ~fn()) -> ~RemoteCallbackObject;
     /// The asynchronous I/O services. Not all event loops may provide one
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject>;
+    fn signal(&mut self, signal: Signum, channel: SharedChan<Signum>)
+        -> Result<~RtioSignalObject, IoError>;
 }
 
 pub trait RemoteCallback {
@@ -87,6 +92,7 @@ pub trait IoFactory {
     fn pipe_init(&mut self, ipc: bool) -> Result<~RtioUnboundPipeObject, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcessObject, ~[Option<RtioPipeObject>]), IoError>;
+    fn signal_init(&mut self) -> Result<~RtioSignalObject, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -154,3 +160,5 @@ pub trait RtioPipe {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }
+
+pub trait RtioSignal {}
