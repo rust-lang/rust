@@ -145,7 +145,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
             let mut bytes = [0, 0];
             match rdr.read(bytes) {
                 Some(2) => {}
-                _ => fail2!() // XXX: malformed url?
+                _ => fail!() // XXX: malformed url?
             }
             let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
 
@@ -279,7 +279,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                         let mut bytes = [0, 0];
                         match rdr.read(bytes) {
                             Some(2) => {}
-                            _ => fail2!() // XXX: malformed?
+                            _ => fail!() // XXX: malformed?
                         }
                         uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
                     }

@@ -479,7 +479,6 @@ pub extern "C" fn rust_stack_exhausted() {
     use rt::in_green_task_context;
     use rt::task::Task;
     use rt::local::Local;
-    use rt::logging::Logger;
     use unstable::intrinsics;
 
     unsafe {
@@ -529,8 +528,12 @@ pub extern "C" fn rust_stack_exhausted() {
             do Local::borrow |task: &mut Task| {
                 let n = task.name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
 
-                format_args!(|args| { task.logger.log(args) },
-                             "task '{}' has overflowed its stack", n);
+                // See the message below for why this is not emitted to the
+                // task's logger. This has the additional conundrum of the
+                // logger may not be initialized just yet, meaning that an FFI
+                // call would happen to initialized it (calling out to libuv),
+                // and the FFI call needs 2MB of stack when we just ran out.
+                rterrln!("task '{}' has overflowed its stack", n);
             }
         } else {
             rterrln!("stack overflow in non-task context");

@@ -147,6 +147,7 @@ impl Listener {
 mod test {
     use libc;
     use rt::io::timer;
+    use rt::io;
     use super::*;
 
     // kill is only available on Unixes
@@ -158,7 +159,7 @@ mod test {
         }
     }
 
-    #[test]
+    #[test] #[cfg(unix)]
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
         signal.register(Interrupt);
@@ -166,11 +167,11 @@ mod test {
         timer::sleep(10);
         match signal.port.recv() {
             Interrupt => (),
-            s => fail2!("Expected Interrupt, got {:?}", s),
+            s => fail!("Expected Interrupt, got {:?}", s),
         }
     }
 
-    #[test]
+    #[test] #[cfg(unix)]
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -180,15 +181,15 @@ mod test {
         timer::sleep(10);
         match s1.port.recv() {
             Interrupt => (),
-            s => fail2!("Expected Interrupt, got {:?}", s),
+            s => fail!("Expected Interrupt, got {:?}", s),
         }
         match s1.port.recv() {
             Interrupt => (),
-            s => fail2!("Expected Interrupt, got {:?}", s),
+            s => fail!("Expected Interrupt, got {:?}", s),
         }
     }
 
-    #[test]
+    #[test] #[cfg(unix)]
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -198,7 +199,7 @@ mod test {
         sigint();
         timer::sleep(10);
         if s2.port.peek() {
-            fail2!("Unexpected {:?}", s2.port.recv());
+            fail!("Unexpected {:?}", s2.port.recv());
         }
     }
 
@@ -206,8 +207,14 @@ mod test {
     #[test]
     fn test_io_signal_invalid_signum() {
         let mut s = Listener::new();
-        if s.register(User1) {
-            fail2!("Unexpected successful registry of signum {:?}", User1);
+        let mut called = false;
+        do io::io_error::cond.trap(|_| {
+            called = true;
+        }).inside {
+            if s.register(User1) {
+                fail!("Unexpected successful registry of signum {:?}", User1);
+            }
         }
+        assert!(called);
     }
 }

@@ -51,7 +51,7 @@ impl SignalWatcher {
             let mut watcher: SignalWatcher = NativeHandle::from_native_handle(handle);
             let data = watcher.get_watcher_data();
             let cb = data.signal_cb.get_ref();
-            (*cb)(watcher, unsafe { cast::transmute(signum as i64) });
+            (*cb)(watcher, unsafe { cast::transmute(signum as int) });
         }
     }
 

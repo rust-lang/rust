@@ -43,10 +43,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.with_ref(|p| unsafe {
+        let ret = path.with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                           self.native_handle(), p, flags, mode, complete_cb_ptr)
         });
+        assert_eq!(ret, 0);
     }
 
     pub fn open_sync(self, loop_: &Loop, path: &CString,
@@ -67,10 +68,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.with_ref(|p| unsafe {
+        let ret = path.with_ref(|p| unsafe {
             uvll::fs_unlink(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
         });
+        assert_eq!(ret, 0);
     }
 
     pub fn unlink_sync(self, loop_: &Loop, path: &CString)
@@ -91,10 +93,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.with_ref(|p| unsafe {
+        let ret = path.with_ref(|p| unsafe {
             uvll::fs_stat(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
         });
+        assert_eq!(ret, 0);
     }
 
     pub fn write(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64, cb: FsCallback) {
@@ -104,11 +107,12 @@ impl FsRequest {
         };
         let base_ptr = buf.base as *c_void;
         let len = buf.len as uint;
-        unsafe {
+        let ret = unsafe {
             uvll::fs_write(loop_.native_handle(), self.native_handle(),
                            fd, base_ptr,
                            len, offset, complete_cb_ptr)
         };
+        assert_eq!(ret, 0);
     }
     pub fn write_sync(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
           -> Result<c_int, UvError> {
@@ -133,11 +137,12 @@ impl FsRequest {
         };
         let buf_ptr = buf.base as *c_void;
         let len = buf.len as uint;
-        unsafe {
+        let ret = unsafe {
             uvll::fs_read(loop_.native_handle(), self.native_handle(),
                            fd, buf_ptr,
                            len, offset, complete_cb_ptr)
         };
+        assert_eq!(ret, 0);
     }
     pub fn read_sync(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
           -> Result<c_int, UvError> {
@@ -160,10 +165,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        unsafe {
+        let ret = unsafe {
             uvll::fs_close(loop_.native_handle(), self.native_handle(),
                            fd, complete_cb_ptr)
         };
+        assert_eq!(ret, 0);
     }
     pub fn close_sync(self, loop_: &Loop, fd: c_int) -> Result<c_int, UvError> {
         let complete_cb_ptr = {
@@ -182,10 +188,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.with_ref(|p| unsafe {
+        let ret = path.with_ref(|p| unsafe {
             uvll::fs_mkdir(loop_.native_handle(),
-                          self.native_handle(), p, mode, complete_cb_ptr)
+                           self.native_handle(), p, mode, complete_cb_ptr)
         });
+        assert_eq!(ret, 0);
     }
 
     pub fn rmdir(self, loop_: &Loop, path: &CString, cb: FsCallback) {
@@ -193,10 +200,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.with_ref(|p| unsafe {
+        let ret = path.with_ref(|p| unsafe {
             uvll::fs_rmdir(loop_.native_handle(),
-                          self.native_handle(), p, complete_cb_ptr)
+                           self.native_handle(), p, complete_cb_ptr)
         });
+        assert_eq!(ret, 0);
     }
 
     pub fn readdir(self, loop_: &Loop, path: &CString,
@@ -205,10 +213,11 @@ impl FsRequest {
             let mut me = self;
             me.req_boilerplate(Some(cb))
         };
-        path.with_ref(|p| unsafe {
+        let ret = path.with_ref(|p| unsafe {
             uvll::fs_readdir(loop_.native_handle(),
-                          self.native_handle(), p, flags, complete_cb_ptr)
+                             self.native_handle(), p, flags, complete_cb_ptr)
         });
+        assert_eq!(ret, 0);
     }
 
     // accessors/utility funcs

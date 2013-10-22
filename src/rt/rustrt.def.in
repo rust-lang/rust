@@ -98,8 +98,6 @@ rust_uv_get_base_from_buf
 rust_uv_get_len_from_buf
 rust_uv_getaddrinfo
 rust_uv_freeaddrinfo
-rust_uv_idle_new
-rust_uv_idle_delete
 rust_uv_idle_init
 rust_uv_idle_start
 rust_uv_idle_stop

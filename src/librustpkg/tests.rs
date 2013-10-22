@@ -11,7 +11,10 @@
 // rustpkg unit tests
 
 use context::{BuildContext, Context, RustcFlags};
-use std::{io, os, run, str, task};
+use std::{os, run, str, task};
+use std::rt::io;
+use std::rt::io::Writer;
+use std::rt::io::file::FileInfo;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
@@ -81,8 +84,9 @@ fn git_repo_pkg_with_tag(a_tag: ~str) -> PkgId {
 }
 
 fn writeFile(file_path: &Path, contents: &str) {
-    let out = io::file_writer(file_path, [io::Create, io::Truncate]).unwrap();
-    out.write_line(contents);
+    let mut out = file_path.open_writer(io::CreateOrTruncate);
+    out.write(contents.as_bytes());
+    out.write(['\n' as u8]);
 }
 
 fn mk_emptier_workspace(tag: &str) -> TempDir {
@@ -550,10 +554,11 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
     debug!("Frobbed? {:?}", maybe_p);
     match maybe_p {
         Some(ref p) => {
-            let w = io::file_writer(p, &[io::Append]);
-            match w {
-                Err(s) => { let _ = cond.raise((p.clone(), format!("Bad path: {}", s))); }
-                Ok(w)  => w.write_line("/* hi */")
+            do io::io_error::cond.trap(|e| {
+                cond.raise((p.clone(), format!("Bad path: {}", e.desc)));
+            }).inside {
+                let mut w = p.open_writer(io::Append);
+                w.write(bytes!("/* hi */\n"));
             }
         }
         None => fail!("frob_source_file failed to find a source file in {}",

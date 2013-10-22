@@ -466,16 +466,6 @@ rust_uv_addrinfo_as_sockaddr_in6(addrinfo* input) {
     return (sockaddr_in6*)input->ai_addr;
 }
 
-extern "C" uv_idle_t*
-rust_uv_idle_new() {
-  return new uv_idle_t;
-}
-
-extern "C" void
-rust_uv_idle_delete(uv_idle_t* handle) {
-  delete handle;
-}
-
 extern "C" int
 rust_uv_idle_init(uv_loop_t* loop, uv_idle_t* idle) {
   return uv_idle_init(loop, idle);

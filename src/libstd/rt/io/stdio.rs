@@ -30,20 +30,57 @@ use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::rtio::{IoFactory, RtioTTY, with_local_io, RtioPipe};
-use super::{Reader, Writer, io_error};
+use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io,
+               CloseAsynchronously};
+use super::{Reader, Writer, io_error, IoError, OtherIoError};
+
+// And so begins the tale of acquiring a uv handle to a stdio stream on all
+// platforms in all situations. Our story begins by splitting the world into two
+// categories, windows and unix. Then one day the creators of unix said let
+// there be redirection! And henceforth there was redirection away from the
+// console for standard I/O streams.
+//
+// After this day, the world split into four factions:
+//
+// 1. Unix with stdout on a terminal.
+// 2. Unix with stdout redirected.
+// 3. Windows with stdout on a terminal.
+// 4. Windows with stdout redirected.
+//
+// Many years passed, and then one day the nation of libuv decided to unify this
+// world. After months of toiling, uv created three ideas: TTY, Pipe, File.
+// These three ideas propagated throughout the lands and the four great factions
+// decided to settle among them.
+//
+// The groups of 1, 2, and 3 all worked very hard towards the idea of TTY. Upon
+// doing so, they even enhanced themselves further then their Pipe/File
+// brethren, becoming the dominant powers.
+//
+// The group of 4, however, decided to work independently. They abandoned the
+// common TTY belief throughout, and even abandoned the fledgling Pipe belief.
+// The members of the 4th faction decided to only align themselves with File.
+//
+// tl;dr; TTY works on everything but when windows stdout is redirected, in that
+//        case pipe also doesn't work, but magically file does!
+enum StdSource {
+    TTY(~RtioTTY),
+    File(~RtioFileStream),
+}
 
 #[fixed_stack_segment] #[inline(never)]
-fn tty<T>(fd: libc::c_int, f: &fn(~RtioTTY) -> T) -> T {
+fn src<T>(fd: libc::c_int, readable: bool, f: &fn(StdSource) -> T) -> T {
     do with_local_io |io| {
-        // Always pass in readable as true, otherwise libuv turns our writes
-        // into blocking writes. We also need to dup the file descriptor because
-        // the tty will be closed when it's dropped.
-        match io.tty_open(unsafe { libc::dup(fd) }, true) {
-            Ok(tty) => Some(f(tty)),
-            Err(e) => {
-                io_error::cond.raise(e);
-                None
+        let fd = unsafe { libc::dup(fd) };
+        match io.tty_open(fd, readable) {
+            Ok(tty) => Some(f(TTY(tty))),
+            Err(_) => {
+                // It's not really that desirable if these handles are closed
+                // synchronously, and because they're squirreled away in a task
+                // structure the destructors will be run when the task is
+                // attempted to get destroyed. This means that if we run a
+                // synchronous destructor we'll attempt to do some scheduling
+                // operations which will just result in sadness.
+                Some(f(File(io.fs_from_raw_fd(fd, CloseAsynchronously))))
             }
         }
     }.unwrap()
@@ -54,15 +91,7 @@ fn tty<T>(fd: libc::c_int, f: &fn(~RtioTTY) -> T) -> T {
 /// See `stdout()` for notes about this function.
 #[fixed_stack_segment] #[inline(never)]
 pub fn stdin() -> StdReader {
-    do with_local_io |io| {
-        match io.pipe_open(unsafe { libc::dup(libc::STDIN_FILENO) }) {
-            Ok(stream) => Some(StdReader { inner: stream }),
-            Err(e) => {
-                io_error::cond.raise(e);
-                None
-            }
-        }
-    }.unwrap()
+    do src(libc::STDIN_FILENO, true) |src| { StdReader { inner: src } }
 }
 
 /// Creates a new non-blocking handle to the stdout of the current process.
@@ -72,14 +101,14 @@ pub fn stdin() -> StdReader {
 /// task context because the stream returned will be a non-blocking object using
 /// the local scheduler to perform the I/O.
 pub fn stdout() -> StdWriter {
-    do tty(libc::STDOUT_FILENO) |tty| { StdWriter { inner: tty } }
+    do src(libc::STDOUT_FILENO, false) |src| { StdWriter { inner: src } }
 }
 
 /// Creates a new non-blocking handle to the stderr of the current process.
 ///
 /// See `stdout()` for notes about this function.
 pub fn stderr() -> StdWriter {
-    do tty(libc::STDERR_FILENO) |tty| { StdWriter { inner: tty } }
+    do src(libc::STDERR_FILENO, false) |src| { StdWriter { inner: src } }
 }
 
 /// Prints a string to the stdout of the current process. No newline is emitted
@@ -117,12 +146,16 @@ pub fn println_args(fmt: &fmt::Arguments) {
 
 /// Representation of a reader of a standard input stream
 pub struct StdReader {
-    priv inner: ~RtioPipe
+    priv inner: StdSource
 }
 
 impl Reader for StdReader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.inner.read(buf) {
+        let ret = match self.inner {
+            TTY(ref mut tty) => tty.read(buf),
+            File(ref mut file) => file.read(buf).map_move(|i| i as uint),
+        };
+        match ret {
             Ok(amt) => Some(amt as uint),
             Err(e) => {
                 io_error::cond.raise(e);
@@ -136,7 +169,7 @@ impl Reader for StdReader {
 
 /// Representation of a writer to a standard output stream
 pub struct StdWriter {
-    priv inner: ~RtioTTY
+    priv inner: StdSource
 }
 
 impl StdWriter {
@@ -151,10 +184,22 @@ impl StdWriter {
     /// This function will raise on the `io_error` condition if an error
     /// happens.
     pub fn winsize(&mut self) -> Option<(int, int)> {
-        match self.inner.get_winsize() {
-            Ok(p) => Some(p),
-            Err(e) => {
-                io_error::cond.raise(e);
+        match self.inner {
+            TTY(ref mut tty) => {
+                match tty.get_winsize() {
+                    Ok(p) => Some(p),
+                    Err(e) => {
+                        io_error::cond.raise(e);
+                        None
+                    }
+                }
+            }
+            File(*) => {
+                io_error::cond.raise(IoError {
+                    kind: OtherIoError,
+                    desc: "stream is not a tty",
+                    detail: None,
+                });
                 None
             }
         }
@@ -168,21 +213,41 @@ impl StdWriter {
     /// This function will raise on the `io_error` condition if an error
     /// happens.
     pub fn set_raw(&mut self, raw: bool) {
-        match self.inner.set_raw(raw) {
-            Ok(()) => {},
-            Err(e) => io_error::cond.raise(e),
+        match self.inner {
+            TTY(ref mut tty) => {
+                match tty.set_raw(raw) {
+                    Ok(()) => {},
+                    Err(e) => io_error::cond.raise(e),
+                }
+            }
+            File(*) => {
+                io_error::cond.raise(IoError {
+                    kind: OtherIoError,
+                    desc: "stream is not a tty",
+                    detail: None,
+                });
+            }
         }
     }
 
     /// Returns whether this tream is attached to a TTY instance or not.
     ///
     /// This is similar to libc's isatty() function
-    pub fn isatty(&self) -> bool { self.inner.isatty() }
+    pub fn isatty(&self) -> bool {
+        match self.inner {
+            TTY(ref tty) => tty.isatty(),
+            File(*) => false,
+        }
+    }
 }
 
 impl Writer for StdWriter {
     fn write(&mut self, buf: &[u8]) {
-        match self.inner.write(buf) {
+        let ret = match self.inner {
+            TTY(ref mut tty) => tty.write(buf),
+            File(ref mut file) => file.write(buf),
+        };
+        match ret {
             Ok(()) => {}
             Err(e) => io_error::cond.raise(e)
         }

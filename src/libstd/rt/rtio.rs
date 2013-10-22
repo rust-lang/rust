@@ -58,6 +58,20 @@ pub struct FileOpenConfig {
     priv mode: int
 }
 
+/// Description of what to do when a file handle is closed
+pub enum CloseBehavior {
+    /// Do not close this handle when the object is destroyed
+    DontClose,
+    /// Synchronously close the handle, meaning that the task will block when
+    /// the handle is destroyed until it has been fully closed.
+    CloseSynchronously,
+    /// Asynchronously closes a handle, meaning that the task will *not* block
+    /// when the handle is destroyed, but the handle will still get deallocated
+    /// and cleaned up (but this will happen asynchronously on the local event
+    /// loop).
+    CloseAsynchronously,
+}
+
 pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
     use rt::sched::Scheduler;
     use rt::local::Local;
@@ -84,7 +98,7 @@ pub trait IoFactory {
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
-    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream;
+    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError>;

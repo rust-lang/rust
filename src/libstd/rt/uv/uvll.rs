@@ -235,37 +235,37 @@ pub type socklen_t = c_int;
 #[cfg(target_os = "android")]
 #[cfg(target_os = "linux")]
 pub struct addrinfo {
-    priv ai_flags: c_int,
-    priv ai_family: c_int,
-    priv ai_socktype: c_int,
-    priv ai_protocol: c_int,
-    priv ai_addrlen: socklen_t,
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: socklen_t,
     ai_addr: *sockaddr,
-    priv ai_canonname: *char,
+    ai_canonname: *char,
     ai_next: *addrinfo
 }
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 pub struct addrinfo {
-    priv ai_flags: c_int,
-    priv ai_family: c_int,
-    priv ai_socktype: c_int,
-    priv ai_protocol: c_int,
-    priv ai_addrlen: socklen_t,
-    priv ai_canonname: *char,
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: socklen_t,
+    ai_canonname: *char,
     ai_addr: *sockaddr,
     ai_next: *addrinfo
 }
 
 #[cfg(windows)]
 pub struct addrinfo {
-    priv ai_flags: c_int,
-    priv ai_family: c_int,
-    priv ai_socktype: c_int,
-    priv ai_protocol: c_int,
-    priv ai_addrlen: size_t,
-    priv ai_canonname: *char,
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: size_t,
+    ai_canonname: *char,
     ai_addr: *sockaddr,
     ai_next: *addrinfo
 }
@@ -421,18 +421,6 @@ pub unsafe fn walk(loop_handle: *c_void, cb: uv_walk_cb, arg: *c_void) {
     #[fixed_stack_segment]; #[inline(never)];
 
     rust_uv_walk(loop_handle, cb, arg);
-}
-
-pub unsafe fn idle_new() -> *uv_idle_t {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    rust_uv_idle_new()
-}
-
-pub unsafe fn idle_delete(handle: *uv_idle_t) {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    rust_uv_idle_delete(handle)
 }
 
 pub unsafe fn idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> c_int {
@@ -1028,8 +1016,6 @@ extern {
     fn rust_uv_close(handle: *c_void, cb: uv_close_cb);
     fn rust_uv_walk(loop_handle: *c_void, cb: uv_walk_cb, arg: *c_void);
 
-    fn rust_uv_idle_new() -> *uv_idle_t;
-    fn rust_uv_idle_delete(handle: *uv_idle_t);
     fn rust_uv_idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> c_int;
     fn rust_uv_idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> c_int;
     fn rust_uv_idle_stop(handle: *uv_idle_t) -> c_int;
