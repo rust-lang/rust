@@ -17,9 +17,9 @@ use std::cast;
 /// An implementation of the io::Reader interface which reads a buffer of bytes
 pub struct BufReader {
     /// The buffer of bytes to read
-    buf: ~[u8],
+    priv buf: ~[u8],
     /// The current position in the buffer of bytes
-    pos: @mut uint
+    priv pos: @mut uint
 }
 
 impl BufReader {

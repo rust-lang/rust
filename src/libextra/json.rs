@@ -49,11 +49,11 @@ pub type Object = TreeMap<~str, Json>;
 /// returned
 pub struct Error {
     /// The line number at which the error occurred
-    line: uint,
+    priv line: uint,
     /// The column number at which the error occurred
-    col: uint,
+    priv col: uint,
     /// A message describing the type of the error
-    msg: @~str,
+    priv msg: @~str,
 }
 
 fn escape_str(s: &str) -> ~str {

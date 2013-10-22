@@ -32,8 +32,8 @@ pub type OpaqueBox = c_void;
 pub type TypeDesc = c_void;
 
 pub struct LocalHeap {
-    memory_region: *MemoryRegion,
-    boxed_region: *BoxedRegion
+    priv memory_region: *MemoryRegion,
+    priv boxed_region: *BoxedRegion
 }
 
 impl LocalHeap {

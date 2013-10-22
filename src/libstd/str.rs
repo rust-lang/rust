@@ -998,7 +998,6 @@ pub fn utf8_char_width(b: u8) -> uint {
 pub struct CharRange {
     /// Current `char`
     ch: char,
-
     /// Index of the first byte of the next `char`
     next: uint
 }

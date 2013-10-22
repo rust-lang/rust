@@ -20,8 +20,8 @@ use super::bigint::BigInt;
 #[deriving(Clone)]
 #[allow(missing_doc)]
 pub struct Ratio<T> {
-    numer: T,
-    denom: T
+    priv numer: T,
+    priv denom: T
 }
 
 /// Alias for a `Ratio` of machine-sized integers.

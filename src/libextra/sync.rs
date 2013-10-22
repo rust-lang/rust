@@ -376,8 +376,8 @@ impl Semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-pub struct Mutex { priv sem: Sem<~[WaitQueue]> }
 
+pub struct Mutex { priv sem: Sem<~[WaitQueue]> }
 impl Clone for Mutex {
     /// Create a new handle to the mutex.
     fn clone(&self) -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
@@ -663,8 +663,8 @@ impl RWLock {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-pub struct RWLockWriteMode<'self> { priv lock: &'self RWLock, priv token: NonCopyable }
 
+pub struct RWLockWriteMode<'self> { priv lock: &'self RWLock, priv token: NonCopyable }
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWLockReadMode<'self> { priv lock: &'self RWLock,
                                    priv token: NonCopyable }

@@ -1790,9 +1790,9 @@ impl<'self, A, St> Iterator<A> for Unfold<'self, A, St> {
 #[deriving(Clone)]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
-    state: A,
+    priv state: A,
     /// The amount that this iterator is stepping by
-    step: A
+    priv step: A
 }
 
 /// Creates a new counter with the specified start/step
