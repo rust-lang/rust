@@ -10,10 +10,11 @@
 
 //! The ISAAC random number generator.
 
-use cast;
 use rand::{Rng, SeedableRng, OSRng};
 use iter::{Iterator, range, range_step, Repeat};
 use option::{None, Some};
+use vec::raw;
+use mem;
 
 static RAND_SIZE_LEN: u32 = 8;
 static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
@@ -42,9 +43,12 @@ impl IsaacRng {
     pub fn new() -> IsaacRng {
         let mut rng = EMPTY;
 
-        {
-            let bytes = unsafe {cast::transmute::<&mut [u32], &mut [u8]>(rng.rsl)};
-            OSRng::new().fill_bytes(bytes);
+        unsafe {
+            let ptr = raw::to_mut_ptr(rng.rsl);
+
+            do raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl)) |slice| {
+                OSRng::new().fill_bytes(slice);
+            }
         }
 
         rng.init(true);
@@ -238,10 +242,15 @@ impl Isaac64Rng {
     /// seed.
     pub fn new() -> Isaac64Rng {
         let mut rng = EMPTY_64;
-        {
-            let bytes = unsafe {cast::transmute::<&mut [u64], &mut [u8]>(rng.rsl)};
-            OSRng::new().fill_bytes(bytes);
+
+        unsafe {
+            let ptr = raw::to_mut_ptr(rng.rsl);
+
+            do raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl)) |slice| {
+                OSRng::new().fill_bytes(slice);
+            }
         }
+
         rng.init(true);
         rng
     }
