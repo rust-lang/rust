@@ -69,8 +69,13 @@ they contained the following prologue:
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
+// When testing libstd, bring in libuv as the I/O backend so tests can print
+// things and all of the std::rt::io tests have an I/O interface to run on top
+// of
+#[cfg(test)] extern mod rustuv(vers = "0.9-pre");
+
 // Make extra accessible for benchmarking
-#[cfg(test)] extern mod extra(vers="0.9-pre");
+#[cfg(test)] extern mod extra(vers = "0.9-pre");
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realstd(name = "std");

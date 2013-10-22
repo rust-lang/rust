@@ -80,17 +80,14 @@ use comm::{Chan, GenericChan, oneshot};
 use container::MutableMap;
 use hashmap::{HashSet, HashSetMoveIterator};
 use local_data;
-use rt::in_green_task_context;
 use rt::local::Local;
-use rt::sched::Scheduler;
-use rt::KillHandle;
-use rt::work_queue::WorkQueue;
-use rt::rtio::EventLoop;
-use rt::thread::Thread;
+use rt::sched::{Scheduler, Shutdown, TaskFromFriend};
 use rt::task::{Task, Sched};
 use rt::task::{UnwindReasonLinked, UnwindReasonStr};
 use rt::task::{UnwindResult, Success, Failure};
-use rt::uv::uvio::UvEventLoop;
+use rt::thread::Thread;
+use rt::work_queue::WorkQueue;
+use rt::{in_green_task_context, new_event_loop, KillHandle};
 use send_str::IntoSendStr;
 use task::SingleThreaded;
 use task::TaskOpts;
@@ -621,8 +618,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let work_queue = WorkQueue::new();
 
             // Create a new scheduler to hold the new task
-            let new_loop = ~UvEventLoop::new() as ~EventLoop;
-            let mut new_sched = ~Scheduler::new_special(new_loop,
+            let mut new_sched = ~Scheduler::new_special(new_event_loop(),
                                                         work_queue,
                                                         (*sched).work_queues.clone(),
                                                         (*sched).sleeper_list.clone(),
