@@ -53,12 +53,12 @@ concurrency at this writing:
   for safely sharing immutable data,
 * [`extra::future`] - A type representing values that may be computed concurrently and retrieved at a later time.
 
-[`std::task`]: std/task.html
-[`std::comm`]: std/comm.html
-[`extra::comm`]: extra/comm.html
-[`extra::sync`]: extra/sync.html
-[`extra::arc`]: extra/arc.html
-[`extra::future`]: extra/future.html
+[`std::task`]: std/task/index.html
+[`std::comm`]: std/comm/index.html
+[`extra::comm`]: extra/comm/index.html
+[`extra::sync`]: extra/sync/index.html
+[`extra::arc`]: extra/arc/index.html
+[`extra::future`]: extra/future/index.html
 
 # Basics
 
@@ -449,7 +449,7 @@ enum. If the child task terminates successfully, `try` will
 return an `Ok` result; if the child task fails, `try` will return
 an `Error` result.
 
-[`Result`]: std/result.html
+[`Result`]: std/result/index.html
 
 > ***Note:*** A failed task does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the
