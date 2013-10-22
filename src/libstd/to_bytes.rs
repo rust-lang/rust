@@ -16,8 +16,6 @@ The `ToBytes` and `IterBytes` traits
 
 use cast;
 use container::Container;
-use io;
-use io::Writer;
 use iter::Iterator;
 use option::{None, Option, Some};
 use str::{Str, StrSlice};
@@ -360,7 +358,10 @@ pub trait ToBytes {
 
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
-        do io::with_bytes_writer |wr| {
+        use rt::io::mem;
+        use rt::io::Writer;
+
+        do mem::with_mem_writer |wr| {
             do self.iter_bytes(lsb0) |bytes| {
                 wr.write(bytes);
                 true

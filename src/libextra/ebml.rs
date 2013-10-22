@@ -97,6 +97,7 @@ pub mod reader {
     use std::cast::transmute;
     use std::int;
     use std::option::{None, Option, Some};
+    use std::rt::io::extensions::u64_from_be_bytes;
 
     // ebml reading
 
@@ -258,17 +259,17 @@ pub mod reader {
 
     pub fn doc_as_u16(d: Doc) -> u16 {
         assert_eq!(d.end, d.start + 2u);
-        ::std::io::u64_from_be_bytes(*d.data, d.start, 2u) as u16
+        u64_from_be_bytes(*d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
         assert_eq!(d.end, d.start + 4u);
-        ::std::io::u64_from_be_bytes(*d.data, d.start, 4u) as u32
+        u64_from_be_bytes(*d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
         assert_eq!(d.end, d.start + 8u);
-        ::std::io::u64_from_be_bytes(*d.data, d.start, 8u)
+        u64_from_be_bytes(*d.data, d.start, 8u)
     }
 
     pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
@@ -610,6 +611,7 @@ pub mod writer {
     use std::rt::io;
     use std::rt::io::{Writer, Seek};
     use std::rt::io::mem::MemWriter;
+    use std::rt::io::extensions::u64_to_be_bytes;
 
     // ebml writing
     pub struct Encoder {
@@ -693,19 +695,19 @@ pub mod writer {
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) {
-            do ::std::io::u64_to_be_bytes(v, 8u) |v| {
+            do u64_to_be_bytes(v, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_u32(&mut self, tag_id: uint, v: u32) {
-            do ::std::io::u64_to_be_bytes(v as u64, 4u) |v| {
+            do u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) {
-            do ::std::io::u64_to_be_bytes(v as u64, 2u) |v| {
+            do u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
@@ -715,19 +717,19 @@ pub mod writer {
         }
 
         pub fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) {
-            do ::std::io::u64_to_be_bytes(v as u64, 8u) |v| {
+            do u64_to_be_bytes(v as u64, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) {
-            do ::std::io::u64_to_be_bytes(v as u64, 4u) |v| {
+            do u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) {
-            do ::std::io::u64_to_be_bytes(v as u64, 2u) |v| {
+            do u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
