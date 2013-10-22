@@ -219,17 +219,17 @@ pub struct Death {
     // might kill it. This is optional so we can take it by-value at exit time.
     kill_handle:     Option<KillHandle>,
     // Handle to a watching parent, if we have one, for exit code propagation.
-    watching_parent: Option<KillHandle>,
+    priv watching_parent: Option<KillHandle>,
     // Action to be done with the exit code. If set, also makes the task wait
     // until all its watched children exit before collecting the status.
     on_exit:         Option<~fn(bool)>,
     // nesting level counter for task::unkillable calls (0 == killable).
-    unkillable:      int,
+    priv unkillable:      int,
     // nesting level counter for unstable::atomically calls (0 == can deschedule).
-    wont_sleep:      int,
+    priv wont_sleep:      int,
     // A "spare" handle to the kill flag inside the kill handle. Used during
     // blocking/waking as an optimization to avoid two xadds on the refcount.
-    spare_kill_flag: Option<KillFlagHandle>,
+    priv spare_kill_flag: Option<KillFlagHandle>,
 }
 
 impl Drop for KillFlag {

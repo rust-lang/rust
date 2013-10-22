@@ -128,8 +128,8 @@ impl WorkMap {
 }
 
 pub struct Database {
-    db_filename: Path,
-    db_cache: TreeMap<~str, ~str>,
+    priv db_filename: Path,
+    priv db_cache: TreeMap<~str, ~str>,
     db_dirty: bool
 }
 
@@ -209,7 +209,7 @@ impl Drop for Database {
 
 pub struct Logger {
     // FIXME #4432: Fill in
-    a: ()
+    priv a: ()
 }
 
 impl Logger {
@@ -228,26 +228,26 @@ pub type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
 #[deriving(Clone)]
 pub struct Context {
     db: RWArc<Database>,
-    logger: RWArc<Logger>,
-    cfg: Arc<json::Object>,
+    priv logger: RWArc<Logger>,
+    priv cfg: Arc<json::Object>,
     /// Map from kinds (source, exe, url, etc.) to a freshness function.
     /// The freshness function takes a name (e.g. file path) and value
     /// (e.g. hash of file contents) and determines whether it's up-to-date.
     /// For example, in the file case, this would read the file off disk,
     /// hash it, and return the result of comparing the given hash and the
     /// read hash for equality.
-    freshness: Arc<FreshnessMap>
+    priv freshness: Arc<FreshnessMap>
 }
 
 pub struct Prep<'self> {
-    ctxt: &'self Context,
-    fn_name: &'self str,
-    declared_inputs: WorkMap,
+    priv ctxt: &'self Context,
+    priv fn_name: &'self str,
+    priv declared_inputs: WorkMap,
 }
 
 pub struct Exec {
-    discovered_inputs: WorkMap,
-    discovered_outputs: WorkMap
+    priv discovered_inputs: WorkMap,
+    priv discovered_outputs: WorkMap
 }
 
 enum Work<'self, T> {

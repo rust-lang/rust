@@ -98,10 +98,10 @@ enum VariantState {
 }
 
 pub struct ReprVisitor<'self> {
-    ptr: *c_void,
-    ptr_stk: ~[*c_void],
-    var_stk: ~[VariantState],
-    writer: &'self mut io::Writer
+    priv ptr: *c_void,
+    priv ptr_stk: ~[*c_void],
+    priv var_stk: ~[VariantState],
+    priv writer: &'self mut io::Writer
 }
 
 pub fn ReprVisitor<'a>(ptr: *c_void,

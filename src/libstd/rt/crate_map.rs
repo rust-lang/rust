@@ -26,9 +26,9 @@ pub struct ModEntry<'self> {
 }
 
 pub struct CrateMap<'self> {
-    version: i32,
-    entries: &'self [ModEntry<'self>],
-    children: &'self [&'self CrateMap<'self>]
+     priv version: i32,
+     priv entries: &'self [ModEntry<'self>],
+     priv children: &'self [&'self CrateMap<'self>]
 }
 
 #[cfg(not(windows))]

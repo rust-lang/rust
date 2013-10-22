@@ -13,7 +13,7 @@ use rt::io::{Reader, Writer};
 
 pub struct MockReader {
     read: ~fn(buf: &mut [u8]) -> Option<uint>,
-    eof: ~fn() -> bool
+    priv eof: ~fn() -> bool
 }
 
 impl MockReader {
@@ -31,8 +31,8 @@ impl Reader for MockReader {
 }
 
 pub struct MockWriter {
-    write: ~fn(buf: &[u8]),
-    flush: ~fn()
+    priv write: ~fn(buf: &[u8]),
+    priv flush: ~fn()
 }
 
 impl MockWriter {
