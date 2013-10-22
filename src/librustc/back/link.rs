@@ -1112,14 +1112,6 @@ pub fn link_args(sess: Session,
                        ~"-Wl,-rpath,/usr/local/lib/gcc44"]);
     }
 
-    // OS X 10.6 introduced 'compact unwind info', which is produced by the
-    // linker from the dwarf unwind info. Unfortunately, it does not seem to
-    // understand how to unwind our __morestack frame, so we have to turn it
-    // off. This has impacted some other projects like GHC.
-    if sess.targ_cfg.os == session::OsMacos {
-        args.push(~"-Wl,-no_compact_unwind");
-    }
-
     // Stack growth requires statically linking a __morestack function
     args.push(~"-lmorestack");
 
