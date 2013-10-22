@@ -16,13 +16,45 @@
 use prelude::*;
 use super::{Reader, Writer};
 use rt::io::{io_error, EndOfFile};
-use rt::rtio::RtioPipe;
+use rt::io::native::file;
+use rt::rtio::{RtioPipe, with_local_io};
 
 pub struct PipeStream {
     priv obj: ~RtioPipe,
 }
 
 impl PipeStream {
+    /// Consumes a file descriptor to return a pipe stream that will have
+    /// synchronous, but non-blocking reads/writes. This is useful if the file
+    /// descriptor is acquired via means other than the standard methods.
+    ///
+    /// This operation consumes ownership of the file descriptor and it will be
+    /// closed once the object is deallocated.
+    ///
+    /// # Example
+    ///
+    ///     use std::libc;
+    ///     use std::rt::io::pipe;
+    ///
+    ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
+    ///     pipe.write(bytes!("Hello, stderr!"));
+    ///
+    /// # Failure
+    ///
+    /// If the pipe cannot be created, an error will be raised on the
+    /// `io_error` condition.
+    pub fn open(fd: file::fd_t) -> Option<PipeStream> {
+        do with_local_io |io| {
+            match io.pipe_open(fd) {
+                Ok(obj) => Some(PipeStream { obj: obj }),
+                Err(e) => {
+                    io_error::cond.raise(e);
+                    None
+                }
+            }
+        }
+    }
+
     pub fn new(inner: ~RtioPipe) -> PipeStream {
         PipeStream { obj: inner }
     }
