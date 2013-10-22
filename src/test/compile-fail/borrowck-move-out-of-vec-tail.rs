@@ -23,7 +23,7 @@ pub fn main() {
                 }
             }
             let z = tail[0].clone();
-            info2!("{:?}", z);
+            info!("{:?}", z);
         }
         _ => {
             unreachable!();

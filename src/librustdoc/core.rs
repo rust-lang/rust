@@ -84,7 +84,7 @@ fn get_ast_and_resolve(cpath: &Path,
                                       .to_owned_vec());
     }
 
-    debug2!("crate: {:?}", crate);
+    debug!("crate: {:?}", crate);
     return (DocContext { crate: crate, tycx: ty_cx, sess: sess },
             CrateAnalysis { reexports: reexports, exported_items: exported_items });
 }
@@ -92,9 +92,9 @@ fn get_ast_and_resolve(cpath: &Path,
 pub fn run_core (libs: ~[Path], path: &Path) -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs);
     let ctxt = @ctxt;
-    debug2!("defmap:");
+    debug!("defmap:");
     for (k, v) in ctxt.tycx.def_map.iter() {
-        debug2!("{:?}: {:?}", k, v);
+        debug!("{:?}: {:?}", k, v);
     }
     local_data::set(super::ctxtkey, ctxt);
 

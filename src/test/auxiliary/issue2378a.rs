@@ -17,7 +17,7 @@ impl <T:Clone> Index<uint,T> for maybe<T> {
     fn index(&self, _idx: &uint) -> T {
         match self {
             &just(ref t) => (*t).clone(),
-            &nothing => { fail2!(); }
+            &nothing => { fail!(); }
         }
     }
 }

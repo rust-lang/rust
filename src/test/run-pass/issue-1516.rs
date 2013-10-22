@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    let early_error: &'static fn(&str) -> !  = |_msg| { fail2!() };
+    let early_error: &'static fn(&str) -> !  = |_msg| { fail!() };
 }

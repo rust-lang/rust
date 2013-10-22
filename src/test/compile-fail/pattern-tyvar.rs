@@ -18,9 +18,9 @@ enum bar { t1((), Option<~[int]>), t2, }
 fn foo(t: bar) {
     match t {
       t1(_, Some::<int>(x)) => {
-        info2!("{:?}", x);
+        info!("{:?}", x);
       }
-      _ => { fail2!(); }
+      _ => { fail!(); }
     }
 }
 

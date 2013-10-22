@@ -104,7 +104,7 @@ impl<'self> PkgScript<'self> {
         let binary = os::args()[0].to_managed();
         // Build the rustc session data structures to pass
         // to the compiler
-        debug2!("pkgscript parse: {}", sysroot.display());
+        debug!("pkgscript parse: {}", sysroot.display());
         let options = @session::options {
             binary: binary,
             maybe_sysroot: Some(sysroot),
@@ -120,7 +120,7 @@ impl<'self> PkgScript<'self> {
         let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
-        debug2!("Returning package script with id {}", id.to_str());
+        debug!("Returning package script with id {}", id.to_str());
 
         PkgScript {
             id: id,
@@ -140,10 +140,10 @@ impl<'self> PkgScript<'self> {
                   sysroot: &Path) -> (~[~str], ExitCode) {
         let sess = self.sess;
 
-        debug2!("Working directory = {}", self.build_dir.display());
+        debug!("Working directory = {}", self.build_dir.display());
         // Collect together any user-defined commands in the package script
         let crate = util::ready_crate(sess, self.crate.take_unwrap());
-        debug2!("Building output filenames with script name {}",
+        debug!("Building output filenames with script name {}",
                driver::source_name(&driver::file_input(self.input.clone())));
         let exe = self.build_dir.join("pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
@@ -152,7 +152,7 @@ impl<'self> PkgScript<'self> {
                                        &self.build_dir,
                                        sess,
                                        crate);
-        debug2!("Running program: {} {} {}", exe.display(),
+        debug!("Running program: {} {} {}", exe.display(),
                sysroot.display(), "install");
         // Discover the output
         // FIXME (#9639): This needs to handle non-utf8 paths
@@ -165,7 +165,7 @@ impl<'self> PkgScript<'self> {
             return (~[], status);
         }
         else {
-            debug2!("Running program (configs): {} {} {}",
+            debug!("Running program (configs): {} {} {}",
                    exe.display(), sysroot.display(), "configs");
             // FIXME (#9639): This needs to handle non-utf8 paths
             let output = run::process_output(exe.as_str().unwrap(),
@@ -243,7 +243,7 @@ impl CtxMethods for BuildContext {
             let pkgid = PkgId::new(args[0].clone());
             let mut dest_ws = default_workspace();
             do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
-                debug2!("found pkg {} in workspace {}, trying to build",
+                debug!("found pkg {} in workspace {}, trying to build",
                        pkgid.to_str(), workspace.display());
                 dest_ws = determine_destination(os::getcwd(),
                                                 self.context.use_rust_path_hack,
@@ -315,7 +315,7 @@ impl CtxMethods for BuildContext {
                     // argument
                     let pkgid = PkgId::new(args[0]);
                     let workspaces = pkg_parent_workspaces(&self.context, &pkgid);
-                    debug2!("package ID = {}, found it in {:?} workspaces",
+                    debug!("package ID = {}, found it in {:?} workspaces",
                            pkgid.to_str(), workspaces.len());
                     if workspaces.is_empty() {
                         let d = default_workspace();
@@ -401,13 +401,13 @@ impl CtxMethods for BuildContext {
 
                 self.unprefer(args[0], None);
             }
-            _ => fail2!("I don't know the command `{}`", cmd)
+            _ => fail!("I don't know the command `{}`", cmd)
         }
     }
 
     fn do_cmd(&self, _cmd: &str, _pkgname: &str)  {
         // stub
-        fail2!("`do` not yet implemented");
+        fail!("`do` not yet implemented");
     }
 
     fn build(&self, pkg_src: &mut PkgSrc, what_to_build: &WhatToBuild) {
@@ -416,7 +416,7 @@ impl CtxMethods for BuildContext {
         let workspace = pkg_src.source_workspace.clone();
         let pkgid = pkg_src.id.clone();
 
-        debug2!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
+        debug!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
                 pkgid = {} pkgsrc start_dir = {}", workspace.display(),
                in_rust_path(&workspace), is_git_dir(&workspace.join(&pkgid.path)),
                pkgid.to_str(), pkg_src.start_dir.display());
@@ -435,7 +435,7 @@ impl CtxMethods for BuildContext {
                 _ => cond.raise((pkgid.path.as_str().unwrap().to_owned(), out_dir.clone()))
             };
             let default_ws = default_workspace();
-            debug2!("Calling build recursively with {:?} and {:?}", default_ws.display(),
+            debug!("Calling build recursively with {:?} and {:?}", default_ws.display(),
                    pkgid.to_str());
             return self.build(&mut PkgSrc::new(default_ws.clone(),
                                                default_ws,
@@ -445,9 +445,9 @@ impl CtxMethods for BuildContext {
 
         // Is there custom build logic? If so, use it
         let mut custom = false;
-        debug2!("Package source directory = {}", pkg_src.to_str());
+        debug!("Package source directory = {}", pkg_src.to_str());
         let opt = pkg_src.package_script_option();
-        debug2!("Calling pkg_script_option on {:?}", opt);
+        debug!("Calling pkg_script_option on {:?}", opt);
         let cfgs = match pkg_src.package_script_option() {
             Some(package_script_path) => {
                 let sysroot = self.sysroot_to_use();
@@ -469,16 +469,16 @@ impl CtxMethods for BuildContext {
                         pscript.run_custom(exec, &sub_sysroot)
                     }
                 };
-                debug2!("Command return code = {:?}", hook_result);
+                debug!("Command return code = {:?}", hook_result);
                 if hook_result != 0 {
-                    fail2!("Error running custom build command")
+                    fail!("Error running custom build command")
                 }
                 custom = true;
                 // otherwise, the package script succeeded
                 cfgs
             }
             None => {
-                debug2!("No package script, continuing");
+                debug!("No package script, continuing");
                 ~[]
             }
         } + self.context.cfgs;
@@ -495,7 +495,7 @@ impl CtxMethods for BuildContext {
                 &JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
-                    debug2!("JustOne: p = {}", p.display());
+                    debug!("JustOne: p = {}", p.display());
                     assert!(os::path_exists(&pkg_src.start_dir.join(p)));
                     if is_lib(p) {
                         PkgSrc::push_crate(&mut pkg_src.libs, 0, p);
@@ -534,7 +534,7 @@ impl CtxMethods for BuildContext {
 
     fn info(&self) {
         // stub
-        fail2!("info not yet implemented");
+        fail!("info not yet implemented");
     }
 
     fn install(&self, mut pkg_src: PkgSrc, what: &WhatToBuild) -> (~[Path], ~[(~str, ~str)]) {
@@ -545,7 +545,7 @@ impl CtxMethods for BuildContext {
         let mut inputs = ~[];
         let mut build_inputs = ~[];
 
-        debug2!("Installing package source: {}", pkg_src.to_str());
+        debug!("Installing package source: {}", pkg_src.to_str());
 
         // workcache only knows about *crates*. Building a package
         // just means inferring all the crates in it, then building each one.
@@ -553,11 +553,11 @@ impl CtxMethods for BuildContext {
 
         let to_do = ~[pkg_src.libs.clone(), pkg_src.mains.clone(),
                       pkg_src.tests.clone(), pkg_src.benchs.clone()];
-        debug2!("In declare inputs for {}", id.to_str());
+        debug!("In declare inputs for {}", id.to_str());
         for cs in to_do.iter() {
             for c in cs.iter() {
                 let path = pkg_src.start_dir.join(&c.file);
-                debug2!("Recording input: {}", path.display());
+                debug!("Recording input: {}", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 inputs.push((~"file", path.as_str().unwrap().to_owned()));
                 build_inputs.push(path);
@@ -568,7 +568,7 @@ impl CtxMethods for BuildContext {
                                            build_inputs,
                                            &pkg_src.destination_workspace,
                                            &id).map(|s| Path::new(s.as_slice()));
-        debug2!("install: id = {}, about to call discover_outputs, {:?}",
+        debug!("install: id = {}, about to call discover_outputs, {:?}",
                id.to_str(), result.map(|p| p.display().to_str()));
         installed_files = installed_files + result;
         note(format!("Installed package {} to {}",
@@ -585,7 +585,7 @@ impl CtxMethods for BuildContext {
                         id: &PkgId) -> ~[~str] {
         use conditions::copy_failed::cond;
 
-        debug2!("install_no_build: assuming {} comes from {} with target {}",
+        debug!("install_no_build: assuming {} comes from {} with target {}",
                id.to_str(), build_workspace.display(), target_workspace.display());
 
         // Now copy stuff into the install dirs
@@ -595,7 +595,7 @@ impl CtxMethods for BuildContext {
         let target_lib = maybe_library.as_ref()
             .map(|_| target_library_in_workspace(id, target_workspace));
 
-        debug2!("target_exec = {} target_lib = {:?} \
+        debug!("target_exec = {} target_lib = {:?} \
                maybe_executable = {:?} maybe_library = {:?}",
                target_exec.display(), target_lib,
                maybe_executable, maybe_library);
@@ -641,7 +641,7 @@ impl CtxMethods for BuildContext {
 
 
                 for exec in subex.iter() {
-                    debug2!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
+                    debug!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
                     if !(os::mkdir_recursive(&sub_target_ex.dir_path(), U_RWX) &&
                          os::copy_file(exec, &sub_target_ex)) {
                         cond.raise(((*exec).clone(), sub_target_ex.clone()));
@@ -661,7 +661,7 @@ impl CtxMethods for BuildContext {
                          os::copy_file(lib, &target_lib)) {
                         cond.raise(((*lib).clone(), target_lib.clone()));
                     }
-                    debug2!("3. discovering output {}", target_lib.display());
+                    debug!("3. discovering output {}", target_lib.display());
                     exe_thing.discover_output("binary",
                                               target_lib.as_str().unwrap(),
                                               workcache_support::digest_only_date(&target_lib));
@@ -673,13 +673,13 @@ impl CtxMethods for BuildContext {
     }
 
     fn prefer(&self, _id: &str, _vers: Option<~str>)  {
-        fail2!("prefer not yet implemented");
+        fail!("prefer not yet implemented");
     }
 
     fn test(&self, pkgid: &PkgId, workspace: &Path)  {
         match built_test_in_workspace(pkgid, workspace) {
             Some(test_exec) => {
-                debug2!("test: test_exec = {}", test_exec.display());
+                debug!("test: test_exec = {}", test_exec.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
                 os::set_exit_status(status);
@@ -700,11 +700,11 @@ impl CtxMethods for BuildContext {
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
-        fail2!("uninstall not yet implemented");
+        fail!("uninstall not yet implemented");
     }
 
     fn unprefer(&self, _id: &str, _vers: Option<~str>)  {
-        fail2!("unprefer not yet implemented");
+        fail!("unprefer not yet implemented");
     }
 }
 
@@ -880,9 +880,9 @@ pub fn main_args(args: &[~str]) -> int {
         _ => filesearch::get_or_default_sysroot()
     };
 
-    debug2!("Using sysroot: {}", sroot.display());
+    debug!("Using sysroot: {}", sroot.display());
     let ws = default_workspace();
-    debug2!("Will store workcache in {}", ws.display());
+    debug!("Will store workcache in {}", ws.display());
 
     let rm_args = remaining_args.clone();
     let sub_cmd = cmd.clone();

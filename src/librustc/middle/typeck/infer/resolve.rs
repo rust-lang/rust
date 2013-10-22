@@ -104,7 +104,7 @@ impl ResolveState {
     pub fn resolve_type_chk(&mut self, typ: ty::t) -> fres<ty::t> {
         self.err = None;
 
-        debug2!("Resolving {} (modes={:x})",
+        debug!("Resolving {} (modes={:x})",
                ty_to_str(self.infcx.tcx, typ),
                self.modes);
 
@@ -116,7 +116,7 @@ impl ResolveState {
         assert!(self.v_seen.is_empty());
         match self.err {
           None => {
-            debug2!("Resolved to {} + {} (modes={:x})",
+            debug!("Resolved to {} + {} (modes={:x})",
                    ty_to_str(self.infcx.tcx, rty),
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes);
@@ -137,7 +137,7 @@ impl ResolveState {
     }
 
     pub fn resolve_type(&mut self, typ: ty::t) -> ty::t {
-        debug2!("resolve_type({})", typ.inf_str(self.infcx));
+        debug!("resolve_type({})", typ.inf_str(self.infcx));
         let _i = indenter();
 
         if !ty::type_needs_infer(typ) {
@@ -179,7 +179,7 @@ impl ResolveState {
     }
 
     pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
-        debug2!("Resolve_region({})", orig.inf_str(self.infcx));
+        debug!("Resolve_region({})", orig.inf_str(self.infcx));
         match orig {
           ty::re_infer(ty::ReVar(rid)) => self.resolve_region_var(rid),
           _ => orig

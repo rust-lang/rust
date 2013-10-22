@@ -55,8 +55,8 @@ fn square_from_char(c: char) -> square {
       '.'  => { earth }
       ' '  => { empty }
       _ => {
-        error2!("invalid square: {:?}", c);
-        fail2!()
+        error!("invalid square: {:?}", c);
+        fail!()
       }
     }
 }

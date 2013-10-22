@@ -179,7 +179,7 @@ mod test {
         let (port, chan) = rendezvous();
         do spawn_unlinked {
             chan.duplex_stream.send(()); // Can't access this field outside this module
-            fail2!()
+            fail!()
         }
         port.recv()
     }
@@ -189,7 +189,7 @@ mod test {
         let (port, chan) = rendezvous();
         do spawn_unlinked {
             port.duplex_stream.recv();
-            fail2!()
+            fail!()
         }
         chan.try_send(());
     }
@@ -200,7 +200,7 @@ mod test {
         let (port, chan) = rendezvous();
         do spawn_unlinked {
             port.duplex_stream.recv();
-            fail2!()
+            fail!()
         }
         chan.send(());
     }

@@ -473,19 +473,19 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => fail2!("from_str_bytes_common: radix {:?} incompatible with \
+          => fail!("from_str_bytes_common: radix {:?} incompatible with \
                     use of 'e' as decimal exponent", radix),
         ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => fail2!("from_str_bytes_common: radix {:?} incompatible with \
+          => fail!("from_str_bytes_common: radix {:?} incompatible with \
                     use of 'p' as binary exponent", radix),
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
-          => fail2!("from_str_bytes_common: radix {:?} incompatible with \
+          => fail!("from_str_bytes_common: radix {:?} incompatible with \
                     special values 'inf' and 'NaN'", radix),
         _ if (radix as int) < 2
-          => fail2!("from_str_bytes_common: radix {:?} to low, \
+          => fail!("from_str_bytes_common: radix {:?} to low, \
                     must lie in the range [2, 36]", radix),
         _ if (radix as int) > 36
-          => fail2!("from_str_bytes_common: radix {:?} to high, \
+          => fail!("from_str_bytes_common: radix {:?} to high, \
                     must lie in the range [2, 36]", radix),
         _ => ()
     }

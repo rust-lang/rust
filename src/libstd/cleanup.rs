@@ -123,7 +123,7 @@ pub unsafe fn annihilate() {
 
     if debug_mem() {
         // We do logging here w/o allocation.
-        debug2!("annihilator stats:\n  \
+        debug!("annihilator stats:\n  \
                        total boxes: {}\n  \
                       unique boxes: {}\n  \
                        bytes freed: {}",

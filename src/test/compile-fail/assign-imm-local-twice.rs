@@ -11,9 +11,9 @@
 fn test() {
     let v: int;
     v = 1; //~ NOTE prior assignment occurs here
-    info2!("v={}", v);
+    info!("v={}", v);
     v = 2; //~ ERROR re-assignment of immutable variable
-    info2!("v={}", v);
+    info!("v={}", v);
 }
 
 fn main() {

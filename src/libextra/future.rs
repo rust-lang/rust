@@ -57,7 +57,7 @@ impl<A> Future<A> {
         let state = replace(&mut this.state, Evaluating);
         match state {
             Forced(v) => v,
-            _ => fail2!( "Logic error." ),
+            _ => fail!( "Logic error." ),
         }
     }
 
@@ -69,10 +69,10 @@ impl<A> Future<A> {
         */
         match self.state {
             Forced(ref v) => return v,
-            Evaluating => fail2!("Recursive forcing of future!"),
+            Evaluating => fail!("Recursive forcing of future!"),
             Pending(_) => {
                 match replace(&mut self.state, Evaluating) {
-                    Forced(_) | Evaluating => fail2!("Logic error."),
+                    Forced(_) | Evaluating => fail!("Logic error."),
                     Pending(f) => {
                         self.state = Forced(f());
                         self.get_ref()
@@ -217,7 +217,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_futurefail() {
-        let mut f = Future::spawn(|| fail2!());
+        let mut f = Future::spawn(|| fail!());
         let _x: ~str = f.get();
     }
 

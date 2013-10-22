@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn force(f: &fn() -> int) -> int { f() }
-fn main() { info2!("{:?}", force(|| {})); } //~ ERROR mismatched types
+fn main() { info!("{:?}", force(|| {})); } //~ ERROR mismatched types

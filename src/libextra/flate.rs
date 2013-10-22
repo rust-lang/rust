@@ -121,11 +121,11 @@ mod tests {
             do 2000.times {
                 input.push_all(r.choose(words));
             }
-            debug2!("de/inflate of {} bytes of random word-sequences",
+            debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
             let cmp = deflate_bytes(input);
             let out = inflate_bytes(cmp);
-            debug2!("{} bytes deflated to {} ({:.1f}% size)",
+            debug!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(input, out);

@@ -112,7 +112,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                 let elt = ty.element_type();
                 ty_align(elt)
             }
-            _ => fail2!("ty_size: unhandled type")
+            _ => fail!("ty_size: unhandled type")
         }
     }
 
@@ -141,7 +141,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                 let eltsz = ty_size(elt);
                 len * eltsz
             }
-            _ => fail2!("ty_size: unhandled type")
+            _ => fail!("ty_size: unhandled type")
         }
     }
 
@@ -232,7 +232,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                     i += 1u;
                 }
             }
-            _ => fail2!("classify: unhandled type")
+            _ => fail!("classify: unhandled type")
         }
     }
 
@@ -325,7 +325,7 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
             SSEDs => {
                 tys.push(Type::f64());
             }
-            _ => fail2!("llregtype: unhandled class")
+            _ => fail!("llregtype: unhandled class")
         }
         i += 1u;
     }

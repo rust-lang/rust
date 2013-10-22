@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    error2!("{:?}", x); //~ ERROR unresolved name `x`.
+    error!("{:?}", x); //~ ERROR unresolved name `x`.
 }

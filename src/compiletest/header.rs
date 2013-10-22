@@ -154,7 +154,7 @@ fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
               let end = strs.pop();
               (strs.pop(), end)
           }
-          n => fail2!("Expected 1 or 2 strings, not {}", n)
+          n => fail!("Expected 1 or 2 strings, not {}", n)
         }
     }
 }
@@ -183,7 +183,7 @@ fn parse_name_value_directive(line: &str,
         Some(colon) => {
             let value = line.slice(colon + keycolon.len(),
                                    line.len()).to_owned();
-            debug2!("{}: {}", directive,  value);
+            debug!("{}: {}", directive,  value);
             Some(value)
         }
         None => None

@@ -39,7 +39,7 @@ pub fn root_and_write_guard(datum: &Datum,
                             expr_id: ast::NodeId,
                             derefs: uint) -> @mut Block {
     let key = root_map_key { id: expr_id, derefs: derefs };
-    debug2!("write_guard::root_and_write_guard(key={:?})", key);
+    debug!("write_guard::root_and_write_guard(key={:?})", key);
 
     // root the autoderef'd value, if necessary:
     //
@@ -66,7 +66,7 @@ pub fn return_to_mut(mut bcx: @mut Block,
                      bits_val_ref: ValueRef,
                      filename_val: ValueRef,
                      line_val: ValueRef) -> @mut Block {
-    debug2!("write_guard::return_to_mut(root_key={:?}, {}, {}, {})",
+    debug!("write_guard::return_to_mut(root_key={:?}, {}, {}, {})",
            root_key,
            bcx.to_str(),
            bcx.val_to_str(frozen_val_ref),
@@ -111,7 +111,7 @@ fn root(datum: &Datum,
     //! case, we will call this function, which will stash a copy
     //! away until we exit the scope `scope_id`.
 
-    debug2!("write_guard::root(root_key={:?}, root_info={:?}, datum={:?})",
+    debug!("write_guard::root(root_key={:?}, root_info={:?}, datum={:?})",
            root_key, root_info, datum.to_str(bcx.ccx()));
 
     if bcx.sess().trace() {
@@ -184,7 +184,7 @@ fn root(datum: &Datum,
 fn perform_write_guard(datum: &Datum,
                        bcx: @mut Block,
                        span: Span) -> @mut Block {
-    debug2!("perform_write_guard");
+    debug!("perform_write_guard");
 
     let llval = datum.to_value_llval(bcx);
     let (filename, line) = filename_and_line_num_from_span(bcx, span);

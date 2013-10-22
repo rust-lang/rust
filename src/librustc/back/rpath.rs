@@ -29,7 +29,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
         return ~[];
     }
 
-    debug2!("preparing the RPATH!");
+    debug!("preparing the RPATH!");
 
     let sysroot = sess.filesearch.sysroot();
     let output = out_filename;
@@ -60,13 +60,13 @@ fn get_rpaths(os: session::Os,
               output: &Path,
               libs: &[Path],
               target_triple: &str) -> ~[~str] {
-    debug2!("sysroot: {}", sysroot.display());
-    debug2!("output: {}", output.display());
-    debug2!("libs:");
+    debug!("sysroot: {}", sysroot.display());
+    debug!("output: {}", output.display());
+    debug!("libs:");
     for libpath in libs.iter() {
-        debug2!("    {}", libpath.display());
+        debug!("    {}", libpath.display());
     }
-    debug2!("target_triple: {}", target_triple);
+    debug!("target_triple: {}", target_triple);
 
     // Use relative paths to the libraries. Binaries can be moved
     // as long as they maintain the relative relationship to the
@@ -81,9 +81,9 @@ fn get_rpaths(os: session::Os,
     let fallback_rpaths = ~[get_install_prefix_rpath(target_triple)];
 
     fn log_rpaths(desc: &str, rpaths: &[~str]) {
-        debug2!("{} rpaths:", desc);
+        debug!("{} rpaths:", desc);
         for rpath in rpaths.iter() {
-            debug2!("    {}", *rpath);
+            debug!("    {}", *rpath);
         }
     }
 
@@ -188,7 +188,7 @@ mod test {
         let res = get_install_prefix_rpath("triple");
         let mut d = Path::new(env!("CFG_PREFIX"));
         d.push("lib/rustc/triple/lib");
-        debug2!("test_prefix_path: {} vs. {}",
+        debug!("test_prefix_path: {} vs. {}",
                res,
                d.display());
         assert!(res.as_bytes().ends_with(d.as_vec()));
@@ -248,7 +248,7 @@ mod test {
     fn test_get_absolute_rpath() {
         let res = get_absolute_rpath(&Path::new("lib/libstd.so"));
         let lib = os::make_absolute(&Path::new("lib"));
-        debug2!("test_get_absolute_rpath: {} vs. {}",
+        debug!("test_get_absolute_rpath: {} vs. {}",
                res.to_str(), lib.display());
 
         // FIXME (#9639): This needs to handle non-utf8 paths

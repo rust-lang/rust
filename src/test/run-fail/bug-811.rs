@@ -19,6 +19,6 @@ struct chan_t<T> {
     port: port_id,
 }
 
-fn send<T:Send>(_ch: chan_t<T>, _data: T) { fail2!(); }
+fn send<T:Send>(_ch: chan_t<T>, _data: T) { fail!(); }
 
-fn main() { fail2!("quux"); }
+fn main() { fail!("quux"); }

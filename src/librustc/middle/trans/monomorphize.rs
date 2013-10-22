@@ -36,7 +36,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                       ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool)
 {
-    debug2!("monomorphic_fn(\
+    debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
             vtables={}, \
@@ -68,7 +68,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         must_cast = true;
     }
 
-    debug2!("monomorphic_fn(\
+    debug!("monomorphic_fn(\
             fn_id={}, \
             psubsts={}, \
             hash_id={:?})",
@@ -78,7 +78,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     match ccx.monomorphized.find(&hash_id) {
       Some(&val) => {
-        debug2!("leaving monomorphic fn {}",
+        debug!("leaving monomorphic fn {}",
                ty::item_path_str(ccx.tcx, fn_id));
         return (val, must_cast);
       }
@@ -140,7 +140,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
-    debug2!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx));
+    debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx));
     let mono_ty = match is_static_provided {
         None => ty::subst_tps(ccx.tcx, psubsts.tys,
                               psubsts.self_ty, llitem_ty),
@@ -164,7 +164,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                 (psubsts.tys.slice(0, idx) +
                  &[psubsts.self_ty.unwrap()] +
                  psubsts.tys.tailn(idx));
-            debug2!("static default: changed substitution to {}",
+            debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx));
 
             ty::subst_tps(ccx.tcx, substs, None, llitem_ty)
@@ -176,7 +176,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
             assert!(f.abis.is_rust() || f.abis.is_intrinsic());
             f
         }
-        _ => fail2!("expected bare rust fn or an intrinsic")
+        _ => fail!("expected bare rust fn or an intrinsic")
     };
 
     ccx.stats.n_monos += 1;
@@ -197,7 +197,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let mut pt = (*pt).clone();
     pt.push(elt);
     let s = mangle_exported_name(ccx, pt.clone(), mono_ty);
-    debug2!("monomorphize_fn mangled to {}", s);
+    debug!("monomorphize_fn mangled to {}", s);
 
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
@@ -290,7 +290,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     };
     ccx.monomorphizing.insert(fn_id, depth);
 
-    debug2!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx, fn_id));
+    debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx, fn_id));
     (lldecl, must_cast)
 }
 
@@ -302,7 +302,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
     let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match substs.vtables {
       Some(vts) => {
-        debug2!("make_mono_id vtables={} substs={}",
+        debug!("make_mono_id vtables={} substs={}",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
         let vts_iter = substs.self_vtables.iter().chain(vts.iter());
         vts_iter.zip(substs_iter).map(|(vtable, subst)| {

@@ -37,7 +37,7 @@ impl RustdocVisitor {
         self.attrs = crate.attrs.clone();
         fn visit_struct_def(item: &ast::item, sd: @ast::struct_def, generics:
                             &ast::Generics) -> Struct {
-            debug2!("Visiting struct");
+            debug!("Visiting struct");
             let struct_type = struct_type_from_def(sd);
             Struct {
                 id: item.id,
@@ -52,7 +52,7 @@ impl RustdocVisitor {
         }
 
         fn visit_enum_def(it: &ast::item, def: &ast::enum_def, params: &ast::Generics) -> Enum {
-            debug2!("Visiting enum");
+            debug!("Visiting enum");
             let mut vars: ~[Variant] = ~[];
             for x in def.variants.iter() {
                 vars.push(Variant {
@@ -77,7 +77,7 @@ impl RustdocVisitor {
 
         fn visit_fn(item: &ast::item, fd: &ast::fn_decl, purity: &ast::purity,
                      _abi: &AbiSet, gen: &ast::Generics) -> Function {
-            debug2!("Visiting fn");
+            debug!("Visiting fn");
             Function {
                 id: item.id,
                 vis: item.vis,
@@ -96,7 +96,7 @@ impl RustdocVisitor {
             let name = match am.find(&id) {
                 Some(m) => match m {
                     &ast_map::node_item(ref it, _) => Some(it.ident),
-                    _ => fail2!("mod id mapped to non-item in the ast map")
+                    _ => fail!("mod id mapped to non-item in the ast map")
                 },
                 None => None
             };
@@ -113,7 +113,7 @@ impl RustdocVisitor {
         }
 
         fn visit_item(item: &ast::item, om: &mut Module) {
-            debug2!("Visiting item {:?}", item);
+            debug!("Visiting item {:?}", item);
             match item.node {
                 ast::item_mod(ref m) => {
                     om.mods.push(visit_mod_contents(item.span, item.attrs.clone(),

@@ -17,5 +17,5 @@ pub fn main() {
     let a = A { x: 0 };
 
     let A { x: ref x } = a;
-    info2!("{:?}", x)
+    info!("{:?}", x)
 }

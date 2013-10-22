@@ -19,10 +19,10 @@ pub fn main() {
     let e = Foo{f: 1};
     match e {
         Foo{_} => (),
-        _ => fail2!(),
+        _ => fail!(),
     }
     match e {
         Foo{f: _f} => (),
-        _ => fail2!(),
+        _ => fail!(),
     }
 }

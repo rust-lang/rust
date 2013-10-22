@@ -14,19 +14,19 @@
 
 pub struct FailCmp;
 impl Eq for FailCmp {
-    fn eq(&self, _: &FailCmp) -> bool { fail2!("eq") }
+    fn eq(&self, _: &FailCmp) -> bool { fail!("eq") }
 }
 
 impl Ord for FailCmp {
-    fn lt(&self, _: &FailCmp) -> bool { fail2!("lt") }
+    fn lt(&self, _: &FailCmp) -> bool { fail!("lt") }
 }
 
 impl TotalEq for FailCmp {
-    fn equals(&self, _: &FailCmp) -> bool { fail2!("equals") }
+    fn equals(&self, _: &FailCmp) -> bool { fail!("equals") }
 }
 
 impl TotalOrd for FailCmp {
-    fn cmp(&self, _: &FailCmp) -> Ordering { fail2!("cmp") }
+    fn cmp(&self, _: &FailCmp) -> Ordering { fail!("cmp") }
 }
 
 #[deriving(Eq,Ord,TotalEq,TotalOrd)]

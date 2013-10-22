@@ -85,7 +85,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         constraints.push_str(clobbers);
     }
 
-    debug2!("Asm Constraints: {:?}", constraints);
+    debug!("Asm Constraints: {:?}", constraints);
 
     let numOutputs = outputs.len();
 

@@ -146,7 +146,7 @@ pub struct CrateDebugContext {
 
 impl CrateDebugContext {
     pub fn new(llmod: ModuleRef, crate: ~str) -> CrateDebugContext {
-        debug2!("CrateDebugContext::new");
+        debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
@@ -234,7 +234,7 @@ pub fn finalize(cx: @mut CrateContext) {
         return;
     }
 
-    debug2!("finalize");
+    debug!("finalize");
     compile_unit_metadata(cx);
     unsafe {
         llvm::LLVMDIBuilderFinalize(DIB(cx));
@@ -497,7 +497,7 @@ pub fn set_source_location(fcx: &FunctionContext,
 
     let cx = fcx.ccx;
 
-    debug2!("set_source_location: {}", cx.sess.codemap.span_to_str(span));
+    debug!("set_source_location: {}", cx.sess.codemap.span_to_str(span));
 
     if fcx.debug_context.get_ref(cx, span).source_locations_enabled {
         let loc = span_start(cx, span);
@@ -857,7 +857,7 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     let dcx = debug_context(cx);
     let crate_name: &str = dcx.crate_file;
 
-    debug2!("compile_unit_metadata: {:?}", crate_name);
+    debug!("compile_unit_metadata: {:?}", crate_name);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     let work_dir = cx.sess.working_dir.as_str().unwrap();
@@ -968,7 +968,7 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
         None => ()
     }
 
-    debug2!("file_metadata: {}", full_path);
+    debug!("file_metadata: {}", full_path);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     let work_dir = cx.sess.working_dir.as_str().unwrap();
@@ -1011,7 +1011,7 @@ fn scope_metadata(fcx: &FunctionContext,
 
 fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
 
-    debug2!("basic_type_metadata: {:?}", ty::get(t));
+    debug!("basic_type_metadata: {:?}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
         ty::ty_nil | ty::ty_bot => (~"uint", DW_ATE_unsigned),
@@ -1849,7 +1849,7 @@ fn vec_slice_metadata(cx: &mut CrateContext,
                       span: Span)
                    -> DICompositeType {
 
-    debug2!("vec_slice_metadata: {:?}", ty::get(vec_type));
+    debug!("vec_slice_metadata: {:?}", ty::get(vec_type));
 
     let slice_llvm_type = type_of::type_of(cx, vec_type);
     let slice_type_name = ppaux::ty_to_str(cx.tcx, vec_type);
@@ -1964,7 +1964,7 @@ fn trait_metadata(cx: &mut CrateContext,
 }
 
 fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
-    debug2!("unimplemented_type_metadata: {:?}", ty::get(t));
+    debug!("unimplemented_type_metadata: {:?}", ty::get(t));
 
     let name = ppaux::ty_to_str(cx.tcx, t);
     let metadata = do format!("NYI<{}>", name).with_c_str |name| {
@@ -2016,7 +2016,7 @@ fn type_metadata(cx: &mut CrateContext,
         pointer_type_metadata(cx, pointer_type, box_metadata)
     }
 
-    debug2!("type_metadata: {:?}", ty::get(t));
+    debug!("type_metadata: {:?}", ty::get(t));
 
     let sty = &ty::get(t).sty;
     let type_metadata = match *sty {
@@ -2135,7 +2135,7 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
 
     match debug_location {
         KnownLocation { scope, line, col } => {
-            debug2!("setting debug location to {} {}", line, col);
+            debug!("setting debug location to {} {}", line, col);
             let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
             unsafe {
                 metadata_node = llvm::LLVMMDNodeInContext(debug_context(cx).llcontext,
@@ -2144,7 +2144,7 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
             }
         }
         UnknownLocation => {
-            debug2!("clearing debug location ");
+            debug!("clearing debug location ");
             metadata_node = ptr::null();
         }
     };

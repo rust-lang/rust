@@ -122,7 +122,7 @@ pub struct MatcherPos {
 pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
     match *mpu {
       matcher_pos_up(Some(ref mp)) => (*mp).clone(),
-      _ => fail2!()
+      _ => fail!()
     }
 }
 
@@ -387,7 +387,7 @@ pub fn parse(
                         format!("{} ('{}')", ident_to_str(name),
                              ident_to_str(bind))
                       }
-                      _ => fail2!()
+                      _ => fail!()
                     } }).connect(" or ");
                 return error(sp, format!(
                     "Local ambiguity: multiple parsing options: \
@@ -412,7 +412,7 @@ pub fn parse(
                         parse_nt(&rust_parser, ident_to_str(name))));
                     ei.idx += 1u;
                   }
-                  _ => fail2!()
+                  _ => fail!()
                 }
                 cur_eis.push(ei);
 

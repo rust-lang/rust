@@ -11,5 +11,5 @@
 // error-pattern:failed at 'test-fail-static'
 
 fn main() {
-    fail2!("test-fail-static");
+    fail!("test-fail-static");
 }

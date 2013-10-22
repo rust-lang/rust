@@ -626,7 +626,7 @@ mod test {
             let result = spawntask_try(||());
             rtdebug!("trying first assert");
             assert!(result.is_ok());
-            let result = spawntask_try(|| fail2!());
+            let result = spawntask_try(|| fail!());
             rtdebug!("trying second assert");
             assert!(result.is_err());
         }
@@ -644,7 +644,7 @@ mod test {
     #[test]
     fn logging() {
         do run_in_newsched_task() {
-            info2!("here i am. logging in a newsched task");
+            info!("here i am. logging in a newsched task");
         }
     }
 
@@ -686,7 +686,7 @@ mod test {
     fn linked_failure() {
         do run_in_newsched_task() {
             let res = do spawntask_try {
-                spawntask_random(|| fail2!());
+                spawntask_random(|| fail!());
             };
             assert!(res.is_err());
         }

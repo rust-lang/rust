@@ -429,7 +429,7 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
         match t {
             &@BlockInfo(BlockInfo {macros_escape:false,_}) => true,
             &@BlockInfo(BlockInfo {_}) => false,
-            _ => fail2!("special identifier {:?} was bound to a non-BlockInfo",
+            _ => fail!("special identifier {:?} was bound to a non-BlockInfo",
                         special_block_name)
         }
     };
@@ -741,7 +741,7 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
 fn mustbesome<T>(val : Option<T>) -> T {
     match val {
         Some(v) => v,
-        None => fail2!("rename_fold returned None")
+        None => fail!("rename_fold returned None")
     }
 }
 
@@ -749,7 +749,7 @@ fn mustbesome<T>(val : Option<T>) -> T {
 fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
     match exts.find_in_topmost_frame(&intern(special_block_name)) {
         Some(@BlockInfo(bi)) => bi,
-        _ => fail2!("special identifier {:?} was bound to a non-BlockInfo",
+        _ => fail!("special identifier {:?} was bound to a non-BlockInfo",
                     @" block")
     }
 }
@@ -782,7 +782,7 @@ pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
 fn apply_pending_renames(folder : @ast_fold, stmt : ast::Stmt) -> @ast::Stmt {
     match folder.fold_stmt(&stmt) {
         Some(s) => s,
-        None => fail2!("renaming of stmt produced None")
+        None => fail!("renaming of stmt produced None")
     }
 }
 
@@ -838,14 +838,6 @@ pub fn std_macros() -> @str {
         )
     )
 
-    // NOTE (acrichto): remove these after the next snapshot
-    macro_rules! log2( ($($arg:tt)*) => (log!($($arg)*)) )
-    macro_rules! error2( ($($arg:tt)*) => (error!($($arg)*)) )
-    macro_rules! warn2 ( ($($arg:tt)*) => (warn!($($arg)*)) )
-    macro_rules! info2 ( ($($arg:tt)*) => (info!($($arg)*)) )
-    macro_rules! debug2( ($($arg:tt)*) => (debug!($($arg)*)) )
-    macro_rules! fail2( ($($arg:tt)*) => (fail!($($arg)*)) )
-
     macro_rules! assert(
         ($cond:expr) => {
             if !$cond {
@@ -873,7 +865,7 @@ pub fn std_macros() -> @str {
                 // check both directions of equality....
                 if !((*given_val == *expected_val) &&
                      (*expected_val == *given_val)) {
-                    fail2!(\"assertion failed: `(left == right) && (right == \
+                    fail!(\"assertion failed: `(left == right) && (right == \
                              left)` (left: `{:?}`, right: `{:?}`)\",
                            *given_val, *expected_val);
                 }
@@ -893,7 +885,7 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq(&expected_val) &&
                     expected_val.approx_eq(&given_val)
                 ) {
-                    fail2!(\"left: {:?} does not approximately equal right: {:?}\",
+                    fail!(\"left: {:?} does not approximately equal right: {:?}\",
                            given_val, expected_val);
                 }
             }
@@ -910,7 +902,7 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
                     expected_val.approx_eq_eps(&given_val, &epsilon_val)
                 ) {
-                    fail2!(\"left: {:?} does not approximately equal right: \
+                    fail!(\"left: {:?} does not approximately equal right: \
                              {:?} with epsilon: {:?}\",
                           given_val, expected_val, epsilon_val);
                 }
@@ -945,7 +937,7 @@ pub fn std_macros() -> @str {
 
     */
     macro_rules! unreachable (() => (
-        fail2!(\"internal error: entered unreachable code\");
+        fail!(\"internal error: entered unreachable code\");
     ))
 
     macro_rules! condition (
@@ -1123,7 +1115,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
                                               ~[],
                                               parse_sess) {
         Some(item) => item,
-        None => fail2!("expected core macros to parse correctly")
+        None => fail!("expected core macros to parse correctly")
     };
 
     let injector = @Injector {
@@ -1381,16 +1373,16 @@ mod test {
     use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
     use visit;
 
-    // make sure that fail2! is present
+    // make sure that fail! is present
     #[test] fn fail_exists_test () {
-        let src = @"fn main() { fail2!(\"something appropriately gloomy\");}";
+        let src = @"fn main() { fail!(\"something appropriately gloomy\");}";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
             @"<test>",
             src,
             ~[],sess);
         let crate_ast = inject_std_macros(sess, ~[], crate_ast);
-        // don't bother with striping, doesn't affect fail2!.
+        // don't bother with striping, doesn't affect fail!.
         expand_crate(sess,~[],crate_ast);
     }
 
@@ -1448,7 +1440,7 @@ mod test {
             cfg,~[],sess);
         match item_ast {
             Some(_) => (), // success
-            None => fail2!("expected this to parse")
+            None => fail!("expected this to parse")
         }
     }
 
@@ -1487,7 +1479,7 @@ mod test {
         let marked_once_ctxt =
             match marked_once[0] {
                 ast::tt_tok(_,token::IDENT(id,_)) => id.ctxt,
-                _ => fail2!(format!("unexpected shape for marked tts: {:?}",marked_once[0]))
+                _ => fail!(format!("unexpected shape for marked tts: {:?}",marked_once[0]))
             };
         assert_eq!(mtwt_marksof(marked_once_ctxt,invalid_name),~[fm]);
         let remarked = mtwt_cancel_outer_mark(marked_once,marked_once_ctxt);
@@ -1495,7 +1487,7 @@ mod test {
         match remarked[0] {
             ast::tt_tok(_,token::IDENT(id,_)) =>
             assert_eq!(mtwt_marksof(id.ctxt,invalid_name),~[]),
-            _ => fail2!(format!("unexpected shape for marked tts: {:?}",remarked[0]))
+            _ => fail!(format!("unexpected shape for marked tts: {:?}",remarked[0]))
         }
     }
 
@@ -1700,7 +1692,7 @@ foo_module!()
             bindings.iter().filter(|b|{@"xx" == (ident_to_str(*b))}).collect();
         let cxbind = match cxbinds {
             [b] => b,
-            _ => fail2!("expected just one binding for ext_cx")
+            _ => fail!("expected just one binding for ext_cx")
         };
         let resolved_binding = mtwt_resolve(*cxbind);
         // find all the xx varrefs:

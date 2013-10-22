@@ -1,7 +1,7 @@
 // error-pattern:test
 
 fn f() {
-    fail2!("test");
+    fail!("test");
 }
 
 fn main() {

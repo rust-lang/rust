@@ -19,11 +19,11 @@ static X: Foo = Bar;
 pub fn main() {
     match X {
         Bar => {}
-        Baz | Boo => fail2!()
+        Baz | Boo => fail!()
     }
     match Y {
         Baz => {}
-        Bar | Boo => fail2!()
+        Bar | Boo => fail!()
     }
 }
 

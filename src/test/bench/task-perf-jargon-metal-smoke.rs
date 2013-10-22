@@ -54,6 +54,6 @@ fn main() {
     let (p,c) = comm::stream();
     child_generation(from_str::<uint>(args[1]).unwrap(), c);
     if p.try_recv().is_none() {
-        fail2!("it happened when we slumbered");
+        fail!("it happened when we slumbered");
     }
 }

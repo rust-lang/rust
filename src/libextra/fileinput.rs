@@ -506,7 +506,7 @@ mod test {
             let contents =
                 vec::from_fn(3, |j| format!("{} {}", i, j));
             make_file(filename.get_ref(), contents);
-            debug2!("contents={:?}", contents);
+            debug!("contents={:?}", contents);
             all_lines.push_all(contents);
         }
 
@@ -555,7 +555,7 @@ mod test {
             let expected_path = match line {
                 "1" | "2" => filenames[0].clone(),
                 "3" | "4" => filenames[2].clone(),
-                _ => fail2!("unexpected line")
+                _ => fail!("unexpected line")
             };
             assert_eq!(state.current_path.clone(), expected_path);
             count += 1;

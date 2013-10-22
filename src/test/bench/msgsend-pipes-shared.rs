@@ -42,7 +42,7 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
         match requests.try_recv() {
           Some(get_count) => { responses.send(count.clone()); }
           Some(bytes(b)) => {
-            //error2!("server: received {:?} bytes", b);
+            //error!("server: received {:?} bytes", b);
             count += b;
           }
           None => { done = true; }
@@ -50,7 +50,7 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
         }
     }
     responses.send(count);
-    //error2!("server exiting");
+    //error!("server exiting");
 }
 
 fn run(args: &[~str]) {
@@ -70,10 +70,10 @@ fn run(args: &[~str]) {
         worker_results.push(builder.future_result());
         do builder.spawn {
             for _ in range(0u, size / workers) {
-                //error2!("worker {:?}: sending {:?} bytes", i, num_bytes);
+                //error!("worker {:?}: sending {:?} bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
-            //error2!("worker {:?} exiting", i);
+            //error!("worker {:?} exiting", i);
         }
     }
     do task::spawn || {
@@ -84,7 +84,7 @@ fn run(args: &[~str]) {
         r.recv();
     }
 
-    //error2!("sending stop message");
+    //error!("sending stop message");
     to_child.send(stop);
     move_out(to_child);
     let result = from_child.recv();
@@ -107,6 +107,6 @@ fn main() {
         args.clone()
     };
 
-    info2!("{:?}", args);
+    info!("{:?}", args);
     run(args);
 }

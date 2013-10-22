@@ -10,4 +10,4 @@
 
 // error-pattern:failed to find an implementation of trait std::sys::FailWithCause for int
 
-fn main() { fail2!(5); }
+fn main() { fail!(5); }

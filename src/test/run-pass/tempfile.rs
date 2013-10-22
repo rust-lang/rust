@@ -41,7 +41,7 @@ fn test_rm_tempdir() {
     let f: ~fn() = || {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         wr.send(tmp.path().clone());
-        fail2!("fail to unwind past `tmp`");
+        fail!("fail to unwind past `tmp`");
     };
     task::try(f);
     let path = rd.recv();
@@ -52,7 +52,7 @@ fn test_rm_tempdir() {
     let cell = Cell::new(tmp);
     let f: ~fn() = || {
         let _tmp = cell.take();
-        fail2!("fail to unwind past `tmp`");
+        fail!("fail to unwind past `tmp`");
     };
     task::try(f);
     assert!(!os::path_exists(&path));
@@ -83,7 +83,7 @@ fn test_rm_tempdir() {
 fn recursive_mkdir_rel() {
     let path = Path::new("frob");
     let cwd = os::getcwd();
-    debug2!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
+    debug!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), os::path_exists(&path));
     assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     assert!(os::path_is_dir(&path));
@@ -101,13 +101,13 @@ fn recursive_mkdir_dot() {
 fn recursive_mkdir_rel_2() {
     let path = Path::new("./frob/baz");
     let cwd = os::getcwd();
-    debug2!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
+    debug!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), os::path_exists(&path));
     assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
         assert!(os::path_is_dir(&path));
     assert!(os::path_is_dir(&path.dir_path()));
     let path2 = Path::new("quux/blat");
-    debug2!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
+    debug!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
     assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
         assert!(os::path_is_dir(&path2));
@@ -123,7 +123,7 @@ pub fn test_rmdir_recursive_ok() {
     let tmpdir = tmpdir.path();
     let root = tmpdir.join("foo");
 
-    debug2!("making {}", root.display());
+    debug!("making {}", root.display());
     assert!(os::make_dir(&root, rwx));
     assert!(os::make_dir(&root.join("foo"), rwx));
     assert!(os::make_dir(&root.join("foo").join("bar"), rwx));

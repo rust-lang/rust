@@ -22,7 +22,7 @@ pub fn main() {
             Some(ref z) if z.with(|b| *b) => {
                 do z.with |b| { assert!(*b); }
             },
-            _ => fail2!()
+            _ => fail!()
         }
     }
 }

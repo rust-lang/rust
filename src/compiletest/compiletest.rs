@@ -85,20 +85,20 @@ pub fn parse_config(args: ~[~str]) -> config {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
         println("");
-        fail2!()
+        fail!()
     }
 
     let matches =
         &match getopts::groups::getopts(args_, groups) {
           Ok(m) => m,
-          Err(f) => fail2!("{}", f.to_err_msg())
+          Err(f) => fail!("{}", f.to_err_msg())
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
         println("");
-        fail2!()
+        fail!()
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
@@ -203,7 +203,7 @@ pub fn str_mode(s: ~str) -> mode {
       ~"pretty" => mode_pretty,
       ~"debug-info" => mode_debug_info,
       ~"codegen" => mode_codegen,
-      _ => fail2!("invalid mode")
+      _ => fail!("invalid mode")
     }
 }
 
@@ -226,7 +226,7 @@ pub fn run_tests(config: &config) {
     // For context, see #8904
     rt::test::prepare_for_lots_of_tests();
     let res = test::run_tests_console(&opts, tests);
-    if !res { fail2!("Some tests failed"); }
+    if !res { fail!("Some tests failed"); }
 }
 
 pub fn test_opts(config: &config) -> test::TestOpts {
@@ -244,13 +244,13 @@ pub fn test_opts(config: &config) -> test::TestOpts {
 }
 
 pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
-    debug2!("making tests from {}",
+    debug!("making tests from {}",
            config.src_base.display());
     let mut tests = ~[];
     let dirs = os::list_dir_path(&config.src_base);
     for file in dirs.iter() {
         let file = file.clone();
-        debug2!("inspecting file {}", file.display());
+        debug!("inspecting file {}", file.display());
         if is_test(config, &file) {
             let t = do make_test(config, &file) {
                 match config.mode {

@@ -135,7 +135,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
         &visit::fk_item_fn(*) |
         &visit::fk_method(*) => {
-            debug2!("borrowck_fn(id={:?})", id);
+            debug!("borrowck_fn(id={:?})", id);
 
             // Check the body of fn items.
             let (id_range, all_loans, move_data) =

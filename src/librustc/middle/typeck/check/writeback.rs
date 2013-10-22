@@ -70,7 +70,7 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
                 for t in r.iter() {
                     let method_map = fcx.ccx.method_map;
                     let new_entry = method_map_entry { self_ty: *t, ..*mme };
-                    debug2!("writeback::resolve_method_map_entry(id={:?}, \
+                    debug!("writeback::resolve_method_map_entry(id={:?}, \
                             new_entry={:?})",
                            id, new_entry);
                     method_map.insert(id, new_entry);
@@ -88,7 +88,7 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
             let r_origins = resolve_origins(fcx, sp, *origins);
             let vtable_map = fcx.ccx.vtable_map;
             vtable_map.insert(id, r_origins);
-            debug2!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
+            debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
                    id, r_origins.repr(fcx.tcx()));
         }
     }
@@ -133,7 +133,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 }
                 Ok(r1) => {
                     let resolved_adj = @ty::AutoAddEnv(r1, s);
-                    debug2!("Adjustments for node {}: {:?}", id, resolved_adj);
+                    debug!("Adjustments for node {}: {:?}", id, resolved_adj);
                     fcx.tcx().adjustments.insert(id, resolved_adj);
                 }
             }
@@ -162,7 +162,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 autoderefs: adj.autoderefs,
                 autoref: resolved_autoref,
             });
-            debug2!("Adjustments for node {}: {:?}", id, resolved_adj);
+            debug!("Adjustments for node {}: {:?}", id, resolved_adj);
             fcx.tcx().adjustments.insert(id, resolved_adj);
         }
     }
@@ -176,7 +176,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
       }
 
       Some(t) => {
-        debug2!("resolve_type_vars_for_node(id={}, n_ty={}, t={})",
+        debug!("resolve_type_vars_for_node(id={}, n_ty={}, t={})",
                id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         let mut ret = Some(t);
@@ -284,7 +284,7 @@ fn visit_pat(p: @ast::Pat, wbcx: &mut WbCtxt) {
     }
 
     resolve_type_vars_for_node(wbcx, p.span, p.id);
-    debug2!("Type for pattern binding {} (id {}) resolved to {}",
+    debug!("Type for pattern binding {} (id {}) resolved to {}",
            pat_to_str(p, wbcx.fcx.ccx.tcx.sess.intr()), p.id,
            wbcx.fcx.infcx().ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
@@ -297,7 +297,7 @@ fn visit_local(l: @ast::Local, wbcx: &mut WbCtxt) {
     let var_ty = wbcx.fcx.local_ty(l.span, l.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
         Ok(lty) => {
-            debug2!("Type for local {} (id {}) resolved to {}",
+            debug!("Type for local {} (id {}) resolved to {}",
                    pat_to_str(l.pat, wbcx.fcx.tcx().sess.intr()),
                    l.id,
                    wbcx.fcx.infcx().ty_to_str(lty));

@@ -15,7 +15,7 @@ struct Tree<T> {
     parent: Option<T>
 }
 
-fn empty<T>() -> Tree<T> { fail2!() }
+fn empty<T>() -> Tree<T> { fail!() }
 
 struct Box {
     tree: Tree<@Box>

@@ -36,7 +36,7 @@ impl<K:Eq,V:Clone> Index<K,V> for AssociationList<K,V> {
                 return pair.value.clone();
             }
         }
-        fail2!("No value found for key: {:?}", index);
+        fail!("No value found for key: {:?}", index);
     }
 }
 

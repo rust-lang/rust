@@ -175,7 +175,7 @@ pub fn compile_input(context: &BuildContext,
                      what: OutputType) -> Option<Path> {
     assert!(in_file.component_iter().nth(1).is_some());
     let input = driver::file_input(in_file.clone());
-    debug2!("compile_input: {} / {:?}", in_file.display(), what);
+    debug!("compile_input: {} / {:?}", in_file.display(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
@@ -186,10 +186,10 @@ pub fn compile_input(context: &BuildContext,
 
     let binary = os::args()[0].to_managed();
 
-    debug2!("flags: {}", flags.connect(" "));
-    debug2!("cfgs: {}", cfgs.connect(" "));
+    debug!("flags: {}", flags.connect(" "));
+    debug!("cfgs: {}", cfgs.connect(" "));
     let csysroot = context.sysroot();
-    debug2!("compile_input's sysroot = {}", csysroot.display());
+    debug!("compile_input's sysroot = {}", csysroot.display());
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -206,7 +206,7 @@ pub fn compile_input(context: &BuildContext,
                           + context.flag_strs()
                           + cfgs.flat_map(|c| { ~[~"--cfg", (*c).clone()] }),
                           driver::optgroups()).unwrap();
-    debug2!("rustc flags: {:?}", matches);
+    debug!("rustc flags: {:?}", matches);
 
     // Hack so that rustpkg can run either out of a rustc target dir,
     // or the host dir
@@ -221,8 +221,8 @@ pub fn compile_input(context: &BuildContext,
         p
     };
     let csysroot = context.sysroot();
-    debug2!("compile_input's sysroot = {}", csysroot.display());
-    debug2!("sysroot_to_use = {}", sysroot_to_use.display());
+    debug!("compile_input's sysroot = {}", csysroot.display());
+    debug!("sysroot_to_use = {}", sysroot_to_use.display());
 
     let output_type = match context.compile_upto() {
         Assemble => link::output_type_assembly,
@@ -270,7 +270,7 @@ pub fn compile_input(context: &BuildContext,
 
     find_and_install_dependencies(context, pkg_id, in_file, sess, exec, &crate, deps,
                                   |p| {
-                                      debug2!("a dependency: {}", p.display());
+                                      debug!("a dependency: {}", p.display());
                                       // Pass the directory containing a dependency
                                       // as an additional lib search path
                                       if !addl_lib_search_paths.contains(&p) {
@@ -287,7 +287,7 @@ pub fn compile_input(context: &BuildContext,
             Bench => format!("{}bench", pkg_id.short_name).to_managed(),
             _     => pkg_id.short_name.to_managed()
         };
-        debug2!("Injecting link name: {}", name_to_use);
+        debug!("Injecting link name: {}", name_to_use);
         // FIXME (#9639): This needs to handle non-utf8 paths
         let link_options =
             ~[attr::mk_name_value_item_str(@"name", name_to_use),
@@ -295,11 +295,11 @@ pub fn compile_input(context: &BuildContext,
             ~[attr::mk_name_value_item_str(@"package_id",
                                            pkg_id.path.as_str().unwrap().to_managed())];
 
-        debug2!("link options: {:?}", link_options);
+        debug!("link options: {:?}", link_options);
         crate.attrs = ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))];
     }
 
-    debug2!("calling compile_crate_from_input, workspace = {},
+    debug!("calling compile_crate_from_input, workspace = {},
            building_library = {:?}", out_dir.display(), sess.building_library);
     let result = compile_crate_from_input(in_file,
                                           exec,
@@ -315,9 +315,9 @@ pub fn compile_input(context: &BuildContext,
         result
     };
     for p in discovered_output.iter() {
-        debug2!("About to discover output {}", p.display());
+        debug!("About to discover output {}", p.display());
         if os::path_exists(p) {
-            debug2!("4. discovering output {}", p.display());
+            debug!("4. discovering output {}", p.display());
             // FIXME (#9639): This needs to handle non-utf8 paths
             exec.discover_output("binary", p.as_str().unwrap(), digest_only_date(p));
         }
@@ -342,22 +342,22 @@ pub fn compile_crate_from_input(input: &Path,
 // Returns None if one of the flags that suppresses compilation output was
 // given
                                 crate: ast::Crate) -> Option<Path> {
-    debug2!("Calling build_output_filenames with {}, building library? {:?}",
+    debug!("Calling build_output_filenames with {}, building library? {:?}",
            out_dir.display(), sess.building_library);
 
     // bad copy
-    debug2!("out_dir = {}", out_dir.display());
+    debug!("out_dir = {}", out_dir.display());
     let outputs = driver::build_output_filenames(&driver::file_input(input.clone()),
                                                  &Some(out_dir.clone()), &None,
                                                  crate.attrs, sess);
 
-    debug2!("Outputs are out_filename: {} and obj_filename: {} and output type = {:?}",
+    debug!("Outputs are out_filename: {} and obj_filename: {} and output type = {:?}",
            outputs.out_filename.display(),
            outputs.obj_filename.display(),
            sess.opts.output_type);
-    debug2!("additional libraries:");
+    debug!("additional libraries:");
     for lib in sess.opts.addl_lib_search_paths.iter() {
-        debug2!("an additional library: {}", lib.display());
+        debug!("an additional library: {}", lib.display());
     }
     let analysis = driver::phase_3_run_analysis_passes(sess, &crate);
     if driver::stop_after_phase_3(sess) { return None; }
@@ -375,7 +375,7 @@ pub fn compile_crate_from_input(input: &Path,
     // FIXME (#9639): This needs to handle non-utf8 paths
     exec.discover_input("file", input.as_str().unwrap(), digest_file_with_date(input));
 
-    debug2!("Built {}, date = {:?}", outputs.out_filename.display(),
+    debug!("Built {}, date = {:?}", outputs.out_filename.display(),
            datestamp(&outputs.out_filename));
 
     Some(outputs.out_filename)
@@ -401,10 +401,10 @@ pub fn compile_crate(ctxt: &BuildContext,
                      cfgs: &[~str],
                      opt: bool,
                      what: OutputType) -> Option<Path> {
-    debug2!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
-    debug2!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());
+    debug!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
+    debug!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());
     for fl in flags.iter() {
-        debug2!("+++ {}", *fl);
+        debug!("+++ {}", *fl);
     }
     compile_input(ctxt, exec, pkg_id, crate, workspace, deps, flags, cfgs, opt, what)
 }
@@ -429,11 +429,11 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                     Some((p, _)) => p,
                     None => self.sess.str_of(lib_ident)
                 };
-                debug2!("Finding and installing... {}", lib_name);
+                debug!("Finding and installing... {}", lib_name);
                 // Check standard Rust library path first
                 match system_library(&self.context.sysroot(), lib_name) {
                     Some(ref installed_path) => {
-                        debug2!("It exists: {}", installed_path.display());
+                        debug!("It exists: {}", installed_path.display());
                         // Say that [path for c] has a discovered dependency on
                         // installed_path
                         // For binary files, we only hash the datestamp, not the contents.
@@ -449,7 +449,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                     }
                     None => {
                         // FIXME #8711: need to parse version out of path_opt
-                        debug2!("Trying to install library {}, rebuilding it",
+                        debug!("Trying to install library {}, rebuilding it",
                                lib_name.to_str());
                         // Try to install it
                         let pkg_id = PkgId::new(lib_name);
@@ -479,15 +479,15 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                   pkg_id.clone());
                         let (outputs_disc, inputs_disc) =
                             self.context.install(pkg_src, &JustOne(Path::new(lib_crate_filename)));
-                        debug2!("Installed {}, returned {:?} dependencies and \
+                        debug!("Installed {}, returned {:?} dependencies and \
                                {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
-                        debug2!("discovered outputs = {:?} discovered_inputs = {:?}",
+                        debug!("discovered outputs = {:?} discovered_inputs = {:?}",
                                outputs_disc, inputs_disc);
                         // It must have installed *something*...
                         assert!(!outputs_disc.is_empty());
                         for dep in outputs_disc.iter() {
-                            debug2!("Discovering a binary input: {}", dep.display());
+                            debug!("Discovering a binary input: {}", dep.display());
                             // FIXME (#9639): This needs to handle non-utf8 paths
                             self.exec.discover_input("binary",
                                                      dep.as_str().unwrap(),
@@ -498,10 +498,10 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
 
                             // Also, add an additional search path
                             let dep_dir = dep.dir_path();
-                            debug2!("Installed {} into {}", dep.display(), dep_dir.display());
+                            debug!("Installed {} into {}", dep.display(), dep_dir.display());
                             (self.save)(dep_dir);
                         }
-                        debug2!("Installed {}, returned {} dependencies and \
+                        debug!("Installed {}, returned {} dependencies and \
                                 {} transitive dependencies",
                                 lib_name, outputs_disc.len(), inputs_disc.len());
                         // It must have installed *something*...
@@ -526,10 +526,10 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                          digest_only_date(
                                                              &Path::new(dep.as_slice())));
                             } else {
-                                fail2!("Bad kind: {}", *what);
+                                fail!("Bad kind: {}", *what);
                             }
                             // Also, add an additional search path
-                            debug2!("Installed {} into {}",
+                            debug!("Installed {} into {}",
                                     lib_name, target_workspace.as_str().unwrap().to_owned());
                             (self.save)(target_workspace.clone());
                         }
@@ -554,7 +554,7 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                                      c: &ast::Crate,
                                      deps: &mut DepMap,
                                      save: &fn(Path)) {
-    debug2!("In find_and_install_dependencies...");
+    debug!("In find_and_install_dependencies...");
     let mut visitor = ViewItemVisitor {
         context: context,
         parent: parent,
@@ -608,9 +608,9 @@ fn debug_flags() -> ~[~str] { ~[] }
 
 /// Returns the last-modified date as an Option
 pub fn datestamp(p: &Path) -> Option<libc::time_t> {
-    debug2!("Scrutinizing datestamp for {} - does it exist? {:?}", p.display(), os::path_exists(p));
+    debug!("Scrutinizing datestamp for {} - does it exist? {:?}", p.display(), os::path_exists(p));
     let out = p.stat().map(|stat| stat.st_mtime);
-    debug2!("Date = {:?}", out);
+    debug!("Date = {:?}", out);
     out.map(|t| { t as libc::time_t })
 }
 

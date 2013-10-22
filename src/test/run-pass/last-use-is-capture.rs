@@ -16,5 +16,5 @@ pub fn main() {
     fn invoke(f: &fn()) { f(); }
     let k = ~22;
     let _u = A {a: k.clone()};
-    invoke(|| error2!("{:?}", k.clone()) )
+    invoke(|| error!("{:?}", k.clone()) )
 }

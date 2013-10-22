@@ -20,7 +20,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F:Freeze,G>(_x: F) -> F { fail2!() } //~ ERROR type parameter 0 requires `Freeze`
+  fn b<F:Freeze,G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Freeze`
 }
 
 fn main() {}

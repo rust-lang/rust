@@ -14,6 +14,6 @@ pub fn main() {
     let _x = if true {
         10
     } else {
-        if true { fail2!() } else { fail2!() }
+        if true { fail!() } else { fail!() }
     };
 }
