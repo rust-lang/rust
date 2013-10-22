@@ -18,6 +18,7 @@
 use std::libc;
 use std::run;
 use std::str;
+use std::rt::io;
 
 #[test]
 fn test_destroy_once() {
@@ -29,7 +30,9 @@ fn test_destroy_once() {
 fn test_destroy_twice() {
     let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
     p.destroy(); // this shouldnt crash...
-    p.destroy(); // ...and nor should this (and nor should the destructor)
+    do io::io_error::cond.trap(|_| {}).inside {
+        p.destroy(); // ...and nor should this (and nor should the destructor)
+    }
 }
 
 fn test_destroy_actually_kills(force: bool) {

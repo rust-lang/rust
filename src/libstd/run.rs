@@ -322,6 +322,7 @@ mod tests {
     use path::Path;
     use run;
     use str;
+    use task::spawn;
     use unstable::running_on_valgrind;
     use rt::io::native::file;
     use rt::io::{Writer, Reader};
@@ -394,6 +395,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // FIXME(#10016) cat never sees stdin close
     fn test_pipes() {
 
         let pipe_in = os::pipe();
@@ -412,13 +414,14 @@ mod tests {
         os::close(pipe_out.out);
         os::close(pipe_err.out);
 
-        let expected = ~"test";
-        writeclose(pipe_in.out, expected);
+        do spawn {
+            writeclose(pipe_in.out, ~"test");
+        }
         let actual = readclose(pipe_out.input);
         readclose(pipe_err.input);
         proc.finish();
 
-        assert_eq!(expected, actual);
+        assert_eq!(~"test", actual);
     }
 
     fn writeclose(fd: c_int, s: &str) {
