@@ -68,6 +68,7 @@ pub use self::os::OSRng;
 
 pub mod distributions;
 pub mod isaac;
+pub mod mersenne_twister;
 pub mod os;
 pub mod reader;
 pub mod reseeding;
@@ -953,6 +954,7 @@ mod bench {
     use extra::test::BenchHarness;
     use rand::*;
     use mem::size_of;
+    use rand::mersenne_twister::*;
 
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {
@@ -975,6 +977,23 @@ mod bench {
     #[bench]
     fn rand_isaac64(bh: &mut BenchHarness) {
         let mut rng = Isaac64Rng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+    #[bench]
+    fn rand_mt19937(bh: &mut BenchHarness) {
+        let mut rng = MT19937Rng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_mt19937_64(bh: &mut BenchHarness) {
+        let mut rng = MT19937_64Rng::new();
         do bh.iter {
             rng.gen::<uint>();
         }
