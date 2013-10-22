@@ -263,7 +263,7 @@ pub struct addrinfo {
     priv ai_addrlen: size_t,
     priv ai_canonname: *char,
     ai_addr: *sockaddr,
-    priv ai_next: *addrinfo
+    ai_next: *addrinfo
 }
 
 #[cfg(unix)] pub type uv_uid_t = libc::types::os::arch::posix88::uid_t;
