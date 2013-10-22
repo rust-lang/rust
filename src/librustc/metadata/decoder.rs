@@ -28,6 +28,7 @@ use middle::astencode::vtable_decoder_helpers;
 
 use std::u64;
 use std::rt::io;
+use std::rt::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::str;
 use std::vec;
@@ -55,14 +56,14 @@ fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: u64) ->
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
     let hash_pos = table.start + (hash % 256 * 4) as uint;
-    let pos = ::std::io::u64_from_be_bytes(*d.data, hash_pos, 4) as uint;
+    let pos = u64_from_be_bytes(*d.data, hash_pos, 4) as uint;
     let tagged_doc = reader::doc_at(d.data, pos);
 
     let belt = tag_index_buckets_bucket_elt;
 
     let mut ret = None;
     do reader::tagged_docs(tagged_doc.doc, belt) |elt| {
-        let pos = ::std::io::u64_from_be_bytes(*elt.data, elt.start, 4) as uint;
+        let pos = u64_from_be_bytes(*elt.data, elt.start, 4) as uint;
         if eq_fn(elt.data.slice(elt.start + 4, elt.end)) {
             ret = Some(reader::doc_at(d.data, pos).doc);
             false
@@ -77,7 +78,7 @@ pub type GetCrateDataCb<'self> = &'self fn(ast::CrateNum) -> Cmd;
 
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
-        return ::std::io::u64_from_be_bytes(
+        return u64_from_be_bytes(
             bytes.slice(0u, 4u), 0u, 4u) as int
             == item_id;
     }
@@ -1253,7 +1254,7 @@ fn family_names_type(fam: Family) -> bool {
 
 fn read_path(d: ebml::Doc) -> (~str, uint) {
     do reader::with_doc_data(d) |desc| {
-        let pos = ::std::io::u64_from_be_bytes(desc, 0u, 4u) as uint;
+        let pos = u64_from_be_bytes(desc, 0u, 4u) as uint;
         let pathbytes = desc.slice(4u, desc.len());
         let path = str::from_utf8(pathbytes);
 

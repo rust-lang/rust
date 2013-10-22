@@ -22,7 +22,6 @@ use rt::io::{io_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
 use option::{Option, Some, None};
 use unstable::finally::Finally;
 use cast;
-use io::{u64_to_le_bytes, u64_to_be_bytes};
 
 pub trait ReaderUtil {
 
@@ -632,6 +631,88 @@ impl<T: Writer> WriterByteConversions for T {
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
     let shift = (8 - nbytes) * 8;
     (val << shift) as i64 >> shift
+}
+
+pub fn u64_to_le_bytes<T>(n: u64, size: uint,
+                          f: &fn(v: &[u8]) -> T) -> T {
+    assert!(size <= 8u);
+    match size {
+      1u => f(&[n as u8]),
+      2u => f(&[n as u8,
+              (n >> 8) as u8]),
+      4u => f(&[n as u8,
+              (n >> 8) as u8,
+              (n >> 16) as u8,
+              (n >> 24) as u8]),
+      8u => f(&[n as u8,
+              (n >> 8) as u8,
+              (n >> 16) as u8,
+              (n >> 24) as u8,
+              (n >> 32) as u8,
+              (n >> 40) as u8,
+              (n >> 48) as u8,
+              (n >> 56) as u8]),
+      _ => {
+
+        let mut bytes: ~[u8] = ~[];
+        let mut i = size;
+        let mut n = n;
+        while i > 0u {
+            bytes.push((n & 255_u64) as u8);
+            n >>= 8_u64;
+            i -= 1u;
+        }
+        f(bytes)
+      }
+    }
+}
+
+pub fn u64_to_be_bytes<T>(n: u64, size: uint,
+                           f: &fn(v: &[u8]) -> T) -> T {
+    assert!(size <= 8u);
+    match size {
+      1u => f(&[n as u8]),
+      2u => f(&[(n >> 8) as u8,
+              n as u8]),
+      4u => f(&[(n >> 24) as u8,
+              (n >> 16) as u8,
+              (n >> 8) as u8,
+              n as u8]),
+      8u => f(&[(n >> 56) as u8,
+              (n >> 48) as u8,
+              (n >> 40) as u8,
+              (n >> 32) as u8,
+              (n >> 24) as u8,
+              (n >> 16) as u8,
+              (n >> 8) as u8,
+              n as u8]),
+      _ => {
+        let mut bytes: ~[u8] = ~[];
+        let mut i = size;
+        while i > 0u {
+            let shift = ((i - 1u) * 8u) as u64;
+            bytes.push((n >> shift) as u8);
+            i -= 1u;
+        }
+        f(bytes)
+      }
+    }
+}
+
+pub fn u64_from_be_bytes(data: &[u8],
+                         start: uint,
+                         size: uint)
+                      -> u64 {
+    let mut sz = size;
+    assert!((sz <= 8u));
+    let mut val = 0_u64;
+    let mut pos = start;
+    while sz > 0u {
+        sz -= 1u;
+        val += (data[pos] as u64) << ((sz * 8u) as u64);
+        pos += 1u;
+    }
+    return val;
 }
 
 #[cfg(test)]
