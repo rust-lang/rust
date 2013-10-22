@@ -97,6 +97,13 @@ nav.sub {
     margin-bottom: 10px;
 }
 .block h2 { margin-top: 0; }
+.block a {
+    display: inline-block;
+    width: 100%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    line-height: 15px;
+}
 
 .content {
     background: #f3f3f3;

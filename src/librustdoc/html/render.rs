@@ -149,10 +149,9 @@ pub struct Cache {
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
-    /// parent trait if no extra documentation is specified, and this map is
-    /// keyed on trait id with a value of a 'method name => documentation'
-    /// mapping.
-    traits: HashMap<ast::NodeId, HashMap<~str, ~str>>,
+    /// parent trait if no extra documentation is specified, and default methods
+    /// should show up in documentation about trait implementations.
+    traits: HashMap<ast::NodeId, clean::Trait>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
@@ -488,18 +487,7 @@ impl DocFolder for Cache {
         // trait
         match item.inner {
             clean::TraitItem(ref t) => {
-                let mut dox = HashMap::new();
-                for meth in t.methods.iter() {
-                    let it = meth.item();
-                    match it.doc_value() {
-                        None => {}
-                        Some(s) => {
-                            dox.insert(it.name.get_ref().to_owned(),
-                                       s.to_owned());
-                        }
-                    }
-                }
-                self.traits.insert(item.id, dox);
+                self.traits.insert(item.id, t.clone());
             }
             _ => {}
         }
@@ -1480,18 +1468,25 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
         }
         None => {}
     }
-    write!(w, "<div class='methods'>");
-    for meth in i.methods.iter() {
+
+    fn docmeth(w: &mut io::Writer, item: &clean::Item) -> bool {
         write!(w, "<h4 id='method.{}' class='method'><code>",
-               *meth.name.get_ref());
-        render_method(w, meth, false);
+               *item.name.get_ref());
+        render_method(w, item, false);
         write!(w, "</code></h4>\n");
-        match meth.doc_value() {
+        match item.doc_value() {
             Some(s) => {
                 write!(w, "<div class='docblock'>{}</div>", Markdown(s));
-                continue
+                true
             }
-            None => {}
+            None => false
+        }
+    }
+
+    write!(w, "<div class='methods'>");
+    for meth in i.methods.iter() {
+        if docmeth(w, meth) {
+            continue
         }
 
         // No documentation? Attempt to slurp in the trait's documentation
@@ -1501,18 +1496,50 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
         };
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
-                let name = meth.name.get_ref().as_slice();
                 match cache.traits.find(&trait_id) {
-                    Some(m) => {
-                        match m.find_equiv(&name) {
-                            Some(s) => {
-                                write!(w, "<div class='docblock'>{}</div>",
-                                       Markdown(s.as_slice()));
+                    Some(t) => {
+                        let name = meth.name.clone();
+                        match t.methods.iter().find(|t| t.item().name == name) {
+                            Some(method) => {
+                                match method.item().doc_value() {
+                                    Some(s) => {
+                                        write!(w,
+                                               "<div class='docblock'>{}</div>",
+                                               Markdown(s));
+                                    }
+                                    None => {}
+                                }
                             }
                             None => {}
                         }
                     }
                     None => {}
+                }
+            }
+        }
+    }
+
+    // If we've implemented a trait, then also emit documentation for all
+    // default methods which weren't overridden in the implementation block.
+    match trait_id {
+        None => {}
+        Some(id) => {
+            do local_data::get(cache_key) |cache| {
+                do cache.unwrap().read |cache| {
+                    match cache.traits.find(&id) {
+                        Some(t) => {
+                            for method in t.methods.iter() {
+                                let n = method.item().name.clone();
+                                match i.methods.iter().find(|m| m.name == n) {
+                                    Some(*) => continue,
+                                    None => {}
+                                }
+
+                                docmeth(w, method.item());
+                            }
+                        }
+                        None => {}
+                    }
                 }
             }
         }
