@@ -29,7 +29,7 @@ pub fn terminate(cx: &mut Block, _: &str) {
 
 pub fn check_not_terminated(cx: &Block) {
     if cx.terminated {
-        fail2!("already terminated!");
+        fail!("already terminated!");
     }
 }
 
@@ -117,7 +117,7 @@ pub fn Invoke(cx: @mut Block,
     }
     check_not_terminated(cx);
     terminate(cx, "Invoke");
-    debug2!("Invoke({} with arguments ({}))",
+    debug!("Invoke({} with arguments ({}))",
            cx.val_to_str(Fn),
            Args.map(|a| cx.val_to_str(*a)).connect(", "));
     B(cx).invoke(Fn, Args, Then, Catch, attributes)

@@ -151,18 +151,18 @@ pub fn lookup(
     };
 
     let self_ty = structurally_resolved_type(fcx, self_expr.span, self_ty);
-    debug2!("method lookup(self_ty={}, expr={}, self_expr={})",
+    debug!("method lookup(self_ty={}, expr={}, self_expr={})",
            self_ty.repr(fcx.tcx()), expr.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()));
 
-    debug2!("searching inherent candidates");
+    debug!("searching inherent candidates");
     lcx.push_inherent_candidates(self_ty);
     let mme = lcx.search(self_ty);
     if mme.is_some() {
         return mme;
     }
 
-    debug2!("searching extension candidates");
+    debug!("searching extension candidates");
     lcx.reset_candidates();
     lcx.push_bound_candidates(self_ty);
     lcx.push_extension_candidates();
@@ -215,7 +215,7 @@ impl<'self> LookupContext<'self> {
         let mut self_ty = self_ty;
         let mut autoderefs = 0;
         loop {
-            debug2!("loop: self_ty={} autoderefs={}",
+            debug!("loop: self_ty={} autoderefs={}",
                    self.ty_to_str(self_ty), autoderefs);
 
             match self.deref_args {
@@ -397,7 +397,7 @@ impl<'self> LookupContext<'self> {
     fn push_inherent_candidates_from_object(&self,
                                             did: DefId,
                                             substs: &ty::substs) {
-        debug2!("push_inherent_candidates_from_object(did={}, substs={})",
+        debug!("push_inherent_candidates_from_object(did={}, substs={})",
                self.did_to_str(did),
                substs_to_str(self.tcx(), substs));
         let _indenter = indenter();
@@ -446,7 +446,7 @@ impl<'self> LookupContext<'self> {
     fn push_inherent_candidates_from_param(&self,
                                            rcvr_ty: ty::t,
                                            param_ty: param_ty) {
-        debug2!("push_inherent_candidates_from_param(param_ty={:?})",
+        debug!("push_inherent_candidates_from_param(param_ty={:?})",
                param_ty);
         let _indenter = indenter();
 
@@ -523,11 +523,11 @@ impl<'self> LookupContext<'self> {
                     let cand = mk_cand(bound_trait_ref, method,
                                        pos, this_bound_idx);
 
-                    debug2!("pushing inherent candidate for param: {:?}", cand);
+                    debug!("pushing inherent candidate for param: {:?}", cand);
                     self.inherent_candidates.push(cand);
                 }
                 None => {
-                    debug2!("trait doesn't contain method: {:?}",
+                    debug!("trait doesn't contain method: {:?}",
                     bound_trait_ref.def_id);
                     // check next trait or bound
                 }
@@ -557,7 +557,7 @@ impl<'self> LookupContext<'self> {
         if !self.impl_dups.insert(impl_info.did) {
             return; // already visited
         }
-        debug2!("push_candidates_from_impl: {} {} {}",
+        debug!("push_candidates_from_impl: {} {} {}",
                token::interner_get(self.m_name),
                impl_info.ident.repr(self.tcx()),
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
@@ -603,7 +603,7 @@ impl<'self> LookupContext<'self> {
         match self.search_for_method(self_ty) {
             None => None,
             Some(mme) => {
-                debug2!("(searching for autoderef'd method) writing \
+                debug!("(searching for autoderef'd method) writing \
                        adjustment ({}) to {}",
                        autoderefs,
                        self.self_expr.id);
@@ -832,14 +832,14 @@ impl<'self> LookupContext<'self> {
 
     fn search_for_method(&self, rcvr_ty: ty::t)
                              -> Option<method_map_entry> {
-        debug2!("search_for_method(rcvr_ty={})", self.ty_to_str(rcvr_ty));
+        debug!("search_for_method(rcvr_ty={})", self.ty_to_str(rcvr_ty));
         let _indenter = indenter();
 
         // I am not sure that inherent methods should have higher
         // priority, but it is necessary ATM to handle some of the
         // existing code.
 
-        debug2!("searching inherent candidates");
+        debug!("searching inherent candidates");
         match self.consider_candidates(rcvr_ty, self.inherent_candidates) {
             None => {}
             Some(mme) => {
@@ -847,7 +847,7 @@ impl<'self> LookupContext<'self> {
             }
         }
 
-        debug2!("searching extension candidates");
+        debug!("searching extension candidates");
         match self.consider_candidates(rcvr_ty, self.extension_candidates) {
             None => {
                 return None;
@@ -896,7 +896,7 @@ impl<'self> LookupContext<'self> {
             let mut j = i + 1;
             while j < candidates.len() {
                 let candidate_b = &candidates[j];
-                debug2!("attempting to merge {:?} and {:?}",
+                debug!("attempting to merge {:?} and {:?}",
                        candidate_a, candidate_b);
                 let candidates_same = match (&candidate_a.origin,
                                              &candidate_b.origin) {
@@ -936,7 +936,7 @@ impl<'self> LookupContext<'self> {
         let tcx = self.tcx();
         let fty = ty::mk_bare_fn(tcx, candidate.method_ty.fty.clone());
 
-        debug2!("confirm_candidate(expr={}, candidate={}, fty={})",
+        debug!("confirm_candidate(expr={}, candidate={}, fty={})",
                self.expr.repr(tcx),
                self.cand_to_str(candidate),
                self.ty_to_str(fty));
@@ -992,11 +992,11 @@ impl<'self> LookupContext<'self> {
         };
 
         // Compute the method type with type parameters substituted
-        debug2!("fty={} all_substs={}",
+        debug!("fty={} all_substs={}",
                self.ty_to_str(fty),
                ty::substs_to_str(tcx, &all_substs));
         let fty = ty::subst(tcx, &all_substs, fty);
-        debug2!("after subst, fty={}", self.ty_to_str(fty));
+        debug!("after subst, fty={}", self.ty_to_str(fty));
 
         // Replace any bound regions that appear in the function
         // signature with region variables
@@ -1019,7 +1019,7 @@ impl<'self> LookupContext<'self> {
             purity: bare_fn_ty.purity,
             abis: bare_fn_ty.abis.clone(),
         });
-        debug2!("after replacing bound regions, fty={}", self.ty_to_str(fty));
+        debug!("after replacing bound regions, fty={}", self.ty_to_str(fty));
 
         let self_mode = get_mode_from_explicit_self(candidate.method_ty.explicit_self);
 
@@ -1189,12 +1189,12 @@ impl<'self> LookupContext<'self> {
     // `rcvr_ty` is the type of the expression. It may be a subtype of a
     // candidate method's `self_ty`.
     fn is_relevant(&self, rcvr_ty: ty::t, candidate: &Candidate) -> bool {
-        debug2!("is_relevant(rcvr_ty={}, candidate={})",
+        debug!("is_relevant(rcvr_ty={}, candidate={})",
                self.ty_to_str(rcvr_ty), self.cand_to_str(candidate));
 
         return match candidate.method_ty.explicit_self {
             sty_static => {
-                debug2!("(is relevant?) explicit self is static");
+                debug!("(is relevant?) explicit self is static");
                 false
             }
 
@@ -1203,7 +1203,7 @@ impl<'self> LookupContext<'self> {
             }
 
             sty_region(_, m) => {
-                debug2!("(is relevant?) explicit self is a region");
+                debug!("(is relevant?) explicit self is a region");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
                         mutability_matches(mt.mutbl, m) &&
@@ -1220,7 +1220,7 @@ impl<'self> LookupContext<'self> {
             }
 
             sty_box(m) => {
-                debug2!("(is relevant?) explicit self is a box");
+                debug!("(is relevant?) explicit self is a box");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_box(mt) => {
                         mutability_matches(mt.mutbl, m) &&
@@ -1237,7 +1237,7 @@ impl<'self> LookupContext<'self> {
             }
 
             sty_uniq => {
-                debug2!("(is relevant?) explicit self is a unique pointer");
+                debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {
                         rcvr_matches_ty(self.fcx, mt.ty, candidate)
@@ -1310,7 +1310,7 @@ impl<'self> LookupContext<'self> {
             match self.tcx().items.find(&did.node) {
               Some(&ast_map::node_method(m, _, _))
               | Some(&ast_map::node_trait_method(@ast::provided(m), _, _)) => m.span,
-              _ => fail2!("report_static_candidate: bad item {:?}", did)
+              _ => fail!("report_static_candidate: bad item {:?}", did)
             }
         } else {
             self.expr.span

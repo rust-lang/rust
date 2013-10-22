@@ -275,7 +275,7 @@ impl VisitContext {
          * meaning either copied or moved depending on its type.
          */
 
-        debug2!("consume_expr(expr={})",
+        debug!("consume_expr(expr={})",
                expr.repr(self.tcx));
 
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
@@ -293,7 +293,7 @@ impl VisitContext {
          * meaning either copied or moved depending on its type.
          */
 
-        debug2!("consume_block(blk.id={:?})", blk.id);
+        debug!("consume_block(blk.id={:?})", blk.id);
 
         for stmt in blk.stmts.iter() {
             self.visit_stmt(*stmt, ());
@@ -312,7 +312,7 @@ impl VisitContext {
          * in turn trigger calls to the subcomponents of `expr`.
          */
 
-        debug2!("use_expr(expr={}, mode={:?})",
+        debug!("use_expr(expr={}, mode={:?})",
                expr.repr(self.tcx),
                expr_mode);
 
@@ -326,7 +326,7 @@ impl VisitContext {
             _ => expr_mode
         };
 
-        debug2!("comp_mode = {:?}", comp_mode);
+        debug!("comp_mode = {:?}", comp_mode);
 
         match expr.node {
             ExprPath(*) | ExprSelf => {
@@ -500,7 +500,7 @@ impl VisitContext {
                 self.consume_block(blk);
             }
 
-            ExprForLoop(*) => fail2!("non-desugared expr_for_loop"),
+            ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
             ExprUnary(_, _, lhs) => {
                 if !self.use_overloaded_operator(expr, lhs, [])
@@ -620,7 +620,7 @@ impl VisitContext {
                 BindByRef(_) => false,
                 BindInfer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
-                    debug2!("pattern {:?} {} type is {}",
+                    debug!("pattern {:?} {} type is {}",
                            id,
                            ast_util::path_to_ident(path).repr(self.tcx),
                            pat_ty.repr(self.tcx));
@@ -628,7 +628,7 @@ impl VisitContext {
                 }
             };
 
-            debug2!("pattern binding {:?}: bm={:?}, binding_moves={}",
+            debug!("pattern binding {:?}: bm={:?}, binding_moves={}",
                    id, bm, binding_moves);
 
             if binding_moves {
@@ -678,7 +678,7 @@ impl VisitContext {
     }
 
     pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> @[CaptureVar] {
-        debug2!("compute_capture_vars(fn_expr_id={:?})", fn_expr_id);
+        debug!("compute_capture_vars(fn_expr_id={:?})", fn_expr_id);
         let _indenter = indenter();
 
         let fn_ty = ty::node_id_to_type(self.tcx, fn_expr_id);
@@ -696,7 +696,7 @@ impl VisitContext {
                 let fvar = &freevars[i];
                 let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
                 let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
-                debug2!("fvar_def_id={:?} fvar_ty={}",
+                debug!("fvar_def_id={:?} fvar_ty={}",
                        fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
                 let mode = if ty::type_moves_by_default(self.tcx, fvar_ty) {
                     CapMove

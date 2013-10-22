@@ -98,10 +98,10 @@ impl Reflector {
         let mth_ty =
             ty::mk_bare_fn(tcx, self.visitor_methods[mth_idx].fty.clone());
         let v = self.visitor_val;
-        debug2!("passing {} args:", args.len());
+        debug!("passing {} args:", args.len());
         let mut bcx = self.bcx;
         for (i, a) in args.iter().enumerate() {
-            debug2!("arg {}: {}", i, bcx.val_to_str(*a));
+            debug!("arg {}: {}", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
         let result = unpack_result!(bcx, callee::trans_call_inner(
@@ -151,7 +151,7 @@ impl Reflector {
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
         let tcx = bcx.ccx().tcx;
-        debug2!("reflect::visit_ty {}", ty_to_str(bcx.ccx().tcx, t));
+        debug!("reflect::visit_ty {}", ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).sty {
           ty::ty_bot => self.leaf("bot"),

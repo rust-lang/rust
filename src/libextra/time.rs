@@ -955,13 +955,13 @@ mod tests {
         static SOME_FUTURE_DATE: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
-        debug2!("tv1={:?} sec + {:?} nsec", tv1.sec as uint, tv1.nsec as uint);
+        debug!("tv1={:?} sec + {:?} nsec", tv1.sec as uint, tv1.nsec as uint);
 
         assert!(tv1.sec > SOME_RECENT_DATE);
         assert!(tv1.nsec < 1000000000i32);
 
         let tv2 = get_time();
-        debug2!("tv2={:?} sec + {:?} nsec", tv2.sec as uint, tv2.nsec as uint);
+        debug!("tv2={:?} sec + {:?} nsec", tv2.sec as uint, tv2.nsec as uint);
 
         assert!(tv2.sec >= tv1.sec);
         assert!(tv2.sec < SOME_FUTURE_DATE);
@@ -975,16 +975,16 @@ mod tests {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
-        debug2!("s0={} sec", f64::to_str_digits(s0, 9u));
+        debug!("s0={} sec", f64::to_str_digits(s0, 9u));
         assert!(s0 > 0.);
         let ns0 = (s0 * 1000000000.) as u64;
-        debug2!("ns0={:?} ns", ns0);
+        debug!("ns0={:?} ns", ns0);
 
-        debug2!("ns1={:?} ns", ns0);
+        debug!("ns1={:?} ns", ns0);
         assert!(ns1 >= ns0);
 
         let ns2 = precise_time_ns();
-        debug2!("ns2={:?} ns", ns0);
+        debug!("ns2={:?} ns", ns0);
         assert!(ns2 >= ns1);
     }
 
@@ -1016,7 +1016,7 @@ mod tests {
         let time = Timespec::new(1234567890, 54321);
         let local = at(time);
 
-        error2!("time_at: {:?}", local);
+        error!("time_at: {:?}", local);
 
         assert!(local.tm_sec == 30_i32);
         assert!(local.tm_min == 31_i32);
@@ -1091,7 +1091,7 @@ mod tests {
             == Err(~"Invalid time"));
 
         match strptime("Fri Feb 13 15:31:30.01234 2009", format) {
-          Err(e) => fail2!(e),
+          Err(e) => fail!(e),
           Ok(ref tm) => {
             assert!(tm.tm_sec == 30_i32);
             assert!(tm.tm_min == 31_i32);
@@ -1111,7 +1111,7 @@ mod tests {
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
               Ok(ref tm) => tm.strftime(format) == s.to_owned(),
-              Err(e) => fail2!(e)
+              Err(e) => fail!(e)
             }
         }
 
@@ -1237,7 +1237,7 @@ mod tests {
         let utc   = at_utc(time);
         let local = at(time);
 
-        error2!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
+        error!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
 
         assert_eq!(utc.ctime(), ~"Fri Feb 13 23:31:30 2009");
         assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");

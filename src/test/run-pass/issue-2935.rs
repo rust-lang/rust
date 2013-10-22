@@ -29,6 +29,6 @@ pub fn main() {
     //  x.f();
     // y.f();
     // (*z).f();
-    error2!("ok so far...");
+    error!("ok so far...");
     z.f(); //segfault
 }

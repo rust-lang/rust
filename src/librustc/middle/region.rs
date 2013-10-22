@@ -93,13 +93,13 @@ impl RegionMaps {
             None => {}
         }
 
-        debug2!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
+        debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
 
         self.free_region_map.insert(sub, ~[sup]);
     }
 
     pub fn record_parent(&mut self, sub: ast::NodeId, sup: ast::NodeId) {
-        debug2!("record_parent(sub={:?}, sup={:?})", sub, sup);
+        debug!("record_parent(sub={:?}, sup={:?})", sub, sup);
         assert!(sub != sup);
 
         self.scope_map.insert(sub, sup);
@@ -125,7 +125,7 @@ impl RegionMaps {
 
         match self.scope_map.find(&id) {
             Some(&r) => r,
-            None => { fail2!("No enclosing scope for id {:?}", id); }
+            None => { fail!("No enclosing scope for id {:?}", id); }
         }
     }
 
@@ -168,7 +168,7 @@ impl RegionMaps {
         while superscope != s {
             match self.scope_map.find(&s) {
                 None => {
-                    debug2!("is_subscope_of({:?}, {:?}, s={:?})=false",
+                    debug!("is_subscope_of({:?}, {:?}, s={:?})=false",
                            subscope, superscope, s);
 
                     return false;
@@ -177,7 +177,7 @@ impl RegionMaps {
             }
         }
 
-        debug2!("is_subscope_of({:?}, {:?})=true",
+        debug!("is_subscope_of({:?}, {:?})=true",
                subscope, superscope);
 
         return true;
@@ -231,7 +231,7 @@ impl RegionMaps {
          * duplicated with the code in infer.rs.
          */
 
-        debug2!("is_subregion_of(sub_region={:?}, super_region={:?})",
+        debug!("is_subregion_of(sub_region={:?}, super_region={:?})",
                sub_region, super_region);
 
         sub_region == super_region || {
@@ -303,7 +303,7 @@ impl RegionMaps {
         fn ancestors_of(this: &RegionMaps, scope: ast::NodeId)
             -> ~[ast::NodeId]
         {
-            // debug2!("ancestors_of(scope={})", scope);
+            // debug!("ancestors_of(scope={})", scope);
             let mut result = ~[scope];
             let mut scope = scope;
             loop {
@@ -314,7 +314,7 @@ impl RegionMaps {
                         scope = superscope;
                     }
                 }
-                // debug2!("ancestors_of_loop(scope={})", scope);
+                // debug!("ancestors_of_loop(scope={})", scope);
             }
         }
     }
@@ -323,7 +323,7 @@ impl RegionMaps {
 /// Records the current parent (if any) as the parent of `child_id`.
 fn parent_to_expr(visitor: &mut RegionResolutionVisitor,
                   cx: Context, child_id: ast::NodeId, sp: Span) {
-    debug2!("region::parent_to_expr(span={:?})",
+    debug!("region::parent_to_expr(span={:?})",
            visitor.sess.codemap.span_to_str(sp));
     for parent_id in cx.parent.iter() {
         visitor.region_maps.record_parent(child_id, *parent_id);
@@ -437,7 +437,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
               sp: Span,
               id: ast::NodeId,
               cx: Context) {
-    debug2!("region::resolve_fn(id={:?}, \
+    debug!("region::resolve_fn(id={:?}, \
                                span={:?}, \
                                body.id={:?}, \
                                cx.parent={:?})",
@@ -619,7 +619,7 @@ impl DetermineRpCtxt {
           Some(v) => join_variance(v, variance)
         };
 
-        debug2!("add_rp() variance for {}: {:?} == {:?} ^ {:?}",
+        debug!("add_rp() variance for {}: {:?} == {:?} ^ {:?}",
                ast_map::node_id_to_str(self.ast_map, id,
                                        token::get_ident_interner()),
                joined_variance, old_variance, variance);
@@ -637,7 +637,7 @@ impl DetermineRpCtxt {
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
     pub fn add_dep(&mut self, from: ast::NodeId) {
-        debug2!("add dependency from {} -> {} ({} -> {}) with variance {:?}",
+        debug!("add dependency from {} -> {} ({} -> {}) with variance {:?}",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
                                        token::get_ident_interner()),
@@ -715,7 +715,7 @@ impl DetermineRpCtxt {
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
-        debug2!("with_item_id({}, {})",
+        debug!("with_item_id({}, {})",
                item_id,
                anon_implies_rp);
         let _i = ::util::common::indenter();
@@ -787,7 +787,7 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
     let sess = cx.sess;
     match ty.node {
         ast::ty_rptr(ref r, _) => {
-            debug2!("referenced rptr type {}",
+            debug!("referenced rptr type {}",
                    pprust::ty_to_str(ty, sess.intr()));
 
             if cx.region_is_relevant(r) {
@@ -797,7 +797,7 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
         }
 
         ast::ty_closure(ref f) => {
-            debug2!("referenced fn type: {}",
+            debug!("referenced fn type: {}",
                    pprust::ty_to_str(ty, sess.intr()));
             match f.region {
                 Some(_) => {
@@ -837,7 +837,7 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
                 match csearch::get_region_param(cstore, did) {
                   None => {}
                   Some(variance) => {
-                    debug2!("reference to external, rp'd type {}",
+                    debug!("reference to external, rp'd type {}",
                            pprust::ty_to_str(ty, sess.intr()));
                     if cx.region_is_relevant(&path.segments.last().lifetime) {
                         let rv = cx.add_variance(variance);
@@ -967,7 +967,7 @@ pub fn determine_rp_in_crate(sess: Session,
         while cx.worklist.len() != 0 {
             let c_id = cx.worklist.pop();
             let c_variance = cx.region_paramd_items.get_copy(&c_id);
-            debug2!("popped {} from worklist", c_id);
+            debug!("popped {} from worklist", c_id);
             match cx.dep_map.find(&c_id) {
               None => {}
               Some(deps) => {
@@ -980,11 +980,11 @@ pub fn determine_rp_in_crate(sess: Session,
         }
     }
 
-    debug2!("{}", {
-        debug2!("Region variance results:");
+    debug!("{}", {
+        debug!("Region variance results:");
         let region_paramd_items = cx.region_paramd_items;
         for (&key, &value) in region_paramd_items.iter() {
-            debug2!("item {:?} ({}) is parameterized with variance {:?}",
+            debug!("item {:?} ({}) is parameterized with variance {:?}",
                    key,
                    ast_map::node_id_to_str(ast_map, key,
                                            token::get_ident_interner()),

@@ -17,7 +17,7 @@ use baz::zed::bar;
 
 mod baz {
     pub mod zed {
-        pub fn bar() { info2!("bar2"); }
+        pub fn bar() { info!("bar2"); }
     }
 }
 

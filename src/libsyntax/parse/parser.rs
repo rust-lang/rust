@@ -448,7 +448,7 @@ impl Parser {
     // followed by some token from the set edible + inedible.  Recover
     // from anticipated input errors, discarding erroneous characters.
     pub fn commit_expr(&self, e: @Expr, edible: &[token::Token], inedible: &[token::Token]) {
-        debug2!("commit_expr {:?}", e);
+        debug!("commit_expr {:?}", e);
         match e.node {
             ExprPath(*) => {
                 // might be unit-struct construction; check for recoverableinput error.
@@ -468,7 +468,7 @@ impl Parser {
     // followed by some token from the set edible + inedible.  Check
     // for recoverable input errors, discarding erroneous characters.
     pub fn commit_stmt(&self, s: @Stmt, edible: &[token::Token], inedible: &[token::Token]) {
-        debug2!("commit_stmt {:?}", s);
+        debug!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
         if self.last_token.as_ref().map_default(false, |t| is_ident_or_path(*t)) {
             let expected = vec::append(edible.to_owned(), inedible);
@@ -933,13 +933,13 @@ impl Parser {
             };
 
             let hi = p.last_span.hi;
-            debug2!("parse_trait_methods(): trait method signature ends in \
+            debug!("parse_trait_methods(): trait method signature ends in \
                     `{}`",
                    self.this_token_to_str());
             match *p.token {
               token::SEMI => {
                 p.bump();
-                debug2!("parse_trait_methods(): parsing required method");
+                debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 if vis != ast::inherited {
@@ -958,7 +958,7 @@ impl Parser {
                 })
               }
               token::LBRACE => {
-                debug2!("parse_trait_methods(): parsing provided method");
+                debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
                 let attrs = vec::append(attrs, inner_attrs);
@@ -1196,7 +1196,7 @@ impl Parser {
             _ => 0
         };
 
-        debug2!("parser is_named_argument offset:{}", offset);
+        debug!("parser is_named_argument offset:{}", offset);
 
         if offset == 0 {
             is_plain_ident_or_underscore(&*self.token)
@@ -1212,7 +1212,7 @@ impl Parser {
     pub fn parse_arg_general(&self, require_name: bool) -> arg {
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = if require_name || self.is_named_argument() {
-            debug2!("parse_arg_general parse_pat (require_name:{:?})",
+            debug!("parse_arg_general parse_pat (require_name:{:?})",
                    require_name);
             let pat = self.parse_pat();
 
@@ -1223,7 +1223,7 @@ impl Parser {
             self.expect(&token::COLON);
             pat
         } else {
-            debug2!("parse_arg_general ident_to_pat");
+            debug!("parse_arg_general ident_to_pat");
             ast_util::ident_to_pat(ast::DUMMY_NODE_ID,
                                    *self.last_span,
                                    special_idents::invalid)
@@ -2470,7 +2470,7 @@ impl Parser {
                 // There may be other types of expressions that can
                 // represent the callee in `for` and `do` expressions
                 // but they aren't represented by tests
-                debug2!("sugary call on {:?}", e.node);
+                debug!("sugary call on {:?}", e.node);
                 self.span_fatal(
                     e.span,
                     format!("`{}` must be followed by a block call", keyword));
@@ -3916,7 +3916,7 @@ impl Parser {
                 attrs = attrs_remaining + attrs;
                 first = false;
             }
-            debug2!("parse_mod_items: parse_item_or_view_item(attrs={:?})",
+            debug!("parse_mod_items: parse_item_or_view_item(attrs={:?})",
                    attrs);
             match self.parse_item_or_view_item(attrs,
                                                true /* macros allowed */) {
@@ -4629,7 +4629,7 @@ impl Parser {
 
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug2!("parsed view_path: {}", self.id_to_str(first_ident));
+        debug!("parsed view_path: {}", self.id_to_str(first_ident));
         match *self.token {
           token::EQ => {
             // x = foo::bar
@@ -4837,7 +4837,7 @@ impl Parser {
                     break;
                 }
                 iovi_foreign_item(_) => {
-                    fail2!();
+                    fail!();
                 }
             }
             attrs = self.parse_outer_attributes();
@@ -4860,7 +4860,7 @@ impl Parser {
                     items.push(item)
                 }
                 iovi_foreign_item(_) => {
-                    fail2!();
+                    fail!();
                 }
             }
         }

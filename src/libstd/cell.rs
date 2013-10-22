@@ -44,7 +44,7 @@ impl<T> Cell<T> {
     pub fn take(&self) -> T {
         let this = unsafe { transmute_mut(self) };
         if this.is_empty() {
-            fail2!("attempt to take an empty cell");
+            fail!("attempt to take an empty cell");
         }
 
         this.value.take_unwrap()
@@ -60,7 +60,7 @@ impl<T> Cell<T> {
     pub fn put_back(&self, value: T) {
         let this = unsafe { transmute_mut(self) };
         if !this.is_empty() {
-            fail2!("attempt to put a value back into a full cell");
+            fail!("attempt to put a value back into a full cell");
         }
         this.value = Some(value);
     }

@@ -33,9 +33,9 @@ fn r(x:int) -> r {
 }
 
 fn main() {
-    error2!("whatever");
+    error!("whatever");
     do task::spawn {
       let _i = r(5);
     };
-    fail2!();
+    fail!();
 }

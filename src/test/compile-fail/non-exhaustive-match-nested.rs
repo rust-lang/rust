@@ -16,7 +16,7 @@ enum u { c, d }
 fn main() {
   let x = a(c);
   match x {
-      a(d) => { fail2!("hello"); }
-      b => { fail2!("goodbye"); }
+      a(d) => { fail!("hello"); }
+      b => { fail!("goodbye"); }
     }
 }

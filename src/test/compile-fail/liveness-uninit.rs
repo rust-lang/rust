@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { info2!("{}", x); }
+fn foo(x: int) { info!("{}", x); }
 
 fn main() {
     let x: int;

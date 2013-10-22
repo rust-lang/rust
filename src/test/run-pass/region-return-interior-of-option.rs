@@ -11,7 +11,7 @@
 fn get<'r, T>(opt: &'r Option<T>) -> &'r T {
     match *opt {
       Some(ref v) => v,
-      None => fail2!("none")
+      None => fail!("none")
     }
 }
 

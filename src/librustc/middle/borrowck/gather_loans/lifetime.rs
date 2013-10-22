@@ -27,7 +27,7 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
                           loan_mutbl: LoanMutability) {
-    debug2!("guarantee_lifetime(cmt={}, loan_region={})",
+    debug!("guarantee_lifetime(cmt={}, loan_region={})",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
                                          item_scope_id: item_scope_id,
@@ -101,7 +101,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                     // L-Deref-Managed-Mut-Compiler-Root
                     self.check_root(cmt, base, derefs, ptr_mutbl, discr_scope);
                 } else {
-                    debug2!("omitting root, base={}, base_scope={:?}",
+                    debug!("omitting root, base={}, base_scope={:?}",
                            base.repr(self.tcx()), base_scope);
                 }
             }
@@ -189,7 +189,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                   derefs: uint,
                   ptr_mutbl: ast::Mutability,
                   discr_scope: Option<ast::NodeId>) {
-        debug2!("check_root(cmt_deref={}, cmt_base={}, derefs={:?}, ptr_mutbl={:?}, \
+        debug!("check_root(cmt_deref={}, cmt_base={}, derefs={:?}, ptr_mutbl={:?}, \
                 discr_scope={:?})",
                cmt_deref.repr(self.tcx()),
                cmt_base.repr(self.tcx()),
@@ -247,7 +247,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
         // FIXME(#3511) grow to the nearest cleanup scope---this can
         // cause observable errors if freezing!
         if !self.bccx.tcx.region_maps.is_cleanup_scope(root_scope) {
-            debug2!("{:?} is not a cleanup scope, adjusting", root_scope);
+            debug!("{:?} is not a cleanup scope, adjusting", root_scope);
 
             let cleanup_scope =
                 self.bccx.tcx.region_maps.cleanup_scope(root_scope);
@@ -277,7 +277,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
         let root_info = RootInfo {scope: root_scope, freeze: opt_dyna};
         self.bccx.root_map.insert(rm_key, root_info);
 
-        debug2!("root_key: {:?} root_info: {:?}", rm_key, root_info);
+        debug!("root_key: {:?} root_info: {:?}", rm_key, root_info);
     }
 
     fn check_scope(&self, max_scope: ty::Region) {

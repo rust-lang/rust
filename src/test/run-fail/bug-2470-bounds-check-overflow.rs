@@ -24,13 +24,13 @@ fn main() {
     do x.as_imm_buf |p, _len| {
         let base = p as uint;
         let idx = base / mem::size_of::<uint>();
-        error2!("ov1 base = 0x{:x}", base);
-        error2!("ov1 idx = 0x{:x}", idx);
-        error2!("ov1 sizeof::<uint>() = 0x{:x}", mem::size_of::<uint>());
-        error2!("ov1 idx * sizeof::<uint>() = 0x{:x}",
+        error!("ov1 base = 0x{:x}", base);
+        error!("ov1 idx = 0x{:x}", idx);
+        error!("ov1 sizeof::<uint>() = 0x{:x}", mem::size_of::<uint>());
+        error!("ov1 idx * sizeof::<uint>() = 0x{:x}",
                idx * mem::size_of::<uint>());
 
         // This should fail.
-        error2!("ov1 0x{:x}",  x[idx]);
+        error!("ov1 0x{:x}",  x[idx]);
     }
 }

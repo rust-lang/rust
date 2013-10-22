@@ -172,7 +172,7 @@ impl<T: Send> UnsafeArc<T> {
                     // If 'put' returns the server end back to us, we were rejected;
                     // someone else was trying to unwrap. Avoid guaranteed deadlock.
                     cast::forget(data);
-                    fail2!("Another task is already unwrapping this Arc!");
+                    fail!("Another task is already unwrapping this Arc!");
                 }
             }
         }
@@ -386,7 +386,7 @@ impl<T:Send> Exclusive<T> {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
-                fail2!("Poisoned Exclusive::new - another task failed inside!");
+                fail!("Poisoned Exclusive::new - another task failed inside!");
             }
             (*rec).failed = true;
             let result = f(&mut (*rec).data);
@@ -617,7 +617,7 @@ mod tests {
             let x2 = x.clone();
             do task::spawn {
                 do 10.times { task::deschedule(); } // try to let the unwrapper go
-                fail2!(); // punt it awake from its deadlock
+                fail!(); // punt it awake from its deadlock
             }
             let _z = x.unwrap();
             unsafe { do x2.with |_hello| { } }

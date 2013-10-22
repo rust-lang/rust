@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() {
-    info2!("This is a bare function");
+    info!("This is a bare function");
 }
 
 pub fn main() {

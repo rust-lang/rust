@@ -54,9 +54,9 @@ pub fn digest_only_date(path: &Path) -> ~str {
 
 /// Adds multiple discovered outputs
 pub fn discover_outputs(e: &mut workcache::Exec, outputs: ~[Path]) {
-    debug2!("Discovering {:?} outputs", outputs.len());
+    debug!("Discovering {:?} outputs", outputs.len());
     for p in outputs.iter() {
-        debug2!("Discovering output! {}", p.display());
+        debug!("Discovering output! {}", p.display());
         // For now, assume that all discovered outputs are binaries
         // FIXME (#9639): This needs to handle non-utf8 paths
         e.discover_output("binary", p.as_str().unwrap(), digest_only_date(p));

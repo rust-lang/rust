@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn foo<T>() {
-    fn death() -> int { fail2!() }
-    debug2!("{:?}", (||{ death() })());
+    fn death() -> int { fail!() }
+    debug!("{:?}", (||{ death() })());
 }

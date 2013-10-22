@@ -54,7 +54,7 @@ fn binary_is_fresh(path: &str, in_hash: &str) -> bool {
 
 pub fn new_workcache_context(p: &Path) -> workcache::Context {
     let db_file = p.join("rustpkg_db.json"); // ??? probably wrong
-    debug2!("Workcache database file: {}", db_file.display());
+    debug!("Workcache database file: {}", db_file.display());
     let db = RWArc::new(Database::new(db_file));
     let lg = RWArc::new(Logger::new());
     let cfg = Arc::new(TreeMap::new());

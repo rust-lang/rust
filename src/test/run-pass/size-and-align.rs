@@ -17,11 +17,11 @@ enum clam<T> { a(T, int), b, }
 fn uhoh<T>(v: ~[clam<T>]) {
     match v[1] {
       a::<T>(ref _t, ref u) => {
-          info2!("incorrect");
-          info2!("{:?}", u);
-          fail2!();
+          info!("incorrect");
+          info!("{:?}", u);
+          fail!();
       }
-      b::<T> => { info2!("correct"); }
+      b::<T> => { info!("correct"); }
     }
 }
 

@@ -56,7 +56,7 @@ impl Combine for Sub {
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
-        debug2!("{}.regions({}, {})",
+        debug!("{}.regions({}, {})",
                self.tag(),
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
@@ -65,7 +65,7 @@ impl Combine for Sub {
     }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
-        debug2!("mts({} <: {})", a.inf_str(self.infcx), b.inf_str(self.infcx));
+        debug!("mts({} <: {})", a.inf_str(self.infcx), b.inf_str(self.infcx));
 
         if a.mutbl != b.mutbl {
             return Err(ty::terr_mutability);
@@ -110,7 +110,7 @@ impl Combine for Sub {
     }
 
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
-        debug2!("{}.tys({}, {})", self.tag(),
+        debug!("{}.tys({}, {})", self.tag(),
                a.inf_str(self.infcx), b.inf_str(self.infcx));
         if a == b { return Ok(a); }
         let _indenter = indenter();
@@ -143,7 +143,7 @@ impl Combine for Sub {
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
-        debug2!("fn_sigs(a={}, b={})",
+        debug!("fn_sigs(a={}, b={})",
                a.inf_str(self.infcx), b.inf_str(self.infcx));
         let _indenter = indenter();
 
@@ -172,15 +172,15 @@ impl Combine for Sub {
             do replace_bound_regions_in_fn_sig(self.infcx.tcx, @Nil,
                                               None, b) |br| {
                 let skol = self.infcx.region_vars.new_skolemized(br);
-                debug2!("Bound region {} skolemized to {:?}",
+                debug!("Bound region {} skolemized to {:?}",
                        bound_region_to_str(self.infcx.tcx, "", false, br),
                        skol);
                 skol
             }
         };
 
-        debug2!("a_sig={}", a_sig.inf_str(self.infcx));
-        debug2!("b_sig={}", b_sig.inf_str(self.infcx));
+        debug!("a_sig={}", a_sig.inf_str(self.infcx));
+        debug!("b_sig={}", b_sig.inf_str(self.infcx));
 
         // Compare types now that bound regions have been replaced.
         let sig = if_ok!(super_fn_sigs(self, &a_sig, &b_sig));

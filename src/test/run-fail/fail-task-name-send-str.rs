@@ -14,6 +14,6 @@ fn main() {
     let mut t = ::std::task::task();
     t.name("send name".to_send_str());
     do t.spawn {
-        fail2!("test");
+        fail!("test");
     }
 }

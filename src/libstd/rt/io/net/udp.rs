@@ -94,7 +94,7 @@ impl Reader for UdpStream {
         }
     }
 
-    fn eof(&mut self) -> bool { fail2!() }
+    fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for UdpStream {
@@ -104,7 +104,7 @@ impl Writer for UdpStream {
         }
     }
 
-    fn flush(&mut self) { fail2!() }
+    fn flush(&mut self) { fail!() }
 }
 
 #[cfg(test)]
@@ -153,10 +153,10 @@ mod test {
                                 assert_eq!(buf[0], 99);
                                 assert_eq!(src, client_ip);
                             }
-                            None => fail2!()
+                            None => fail!()
                         }
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
 
@@ -166,7 +166,7 @@ mod test {
                         port.take().recv();
                         client.sendto([99], server_ip)
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
         }
@@ -192,10 +192,10 @@ mod test {
                                 assert_eq!(buf[0], 99);
                                 assert_eq!(src, client_ip);
                             }
-                            None => fail2!()
+                            None => fail!()
                         }
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
 
@@ -205,7 +205,7 @@ mod test {
                         port.take().recv();
                         client.sendto([99], server_ip)
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
         }
@@ -232,10 +232,10 @@ mod test {
                                 assert_eq!(nread, 1);
                                 assert_eq!(buf[0], 99);
                             }
-                            None => fail2!()
+                            None => fail!()
                         }
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
 
@@ -247,7 +247,7 @@ mod test {
                         port.take().recv();
                         stream.write([99]);
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
         }
@@ -274,10 +274,10 @@ mod test {
                                 assert_eq!(nread, 1);
                                 assert_eq!(buf[0], 99);
                             }
-                            None => fail2!()
+                            None => fail!()
                         }
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
 
@@ -289,7 +289,7 @@ mod test {
                         port.take().recv();
                         stream.write([99]);
                     }
-                    None => fail2!()
+                    None => fail!()
                 }
             }
         }

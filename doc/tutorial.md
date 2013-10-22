@@ -763,7 +763,7 @@ unit, `()`, as the empty tuple if you like).
 ~~~~
 let mytup: (int, int, f64) = (10, 20, 30.0);
 match mytup {
-  (a, b, c) => info2!("{}", a + b + (c as int))
+  (a, b, c) => info!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -779,7 +779,7 @@ For example:
 struct MyTup(int, int, f64);
 let mytup: MyTup = MyTup(10, 20, 30.0);
 match mytup {
-  MyTup(a, b, c) => info2!("{}", a + b + (c as int))
+  MyTup(a, b, c) => info!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -1576,7 +1576,7 @@ arguments.
 use std::task::spawn;
 
 do spawn() || {
-    debug2!("I'm a task, whatever");
+    debug!("I'm a task, whatever");
 }
 ~~~~
 
@@ -1588,7 +1588,7 @@ may be omitted from `do` expressions.
 use std::task::spawn;
 
 do spawn {
-   debug2!("Kablam!");
+   debug!("Kablam!");
 }
 ~~~~
 

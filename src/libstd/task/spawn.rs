@@ -631,7 +631,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let (thread_port, thread_chan) = oneshot();
             let thread_port_cell = Cell::new(thread_port);
             let join_task = do Task::build_child(None) {
-                debug2!("running join task");
+                debug!("running join task");
                 let thread_port = thread_port_cell.take();
                 let thread: Thread = thread_port.recv();
                 thread.join();
@@ -648,11 +648,11 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 let join_task = join_task_cell.take();
 
                 let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
-                    debug2!("boostrapping a 1:1 scheduler");
+                    debug!("boostrapping a 1:1 scheduler");
                 };
                 new_sched.bootstrap(bootstrap_task);
 
-                debug2!("enqueing join_task");
+                debug!("enqueing join_task");
                 // Now tell the original scheduler to join with this thread
                 // by scheduling a thread-joining task on the original scheduler
                 orig_sched_handle.send_task_from_friend(join_task);
@@ -684,7 +684,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
     }
 
     task.name = opts.name.take();
-    debug2!("spawn calling run_task");
+    debug!("spawn calling run_task");
     Scheduler::run_task(task);
 
 }
@@ -707,7 +707,7 @@ fn test_spawn_raw_unsupervise() {
         .. default_task_opts()
     };
     do spawn_raw(opts) {
-        fail2!();
+        fail!();
     }
 }
 
@@ -736,7 +736,7 @@ fn test_spawn_raw_notify_failure() {
         .. default_task_opts()
     };
     do spawn_raw(opts) {
-        fail2!();
+        fail!();
     }
     assert_eq!(notify_po.recv(), Failure);
 }

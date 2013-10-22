@@ -28,4 +28,4 @@ fn foo<T>(y: Option<T>) {
     return;
 }
 
-pub fn main() { info2!("hello"); foo::<int>(Some::<int>(5)); }
+pub fn main() { info!("hello"); foo::<int>(Some::<int>(5)); }

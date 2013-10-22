@@ -449,7 +449,7 @@ pub fn add_clean(bcx: @mut Block, val: ValueRef, t: ty::t) {
         return
     }
 
-    debug2!("add_clean({}, {}, {})", bcx.to_str(), bcx.val_to_str(val), t.repr(bcx.tcx()));
+    debug!("add_clean({}, {}, {})", bcx.to_str(), bcx.val_to_str(val), t.repr(bcx.tcx()));
 
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx, None) |scope_info| {
@@ -464,7 +464,7 @@ pub fn add_clean(bcx: @mut Block, val: ValueRef, t: ty::t) {
 
 pub fn add_clean_temp_immediate(cx: @mut Block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
-    debug2!("add_clean_temp_immediate({}, {}, {})",
+    debug!("add_clean_temp_immediate({}, {}, {})",
            cx.to_str(), cx.val_to_str(val),
            ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
@@ -493,7 +493,7 @@ pub fn add_clean_temp_mem_in_scope(bcx: @mut Block,
 pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::NodeId>,
                                     val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
-    debug2!("add_clean_temp_mem({}, {}, {})",
+    debug!("add_clean_temp_mem({}, {}, {})",
            bcx.to_str(), bcx.val_to_str(val),
            t.repr(bcx.tcx()));
     let cleanup_type = cleanup_type(bcx.tcx(), t);
@@ -522,7 +522,7 @@ pub fn add_clean_return_to_mut(bcx: @mut Block,
     //! box was frozen initially. Here, both `frozen_val_ref` and
     //! `bits_val_ref` are in fact pointers to stack slots.
 
-    debug2!("add_clean_return_to_mut({}, {}, {})",
+    debug!("add_clean_return_to_mut({}, {}, {})",
            bcx.to_str(),
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
@@ -776,7 +776,7 @@ pub fn in_scope_cx(cx: @mut Block, scope_id: Option<ast::NodeId>, f: &fn(si: &mu
             Some(inf) => match scope_id {
                 Some(wanted) => match inf.node_info {
                     Some(NodeInfo { id: actual, _ }) if wanted == actual => {
-                        debug2!("in_scope_cx: selected cur={} (cx={})",
+                        debug!("in_scope_cx: selected cur={} (cx={})",
                                cur.to_str(), cx.to_str());
                         f(inf);
                         return;
@@ -784,7 +784,7 @@ pub fn in_scope_cx(cx: @mut Block, scope_id: Option<ast::NodeId>, f: &fn(si: &mu
                     _ => inf.parent,
                 },
                 None => {
-                    debug2!("in_scope_cx: selected cur={} (cx={})",
+                    debug!("in_scope_cx: selected cur={} (cx={})",
                            cur.to_str(), cx.to_str());
                     f(inf);
                     return;
@@ -987,7 +987,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
             llvm::LLVMConstExtractValue(v, p, len as c_uint)
         };
 
-        debug2!("const_get_elt(v={}, us={:?}, r={})",
+        debug!("const_get_elt(v={}, us={:?}, r={})",
                cx.tn.val_to_str(v), us, cx.tn.val_to_str(r));
 
         return r;
@@ -1230,7 +1230,7 @@ pub fn find_vtable(tcx: ty::ctxt,
                    n_param: typeck::param_index,
                    n_bound: uint)
                    -> typeck::vtable_origin {
-    debug2!("find_vtable(n_param={:?}, n_bound={}, ps={})",
+    debug!("find_vtable(n_param={:?}, n_bound={}, ps={})",
            n_param, n_bound, ps.repr(tcx));
 
     let param_bounds = match n_param {

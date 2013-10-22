@@ -41,7 +41,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        substs: @param_substs,
                        attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
-    debug2!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
+    debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
     fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
@@ -311,7 +311,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             if in_type_size != out_type_size {
                 let sp = match ccx.tcx.items.get_copy(&ref_id.unwrap()) {
                     ast_map::node_expr(e) => e.span,
-                    _ => fail2!("transmute has non-expr arg"),
+                    _ => fail!("transmute has non-expr arg"),
                 };
                 let pluralize = |n| if 1u == n { "" } else { "s" };
                 ccx.sess.span_fatal(sp,

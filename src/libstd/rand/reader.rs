@@ -68,9 +68,9 @@ impl<R: Reader> Rng for ReaderRng<R> {
         if v.len() == 0 { return }
         match self.reader.read(v) {
             Some(n) if n == v.len() => return,
-            Some(n) => fail2!("ReaderRng.fill_bytes could not fill buffer: \
+            Some(n) => fail!("ReaderRng.fill_bytes could not fill buffer: \
                               read {} out of {} bytes.", n, v.len()),
-            None => fail2!("ReaderRng.fill_bytes reached eof.")
+            None => fail!("ReaderRng.fill_bytes reached eof.")
         }
     }
 }

@@ -12,4 +12,4 @@
 
 static i: int = 10;
 
-pub fn main() { info2!("{}", i); }
+pub fn main() { info!("{}", i); }

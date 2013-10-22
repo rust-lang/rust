@@ -144,7 +144,7 @@ pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
         match *entry {
             Some((k, _, loan)) if k == key_value => {
                 if loan != NoLoan {
-                    fail2!("TLS value cannot be removed because it is currently \
+                    fail!("TLS value cannot be removed because it is currently \
                           borrowed as {}", loan.describe());
                 }
                 // Move the data out of the `entry` slot via util::replace.
@@ -241,7 +241,7 @@ fn get_with<T: 'static, U>(key: Key<T>,
                         }
                         (ImmLoan, ImmLoan) => {}
                         (want, cur) => {
-                            fail2!("TLS slot cannot be borrowed as {} because \
+                            fail!("TLS slot cannot be borrowed as {} because \
                                     it is already borrowed as {}",
                                   want.describe(), cur.describe());
                         }
@@ -305,7 +305,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
             match *entry {
                 Some((ekey, _, loan)) if key == ekey => {
                     if loan != NoLoan {
-                        fail2!("TLS value cannot be overwritten because it is
+                        fail!("TLS value cannot be overwritten because it is
                                already borrowed as {}", loan.describe())
                     }
                     true
@@ -389,15 +389,15 @@ mod tests {
         static my_key: Key<@~str> = &Key;
         modify(my_key, |data| {
             match data {
-                Some(@ref val) => fail2!("unwelcome value: {}", *val),
+                Some(@ref val) => fail!("unwelcome value: {}", *val),
                 None           => Some(@~"first data")
             }
         });
         modify(my_key, |data| {
             match data {
                 Some(@~"first data") => Some(@~"next data"),
-                Some(@ref val)       => fail2!("wrong value: {}", *val),
-                None                 => fail2!("missing value")
+                Some(@ref val)       => fail!("wrong value: {}", *val),
+                None                 => fail!("missing value")
             }
         });
         assert!(*(pop(my_key).unwrap()) == ~"next data");
@@ -457,11 +457,11 @@ mod tests {
             set(str_key, @~"string data");
             set(box_key, @@());
             set(int_key, @42);
-            fail2!();
+            fail!();
         }
         // Not quite nondeterministic.
         set(int_key, @31337);
-        fail2!();
+        fail!();
     }
 
     #[test]

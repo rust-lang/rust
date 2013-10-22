@@ -74,11 +74,11 @@ struct cache_entry {
 }
 
 fn dump_crates(crate_cache: &[cache_entry]) {
-    debug2!("resolved crates:");
+    debug!("resolved crates:");
     for entry in crate_cache.iter() {
-        debug2!("cnum: {:?}", entry.cnum);
-        debug2!("span: {:?}", entry.span);
-        debug2!("hash: {:?}", entry.hash);
+        debug!("cnum: {:?}", entry.cnum);
+        debug!("span: {:?}", entry.span);
+        debug!("hash: {:?}", entry.hash);
     }
 }
 
@@ -155,7 +155,7 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
                   }
             }
           };
-          debug2!("resolving extern mod stmt. ident: {:?}, meta: {:?}",
+          debug!("resolving extern mod stmt. ident: {:?}, meta: {:?}",
                  ident, meta_items);
           let cnum = resolve_crate(e,
                                    ident,
@@ -321,7 +321,7 @@ fn resolve_crate(e: @mut Env,
 
 // Go through the crate metadata and load any crates that it references
 fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
-    debug2!("resolving deps of external crate");
+    debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let mut cnum_map = HashMap::new();
@@ -330,18 +330,18 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
         let extrn_cnum = dep.cnum;
         let cname_str = token::ident_to_str(&dep.name);
         let cmetas = metas_with(dep.vers, @"vers", ~[]);
-        debug2!("resolving dep crate {} ver: {} hash: {}",
+        debug!("resolving dep crate {} ver: {} hash: {}",
                cname_str, dep.vers, dep.hash);
         match existing_match(e,
                              metas_with_ident(cname_str, cmetas.clone()),
                              dep.hash) {
           Some(local_cnum) => {
-            debug2!("already have it");
+            debug!("already have it");
             // We've already seen this crate
             cnum_map.insert(extrn_cnum, local_cnum);
           }
           None => {
-            debug2!("need to load it");
+            debug!("need to load it");
             // This is a new one so we've got to load it
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.

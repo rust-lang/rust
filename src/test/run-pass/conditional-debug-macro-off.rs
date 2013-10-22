@@ -14,5 +14,5 @@
 
 fn main() {
     // only fails if debug! evaluates its argument.
-    debug2!("{:?}", { if true { fail2!() } });
+    debug!("{:?}", { if true { fail!() } });
 }

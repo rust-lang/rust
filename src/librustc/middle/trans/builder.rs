@@ -476,7 +476,7 @@ impl Builder {
     }
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef) {
-        debug2!("Store {} -> {}",
+        debug!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
         assert!(is_not_null(self.llbuilder));
@@ -487,7 +487,7 @@ impl Builder {
     }
 
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
-        debug2!("Store {} -> {}",
+        debug!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
         self.count_insn("store.atomic");
@@ -726,7 +726,7 @@ impl Builder {
     pub fn add_span_comment(&self, sp: Span, text: &str) {
         if self.ccx.sess.asm_comments() {
             let s = format!("{} ({})", text, self.ccx.sess.codemap.span_to_str(sp));
-            debug2!("{}", s);
+            debug!("{}", s);
             self.add_comment(s);
         }
     }
@@ -758,11 +758,11 @@ impl Builder {
                          else          { lib::llvm::False };
 
         let argtys = do inputs.map |v| {
-            debug2!("Asm Input Type: {:?}", self.ccx.tn.val_to_str(*v));
+            debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_str(*v));
             val_ty(*v)
         };
 
-        debug2!("Asm Output Type: {:?}", self.ccx.tn.type_to_str(output));
+        debug!("Asm Output Type: {:?}", self.ccx.tn.type_to_str(output));
         let fty = Type::func(argtys, &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(

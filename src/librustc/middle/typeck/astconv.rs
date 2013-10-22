@@ -636,7 +636,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
     opt_self_info: Option<&SelfInfo>,
     decl: &ast::fn_decl) -> (Option<Option<ty::t>>, ty::BareFnTy)
 {
-    debug2!("ty_of_bare_fn");
+    debug!("ty_of_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
@@ -717,7 +717,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
     // names or they are provided, but not both.
     assert!(lifetimes.is_empty() || expected_sig.is_none());
 
-    debug2!("ty_of_fn_decl");
+    debug!("ty_of_fn_decl");
     let _i = indenter();
 
     // resolve the function bound region in the original region

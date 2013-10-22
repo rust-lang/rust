@@ -15,45 +15,45 @@ use super::{Reader, Writer};
 struct PortReader<P>;
 
 impl<P: GenericPort<~[u8]>> PortReader<P> {
-    pub fn new(_port: P) -> PortReader<P> { fail2!() }
+    pub fn new(_port: P) -> PortReader<P> { fail!() }
 }
 
 impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail2!() }
+    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
 
-    fn eof(&mut self) -> bool { fail2!() }
+    fn eof(&mut self) -> bool { fail!() }
 }
 
 struct ChanWriter<C>;
 
 impl<C: GenericChan<~[u8]>> ChanWriter<C> {
-    pub fn new(_chan: C) -> ChanWriter<C> { fail2!() }
+    pub fn new(_chan: C) -> ChanWriter<C> { fail!() }
 }
 
 impl<C: GenericChan<~[u8]>> Writer for ChanWriter<C> {
-    fn write(&mut self, _buf: &[u8]) { fail2!() }
+    fn write(&mut self, _buf: &[u8]) { fail!() }
 
-    fn flush(&mut self) { fail2!() }
+    fn flush(&mut self) { fail!() }
 }
 
 struct ReaderPort<R>;
 
 impl<R: Reader> ReaderPort<R> {
-    pub fn new(_reader: R) -> ReaderPort<R> { fail2!() }
+    pub fn new(_reader: R) -> ReaderPort<R> { fail!() }
 }
 
 impl<R: Reader> GenericPort<~[u8]> for ReaderPort<R> {
-    fn recv(&self) -> ~[u8] { fail2!() }
+    fn recv(&self) -> ~[u8] { fail!() }
 
-    fn try_recv(&self) -> Option<~[u8]> { fail2!() }
+    fn try_recv(&self) -> Option<~[u8]> { fail!() }
 }
 
 struct WriterChan<W>;
 
 impl<W: Writer> WriterChan<W> {
-    pub fn new(_writer: W) -> WriterChan<W> { fail2!() }
+    pub fn new(_writer: W) -> WriterChan<W> { fail!() }
 }
 
 impl<W: Writer> GenericChan<~[u8]> for WriterChan<W> {
-    fn send(&self, _x: ~[u8]) { fail2!() }
+    fn send(&self, _x: ~[u8]) { fail!() }
 }

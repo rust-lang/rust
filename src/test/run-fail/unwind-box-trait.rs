@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn failfn() {
-    fail2!();
+    fail!();
 }
 
 trait i {
@@ -25,5 +25,5 @@ impl i for ~int {
 fn main() {
     let x = @~0 as @i;
     failfn();
-    error2!("{:?}", x);
+    error!("{:?}", x);
 }

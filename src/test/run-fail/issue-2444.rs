@@ -15,7 +15,7 @@ use extra::arc;
 
 enum e<T> { e(arc::Arc<T>) }
 
-fn foo() -> e<int> {fail2!();}
+fn foo() -> e<int> {fail!();}
 
 fn main() {
    let _f = foo();

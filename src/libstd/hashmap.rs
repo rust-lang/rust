@@ -179,7 +179,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
         match self.buckets[idx] {
             Some(ref bkt) => &bkt.value,
-            None => fail2!("HashMap::find: internal logic error"),
+            None => fail!("HashMap::find: internal logic error"),
         }
     }
 
@@ -196,7 +196,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
     /// True if there was no previous entry with that key
     fn insert_internal(&mut self, hash: uint, k: K, v: V) -> Option<V> {
         match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => { fail2!("Internal logic error"); }
+            TableFull => { fail!("Internal logic error"); }
             FoundHole(idx) => {
                 self.buckets[idx] = Some(Bucket{hash: hash, key: k,
                                                 value: v});
@@ -205,7 +205,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
             }
             FoundEntry(idx) => {
                 match self.buckets[idx] {
-                    None => { fail2!("insert_internal: Internal logic error") }
+                    None => { fail!("insert_internal: Internal logic error") }
                     Some(ref mut b) => {
                         b.hash = hash;
                         b.key = k;
@@ -374,7 +374,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail2!("Internal logic error"),
+            TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
             FoundHole(idx) => {
                 let v = not_found(&k, a);
@@ -413,7 +413,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
-            None => fail2!("No entry found for key: {:?}", k),
+            None => fail!("No entry found for key: {:?}", k),
         }
     }
 
@@ -422,7 +422,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
         match self.find_mut(k) {
             Some(v) => v,
-            None => fail2!("No entry found for key: {:?}", k),
+            None => fail!("No entry found for key: {:?}", k),
         }
     }
 
@@ -826,7 +826,7 @@ mod test_map {
         assert!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
-            None => fail2!(), Some(x) => *x = new
+            None => fail!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
     }
@@ -943,7 +943,7 @@ mod test_map {
         assert!(m.find(&1).is_none());
         m.insert(1, 2);
         match m.find(&1) {
-            None => fail2!(),
+            None => fail!(),
             Some(v) => assert!(*v == 2)
         }
     }

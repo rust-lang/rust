@@ -196,7 +196,7 @@ impl<T> PortOne<T> {
         match self.try_recv() {
             Some(val) => val,
             None => {
-                fail2!("receiving on closed channel");
+                fail!("receiving on closed channel");
             }
         }
     }
@@ -495,7 +495,7 @@ impl<T> GenericPort<T> for Port<T> {
         match self.try_recv() {
             Some(val) => val,
             None => {
-                fail2!("receiving on closed channel");
+                fail!("receiving on closed channel");
             }
         }
     }
@@ -650,7 +650,7 @@ impl<T: Send> GenericPort<T> for SharedPort<T> {
         match self.try_recv() {
             Some(val) => val,
             None => {
-                fail2!("receiving on a closed channel");
+                fail!("receiving on a closed channel");
             }
         }
     }

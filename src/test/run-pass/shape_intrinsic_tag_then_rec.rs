@@ -57,6 +57,6 @@ pub fn main() {
     let p_: Path_ = Path_ { global: true, idents: ~[~"hi"], types: ~[t] };
     let p: path = Spanned { data: p_, span: sp };
     let x = X { sp: sp, path: p };
-    error2!("{:?}", x.path.clone());
-    error2!("{:?}", x.clone());
+    error!("{:?}", x.path.clone());
+    error!("{:?}", x.clone());
 }

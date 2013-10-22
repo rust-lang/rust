@@ -505,7 +505,7 @@ mod test {
                 let unlink_req = FsRequest::new();
                 let result = unlink_req.unlink_sync(&loop_, &Path::new(path_str));
                 assert!(result.is_ok());
-            } else { fail2!("nread was 0.. wudn't expectin' that."); }
+            } else { fail!("nread was 0.. wudn't expectin' that."); }
             loop_.close();
         }
     }

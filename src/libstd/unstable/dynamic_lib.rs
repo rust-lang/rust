@@ -33,7 +33,7 @@ impl Drop for DynamicLibrary {
             }
         } {
             Ok(()) => {},
-            Err(str) => fail2!("{}", str)
+            Err(str) => fail!("{}", str)
         }
     }
 }
@@ -94,13 +94,13 @@ mod test {
         // The math library does not need to be loaded since it is already
         // statically linked in
         let libm = match DynamicLibrary::open(None) {
-            Err(error) => fail2!("Could not load self as module: {}", error),
+            Err(error) => fail!("Could not load self as module: {}", error),
             Ok(libm) => libm
         };
 
         let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
             match libm.symbol("cos") {
-                Err(error) => fail2!("Could not load function cos: {}", error),
+                Err(error) => fail!("Could not load function cos: {}", error),
                 Ok(cosine) => cosine
             }
         };
@@ -109,7 +109,7 @@ mod test {
         let expected_result = 1.0;
         let result = cosine(argument);
         if result != expected_result {
-            fail2!("cos({:?}) != {:?} but equaled {:?} instead", argument,
+            fail!("cos({:?}) != {:?} but equaled {:?} instead", argument,
                    expected_result, result)
         }
     }
@@ -124,7 +124,7 @@ mod test {
         let path = GenericPath::new("/dev/null");
         match DynamicLibrary::open(Some(&path)) {
             Err(_) => {}
-            Ok(_) => fail2!("Successfully opened the empty library.")
+            Ok(_) => fail!("Successfully opened the empty library.")
         }
     }
 }

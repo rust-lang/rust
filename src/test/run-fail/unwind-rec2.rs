@@ -15,7 +15,7 @@ fn build1() -> ~[int] {
 }
 
 fn build2() -> ~[int] {
-    fail2!();
+    fail!();
 }
 
 struct Blk { node: ~[int], span: ~[int] }

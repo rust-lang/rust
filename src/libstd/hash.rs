@@ -493,10 +493,10 @@ mod tests {
         }
 
         while t < 64 {
-            debug2!("siphash test {}", t);
+            debug!("siphash test {}", t);
             let vec = u8to64_le!(vecs[t], 0);
             let out = Bytes(buf.as_slice()).hash_keyed(k0, k1);
-            debug2!("got {:?}, expected {:?}", out, vec);
+            debug!("got {:?}, expected {:?}", out, vec);
             assert_eq!(vec, out);
 
             stream_full.reset();
@@ -504,7 +504,7 @@ mod tests {
             let f = stream_full.result_str();
             let i = stream_inc.result_str();
             let v = to_hex_str(&vecs[t]);
-            debug2!("{}: ({}) => inc={} full={}", t, v, i, f);
+            debug!("{}: ({}) => inc={} full={}", t, v, i, f);
 
             assert!(f == i && f == v);
 

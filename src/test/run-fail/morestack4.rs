@@ -22,7 +22,7 @@ fn getbig_and_fail(i: int) {
     if i != 0 {
         getbig_and_fail(i - 1);
     } else {
-        fail2!();
+        fail!();
     }
 }
 

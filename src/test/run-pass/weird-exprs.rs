@@ -61,17 +61,17 @@ fn canttouchthis() -> uint {
     fn p() -> bool { true }
     let _a = (assert!((true)) == (assert!(p())));
     let _c = (assert!((p())) == ());
-    let _b: bool = (info2!("{}", 0) == (return 0u));
+    let _b: bool = (info!("{}", 0) == (return 0u));
 }
 
 fn angrydome() {
     loop { if break { } }
     let mut i = 0;
-    loop { i += 1; if i == 1 { match (continue) { 1 => { }, _ => fail2!("wat") } }
+    loop { i += 1; if i == 1 { match (continue) { 1 => { }, _ => fail!("wat") } }
       break; }
 }
 
-fn evil_lincoln() { let _evil = info2!("lincoln"); }
+fn evil_lincoln() { let _evil = info!("lincoln"); }
 
 pub fn main() {
     strange();
