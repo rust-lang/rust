@@ -43,6 +43,15 @@ MORESTACK:
 	// bytes greater than a normal frame, to allow the unwinder
 	// to skip the partial frame of the original function.
 	.cfi_def_cfa_offset 24
+
+#if defined(__APPLE__)
+	// The pattern of the return address being saved twice to the same location
+	// tells the OS X linker that it should not attempt to convert the DWARF
+	// unwind information to the compact format.
+	.cfi_offset %rip, -8
+	.cfi_offset %rip, -8
+#endif
+
 	// %rbp is -24 bytes from the CFA
 	.cfi_offset %rbp, -24
 	movq %rsp, %rbp
