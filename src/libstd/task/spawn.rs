@@ -82,7 +82,11 @@ use hashmap::{HashSet, HashSetMoveIterator};
 use local_data;
 use rt::in_green_task_context;
 use rt::local::Local;
-use rt::shouldnt_be_public::{Scheduler, KillHandle, WorkQueue, Thread, EventLoop};
+use rt::sched::Scheduler;
+use rt::KillHandle;
+use rt::work_queue::WorkQueue;
+use rt::rtio::EventLoop;
+use rt::thread::Thread;
 use rt::task::{Task, Sched};
 use rt::task::{UnwindReasonLinked, UnwindReasonStr};
 use rt::task::{UnwindResult, Success, Failure};
@@ -627,7 +631,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let mut new_sched_handle = new_sched.make_handle();
 
             // Allow the scheduler to exit when the pinned task exits
-            new_sched_handle.send_shutdown();
+            new_sched_handle.send(Shutdown);
 
             // Pin the new task to the new scheduler
             let new_task = if opts.watched {
@@ -665,7 +669,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 debug!("enqueing join_task");
                 // Now tell the original scheduler to join with this thread
                 // by scheduling a thread-joining task on the original scheduler
-                orig_sched_handle.send_task_from_friend(join_task);
+                orig_sched_handle.send(TaskFromFriend(join_task));
 
                 // NB: We can't simply send a message from here to another task
                 // because this code isn't running in a task and message passing doesn't

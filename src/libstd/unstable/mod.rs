@@ -37,7 +37,7 @@ a normal large stack.
 */
 pub fn run_in_bare_thread(f: ~fn()) {
     use cell::Cell;
-    use rt::shouldnt_be_public::Thread;
+    use rt::thread::Thread;
 
     let f_cell = Cell::new(f);
     let (port, chan) = comm::stream();

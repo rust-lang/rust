@@ -542,7 +542,7 @@ impl Scheduler {
 
         match this.sleeper_list.casual_pop() {
             Some(handle) => {
-                        let mut handle = handle;
+                let mut handle = handle;
                 handle.send(Wake)
             }
             None => { (/* pass */) }
@@ -817,12 +817,6 @@ impl SchedHandle {
     pub fn send(&mut self, msg: SchedMessage) {
         self.queue.push(msg);
         self.remote.fire();
-    }
-    pub fn send_task_from_friend(&mut self, friend: ~Task) {
-        self.send(TaskFromFriend(friend));
-    }
-    pub fn send_shutdown(&mut self) {
-        self.send(Shutdown);
     }
 }
 
@@ -1266,15 +1260,15 @@ mod test {
         use comm::{GenericPort, GenericChan};
 
         do run_in_mt_newsched_task {
-                let (end_port, end_chan) = oneshot();
+            let (end_port, end_chan) = oneshot();
 
             let n_tasks = 10;
             let token = 2000;
 
-                let (p, ch1) = stream();
+            let (p, ch1) = stream();
             let mut p = p;
-                ch1.send((token, end_chan));
-                let mut i = 2;
+            ch1.send((token, end_chan));
+            let mut i = 2;
             while i <= n_tasks {
                 let (next_p, ch) = stream();
                 let imm_i = i;
