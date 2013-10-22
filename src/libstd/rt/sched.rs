@@ -85,7 +85,17 @@ pub struct Scheduler {
     priv yield_check_count: uint,
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
-    priv steal_for_yield: bool
+    priv steal_for_yield: bool,
+
+    // n.b. currently destructors of an object are run in top-to-bottom in order
+    //      of field declaration. Due to its nature, the pausible idle callback
+    //      must have some sort of handle to the event loop, so it needs to get
+    //      destroyed before the event loop itself. For this reason, we destroy
+    //      the event loop last to ensure that any unsafe references to it are
+    //      destroyed before it's actually destroyed.
+
+    /// The event loop used to drive the scheduler and perform I/O
+    event_loop: ~EventLoopObject,
 }
 
 /// An indication of how hard to work on a given operation, the difference
