@@ -8,14 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+
+Signal handling
+
+This modules provides bindings to receive signals safely, built on top of the
+local I/O factory. There are a number of defined signals which can be caught,
+but not all signals will work across all platforms (windows doesn't have
+definitions for a number of signals.
+
+*/
+
 use comm::{Port, SharedChan, stream};
 use hashmap;
 use option::{Some, None};
 use result::{Err, Ok};
 use rt::io::io_error;
-use rt::local::Local;
-use rt::rtio::{EventLoop, RtioSignalObject};
-use rt::sched::Scheduler;
+use rt::rtio::{IoFactory, RtioSignal, with_local_io};
 
 #[deriving(Eq, IterBytes)]
 pub enum Signum {
@@ -47,19 +56,18 @@ pub enum Signum {
 /// Listener automatically unregisters its handles once it is out of scope.
 /// However, clients can still unregister signums manually.
 ///
-/// Example usage:
+/// # Example
 ///
 /// ```rust
-/// use std::rt::io::signal;
-/// use std::task;
+/// use std::rt::io::signal::{Listener, Interrupt};
 ///
-/// let mut listener = signal::Listener();
+/// let mut listener = Listener::new();
 /// listener.register(signal::Interrupt);
 ///
-/// do task::spawn {
+/// do spawn {
 ///     loop {
-///         match listener.recv() {
-///             signal::Interrupt => println("Got Interrupt'ed"),
+///         match listener.port.recv() {
+///             Interrupt => println("Got Interrupt'ed"),
 ///             _ => (),
 ///         }
 ///     }
@@ -68,15 +76,20 @@ pub enum Signum {
 /// ```
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
-    priv handles: hashmap::HashMap<Signum, ~RtioSignalObject>,
+    priv handles: hashmap::HashMap<Signum, ~RtioSignal>,
     /// chan is where all the handles send signums, which are received by
     /// the clients from port.
     priv chan: SharedChan<Signum>,
-    /// Clients of Listener can `recv()` from this port
+
+    /// Clients of Listener can `recv()` from this port. This is exposed to
+    /// allow selection over this port as well as manipulation of the port
+    /// directly.
     port: Port<Signum>,
 }
 
 impl Listener {
+    /// Creates a new listener for signals. Once created, signals are bound via
+    /// the `register` method (otherwise nothing will ever be received)
     pub fn new() -> Listener {
         let (port, chan) = stream();
         Listener {
@@ -88,33 +101,43 @@ impl Listener {
 
     /// Listen for a signal, returning true when successfully registered for
     /// signum. Signals can be received using `recv()`.
+    ///
+    /// Once a signal is registered, this listener will continue to receive
+    /// notifications of signals until it is unregistered. This occurs
+    /// regardless of the number of other listeners registered in other tasks
+    /// (or on this task).
+    ///
+    /// Signals are still received if there is no task actively waiting for
+    /// a signal, and a later call to `recv` will return the signal that was
+    /// received while no task was waiting on it.
+    ///
+    /// # Failure
+    ///
+    /// If this function fails to register a signal handler, then an error will
+    /// be raised on the `io_error` condition and the function will return
+    /// false.
     pub fn register(&mut self, signum: Signum) -> bool {
-        match self.handles.find(&signum) {
-            Some(_) => true, // self is already listening to signum, so succeed
-            None => {
-                let chan = self.chan.clone();
-                let handle = unsafe {
-                    rtdebug!("Listener::register: borrowing io to init UvSignal");
-                    let sched: *mut Scheduler = Local::unsafe_borrow();
-                    rtdebug!("about to init handle");
-                    (*sched).event_loop.signal(signum, chan)
-                };
-                match handle {
-                    Ok(w) => {
-                        self.handles.insert(signum, w);
-                        true
-                    },
-                    Err(ioerr) => {
-                        rtdebug!("Listener::register: failed to init: {:?}", ioerr);
-                        io_error::cond.raise(ioerr);
-                        false
-                    },
-                }
-            },
+        if self.handles.contains_key(&signum) {
+            return true; // self is already listening to signum, so succeed
         }
+        do with_local_io |io| {
+            match io.signal(signum, self.chan.clone()) {
+                Ok(w) => {
+                    self.handles.insert(signum, w);
+                    Some(())
+                },
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
+            }
+        }.is_some()
     }
 
-    /// Unregister a signal.
+    /// Unregisters a signal. If this listener currently had a handler
+    /// registered for the signal, then it will stop receiving any more
+    /// notification about the signal. If the signal has already been received,
+    /// it may still be returned by `recv`.
     pub fn unregister(&mut self, signum: Signum) {
         self.handles.pop(&signum);
     }
