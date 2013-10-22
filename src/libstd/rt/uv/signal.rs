@@ -10,12 +10,10 @@
 
 use cast;
 use option::Some;
-use libc::{c_int, c_void};
+use libc::c_int;
 use result::{Err, Ok, Result};
-use rt::io::IoError;
 use rt::io::signal::Signum;
-use rt::uv::{Loop, NativeHandle, NullCallback, SignalCallback, UvError, Watcher};
-use rt::uv::uv_error_to_io_error;
+use rt::uv::{Loop, NativeHandle, SignalCallback, UvError, Watcher};
 use rt::uv::uvll;
 
 pub struct SignalWatcher(*uvll::uv_signal_t);
@@ -34,19 +32,19 @@ impl SignalWatcher {
         }
     }
 
-    pub fn start(&mut self, signum: Signum, callback: SignalCallback) -> Result<(), IoError> {
-        {
-            let data = self.get_watcher_data();
-            data.signal_cb = Some(callback);
-        }
-
-        let ret = unsafe {
-            uvll::signal_start(self.native_handle(), signal_cb, signum as c_int)
-        };
-
-        return match ret {
-            0 => Ok(()),
-            _ => Err(uv_error_to_io_error(UvError(ret))),
+    pub fn start(&mut self, signum: Signum, callback: SignalCallback)
+            -> Result<(), UvError>
+    {
+        return unsafe {
+            match uvll::signal_start(self.native_handle(), signal_cb,
+                                     signum as c_int) {
+                0 => {
+                    let data = self.get_watcher_data();
+                    data.signal_cb = Some(callback);
+                    Ok(())
+                }
+                n => Err(UvError(n)),
+            }
         };
 
         extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
@@ -60,31 +58,6 @@ impl SignalWatcher {
     pub fn stop(&mut self) {
         unsafe {
             uvll::signal_stop(self.native_handle());
-        }
-    }
-
-    pub fn close(self, cb: NullCallback) {
-        let mut watcher = self;
-        {
-            let data = watcher.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe {
-            uvll::close(watcher.native_handle(), close_cb);
-        }
-
-        extern fn close_cb(handle: *uvll::uv_signal_t) {
-            let mut watcher: SignalWatcher = NativeHandle::from_native_handle(handle);
-            {
-                let data = watcher.get_watcher_data();
-                data.close_cb.take_unwrap()();
-            }
-            watcher.drop_watcher_data();
-            unsafe {
-                uvll::free_handle(handle as *c_void);
-            }
         }
     }
 }

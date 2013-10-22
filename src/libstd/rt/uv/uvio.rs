@@ -865,12 +865,12 @@ impl IoFactory for UvIoFactory {
     }
 
     fn signal(&mut self, signum: Signum, channel: SharedChan<Signum>)
-        -> Result<~RtioSignalObject, IoError> {
+        -> Result<~RtioSignal, IoError> {
         let watcher = SignalWatcher::new(self.uv_loop());
         let home = get_handle_to_current_scheduler!();
         let mut signal = ~UvSignal::new(watcher, home);
         match signal.watcher.start(signum, |_, _| channel.send_deferred(signum)) {
-            Ok(()) => Ok(signal),
+            Ok(()) => Ok(signal as ~RtioSignal),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
