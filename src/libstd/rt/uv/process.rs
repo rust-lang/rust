@@ -12,7 +12,6 @@ use prelude::*;
 use cell::Cell;
 use libc;
 use ptr;
-use util;
 use vec;
 
 use rt::io::process::*;
@@ -42,7 +41,7 @@ impl Process {
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(&mut self, loop_: &uv::Loop, mut config: ProcessConfig,
+    pub fn spawn(&mut self, loop_: &uv::Loop, config: ProcessConfig,
                  exit_cb: uv::ExitCallback)
                     -> Result<~[Option<~UvPipeStream>], uv::UvError>
     {
@@ -62,12 +61,12 @@ impl Process {
                                                        err);
         }
 
-        let io = util::replace(&mut config.io, ~[]);
+        let io = config.io;
         let mut stdio = vec::with_capacity::<uvll::uv_stdio_container_t>(io.len());
         let mut ret_io = vec::with_capacity(io.len());
         unsafe {
             vec::raw::set_len(&mut stdio, io.len());
-            for (slot, other) in stdio.iter().zip(io.move_iter()) {
+            for (slot, other) in stdio.iter().zip(io.iter()) {
                 let io = set_stdio(slot as *uvll::uv_stdio_container_t, other,
                                    loop_);
                 ret_io.push(io);
@@ -126,9 +125,9 @@ impl Process {
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
-                    io: StdioContainer,
+                    io: &StdioContainer,
                     loop_: &uv::Loop) -> Option<~UvPipeStream> {
-    match io {
+    match *io {
         Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
             None
