@@ -31,13 +31,13 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 #[fixed_stack_segment] #[inline(never)]
 fn fact(n: uint) -> uint {
     unsafe {
-        info2!("n = {}", n);
+        info!("n = {}", n);
         rustrt::rust_dbg_call(cb, n)
     }
 }
 
 pub fn main() {
     let result = fact(10u);
-    info2!("result = {}", result);
+    info!("result = {}", result);
     assert_eq!(result, 3628800u);
 }

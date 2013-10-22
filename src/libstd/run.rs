@@ -229,7 +229,7 @@ impl Process {
             ((1, o), (2, e)) => (e, o),
             ((2, e), (1, o)) => (e, o),
             ((x, _), (y, _)) => {
-                fail2!("unexpected file numbers: {}, {}", x, y);
+                fail!("unexpected file numbers: {}, {}", x, y);
             }
         };
 

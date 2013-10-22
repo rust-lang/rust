@@ -155,10 +155,10 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
-            Some(Err(msg)) => fail2!("{}", msg),
+            Some(Err(msg)) => fail!("{}", msg),
             None => return
         };
-    if !run_tests_console(&opts, tests) { fail2!("Some tests failed"); }
+    if !run_tests_console(&opts, tests) { fail!("Some tests failed"); }
 }
 
 // A variant optimized for invocation with a static test vector.
@@ -178,7 +178,7 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
             TestDescAndFn { testfn: StaticBenchFn(f), desc: t.desc.clone() },
 
             _ => {
-                fail2!("non-static tests passed to test::test_main_static");
+                fail!("non-static tests passed to test::test_main_static");
             }
         }
     };
@@ -240,7 +240,7 @@ Test Attributes:
     #[bench]       - Indicates a function is a benchmark to be run. This
                      function takes one argument (extra::test::BenchHarness).
     #[should_fail] - This function (also labeled with #[test]) will only pass if
-                     the code causes a failure (an assertion failure or fail2!)
+                     the code causes a failure (an assertion failure or fail!)
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
@@ -358,7 +358,7 @@ impl ConsoleTestState {
                                                      io::Truncate]) {
                 result::Ok(w) => Some(w),
                 result::Err(ref s) => {
-                    fail2!("can't open output file: {}", *s)
+                    fail!("can't open output file: {}", *s)
                 }
             },
             None => None
@@ -607,7 +607,7 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
 pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
-        debug2!("callback(event={:?})", event);
+        debug!("callback(event={:?})", event);
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
@@ -649,7 +649,7 @@ pub fn run_tests_console(opts: &TestOpts,
     match tests.iter().max_by(|t|len_if_padded(*t)) {
         Some(t) => {
             let n = t.desc.name.to_str();
-            debug2!("Setting max_name_len from: {}", n);
+            debug!("Setting max_name_len from: {}", n);
             st.max_name_len = n.len();
         },
         None => {}
@@ -736,7 +736,7 @@ fn run_tests(opts: &TestOpts,
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
-    debug2!("using {} test tasks", concurrency);
+    debug!("using {} test tasks", concurrency);
 
     let mut remaining = filtered_tests;
     remaining.reverse();
@@ -783,7 +783,7 @@ fn get_concurrency() -> uint {
             let opt_n: Option<uint> = FromStr::from_str(s);
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => fail2!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
+                _ => fail!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
             }
         }
         None => {
@@ -1047,7 +1047,7 @@ impl MetricMap {
         };
 
         if ok {
-            debug2!("rewriting file '{:?}' with updated metrics", p);
+            debug!("rewriting file '{:?}' with updated metrics", p);
             self.save(p);
         }
         return (diff, ok)
@@ -1086,7 +1086,7 @@ impl BenchHarness {
 
     pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
         self.iterations = n;
-        debug2!("running benchmark for {} iterations",
+        debug!("running benchmark for {} iterations",
                n as uint);
         f(self);
     }
@@ -1127,7 +1127,7 @@ impl BenchHarness {
             stats::winsorize(samples, 5.0);
             let summ5 = stats::Summary::new(samples);
 
-            debug2!("{} samples, median {}, MAD={}, MADP={}",
+            debug!("{} samples, median {}, MAD={}, MADP={}",
                    samples.len(),
                    summ.median as f64,
                    summ.median_abs_dev as f64,
@@ -1198,7 +1198,7 @@ mod tests {
 
     #[test]
     pub fn do_not_run_ignored_tests() {
-        fn f() { fail2!(); }
+        fn f() { fail!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
@@ -1234,7 +1234,7 @@ mod tests {
 
     #[test]
     fn test_should_fail() {
-        fn f() { fail2!(); }
+        fn f() { fail!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
@@ -1273,7 +1273,7 @@ mod tests {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
             Some(Ok(o)) => o,
-            _ => fail2!("Malformed arg in first_free_arg_should_be_a_filter")
+            _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!("filter" == opts.filter.clone().unwrap());
     }
@@ -1283,7 +1283,7 @@ mod tests {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
             Some(Ok(o)) => o,
-            _ => fail2!("Malformed arg in parse_ignored_flag")
+            _ => fail!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));
     }

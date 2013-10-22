@@ -11,7 +11,7 @@
 // xfail-fast
 
 pub fn main() {
-    fail2!()
+    fail!()
 }
 
 #[main]

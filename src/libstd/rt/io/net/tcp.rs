@@ -84,7 +84,7 @@ impl Reader for TcpStream {
         }
     }
 
-    fn eof(&mut self) -> bool { fail2!() }
+    fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for TcpStream {
@@ -324,7 +324,7 @@ mod test {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {
-                        fail2!();
+                        fail!();
                     }
                 }).inside {
                     let nread = stream.read(buf);
@@ -359,7 +359,7 @@ mod test {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {
-                        fail2!();
+                        fail!();
                     }
                 }).inside {
                     let nread = stream.read(buf);

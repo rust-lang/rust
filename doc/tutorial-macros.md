@@ -226,7 +226,7 @@ match x {
                 // complicated stuff goes here
                 return result + val;
             },
-            _ => fail2!("Didn't get good_2")
+            _ => fail!("Didn't get good_2")
         }
     }
     _ => return 0 // default value
@@ -268,7 +268,7 @@ macro_rules! biased_match (
 biased_match!((x)       ~ (good_1(g1, val)) else { return 0 };
               binds g1, val )
 biased_match!((g1.body) ~ (good_2(result) )
-                  else { fail2!("Didn't get good_2") };
+                  else { fail!("Didn't get good_2") };
               binds result )
 // complicated stuff goes here
 return result + val;
@@ -369,7 +369,7 @@ macro_rules! biased_match (
 # fn f(x: t1) -> uint {
 biased_match!(
     (x)       ~ (good_1(g1, val)) else { return 0 };
-    (g1.body) ~ (good_2(result) ) else { fail2!("Didn't get good_2") };
+    (g1.body) ~ (good_2(result) ) else { fail!("Didn't get good_2") };
     binds val, result )
 // complicated stuff goes here
 return result + val;

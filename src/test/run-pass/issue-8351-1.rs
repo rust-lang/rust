@@ -18,8 +18,8 @@ enum E {
 pub fn main() {
     let e = Foo{f: 0};
     match e {
-        Foo{f: 1} => fail2!(),
+        Foo{f: 1} => fail!(),
         Foo{_} => (),
-        _ => fail2!(),
+        _ => fail!(),
     }
 }

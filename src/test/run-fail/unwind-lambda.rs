@@ -22,7 +22,7 @@ fn main() {
         let cheese = cheese.clone();
         let f: &fn() = || {
             let _chew = mush + cheese;
-            fail2!("so yummy")
+            fail!("so yummy")
         };
         f();
     });

@@ -12,6 +12,6 @@
 
 fn main() {
     let _a: @int = {
-        fail2!();
+        fail!();
     };
 }

@@ -34,7 +34,7 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
                         for innerattr in l.iter() {
                             match innerattr {
                                 &clean::Word(ref s) if "hidden" == *s => {
-                                    debug2!("found one in strip_hidden; removing");
+                                    debug!("found one in strip_hidden; removing");
                                     return None;
                                 },
                                 _ => (),

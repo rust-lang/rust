@@ -124,7 +124,7 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
-    debug2!("checking impl with self type {:?}", ty::get(self_ty).sty);
+    debug!("checking impl with self type {:?}", ty::get(self_ty).sty);
     do check_builtin_bounds(cx, self_ty, trait_def.bounds) |missing| {
         cx.tcx.sess.span_err(self_type.span,
             format!("the type `{}', which does not fulfill `{}`, cannot implement this \
@@ -265,7 +265,7 @@ fn check_fn(
 }
 
 pub fn check_expr(cx: &mut Context, e: @Expr) {
-    debug2!("kind::check_expr({})", expr_to_str(e, cx.tcx.sess.intr()));
+    debug!("kind::check_expr({})", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
     let type_parameter_id = match e.get_callee_id() {
@@ -292,7 +292,7 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
             };
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
-                fail2!("internal error: in kind::check_expr, length \
+                fail!("internal error: in kind::check_expr, length \
                       mismatch between actual and declared bounds: actual = \
                       {}, declared = {}",
                       ts.repr(cx.tcx),
@@ -451,7 +451,7 @@ fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
 }
 
 fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
-    debug2!("type_contents({})={}",
+    debug!("type_contents({})={}",
            ty_to_str(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_str());
     if ty::type_moves_by_default(cx.tcx, ty) {

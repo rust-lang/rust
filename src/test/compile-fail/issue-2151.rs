@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let x = fail2!();
+    let x = fail!();
     x.clone(); //~ ERROR the type of this value must be known in this context
 }

@@ -1292,12 +1292,12 @@ mod test {
             while (true) {
                 match p.recv() {
                     (1, end_chan) => {
-                                debug2!("{}\n", id);
+                                debug!("{}\n", id);
                                 end_chan.send(());
                                 return;
                     }
                     (token, end_chan) => {
-                        debug2!("thread: {}   got token: {}", id, token);
+                        debug!("thread: {}   got token: {}", id, token);
                         ch.send((token - 1, end_chan));
                         if token <= n_tasks {
                             return;

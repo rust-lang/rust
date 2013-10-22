@@ -3,9 +3,9 @@
 #[allow(unreachable_code)];
 
 fn f() {
-    fail2!();
+    fail!();
 
-    let _x: int = fail2!();
+    let _x: int = fail!();
 }
 
 pub fn main() {

@@ -13,5 +13,5 @@
 fn foo(a: uint) -> uint { a }
 
 fn main() {
-    info2!("{:u}", foo(10i)); //~ ERROR mismatched types
+    info!("{:u}", foo(10i)); //~ ERROR mismatched types
 }

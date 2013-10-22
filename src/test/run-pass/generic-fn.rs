@@ -23,14 +23,14 @@ pub fn main() {
     let p: Triple = Triple {x: 65, y: 66, z: 67};
     let mut q: Triple = Triple {x: 68, y: 69, z: 70};
     y = id::<int>(x);
-    info2!("{}", y);
+    info!("{}", y);
     assert_eq!(x, y);
     b = id::<char>(a);
-    info2!("{}", b);
+    info!("{}", b);
     assert_eq!(a, b);
     q = id::<Triple>(p);
     x = p.z;
     y = q.z;
-    info2!("{}", y);
+    info!("{}", y);
     assert_eq!(x, y);
 }

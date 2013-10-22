@@ -17,6 +17,6 @@ fn compute1() -> f64 {
 
 fn main() {
     let x = compute1();
-    info2!("{:?}", x);
+    info!("{:?}", x);
     assert_eq!(x, -4f64);
 }

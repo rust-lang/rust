@@ -65,7 +65,7 @@ pub fn check_loans(bccx: &BorrowckCtxt,
                    move_data: move_data::FlowedMoveData,
                    all_loans: &[Loan],
                    body: &ast::Block) {
-    debug2!("check_loans(body id={:?})", body.id);
+    debug!("check_loans(body id={:?})", body.id);
 
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
@@ -197,10 +197,10 @@ impl<'self> CheckLoanCtxt<'self> {
         //! issued when we enter `scope_id` (for example, we do not
         //! permit two `&mut` borrows of the same variable).
 
-        debug2!("check_for_conflicting_loans(scope_id={:?})", scope_id);
+        debug!("check_for_conflicting_loans(scope_id={:?})", scope_id);
 
         let new_loan_indices = self.loans_generated_by(scope_id);
-        debug2!("new_loan_indices = {:?}", new_loan_indices);
+        debug!("new_loan_indices = {:?}", new_loan_indices);
 
         do self.each_issued_loan(scope_id) |issued_loan| {
             for &new_loan_index in new_loan_indices.iter() {
@@ -225,7 +225,7 @@ impl<'self> CheckLoanCtxt<'self> {
         //! Checks whether `old_loan` and `new_loan` can safely be issued
         //! simultaneously.
 
-        debug2!("report_error_if_loans_conflict(old_loan={}, new_loan={})",
+        debug!("report_error_if_loans_conflict(old_loan={}, new_loan={})",
                old_loan.repr(self.tcx()),
                new_loan.repr(self.tcx()));
 
@@ -249,7 +249,7 @@ impl<'self> CheckLoanCtxt<'self> {
         //! Checks whether the restrictions introduced by `loan1` would
         //! prohibit `loan2`. Returns false if an error is reported.
 
-        debug2!("report_error_if_loan_conflicts_with_restriction(\
+        debug!("report_error_if_loan_conflicts_with_restriction(\
                 loan1={}, loan2={})",
                loan1.repr(self.tcx()),
                loan2.repr(self.tcx()));
@@ -260,7 +260,7 @@ impl<'self> CheckLoanCtxt<'self> {
             ImmutableMutability => RESTR_ALIAS | RESTR_FREEZE,
             ConstMutability     => RESTR_ALIAS,
         };
-        debug2!("illegal_if={:?}", illegal_if);
+        debug!("illegal_if={:?}", illegal_if);
 
         for restr in loan1.restrictions.iter() {
             if !restr.set.intersects(illegal_if) { continue; }
@@ -317,7 +317,7 @@ impl<'self> CheckLoanCtxt<'self> {
          * is using a moved/uninitialized value
          */
 
-        debug2!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
+        debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
         do self.move_data.each_move_of(id, lp) |move, moved_lp| {
             self.bccx.report_use_of_moved_value(
@@ -338,7 +338,7 @@ impl<'self> CheckLoanCtxt<'self> {
             Some(&adj) => self.bccx.cat_expr_autoderefd(expr, adj)
         };
 
-        debug2!("check_assignment(cmt={})", cmt.repr(self.tcx()));
+        debug!("check_assignment(cmt={})", cmt.repr(self.tcx()));
 
         // Mutable values can be assigned, as long as they obey loans
         // and aliasing restrictions:
@@ -387,7 +387,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
             let mut cmt = cmt;
             loop {
-                debug2!("mark_writes_through_upvars_as_used_mut(cmt={})",
+                debug!("mark_writes_through_upvars_as_used_mut(cmt={})",
                        cmt.repr(this.tcx()));
                 match cmt.cat {
                     mc::cat_local(id) |
@@ -435,7 +435,7 @@ impl<'self> CheckLoanCtxt<'self> {
             //! Safety checks related to writes to aliasable, mutable locations
 
             let guarantor = cmt.guarantor();
-            debug2!("check_for_aliasable_mutable_writes(cmt={}, guarantor={})",
+            debug!("check_for_aliasable_mutable_writes(cmt={}, guarantor={})",
                    cmt.repr(this.tcx()), guarantor.repr(this.tcx()));
             match guarantor.cat {
                 mc::cat_deref(b, _, mc::region_ptr(MutMutable, _)) => {
@@ -451,7 +451,7 @@ impl<'self> CheckLoanCtxt<'self> {
                         id: guarantor.id,
                         derefs: deref_count
                     };
-                    debug2!("Inserting write guard at {:?}", key);
+                    debug!("Inserting write guard at {:?}", key);
                     this.bccx.write_guard_map.insert(key);
                 }
 
@@ -690,7 +690,7 @@ impl<'self> CheckLoanCtxt<'self> {
     pub fn analyze_move_out_from(&self,
                                  expr_id: ast::NodeId,
                                  move_path: @LoanPath) -> MoveError {
-        debug2!("analyze_move_out_from(expr_id={:?}, move_path={})",
+        debug!("analyze_move_out_from(expr_id={:?}, move_path={})",
                expr_id, move_path.repr(self.tcx()));
 
         // FIXME(#4384) inadequare if/when we permit `move a.b`
@@ -794,7 +794,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
                            expr: @ast::Expr) {
     visit::walk_expr(this, expr, ());
 
-    debug2!("check_loans_in_expr(expr={})",
+    debug!("check_loans_in_expr(expr={})",
            expr.repr(this.tcx()));
 
     this.check_for_conflicting_loans(expr.id);
@@ -805,7 +805,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       ast::ExprPath(*) => {
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
-              debug2!("path cmt={}", cmt.repr(this.tcx()));
+              debug!("path cmt={}", cmt.repr(this.tcx()));
               let r = opt_loan_path(cmt);
               for &lp in r.iter() {
                   this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);

@@ -181,14 +181,14 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                 ty::ty_enum(id, _) => {
                     let vid = match *ctor {
                         variant(id) => id,
-                        _ => fail2!("check_exhaustive: non-variant ctor"),
+                        _ => fail!("check_exhaustive: non-variant ctor"),
                     };
                     let variants = ty::enum_variants(cx.tcx, id);
 
                     match variants.iter().find(|v| v.id == vid) {
                         Some(v) => Some(cx.tcx.sess.str_of(v.name)),
                         None => {
-                            fail2!("check_exhaustive: bad variant in ctor")
+                            fail!("check_exhaustive: bad variant in ctor")
                         }
                     }
                 }
@@ -409,7 +409,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
                     return Some(variant(v.id));
                 }
             }
-            fail2!();
+            fail!();
         } else { None }
       }
       ty::ty_nil => None,
@@ -421,7 +421,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
               None => (),
               Some(val(const_bool(true))) => true_found = true,
               Some(val(const_bool(false))) => false_found = true,
-              _ => fail2!("impossible case")
+              _ => fail!("impossible case")
             }
         }
         if true_found && false_found { None }
@@ -511,10 +511,10 @@ fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match *ctor { variant(id) => id,
-          _ => fail2!("impossible case") };
+          _ => fail!("impossible case") };
         match ty::enum_variants(cx.tcx, eid).iter().find(|v| v.id == id ) {
             Some(v) => v.args.len(),
-            None => fail2!("impossible case")
+            None => fail!("impossible case")
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
@@ -585,7 +585,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 }
                             }
                             single => true,
-                            _ => fail2!("type error")
+                            _ => fail!("type error")
                         };
                         if match_ {
                             Some(r.tail().to_owned())
@@ -632,7 +632,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 }
                             }
                             single => true,
-                            _ => fail2!("type error")
+                            _ => fail!("type error")
                         };
                         if match_ {
                             Some(r.tail().to_owned())
@@ -739,7 +739,7 @@ fn specialize(cx: &MatchCheckCtxt,
                         }
                     }
                     single => true,
-                    _ => fail2!("type error")
+                    _ => fail!("type error")
                 };
                 if match_ { Some(r.tail().to_owned()) } else { None }
             }
@@ -748,7 +748,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     val(ref v) => (*v, *v),
                     range(ref lo, ref hi) => (*lo, *hi),
                     single => return Some(r.tail().to_owned()),
-                    _ => fail2!("type error")
+                    _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo);
                 let v_hi = eval_const_expr(cx.tcx, hi);

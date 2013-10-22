@@ -45,7 +45,7 @@ pub fn stmt_id(s: &Stmt) -> NodeId {
       StmtDecl(_, id) => id,
       StmtExpr(_, id) => id,
       StmtSemi(_, id) => id,
-      StmtMac(*) => fail2!("attempted to analyze unexpanded stmt")
+      StmtMac(*) => fail!("attempted to analyze unexpanded stmt")
     }
 }
 
@@ -72,7 +72,7 @@ pub fn def_id_of_def(d: Def) -> DefId {
         local_def(id)
       }
 
-      DefPrimTy(_) => fail2!()
+      DefPrimTy(_) => fail!()
     }
 }
 
@@ -735,7 +735,7 @@ pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
         }
         true => {
             match table.mark_memo.find(&key) {
-                None => fail2!("internal error: key disappeared 2013042901"),
+                None => fail!("internal error: key disappeared 2013042901"),
                 Some(idxptr) => {*idxptr}
             }
         }
@@ -762,7 +762,7 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
         }
         true => {
             match table.rename_memo.find(&key) {
-                None => fail2!("internal error: key disappeared 2013042902"),
+                None => fail!("internal error: key disappeared 2013042902"),
                 Some(idxptr) => {*idxptr}
             }
         }
@@ -795,9 +795,9 @@ pub fn get_sctable() -> @mut SCTable {
 
 /// print out an SCTable for debugging
 pub fn display_sctable(table : &SCTable) {
-    error2!("SC table:");
+    error!("SC table:");
     for (idx,val) in table.table.iter().enumerate() {
-        error2!("{:4u} : {:?}",idx,val);
+        error!("{:4u} : {:?}",idx,val);
     }
 }
 
@@ -859,7 +859,7 @@ pub fn resolve_internal(id : Ident,
                             resolvedthis
                         }
                     }
-                    IllegalCtxt() => fail2!("expected resolvable context, got IllegalCtxt")
+                    IllegalCtxt() => fail!("expected resolvable context, got IllegalCtxt")
                 }
             };
             resolve_table.insert(key,resolved);
@@ -900,7 +900,7 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
                     loopvar = tl;
                 }
             }
-            IllegalCtxt => fail2!("expected resolvable context, got IllegalCtxt")
+            IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
         }
     }
 }
@@ -911,7 +911,7 @@ pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
     let sctable = get_sctable();
     match sctable.table[ctxt] {
         ast::Mark(mrk,_) => mrk,
-        _ => fail2!("can't retrieve outer mark when outside is not a mark")
+        _ => fail!("can't retrieve outer mark when outside is not a mark")
     }
 }
 
@@ -1043,7 +1043,7 @@ mod test {
                     sc = tail;
                     continue;
                 }
-                IllegalCtxt => fail2!("expected resolvable context, got IllegalCtxt")
+                IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
             }
         }
     }

@@ -154,7 +154,7 @@ impl Context {
 /// rustpkg from a Rust target directory. This is part of a
 /// kludgy hack used to adjust the sysroot.
 pub fn in_target(sysroot: &Path) -> bool {
-    debug2!("Checking whether {} is in target", sysroot.display());
+    debug!("Checking whether {} is in target", sysroot.display());
     let mut p = sysroot.dir_path();
     p.set_filename("rustc");
     os::path_is_dir(&p)

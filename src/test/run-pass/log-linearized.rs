@@ -26,7 +26,7 @@ fn mk<T:'static>() -> @mut Smallintmap<T> {
 
 fn f<T,U:'static>() {
     let sim = mk::<U>();
-    error2!("{:?}", sim);
+    error!("{:?}", sim);
 }
 
 pub fn main() {

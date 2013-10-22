@@ -611,7 +611,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
                 detail: None
             }
         }
-        _ => fail2!()
+        _ => fail!()
     }
 }
 

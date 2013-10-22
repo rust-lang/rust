@@ -291,7 +291,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
 
     // Render all source files (this may turn into a giant no-op)
     {
-        info2!("emitting source files");
+        info!("emitting source files");
         let dst = cx.dst.join("src");
         mkdir(&dst);
         let dst = dst.join(crate.name.as_slice());
@@ -323,9 +323,9 @@ fn write(dst: Path, contents: &str) {
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) {
     do io::io_error::cond.trap(|err| {
-        error2!("Couldn't create directory `{}`: {}",
+        error!("Couldn't create directory `{}`: {}",
                 path.display(), err.desc);
-        fail2!()
+        fail!()
     }).inside {
         if !path.is_dir() {
             file::mkdir(path);
@@ -647,7 +647,7 @@ impl Context {
     /// sure it always points to the top (relatively)
     fn recurse<T>(&mut self, s: ~str, f: &fn(&mut Context) -> T) -> T {
         if s.len() == 0 {
-            fail2!("what {:?}", self);
+            fail!("what {:?}", self);
         }
         let prev = self.dst.clone();
         self.dst.push(s.as_slice());
@@ -679,7 +679,7 @@ impl Context {
         let workers = match os::getenv("RUSTDOC_WORKERS") {
             Some(s) => {
                 match from_str::<uint>(s) {
-                    Some(n) => n, None => fail2!("{} not a number", s)
+                    Some(n) => n, None => fail!("{} not a number", s)
                 }
             }
             None => 10,
@@ -974,7 +974,7 @@ fn document(w: &mut io::Writer, item: &clean::Item) {
 fn item_module(w: &mut io::Writer, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) {
     document(w, item);
-    debug2!("{:?}", items);
+    debug!("{:?}", items);
     let mut indices = vec::from_fn(items.len(), |i| i);
 
     fn lt(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> bool {
@@ -1013,12 +1013,12 @@ fn item_module(w: &mut io::Writer, cx: &Context,
         }
     }
 
-    debug2!("{:?}", indices);
+    debug!("{:?}", indices);
     do sort::quick_sort(indices) |&i1, &i2| {
         lt(&items[i1], &items[i2], i1, i2)
     }
 
-    debug2!("{:?}", indices);
+    debug!("{:?}", indices);
     let mut curty = "";
     for &idx in indices.iter() {
         let myitem = &items[idx];

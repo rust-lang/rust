@@ -17,13 +17,13 @@ fn checktrue(rs: bool) -> bool { assert!((rs)); return true; }
 pub fn main() { let k = checktrue; evenk(42, k); oddk(45, k); }
 
 fn evenk(n: int, k: extern fn(bool) -> bool) -> bool {
-    info2!("evenk");
-    info2!("{:?}", n);
+    info!("evenk");
+    info!("{:?}", n);
     if n == 0 { return k(true); } else { return oddk(n - 1, k); }
 }
 
 fn oddk(n: int, k: extern fn(bool) -> bool) -> bool {
-    info2!("oddk");
-    info2!("{:?}", n);
+    info!("oddk");
+    info!("{:?}", n);
     if n == 0 { return k(false); } else { return evenk(n - 1, k); }
 }

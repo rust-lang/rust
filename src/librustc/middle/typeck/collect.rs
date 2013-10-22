@@ -347,7 +347,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
         new_type_param_defs.push_all(*substd_type_param_defs);
 
-        debug2!("static method {} type_param_defs={} ty={}, substs={}",
+        debug!("static method {} type_param_defs={} ty={}, substs={}",
                m.def_id.repr(tcx),
                new_type_param_defs.repr(tcx),
                ty.repr(tcx),
@@ -453,7 +453,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                            trait_m: &ty::Method,
                            trait_substs: &ty::substs,
                            self_ty: ty::t) {
-    debug2!("compare_impl_method()");
+    debug!("compare_impl_method()");
     let infcx = infer::new_infer_ctxt(tcx);
 
     let impl_m = &cm.mty;
@@ -632,10 +632,10 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
     let impl_fty = {
-        debug2!("impl_fty (pre-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
+        debug!("impl_fty (pre-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
-    debug2!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
+    debug!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
     let trait_fty = {
         let num_trait_m_type_params = trait_m.generics.type_param_defs.len();
         let dummy_tps = do vec::from_fn(num_trait_m_type_params) |i| {
@@ -649,11 +649,11 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             self_ty: Some(self_ty),
             tps: vec::append(trait_tps, dummy_tps)
         };
-        debug2!("trait_fty (pre-subst): {} substs={}",
+        debug!("trait_fty (pre-subst): {} substs={}",
                trait_fty.repr(tcx), substs.repr(tcx));
         ty::subst(tcx, &substs, trait_fty)
     };
-    debug2!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
+    debug!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
 
     match infer::mk_subty(infcx, false, infer::MethodCompatCheck(cm.span),
                           impl_fty, trait_fty) {
@@ -844,7 +844,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(&it.id).map(|x| *x);
-    debug2!("convert: item {} with id {} rp {:?}",
+    debug!("convert: item {} with id {} rp {:?}",
            tcx.sess.str_of(it.ident), it.id, rp);
     match it.node {
       // These don't define types.
@@ -1120,7 +1120,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
             },
             ty: ty::mk_bare_fn(ccx.tcx, tofd)
         };
-        debug2!("type of {} (id {}) is {}",
+        debug!("type of {} (id {}) is {}",
                tcx.sess.str_of(it.ident),
                it.id,
                ppaux::ty_to_str(tcx, tpt.ty));
@@ -1174,8 +1174,8 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
           return tpt;
       }
       ast::item_impl(*) | ast::item_mod(_) |
-      ast::item_foreign_mod(_) => fail2!(),
-      ast::item_mac(*) => fail2!("item macros unimplemented")
+      ast::item_foreign_mod(_) => fail!(),
+      ast::item_mac(*) => fail!("item macros unimplemented")
     }
 }
 
@@ -1222,7 +1222,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                         def_id: local_def(param.id),
                         bounds: bounds
                     };
-                    debug2!("def for param: {}", def.repr(ccx.tcx));
+                    debug!("def for param: {}", def.repr(ccx.tcx));
                     ccx.tcx.ty_param_defs.insert(param.id, def);
                     def
                 }

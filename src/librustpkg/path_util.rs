@@ -25,7 +25,7 @@ use messages::*;
 pub fn default_workspace() -> Path {
     let p = rust_path();
     if p.is_empty() {
-        fail2!("Empty RUST_PATH");
+        fail!("Empty RUST_PATH");
     }
     let result = p[0];
     if !os::path_is_dir(&result) {
@@ -88,9 +88,9 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     };
 
     if found.is_some() {
-        debug2!("Found {} in {}", pkgid.to_str(), workspace.display());
+        debug!("Found {} in {}", pkgid.to_str(), workspace.display());
     } else {
-        debug2!("Didn't find {} in {}", pkgid.to_str(), workspace.display());
+        debug!("Didn't find {} in {}", pkgid.to_str(), workspace.display());
     }
     found
 }
@@ -123,13 +123,13 @@ fn target_bin_dir(workspace: &Path) -> Path {
 pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = target_build_dir(workspace);
     result = mk_output_path(Main, Build, pkgid, result);
-    debug2!("built_executable_in_workspace: checking whether {} exists",
+    debug!("built_executable_in_workspace: checking whether {} exists",
            result.display());
     if os::path_exists(&result) {
         Some(result)
     }
     else {
-        debug2!("built_executable_in_workspace: {} does not exist", result.display());
+        debug!("built_executable_in_workspace: {} does not exist", result.display());
         None
     }
 }
@@ -150,13 +150,13 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
     let mut result = target_build_dir(workspace);
     // should use a target-specific subdirectory
     result = mk_output_path(what, Build, pkgid, result);
-    debug2!("output_in_workspace: checking whether {} exists",
+    debug!("output_in_workspace: checking whether {} exists",
            result.display());
     if os::path_exists(&result) {
         Some(result)
     }
     else {
-        error2!("output_in_workspace: {} does not exist", result.display());
+        error!("output_in_workspace: {} does not exist", result.display());
         None
     }
 }
@@ -186,13 +186,13 @@ pub fn installed_library_in_workspace(pkg_path: &Path, workspace: &Path) -> Opti
 /// `short_name` is taken as the link name of the library.
 pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
                         workspace: &Path, prefix: &str, version: &Version) -> Option<Path> {
-    debug2!("library_in_workspace: checking whether a library named {} exists",
+    debug!("library_in_workspace: checking whether a library named {} exists",
            short_name);
 
     // We don't know what the hash is, so we have to search through the directory
     // contents
 
-    debug2!("short_name = {} where = {:?} workspace = {} \
+    debug!("short_name = {} where = {:?} workspace = {} \
             prefix = {}", short_name, where, workspace.display(), prefix);
 
     let dir_to_search = match where {
@@ -209,20 +209,20 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
-    debug2!("Listing directory {}", dir_to_search.display());
+    debug!("Listing directory {}", dir_to_search.display());
     let dir_contents = os::list_dir(dir_to_search);
-    debug2!("dir has {:?} entries", dir_contents.len());
+    debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
     let lib_filetype = os::consts::DLL_EXTENSION;
 
-    debug2!("lib_prefix = {} and lib_filetype = {}", lib_prefix, lib_filetype);
+    debug!("lib_prefix = {} and lib_filetype = {}", lib_prefix, lib_filetype);
 
     // Find a filename that matches the pattern:
     // (lib_prefix)-hash-(version)(lib_suffix)
     let mut libraries = do dir_contents.iter().filter |p| {
         let extension = p.extension_str();
-        debug2!("p = {}, p's extension is {:?}", p.display(), extension);
+        debug!("p = {}, p's extension is {:?}", p.display(), extension);
         match extension {
             None => false,
             Some(ref s) => lib_filetype == *s
@@ -243,12 +243,12 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
             if f_name.is_empty() { break; }
             match f_name.rfind('-') {
                 Some(i) => {
-                    debug2!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
+                    debug!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
                     match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
                        Some(ref found_vers) if version == found_vers => {
                            match f_name.slice(0, i).rfind('-') {
                                Some(j) => {
-                                   debug2!("Maybe {} equals {}", f_name.slice(0, j), lib_prefix);
+                                   debug!("Maybe {} equals {}", f_name.slice(0, j), lib_prefix);
                                    if f_name.slice(0, j) == lib_prefix {
                                        result_filename = Some(p_path.clone());
                                    }
@@ -266,7 +266,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     } // for
 
     if result_filename.is_none() {
-        debug2!("warning: library_in_workspace didn't find a library in {} for {}",
+        debug!("warning: library_in_workspace didn't find a library in {} for {}",
                   dir_to_search.display(), short_name);
     }
 
@@ -274,7 +274,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     // (if result_filename != None)
     let abs_path = do result_filename.map |result_filename| {
         let absolute_path = dir_to_search.join(&result_filename);
-        debug2!("result_filename = {}", absolute_path.display());
+        debug!("result_filename = {}", absolute_path.display());
         absolute_path
     };
 
@@ -348,7 +348,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 
     let mut result = target_build_dir(workspace);
     result.push(&pkgid.path);
-    debug2!("Creating build dir {} for package id {}", result.display(),
+    debug!("Creating build dir {} for package id {}", result.display(),
            pkgid.to_str());
     if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
@@ -372,7 +372,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
         // and if we're just building, it goes in a package-specific subdir
         Build => workspace.join(&pkg_id.path)
     };
-    debug2!("[{:?}:{:?}] mk_output_path: short_name = {}, path = {}", what, where,
+    debug!("[{:?}:{:?}] mk_output_path: short_name = {}, path = {}", what, where,
            if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },
            dir.display());
     let mut output_path = match what {
@@ -390,7 +390,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
     if !output_path.is_absolute() {
         output_path = os::getcwd().join(&output_path);
     }
-    debug2!("mk_output_path: returning {}", output_path.display());
+    debug!("mk_output_path: returning {}", output_path.display());
     output_path
 }
 
@@ -431,13 +431,13 @@ pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {
         // Note that this only matches if the package ID being searched for
         // has a name that's a single component
         if dir.ends_with_path(&p.path) || dir.ends_with_path(&versionize(&p.path, &p.version)) {
-            debug2!("In find_dir_using_rust_path_hack: checking dir {}", dir.display());
+            debug!("In find_dir_using_rust_path_hack: checking dir {}", dir.display());
             if dir_has_crate_file(dir) {
-                debug2!("Did find id {} in dir {}", p.to_str(), dir.display());
+                debug!("Did find id {} in dir {}", p.to_str(), dir.display());
                 return Some(dir.clone());
             }
         }
-        debug2!("Didn't find id {} in dir {}", p.to_str(), dir.display())
+        debug!("Didn't find id {} in dir {}", p.to_str(), dir.display())
     }
     None
 }

@@ -159,7 +159,7 @@ fn take_nonempty_prefix(rdr: @io::Reader,
     if buf.is_empty() {
         bad_parse::cond.raise(())
     }
-    debug2!("extracted nonempty prefix: {}", buf);
+    debug!("extracted nonempty prefix: {}", buf);
     (buf, ch)
 }
 
@@ -235,7 +235,7 @@ pub fn parse(s: &str) -> Option<Version> {
     }
     let s = s.trim();
     let mut bad = false;
-    do bad_parse::cond.trap(|_| { debug2!("bad"); bad = true }).inside {
+    do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside {
         do io::with_str_reader(s) |rdr| {
             let v = parse_reader(rdr);
             if bad || v.to_str() != s.to_owned() {

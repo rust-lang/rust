@@ -14,7 +14,7 @@
 type compare<T> = extern "Rust" fn(T, T) -> bool;
 
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
-  let actual: T = match true { true => { expected.clone() }, _ => fail2!("wat") };
+  let actual: T = match true { true => { expected.clone() }, _ => fail!("wat") };
     assert!((eq(expected, actual)));
 }
 

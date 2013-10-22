@@ -12,7 +12,7 @@ struct X { x: () }
 
 impl Drop for X {
     fn drop(&mut self) {
-        error2!("destructor runs");
+        error!("destructor runs");
     }
 }
 
@@ -20,6 +20,6 @@ fn main() {
     let x = Some(X { x: () });
     match x {
         Some(ref _y @ _z) => { }, //~ ERROR cannot bind by-move and by-ref in the same pattern
-        None => fail2!()
+        None => fail!()
     }
 }

@@ -29,7 +29,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
     match ccx.external.find(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
-            debug2!("maybe_instantiate_inline({}): already inline as node id {}",
+            debug!("maybe_instantiate_inline({}): already inline as node id {}",
                    ty::item_path_str(ccx.tcx, fn_id), node_id);
             return local_def(node_id);
         }
@@ -141,7 +141,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
                   _ => {
                       let self_ty = ty::node_id_to_type(ccx.tcx,
                                                         mth.self_id);
-                      debug2!("calling inline trans_fn with self_ty {}",
+                      debug!("calling inline trans_fn with self_ty {}",
                              ty_to_str(ccx.tcx, self_ty));
                       match mth.explicit_self.node {
                           ast::sty_value => impl_self(self_ty, ty::ByRef),

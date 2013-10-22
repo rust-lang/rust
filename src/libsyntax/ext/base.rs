@@ -540,11 +540,11 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // names? I think not.
     // delaying implementing this....
     pub fn each_key (&self, _f: &fn (&K)->bool) {
-        fail2!("unimplemented 2013-02-15T10:01");
+        fail!("unimplemented 2013-02-15T10:01");
     }
 
     pub fn each_value (&self, _f: &fn (&V) -> bool) {
-        fail2!("unimplemented 2013-02-15T10:02");
+        fail!("unimplemented 2013-02-15T10:02");
     }
 
     // Returns a copy of the value that the name maps to.
@@ -587,7 +587,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
                 if satisfies_pred(map,&n,pred) {
                     map.insert(key,ext);
                 } else {
-                    fail2!("expected map chain containing satisfying frame")
+                    fail!("expected map chain containing satisfying frame")
                 }
             },
             ConsMapChain (~ref mut map, rest) => {

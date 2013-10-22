@@ -113,13 +113,13 @@ pub fn represent_node(bcx: @mut Block, node: ast::NodeId) -> @Repr {
 
 /// Decides how to represent a given type.
 pub fn represent_type(cx: &mut CrateContext, t: ty::t) -> @Repr {
-    debug2!("Representing: {}", ty_to_str(cx.tcx, t));
+    debug!("Representing: {}", ty_to_str(cx.tcx, t));
     match cx.adt_reprs.find(&t) {
         Some(repr) => return *repr,
         None => { }
     }
     let repr = @represent_type_uncached(cx, t);
-    debug2!("Represented as: {:?}", repr)
+    debug!("Represented as: {:?}", repr)
     cx.adt_reprs.insert(t, repr);
     return repr;
 }

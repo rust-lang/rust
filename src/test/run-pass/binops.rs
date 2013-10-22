@@ -81,7 +81,7 @@ fn test_class() {
   let mut r = p(1, 2);
 
   unsafe {
-  error2!("q = {:x}, r = {:x}",
+  error!("q = {:x}, r = {:x}",
          (::std::cast::transmute::<*p, uint>(&q)),
          (::std::cast::transmute::<*p, uint>(&r)));
   }

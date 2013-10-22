@@ -19,5 +19,5 @@ pub fn main() {
     let (po, ch) = comm::stream();
     ch.send(42);
     let r = po.recv();
-    error2!("{:?}", r);
+    error!("{:?}", r);
 }

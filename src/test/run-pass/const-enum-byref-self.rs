@@ -15,7 +15,7 @@ impl E {
     pub fn method(&self) {
         match *self {
             V => {}
-            VV(*) => fail2!()
+            VV(*) => fail!()
         }
     }
 }

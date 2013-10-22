@@ -29,7 +29,7 @@ pub fn get_os(triple: &str) -> &'static str {
             return os
         }
     }
-    fail2!("Cannot determine OS from triple");
+    fail!("Cannot determine OS from triple");
 }
 
 pub fn make_new_path(path: &str) -> ~str {
@@ -63,6 +63,6 @@ pub fn path_div() -> ~str { ~":" }
 pub fn path_div() -> ~str { ~";" }
 
 pub fn logv(config: &config, s: ~str) {
-    debug2!("{}", s);
+    debug!("{}", s);
     if config.verbose { io::println(s); }
 }

@@ -14,7 +14,7 @@ fn main() {
         Some(ref m) => { //~ ERROR borrowed value does not live long enough
             msg = m;
         },
-        None => { fail2!() }
+        None => { fail!() }
     }
     println(*msg);
 }

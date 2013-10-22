@@ -40,7 +40,7 @@ impl Writer for MemWriter {
 impl Seek for MemWriter {
     fn tell(&self) -> u64 { self.buf.len() as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
 impl Decorator<~[u8]> for MemWriter {
@@ -102,7 +102,7 @@ impl Reader for MemReader {
 impl Seek for MemReader {
     fn tell(&self) -> u64 { self.pos as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
 impl Decorator<~[u8]> for MemReader {
@@ -143,15 +143,15 @@ impl<'self> BufWriter<'self> {
 }
 
 impl<'self> Writer for BufWriter<'self> {
-    fn write(&mut self, _buf: &[u8]) { fail2!() }
+    fn write(&mut self, _buf: &[u8]) { fail!() }
 
-    fn flush(&mut self) { fail2!() }
+    fn flush(&mut self) { fail!() }
 }
 
 impl<'self> Seek for BufWriter<'self> {
-    fn tell(&self) -> u64 { fail2!() }
+    fn tell(&self) -> u64 { fail!() }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
 
@@ -193,7 +193,7 @@ impl<'self> Reader for BufReader<'self> {
 impl<'self> Seek for BufReader<'self> {
     fn tell(&self) -> u64 { self.pos as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail2!() }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
 ///Calls a function with a MemWriter and returns

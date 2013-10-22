@@ -392,7 +392,7 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
                 }
             }
             // Fail so the process returns a failure code
-            fail2!();
+            fail!();
         }
     }
 }

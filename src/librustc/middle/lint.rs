@@ -359,7 +359,7 @@ impl Context {
                 return *k;
             }
         }
-        fail2!("unregistered lint {:?}", lint);
+        fail!("unregistered lint {:?}", lint);
     }
 
     fn span_lint(&self, lint: lint, span: Span, msg: &str) {
@@ -380,7 +380,7 @@ impl Context {
                 format!("{} [-{} {}]", msg,
                     match level {
                         warn => 'W', deny => 'D', forbid => 'F',
-                        allow => fail2!()
+                        allow => fail!()
                     }, self.lint_to_str(lint).replace("_", "-"))
             },
             Node(src) => {
@@ -391,7 +391,7 @@ impl Context {
         match level {
             warn =>          { self.tcx.sess.span_warn(span, msg); }
             deny | forbid => { self.tcx.sess.span_err(span, msg);  }
-            allow => fail2!(),
+            allow => fail!(),
         }
 
         for &span in note.iter() {
@@ -526,7 +526,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
             ast::BiGt => v >= min,
             ast::BiGe => v > min,
             ast::BiEq | ast::BiNe => v >= min && v <= max,
-            _ => fail2!()
+            _ => fail!()
         }
     }
 
@@ -582,7 +582,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                         ast::lit_int_unsuffixed(v) => v,
                         _ => return true
                     },
-                    _ => fail2!()
+                    _ => fail!()
                 };
                 is_valid(norm_binop, lit_val, min, max)
             }
@@ -595,7 +595,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                         ast::lit_int_unsuffixed(v) => v as u64,
                         _ => return true
                     },
-                    _ => fail2!()
+                    _ => fail!()
                 };
                 is_valid(norm_binop, lit_val, min, max)
             }

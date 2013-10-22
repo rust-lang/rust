@@ -15,7 +15,7 @@ fn main() {
     {
         let _b = @0;
         {
-            fail2!();
+            fail!();
         }
     }
 }

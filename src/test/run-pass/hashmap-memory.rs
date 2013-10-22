@@ -47,11 +47,11 @@ mod map_reduce {
                 return;
             }
             let (pp, cc) = stream();
-            error2!("sending find_reducer");
+            error!("sending find_reducer");
             ctrl.send(find_reducer(key.as_bytes().to_owned(), cc));
-            error2!("receiving");
+            error!("receiving");
             let c = pp.recv();
-            error2!("{:?}", c);
+            error!("{:?}", c);
             im.insert(key, c);
         }
 

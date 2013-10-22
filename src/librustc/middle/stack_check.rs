@@ -123,20 +123,20 @@ fn stack_check_fn<'a>(v: &mut StackCheckVisitor,
         }
     };
     let new_cx = Context {safe_stack: safe_stack};
-    debug2!("stack_check_fn(safe_stack={}, id={:?})", safe_stack, id);
+    debug!("stack_check_fn(safe_stack={}, id={:?})", safe_stack, id);
     visit::walk_fn(v, fk, decl, body, sp, id, new_cx);
 }
 
 fn stack_check_expr<'a>(v: &mut StackCheckVisitor,
                         expr: @ast::Expr,
                         cx: Context) {
-    debug2!("stack_check_expr(safe_stack={}, expr={})",
+    debug!("stack_check_expr(safe_stack={}, expr={})",
            cx.safe_stack, expr.repr(v.tcx));
     if !cx.safe_stack {
         match expr.node {
             ast::ExprCall(callee, _, _) => {
                 let callee_ty = ty::expr_ty(v.tcx, callee);
-                debug2!("callee_ty={}", callee_ty.repr(v.tcx));
+                debug!("callee_ty={}", callee_ty.repr(v.tcx));
                 match ty::get(callee_ty).sty {
                     ty::ty_bare_fn(ref fty) => {
                         if !fty.abis.is_rust() && !fty.abis.is_intrinsic() {

@@ -54,12 +54,12 @@ actually operates on the path; it is only intended for display.
 
 ```rust
 let mut path = Path::new("/tmp/path");
-debug2!("path: {}", path.display());
+debug!("path: {}", path.display());
 path.set_filename("foo");
 path.push("bar");
-debug2!("new path: {}", path.display());
+debug!("new path: {}", path.display());
 let b = std::os::path_exists(&path);
-debug2!("path exists: {}", b);
+debug!("path exists: {}", b);
 ```
 
 */

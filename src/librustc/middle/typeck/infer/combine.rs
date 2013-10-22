@@ -270,7 +270,7 @@ pub trait Combine {
     fn vstores(&self, vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
 
-        debug2!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
+        debug!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
             (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
@@ -295,7 +295,7 @@ pub trait Combine {
                     b: ty::TraitStore)
                  -> cres<ty::TraitStore> {
 
-        debug2!("{}.trait_stores(a={:?}, b={:?})", self.tag(), a, b);
+        debug!("{}.trait_stores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
             (ty::RegionTraitStore(a_r), ty::RegionTraitStore(b_r)) => {
@@ -365,7 +365,7 @@ pub fn eq_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> ures {
 
 pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
                           -> ures {
-    debug2!("eq_regions({}, {})",
+    debug!("eq_regions({}, {})",
            a.inf_str(this.infcx()),
            b.inf_str(this.infcx()));
     let sub = this.sub();

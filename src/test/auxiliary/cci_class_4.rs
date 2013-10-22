@@ -21,11 +21,11 @@ pub mod kitties {
 
         pub fn eat(&mut self) -> bool {
             if self.how_hungry > 0 {
-                error2!("OM NOM NOM");
+                error!("OM NOM NOM");
                 self.how_hungry -= 2;
                 return true;
             } else {
-                error2!("Not hungry!");
+                error!("Not hungry!");
                 return false;
             }
         }
@@ -33,7 +33,7 @@ pub mod kitties {
 
     impl cat {
         pub fn meow(&mut self) {
-            error2!("Meow");
+            error!("Meow");
             self.meows += 1u;
             if self.meows % 5u == 0u {
                 self.how_hungry += 1;
