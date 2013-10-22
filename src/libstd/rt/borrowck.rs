@@ -29,9 +29,9 @@ static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 #[deriving(Eq)]
 pub struct BorrowRecord {
-    box: *mut raw::Box<()>,
+    priv box: *mut raw::Box<()>,
     file: *c_char,
-    line: size_t
+    priv line: size_t
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {

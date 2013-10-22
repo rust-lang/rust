@@ -490,7 +490,6 @@ pub struct Formatter<'self> {
 
     /// Output buffer.
     buf: &'self mut io::Writer,
-
     priv curarg: vec::VecIterator<'self, Argument<'self>>,
     priv args: &'self [Argument<'self>],
 }

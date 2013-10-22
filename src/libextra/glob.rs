@@ -480,13 +480,13 @@ pub struct MatchOptions {
      * currently only considers upper/lower case relationships between ASCII characters,
      * but in future this might be extended to work with Unicode.
      */
-    case_sensitive: bool,
+    priv case_sensitive: bool,
 
     /**
      * If this is true then path-component separator characters (e.g. `/` on Posix)
      * must be matched by a literal `/`, rather than by `*` or `?` or `[...]`
      */
-    require_literal_separator: bool,
+    priv require_literal_separator: bool,
 
     /**
      * If this is true then paths that contain components that start with a `.` will
@@ -494,7 +494,7 @@ pub struct MatchOptions {
      * will not match. This is useful because such files are conventionally considered
      * hidden on Unix systems and it might be desirable to skip them when listing files.
      */
-    require_literal_leading_dot: bool
+    priv require_literal_leading_dot: bool
 }
 
 impl MatchOptions {

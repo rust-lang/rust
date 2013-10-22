@@ -48,14 +48,14 @@ struct Packet<T> {
 
 // A one-shot channel.
 pub struct ChanOne<T> {
-    void_packet: *mut Void,
-    suppress_finalize: bool
+    priv void_packet: *mut Void,
+    priv suppress_finalize: bool
 }
 
 /// A one-shot port.
 pub struct PortOne<T> {
-    void_packet: *mut Void,
-    suppress_finalize: bool
+    priv void_packet: *mut Void,
+    priv suppress_finalize: bool
 }
 
 pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {

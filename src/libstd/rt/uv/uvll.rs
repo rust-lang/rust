@@ -134,26 +134,26 @@ pub type uv_pipe_t = c_void;
 
 pub struct uv_timespec_t {
     tv_sec: libc::c_long,
-    tv_nsec: libc::c_long
+    priv tv_nsec: libc::c_long
 }
 
 pub struct uv_stat_t {
-    st_dev: libc::uint64_t,
+    priv st_dev: libc::uint64_t,
     st_mode: libc::uint64_t,
-    st_nlink: libc::uint64_t,
-    st_uid: libc::uint64_t,
-    st_gid: libc::uint64_t,
-    st_rdev: libc::uint64_t,
-    st_ino: libc::uint64_t,
+    priv st_nlink: libc::uint64_t,
+    priv st_uid: libc::uint64_t,
+    priv st_gid: libc::uint64_t,
+    priv st_rdev: libc::uint64_t,
+    priv st_ino: libc::uint64_t,
     st_size: libc::uint64_t,
-    st_blksize: libc::uint64_t,
-    st_blocks: libc::uint64_t,
-    st_flags: libc::uint64_t,
-    st_gen: libc::uint64_t,
+    priv st_blksize: libc::uint64_t,
+    priv st_blocks: libc::uint64_t,
+    priv st_flags: libc::uint64_t,
+    priv st_gen: libc::uint64_t,
     st_atim: uv_timespec_t,
     st_mtim: uv_timespec_t,
     st_ctim: uv_timespec_t,
-    st_birthtim: uv_timespec_t
+    priv st_birthtim: uv_timespec_t
 }
 
 impl uv_stat_t {
@@ -231,37 +231,37 @@ pub type socklen_t = c_int;
 #[cfg(target_os = "android")]
 #[cfg(target_os = "linux")]
 pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: socklen_t,
+    priv ai_flags: c_int,
+    priv ai_family: c_int,
+    priv ai_socktype: c_int,
+    priv ai_protocol: c_int,
+    priv ai_addrlen: socklen_t,
     ai_addr: *sockaddr,
-    ai_canonname: *char,
+    priv ai_canonname: *char,
     ai_next: *addrinfo
 }
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: socklen_t,
-    ai_canonname: *char,
+    priv ai_flags: c_int,
+    priv ai_family: c_int,
+    priv ai_socktype: c_int,
+    priv ai_protocol: c_int,
+    priv ai_addrlen: socklen_t,
+    priv ai_canonname: *char,
     ai_addr: *sockaddr,
     ai_next: *addrinfo
 }
 
 #[cfg(windows)]
 pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: size_t,
-    ai_canonname: *char,
+    priv ai_flags: c_int,
+    priv ai_family: c_int,
+    priv ai_socktype: c_int,
+    priv ai_protocol: c_int,
+    priv ai_addrlen: size_t,
+    priv ai_canonname: *char,
     ai_addr: *sockaddr,
     ai_next: *addrinfo
 }
@@ -960,8 +960,8 @@ pub unsafe fn freeaddrinfo(ai: *addrinfo) {
 }
 
 pub struct uv_err_data {
-    err_name: ~str,
-    err_msg: ~str,
+    priv err_name: ~str,
+    priv err_msg: ~str,
 }
 
 extern {

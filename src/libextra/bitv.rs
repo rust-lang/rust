@@ -226,9 +226,9 @@ enum Op {Union, Intersect, Assign, Difference}
 #[deriving(Clone)]
 pub struct Bitv {
     /// Internal representation of the bit vector (small or large)
-    rep: BitvVariant,
+    priv rep: BitvVariant,
     /// The number of valid bits in the internal representation
-    nbits: uint
+    priv nbits: uint
 }
 
 fn die() -> ! {

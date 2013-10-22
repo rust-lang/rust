@@ -102,9 +102,9 @@ impl TestFn {
 
 // Structure passed to BenchFns
 pub struct BenchHarness {
-    iterations: u64,
-    ns_start: u64,
-    ns_end: u64,
+    priv iterations: u64,
+    priv ns_start: u64,
+    priv ns_end: u64,
     bytes: u64
 }
 
@@ -124,8 +124,8 @@ pub struct TestDescAndFn {
 
 #[deriving(Clone, Encodable, Decodable, Eq)]
 pub struct Metric {
-    value: f64,
-    noise: f64
+    priv value: f64,
+    priv noise: f64
 }
 
 #[deriving(Eq)]
@@ -322,8 +322,8 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
 
 #[deriving(Clone, Eq)]
 pub struct BenchSamples {
-    ns_iter_summ: stats::Summary,
-    mb_s: uint
+    priv ns_iter_summ: stats::Summary,
+    priv mb_s: uint
 }
 
 #[deriving(Clone, Eq)]

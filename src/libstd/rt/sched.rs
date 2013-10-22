@@ -66,26 +66,26 @@ pub struct Scheduler {
     event_loop: ~EventLoopObject,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
-    sched_task: Option<~Task>,
+    priv sched_task: Option<~Task>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
-    cleanup_job: Option<CleanupJob>,
+    priv cleanup_job: Option<CleanupJob>,
     /// Should this scheduler run any task, or only pinned tasks?
     run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
     /// them to.
-    friend_handle: Option<SchedHandle>,
+    priv friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A toggleable idle callback
-    idle_callback: Option<~PausibleIdleCallback>,
+    priv idle_callback: Option<~PausibleIdleCallback>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
     /// will yield.
-    yield_check_count: uint,
+    priv yield_check_count: uint,
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
-    steal_for_yield: bool
+    priv steal_for_yield: bool
 }
 
 /// An indication of how hard to work on a given operation, the difference

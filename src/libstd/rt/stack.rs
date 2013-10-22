@@ -15,8 +15,8 @@ use ops::Drop;
 use libc::{c_uint, uintptr_t};
 
 pub struct StackSegment {
-    buf: ~[u8],
-    valgrind_id: c_uint
+    priv buf: ~[u8],
+    priv valgrind_id: c_uint
 }
 
 impl StackSegment {

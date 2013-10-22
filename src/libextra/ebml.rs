@@ -50,7 +50,7 @@ impl Doc {
 }
 
 pub struct TaggedDoc {
-    tag: uint,
+    priv tag: uint,
     doc: Doc,
 }
 

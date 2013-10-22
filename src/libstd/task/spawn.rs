@@ -308,10 +308,10 @@ fn each_ancestor(list:        &mut AncestorList,
 // One of these per task.
 pub struct Taskgroup {
     // List of tasks with whose fates this one's is intertwined.
-    tasks:      TaskGroupArc, // 'none' means the group has failed.
+    priv tasks:      TaskGroupArc, // 'none' means the group has failed.
     // Lists of tasks who will kill us if they fail, but whom we won't kill.
-    ancestors:  AncestorList,
-    notifier:   Option<AutoNotify>,
+    priv ancestors:  AncestorList,
+    priv notifier:   Option<AutoNotify>,
 }
 
 impl Drop for Taskgroup {

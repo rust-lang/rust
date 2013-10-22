@@ -119,7 +119,7 @@ pub struct Opt {
     /// How often it can occur
     occur: Occur,
     /// Which options it aliases
-    aliases: ~[Opt],
+    priv aliases: ~[Opt],
 }
 
 /// Describes wether an option is given at all or has a value.
@@ -134,9 +134,9 @@ enum Optval {
 #[deriving(Clone, Eq)]
 pub struct Matches {
     /// Options that matched
-    opts: ~[Opt],
+    priv opts: ~[Opt],
     /// Values of the Options that matched
-    vals: ~[~[Optval]],
+    priv vals: ~[~[Optval]],
     /// Free string fragments
     free: ~[~str]
 }
