@@ -11,7 +11,7 @@
 extern mod rustpkg;
 extern mod rustc;
 
-use std::{io, os, task};
+use std::{os, task};
 use rustpkg::api;
 use rustpkg::version::NoVersion;
 use rustpkg::workcache_support::digest_file_with_date;
@@ -36,7 +36,7 @@ pub fn main() {
     }
 
     if args[2] != ~"install" {
-        io::println(format!("Warning: I don't know how to {}", args[2]));
+        println(format!("Warning: I don't know how to {}", args[2]));
         return;
     }
 

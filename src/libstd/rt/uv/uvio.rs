@@ -547,10 +547,10 @@ impl IoFactory for UvIoFactory {
         Ok(~UvTimer::new(watcher, home) as ~RtioTimer)
     }
 
-    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream {
+    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream {
         let loop_ = Loop {handle: self.uv_loop().native_handle()};
         let home = get_handle_to_current_scheduler!();
-        ~UvFileStream::new(loop_, fd, close_on_drop, home) as ~RtioFileStream
+        ~UvFileStream::new(loop_, fd, close, home) as ~RtioFileStream
     }
 
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
@@ -590,7 +590,7 @@ impl IoFactory for UvIoFactory {
                         let home = get_handle_to_current_scheduler!();
                         let fd = req.get_result() as c_int;
                         let fs = ~UvFileStream::new(
-                            loop_, fd, true, home) as ~RtioFileStream;
+                            loop_, fd, CloseSynchronously, home) as ~RtioFileStream;
                         let res = Ok(fs);
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler: ~Scheduler = Local::take();
@@ -1482,8 +1482,8 @@ impl RtioTimer for UvTimer {
 pub struct UvFileStream {
     priv loop_: Loop,
     priv fd: c_int,
-    priv close_on_drop: bool,
-    priv home: SchedHandle
+    priv close: CloseBehavior,
+    priv home: SchedHandle,
 }
 
 impl HomingIO for UvFileStream {
@@ -1491,13 +1491,13 @@ impl HomingIO for UvFileStream {
 }
 
 impl UvFileStream {
-    fn new(loop_: Loop, fd: c_int, close_on_drop: bool,
+    fn new(loop_: Loop, fd: c_int, close: CloseBehavior,
            home: SchedHandle) -> UvFileStream {
         UvFileStream {
             loop_: loop_,
             fd: fd,
-            close_on_drop: close_on_drop,
-            home: home
+            close: close,
+            home: home,
         }
     }
     fn base_read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError> {
@@ -1517,9 +1517,9 @@ impl UvFileStream {
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
-                };
-            };
-        };
+                }
+            }
+        }
         result_cell.take()
     }
     fn base_write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError> {
@@ -1539,9 +1539,9 @@ impl UvFileStream {
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
-                };
-            };
-        };
+                }
+            }
+        }
         result_cell.take()
     }
     fn seek_common(&mut self, pos: i64, whence: c_int) ->
@@ -1564,16 +1564,23 @@ impl UvFileStream {
 
 impl Drop for UvFileStream {
     fn drop(&mut self) {
-        if self.close_on_drop {
-            do self.home_for_io_with_sched |self_, scheduler| {
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    let task_cell = Cell::new(task);
-                    let close_req = file::FsRequest::new();
-                    do close_req.close(&self_.loop_, self_.fd) |_,_| {
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    };
-                };
+        match self.close {
+            DontClose => {}
+            CloseAsynchronously => {
+                let close_req = file::FsRequest::new();
+                do close_req.close(&self.loop_, self.fd) |_,_| {}
+            }
+            CloseSynchronously => {
+                do self.home_for_io_with_sched |self_, scheduler| {
+                    do scheduler.deschedule_running_task_and_then |_, task| {
+                        let task_cell = Cell::new(task);
+                        let close_req = file::FsRequest::new();
+                        do close_req.close(&self_.loop_, self_.fd) |_,_| {
+                            let scheduler: ~Scheduler = Local::take();
+                            scheduler.resume_blocked_task_immediately(task_cell.take());
+                        }
+                    }
+                }
             }
         }
     }
@@ -1750,7 +1757,6 @@ impl Drop for UvTTY {
         // scheduler isn't available, so we can't do the normal "take the
         // scheduler and resume once close is done". Instead close operations on
         // a TTY are asynchronous.
-
         self.tty.close_async();
     }
 }
@@ -2465,7 +2471,7 @@ fn uvio_naive_print(input: &str) {
         use libc::{STDOUT_FILENO};
         let io = local_io();
         {
-            let mut fd = io.fs_from_raw_fd(STDOUT_FILENO, false);
+            let mut fd = io.fs_from_raw_fd(STDOUT_FILENO, DontClose);
             let write_buf = input.as_bytes();
             fd.write(write_buf);
         }
