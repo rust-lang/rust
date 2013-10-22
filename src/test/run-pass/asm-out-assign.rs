@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast #[feature] doesn't work with check-fast
+#[feature(asm)];
+
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
 pub fn main() {
