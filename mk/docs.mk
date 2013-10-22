@@ -1,4 +1,4 @@
-# Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -24,7 +24,7 @@ doc/rust.css: rust.css
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-doc/manual.css: manual.css
+doc/manual.inc: manual.inc
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
@@ -41,17 +41,16 @@ endif
 ifneq ($(NO_DOCS),1)
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
+doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	"$(CFG_PANDOC)" \
          --standalone --toc \
          --section-divs \
          --number-sections \
-         --from=markdown --to=html \
-         --css=rust.css \
-         --css=manual.css \
-	     --include-before-body=doc/version_info.html \
+         --from=markdown --to=html5 \
+         --css=rust.css --include-in-header=doc/manual.inc \
+         --include-before-body=doc/version_info.html \
          --output=$@
 
 DOCS += doc/rust.tex
@@ -61,22 +60,32 @@ doc/rust.tex: rust.md doc/version.md
 	"$(CFG_PANDOC)" \
          --standalone --toc \
          --number-sections \
-	     --include-before-body=doc/version.md \
+         --include-before-body=doc/version.md \
+         --from=markdown --to=latex \
+         --output=$@
+
+DOCS += doc/tutorial.tex
+doc/tutorial.tex: tutorial.md doc/version.md
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
+	"$(CFG_PANDOC)" \
+         --standalone --toc \
+         --number-sections \
+         --include-before-body=doc/version.md \
          --from=markdown --to=latex \
          --output=$@
 
 DOCS += doc/rustpkg.html
-doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css doc/manual.css
+doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css doc/manual.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	"$(CFG_PANDOC)" \
          --standalone --toc \
          --section-divs \
          --number-sections \
-         --from=markdown --to=html \
-         --css=rust.css \
-         --css=manual.css \
-	     --include-before-body=doc/version_info.html \
+         --from=markdown --to=html5 \
+         --css=rust.css --include-in-header=doc/manual.inc \
+         --include-before-body=doc/version_info.html \
          --output=$@
 
 DOCS += doc/tutorial.html
@@ -85,8 +94,8 @@ doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS_L10N += doc/l10n/ja/tutorial.html
@@ -95,8 +104,8 @@ doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rus
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight doc/l10n/ja/tutorial.md | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=../../rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=../../rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS += doc/tutorial-macros.html
@@ -106,8 +115,8 @@ doc/tutorial-macros.html: tutorial-macros.md doc/version_info.html \
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS += doc/tutorial-container.html
@@ -116,8 +125,8 @@ doc/tutorial-container.html: tutorial-container.md doc/version_info.html doc/rus
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS += doc/tutorial-ffi.html
@@ -126,8 +135,8 @@ doc/tutorial-ffi.html: tutorial-ffi.md doc/version_info.html doc/rust.css
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS += doc/tutorial-borrowed-ptr.html
@@ -136,8 +145,8 @@ doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html d
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS += doc/tutorial-tasks.html
@@ -146,8 +155,8 @@ doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
-	   --include-before-body=doc/version_info.html \
+           --from=markdown --to=html5 --css=rust.css \
+           --include-before-body=doc/version_info.html \
            --output=$@
 
 DOCS += doc/tutorial-conditions.html
@@ -156,7 +165,7 @@ doc/tutorial-conditions.html: tutorial-conditions.md doc/version_info.html doc/r
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
            --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -166,7 +175,7 @@ doc/tutorial-rustpkg.html: tutorial-rustpkg.md doc/version_info.html doc/rust.cs
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
-           --from=markdown --to=html --css=rust.css \
+           --from=markdown --to=html5 --css=rust.css \
            --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -182,6 +191,14 @@ doc/tutorial-rustpkg.html: tutorial-rustpkg.md doc/version_info.html doc/rust.cs
 
 DOCS += doc/rust.pdf
 doc/rust.pdf: doc/rust.tex
+	@$(call E, pdflatex: $@)
+	$(Q)$(CFG_PDFLATEX) \
+        -interaction=batchmode \
+        -output-directory=doc \
+        $<
+
+DOCS += doc/tutorial.pdf
+doc/tutorial.pdf: doc/tutorial.tex
 	@$(call E, pdflatex: $@)
 	$(Q)$(CFG_PDFLATEX) \
         -interaction=batchmode \
@@ -251,7 +268,7 @@ doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
 	@$(call E, version-info: $@)
 	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
                     $(CFG_VER_HASH) | head -c 8)/;\
-	            s/STAMP/$(CFG_VER_HASH)/;" $< >$@
+                s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
 GENERATED += doc/version.md doc/version_info.html
 
