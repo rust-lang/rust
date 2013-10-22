@@ -151,22 +151,6 @@ declaration to appear at the top level of the file: all statements must
 live inside a function.  Rust programs can also be compiled as
 libraries, and included in other programs.
 
-## Using the rust tool
-
-While using `rustc` directly to generate your executables, and then
-running them manually is a perfectly valid way to test your code,
-for smaller projects, prototypes, or if you're a beginner, it might be
-more convenient to use the `rust` tool.
-
-The `rust` tool provides central access to the other rust tools,
-as well as handy shortcuts for directly running source files.
-For example, if you have a file `foo.rs` in your current directory,
-`rust run foo.rs` would attempt to compile it and, if successful,
-directly run the resulting binary.
-
-To get a list of all available commands, simply call `rust` without any
-argument.
-
 ## Editing Rust code
 
 There are vim highlighting and indentation scripts in the Rust source
