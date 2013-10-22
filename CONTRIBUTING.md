@@ -1,3 +1,9 @@
+## How to submit a bug report
+
+If you're just reporting a bug, please see:
+
+https://github.com/mozilla/rust/wiki/HOWTO-submit-a-Rust-bug-report
+
 ## Pull request procedure
 
 Pull requests should be targeted at Rust's `master` branch.
