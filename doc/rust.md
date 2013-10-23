@@ -3168,7 +3168,7 @@ Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
     Raw pointers are written `*content`,
     for example `*int` means a raw pointer to an integer.
-    Copying or dropping a raw pointer is has no effect on the lifecycle of any other value.
+    Copying or dropping a raw pointer has no effect on the lifecycle of any other value.
     Dereferencing a raw pointer or converting it to any other pointer type is an [`unsafe` operation](#unsafe-functions).
     Raw pointers are generally discouraged in Rust code;
     they exist to support interoperability with foreign code,
