@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 // xfail-fast
 // aux-build:trait_default_method_xc_aux.rs
 

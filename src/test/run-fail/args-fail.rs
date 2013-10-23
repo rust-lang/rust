@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // error-pattern:meep
 fn f(_a: int, _b: int, _c: @int) { fail!("moop"); }
 

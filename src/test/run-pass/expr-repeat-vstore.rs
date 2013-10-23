@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 use std::io::println;
 
 pub fn main() {

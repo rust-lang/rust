@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // same as resource-cycle2, but be sure to give r multiple fields...
 
 // Don't leak the unique pointers

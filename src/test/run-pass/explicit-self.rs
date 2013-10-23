@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
 
 static tau: f64 = 2.0*3.14159265358979323;
 

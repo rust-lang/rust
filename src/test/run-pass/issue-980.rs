@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 enum maybe_pointy {
     no_pointy,
     yes_pointy(@mut Pointy),

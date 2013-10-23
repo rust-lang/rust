@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 struct Triple { x: int, y: int, z: int }
 
 fn test(x: bool, foo: @Triple) -> int {

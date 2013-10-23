@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 fn wants_box(x: @[uint]) { }
 fn wants_uniq(x: ~[uint]) { }
 fn wants_three(x: [uint, ..3]) { }

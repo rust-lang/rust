@@ -63,7 +63,7 @@ while cur < len(lines):
 #[ allow(unused_variable) ];\n
 #[ allow(dead_assignment) ];\n
 #[ allow(unused_mut) ];\n
-#[ feature(macro_rules, globs, struct_variant) ];\n
+#[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n
 """ + block
             if xfail:
                 block = "// xfail-test\n" + block
