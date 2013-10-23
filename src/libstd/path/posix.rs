@@ -25,7 +25,7 @@ use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 #[cfg(not(target_os = "win32"))]
-use libc;
+use rt::io::{FileStat, file, io_error};
 
 /// Iterator that yields successive components of a Path as &[u8]
 pub type ComponentIter<'self> = SplitIterator<'self, u8>;
@@ -445,16 +445,13 @@ static dot_dot_static: &'static [u8] = bytes!("..");
 // Stat support
 #[cfg(not(target_os = "win32"))]
 impl Path {
-    /// Calls stat() on the represented file and returns the resulting libc::stat
-    pub fn stat(&self) -> Option<libc::stat> {
-        #[fixed_stack_segment]; #[inline(never)];
-        do self.with_c_str |buf| {
-            let mut st = super::stat::arch::default_stat();
-            match unsafe { libc::stat(buf as *libc::c_char, &mut st) } {
-                0 => Some(st),
-                _ => None
-            }
+    /// Calls stat() on the represented file and returns the resulting rt::io::FileStat
+    pub fn stat(&self) -> Option<FileStat> {
+        let mut file_stat: Option<FileStat> = None;
+        do io_error::cond.trap(|_| { /* Ignore error, will return None */ }).inside {
+            file_stat = file::stat(self);
         }
+        file_stat
     }
 
     /// Returns whether the represented file exists
@@ -466,10 +463,10 @@ impl Path {
     }
 
     /// Returns the filesize of the represented file
-    pub fn get_size(&self) -> Option<i64> {
+    pub fn get_size(&self) -> Option<u64> {
         match self.stat() {
             None => None,
-            Some(st) => Some(st.st_size as i64)
+            Some(st) => Some(st.size)
         }
     }
 
@@ -477,7 +474,7 @@ impl Path {
     pub fn get_mode(&self) -> Option<uint> {
         match self.stat() {
             None => None,
-            Some(st) => Some(st.st_mode as uint)
+            Some(st) => Some(st.mode as uint)
         }
     }
 }
@@ -486,54 +483,27 @@ impl Path {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 impl Path {
-    /// Returns the atime of the represented file, as (secs, nsecs)
-    pub fn get_atime(&self) -> Option<(i64, int)> {
+    /// Returns the atime of the represented file, as msecs
+    pub fn get_atime(&self) -> Option<u64> {
         match self.stat() {
             None => None,
-            Some(st) => Some((st.st_atime as i64, st.st_atime_nsec as int))
+            Some(st) => Some(st.accessed)
         }
     }
 
-    /// Returns the mtime of the represented file, as (secs, nsecs)
-    pub fn get_mtime(&self) -> Option<(i64, int)> {
+    /// Returns the mtime of the represented file, as msecs
+    pub fn get_mtime(&self) -> Option<u64> {
         match self.stat() {
             None => None,
-            Some(st) => Some((st.st_mtime as i64, st.st_mtime_nsec as int))
+            Some(st) => Some(st.modified)
         }
     }
 
-    /// Returns the ctime of the represented file, as (secs, nsecs)
-    pub fn get_ctime(&self) -> Option<(i64, int)> {
+    /// Returns the ctime of the represented file, as msecs
+    pub fn get_ctime(&self) -> Option<u64> {
         match self.stat() {
             None => None,
-            Some(st) => Some((st.st_ctime as i64, st.st_ctime_nsec as int))
-        }
-    }
-}
-
-#[cfg(unix)]
-impl Path {
-    /// Calls lstat() on the represented file and returns the resulting libc::stat
-    pub fn lstat(&self) -> Option<libc::stat> {
-        #[fixed_stack_segment]; #[inline(never)];
-        do self.with_c_str |buf| {
-            let mut st = super::stat::arch::default_stat();
-            match unsafe { libc::lstat(buf, &mut st) } {
-                0 => Some(st),
-                _ => None
-            }
-        }
-    }
-}
-
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "macos")]
-impl Path {
-    /// Returns the birthtime of the represented file
-    pub fn get_birthtime(&self) -> Option<(i64, int)> {
-        match self.stat() {
-            None => None,
-            Some(st) => Some((st.st_birthtime as i64, st.st_birthtime_nsec as int))
+            Some(st) => Some(st.created)
         }
     }
 }
