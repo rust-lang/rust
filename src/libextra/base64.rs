@@ -318,7 +318,7 @@ mod test {
         use std::vec;
 
         do 1000.times {
-            let times = task_rng().gen_integer_range(1u, 100);
+            let times = task_rng().gen_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }
