@@ -10,10 +10,11 @@
 
 //! The ISAAC random number generator.
 
-use cast;
 use rand::{Rng, SeedableRng, OSRng};
 use iter::{Iterator, range, range_step, Repeat};
 use option::{None, Some};
+use vec::raw;
+use mem;
 
 static RAND_SIZE_LEN: u32 = 8;
 static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
@@ -42,9 +43,12 @@ impl IsaacRng {
     pub fn new() -> IsaacRng {
         let mut rng = EMPTY;
 
-        {
-            let bytes = unsafe {cast::transmute::<&mut [u32], &mut [u8]>(rng.rsl)};
-            OSRng::new().fill_bytes(bytes);
+        unsafe {
+            let ptr = raw::to_mut_ptr(rng.rsl);
+
+            do raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl)) |slice| {
+                OSRng::new().fill_bytes(slice);
+            }
         }
 
         rng.init(true);
@@ -238,10 +242,15 @@ impl Isaac64Rng {
     /// seed.
     pub fn new() -> Isaac64Rng {
         let mut rng = EMPTY_64;
-        {
-            let bytes = unsafe {cast::transmute::<&mut [u64], &mut [u8]>(rng.rsl)};
-            OSRng::new().fill_bytes(bytes);
+
+        unsafe {
+            let ptr = raw::to_mut_ptr(rng.rsl);
+
+            do raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl)) |slice| {
+                OSRng::new().fill_bytes(slice);
+            }
         }
+
         rng.init(true);
         rng
     }
@@ -434,14 +443,14 @@ mod test {
 
     #[test]
     fn test_rng_32_seeded() {
-        let seed = &[2, 32, 4, 32, 51];
+        let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
     #[test]
     fn test_rng_64_seeded() {
-        let seed = &[2, 32, 4, 32, 51];
+        let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
@@ -472,46 +481,46 @@ mod test {
 
     #[test]
     fn test_rng_32_true_values() {
-        let seed = &[2, 32, 4, 32, 51];
+        let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
         let v = vec::from_fn(10, |_| ra.next_u32());
         assert_eq!(v,
-                   ~[447462228, 2081944040, 3163797308, 2379916134, 2377489184,
-                     1132373754, 536342443, 2995223415, 1265094839, 345325140]);
+                   ~[2558573138, 873787463, 263499565, 2103644246, 3595684709,
+                     4203127393, 264982119, 2765226902, 2737944514, 3900253796]);
 
-        let seed = &[500, -4000, 123456, 9876543, 1, 1, 1, 1, 1];
+        let seed = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
         for _ in range(0, 10000) { rb.next_u32(); }
 
         let v = vec::from_fn(10, |_| rb.next_u32());
         assert_eq!(v,
-                   ~[612373032, 292987903, 1819311337, 3141271980, 422447569,
-                     310096395, 1083172510, 867909094, 2478664230, 2073577855]);
+                   ~[3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
+                     1576568959, 3507990155, 179069555, 141456972, 2478885421]);
     }
     #[test]
     fn test_rng_64_true_values() {
-        let seed = &[2, 32, 4, 32, 51];
+        let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
         let v = vec::from_fn(10, |_| ra.next_u64());
         assert_eq!(v,
-                   ~[15015576812873463115, 12461067598045625862, 14818626436142668771,
-                     5562406406765984441, 11813289907965514161, 13443797187798420053,
-                     6935026941854944442, 7750800609318664042, 14428747036317928637,
-                     14028894460301215947]);
+                   ~[547121783600835980, 14377643087320773276, 17351601304698403469,
+                     1238879483818134882, 11952566807690396487, 13970131091560099343,
+                     4469761996653280935, 15552757044682284409, 6860251611068737823,
+                     13722198873481261842]);
 
-        let seed = &[500, -4000, 123456, 9876543, 1, 1, 1, 1, 1];
+        let seed = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
         for _ in range(0, 10000) { rb.next_u64(); }
 
         let v = vec::from_fn(10, |_| rb.next_u64());
         assert_eq!(v,
-                   ~[13557216323596688637, 17060829581390442094, 4927582063811333743,
-                     2699639759356482270, 4819341314392384881, 6047100822963614452,
-                     11086255989965979163, 11901890363215659856, 5370800226050011580,
-                     16496463556025356451]);
+                   ~[18143823860592706164, 8491801882678285927, 2699425367717515619,
+                     17196852593171130876, 2606123525235546165, 15790932315217671084,
+                     596345674630742204, 9947027391921273664, 11788097613744130851,
+                     10391409374914919106]);
     }
 }

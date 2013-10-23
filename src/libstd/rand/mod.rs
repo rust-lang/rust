@@ -52,8 +52,6 @@ fn main () {
  ```
 */
 
-use mem::size_of;
-use unstable::raw::Slice;
 use cast;
 use container::Container;
 use iter::{Iterator, range};
@@ -136,46 +134,26 @@ pub trait Rng {
     /// }
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        let mut slice: Slice<u64> = unsafe { cast::transmute_copy(&dest) };
-        slice.len /= size_of::<u64>();
-        let as_u64: &mut [u64] = unsafe { cast::transmute(slice) };
-        for dest in as_u64.mut_iter() {
-            *dest = self.next_u64();
-        }
-
-        // the above will have filled up the vector as much as
-        // possible in multiples of 8 bytes.
-        let mut remaining = dest.len() % 8;
-
-        // space for a u32
-        if remaining >= 4 {
-            let mut slice: Slice<u32> = unsafe { cast::transmute_copy(&dest) };
-            slice.len /= size_of::<u32>();
-            let as_u32: &mut [u32] = unsafe { cast::transmute(slice) };
-            as_u32[as_u32.len() - 1] = self.next_u32();
-            remaining -= 4;
-        }
-        // exactly filled
-        if remaining == 0 { return }
-
-        // now we know we've either got 1, 2 or 3 spots to go,
-        // i.e. exactly one u32 is enough.
-        let rand = self.next_u32();
-        let remaining_index = dest.len() - remaining;
-        match dest.mut_slice_from(remaining_index) {
-            [ref mut a] => {
-                *a = rand as u8;
+        // this could, in theory, be done by transmuting dest to a
+        // [u64], but this is (1) likely to be undefined behaviour for
+        // LLVM, (2) has to be very careful about alignment concerns,
+        // (3) adds more `unsafe` that needs to be checked, (4)
+        // probably doesn't give much performance gain if
+        // optimisations are on.
+        let mut count = 0;
+        let mut num = 0;
+        for byte in dest.mut_iter() {
+            if count == 0 {
+                // we could micro-optimise here by generating a u32 if
+                // we only need a few more bytes to fill the vector
+                // (i.e. at most 4).
+                num = self.next_u64();
+                count = 8;
             }
-            [ref mut a, ref mut b] => {
-                *a = rand as u8;
-                *b = (rand >> 8) as u8;
-            }
-            [ref mut a, ref mut b, ref mut c] => {
-                *a = rand as u8;
-                *b = (rand >> 8) as u8;
-                *c = (rand >> 16) as u8;
-            }
-            _ => fail!("Rng.fill_bytes: the impossible occurred: remaining != 1, 2 or 3")
+
+            *byte = (num & 0xff) as u8;
+            num >>= 8;
+            count -= 1;
         }
     }
 
@@ -749,14 +727,35 @@ pub fn random<T: Rand>() -> T {
 mod test {
     use iter::{Iterator, range};
     use option::{Option, Some};
+    use vec;
     use super::*;
+
+    struct ConstRng { i: u64 }
+    impl Rng for ConstRng {
+        fn next_u32(&mut self) -> u32 { self.i as u32 }
+        fn next_u64(&mut self) -> u64 { self.i }
+
+        // no fill_bytes on purpose
+    }
 
     #[test]
     fn test_fill_bytes_default() {
-        let mut r = weak_rng();
+        let mut r = ConstRng { i: 0x11_22_33_44_55_66_77_88 };
 
-        let mut v = [0u8, .. 100];
-        r.fill_bytes(v);
+        // check every remainder mod 8, both in small and big vectors.
+        let lengths = [0, 1, 2, 3, 4, 5, 6, 7,
+                       80, 81, 82, 83, 84, 85, 86, 87];
+        for &n in lengths.iter() {
+            let mut v = vec::from_elem(n, 0u8);
+            r.fill_bytes(v);
+
+            // use this to get nicer error messages.
+            for (i, &byte) in v.iter().enumerate() {
+                if byte == 0 {
+                    fail!("byte {} of {} is zero", i, n)
+                }
+            }
+        }
     }
 
     #[test]
