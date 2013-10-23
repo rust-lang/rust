@@ -90,7 +90,7 @@ fn vec_plus() {
     let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
-        let rv = vec::from_elem(r.gen_integer_range(0u, i + 1), i);
+        let rv = vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v.push_all_move(rv);
         } else {
@@ -106,7 +106,7 @@ fn vec_append() {
     let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
-        let rv = vec::from_elem(r.gen_integer_range(0u, i + 1), i);
+        let rv = vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v = vec::append(v, rv);
         }
@@ -122,7 +122,7 @@ fn vec_push_all() {
 
     let mut v = ~[];
     for i in range(0u, 1500) {
-        let mut rv = vec::from_elem(r.gen_integer_range(0u, i + 1), i);
+        let mut rv = vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v.push_all(rv);
         }

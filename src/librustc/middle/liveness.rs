@@ -392,7 +392,7 @@ fn visit_fn(v: &mut LivenessVisitor,
     match *fk {
         visit::fk_method(_, _, method) => {
             match method.explicit_self.node {
-                sty_value | sty_region(*) | sty_box(_) | sty_uniq => {
+                sty_value(_) | sty_region(*) | sty_box(_) | sty_uniq(_) => {
                     fn_maps.add_variable(Arg(method.self_id,
                                              special_idents::self_));
                 }

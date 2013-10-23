@@ -21,4 +21,4 @@ extern mod std;
 
 pub mod foo;
 pub mod bar;
-#[path = "../../build/fancy_lib/generated.rs"] pub mod generated;
+#[path = "../../build/fancy-lib/generated.rs"] pub mod generated;

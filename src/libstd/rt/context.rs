@@ -25,11 +25,11 @@ pub static RED_ZONE: uint = 20 * 1024;
 // then misalign the regs again.
 pub struct Context {
     /// The context entry point, saved here for later destruction
-    start: Option<~~fn()>,
+    priv start: Option<~~fn()>,
     /// Hold the registers while the task or scheduler is suspended
-    regs: ~Registers,
+    priv regs: ~Registers,
     /// Lower bound and upper bound for the stack
-    stack_bounds: Option<(uint, uint)>,
+    priv stack_bounds: Option<(uint, uint)>,
 }
 
 impl Context {
@@ -391,36 +391,32 @@ pub unsafe fn record_sp_limit(limit: uint) {
 /// As with the setter, this function does not have a __morestack header and can
 /// therefore be called in a "we're out of stack" situation.
 #[inline(always)]
-// NOTE: after the next snapshot, can remove the initialization before inline
-//       assembly due to an improvement in how it's handled, then this specific
-//       allow directive should get removed.
-#[allow(dead_assignment)]
 pub unsafe fn get_sp_limit() -> uint {
     return target_get_sp_limit();
 
     // x86-64
     #[cfg(target_arch = "x86_64", target_os = "macos")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movq $$0x60+90*8, %rsi
               movq %gs:(%rsi), $0" : "=r"(limit) :: "rsi" : "volatile");
         return limit;
     }
     #[cfg(target_arch = "x86_64", target_os = "linux")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movq %fs:112, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
     #[cfg(target_arch = "x86_64", target_os = "win32")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movq %gs:0x28, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
     #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movq %fs:24, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
@@ -428,7 +424,7 @@ pub unsafe fn get_sp_limit() -> uint {
     // x86
     #[cfg(target_arch = "x86", target_os = "macos")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movl $$0x48+90*4, %eax
               movl %gs:(%eax), $0" : "=r"(limit) :: "eax" : "volatile");
         return limit;
@@ -436,13 +432,13 @@ pub unsafe fn get_sp_limit() -> uint {
     #[cfg(target_arch = "x86", target_os = "linux")]
     #[cfg(target_arch = "x86", target_os = "freebsd")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movl %gs:48, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
     #[cfg(target_arch = "x86", target_os = "win32")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
-        let mut limit: uint = 0;
+        let limit;
         asm!("movl %fs:0x14, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }

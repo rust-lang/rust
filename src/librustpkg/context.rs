@@ -54,6 +54,15 @@ impl BuildContext {
     pub fn compile_upto(&self) -> StopBefore {
         self.context.compile_upto()
     }
+
+    pub fn add_library_path(&mut self, p: Path) {
+        debug!("Adding library path: {}", p.display());
+        self.context.add_library_path(p);
+    }
+
+    pub fn additional_library_paths(&self) -> ~[Path] {
+        self.context.rustc_flags.additional_library_paths.clone()
+    }
 }
 
 /*
@@ -85,6 +94,9 @@ pub struct RustcFlags {
     target: Option<~str>,
     // Target CPU (defaults to rustc's default target CPU)
     target_cpu: Option<~str>,
+    // Additional library directories, which get passed with the -L flag
+    // This can't be set with a rustpkg flag, only from package scripts
+    additional_library_paths: ~[Path],
     // Any -Z features
     experimental_features: Option<~[~str]>
 }
@@ -99,6 +111,7 @@ impl Clone for RustcFlags {
             save_temps: self.save_temps,
             target: self.target.clone(),
             target_cpu: self.target_cpu.clone(),
+            additional_library_paths: self.additional_library_paths.clone(),
             experimental_features: self.experimental_features.clone()
         }
     }
@@ -147,6 +160,10 @@ impl Context {
 
     pub fn compile_upto(&self) -> StopBefore {
         self.rustc_flags.compile_upto
+    }
+
+    pub fn add_library_path(&mut self, p: Path) {
+        self.rustc_flags.additional_library_paths.push(p);
     }
 }
 
@@ -210,6 +227,7 @@ impl RustcFlags {
             save_temps: false,
             target: None,
             target_cpu: None,
+            additional_library_paths: ~[],
             experimental_features: None
         }
     }

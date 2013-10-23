@@ -362,8 +362,8 @@ impl Seek for FileWriter {
 /// For this reason, it is best to use the access-constrained wrappers that are
 /// exposed via `FileInfo.open_reader()` and `FileInfo.open_writer()`.
 pub struct FileStream {
-    fd: ~RtioFileStream,
-    last_nread: int,
+    priv fd: ~RtioFileStream,
+    priv last_nread: int,
 }
 
 /// a `std::rt::io::Reader` trait impl for file I/O.

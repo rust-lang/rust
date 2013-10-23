@@ -3168,7 +3168,7 @@ Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
     Raw pointers are written `*content`,
     for example `*int` means a raw pointer to an integer.
-    Copying or dropping a raw pointer is has no effect on the lifecycle of any other value.
+    Copying or dropping a raw pointer has no effect on the lifecycle of any other value.
     Dereferencing a raw pointer or converting it to any other pointer type is an [`unsafe` operation](#unsafe-functions).
     Raw pointers are generally discouraged in Rust code;
     they exist to support interoperability with foreign code,
@@ -3395,15 +3395,22 @@ a [temporary](#lvalues-rvalues-and-temporaries), or a local variable.
 A _local variable_ (or *stack-local* allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
 
-Local variables are immutable unless declared with `let mut`.  The
-`mut` keyword applies to all local variables declared within that
-declaration (so `let mut (x, y) = ...` declares two mutable variables, `x` and
-`y`).
+Local variables are immutable unless declared otherwise like: `let mut x = ...`.
 
 Function parameters are immutable unless declared with `mut`. The
 `mut` keyword applies only to the following parameter (so `|mut x, y|`
 and `fn f(mut x: ~int, y: ~int)` declare one mutable variable `x` and
 one immutable variable `y`).
+
+Methods that take either `self` or `~self` can optionally place them in a
+mutable slot by prefixing them with `mut` (similar to regular arguments):
+
+~~~
+trait Changer {
+    fn change(mut self) -> Self;
+    fn modify(mut ~self) -> ~Self;
+}
+~~~
 
 Local variables are not initialized when allocated; the entire frame worth of
 local variables are allocated at once, on frame-entry, in an uninitialized

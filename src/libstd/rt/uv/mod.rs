@@ -80,7 +80,7 @@ pub mod pipe;
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
-    handle: *uvll::uv_loop_t
+    priv handle: *uvll::uv_loop_t
 }
 
 /// The trait implemented by uv 'watchers' (handles). Watchers are

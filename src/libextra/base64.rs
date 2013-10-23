@@ -22,11 +22,11 @@ pub enum CharacterSet {
 /// Contains configuration parameters for `to_base64`.
 pub struct Config {
     /// Character set to use
-    char_set: CharacterSet,
+    priv char_set: CharacterSet,
     /// True to pad output with `=` characters
-    pad: bool,
+    priv pad: bool,
     /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
-    line_length: Option<uint>
+    priv line_length: Option<uint>
 }
 
 /// Configuration for RFC 4648 standard base64 encoding
@@ -318,7 +318,7 @@ mod test {
         use std::vec;
 
         do 1000.times {
-            let times = task_rng().gen_integer_range(1u, 100);
+            let times = task_rng().gen_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }

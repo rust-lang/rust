@@ -34,7 +34,6 @@ pub struct Process {
 
 /// Options that can be given when starting a Process.
 pub struct ProcessOptions<'self> {
-
     /**
      * If this is None then the new process will have the same initial
      * environment as the parent process.
@@ -99,7 +98,6 @@ impl <'self> ProcessOptions<'self> {
 
 /// The output of a finished process.
 pub struct ProcessOutput {
-
     /// The status (exit code) of the process.
     status: int,
 
