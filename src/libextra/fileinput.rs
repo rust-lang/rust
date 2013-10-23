@@ -155,7 +155,7 @@ struct FileInput_ {
 // "self.fi" -> "self." and renaming FileInput_. Documentation above
 // will likely have to be updated to use `let mut in = ...`.
 pub struct FileInput  {
-    fi: @mut FileInput_
+    priv fi: @mut FileInput_
 }
 
 impl FileInput {

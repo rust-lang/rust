@@ -58,7 +58,7 @@ fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::Def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         DefLocal(node_id, _) | DefArg(node_id, _) |
-        DefSelf(node_id) | DefBinding(node_id, _) => {
+        DefSelf(node_id, _) | DefBinding(node_id, _) => {
             tcx.region_maps.encl_region(node_id)
         }
         DefUpvar(_, subdef, closure_id, body_id) => {

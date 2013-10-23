@@ -12,8 +12,8 @@
 
 This module defines the Rust interface for synchronous I/O.
 It models byte-oriented input and output with the Reader and Writer traits.
-Types that implement both `Reader` and `Writer` and called 'streams',
-and automatically implement trait `Stream`.
+Types that implement both `Reader` and `Writer` are called 'streams',
+and automatically implement the `Stream` trait.
 Implementations are provided for common I/O streams like
 file, TCP, UDP, Unix domain sockets.
 Readers and Writers may be composed to add capabilities like string

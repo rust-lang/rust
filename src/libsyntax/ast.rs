@@ -227,7 +227,7 @@ pub enum MethodProvenance {
 pub enum Def {
     DefFn(DefId, purity),
     DefStaticMethod(/* method */ DefId, MethodProvenance, purity),
-    DefSelf(NodeId),
+    DefSelf(NodeId, bool /* is_mutbl */),
     DefSelfTy(/* trait id */ NodeId),
     DefMod(DefId),
     DefForeignMod(DefId),
@@ -921,10 +921,10 @@ pub enum ret_style {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum explicit_self_ {
     sty_static,                                // no self
-    sty_value,                                 // `self`
-    sty_region(Option<Lifetime>, Mutability), // `&'lt self`
+    sty_value(Mutability),                     // `self`
+    sty_region(Option<Lifetime>, Mutability),  // `&'lt self`
     sty_box(Mutability),                       // `@self`
-    sty_uniq                                   // `~self`
+    sty_uniq(Mutability)                       // `~self`
 }
 
 pub type explicit_self = Spanned<explicit_self_>;

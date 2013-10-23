@@ -150,7 +150,7 @@ enum Mutability {
 
 enum SelfBinding {
     NoSelfBinding,
-    HasSelfBinding(NodeId)
+    HasSelfBinding(NodeId, explicit_self)
 }
 
 impl Visitor<()> for Resolver {
@@ -3799,8 +3799,12 @@ impl Resolver {
                 NoSelfBinding => {
                     // Nothing to do.
                 }
-                HasSelfBinding(self_node_id) => {
-                    let def_like = DlDef(DefSelf(self_node_id));
+                HasSelfBinding(self_node_id, explicit_self) => {
+                    let mutable = match explicit_self.node {
+                        sty_uniq(m) | sty_value(m) if m == MutMutable => true,
+                        _ => false
+                    };
+                    let def_like = DlDef(DefSelf(self_node_id, mutable));
                     *function_value_rib.self_binding = Some(def_like);
                 }
             }
@@ -3937,7 +3941,7 @@ impl Resolver {
         // we only have self ty if it is a non static method
         let self_binding = match method.explicit_self.node {
           sty_static => { NoSelfBinding }
-          _ => { HasSelfBinding(method.self_id) }
+          _ => { HasSelfBinding(method.self_id, method.explicit_self) }
         };
 
         self.resolve_function(rib_kind,

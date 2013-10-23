@@ -25,7 +25,7 @@ type GetAddrInfoCallback = ~fn(GetAddrInfoRequest, &UvAddrInfo, Option<UvError>)
 pub struct GetAddrInfoRequest(*uvll::uv_getaddrinfo_t);
 
 pub struct RequestData {
-    getaddrinfo_cb: Option<GetAddrInfoCallback>,
+    priv getaddrinfo_cb: Option<GetAddrInfoCallback>,
 }
 
 impl GetAddrInfoRequest {

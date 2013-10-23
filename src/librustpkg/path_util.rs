@@ -461,7 +461,6 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
     p.with_filename(q)
 }
 
-
 #[cfg(target_os = "win32")]
 pub fn chmod_read_only(p: &Path) -> bool {
     #[fixed_stack_segment];
@@ -483,3 +482,6 @@ pub fn chmod_read_only(p: &Path) -> bool {
     }
 }
 
+pub fn platform_library_name(s: &str) -> ~str {
+    format!("{}{}{}", os::consts::DLL_PREFIX, s, os::consts::DLL_SUFFIX)
+}

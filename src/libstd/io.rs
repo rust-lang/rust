@@ -1009,7 +1009,7 @@ impl<R:Reader,C> Reader for Wrapper<R, C> {
 }
 
 pub struct FILERes {
-    f: *libc::FILE,
+    priv f: *libc::FILE,
 }
 
 impl FILERes {
@@ -1282,7 +1282,7 @@ impl Writer for fd_t {
 }
 
 pub struct FdRes {
-    fd: fd_t,
+    priv fd: fd_t,
 }
 
 impl FdRes {
@@ -1792,7 +1792,7 @@ pub mod fsync {
 
     // Artifacts that need to fsync on destruction
     pub struct Res<t> {
-        arg: Arg<t>,
+        priv arg: Arg<t>,
     }
 
     impl <t> Res<t> {
@@ -1815,9 +1815,9 @@ pub mod fsync {
     }
 
     pub struct Arg<t> {
-        val: t,
-        opt_level: Option<Level>,
-        fsync_fn: extern "Rust" fn(f: &t, Level) -> int,
+        priv val: t,
+        priv opt_level: Option<Level>,
+        priv fsync_fn: extern "Rust" fn(f: &t, Level) -> int,
     }
 
     // fsync file after executing blk

@@ -66,7 +66,7 @@ pub struct FileOpenConfig {
     /// Flags for file access mode (as per open(2))
     flags: int,
     /// File creation mode, ignored unless O_CREAT is passed as part of flags
-    mode: int
+    priv mode: int
 }
 
 pub trait IoFactory {

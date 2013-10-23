@@ -95,14 +95,14 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 
 #[cfg(not(target_os = "win32"))]
 pub struct Terminal {
-    num_colors: u16,
+    priv num_colors: u16,
     priv out: @io::Writer,
     priv ti: ~TermInfo
 }
 
 #[cfg(target_os = "win32")]
 pub struct Terminal {
-    num_colors: u16,
+    priv num_colors: u16,
     priv out: @io::Writer,
 }
 
