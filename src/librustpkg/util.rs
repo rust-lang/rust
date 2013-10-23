@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -625,7 +625,7 @@ fn debug_flags() -> ~[~str] { ~[] }
 /// Returns the last-modified date as an Option
 pub fn datestamp(p: &Path) -> Option<libc::time_t> {
     debug!("Scrutinizing datestamp for {} - does it exist? {:?}", p.display(), os::path_exists(p));
-    let out = p.stat().map(|stat| stat.st_mtime);
+    let out = p.stat().map(|stat| stat.modified);
     debug!("Date = {:?}", out);
     out.map(|t| { t as libc::time_t })
 }
