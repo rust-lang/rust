@@ -34,7 +34,6 @@ pub enum ObsoleteSyntax {
     ObsoleteBareFnType,
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
-    ObsoleteMutWithMultipleBindings,
     ObsoleteUnsafeExternFn,
     ObsoleteTraitFuncVisibility,
     ObsoleteConstPointer,
@@ -90,11 +89,6 @@ impl ParserObsoleteMethods for Parser {
                 "declaration of multiple locals at once",
                 "instead of e.g. `let a = 1, b = 2`, write \
                  `let (a, b) = (1, 2)`."
-            ),
-            ObsoleteMutWithMultipleBindings => (
-                "`mut` with multiple bindings",
-                "use multiple local declarations instead of e.g. `let mut \
-                 (x, y) = ...`."
             ),
             ObsoleteUnsafeExternFn => (
                 "unsafe external function",
