@@ -12,7 +12,7 @@
 
 use std::vec;
 
-use hex::ToHex;
+use extra::hex::ToHex;
 
 
 /**

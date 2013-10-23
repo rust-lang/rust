@@ -18,7 +18,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[feature(globs, managed_boxes)];
+#[feature(globs, managed_boxes, macro_rules)];
 
 extern mod extra;
 extern mod rustc;
@@ -55,6 +55,8 @@ pub mod api;
 mod conditions;
 pub mod context;
 mod crate;
+mod cryptoutil;
+mod digest;
 pub mod exit_codes;
 mod installed_packages;
 mod messages;
@@ -62,6 +64,7 @@ mod package_id;
 mod package_source;
 mod path_util;
 mod search;
+mod sha1;
 mod source_control;
 mod target;
 #[cfg(test)]
