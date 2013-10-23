@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 fn test(foo: @~[int]) { assert!((foo[0] == 10)); }
 
 pub fn main() {

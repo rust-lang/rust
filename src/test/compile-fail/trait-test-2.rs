@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
 impl bar for int { fn dup(&self) -> int { *self } fn blah<X>(&self) {} }
 impl bar for uint { fn dup(&self) -> uint { *self } fn blah<X>(&self) {} }

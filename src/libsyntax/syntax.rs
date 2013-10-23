@@ -20,7 +20,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[feature(macro_rules, globs)];
+#[feature(macro_rules, globs, managed_boxes)];
 
 extern mod extra;
 

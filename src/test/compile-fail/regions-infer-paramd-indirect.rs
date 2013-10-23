@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 

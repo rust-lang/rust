@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
 
-
-// -*- rust -*-
 enum t { make_t(@int), clam, }
 
 fn foo(s: @int) {

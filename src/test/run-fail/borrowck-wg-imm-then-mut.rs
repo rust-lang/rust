@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 // error-pattern:borrowed
 
 // Test that if you imm borrow then mut borrow it fails.

@@ -10,6 +10,8 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
+#[feature(managed_boxes)];
+
 fn switcher(x: Option<@int>) {
     let mut x = x;
     match x {

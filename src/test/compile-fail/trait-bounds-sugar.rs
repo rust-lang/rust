@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Tests for "default" bounds inferred for traits with no bounds list.
 
 trait Foo {

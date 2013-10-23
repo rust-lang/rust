@@ -10,6 +10,8 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
+#[feature(managed_boxes)];
+
 pub fn main() {
     let x: @mut @Option<~int> = @mut @None;
     match x {

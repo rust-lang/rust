@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 // error-pattern:borrowed
 
 trait Foo {

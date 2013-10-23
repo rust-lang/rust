@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 fn magic(x: A) { info!("{:?}", x); }
 fn magic2(x: @int) { info!("{:?}", x); }
 

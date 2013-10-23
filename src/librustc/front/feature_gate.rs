@@ -138,8 +138,7 @@ impl Visitor<()> for Context {
                                    experimental and likely to be removed");
 
             },
-            // NOTE: enable after snapshot
-            ast::ty_box(_) if false => {
+            ast::ty_box(_) => {
                 self.gate_feature("managed_boxes", t.span, "The managed box syntax may be replaced \
                                                             by a library type, and a garbage \
                                                             collector is not yet implemented. \

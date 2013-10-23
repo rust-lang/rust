@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Make sure we drop the refs of the temporaries needed to return the
 // values from the else if branch
 pub fn main() {
