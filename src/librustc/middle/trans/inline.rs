@@ -144,7 +144,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
                       debug!("calling inline trans_fn with self_ty {}",
                              ty_to_str(ccx.tcx, self_ty));
                       match mth.explicit_self.node {
-                          ast::sty_value => impl_self(self_ty, ty::ByRef),
+                          ast::sty_value(_) => impl_self(self_ty, ty::ByRef),
                           _ => impl_self(self_ty, ty::ByCopy),
                       }
                   }

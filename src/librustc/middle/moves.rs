@@ -227,7 +227,7 @@ pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
       DefBinding(nid, _) |
       DefArg(nid, _) |
       DefLocal(nid, _) |
-      DefSelf(nid) => Some(nid),
+      DefSelf(nid, _) => Some(nid),
 
       _ => None
     }

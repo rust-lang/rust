@@ -410,7 +410,7 @@ impl tr for ast::Def {
             ast::DefMethod(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
           }
           ast::DefSelfTy(nid) => { ast::DefSelfTy(xcx.tr_id(nid)) }
-          ast::DefSelf(nid) => { ast::DefSelf(xcx.tr_id(nid)) }
+          ast::DefSelf(nid, m) => { ast::DefSelf(xcx.tr_id(nid), m) }
           ast::DefMod(did) => { ast::DefMod(did.tr(xcx)) }
           ast::DefForeignMod(did) => { ast::DefForeignMod(did.tr(xcx)) }
           ast::DefStatic(did, m) => { ast::DefStatic(did.tr(xcx), m) }
