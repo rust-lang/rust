@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // This test should behave exactly like issue-2735-3
 struct defer {
     b: @mut bool,

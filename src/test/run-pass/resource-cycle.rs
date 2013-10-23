@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Don't leak the unique pointers
 
 use std::cast;

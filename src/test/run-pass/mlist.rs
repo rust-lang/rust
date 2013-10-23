@@ -9,6 +9,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 enum mlist { cons(int, @mlist), nil, }
 
 pub fn main() { cons(10, @cons(11, @cons(12, @nil))); }

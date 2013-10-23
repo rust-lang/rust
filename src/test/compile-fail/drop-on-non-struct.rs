@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 type Foo = @[u8];
 
 impl Drop for Foo {   //~ ERROR the Drop trait may only be implemented

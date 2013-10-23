@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 fn f<T>(x: T) -> @T {
     @x  //~ ERROR value may contain borrowed pointers
 }

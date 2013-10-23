@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 trait foo { fn foo(&self); }
 
 fn to_foo<T:Clone + foo>(t: T) -> @foo {

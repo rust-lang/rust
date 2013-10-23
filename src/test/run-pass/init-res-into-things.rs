@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Resources can't be copied, but storing into data structures counts
 // as a move unless the stored thing is used afterwards.
 

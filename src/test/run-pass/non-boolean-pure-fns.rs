@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 extern mod extra;
 
 use extra::list::{List, Cons, Nil, head, is_empty};
