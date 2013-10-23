@@ -33,7 +33,6 @@ use rustc::metadata::filesearch;
 use rustc::metadata::filesearch::rust_path;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
-use util::*;
 use messages::{error, warn, note};
 use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
 use path_util::{U_RWX, in_rust_path};
@@ -47,15 +46,16 @@ use context::{Context, BuildContext,
                        LLVMAssemble, LLVMCompileBitcode};
 use package_id::PkgId;
 use package_source::PkgSrc;
-use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench, Tests};
+use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
+use target::{Tests, MaybeCustom, Inferred, JustOne};
 use workcache_support::digest_only_date;
 use exit_codes::{COPY_FAILED_CODE, BAD_FLAG_CODE};
 
 pub mod api;
 mod conditions;
-mod context;
+pub mod context;
 mod crate;
-mod exit_codes;
+pub mod exit_codes;
 mod installed_packages;
 mod messages;
 mod package_id;
@@ -67,7 +67,7 @@ mod target;
 #[cfg(test)]
 mod tests;
 mod util;
-mod version;
+pub mod version;
 pub mod workcache_support;
 mod workspace;
 
@@ -96,7 +96,7 @@ impl<'self> PkgScript<'self> {
     /// Given the path name for a package script
     /// and a package ID, parse the package script into
     /// a PkgScript that we can then execute
-    fn parse<'a>(sysroot: @Path,
+    fn parse<'a>(sysroot: Path,
                  script: Path,
                  workspace: &Path,
                  id: &'a PkgId) -> PkgScript<'a> {
@@ -107,7 +107,7 @@ impl<'self> PkgScript<'self> {
         debug!("pkgscript parse: {}", sysroot.display());
         let options = @session::options {
             binary: binary,
-            maybe_sysroot: Some(sysroot),
+            maybe_sysroot: Some(@sysroot),
             crate_type: session::bin_crate,
             .. (*session::basic_options()).clone()
         };
@@ -132,12 +132,7 @@ impl<'self> PkgScript<'self> {
         }
     }
 
-    /// Run the contents of this package script, where <what>
-    /// is the command to pass to it (e.g., "build", "clean", "install")
-    /// Returns a pair of an exit code and list of configs (obtained by
-    /// calling the package script's configs() function if it exists
-    fn run_custom(&mut self, exec: &mut workcache::Exec,
-                  sysroot: &Path) -> (~[~str], ExitCode) {
+    fn build_custom(&mut self, exec: &mut workcache::Exec) -> ~str {
         let sess = self.sess;
 
         debug!("Working directory = {}", self.build_dir.display());
@@ -152,17 +147,28 @@ impl<'self> PkgScript<'self> {
                                        &self.build_dir,
                                        sess,
                                        crate);
-        debug!("Running program: {} {} {}", exe.display(),
-               sysroot.display(), "install");
         // Discover the output
         // FIXME (#9639): This needs to handle non-utf8 paths
-        exec.discover_output("binary", exe.as_str().unwrap(), digest_only_date(&exe));
+        // Discover the output
+        exec.discover_output("binary", exe.as_str().unwrap().to_owned(), digest_only_date(&exe));
+        exe.as_str().unwrap().to_owned()
+    }
+
+
+    /// Run the contents of this package script, where <what>
+    /// is the command to pass to it (e.g., "build", "clean", "install")
+    /// Returns a pair of an exit code and list of configs (obtained by
+    /// calling the package script's configs() function if it exists
+    fn run_custom(exe: &Path, sysroot: &Path) -> (~[~str], int) {
+        debug!("Running program: {} {} {}", exe.as_str().unwrap().to_owned(),
+               sysroot.display(), "install");
         // FIXME #7401 should support commands besides `install`
         // FIXME (#9639): This needs to handle non-utf8 paths
         let status = run::process_status(exe.as_str().unwrap(),
                                          [sysroot.as_str().unwrap().to_owned(), ~"install"]);
         if status != 0 {
-            return (~[], status);
+            debug!("run_custom: first pkg command failed with {:?}", status);
+            (~[], status)
         }
         else {
             debug!("Running program (configs): {} {} {}",
@@ -170,6 +176,7 @@ impl<'self> PkgScript<'self> {
             // FIXME (#9639): This needs to handle non-utf8 paths
             let output = run::process_output(exe.as_str().unwrap(),
                                              [sysroot.as_str().unwrap().to_owned(), ~"configs"]);
+            debug!("run_custom: second pkg command did {:?}", output.status);
             // Run the configs() function to get the configs
             let cfgs = str::from_utf8_slice(output.output).word_iter()
                 .map(|w| w.to_owned()).collect();
@@ -263,7 +270,7 @@ impl CtxMethods for BuildContext {
         let cwd = os::getcwd();
         match cmd {
             "build" => {
-                self.build_args(args, &Everything);
+                self.build_args(args, &WhatToBuild::new(MaybeCustom, Everything));
             }
             "clean" => {
                 if args.len() < 1 {
@@ -301,12 +308,14 @@ impl CtxMethods for BuildContext {
                             let inferred_pkgid =
                                 PkgId::new(cwd.filename_str().unwrap());
                             self.install(PkgSrc::new(cwd, default_workspace(),
-                                                     true, inferred_pkgid), &Everything);
+                                                     true, inferred_pkgid),
+                                         &WhatToBuild::new(MaybeCustom, Everything));
                         }
                         None  => { usage::install(); return; }
                         Some((ws, pkgid))                => {
                             let pkg_src = PkgSrc::new(ws.clone(), ws.clone(), false, pkgid);
-                            self.install(pkg_src, &Everything);
+                            self.install(pkg_src, &WhatToBuild::new(MaybeCustom,
+                                                                    Everything));
                       }
                   }
                 }
@@ -320,7 +329,7 @@ impl CtxMethods for BuildContext {
                     if workspaces.is_empty() {
                         let d = default_workspace();
                         let src = PkgSrc::new(d.clone(), d, false, pkgid.clone());
-                        self.install(src, &Everything);
+                        self.install(src, &WhatToBuild::new(MaybeCustom, Everything));
                     }
                     else {
                         for workspace in workspaces.iter() {
@@ -331,7 +340,7 @@ impl CtxMethods for BuildContext {
                                                   dest,
                                                   self.context.use_rust_path_hack,
                                                   pkgid.clone());
-                            self.install(src, &Everything);
+                            self.install(src, &WhatToBuild::new(MaybeCustom, Everything));
                         };
                     }
                 }
@@ -354,7 +363,8 @@ impl CtxMethods for BuildContext {
             }
             "test" => {
                 // Build the test executable
-                let maybe_id_and_workspace = self.build_args(args, &Tests);
+                let maybe_id_and_workspace = self.build_args(args,
+                                                             &WhatToBuild::new(MaybeCustom, Tests));
                 match maybe_id_and_workspace {
                     Some((pkg_id, workspace)) => {
                         // Assuming it's built, run the tests
@@ -420,6 +430,7 @@ impl CtxMethods for BuildContext {
                 pkgid = {} pkgsrc start_dir = {}", workspace.display(),
                in_rust_path(&workspace), is_git_dir(&workspace.join(&pkgid.path)),
                pkgid.to_str(), pkg_src.start_dir.display());
+        debug!("build: what to build = {:?}", what_to_build);
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
@@ -448,27 +459,27 @@ impl CtxMethods for BuildContext {
         debug!("Package source directory = {}", pkg_src.to_str());
         let opt = pkg_src.package_script_option();
         debug!("Calling pkg_script_option on {:?}", opt);
-        let cfgs = match pkg_src.package_script_option() {
-            Some(package_script_path) => {
+        let cfgs = match (pkg_src.package_script_option(), what_to_build.build_type) {
+            (Some(package_script_path), MaybeCustom)  => {
                 let sysroot = self.sysroot_to_use();
-                // FIXME (#9639): This needs to handle non-utf8 paths
-                let pkg_script_path_str = package_script_path.as_str().unwrap();
-                let (cfgs, hook_result) =
-                    do self.workcache_context.with_prep(pkg_script_path_str) |prep| {
-                    let sub_sysroot = sysroot.clone();
-                    let package_script_path_clone = package_script_path.clone();
-                    let sub_ws = workspace.clone();
-                    let sub_id = pkgid.clone();
-                    declare_package_script_dependency(prep, &*pkg_src);
+                // Build the package script if needed
+                let script_build = format!("build_package_script({})",
+                                           package_script_path.display());
+                let pkg_exe = do self.workcache_context.with_prep(script_build) |prep| {
+                    let subsysroot = sysroot.clone();
+                    let psp = package_script_path.clone();
+                    let ws = workspace.clone();
+                    let pid = pkgid.clone();
                     do prep.exec |exec| {
-                        let mut pscript = PkgScript::parse(@sub_sysroot.clone(),
-                                                          package_script_path_clone.clone(),
-                                                          &sub_ws,
-                                                          &sub_id);
-
-                        pscript.run_custom(exec, &sub_sysroot)
+                        let mut pscript = PkgScript::parse(subsysroot.clone(),
+                                                           psp.clone(),
+                                                           &ws,
+                                                           &pid);
+                        pscript.build_custom(exec)
                     }
                 };
+                // We always *run* the package script
+                let (cfgs, hook_result) = PkgScript::run_custom(&Path::new(pkg_exe), &sysroot);
                 debug!("Command return code = {:?}", hook_result);
                 if hook_result != 0 {
                     fail!("Error running custom build command")
@@ -477,7 +488,11 @@ impl CtxMethods for BuildContext {
                 // otherwise, the package script succeeded
                 cfgs
             }
-            None => {
+            (Some(_), Inferred) => {
+                debug!("There is a package script, but we're ignoring it");
+                ~[]
+            }
+            (None, _) => {
                 debug!("No package script, continuing");
                 ~[]
             }
@@ -486,13 +501,13 @@ impl CtxMethods for BuildContext {
         // If there was a package script, it should have finished
         // the build already. Otherwise...
         if !custom {
-            match what_to_build {
+            match what_to_build.sources {
                 // Find crates inside the workspace
-                &Everything => pkg_src.find_crates(),
+                Everything => pkg_src.find_crates(),
                 // Find only tests
-                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::new(s)) }),
+                Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::new(s)) }),
                 // Don't infer any crates -- just build the one that was requested
-                &JustOne(ref p) => {
+                JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
                     debug!("JustOne: p = {}", p.display());
@@ -512,7 +527,7 @@ impl CtxMethods for BuildContext {
                 }
             }
             // Build it!
-            pkg_src.build(self, cfgs);
+            pkg_src.build(self, cfgs, []);
         }
     }
 
@@ -550,6 +565,8 @@ impl CtxMethods for BuildContext {
         // workcache only knows about *crates*. Building a package
         // just means inferring all the crates in it, then building each one.
         self.build(&mut pkg_src, what);
+
+        debug!("Done building package source {}", pkg_src.to_str());
 
         let to_do = ~[pkg_src.libs.clone(), pkg_src.mains.clone(),
                       pkg_src.tests.clone(), pkg_src.benchs.clone()];
@@ -823,6 +840,7 @@ pub fn main_args(args: &[~str]) -> int {
         save_temps: save_temps,
         target: target,
         target_cpu: target_cpu,
+        additional_library_paths: ~[], // No way to set this from the rustpkg command line
         experimental_features: experimental_features
     };
 
@@ -895,7 +913,8 @@ pub fn main_args(args: &[~str]) -> int {
                 use_rust_path_hack: use_rust_path_hack,
                 sysroot: sroot.clone(), // Currently, only tests override this
             },
-            workcache_context: api::default_context(default_workspace()).workcache_context
+            workcache_context: api::default_context(sroot.clone(),
+                                                    default_workspace()).workcache_context
         }.run(sub_cmd, rm_args.clone())
     };
     // FIXME #9262: This is using the same error code for all errors,

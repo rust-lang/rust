@@ -8,17 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-The test runner should check that, after `rustpkg build fancy-lib`:
-  * testsuite/fancy-lib/build/ exists
-  * testsuite/fancy-lib/build/ contains a file called generated.rs
-  * testsuite/fancy-lib/build/ contains a library named libfancy_lib
-  * testsuite/fancy-lib/build/ does not contain an executable
-  *
-*/
-
 extern mod std;
 
 pub mod foo;
 pub mod bar;
-#[path = "../../build/fancy-lib/generated.rs"] pub mod generated;
