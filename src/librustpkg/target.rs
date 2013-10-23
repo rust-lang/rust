@@ -23,7 +23,31 @@ pub enum Target {
 }
 
 #[deriving(Eq, Clone)]
-pub enum WhatToBuild {
+pub struct WhatToBuild {
+    build_type: BuildType, // Whether or not to ignore the pkg.rs file
+    sources: SourceType, // Which crates to build
+    inputs_to_discover: ~[(~str, Path)] // Inputs to these crates to be discovered
+        // (For now all of these inputs will be taken as discovered inputs
+        // for all of the crates)
+        // (Paired with their kinds)
+}
+
+impl WhatToBuild {
+    pub fn new(build_type: BuildType, sources: SourceType) -> WhatToBuild {
+        WhatToBuild { build_type: build_type,
+                      sources: sources,
+                      inputs_to_discover: ~[] }
+    }
+}
+
+#[deriving(Eq, Clone)]
+pub enum BuildType {
+    Inferred, // Ignore the pkg.rs file even if one exists
+    MaybeCustom // Use the pkg.rs file if it exists
+}
+
+#[deriving(Eq, Clone)]
+pub enum SourceType {
     /// Build just one lib.rs file in `path`, which is relative to the active workspace's src/ dir
     JustOne(Path),
     /// Build any test.rs files that can be recursively found in the active workspace
