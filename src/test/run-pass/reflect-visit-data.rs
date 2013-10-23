@@ -10,6 +10,8 @@
 
 // xfail-fast
 
+#[feature(managed_boxes)];
+
 use std::libc::c_void;
 use std::ptr;
 use std::mem;

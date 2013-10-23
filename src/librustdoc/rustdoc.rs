@@ -17,7 +17,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[feature(globs, struct_variant)];
+#[feature(globs, struct_variant, managed_boxes)];
 
 extern mod syntax;
 extern mod rustc;

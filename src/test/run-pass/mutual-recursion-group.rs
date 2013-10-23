@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
 
-
-
-// -*- rust -*-
 enum colour { red, green, blue, }
 
 enum tree { children(@list), leaf(colour), }

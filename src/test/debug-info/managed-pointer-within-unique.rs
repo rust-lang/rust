@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
 // debugger:rbreak zzz

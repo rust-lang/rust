@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 pub fn main() {
     let i: (@int, int) = (@10, 10);
     let (_a, _) = i;

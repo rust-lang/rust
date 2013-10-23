@@ -61,7 +61,7 @@ they contained the following prologue:
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, asm)];
+#[feature(macro_rules, globs, asm, managed_boxes)];
 
 // Don't link to std. We are std.
 #[no_std];

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 fn wants_box(x: @str) { }
 fn wants_uniq(x: ~str) { }
 fn wants_slice(x: &str) { }

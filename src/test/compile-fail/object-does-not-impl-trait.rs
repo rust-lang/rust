@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Test that an object type `@Foo` is not considered to implement the
 // trait `Foo`. Issue #5087.
 

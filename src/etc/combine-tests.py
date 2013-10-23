@@ -40,7 +40,7 @@ c = open("tmp/run_pass_stage2.rc", "w")
 i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
-c.write("#[feature(globs, macro_rules, struct_variant)];\n")
+c.write("#[feature(globs, macro_rules, struct_variant, managed_boxes)];\n")
 for t in stage2_tests:
     p = os.path.join(run_pass, t)
     p = p.replace("\\", "\\\\")
@@ -52,7 +52,7 @@ c.close()
 
 d = open("tmp/run_pass_stage2_driver.rs", "w")
 d.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
-d.write("#[feature(globs)];\n")
+d.write("#[feature(globs, managed_boxes)];\n")
 d.write("extern mod extra;\n")
 d.write("extern mod run_pass_stage2;\n")
 d.write("use run_pass_stage2::*;\n")

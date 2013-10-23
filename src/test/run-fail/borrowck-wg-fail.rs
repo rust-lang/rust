@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 // error-pattern:borrowed
 
 // Test that write guards trigger when mut box is frozen
