@@ -582,8 +582,8 @@ mod tests {
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
 
-        assert_eq!(parent_stat.st_dev, child_stat.st_dev);
-        assert_eq!(parent_stat.st_ino, child_stat.st_ino);
+        assert_eq!(parent_stat.device, child_stat.device);
+        assert_eq!(parent_stat.inode, child_stat.inode);
     }
 
     #[test]
@@ -599,8 +599,8 @@ mod tests {
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
 
-        assert_eq!(parent_stat.st_dev, child_stat.st_dev);
-        assert_eq!(parent_stat.st_ino, child_stat.st_ino);
+        assert_eq!(parent_stat.device, child_stat.device);
+        assert_eq!(parent_stat.inode, child_stat.inode);
     }
 
     #[cfg(unix,not(target_os="android"))]

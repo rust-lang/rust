@@ -654,6 +654,12 @@ pub struct FileStat {
     is_file: bool,
     /// `true` if the file pointed at by the `PathInfo` is a directory
     is_dir: bool,
+    /// The file pointed at by the `PathInfo`'s device
+    device: u64,
+    /// The file pointed at by the `PathInfo`'s mode
+    mode: u64,
+    /// The file pointed at by the `PathInfo`'s inode
+    inode: u64,
     /// The file pointed at by the `PathInfo`'s size in bytes
     size: u64,
     /// The file pointed at by the `PathInfo`'s creation time

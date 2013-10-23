@@ -138,13 +138,13 @@ pub struct uv_timespec_t {
 }
 
 pub struct uv_stat_t {
-    priv st_dev: libc::uint64_t,
+    st_dev: libc::uint64_t,
     st_mode: libc::uint64_t,
     priv st_nlink: libc::uint64_t,
     priv st_uid: libc::uint64_t,
     priv st_gid: libc::uint64_t,
     priv st_rdev: libc::uint64_t,
-    priv st_ino: libc::uint64_t,
+    st_ino: libc::uint64_t,
     st_size: libc::uint64_t,
     priv st_blksize: libc::uint64_t,
     priv st_blocks: libc::uint64_t,
