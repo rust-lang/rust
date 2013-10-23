@@ -59,8 +59,8 @@ use path::Path;
 ///     }).inside {
 ///         let stream = match open(p, Create, ReadWrite) {
 ///             Some(s) => s,
-///             None => fail!("whoops! I'm sure this raised, anyways..");
-///         }
+///             None => fail!("whoops! I'm sure this raised, anyways..")
+///         };
 ///         // do some stuff with that stream
 ///
 ///         // the file stream will be closed at the end of this block

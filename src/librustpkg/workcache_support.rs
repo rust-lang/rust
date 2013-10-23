@@ -18,17 +18,17 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
     use conditions::bad_path::cond;
     use cond1 = conditions::bad_stat::cond;
 
-    let mut sha = ~Sha1::new();
     let s = io::read_whole_file_str(path);
     match s {
         Ok(s) => {
-            (*sha).input_str(s);
+            let mut sha = Sha1::new();
+            sha.input_str(s);
             let st = match path.stat() {
                 Some(st) => st,
                 None => cond1.raise((path.clone(), format!("Couldn't get file access time")))
             };
-            (*sha).input_str(st.st_mtime.to_str());
-            (*sha).result_str()
+            sha.input_str(st.modified.to_str());
+            sha.result_str()
         }
         Err(e) => {
             let path = cond.raise((path.clone(), format!("Couldn't read file: {}", e)));
@@ -43,13 +43,13 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
 pub fn digest_only_date(path: &Path) -> ~str {
     use cond = conditions::bad_stat::cond;
 
-    let mut sha = ~Sha1::new();
+    let mut sha = Sha1::new();
     let st = match path.stat() {
                 Some(st) => st,
                 None => cond.raise((path.clone(), format!("Couldn't get file access time")))
     };
-    (*sha).input_str(st.st_mtime.to_str());
-    (*sha).result_str()
+    sha.input_str(st.modified.to_str());
+    sha.result_str()
 }
 
 /// Adds multiple discovered outputs
