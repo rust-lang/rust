@@ -20,6 +20,10 @@
  *
  * The `sha1` object may be reused to create multiple hashes by calling
  * the `reset` method.
+ *
+ * This implementation has not been reviewed for cryptographic uses.
+ * As such, all cryptographic uses of this implementation are strongly
+ * discouraged.
  */
 
 
