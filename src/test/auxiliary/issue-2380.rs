@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
 #[link(name = "a", vers = "0.0")];
 #[crate_type = "lib"];
 

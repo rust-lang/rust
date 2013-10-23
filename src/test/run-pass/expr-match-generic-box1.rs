@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
 
-
-
-// -*- rust -*-
 type compare<T> = &'static fn(@T, @T) -> bool;
 
 fn test_generic<T>(expected: @T, eq: compare<T>) {

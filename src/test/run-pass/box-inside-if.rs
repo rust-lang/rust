@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-// -*- rust -*-
+#[feature(managed_boxes)];
 
 fn some_box(x: int) -> @int { return @x; }
 

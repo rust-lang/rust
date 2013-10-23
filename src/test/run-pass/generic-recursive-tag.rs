@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+#[feature(managed_boxes)];
 
 enum list<T> { cons(@T, @list<T>), nil, }
 

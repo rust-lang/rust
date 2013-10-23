@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 fn takes_mut(x: @mut int) { }
 fn takes_imm(x: @int) { }
 

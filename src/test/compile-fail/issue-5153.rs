@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // error-pattern: type `@Foo:'static` does not implement any method in scope named `foo`
 
 trait Foo {

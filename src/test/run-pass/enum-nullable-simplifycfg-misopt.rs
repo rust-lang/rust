@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 /*!
  * This is a regression test for a bug in LLVM, fixed in upstream r179587,
  * where the switch instructions generated for destructuring enums
