@@ -295,9 +295,9 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    use extra::test::BenchHarness;
 
     use sha1::Sha1;
-    use test::BenchHarness;
 
     #[bench]
     pub fn sha1_10(bh: & mut BenchHarness) {

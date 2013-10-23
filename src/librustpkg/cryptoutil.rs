@@ -349,10 +349,10 @@ impl <T: FixedBuffer> StandardPadding for T {
 pub mod test {
     use std::rand::{IsaacRng, Rng};
     use std::vec;
+    use extra::hex::FromHex;
 
     use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple};
     use digest::Digest;
-    use hex::FromHex;
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
     /// correct.
