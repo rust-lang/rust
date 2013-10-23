@@ -28,6 +28,23 @@ from an operating-system source of randomness, e.g. `/dev/urandom` on
 Unix systems, and will automatically reseed itself from this source
 after generating 32 KiB of random data.
 
+# Cryptographic security
+
+An application that requires random numbers for cryptographic purposes
+should prefer `OSRng`, which reads randomness from one of the source
+that the operating system provides (e.g. `/dev/urandom` on
+Unixes). The other random number generators provided by this module
+are either known to be insecure (`XorShiftRng`), or are not verified
+to be secure (`IsaacRng`, `Isaac64Rng` and `StdRng`).
+
+*Note*: on Linux, `/dev/random` is more secure than `/dev/urandom`,
+but it is a blocking RNG, and will wait until it has determined that
+it has collected enough entropy to fulfill a request for random
+data. It can be used with the `Rng` trait provided by this module by
+opening the file and passing it to `reader::ReaderRng`. Since it
+blocks, `/dev/random` should only be used to retrieve small amounts of
+randomness.
+
 # Examples
 
 ```rust
@@ -53,16 +70,19 @@ fn main () {
 */
 
 use cast;
+use cmp::Ord;
 use container::Container;
 use iter::{Iterator, range};
 use local_data;
 use prelude::*;
 use str;
-use u64;
 use vec;
 
 pub use self::isaac::{IsaacRng, Isaac64Rng};
 pub use self::os::OSRng;
+
+use self::distributions::{Range, IndependentSample};
+use self::distributions::range::SampleRange;
 
 pub mod distributions;
 pub mod isaac;
@@ -76,14 +96,6 @@ pub trait Rand {
     /// Generates a random instance of this type using the specified source of
     /// randomness
     fn rand<R: Rng>(rng: &mut R) -> Self;
-}
-
-/// A value with a particular weight compared to other values
-pub struct Weighted<T> {
-    /// The numerical weight of this item
-    weight: uint,
-    /// The actual item which is being weighted
-    item: T,
 }
 
 /// A random number generator
@@ -196,14 +208,14 @@ pub trait Rng {
         vec::from_fn(len, |_| self.gen())
     }
 
-    /// Generate a random primitive integer in the range [`low`,
-    /// `high`). Fails if `low >= high`.
+    /// Generate a random value in the range [`low`, `high`). Fails if
+    /// `low >= high`.
     ///
-    /// This gives a uniform distribution (assuming this RNG is itself
-    /// uniform), even for edge cases like `gen_integer_range(0u8,
-    /// 170)`, which a naive modulo operation would return numbers
-    /// less than 85 with double the probability to those greater than
-    /// 85.
+    /// This is a convenience wrapper around
+    /// `distributions::Range`. If this function will be called
+    /// repeatedly with the same arguments, one should use `Range`, as
+    /// that will amortize the computations that allow for perfect
+    /// uniformity, as they only happen on initialization.
     ///
     /// # Example
     ///
@@ -213,22 +225,15 @@ pub trait Rng {
     ///
     /// fn main() {
     ///    let mut rng = rand::task_rng();
-    ///    let n: uint = rng.gen_integer_range(0u, 10);
+    ///    let n: uint = rng.gen_range(0u, 10);
     ///    println!("{}", n);
-    ///    let m: int = rng.gen_integer_range(-40, 400);
+    ///    let m: float = rng.gen_range(-40.0, 1.3e5);
     ///    println!("{}", m);
     /// }
     /// ```
-    fn gen_integer_range<T: Rand + Int>(&mut self, low: T, high: T) -> T {
-        assert!(low < high, "RNG.gen_integer_range called with low >= high");
-        let range = (high - low).to_u64().unwrap();
-        let accept_zone = u64::max_value - u64::max_value % range;
-        loop {
-            let rand = self.gen::<u64>();
-            if rand < accept_zone {
-                return low + NumCast::from(rand % range).unwrap();
-            }
-        }
+    fn gen_range<T: Ord + SampleRange>(&mut self, low: T, high: T) -> T {
+        assert!(low < high, "Rng.gen_range called with low >= high");
+        Range::new(low, high).ind_sample(self)
     }
 
     /// Return a bool with a 1 in n chance of true
@@ -245,7 +250,7 @@ pub trait Rng {
     /// }
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
-        n == 0 || self.gen_integer_range(0, n) == 0
+        n == 0 || self.gen_range(0, n) == 0
     }
 
     /// Return a random string of the specified length composed of
@@ -295,93 +300,8 @@ pub trait Rng {
         if values.is_empty() {
             None
         } else {
-            Some(&values[self.gen_integer_range(0u, values.len())])
+            Some(&values[self.gen_range(0u, values.len())])
         }
-    }
-
-    /// Choose an item respecting the relative weights, failing if the sum of
-    /// the weights is 0
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
-    ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     let x = [rand::Weighted {weight: 4, item: 'a'},
-    ///              rand::Weighted {weight: 2, item: 'b'},
-    ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     println!("{}", rng.choose_weighted(x));
-    /// }
-    /// ```
-    fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
-        self.choose_weighted_option(v).expect("Rng.choose_weighted: total weight is 0")
-    }
-
-    /// Choose Some(item) respecting the relative weights, returning none if
-    /// the sum of the weights is 0
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
-    ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     let x = [rand::Weighted {weight: 4, item: 'a'},
-    ///              rand::Weighted {weight: 2, item: 'b'},
-    ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     println!("{:?}", rng.choose_weighted_option(x));
-    /// }
-    /// ```
-    fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
-                                       -> Option<T> {
-        let mut total = 0u;
-        for item in v.iter() {
-            total += item.weight;
-        }
-        if total == 0u {
-            return None;
-        }
-        let chosen = self.gen_integer_range(0u, total);
-        let mut so_far = 0u;
-        for item in v.iter() {
-            so_far += item.weight;
-            if so_far > chosen {
-                return Some(item.item.clone());
-            }
-        }
-        unreachable!();
-    }
-
-    /// Return a vec containing copies of the items, in order, where
-    /// the weight of the item determines how many copies there are
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
-    ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     let x = [rand::Weighted {weight: 4, item: 'a'},
-    ///              rand::Weighted {weight: 2, item: 'b'},
-    ///              rand::Weighted {weight: 2, item: 'c'}];
-    ///     println!("{}", rng.weighted_vec(x));
-    /// }
-    /// ```
-    fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
-        let mut r = ~[];
-        for item in v.iter() {
-            for _ in range(0u, item.weight) {
-                r.push(item.item.clone());
-            }
-        }
-        r
     }
 
     /// Shuffle a vec
@@ -425,7 +345,7 @@ pub trait Rng {
             // invariant: elements with index >= i have been locked in place.
             i -= 1u;
             // lock element i in place.
-            values.swap(i, self.gen_integer_range(0u, i + 1u));
+            values.swap(i, self.gen_range(0u, i + 1u));
         }
     }
 
@@ -451,7 +371,7 @@ pub trait Rng {
                 continue
             }
 
-            let k = self.gen_integer_range(0, i + 1);
+            let k = self.gen_range(0, i + 1);
             if k < reservoir.len() {
                 reservoir[k] = elem
             }
@@ -498,8 +418,8 @@ pub trait SeedableRng<Seed>: Rng {
 
 /// Create a random number generator with a default algorithm and seed.
 ///
-/// It returns the cryptographically-safest `Rng` algorithm currently
-/// available in Rust. If you require a specifically seeded `Rng` for
+/// It returns the strongest `Rng` algorithm currently implemented in
+/// pure Rust. If you require a specifically seeded `Rng` for
 /// consistency over time you should pick one algorithm and create the
 /// `Rng` yourself.
 ///
@@ -574,12 +494,16 @@ pub fn weak_rng() -> XorShiftRng {
     XorShiftRng::new()
 }
 
-/// An [Xorshift random number
-/// generator](http://en.wikipedia.org/wiki/Xorshift).
+/// An Xorshift[1] random number
+/// generator.
 ///
 /// The Xorshift algorithm is not suitable for cryptographic purposes
 /// but is very fast. If you do not know for sure that it fits your
-/// requirements, use a more secure one such as `IsaacRng`.
+/// requirements, use a more secure one such as `IsaacRng` or `OSRng`.
+///
+/// [1]: Marsaglia, George (July 2003). ["Xorshift
+/// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
+/// Statistical Software*. Vol. 8 (Issue 14).
 pub struct XorShiftRng {
     priv x: u32,
     priv y: u32,
@@ -759,36 +683,36 @@ mod test {
     }
 
     #[test]
-    fn test_gen_integer_range() {
+    fn test_gen_range() {
         let mut r = rng();
         for _ in range(0, 1000) {
-            let a = r.gen_integer_range(-3i, 42);
+            let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
-            assert_eq!(r.gen_integer_range(0, 1), 0);
-            assert_eq!(r.gen_integer_range(-12, -11), -12);
+            assert_eq!(r.gen_range(0, 1), 0);
+            assert_eq!(r.gen_range(-12, -11), -12);
         }
 
         for _ in range(0, 1000) {
-            let a = r.gen_integer_range(10, 42);
+            let a = r.gen_range(10, 42);
             assert!(a >= 10 && a < 42);
-            assert_eq!(r.gen_integer_range(0, 1), 0);
-            assert_eq!(r.gen_integer_range(3_000_000u, 3_000_001), 3_000_000);
+            assert_eq!(r.gen_range(0, 1), 0);
+            assert_eq!(r.gen_range(3_000_000u, 3_000_001), 3_000_000);
         }
 
     }
 
     #[test]
     #[should_fail]
-    fn test_gen_integer_range_fail_int() {
+    fn test_gen_range_fail_int() {
         let mut r = rng();
-        r.gen_integer_range(5i, -2);
+        r.gen_range(5i, -2);
     }
 
     #[test]
     #[should_fail]
-    fn test_gen_integer_range_fail_uint() {
+    fn test_gen_range_fail_uint() {
         let mut r = rng();
-        r.gen_integer_range(5u, 2u);
+        r.gen_range(5u, 2u);
     }
 
     #[test]
@@ -843,44 +767,6 @@ mod test {
     }
 
     #[test]
-    fn test_choose_weighted() {
-        let mut r = rng();
-        assert!(r.choose_weighted([
-            Weighted { weight: 1u, item: 42 },
-        ]) == 42);
-        assert!(r.choose_weighted([
-            Weighted { weight: 0u, item: 42 },
-            Weighted { weight: 1u, item: 43 },
-        ]) == 43);
-    }
-
-    #[test]
-    fn test_choose_weighted_option() {
-        let mut r = rng();
-        assert!(r.choose_weighted_option([
-            Weighted { weight: 1u, item: 42 },
-        ]) == Some(42));
-        assert!(r.choose_weighted_option([
-            Weighted { weight: 0u, item: 42 },
-            Weighted { weight: 1u, item: 43 },
-        ]) == Some(43));
-        let v: Option<int> = r.choose_weighted_option([]);
-        assert!(v.is_none());
-    }
-
-    #[test]
-    fn test_weighted_vec() {
-        let mut r = rng();
-        let empty: ~[int] = ~[];
-        assert_eq!(r.weighted_vec([]), empty);
-        assert!(r.weighted_vec([
-            Weighted { weight: 0u, item: 3u },
-            Weighted { weight: 1u, item: 2u },
-            Weighted { weight: 2u, item: 1u },
-        ]) == ~[2u, 1u, 1u]);
-    }
-
-    #[test]
     fn test_shuffle() {
         let mut r = rng();
         let empty: ~[int] = ~[];
@@ -893,7 +779,7 @@ mod test {
         let mut r = task_rng();
         r.gen::<int>();
         assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
-        assert_eq!(r.gen_integer_range(0u, 1u), 0u);
+        assert_eq!(r.gen_range(0u, 1u), 0u);
     }
 
     #[test]
@@ -952,41 +838,53 @@ mod bench {
     use extra::test::BenchHarness;
     use rand::*;
     use mem::size_of;
+    use iter::range;
+    use option::{Some, None};
+
+    static N: u64 = 100;
 
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
         do bh.iter {
-            rng.gen::<uint>();
+            for _ in range(0, N) {
+                rng.gen::<uint>();
+            }
         }
-        bh.bytes = size_of::<uint>() as u64;
+        bh.bytes = size_of::<uint>() as u64 * N;
     }
 
     #[bench]
     fn rand_isaac(bh: &mut BenchHarness) {
         let mut rng = IsaacRng::new();
         do bh.iter {
-            rng.gen::<uint>();
+            for _ in range(0, N) {
+                rng.gen::<uint>();
+            }
         }
-        bh.bytes = size_of::<uint>() as u64;
+        bh.bytes = size_of::<uint>() as u64 * N;
     }
 
     #[bench]
     fn rand_isaac64(bh: &mut BenchHarness) {
         let mut rng = Isaac64Rng::new();
         do bh.iter {
-            rng.gen::<uint>();
+            for _ in range(0, N) {
+                rng.gen::<uint>();
+            }
         }
-        bh.bytes = size_of::<uint>() as u64;
+        bh.bytes = size_of::<uint>() as u64 * N;
     }
 
     #[bench]
     fn rand_std(bh: &mut BenchHarness) {
         let mut rng = StdRng::new();
         do bh.iter {
-            rng.gen::<uint>();
+            for _ in range(0, N) {
+                rng.gen::<uint>();
+            }
         }
-        bh.bytes = size_of::<uint>() as u64;
+        bh.bytes = size_of::<uint>() as u64 * N;
     }
 
     #[bench]

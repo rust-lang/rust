@@ -365,7 +365,7 @@ pub mod test {
         digest.reset();
 
         while count < total_size {
-            let next: uint = rng.gen_integer_range(0, 2 * blocksize + 1);
+            let next: uint = rng.gen_range(0, 2 * blocksize + 1);
             let remaining = total_size - count;
             let size = if next > remaining { remaining } else { next };
             digest.input(buffer.slice_to(size));
