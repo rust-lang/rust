@@ -488,12 +488,12 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::DefSelf(self_id) => {
+          ast::DefSelf(self_id, mutbl) => {
             @cmt_ {
                 id:id,
                 span:span,
                 cat:cat_self(self_id),
-                mutbl: McImmutable,
+                mutbl: if mutbl { McDeclared } else { McImmutable },
                 ty:expr_ty
             }
           }

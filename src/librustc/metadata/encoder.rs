@@ -662,8 +662,9 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
         sty_static => {
             ebml_w.writer.write(&[ 's' as u8 ]);
         }
-        sty_value => {
+        sty_value(m) => {
             ebml_w.writer.write(&[ 'v' as u8 ]);
+            encode_mutability(ebml_w, m);
         }
         sty_region(_, m) => {
             // FIXME(#4846) encode custom lifetime
@@ -674,8 +675,9 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
             ebml_w.writer.write(&[ '@' as u8 ]);
             encode_mutability(ebml_w, m);
         }
-        sty_uniq => {
+        sty_uniq(m) => {
             ebml_w.writer.write(&[ '~' as u8 ]);
+            encode_mutability(ebml_w, m);
         }
     }
 

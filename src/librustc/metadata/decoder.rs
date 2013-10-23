@@ -975,9 +975,9 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
     let explicit_self_kind = string[0];
     match explicit_self_kind as char {
         's' => { return ast::sty_static; }
-        'v' => { return ast::sty_value; }
+        'v' => { return ast::sty_value(get_mutability(string[1])); }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
-        '~' => { return ast::sty_uniq; }
+        '~' => { return ast::sty_uniq(get_mutability(string[1])); }
         '&' => {
             // FIXME(#4846) expl. region
             return ast::sty_region(None, get_mutability(string[1]));

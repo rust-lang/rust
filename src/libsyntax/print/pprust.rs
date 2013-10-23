@@ -1686,8 +1686,14 @@ pub fn explicit_self_to_str(explicit_self: &ast::explicit_self_, intr: @ident_in
 pub fn print_explicit_self(s: @ps, explicit_self: ast::explicit_self_) -> bool {
     match explicit_self {
         ast::sty_static => { return false; }
-        ast::sty_value => { word(s.s, "self"); }
-        ast::sty_uniq => { word(s.s, "~self"); }
+        ast::sty_value(m) => {
+            print_mutability(s, m);
+            word(s.s, "self");
+        }
+        ast::sty_uniq(m) => {
+            print_mutability(s, m);
+            word(s.s, "~self");
+        }
         ast::sty_region(ref lt, m) => {
             word(s.s, "&");
             print_opt_lifetime(s, lt);
