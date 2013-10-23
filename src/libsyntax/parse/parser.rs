@@ -3438,15 +3438,11 @@ impl Parser {
 
     // parse the argument list and result type of a function
     // that may have a self type.
-    fn parse_fn_decl_with_self(
-        &self,
-        parse_arg_fn:
-        &fn(&Parser) -> arg
-    ) -> (explicit_self, fn_decl) {
-        fn maybe_parse_explicit_self(
-            cnstr: &fn(v: Mutability) -> ast::explicit_self_,
-            p: &Parser
-        ) -> ast::explicit_self_ {
+    fn parse_fn_decl_with_self(&self, parse_arg_fn: &fn(&Parser) -> arg)
+        -> (explicit_self, fn_decl) {
+
+        fn maybe_parse_explicit_self(cnstr: &fn(v: Mutability) -> ast::explicit_self_,
+                                     p: &Parser) -> ast::explicit_self_ {
             // We need to make sure it isn't a type
             if p.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) ||
                 ((p.look_ahead(1, |t| token::is_keyword(keywords::Const, t)) ||
@@ -3524,25 +3520,39 @@ impl Parser {
                     self.span_err(*self.last_span,
                                   "mutability declaration not allowed here");
                 }
-                sty_uniq
+                sty_uniq(MutImmutable)
             }, self)
           }
           token::IDENT(*) if self.is_self_ident() => {
             self.bump();
-            sty_value
+            sty_value(MutImmutable)
           }
           token::BINOP(token::STAR) => {
             // Possibly "*self" or "*mut self" -- not supported. Try to avoid
             // emitting cryptic "unexpected token" errors.
             self.bump();
-            if self.token_is_mutability(self.token) {
-                self.bump();
-            }
+            let mutability = if self.token_is_mutability(self.token) {
+                self.parse_mutability()
+            } else { MutImmutable };
             if self.is_self_ident() {
                 self.span_err(*self.span, "cannot pass self by unsafe pointer");
                 self.bump();
             }
-            sty_value
+            sty_value(mutability)
+          }
+          _ if self.token_is_mutability(self.token) &&
+               self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
+            let mutability = self.parse_mutability();
+            self.expect_self_ident();
+            sty_value(mutability)
+          }
+          _ if self.token_is_mutability(self.token) &&
+               self.look_ahead(1, |t| *t == token::TILDE) &&
+               self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
+            let mutability = self.parse_mutability();
+            self.bump();
+            self.expect_self_ident();
+            sty_uniq(mutability)
           }
           _ => {
             sty_static

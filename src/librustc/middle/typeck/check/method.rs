@@ -1082,7 +1082,7 @@ impl<'self> LookupContext<'self> {
             ast::sty_static => {
                 self.bug(~"static method for object type receiver");
             }
-            ast::sty_value => {
+            ast::sty_value(_) => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
             ast::sty_region(*) | ast::sty_box(*) | ast::sty_uniq(*) => {
@@ -1141,7 +1141,7 @@ impl<'self> LookupContext<'self> {
                      through an object");
             }
 
-            ast::sty_value => { // reason (a) above
+            ast::sty_value(_) => { // reason (a) above
                 self.tcx().sess.span_err(
                     self.expr.span,
                     "cannot call a method with a by-value receiver \
@@ -1198,7 +1198,7 @@ impl<'self> LookupContext<'self> {
                 false
             }
 
-            sty_value => {
+            sty_value(_) => {
                 rcvr_matches_ty(self.fcx, rcvr_ty, candidate)
             }
 
@@ -1236,7 +1236,7 @@ impl<'self> LookupContext<'self> {
                 }
             }
 
-            sty_uniq => {
+            sty_uniq(_) => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {
@@ -1369,7 +1369,7 @@ impl<'self> LookupContext<'self> {
 
 pub fn get_mode_from_explicit_self(explicit_self: ast::explicit_self_) -> SelfMode {
     match explicit_self {
-        sty_value => ty::ByRef,
+        sty_value(_) => ty::ByRef,
         _ => ty::ByCopy,
     }
 }

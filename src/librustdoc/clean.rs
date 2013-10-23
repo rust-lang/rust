@@ -388,8 +388,8 @@ impl Clean<SelfTy> for ast::explicit_self {
     fn clean(&self) -> SelfTy {
         match self.node {
             ast::sty_static => SelfStatic,
-            ast::sty_value => SelfValue,
-            ast::sty_uniq => SelfOwned,
+            ast::sty_value(_) => SelfValue,
+            ast::sty_uniq(_) => SelfOwned,
             ast::sty_region(lt, mt) => SelfBorrowed(lt.clean(), mt.clean()),
             ast::sty_box(mt) => SelfManaged(mt.clean()),
         }
@@ -1171,7 +1171,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
 
     let (def_id, kind) = match *d {
         ast::DefFn(i, _) => (i, TypeFunction),
-        ast::DefSelf(i) | ast::DefSelfTy(i) => return Self(i),
+        ast::DefSelf(i, _) | ast::DefSelfTy(i) => return Self(i),
         ast::DefTy(i) => (i, TypeEnum),
         ast::DefTrait(i) => {
             debug!("saw DefTrait in def_to_id");
