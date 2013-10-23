@@ -34,7 +34,7 @@ pub mod rustrt {
 
 
 #[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
-pub struct Timespec { priv sec: i64, priv nsec: i32 }
+pub struct Timespec { sec: i64, nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
  * nsec fields. Darwin's and Linux's struct timespec functions handle pre-
@@ -106,18 +106,18 @@ pub fn tzset() {
 
 #[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
 pub struct Tm {
-    priv tm_sec: i32, // seconds after the minute ~[0-60]
-    priv tm_min: i32, // minutes after the hour ~[0-59]
-    priv tm_hour: i32, // hours after midnight ~[0-23]
-    priv tm_mday: i32, // days of the month ~[1-31]
-    priv tm_mon: i32, // months since January ~[0-11]
-    priv tm_year: i32, // years since 1900
-    priv tm_wday: i32, // days since Sunday ~[0-6]
-    priv tm_yday: i32, // days since January 1 ~[0-365]
-    priv tm_isdst: i32, // Daylight Savings Time flag
-    priv tm_gmtoff: i32, // offset from UTC in seconds
-    priv tm_zone: ~str, // timezone abbreviation
-    priv tm_nsec: i32, // nanoseconds
+    tm_sec: i32, // seconds after the minute ~[0-60]
+    tm_min: i32, // minutes after the hour ~[0-59]
+    tm_hour: i32, // hours after midnight ~[0-23]
+    tm_mday: i32, // days of the month ~[1-31]
+    tm_mon: i32, // months since January ~[0-11]
+    tm_year: i32, // years since 1900
+    tm_wday: i32, // days since Sunday ~[0-6]
+    tm_yday: i32, // days since January 1 ~[0-365]
+    tm_isdst: i32, // Daylight Savings Time flag
+    tm_gmtoff: i32, // offset from UTC in seconds
+    tm_zone: ~str, // timezone abbreviation
+    tm_nsec: i32, // nanoseconds
 }
 
 pub fn empty_tm() -> Tm {
