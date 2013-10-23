@@ -1184,15 +1184,7 @@ impl Parser {
     pub fn is_named_argument(&self) -> bool {
         let offset = match *self.token {
             token::BINOP(token::AND) => 1,
-            token::BINOP(token::MINUS) => 1,
             token::ANDAND => 1,
-            token::BINOP(token::PLUS) => {
-                if self.look_ahead(1, |t| *t == token::BINOP(token::PLUS)) {
-                    2
-                } else {
-                    1
-                }
-            },
             _ if token::is_keyword(keywords::Mut, self.token) => 1,
             _ => 0
         };
@@ -1802,7 +1794,7 @@ impl Parser {
                 return self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts, EMPTY_CTXT));
             } else if *self.token == token::LBRACE {
                 // This might be a struct literal.
-                if self.looking_at_record_literal() {
+                if self.looking_at_struct_literal() {
                     // It's a struct literal.
                     self.bump();
                     let mut fields = ~[];
@@ -2513,12 +2505,11 @@ impl Parser {
         }
     }
 
-    // For distingishing between record literals and blocks
-    fn looking_at_record_literal(&self) -> bool {
+    // For distingishing between struct literals and blocks
+    fn looking_at_struct_literal(&self) -> bool {
         *self.token == token::LBRACE &&
-            (self.look_ahead(1, |t| token::is_keyword(keywords::Mut, t)) ||
-             (self.look_ahead(1, |t| token::is_plain_ident(t)) &&
-              self.look_ahead(2, |t| *t == token::COLON)))
+        (self.look_ahead(1, |t| token::is_plain_ident(t)) &&
+         self.look_ahead(2, |t| *t == token::COLON))
     }
 
     fn parse_match_expr(&self) -> @Expr {
