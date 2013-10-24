@@ -10,27 +10,23 @@
 
 #[allow(non_uppercase_pattern_statics)];
 
-use back::{abi};
+use back::abi;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{ValueRef, Pointer, Array, Struct};
 use lib;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee::*;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
-use middle::trans::expr::Ignore;
 use middle::trans::machine;
 use middle::trans::glue;
-use middle::ty::FnSig;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::opt_vec;
-use util::ppaux::{ty_to_str};
+use util::ppaux::ty_to_str;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 
@@ -385,33 +381,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
             glue::call_tydesc_glue_full(bcx, visitor, td,
                                         abi::tydesc_field_visit_glue, None);
-            RetVoid(bcx);
-        }
-        "frame_address" => {
-            let frameaddress = ccx.intrinsics.get_copy(& &"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)], []);
-            let star_u8 = ty::mk_imm_ptr(
-                bcx.tcx(),
-                ty::mk_mach_uint(ast::ty_u8));
-            let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
-                purity: ast::impure_fn,
-                sigil: ast::BorrowedSigil,
-                onceness: ast::Many,
-                region: ty::re_bound(ty::br_anon(0)),
-                bounds: ty::EmptyBuiltinBounds(),
-                sig: FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
-                    inputs: ~[ star_u8 ],
-                    output: ty::mk_nil()
-                }
-            });
-            let datum = Datum {val: get_param(decl, first_real_arg),
-                               mode: ByRef(ZeroMem), ty: fty};
-            let arg_vals = ~[frameaddress_val];
-            bcx = trans_call_inner(
-                bcx, None, fty, ty::mk_nil(),
-                |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(arg_vals), Some(Ignore), DontAutorefArg).bcx;
             RetVoid(bcx);
         }
         "morestack_addr" => {
