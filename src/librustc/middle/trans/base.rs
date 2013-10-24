@@ -2506,7 +2506,8 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 };
 
-                                if !*ccx.sess.building_library {
+                                if !(*ccx.sess.building_library ||
+                                    ccx.exported_items.contains(&i.id)) {
                                     lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
                                 }
 
