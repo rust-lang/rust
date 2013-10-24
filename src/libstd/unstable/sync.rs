@@ -42,16 +42,23 @@ struct ArcData<T> {
     data: Option<T>,
 }
 
-unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
+unsafe fn new_inner<T>(data: T, refcount: uint) -> *mut ArcData<T> {
     let data = ~ArcData { count: AtomicUint::new(refcount),
                           unwrapper: AtomicOption::empty(),
                           data: Some(data) };
     cast::transmute(data)
 }
 
+impl<T> UnsafeArc<T>
+{
+    pub unsafe fn new_unsafe(data: T) -> UnsafeArc<T> {
+        UnsafeArc { data: new_inner(data, 1) }
+    }
+}
+
 impl<T: Send> UnsafeArc<T> {
     pub fn new(data: T) -> UnsafeArc<T> {
-        unsafe { UnsafeArc { data: new_inner(data, 1) } }
+        unsafe { UnsafeArc::new_unsafe(data) }
     }
 
     /// As new(), but returns an extra pre-cloned handle.
@@ -73,7 +80,9 @@ impl<T: Send> UnsafeArc<T> {
             }
         }
     }
+}
 
+impl<T> UnsafeArc<T> {
     /// As newN(), but from an already-existing handle. Uses one xadd.
     pub fn cloneN(self, num_handles: uint) -> ~[UnsafeArc<T>] {
         if num_handles == 0 {
@@ -105,6 +114,17 @@ impl<T: Send> UnsafeArc<T> {
         unsafe {
             assert!((*self.data).count.load(Relaxed) > 0);
             let r: *T = (*self.data).data.get_ref();
+            return r;
+        }
+    }
+
+    /// Whether this is the only reference to the data
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        unsafe {
+            let mut data: ~ArcData<T> = cast::transmute(self.data);
+            let r = data.count.load(Acquire) == 1 && data.unwrapper.is_empty(Acquire);
+            cast::forget(data);
             return r;
         }
     }
@@ -207,7 +227,7 @@ impl<T: Send> UnsafeArc<T> {
     }
 }
 
-impl<T: Send> Clone for UnsafeArc<T> {
+impl<T> Clone for UnsafeArc<T> {
     fn clone(&self) -> UnsafeArc<T> {
         unsafe {
             // This barrier might be unnecessary, but I'm not sure...
@@ -557,6 +577,12 @@ mod tests {
         assert!(left_x.is_left());
         util::ignore(left_x);
         p.recv();
+    }
+
+    #[test]
+    fn arclike_new_should_be_owned() {
+        let x = UnsafeArc::new(~~"hello");
+        assert!(x.is_owned())
     }
 
     #[test]
