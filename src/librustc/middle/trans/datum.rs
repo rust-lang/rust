@@ -104,7 +104,9 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use std::char;
 use std::uint;
+use std::libc::c_ulonglong;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
@@ -439,7 +441,10 @@ impl Datum {
                 ByValue => self.val,
                 ByRef(_) => {
                     if ty::type_is_bool(self.ty) {
-                        LoadRangeAssert(bcx, self.val, 0, 2, lib::llvm::True)
+                        LoadRangeAssert(bcx, self.val, 0, 2, lib::llvm::False)
+                    } else if ty::type_is_char(self.ty) {
+                        LoadRangeAssert(bcx, self.val, 0, char::MAX as c_ulonglong + 1,
+                                        lib::llvm::False)
                     } else {
                         Load(bcx, self.val)
                     }
