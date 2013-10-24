@@ -45,7 +45,6 @@ pub use std::os;
 // Utility modules
 
 pub mod c_vec;
-pub mod io_util;
 
 // Concurrency
 
@@ -104,7 +103,6 @@ pub mod rational;
 pub mod complex;
 pub mod stats;
 pub mod semver;
-pub mod fileinput;
 pub mod flate;
 pub mod hex;
 pub mod uuid;

@@ -24,7 +24,7 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use std::{io, os, result, run, str, task};
+use std::{os, result, run, str, task};
 pub use std::path::Path;
 
 use extra::workcache;
@@ -346,7 +346,7 @@ impl CtxMethods for BuildContext {
                 }
             }
             "list" => {
-                io::println("Installed packages:");
+                println("Installed packages:");
                 do installed_packages::list_installed_packages |pkg_id| {
                     do pkg_id.path.display().with_str |s| {
                         println(s);
@@ -726,7 +726,7 @@ impl CtxMethods for BuildContext {
 }
 
 pub fn main() {
-    io::println("WARNING: The Rust package manager is experimental and may be unstable");
+    println("WARNING: The Rust package manager is experimental and may be unstable");
     os::set_exit_status(main_args(os::args()));
 }
 

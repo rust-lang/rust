@@ -48,6 +48,7 @@ use cast::transmute;
 use ptr::null;
 use unstable::finally::Finally;
 use rt::io::net::ip::SocketAddr;
+use rt::io::signal::Signum;
 
 use rt::io::IoError;
 
@@ -60,6 +61,7 @@ pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
 pub use self::process::Process;
 pub use self::pipe::Pipe;
+pub use self::signal::SignalWatcher;
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -75,12 +77,22 @@ pub mod async;
 pub mod addrinfo;
 pub mod process;
 pub mod pipe;
+pub mod tty;
+pub mod signal;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
     priv handle: *uvll::uv_loop_t
+}
+
+pub struct Handle(*uvll::uv_handle_t);
+
+impl Watcher for Handle {}
+impl NativeHandle<*uvll::uv_handle_t> for Handle {
+    fn from_native_handle(h: *uvll::uv_handle_t) -> Handle { Handle(h) }
+    fn native_handle(&self) -> *uvll::uv_handle_t { **self }
 }
 
 /// The trait implemented by uv 'watchers' (handles). Watchers are
@@ -137,6 +149,7 @@ pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
+pub type SignalCallback = ~fn(SignalWatcher, Signum);
 
 
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle.
@@ -153,6 +166,7 @@ struct WatcherData {
     udp_recv_cb: Option<UdpReceiveCallback>,
     udp_send_cb: Option<UdpSendCallback>,
     exit_cb: Option<ExitCallback>,
+    signal_cb: Option<SignalCallback>,
 }
 
 pub trait WatcherInterop {
@@ -160,6 +174,8 @@ pub trait WatcherInterop {
     fn install_watcher_data(&mut self);
     fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
     fn drop_watcher_data(&mut self);
+    fn close(self, cb: NullCallback);
+    fn close_async(self);
 }
 
 impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
@@ -186,6 +202,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 udp_recv_cb: None,
                 udp_send_cb: None,
                 exit_cb: None,
+                signal_cb: None,
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);
@@ -205,6 +222,34 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
             let _data = transmute::<*c_void, ~WatcherData>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
+        }
+    }
+
+    fn close(self, cb: NullCallback) {
+        let mut this = self;
+        {
+            let data = this.get_watcher_data();
+            assert!(data.close_cb.is_none());
+            data.close_cb = Some(cb);
+        }
+
+        unsafe { uvll::close(this.native_handle(), close_cb); }
+
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            let mut h: Handle = NativeHandle::from_native_handle(handle);
+            h.get_watcher_data().close_cb.take_unwrap()();
+            h.drop_watcher_data();
+            unsafe { uvll::free_handle(handle as *c_void) }
+        }
+    }
+
+    fn close_async(self) {
+        unsafe { uvll::close(self.native_handle(), close_cb); }
+
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            let mut h: Handle = NativeHandle::from_native_handle(handle);
+            h.drop_watcher_data();
+            unsafe { uvll::free_handle(handle as *c_void) }
         }
     }
 }
@@ -296,6 +341,13 @@ pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError>
 
 /// The uv buffer type
 pub type Buf = uvll::uv_buf_t;
+
+pub fn empty_buf() -> Buf {
+    uvll::uv_buf_t {
+        base: null(),
+        len: 0,
+    }
+}
 
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {

@@ -13,8 +13,8 @@ use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
-use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
-             status_to_maybe_uv_error, vec_to_uv_buf};
+use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle,
+             status_to_maybe_uv_error, empty_buf};
 use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec;
 use str;
@@ -27,7 +27,7 @@ pub enum UvSocketAddr {
     UvIpv6SocketAddr(*sockaddr_in6),
 }
 
-fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
+pub fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
     unsafe {
         assert!((is_ip4_addr(addr) || is_ip6_addr(addr)));
         assert!(!(is_ip4_addr(addr) && is_ip6_addr(addr)));
@@ -96,28 +96,6 @@ pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {
     uv_socket_addr_as_socket_addr(addr, util::id)
 }
 
-// Traverse the addrinfo linked list, producing a vector of Rust socket addresses
-pub fn accum_sockaddrs(addr: &UvAddrInfo) -> ~[SocketAddr] {
-    unsafe {
-        let &UvAddrInfo(addr) = addr;
-        let mut addr = addr;
-
-        let mut addrs = ~[];
-        loop {
-            let uvaddr = sockaddr_to_UvSocketAddr((*addr).ai_addr);
-            let rustaddr = uv_socket_addr_to_socket_addr(uvaddr);
-            addrs.push(rustaddr);
-            if (*addr).ai_next.is_not_null() {
-                addr = (*addr).ai_next;
-            } else {
-                break;
-            }
-        }
-
-        return addrs;
-    }
-}
-
 #[cfg(test)]
 #[test]
 fn test_ip4_conversion() {
@@ -141,23 +119,17 @@ impl Watcher for StreamWatcher { }
 
 impl StreamWatcher {
     pub fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
-        {
-            let data = self.get_watcher_data();
-            data.alloc_cb = Some(alloc);
-            data.read_cb = Some(cb);
-        }
-
-        let ret = unsafe { uvll::read_start(self.native_handle(), alloc_cb, read_cb) };
-
-        if ret != 0 {
-            // uvll::read_start failed, so read_cb will not be called.
-            // Call it manually for scheduling.
-            call_read_cb(self.native_handle(), ret as ssize_t);
-        }
-
-        fn call_read_cb(stream: *uvll::uv_stream_t, errno: ssize_t) {
-            #[fixed_stack_segment]; #[inline(never)];
-            read_cb(stream, errno, vec_to_uv_buf(~[]));
+        unsafe {
+            match uvll::read_start(self.native_handle(), alloc_cb, read_cb) {
+                0 => {
+                    let data = self.get_watcher_data();
+                    data.alloc_cb = Some(alloc);
+                    data.read_cb = Some(cb);
+                }
+                n => {
+                    cb(*self, 0, empty_buf(), Some(UvError(n)))
+                }
+            }
         }
 
         extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
@@ -181,20 +153,25 @@ impl StreamWatcher {
         // but read_stop may be called from inside one of them and we
         // would end up freeing the in-use environment
         let handle = self.native_handle();
-        unsafe { uvll::read_stop(handle); }
+        unsafe { assert_eq!(uvll::read_stop(handle), 0); }
     }
 
     pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.write_cb.is_none());
-            data.write_cb = Some(cb);
-        }
-
         let req = WriteRequest::new();
-        unsafe {
-        assert_eq!(0, uvll::write(req.native_handle(), self.native_handle(), [buf], write_cb));
-        }
+        return unsafe {
+            match uvll::write(req.native_handle(), self.native_handle(),
+                              [buf], write_cb) {
+                0 => {
+                    let data = self.get_watcher_data();
+                    assert!(data.write_cb.is_none());
+                    data.write_cb = Some(cb);
+                }
+                n => {
+                    req.delete();
+                    cb(*self, Some(UvError(n)))
+                }
+            }
+        };
 
         extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);
@@ -206,29 +183,35 @@ impl StreamWatcher {
         }
     }
 
+
+    pub fn listen(&mut self, cb: ConnectionCallback) -> Result<(), UvError> {
+        {
+            let data = self.get_watcher_data();
+            assert!(data.connect_cb.is_none());
+            data.connect_cb = Some(cb);
+        }
+
+        return unsafe {
+            static BACKLOG: c_int = 128; // XXX should be configurable
+            match uvll::listen(self.native_handle(), BACKLOG, connection_cb) {
+                0 => Ok(()),
+                n => Err(UvError(n))
+            }
+        };
+
+        extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
+            rtdebug!("connection_cb");
+            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
+            let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
+            let status = status_to_maybe_uv_error(status);
+            (*cb)(stream_watcher, status);
+        }
+    }
+
     pub fn accept(&mut self, stream: StreamWatcher) {
         let self_handle = self.native_handle() as *c_void;
         let stream_handle = stream.native_handle() as *c_void;
         assert_eq!(0, unsafe { uvll::accept(self_handle, stream_handle) } );
-    }
-
-    pub fn close(self, cb: NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_stream_t) {
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            let cb = stream_watcher.get_watcher_data().close_cb.take_unwrap();
-            stream_watcher.drop_watcher_data();
-            unsafe { free_handle(handle as *c_void) }
-            cb();
-        }
     }
 }
 
@@ -297,28 +280,6 @@ impl TcpWatcher {
                 let status = status_to_maybe_uv_error(status);
                 cb(stream_watcher, status);
             }
-        }
-    }
-
-    pub fn listen(&mut self, cb: ConnectionCallback) {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.connect_cb.is_none());
-            data.connect_cb = Some(cb);
-        }
-
-        unsafe {
-            static BACKLOG: c_int = 128; // XXX should be configurable
-            // XXX: This can probably fail
-            assert_eq!(0, uvll::listen(self.native_handle(), BACKLOG, connection_cb));
-        }
-
-        extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
-            rtdebug!("connection_cb");
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
-            let status = status_to_maybe_uv_error(status);
-            (*cb)(stream_watcher, status);
         }
     }
 
@@ -433,25 +394,6 @@ impl UdpWatcher {
             cb(udp_watcher, status);
         }
     }
-
-    pub fn close(self, cb: NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_udp_t) {
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            let cb = udp_watcher.get_watcher_data().close_cb.take_unwrap();
-            udp_watcher.drop_watcher_data();
-            unsafe { free_handle(handle as *c_void) }
-            cb();
-        }
-    }
 }
 
 impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
@@ -464,12 +406,12 @@ impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
 }
 
 // uv_connect_t is a subclass of uv_req_t
-struct ConnectRequest(*uvll::uv_connect_t);
+pub struct ConnectRequest(*uvll::uv_connect_t);
 impl Request for ConnectRequest { }
 
 impl ConnectRequest {
 
-    fn new() -> ConnectRequest {
+    pub fn new() -> ConnectRequest {
         let connect_handle = unsafe { malloc_req(UV_CONNECT) };
         assert!(connect_handle.is_not_null());
         ConnectRequest(connect_handle as *uvll::uv_connect_t)
@@ -644,7 +586,8 @@ mod test {
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+            let mut stream = server_tcp_watcher.as_stream();
+            let res = do stream.listen |mut server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
                 let mut loop_ = loop_;
@@ -678,7 +621,9 @@ mod test {
                     }
                     count_cell.put_back(count);
                 }
-            }
+            };
+
+            assert!(res.is_ok());
 
             let client_thread = do Thread::start {
                 rtdebug!("starting client thread");
@@ -705,7 +650,7 @@ mod test {
             loop_.run();
             loop_.close();
             client_thread.join();
-        }
+        };
     }
 
     #[test]
@@ -718,7 +663,8 @@ mod test {
             server_tcp_watcher.bind(addr);
             let loop_ = loop_;
             rtdebug!("listening");
-            do server_tcp_watcher.listen |mut server_stream_watcher, status| {
+            let mut stream = server_tcp_watcher.as_stream();
+            let res = do stream.listen |mut server_stream_watcher, status| {
                 rtdebug!("listened!");
                 assert!(status.is_none());
                 let mut loop_ = loop_;
@@ -754,7 +700,8 @@ mod test {
                     }
                     count_cell.put_back(count);
                 }
-            }
+            };
+            assert!(res.is_ok());
 
             let client_thread = do Thread::start {
                 rtdebug!("starting client thread");

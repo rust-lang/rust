@@ -2907,12 +2907,12 @@ you just have to import it with an `use` statement.
 For example, it re-exports `println` which is defined in `std::io::println`:
 
 ~~~
-use puts = std::io::println;
+use puts = std::rt::io::stdio::println;
 
 fn main() {
     println("println is imported per default.");
     puts("Doesn't hinder you from importing it under an different name yourself.");
-    ::std::io::println("Or from not using the automatic import.");
+    ::std::rt::io::stdio::println("Or from not using the automatic import.");
 }
 ~~~
 

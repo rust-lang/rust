@@ -28,7 +28,10 @@ use print::pp;
 use print::pprust;
 
 use std::char;
-use std::io;
+use std::str;
+use std::rt::io;
+use std::rt::io::Decorator;
+use std::rt::io::mem::MemWriter;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
@@ -83,11 +86,11 @@ pub fn end(s: @ps) {
     pp::end(s.s);
 }
 
-pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
+pub fn rust_printer(writer: @mut io::Writer, intr: @ident_interner) -> @ps {
     return rust_printer_annotated(writer, intr, @no_ann::new() as @pp_ann);
 }
 
-pub fn rust_printer_annotated(writer: @io::Writer,
+pub fn rust_printer_annotated(writer: @mut io::Writer,
                               intr: @ident_interner,
                               ann: @pp_ann)
                               -> @ps {
@@ -118,8 +121,8 @@ pub fn print_crate(cm: @CodeMap,
                    span_diagnostic: @mut diagnostic::span_handler,
                    crate: &ast::Crate,
                    filename: @str,
-                   input: @io::Reader,
-                   out: @io::Writer,
+                   input: @mut io::Reader,
+                   out: @mut io::Writer,
                    ann: @pp_ann,
                    is_expanded: bool) {
     let (cmnts, lits) = comments::gather_comments_and_literals(
@@ -200,26 +203,26 @@ pub fn path_to_str(p: &ast::Path, intr: @ident_interner) -> ~str {
 pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::Ident,
                   opt_explicit_self: Option<ast::explicit_self_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
-    do io::with_str_writer |wr| {
-        let s = rust_printer(wr, intr);
-        print_fn(s, decl, Some(purity), AbiSet::Rust(),
-                 name, generics, opt_explicit_self, ast::inherited);
-        end(s); // Close the head box
-        end(s); // Close the outer box
-        eof(s.s);
-    }
+    let wr = @mut MemWriter::new();
+    let s = rust_printer(wr as @mut io::Writer, intr);
+    print_fn(s, decl, Some(purity), AbiSet::Rust(),
+             name, generics, opt_explicit_self, ast::inherited);
+    end(s); // Close the head box
+    end(s); // Close the outer box
+    eof(s.s);
+    str::from_utf8(*wr.inner_ref())
 }
 
 pub fn block_to_str(blk: &ast::Block, intr: @ident_interner) -> ~str {
-    do io::with_str_writer |wr| {
-        let s = rust_printer(wr, intr);
-        // containing cbox, will be closed by print-block at }
-        cbox(s, indent_unit);
-        // head-ibox, will be closed by print-block after {
-        ibox(s, 0u);
-        print_block(s, blk);
-        eof(s.s);
-    }
+    let wr = @mut MemWriter::new();
+    let s = rust_printer(wr as @mut io::Writer, intr);
+    // containing cbox, will be closed by print-block at }
+    cbox(s, indent_unit);
+    // head-ibox, will be closed by print-block after {
+    ibox(s, 0u);
+    print_block(s, blk);
+    eof(s.s);
+    str::from_utf8(*wr.inner_ref())
 }
 
 pub fn meta_item_to_str(mi: &ast::MetaItem, intr: @ident_interner) -> ~str {
@@ -2196,11 +2199,11 @@ pub fn print_string(s: @ps, st: &str, style: ast::StrStyle) {
 }
 
 pub fn to_str<T>(t: &T, f: &fn(@ps, &T), intr: @ident_interner) -> ~str {
-    do io::with_str_writer |wr| {
-        let s = rust_printer(wr, intr);
-        f(s, t);
-        eof(s.s);
-    }
+    let wr = @mut MemWriter::new();
+    let s = rust_printer(wr as @mut io::Writer, intr);
+    f(s, t);
+    eof(s.s);
+    str::from_utf8(*wr.inner_ref())
 }
 
 pub fn next_comment(s: @ps) -> Option<comments::cmnt> {

@@ -12,12 +12,11 @@ use prelude::*;
 use cell::Cell;
 use libc;
 use ptr;
-use util;
 use vec;
 
 use rt::io::process::*;
 use rt::uv;
-use rt::uv::uvio::UvPipeStream;
+use rt::uv::uvio::{UvPipeStream, UvUnboundPipe};
 use rt::uv::uvll;
 
 /// A process wraps the handle of the underlying uv_process_t.
@@ -42,9 +41,9 @@ impl Process {
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(&mut self, loop_: &uv::Loop, mut config: ProcessConfig,
+    pub fn spawn(&mut self, loop_: &uv::Loop, config: ProcessConfig,
                  exit_cb: uv::ExitCallback)
-                    -> Result<~[Option<UvPipeStream>], uv::UvError>
+                    -> Result<~[Option<~UvPipeStream>], uv::UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
 
@@ -62,13 +61,14 @@ impl Process {
                                                        err);
         }
 
-        let io = util::replace(&mut config.io, ~[]);
+        let io = config.io;
         let mut stdio = vec::with_capacity::<uvll::uv_stdio_container_t>(io.len());
         let mut ret_io = vec::with_capacity(io.len());
         unsafe {
             vec::raw::set_len(&mut stdio, io.len());
-            for (slot, other) in stdio.iter().zip(io.move_iter()) {
-                let io = set_stdio(slot as *uvll::uv_stdio_container_t, other);
+            for (slot, other) in stdio.iter().zip(io.iter()) {
+                let io = set_stdio(slot as *uvll::uv_stdio_container_t, other,
+                                   loop_);
                 ret_io.push(io);
             }
         }
@@ -122,30 +122,12 @@ impl Process {
     pub fn pid(&self) -> libc::pid_t {
         unsafe { uvll::process_pid(**self) as libc::pid_t }
     }
-
-    /// Closes this handle, invoking the specified callback once closed
-    pub fn close(self, cb: uv::NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_process_t) {
-            let mut process: Process = uv::NativeHandle::from_native_handle(handle);
-            process.get_watcher_data().close_cb.take_unwrap()();
-            process.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *libc::c_void) }
-        }
-    }
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
-                    io: StdioContainer) -> Option<UvPipeStream> {
-    match io {
+                    io: &StdioContainer,
+                    loop_: &uv::Loop) -> Option<~UvPipeStream> {
+    match *io {
         Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
             None
@@ -155,7 +137,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             uvll::set_stdio_container_fd(dst, fd);
             None
         }
-        CreatePipe(pipe, readable, writable) => {
+        CreatePipe(readable, writable) => {
             let mut flags = uvll::STDIO_CREATE_PIPE as libc::c_int;
             if readable {
                 flags |= uvll::STDIO_READABLE_PIPE as libc::c_int;
@@ -163,10 +145,11 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
+            let pipe = UvUnboundPipe::new(loop_);
             let handle = pipe.pipe.as_stream().native_handle();
             uvll::set_stdio_container_flags(dst, flags);
             uvll::set_stdio_container_stream(dst, handle);
-            Some(pipe.bind())
+            Some(~UvPipeStream::new(pipe))
         }
     }
 }

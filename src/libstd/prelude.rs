@@ -53,7 +53,6 @@ pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use default::Default;
 pub use from_str::FromStr;
 pub use hash::Hash;
-pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};

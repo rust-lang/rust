@@ -69,7 +69,6 @@ calling the `spawn` function with a closure argument. `spawn` executes the
 closure in the new task.
 
 ~~~~
-# use std::io::println;
 # use std::task::spawn;
 
 // Print something profound in a different task using a named function

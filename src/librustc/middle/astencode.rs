@@ -23,13 +23,6 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use std::at_vec;
-use std::libc;
-use extra::ebml::reader;
-use extra::ebml;
-use extra::serialize;
-use extra::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
-use extra::serialize::{Decoder, Decodable};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::inlined_item_utils;
@@ -40,9 +33,18 @@ use syntax::fold::*;
 use syntax::fold;
 use syntax::parse::token;
 use syntax;
-use writer = extra::ebml::writer;
 
+use std::at_vec;
+use std::libc;
 use std::cast;
+use std::rt::io::Seek;
+
+use extra::ebml::reader;
+use extra::ebml;
+use extra::serialize;
+use extra::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
+use extra::serialize::{Decoder, Decodable};
+use writer = extra::ebml::writer;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
@@ -1319,14 +1321,14 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
-    use std::io;
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::MemWriter;
 
     let in_item = in_item.unwrap();
-    let bytes = do io::with_bytes_writer |wr| {
-        let mut ebml_w = writer::Encoder(wr);
-        encode_item_ast(&mut ebml_w, in_item);
-    };
-    let ebml_doc = reader::Doc(@bytes);
+    let wr = @mut MemWriter::new();
+    let mut ebml_w = writer::Encoder(wr);
+    encode_item_ast(&mut ebml_w, in_item);
+    let ebml_doc = reader::Doc(@wr.inner_ref().to_owned());
     let out_item = decode_item_ast(ebml_doc);
 
     assert_eq!(in_item, out_item);

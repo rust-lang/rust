@@ -522,6 +522,8 @@ mod test {
     use std::str;
     use std::rand;
     use std::num::Zero;
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::MemWriter;
 
     #[test]
     fn test_new_nil() {
@@ -795,10 +797,10 @@ mod test {
         use serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
-        let bytes = do std::io::with_bytes_writer |wr| {
-            u.encode(&mut ebml::writer::Encoder(wr));
-        };
-        let u2 = Decodable::decode(&mut ebml::reader::Decoder(ebml::reader::Doc(@bytes)));
+        let wr = @mut MemWriter::new();
+        u.encode(&mut ebml::writer::Encoder(wr));
+        let doc = ebml::reader::Doc(@wr.inner_ref().to_owned());
+        let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc));
         assert_eq!(u, u2);
     }
 }

@@ -11,7 +11,10 @@
 extern mod rustpkg;
 extern mod rustc;
 
-use std::{io, os};
+use std::os;
+use std::rt::io;
+use std::rt::io::Writer;
+use std::rt::io::file::FileInfo;
 use rustpkg::api;
 use rustpkg::version::NoVersion;
 
@@ -42,9 +45,9 @@ pub fn main() {
     let out_path = os::self_exe_path().expect("Couldn't get self_exe path");
 
     debug!("Writing file");
-    let file = io::file_writer(&out_path.join("generated.rs"), [io::Create]).unwrap();
-    file.write_str("pub fn wheeeee() { let xs = [1, 2, 3]; \
-                   for _ in xs.iter() { assert!(true); } }");
+    let mut file = out_path.join("generated.rs").open_writer(io::Create);
+    file.write("pub fn wheeeee() { let xs = [1, 2, 3]; \
+                for _ in xs.iter() { assert!(true); } }".as_bytes());
 
     let context = api::default_context(sysroot, api::default_workspace());
     api::install_pkg(&context, os::getcwd(), ~"fancy-lib", NoVersion, ~[]);

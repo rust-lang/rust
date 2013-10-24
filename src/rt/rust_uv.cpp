@@ -466,16 +466,6 @@ rust_uv_addrinfo_as_sockaddr_in6(addrinfo* input) {
     return (sockaddr_in6*)input->ai_addr;
 }
 
-extern "C" uv_idle_t*
-rust_uv_idle_new() {
-  return new uv_idle_t;
-}
-
-extern "C" void
-rust_uv_idle_delete(uv_idle_t* handle) {
-  delete handle;
-}
-
 extern "C" int
 rust_uv_idle_init(uv_loop_t* loop, uv_idle_t* idle) {
   return uv_idle_init(loop, idle);
@@ -636,4 +626,55 @@ rust_uv_process_pid(uv_process_t* p) {
 extern "C" int
 rust_uv_pipe_init(uv_loop_t *loop, uv_pipe_t* p, int ipc) {
   return uv_pipe_init(loop, p, ipc);
+}
+
+extern "C" int
+rust_uv_pipe_open(uv_pipe_t *pipe, int file) {
+    return uv_pipe_open(pipe, file);
+}
+
+extern "C" int
+rust_uv_pipe_bind(uv_pipe_t *pipe, char *name) {
+    return uv_pipe_bind(pipe, name);
+}
+
+extern "C" void
+rust_uv_pipe_connect(uv_connect_t *req, uv_pipe_t *handle,
+                     char *name, uv_connect_cb cb) {
+    uv_pipe_connect(req, handle, name, cb);
+}
+
+extern "C" int
+rust_uv_tty_init(uv_loop_t *loop, uv_tty_t *tty, int fd, int readable) {
+    return uv_tty_init(loop, tty, fd, readable);
+}
+
+extern "C" int
+rust_uv_tty_set_mode(uv_tty_t *tty, int mode) {
+    return uv_tty_set_mode(tty, mode);
+}
+
+extern "C" int
+rust_uv_tty_get_winsize(uv_tty_t *tty, int *width, int *height) {
+    return uv_tty_get_winsize(tty, width, height);
+}
+
+extern "C" uv_handle_type
+rust_uv_guess_handle(int fd) {
+    return uv_guess_handle(fd);
+}
+
+extern "C" int
+rust_uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
+  return uv_signal_init(loop, handle);
+}
+
+extern "C" int
+rust_uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
+  return uv_signal_start(handle, signal_cb, signum);
+}
+
+extern "C" int
+rust_uv_signal_stop(uv_signal_t* handle) {
+  return uv_signal_stop(handle);
 }

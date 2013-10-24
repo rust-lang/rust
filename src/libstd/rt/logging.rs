@@ -12,6 +12,7 @@ use fmt;
 use from_str::from_str;
 use libc::exit;
 use option::{Some, None, Option};
+use rt::io;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
 use u32;
@@ -166,14 +167,23 @@ pub trait Logger {
     fn log(&mut self, args: &fmt::Arguments);
 }
 
-pub struct StdErrLogger;
+/// This logger emits output to the stderr of the process, and contains a lazily
+/// initialized event-loop driven handle to the stream.
+pub struct StdErrLogger {
+    priv handle: Option<io::stdio::StdWriter>,
+}
+
+impl StdErrLogger {
+    pub fn new() -> StdErrLogger { StdErrLogger { handle: None } }
+}
 
 impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
-        // FIXME(#6846): this should not call the blocking version of println,
-        //               or at least the default loggers for tasks shouldn't do
-        //               that
-        ::rt::util::dumb_println(args);
+        // First time logging? Get a handle to the stderr of this process.
+        if self.handle.is_none() {
+            self.handle = Some(io::stderr());
+        }
+        fmt::writeln(self.handle.get_mut_ref() as &mut io::Writer, args);
     }
 }
 

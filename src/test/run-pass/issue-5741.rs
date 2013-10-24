@@ -10,9 +10,7 @@
 
 #[allow(unreachable_code)];
 
-use std::io;
-
 pub fn main() {
     return;
-    while io::stdin().read_line() != ~"quit" { };
+    while true {};
 }

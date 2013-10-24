@@ -22,46 +22,66 @@ use vec;
 
 /// Writes to an owned, growable byte vector
 pub struct MemWriter {
-    priv buf: ~[u8]
+    priv buf: ~[u8],
+    priv pos: uint,
 }
 
 impl MemWriter {
-    pub fn new() -> MemWriter { MemWriter { buf: vec::with_capacity(128) } }
+    pub fn new() -> MemWriter {
+        MemWriter { buf: vec::with_capacity(128), pos: 0 }
+    }
 }
 
 impl Writer for MemWriter {
     fn write(&mut self, buf: &[u8]) {
-        self.buf.push_all(buf)
+        // Make sure the internal buffer is as least as big as where we
+        // currently are
+        let difference = self.pos as i64 - self.buf.len() as i64;
+        if difference > 0 {
+            self.buf.grow(difference as uint, &0);
+        }
+
+        // Figure out what bytes will be used to overwrite what's currently
+        // there (left), and what will be appended on the end (right)
+        let cap = self.buf.len() - self.pos;
+        let (left, right) = if cap <= buf.len() {
+            (buf.slice_to(cap), buf.slice_from(cap))
+        } else {
+            (buf, &[])
+        };
+
+        // Do the necessary writes
+        if left.len() > 0 {
+            vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos),
+                                    left, left.len());
+        }
+        if right.len() > 0 {
+            self.buf.push_all(right);
+        }
+
+        // Bump us forward
+        self.pos += buf.len();
     }
 
     fn flush(&mut self) { /* no-op */ }
 }
 
 impl Seek for MemWriter {
-    fn tell(&self) -> u64 { self.buf.len() as u64 }
+    fn tell(&self) -> u64 { self.pos as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, pos: i64, style: SeekStyle) {
+        match style {
+            SeekSet => { self.pos = pos as uint; }
+            SeekEnd => { self.pos = self.buf.len() + pos as uint; }
+            SeekCur => { self.pos += pos as uint; }
+        }
+    }
 }
 
 impl Decorator<~[u8]> for MemWriter {
-
-    fn inner(self) -> ~[u8] {
-        match self {
-            MemWriter { buf: buf } => buf
-        }
-    }
-
-    fn inner_ref<'a>(&'a self) -> &'a ~[u8] {
-        match *self {
-            MemWriter { buf: ref buf } => buf
-        }
-    }
-
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] {
-        match *self {
-            MemWriter { buf: ref mut buf } => buf
-        }
-    }
+    fn inner(self) -> ~[u8] { self.buf }
+    fn inner_ref<'a>(&'a self) -> &'a ~[u8] { &self.buf }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] { &mut self.buf }
 }
 
 /// Reads from an owned byte vector
@@ -208,6 +228,7 @@ pub fn with_mem_writer(writeFn:&fn(&mut MemWriter)) -> ~[u8] {
 mod test {
     use prelude::*;
     use super::*;
+    use rt::io::*;
 
     #[test]
     fn test_mem_writer() {
@@ -218,7 +239,24 @@ mod test {
         writer.write([1, 2, 3]);
         writer.write([4, 5, 6, 7]);
         assert_eq!(writer.tell(), 8);
-        assert_eq!(writer.inner(), ~[0, 1, 2, 3, 4, 5 , 6, 7]);
+        assert_eq!(*writer.inner_ref(), ~[0, 1, 2, 3, 4, 5, 6, 7]);
+
+        writer.seek(0, SeekSet);
+        assert_eq!(writer.tell(), 0);
+        writer.write([3, 4]);
+        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 3, 4, 5, 6, 7]);
+
+        writer.seek(1, SeekCur);
+        writer.write([0, 1]);
+        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 7]);
+
+        writer.seek(-1, SeekEnd);
+        writer.write([1, 2]);
+        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 1, 2]);
+
+        writer.seek(1, SeekEnd);
+        writer.write([1]);
+        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
     }
 
     #[test]

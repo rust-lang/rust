@@ -22,12 +22,16 @@ use middle::typeck;
 use middle;
 
 use std::hashmap::{HashMap, HashSet};
-use std::io;
+use std::rt::io::extensions::WriterByteConversions;
+use std::rt::io::{Writer, Seek, Decorator};
+use std::rt::io::mem::MemWriter;
 use std::str;
 use std::vec;
+
 use extra::flate;
 use extra::serialize::Encodable;
 use extra;
+
 use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::ast;
@@ -68,17 +72,17 @@ pub struct EncodeParams<'self> {
 }
 
 struct Stats {
-    inline_bytes: uint,
-    attr_bytes: uint,
-    dep_bytes: uint,
-    lang_item_bytes: uint,
-    link_args_bytes: uint,
-    impl_bytes: uint,
-    misc_bytes: uint,
-    item_bytes: uint,
-    index_bytes: uint,
-    zero_bytes: uint,
-    total_bytes: uint,
+    inline_bytes: u64,
+    attr_bytes: u64,
+    dep_bytes: u64,
+    lang_item_bytes: u64,
+    link_args_bytes: u64,
+    impl_bytes: u64,
+    misc_bytes: u64,
+    item_bytes: u64,
+    index_bytes: u64,
+    zero_bytes: u64,
+    total_bytes: u64,
 
     n_inlines: uint
 }
@@ -133,7 +137,7 @@ fn encode_region_param(ecx: &EncodeContext,
 #[deriving(Clone)]
 struct entry<T> {
     val: T,
-    pos: uint
+    pos: u64
 }
 
 fn add_to_index(ebml_w: &mut writer::Encoder,
@@ -1395,10 +1399,9 @@ fn create_index<T:Clone + Hash + IterBytes + 'static>(
 fn encode_index<T:'static>(
                 ebml_w: &mut writer::Encoder,
                 buckets: ~[@~[entry<T>]],
-                write_fn: &fn(@io::Writer, &T)) {
-    let writer = ebml_w.writer;
+                write_fn: &fn(@mut MemWriter, &T)) {
     ebml_w.start_tag(tag_index);
-    let mut bucket_locs: ~[uint] = ~[];
+    let mut bucket_locs = ~[];
     ebml_w.start_tag(tag_index_buckets);
     for bucket in buckets.iter() {
         bucket_locs.push(ebml_w.writer.tell());
@@ -1406,8 +1409,11 @@ fn encode_index<T:'static>(
         for elt in (**bucket).iter() {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             assert!(elt.pos < 0xffff_ffff);
-            writer.write_be_u32(elt.pos as u32);
-            write_fn(writer, &elt.val);
+            {
+                let wr: &mut MemWriter = ebml_w.writer;
+                wr.write_be_u32_(elt.pos as u32);
+            }
+            write_fn(ebml_w.writer, &elt.val);
             ebml_w.end_tag();
         }
         ebml_w.end_tag();
@@ -1416,19 +1422,21 @@ fn encode_index<T:'static>(
     ebml_w.start_tag(tag_index_table);
     for pos in bucket_locs.iter() {
         assert!(*pos < 0xffff_ffff);
-        writer.write_be_u32(*pos as u32);
+        let wr: &mut MemWriter = ebml_w.writer;
+        wr.write_be_u32_(*pos as u32);
     }
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
 
-fn write_str(writer: @io::Writer, s: ~str) {
-    writer.write_str(s);
+fn write_str(writer: @mut MemWriter, s: ~str) {
+    writer.write(s.as_bytes());
 }
 
-fn write_i64(writer: @io::Writer, &n: &i64) {
+fn write_i64(writer: @mut MemWriter, &n: &i64) {
+    let wr: &mut MemWriter = writer;
     assert!(n < 0x7fff_ffff);
-    writer.write_be_u32(n as u32);
+    wr.write_be_u32_(n as u32);
 }
 
 fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
@@ -1581,11 +1589,17 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
                 ebml_w.start_tag(tag_lang_items_item);
 
                 ebml_w.start_tag(tag_lang_items_item_id);
-                ebml_w.writer.write_be_u32(i as u32);
+                {
+                    let wr: &mut MemWriter = ebml_w.writer;
+                    wr.write_be_u32_(i as u32);
+                }
                 ebml_w.end_tag();   // tag_lang_items_item_id
 
                 ebml_w.start_tag(tag_lang_items_item_node_id);
-                ebml_w.writer.write_be_u32(id.node as u32);
+                {
+                    let wr: &mut MemWriter = ebml_w.writer;
+                    wr.write_be_u32_(id.node as u32);
+                }
                 ebml_w.end_tag();   // tag_lang_items_item_node_id
 
                 ebml_w.end_tag();   // tag_lang_items_item
@@ -1602,7 +1616,7 @@ fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     let link_args = cstore::get_used_link_args(ecx.cstore);
     for link_arg in link_args.iter() {
         ebml_w.start_tag(tag_link_args_arg);
-        ebml_w.writer.write_str(link_arg.to_str());
+        ebml_w.writer.write(link_arg.as_bytes());
         ebml_w.end_tag();
     }
 
@@ -1720,7 +1734,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
-    let wr = @io::BytesWriter::new();
+    let wr = @mut MemWriter::new();
     let stats = Stats {
         inline_bytes: 0,
         attr_bytes: 0,
@@ -1765,61 +1779,61 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         reachable: reachable,
      };
 
-    let mut ebml_w = writer::Encoder(wr as @io::Writer);
+    let mut ebml_w = writer::Encoder(wr);
 
     encode_hash(&mut ebml_w, ecx.link_meta.extras_hash);
 
-    let mut i = *wr.pos;
+    let mut i = wr.tell();
     let crate_attrs = synthesize_crate_attrs(&ecx, crate);
     encode_attributes(&mut ebml_w, crate_attrs);
-    ecx.stats.attr_bytes = *wr.pos - i;
+    ecx.stats.attr_bytes = wr.tell() - i;
 
-    i = *wr.pos;
+    i = wr.tell();
     encode_crate_deps(&ecx, &mut ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes = *wr.pos - i;
+    ecx.stats.dep_bytes = wr.tell() - i;
 
     // Encode the language items.
-    i = *wr.pos;
+    i = wr.tell();
     encode_lang_items(&ecx, &mut ebml_w);
-    ecx.stats.lang_item_bytes = *wr.pos - i;
+    ecx.stats.lang_item_bytes = wr.tell() - i;
 
     // Encode the link args.
-    i = *wr.pos;
+    i = wr.tell();
     encode_link_args(&ecx, &mut ebml_w);
-    ecx.stats.link_args_bytes = *wr.pos - i;
+    ecx.stats.link_args_bytes = wr.tell() - i;
 
     // Encode the def IDs of impls, for coherence checking.
-    i = *wr.pos;
+    i = wr.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
-    ecx.stats.impl_bytes = *wr.pos - i;
+    ecx.stats.impl_bytes = wr.tell() - i;
 
     // Encode miscellaneous info.
-    i = *wr.pos;
+    i = wr.tell();
     encode_misc_info(&ecx, crate, &mut ebml_w);
-    ecx.stats.misc_bytes = *wr.pos - i;
+    ecx.stats.misc_bytes = wr.tell() - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
-    i = *wr.pos;
+    i = wr.tell();
     let items_index = encode_info_for_items(&ecx, &mut ebml_w, crate);
-    ecx.stats.item_bytes = *wr.pos - i;
+    ecx.stats.item_bytes = wr.tell() - i;
 
-    i = *wr.pos;
+    i = wr.tell();
     let items_buckets = create_index(items_index);
     encode_index(&mut ebml_w, items_buckets, write_i64);
-    ecx.stats.index_bytes = *wr.pos - i;
+    ecx.stats.index_bytes = wr.tell() - i;
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes = *wr.pos;
+    ecx.stats.total_bytes = wr.tell();
 
     if (tcx.sess.meta_stats()) {
-        for e in wr.bytes.iter() {
+        for e in wr.inner_ref().iter() {
             if *e == 0 {
                 ecx.stats.zero_bytes += 1;
             }
         }
 
-        io::println("metadata stats:");
+        println("metadata stats:");
         println!("    inline bytes: {}", ecx.stats.inline_bytes);
         println!(" attribute bytes: {}", ecx.stats.attr_bytes);
         println!("       dep bytes: {}", ecx.stats.dep_bytes);
@@ -1837,7 +1851,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     // remaining % 4 bytes.
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
-    let writer_bytes: &mut ~[u8] = wr.bytes;
+    let writer_bytes: &mut ~[u8] = wr.inner_mut_ref();
 
     metadata_encoding_version.to_owned() +
         flate::deflate_bytes(*writer_bytes)
@@ -1850,7 +1864,7 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         ds: def_to_str,
         tcx: tcx,
         abbrevs: tyencode::ac_no_abbrevs};
-    do io::with_str_writer |wr| {
-        tyencode::enc_ty(wr, cx, t);
-    }
+    let wr = @mut MemWriter::new();
+    tyencode::enc_ty(wr, cx, t);
+    str::from_utf8(*wr.inner_ref())
 }

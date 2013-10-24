@@ -18,9 +18,10 @@ use rt::uv::uvll;
 use rt::uv::uvll::UV_GETADDRINFO;
 use rt::uv::{Loop, UvError, NativeHandle};
 use rt::uv::status_to_maybe_uv_error;
-use rt::uv::net::UvAddrInfo;
+use rt::uv::net;
+use ai = rt::io::net::addrinfo;
 
-type GetAddrInfoCallback = ~fn(GetAddrInfoRequest, &UvAddrInfo, Option<UvError>);
+type GetAddrInfoCallback = ~fn(GetAddrInfoRequest, &net::UvAddrInfo, Option<UvError>);
 
 pub struct GetAddrInfoRequest(*uvll::uv_getaddrinfo_t);
 
@@ -38,7 +39,7 @@ impl GetAddrInfoRequest {
     }
 
     pub fn getaddrinfo(&mut self, loop_: &Loop, node: Option<&str>,
-                       service: Option<&str>, hints: Option<UvAddrInfo>,
+                       service: Option<&str>, hints: Option<ai::Hint>,
                        cb: GetAddrInfoCallback) {
 
         assert!(node.is_some() || service.is_some());
@@ -72,8 +73,41 @@ impl GetAddrInfoRequest {
             cb(req, addrinfo, err)
         };
 
-        // XXX: Implement hints
-        assert!(hints.is_none());
+        let hint = hints.map(|hint| {
+            let mut flags = 0;
+            do each_ai_flag |cval, aival| {
+                if hint.flags & (aival as uint) != 0 {
+                    flags |= cval as i32;
+                }
+            }
+            /* XXX: do we really want to support these?
+            let socktype = match hint.socktype {
+                Some(ai::Stream) => uvll::rust_SOCK_STREAM(),
+                Some(ai::Datagram) => uvll::rust_SOCK_DGRAM(),
+                Some(ai::Raw) => uvll::rust_SOCK_RAW(),
+                None => 0,
+            };
+            let protocol = match hint.protocol {
+                Some(ai::UDP) => uvll::rust_IPPROTO_UDP(),
+                Some(ai::TCP) => uvll::rust_IPPROTO_TCP(),
+                _ => 0,
+            };
+            */
+            let socktype = 0;
+            let protocol = 0;
+
+            uvll::addrinfo {
+                ai_flags: flags,
+                ai_family: hint.family as c_int,
+                ai_socktype: socktype,
+                ai_protocol: protocol,
+                ai_addrlen: 0,
+                ai_canonname: null(),
+                ai_addr: null(),
+                ai_next: null(),
+            }
+        });
+        let hint_ptr = hint.as_ref().map_default(null(), |x| x as *uvll::addrinfo);
 
         self.get_req_data().getaddrinfo_cb = Some(wrapper_cb);
 
@@ -83,7 +117,7 @@ impl GetAddrInfoRequest {
                                            getaddrinfo_cb,
                                            c_node_ptr,
                                            c_service_ptr,
-                                           null()));
+                                           hint_ptr));
         }
 
         extern "C" fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
@@ -91,7 +125,7 @@ impl GetAddrInfoRequest {
                                      res: *uvll::addrinfo) {
             let mut req: GetAddrInfoRequest = NativeHandle::from_native_handle(req);
             let err = status_to_maybe_uv_error(status);
-            let addrinfo = UvAddrInfo(res);
+            let addrinfo = net::UvAddrInfo(res);
             let data = req.get_req_data();
             (*data.getaddrinfo_cb.get_ref())(req, &addrinfo, err);
             unsafe {
@@ -137,6 +171,72 @@ impl GetAddrInfoRequest {
     }
 }
 
+fn each_ai_flag(_f: &fn(c_int, ai::Flag)) {
+    /* XXX: do we really want to support these?
+    unsafe {
+        f(uvll::rust_AI_ADDRCONFIG(), ai::AddrConfig);
+        f(uvll::rust_AI_ALL(), ai::All);
+        f(uvll::rust_AI_CANONNAME(), ai::CanonName);
+        f(uvll::rust_AI_NUMERICHOST(), ai::NumericHost);
+        f(uvll::rust_AI_NUMERICSERV(), ai::NumericServ);
+        f(uvll::rust_AI_PASSIVE(), ai::Passive);
+        f(uvll::rust_AI_V4MAPPED(), ai::V4Mapped);
+    }
+    */
+}
+
+// Traverse the addrinfo linked list, producing a vector of Rust socket addresses
+pub fn accum_addrinfo(addr: &net::UvAddrInfo) -> ~[ai::Info] {
+    unsafe {
+        let &net::UvAddrInfo(addr) = addr;
+        let mut addr = addr;
+
+        let mut addrs = ~[];
+        loop {
+            let uvaddr = net::sockaddr_to_UvSocketAddr((*addr).ai_addr);
+            let rustaddr = net::uv_socket_addr_to_socket_addr(uvaddr);
+
+            let mut flags = 0;
+            do each_ai_flag |cval, aival| {
+                if (*addr).ai_flags & cval != 0 {
+                    flags |= aival as uint;
+                }
+            }
+
+            /* XXX: do we really want to support these
+            let protocol = match (*addr).ai_protocol {
+                p if p == uvll::rust_IPPROTO_UDP() => Some(ai::UDP),
+                p if p == uvll::rust_IPPROTO_TCP() => Some(ai::TCP),
+                _ => None,
+            };
+            let socktype = match (*addr).ai_socktype {
+                p if p == uvll::rust_SOCK_STREAM() => Some(ai::Stream),
+                p if p == uvll::rust_SOCK_DGRAM() => Some(ai::Datagram),
+                p if p == uvll::rust_SOCK_RAW() => Some(ai::Raw),
+                _ => None,
+            };
+            */
+            let protocol = None;
+            let socktype = None;
+
+            addrs.push(ai::Info {
+                address: rustaddr,
+                family: (*addr).ai_family as uint,
+                socktype: socktype,
+                protocol: protocol,
+                flags: flags,
+            });
+            if (*addr).ai_next.is_not_null() {
+                addr = (*addr).ai_next;
+            } else {
+                break;
+            }
+        }
+
+        return addrs;
+    }
+}
+
 impl NativeHandle<*uvll::uv_getaddrinfo_t> for GetAddrInfoRequest {
     fn from_native_handle(handle: *uvll::uv_getaddrinfo_t) -> GetAddrInfoRequest {
         GetAddrInfoRequest(handle)
@@ -150,7 +250,6 @@ impl NativeHandle<*uvll::uv_getaddrinfo_t> for GetAddrInfoRequest {
 mod test {
     use option::{Some, None};
     use rt::uv::Loop;
-    use rt::uv::net::accum_sockaddrs;
     use rt::io::net::ip::{SocketAddr, Ipv4Addr};
     use super::*;
 
@@ -159,14 +258,14 @@ mod test {
         let mut loop_ = Loop::new();
         let mut req = GetAddrInfoRequest::new();
         do req.getaddrinfo(&loop_, Some("localhost"), None, None) |_, addrinfo, _| {
-            let sockaddrs = accum_sockaddrs(addrinfo);
+            let sockaddrs = accum_addrinfo(addrinfo);
             let mut found_local = false;
             let local_addr = &SocketAddr {
                 ip: Ipv4Addr(127, 0, 0, 1),
                 port: 0
             };
             for addr in sockaddrs.iter() {
-                found_local = found_local || addr == local_addr;
+                found_local = found_local || addr.address == *local_addr;
             }
             assert!(found_local);
         }

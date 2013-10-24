@@ -15,15 +15,13 @@ use ext::base;
 use print;
 use parse::token::{get_ident_interner};
 
-use std::io;
-
 pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::Span,
                          tt: &[ast::token_tree])
                       -> base::MacResult {
 
     cx.print_backtrace();
-    io::stdout().write_line(
+    println(
         print::pprust::tt_to_str(
             &ast::tt_delim(@mut tt.to_owned()),
             get_ident_interner()));

@@ -30,8 +30,6 @@
 
 use std::char;
 use std::cmp;
-use std::io::{ReaderUtil};
-use std::io;
 use std::option::{Option, Some, None};
 use std::to_str::ToStr;
 
@@ -147,14 +145,19 @@ condition! {
     bad_parse: () -> ();
 }
 
-fn take_nonempty_prefix(rdr: @io::Reader,
-                        ch: char,
-                        pred: &fn(char) -> bool) -> (~str, char) {
+fn take_nonempty_prefix<T: Iterator<char>>(rdr: &mut T,
+                        pred: &fn(char) -> bool) -> (~str, Option<char>) {
     let mut buf = ~"";
-    let mut ch = ch;
-    while pred(ch) {
-        buf.push_char(ch);
-        ch = rdr.read_char();
+    let mut ch = rdr.next();
+    loop {
+        match ch {
+            None => break,
+            Some(c) if !pred(c) => break,
+            Some(c) => {
+                buf.push_char(c);
+                ch = rdr.next();
+            }
+        }
     }
     if buf.is_empty() {
         bad_parse::cond.raise(())
@@ -163,16 +166,16 @@ fn take_nonempty_prefix(rdr: @io::Reader,
     (buf, ch)
 }
 
-fn take_num(rdr: @io::Reader, ch: char) -> (uint, char) {
-    let (s, ch) = take_nonempty_prefix(rdr, ch, char::is_digit);
+fn take_num<T: Iterator<char>>(rdr: &mut T) -> (uint, Option<char>) {
+    let (s, ch) = take_nonempty_prefix(rdr, char::is_digit);
     match from_str::<uint>(s) {
         None => { bad_parse::cond.raise(()); (0, ch) },
         Some(i) => (i, ch)
     }
 }
 
-fn take_ident(rdr: @io::Reader, ch: char) -> (Identifier, char) {
-    let (s,ch) = take_nonempty_prefix(rdr, ch, char::is_alphanumeric);
+fn take_ident<T: Iterator<char>>(rdr: &mut T) -> (Identifier, Option<char>) {
+    let (s,ch) = take_nonempty_prefix(rdr, char::is_alphanumeric);
     if s.iter().all(char::is_digit) {
         match from_str::<uint>(s) {
             None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
@@ -183,38 +186,38 @@ fn take_ident(rdr: @io::Reader, ch: char) -> (Identifier, char) {
     }
 }
 
-fn expect(ch: char, c: char) {
-    if ch != c {
+fn expect(ch: Option<char>, c: char) {
+    if ch != Some(c) {
         bad_parse::cond.raise(())
     }
 }
 
-fn parse_reader(rdr: @io::Reader) -> Version {
-    let (major, ch) = take_num(rdr, rdr.read_char());
+fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Version {
+    let (major, ch) = take_num(rdr);
     expect(ch, '.');
-    let (minor, ch) = take_num(rdr, rdr.read_char());
+    let (minor, ch) = take_num(rdr);
     expect(ch, '.');
-    let (patch, ch) = take_num(rdr, rdr.read_char());
+    let (patch, ch) = take_num(rdr);
 
     let mut pre = ~[];
     let mut build = ~[];
 
     let mut ch = ch;
-    if ch == '-' {
+    if ch == Some('-') {
         loop {
-            let (id, c) = take_ident(rdr, rdr.read_char());
+            let (id, c) = take_ident(rdr);
             pre.push(id);
             ch = c;
-            if ch != '.' { break; }
+            if ch != Some('.') { break; }
         }
     }
 
-    if ch == '+' {
+    if ch == Some('+') {
         loop {
-            let (id, c) = take_ident(rdr, rdr.read_char());
+            let (id, c) = take_ident(rdr);
             build.push(id);
             ch = c;
-            if ch != '.' { break; }
+            if ch != Some('.') { break; }
         }
     }
 
@@ -236,13 +239,11 @@ pub fn parse(s: &str) -> Option<Version> {
     let s = s.trim();
     let mut bad = false;
     do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside {
-        do io::with_str_reader(s) |rdr| {
-            let v = parse_reader(rdr);
-            if bad || v.to_str() != s.to_owned() {
-                None
-            } else {
-                Some(v)
-            }
+        let v = parse_iter(&mut s.iter());
+        if bad || v.to_str() != s.to_owned() {
+            None
+        } else {
+            Some(v)
         }
     }
 }

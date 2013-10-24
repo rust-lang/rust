@@ -10,13 +10,11 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::{io_error};
-use rt::rtio::{IoFactory, IoFactoryObject,
-               RtioTimer, RtioTimerObject};
-use rt::local::Local;
+use rt::io::io_error;
+use rt::rtio::{IoFactory, RtioTimer, with_local_io};
 
 pub struct Timer {
-    priv obj: ~RtioTimerObject
+    priv obj: ~RtioTimer
 }
 
 /// Sleep the current task for `msecs` milliseconds.
@@ -28,20 +26,19 @@ pub fn sleep(msecs: u64) {
 
 impl Timer {
 
+    /// Creates a new timer which can be used to put the current task to sleep
+    /// for a number of milliseconds.
     pub fn new() -> Option<Timer> {
-        let timer = unsafe {
-            rtdebug!("Timer::init: borrowing io to init timer");
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            rtdebug!("about to init timer");
-            (*io).timer_init()
-        };
-        match timer {
-            Ok(t) => Some(Timer { obj: t }),
-            Err(ioerr) => {
-                rtdebug!("Timer::init: failed to init: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
+        do with_local_io |io| {
+            match io.timer_init() {
+                Ok(t) => Some(Timer { obj: t }),
+                Err(ioerr) => {
+                    rtdebug!("Timer::init: failed to init: {:?}", ioerr);
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
+
         }
     }
 

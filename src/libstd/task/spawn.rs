@@ -89,7 +89,7 @@ use unstable::sync::Exclusive;
 use rt::in_green_task_context;
 use rt::local::Local;
 use rt::task::{Task, Sched};
-use rt::shouldnt_be_public::{Scheduler, KillHandle, WorkQueue, Thread};
+use rt::shouldnt_be_public::{Scheduler, KillHandle, WorkQueue, Thread, EventLoop};
 use rt::uv::uvio::UvEventLoop;
 
 #[cfg(test)] use task::default_task_opts;
@@ -607,7 +607,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let work_queue = WorkQueue::new();
 
             // Create a new scheduler to hold the new task
-            let new_loop = ~UvEventLoop::new();
+            let new_loop = ~UvEventLoop::new() as ~EventLoop;
             let mut new_sched = ~Scheduler::new_special(new_loop,
                                                         work_queue,
                                                         (*sched).work_queues.clone(),

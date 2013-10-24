@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_void, c_int};
+use libc::c_int;
 use option::Some;
 use rt::uv::uvll;
-use rt::uv::{Watcher, Loop, NativeHandle, TimerCallback, NullCallback};
+use rt::uv::{Watcher, Loop, NativeHandle, TimerCallback};
 use rt::uv::status_to_maybe_uv_error;
 
 pub struct TimerWatcher(*uvll::uv_timer_t);
@@ -51,31 +51,6 @@ impl TimerWatcher {
     pub fn stop(&mut self) {
         unsafe {
             uvll::timer_stop(self.native_handle());
-        }
-    }
-
-    pub fn close(self, cb: NullCallback) {
-        let mut watcher = self;
-        {
-            let data = watcher.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe {
-            uvll::close(watcher.native_handle(), close_cb);
-        }
-
-        extern fn close_cb(handle: *uvll::uv_timer_t) {
-            let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
-            {
-                let data = watcher.get_watcher_data();
-                data.close_cb.take_unwrap()();
-            }
-            watcher.drop_watcher_data();
-            unsafe {
-                uvll::free_handle(handle as *c_void);
-            }
         }
     }
 }
