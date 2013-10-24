@@ -26,7 +26,6 @@ Rust's prelude has three main parts:
 
 */
 
-
 // Reexported core operators
 pub use either::{Either, Left, Right};
 pub use kinds::Sized;
@@ -39,48 +38,48 @@ pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
 // Reexported functions
-pub use rt::io::stdio::{print, println};
-pub use iter::range;
 pub use from_str::from_str;
+pub use iter::range;
+pub use rt::io::stdio::{print, println};
 
 // Reexported types and traits
+pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, ToBytesConsume};
+pub use bool::Bool;
 pub use c_str::ToCStr;
+pub use char::Char;
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
-pub use char::Char;
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
+pub use default::Default;
+pub use from_str::FromStr;
 pub use hash::Hash;
-pub use num::Times;
+pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
+pub use num::Times;
+pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
+pub use num::{Bitwise, BitCount, Bounded};
+pub use num::{Integer, Fractional, Real, RealExt};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Orderable, Signed, Unsigned, Round};
-pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
-pub use num::{Integer, Fractional, Real, RealExt};
-pub use num::{Bitwise, BitCount, Bounded};
 pub use num::{Primitive, Int, Float, ToStrRadix, ToPrimitive, FromPrimitive};
 pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 pub use ptr::RawPtr;
-pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, ToBytesConsume};
 pub use send_str::{SendStr, SendStrOwned, SendStrStatic, IntoSendStr};
 pub use str::{Str, StrVector, StrSlice, OwnedStr};
-pub use from_str::FromStr;
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
 pub use tuple::{CopyableTuple, ImmutableTuple};
-pub use tuple::{Tuple1, ImmutableTuple1};
-pub use tuple::{Tuple2, Tuple3, Tuple4, Tuple5};
-pub use tuple::{Tuple6, Tuple7, Tuple8, Tuple9};
-pub use tuple::{Tuple10, Tuple11, Tuple12};
-pub use tuple::{ImmutableTuple2, ImmutableTuple3, ImmutableTuple4, ImmutableTuple5};
-pub use tuple::{ImmutableTuple6, ImmutableTuple7, ImmutableTuple8, ImmutableTuple9};
-pub use tuple::{ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
-pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
+pub use tuple::{ImmutableTuple1, ImmutableTuple2, ImmutableTuple3, ImmutableTuple4};
+pub use tuple::{ImmutableTuple5, ImmutableTuple6, ImmutableTuple7, ImmutableTuple8};
+pub use tuple::{ImmutableTuple9, ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
+pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
+pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
+pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
-pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
-pub use default::Default;
+pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 
 // Reexported runtime types
 pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
