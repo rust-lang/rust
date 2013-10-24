@@ -24,11 +24,9 @@ pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
 }
 
-/**
- * Returns the size of a type, or 1 if the actual size is zero.
- *
- * Useful for building structures containing variable-length arrays.
- */
+/// Returns the size of a type, or 1 if the actual size is zero.
+///
+/// Useful for building structures containing variable-length arrays.
 #[inline]
 pub fn nonzero_size_of<T>() -> uint {
     let s = size_of::<T>();
@@ -41,13 +39,10 @@ pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
     nonzero_size_of::<T>()
 }
 
-
-/**
- * Returns the ABI-required minimum alignment of a type
- *
- * This is the alignment used for struct fields. It may be smaller
- * than the preferred alignment.
- */
+/// Returns the ABI-required minimum alignment of a type
+///
+/// This is the alignment used for struct fields. It may be smaller
+/// than the preferred alignment.
 #[inline]
 pub fn min_align_of<T>() -> uint {
     unsafe { intrinsics::min_align_of::<T>() }
@@ -75,7 +70,6 @@ pub fn pref_align_of_val<T>(_val: &T) -> uint {
 
 #[cfg(test)]
 mod tests {
-    use cast;
     use mem::*;
 
     #[test]
