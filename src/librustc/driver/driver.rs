@@ -26,7 +26,8 @@ use util::common::time;
 use util::ppaux;
 
 use std::hashmap::{HashMap,HashSet};
-use std::io;
+use std::rt::io;
+use std::rt::io::mem::MemReader;
 use std::os;
 use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
@@ -552,17 +553,16 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
-    do io::with_str_reader(src) |rdr| {
-        pprust::print_crate(sess.codemap,
-                            token::get_ident_interner(),
-                            sess.span_diagnostic,
-                            &crate,
-                            source_name(input),
-                            rdr,
-                            io::stdout(),
-                            annotation,
-                            is_expanded);
-    }
+    let rdr = @mut MemReader::new(src.as_bytes().to_owned());
+    pprust::print_crate(sess.codemap,
+                        token::get_ident_interner(),
+                        sess.span_diagnostic,
+                        &crate,
+                        source_name(input),
+                        rdr as @mut io::Reader,
+                        @mut io::stdout() as @mut io::Writer,
+                        annotation,
+                        is_expanded);
 }
 
 pub fn get_os(triple: &str) -> Option<session::Os> {
@@ -1048,7 +1048,7 @@ pub fn early_error(emitter: @diagnostic::Emitter, msg: &str) -> ! {
     fail!();
 }
 
-pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
+pub fn list_metadata(sess: Session, path: &Path, out: @mut io::Writer) {
     metadata::loader::list_file_metadata(
         token::get_ident_interner(),
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);

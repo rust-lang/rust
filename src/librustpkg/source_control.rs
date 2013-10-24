@@ -10,7 +10,7 @@
 
 // Utils for working with version control repositories. Just git right now.
 
-use std::{io, os, run, str};
+use std::{os, run, str};
 use std::run::{ProcessOutput, ProcessOptions, Process};
 use extra::tempfile::TempDir;
 use version::*;
@@ -36,8 +36,8 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                                                    source.as_str().unwrap().to_owned(),
                                                    target.as_str().unwrap().to_owned()]);
             if outp.status != 0 {
-                io::println(str::from_utf8_owned(outp.output.clone()));
-                io::println(str::from_utf8_owned(outp.error));
+                println(str::from_utf8_owned(outp.output.clone()));
+                println(str::from_utf8_owned(outp.error));
                 return DirToUse(target.clone());
             }
                 else {
@@ -52,8 +52,8 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                              format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                              ~"checkout", format!("{}", *s)]);
                         if outp.status != 0 {
-                            io::println(str::from_utf8_owned(outp.output.clone()));
-                            io::println(str::from_utf8_owned(outp.error));
+                            println(str::from_utf8_owned(outp.output.clone()));
+                            println(str::from_utf8_owned(outp.error));
                             return DirToUse(target.clone());
                         }
                     }

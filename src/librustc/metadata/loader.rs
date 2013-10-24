@@ -25,7 +25,7 @@ use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
 use std::cast;
-use std::io;
+use std::rt::io;
 use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
@@ -271,11 +271,11 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 pub fn list_file_metadata(intr: @ident_interner,
                           os: Os,
                           path: &Path,
-                          out: @io::Writer) {
+                          out: @mut io::Writer) {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {
-        out.write_str(format!("could not find metadata in {}.\n", path.display()))
+        write!(out, "could not find metadata in {}.\n", path.display())
       }
     }
 }

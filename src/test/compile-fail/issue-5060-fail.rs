@@ -10,17 +10,15 @@
 
 #[feature(macro_rules)];
 
-use std::io;
-
 macro_rules! print_hd_tl (
     ($field_hd:ident, $($field_tl:ident),+) => ({
-        io::print(stringify!($field)); //~ ERROR unknown macro variable
-        io::print("::[");
+        print(stringify!($field)); //~ ERROR unknown macro variable
+        print("::[");
         $(
-            io::print(stringify!($field_tl));
-            io::print(", ");
+            print(stringify!($field_tl));
+            print(", ");
         )+
-        io::print("]\n");
+        print("]\n");
     })
 )
 

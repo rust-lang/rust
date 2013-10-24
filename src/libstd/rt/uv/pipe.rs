@@ -10,6 +10,7 @@
 
 use prelude::*;
 use libc;
+use c_str::CString;
 
 use rt::uv;
 use rt::uv::net;
@@ -37,23 +38,54 @@ impl Pipe {
         net::StreamWatcher(**self as *uvll::uv_stream_t)
     }
 
-    pub fn close(self, cb: uv::NullCallback) {
-        {
-            let mut this = self;
-            let data = this.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe { uvll::close(self.native_handle(), close_cb); }
-
-        extern fn close_cb(handle: *uvll::uv_pipe_t) {
-            let mut process: Pipe = uv::NativeHandle::from_native_handle(handle);
-            process.get_watcher_data().close_cb.take_unwrap()();
-            process.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *libc::c_void) }
+    #[fixed_stack_segment] #[inline(never)]
+    pub fn open(&mut self, file: libc::c_int) -> Result<(), uv::UvError> {
+        match unsafe { uvll::pipe_open(self.native_handle(), file) } {
+            0 => Ok(()),
+            n => Err(uv::UvError(n))
         }
     }
+
+    #[fixed_stack_segment] #[inline(never)]
+    pub fn bind(&mut self, name: &CString) -> Result<(), uv::UvError> {
+        do name.with_ref |name| {
+            match unsafe { uvll::pipe_bind(self.native_handle(), name) } {
+                0 => Ok(()),
+                n => Err(uv::UvError(n))
+            }
+        }
+    }
+
+    #[fixed_stack_segment] #[inline(never)]
+    pub fn connect(&mut self, name: &CString, cb: uv::ConnectionCallback) {
+        {
+            let data = self.get_watcher_data();
+            assert!(data.connect_cb.is_none());
+            data.connect_cb = Some(cb);
+        }
+
+        let connect = net::ConnectRequest::new();
+        let name = do name.with_ref |p| { p };
+
+        unsafe {
+            uvll::pipe_connect(connect.native_handle(),
+                               self.native_handle(),
+                               name,
+                               connect_cb)
+        }
+
+        extern "C" fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {
+            let connect_request: net::ConnectRequest =
+                    uv::NativeHandle::from_native_handle(req);
+            let mut stream_watcher = connect_request.stream();
+            connect_request.delete();
+
+            let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
+            let status = uv::status_to_maybe_uv_error(status);
+            cb(stream_watcher, status);
+        }
+    }
+
 }
 
 impl uv::NativeHandle<*uvll::uv_pipe_t> for Pipe {

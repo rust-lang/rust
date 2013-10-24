@@ -16,7 +16,7 @@ use unstable::raw;
 use super::sleeper_list::SleeperList;
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool};
-use super::rtio::{EventLoop, EventLoopObject, RemoteCallbackObject};
+use super::rtio::EventLoop;
 use super::context::Context;
 use super::task::{Task, AnySched, Sched};
 use super::message_queue::MessageQueue;
@@ -63,7 +63,7 @@ pub struct Scheduler {
     no_sleep: bool,
     stack_pool: StackPool,
     /// The event loop used to drive the scheduler and perform I/O
-    event_loop: ~EventLoopObject,
+    event_loop: ~EventLoop,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
     priv sched_task: Option<~Task>,
@@ -107,7 +107,7 @@ impl Scheduler {
 
     // * Initialization Functions
 
-    pub fn new(event_loop: ~EventLoopObject,
+    pub fn new(event_loop: ~EventLoop,
                work_queue: WorkQueue<~Task>,
                work_queues: ~[WorkQueue<~Task>],
                sleeper_list: SleeperList)
@@ -119,7 +119,7 @@ impl Scheduler {
 
     }
 
-    pub fn new_special(event_loop: ~EventLoopObject,
+    pub fn new_special(event_loop: ~EventLoop,
                        work_queue: WorkQueue<~Task>,
                        work_queues: ~[WorkQueue<~Task>],
                        sleeper_list: SleeperList,
@@ -227,7 +227,7 @@ impl Scheduler {
         // mutable reference to the event_loop to give it the "run"
         // command.
         unsafe {
-            let event_loop: *mut ~EventLoopObject = &mut self_sched.event_loop;
+            let event_loop: *mut ~EventLoop = &mut self_sched.event_loop;
 
             // Our scheduler must be in the task before the event loop
             // is started.
@@ -793,7 +793,7 @@ pub enum SchedMessage {
 }
 
 pub struct SchedHandle {
-    priv remote: ~RemoteCallbackObject,
+    priv remote: ~RemoteCallback,
     priv queue: MessageQueue<SchedMessage>,
     sched_id: uint
 }
@@ -905,6 +905,7 @@ mod test {
     use cell::Cell;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
+    use rt::rtio::EventLoop;
     use rt::util;
     use option::{Some};
 
@@ -1020,7 +1021,7 @@ mod test {
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
-                ~UvEventLoop::new(),
+                ~UvEventLoop::new() as ~EventLoop,
                 normal_queue,
                 queues.clone(),
                 sleepers.clone());
@@ -1031,7 +1032,7 @@ mod test {
 
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
-                ~UvEventLoop::new(),
+                ~UvEventLoop::new() as ~EventLoop,
                 special_queue.clone(),
                 queues.clone(),
                 sleepers.clone(),
@@ -1202,7 +1203,7 @@ mod test {
                 let queues = ~[queue.clone()];
 
                 let mut sched = ~Scheduler::new(
-                    ~UvEventLoop::new(),
+                    ~UvEventLoop::new() as ~EventLoop,
                     queue,
                     queues.clone(),
                     sleepers.clone());

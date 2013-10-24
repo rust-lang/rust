@@ -12,37 +12,27 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer, Listener, Acceptor};
-use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{IoFactory, IoFactoryObject,
-               RtioSocket,
-               RtioTcpListener, RtioTcpListenerObject,
-               RtioTcpAcceptor, RtioTcpAcceptorObject,
-               RtioTcpStream, RtioTcpStreamObject};
-use rt::local::Local;
+use rt::io::{io_error, EndOfFile};
+use rt::rtio::{IoFactory, with_local_io,
+               RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
 
 pub struct TcpStream {
-    priv obj: ~RtioTcpStreamObject
+    priv obj: ~RtioTcpStream
 }
 
 impl TcpStream {
-    fn new(s: ~RtioTcpStreamObject) -> TcpStream {
+    fn new(s: ~RtioTcpStream) -> TcpStream {
         TcpStream { obj: s }
     }
 
     pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
-        let stream = unsafe {
-            rtdebug!("borrowing io to connect");
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            rtdebug!("about to connect");
-            (*io).tcp_connect(addr)
-        };
-
-        match stream {
-            Ok(s) => Some(TcpStream::new(s)),
-            Err(ioerr) => {
-                rtdebug!("failed to connect: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
+        do with_local_io |io| {
+            match io.tcp_connect(addr) {
+                Ok(s) => Some(TcpStream::new(s)),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }
@@ -77,7 +67,7 @@ impl Reader for TcpStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 return None;
             }
@@ -99,20 +89,18 @@ impl Writer for TcpStream {
 }
 
 pub struct TcpListener {
-    priv obj: ~RtioTcpListenerObject
+    priv obj: ~RtioTcpListener
 }
 
 impl TcpListener {
     pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
-        let listener = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).tcp_bind(addr)
-        };
-        match listener {
-            Ok(l) => Some(TcpListener { obj: l }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                return None;
+        do with_local_io |io| {
+            match io.tcp_bind(addr) {
+                Ok(l) => Some(TcpListener { obj: l }),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }
@@ -142,7 +130,7 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
 }
 
 pub struct TcpAcceptor {
-    priv obj: ~RtioTcpAcceptorObject
+    priv obj: ~RtioTcpAcceptor
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {
@@ -320,7 +308,7 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                do read_error::cond.trap(|e| {
+                do io_error::cond.trap(|e| {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {
@@ -355,7 +343,7 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                do read_error::cond.trap(|e| {
+                do io_error::cond.trap(|e| {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {

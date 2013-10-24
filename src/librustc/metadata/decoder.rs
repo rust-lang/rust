@@ -27,8 +27,8 @@ use middle::astencode::vtable_decoder_helpers;
 
 
 use std::u64;
-use std::io::WriterUtil;
-use std::io;
+use std::rt::io;
+use std::rt::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::str;
 use std::vec;
@@ -56,14 +56,14 @@ fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: u64) ->
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
     let hash_pos = table.start + (hash % 256 * 4) as uint;
-    let pos = io::u64_from_be_bytes(*d.data, hash_pos, 4) as uint;
+    let pos = u64_from_be_bytes(*d.data, hash_pos, 4) as uint;
     let tagged_doc = reader::doc_at(d.data, pos);
 
     let belt = tag_index_buckets_bucket_elt;
 
     let mut ret = None;
     do reader::tagged_docs(tagged_doc.doc, belt) |elt| {
-        let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4) as uint;
+        let pos = u64_from_be_bytes(*elt.data, elt.start, 4) as uint;
         if eq_fn(elt.data.slice(elt.start + 4, elt.end)) {
             ret = Some(reader::doc_at(d.data, pos).doc);
             false
@@ -78,7 +78,7 @@ pub type GetCrateDataCb<'self> = &'self fn(ast::CrateNum) -> Cmd;
 
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
-        return io::u64_from_be_bytes(
+        return u64_from_be_bytes(
             bytes.slice(0u, 4u), 0u, 4u) as int
             == item_id;
     }
@@ -1254,7 +1254,7 @@ fn family_names_type(fam: Family) -> bool {
 
 fn read_path(d: ebml::Doc) -> (~str, uint) {
     do reader::with_doc_data(d) |desc| {
-        let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
+        let pos = u64_from_be_bytes(desc, 0u, 4u) as uint;
         let pathbytes = desc.slice(4u, desc.len());
         let path = str::from_utf8(pathbytes);
 
@@ -1353,23 +1353,23 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
 
 fn list_meta_items(intr: @ident_interner,
                    meta_items: ebml::Doc,
-                   out: @io::Writer) {
+                   out: @mut io::Writer) {
     let r = get_meta_items(meta_items);
     for mi in r.iter() {
-        out.write_str(format!("{}\n", pprust::meta_item_to_str(*mi, intr)));
+        write!(out, "{}\n", pprust::meta_item_to_str(*mi, intr));
     }
 }
 
 fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
-                         out: @io::Writer) {
-    out.write_str(format!("=Crate Attributes ({})=\n", hash));
+                         out: @mut io::Writer) {
+    write!(out, "=Crate Attributes ({})=\n", hash);
 
     let r = get_attributes(md);
     for attr in r.iter() {
-        out.write_str(format!("{}\n", pprust::attribute_to_str(attr, intr)));
+        write!(out, "{}\n", pprust::attribute_to_str(attr, intr));
     }
 
-    out.write_str("\n\n");
+    write!(out, "\n\n");
 }
 
 pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::Attribute] {
@@ -1404,17 +1404,16 @@ pub fn get_crate_deps(data: @~[u8]) -> ~[CrateDep] {
     return deps;
 }
 
-fn list_crate_deps(data: @~[u8], out: @io::Writer) {
-    out.write_str("=External Dependencies=\n");
+fn list_crate_deps(data: @~[u8], out: @mut io::Writer) {
+    write!(out, "=External Dependencies=\n");
 
     let r = get_crate_deps(data);
     for dep in r.iter() {
-        out.write_str(
-            format!("{} {}-{}-{}\n",
-                 dep.cnum, token::ident_to_str(&dep.name), dep.hash, dep.vers));
+        write!(out, "{} {}-{}-{}\n",
+                 dep.cnum, token::ident_to_str(&dep.name), dep.hash, dep.vers);
     }
 
-    out.write_str("\n");
+    write!(out, "\n");
 }
 
 pub fn get_crate_hash(data: @~[u8]) -> @str {
@@ -1434,7 +1433,7 @@ pub fn get_crate_vers(data: @~[u8]) -> @str {
 }
 
 pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
-                           out: @io::Writer) {
+                           out: @mut io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
     list_crate_attributes(intr, md, hash, out);

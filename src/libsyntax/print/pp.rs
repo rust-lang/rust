@@ -61,7 +61,7 @@
  * avoid combining it with other lines and making matters even worse.
  */
 
-use std::io;
+use std::rt::io;
 use std::vec;
 
 #[deriving(Clone, Eq)]
@@ -148,7 +148,7 @@ pub struct print_stack_elt {
 
 pub static size_infinity: int = 0xffff;
 
-pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
+pub fn mk_printer(out: @mut io::Writer, linewidth: uint) -> @mut Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
@@ -157,7 +157,7 @@ pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     let size: ~[int] = vec::from_elem(n, 0);
     let scan_stack: ~[uint] = vec::from_elem(n, 0u);
     @mut Printer {
-        out: @out,
+        out: out,
         buf_len: n,
         margin: linewidth as int,
         space: linewidth as int,
@@ -255,7 +255,7 @@ pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
  * called 'print'.
  */
 pub struct Printer {
-    out: @@io::Writer,
+    out: @mut io::Writer,
     buf_len: uint,
     margin: int, // width of lines we're constrained to
     space: int, // number of spaces left on line
@@ -452,7 +452,7 @@ impl Printer {
     }
     pub fn print_newline(&mut self, amount: int) {
         debug!("NEWLINE {}", amount);
-        (*self.out).write_str("\n");
+        write!(self.out, "\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }
@@ -474,10 +474,10 @@ impl Printer {
     }
     pub fn print_str(&mut self, s: &str) {
         while self.pending_indentation > 0 {
-            (*self.out).write_str(" ");
+            write!(self.out, " ");
             self.pending_indentation -= 1;
         }
-        (*self.out).write_str(s);
+        write!(self.out, "{}", s);
     }
     pub fn print(&mut self, x: token, L: int) {
         debug!("print {} {} (remaining line space={})", tok_str(x), L,

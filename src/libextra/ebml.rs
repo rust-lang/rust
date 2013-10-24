@@ -96,16 +96,8 @@ pub mod reader {
 
     use std::cast::transmute;
     use std::int;
-    use std::io;
     use std::option::{None, Option, Some};
-
-    #[cfg(target_arch = "x86")]
-    #[cfg(target_arch = "x86_64")]
-    use std::ptr::offset;
-
-    #[cfg(target_arch = "x86")]
-    #[cfg(target_arch = "x86_64")]
-    use std::unstable::intrinsics::bswap32;
+    use std::rt::io::extensions::u64_from_be_bytes;
 
     // ebml reading
 
@@ -144,6 +136,9 @@ pub mod reader {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "x86_64")]
     pub fn vuint_at(data: &[u8], start: uint) -> Res {
+        use std::ptr::offset;
+        use std::unstable::intrinsics::bswap32;
+
         if data.len() - start < 4 {
             return vuint_at_slow(data, start);
         }
@@ -178,8 +173,7 @@ pub mod reader {
         }
     }
 
-    #[cfg(target_arch = "arm")]
-    #[cfg(target_arch = "mips")]
+    #[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
     pub fn vuint_at(data: &[u8], start: uint) -> Res {
         vuint_at_slow(data, start)
     }
@@ -265,17 +259,17 @@ pub mod reader {
 
     pub fn doc_as_u16(d: Doc) -> u16 {
         assert_eq!(d.end, d.start + 2u);
-        io::u64_from_be_bytes(*d.data, d.start, 2u) as u16
+        u64_from_be_bytes(*d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
         assert_eq!(d.end, d.start + 4u);
-        io::u64_from_be_bytes(*d.data, d.start, 4u) as u32
+        u64_from_be_bytes(*d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
         assert_eq!(d.end, d.start + 8u);
-        io::u64_from_be_bytes(*d.data, d.start, 8u)
+        u64_from_be_bytes(*d.data, d.start, 8u)
     }
 
     pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
@@ -614,11 +608,15 @@ pub mod writer {
 
     use std::cast;
     use std::clone::Clone;
-    use std::io;
+    use std::rt::io;
+    use std::rt::io::{Writer, Seek};
+    use std::rt::io::mem::MemWriter;
+    use std::rt::io::extensions::u64_to_be_bytes;
 
     // ebml writing
     pub struct Encoder {
-        writer: @io::Writer,
+        // FIXME(#5665): this should take a trait object
+        writer: @mut MemWriter,
         priv size_positions: ~[uint],
     }
 
@@ -631,7 +629,7 @@ pub mod writer {
         }
     }
 
-    fn write_sized_vuint(w: @io::Writer, n: uint, size: uint) {
+    fn write_sized_vuint(w: @mut MemWriter, n: uint, size: uint) {
         match size {
             1u => w.write(&[0x80u8 | (n as u8)]),
             2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
@@ -643,7 +641,7 @@ pub mod writer {
         };
     }
 
-    fn write_vuint(w: @io::Writer, n: uint) {
+    fn write_vuint(w: @mut MemWriter, n: uint) {
         if n < 0x7f_u { write_sized_vuint(w, n, 1u); return; }
         if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
         if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
@@ -651,7 +649,7 @@ pub mod writer {
         fail!("vint to write too big: {}", n);
     }
 
-    pub fn Encoder(w: @io::Writer) -> Encoder {
+    pub fn Encoder(w: @mut MemWriter) -> Encoder {
         let size_positions: ~[uint] = ~[];
         Encoder {
             writer: w,
@@ -668,7 +666,7 @@ pub mod writer {
             write_vuint(self.writer, tag_id);
 
             // Write a placeholder four-byte size.
-            self.size_positions.push(self.writer.tell());
+            self.size_positions.push(self.writer.tell() as uint);
             let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
             self.writer.write(zeroes);
         }
@@ -676,10 +674,10 @@ pub mod writer {
         pub fn end_tag(&mut self) {
             let last_size_pos = self.size_positions.pop();
             let cur_pos = self.writer.tell();
-            self.writer.seek(last_size_pos as int, io::SeekSet);
-            let size = (cur_pos - last_size_pos - 4u);
-            write_sized_vuint(self.writer, size, 4u);
-            self.writer.seek(cur_pos as int, io::SeekSet);
+            self.writer.seek(last_size_pos as i64, io::SeekSet);
+            let size = (cur_pos as uint - last_size_pos - 4);
+            write_sized_vuint(self.writer, size as uint, 4u);
+            self.writer.seek(cur_pos as i64, io::SeekSet);
 
             debug!("End tag (size = {})", size);
         }
@@ -697,19 +695,19 @@ pub mod writer {
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) {
-            do io::u64_to_be_bytes(v, 8u) |v| {
+            do u64_to_be_bytes(v, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_u32(&mut self, tag_id: uint, v: u32) {
-            do io::u64_to_be_bytes(v as u64, 4u) |v| {
+            do u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) {
-            do io::u64_to_be_bytes(v as u64, 2u) |v| {
+            do u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
@@ -719,19 +717,19 @@ pub mod writer {
         }
 
         pub fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) {
-            do io::u64_to_be_bytes(v as u64, 8u) |v| {
+            do u64_to_be_bytes(v as u64, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) {
-            do io::u64_to_be_bytes(v as u64, 4u) |v| {
+            do u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
         pub fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) {
-            do io::u64_to_be_bytes(v as u64, 2u) |v| {
+            do u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
@@ -963,18 +961,18 @@ mod tests {
     use serialize::Encodable;
     use serialize;
 
-    use std::io;
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::MemWriter;
     use std::option::{None, Option, Some};
 
     #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {
             debug!("v == {:?}", v);
-            let bytes = do io::with_bytes_writer |wr| {
-                let mut ebml_w = writer::Encoder(wr);
-                v.encode(&mut ebml_w)
-            };
-            let ebml_doc = reader::Doc(@bytes);
+            let wr = @mut MemWriter::new();
+            let mut ebml_w = writer::Encoder(wr);
+            v.encode(&mut ebml_w);
+            let ebml_doc = reader::Doc(@wr.inner_ref().to_owned());
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = serialize::Decodable::decode(&mut deser);
             debug!("v1 == {:?}", v1);

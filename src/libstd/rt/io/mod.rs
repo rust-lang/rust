@@ -261,7 +261,6 @@ pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
-pub use self::pipe::UnboundPipeStream;
 pub use self::process::Process;
 
 // Some extension traits that all Readers and Writers get.
@@ -299,10 +298,6 @@ pub mod comm_adapters;
 /// Extension traits
 pub mod extensions;
 
-/// Non-I/O things needed by the I/O module
-// XXX: shouldn this really be pub?
-pub mod support;
-
 /// Basic Timer
 pub mod timer;
 
@@ -331,9 +326,11 @@ pub mod native {
 /// Mock implementations for testing
 mod mock;
 
+/// Signal handling
+pub mod signal;
+
 /// The default buffer size for various I/O operations
-/// XXX: Not pub
-pub static DEFAULT_BUF_SIZE: uint = 1024 * 64;
+static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// The type passed to I/O condition handlers to indicate error
 ///
@@ -375,7 +372,9 @@ pub enum IoErrorKind {
     BrokenPipe,
     PathAlreadyExists,
     PathDoesntExist,
-    MismatchedFileTypeForOperation
+    MismatchedFileTypeForOperation,
+    ResourceUnavailable,
+    IoUnavailable,
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -395,7 +394,9 @@ impl ToStr for IoErrorKind {
             BrokenPipe => ~"BrokenPipe",
             PathAlreadyExists => ~"PathAlreadyExists",
             PathDoesntExist => ~"PathDoesntExist",
-            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation"
+            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation",
+            IoUnavailable => ~"IoUnavailable",
+            ResourceUnavailable => ~"ResourceUnavailable",
         }
     }
 }
@@ -404,12 +405,6 @@ impl ToStr for IoErrorKind {
 // Raised by `I/O` operations on error.
 condition! {
     pub io_error: IoError -> ();
-}
-
-// XXX: Can't put doc comments on macros
-// Raised by `read` on error
-condition! {
-    pub read_error: IoError -> ();
 }
 
 /// Helper for wrapper calls where you want to
@@ -431,7 +426,7 @@ pub trait Reader {
     ///
     /// # Failure
     ///
-    /// Raises the `read_error` condition on error. If the condition
+    /// Raises the `io_error` condition on error. If the condition
     /// is handled then no guarantee is made about the number of bytes
     /// read and the contents of `buf`. If the condition is handled
     /// returns `None` (XXX see below).

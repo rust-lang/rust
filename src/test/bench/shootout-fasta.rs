@@ -18,7 +18,7 @@
 extern mod extra;
 
 use std::int;
-use std::io;
+use std::rt::io;
 use std::os;
 use std::rand::Rng;
 use std::rand;
@@ -68,12 +68,12 @@ fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
     bisect(genelist.clone(), 0, genelist.len() - 1, r)
 }
 
-fn make_random_fasta(wr: @io::Writer,
+fn make_random_fasta(wr: @mut io::Writer,
                      id: ~str,
                      desc: ~str,
                      genelist: ~[AminoAcids],
                      n: int) {
-    wr.write_line(~">" + id + " " + desc);
+    writeln!(wr, ">{} {}", id, desc);
     let mut rng = rand::rng();
     let rng = @mut MyRandom {
         last: rng.gen()
@@ -83,26 +83,26 @@ fn make_random_fasta(wr: @io::Writer,
         op.push_char(select_random(myrandom_next(rng, 100u32),
                                    genelist.clone()));
         if op.len() >= LINE_LENGTH {
-            wr.write_line(op);
+            writeln!(wr, "{}", op);
             op = ~"";
         }
     }
-    if op.len() > 0u { wr.write_line(op); }
+    if op.len() > 0u { writeln!(wr, "{}", op); }
 }
 
-fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
-    wr.write_line(~">" + id + " " + desc);
+fn make_repeat_fasta(wr: @mut io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
+    writeln!(wr, ">{} {}", id, desc);
     let mut op = str::with_capacity( LINE_LENGTH );
     let sl = s.len();
     for i in range(0u, n as uint) {
         if (op.len() >= LINE_LENGTH) {
-            wr.write_line( op );
+            writeln!(wr, "{}", op);
             op = str::with_capacity( LINE_LENGTH );
         }
         op.push_char( s[i % sl] as char );
     }
     if op.len() > 0 {
-        wr.write_line(op)
+        writeln!(wr, "{}", op);
     }
 }
 
@@ -111,6 +111,7 @@ fn acid(ch: char, prob: u32) -> AminoAcids {
 }
 
 fn main() {
+    use std::rt::io::file::FileInfo;
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
         // alioth tests k-nucleotide with this data at 25,000,000
@@ -122,10 +123,10 @@ fn main() {
     };
 
     let writer = if os::getenv("RUST_BENCH").is_some() {
-        io::file_writer(&Path::new("./shootout-fasta.data"),
-                        [io::Truncate, io::Create]).unwrap()
+        let file = Path::new("./shootout-fasta.data").open_writer(io::CreateOrTruncate);
+        @mut file as @mut io::Writer
     } else {
-        io::stdout()
+        @mut io::stdout() as @mut io::Writer
     };
 
     let n = from_str::<int>(args[1]).unwrap();

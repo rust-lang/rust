@@ -32,7 +32,6 @@
 use c_str::CString;
 use clone::Clone;
 use container::Container;
-use io;
 use iter::range;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
@@ -62,7 +61,7 @@ pub fn close(fd: c_int) -> c_int {
 // which are for Windows and for non-Windows, if necessary.
 // See https://github.com/mozilla/rust/issues/9822 for more information.
 
-pub mod rustrt {
+mod rustrt {
     use libc::{c_char, c_int};
     use libc;
 
@@ -190,6 +189,8 @@ pub fn env() -> ~[(~str,~str)] {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> ~[~str] {
             #[fixed_stack_segment]; #[inline(never)];
+            use c_str;
+            use str::StrSlice;
 
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsA,
@@ -200,7 +201,10 @@ pub fn env() -> ~[(~str,~str)] {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
-            let result = str::raw::from_c_multistring(ch as *libc::c_char, None);
+            let mut result = ~[];
+            do c_str::from_c_multistring(ch as *libc::c_char, None) |cstr| {
+                result.push(cstr.as_str().unwrap().to_owned());
+            };
             FreeEnvironmentStringsA(ch);
             result
         }
@@ -350,64 +354,6 @@ pub fn fdopen(fd: c_int) -> *FILE {
         unsafe {
             libc::fdopen(fd, modebuf)
         }
-    }
-}
-
-
-// fsync related
-
-#[cfg(windows)]
-pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-    unsafe {
-        use libc::funcs::extra::msvcrt::*;
-        return commit(fd);
-    }
-}
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
-pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-    unsafe {
-        use libc::funcs::posix01::unistd::*;
-        match level {
-          io::fsync::FSync
-          | io::fsync::FullFSync => return fsync(fd),
-          io::fsync::FDataSync => return fdatasync(fd)
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        use libc::consts::os::extra::*;
-        use libc::funcs::posix88::fcntl::*;
-        use libc::funcs::posix01::unistd::*;
-        match level {
-          io::fsync::FSync => return fsync(fd),
-          _ => {
-            // According to man fnctl, the ok retval is only specified to be
-            // !=-1
-            if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
-                { return -1 as c_int; }
-            else
-                { return 0 as c_int; }
-          }
-        }
-    }
-}
-
-#[cfg(target_os = "freebsd")]
-pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        use libc::funcs::posix01::unistd::*;
-        return fsync(fd);
     }
 }
 

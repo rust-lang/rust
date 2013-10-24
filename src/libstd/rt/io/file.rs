@@ -15,10 +15,11 @@ with regular files & directories on a filesystem.
 
 At the top-level of the module are a set of freestanding functions,
 associated with various filesystem operations. They all operate
-on a `PathLike` object.
+on a `ToCStr` object. This trait is already defined for common
+objects such as strings and `Path` instances.
 
 All operations in this module, including those as part of `FileStream` et al
-block the task during execution. Most will raise `std::rt::io::{io_error,read_error}`
+block the task during execution. Most will raise `std::rt::io::io_error`
 conditions in the event of failure.
 
 Also included in this module are the `FileInfo` and `DirectoryInfo` traits. When
@@ -30,15 +31,14 @@ free function counterparts.
 */
 
 use prelude::*;
-use super::support::PathLike;
+use c_str::ToCStr;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write};
-use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
-use rt::io::{io_error, read_error, EndOfFile,
+use rt::rtio::{RtioFileStream, IoFactory, with_local_io};
+use rt::io::{io_error, EndOfFile,
             FileMode, FileAccess, FileStat, IoError,
             PathAlreadyExists, PathDoesntExist,
             MismatchedFileTypeForOperation, ignore_io_error};
-use rt::local::Local;
 use option::{Some, None};
 use path::Path;
 
@@ -48,7 +48,6 @@ use path::Path;
 ///
 ///     use std;
 ///     use std::path::Path;
-///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::open;
 ///     use std::rt::io::{FileMode, FileAccess};
 ///
@@ -87,22 +86,20 @@ use path::Path;
 /// * Attempting to open a file with a `FileAccess` that the user lacks permissions
 ///   for
 /// * Filesystem-level errors (full disk, etc)
-pub fn open<P: PathLike>(path: &P,
-                         mode: FileMode,
-                         access: FileAccess
-                        ) -> Option<FileStream> {
-    let open_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_open(path, mode, access)
-    };
-    match open_result {
-        Ok(fd) => Some(FileStream {
-            fd: fd,
-            last_nread: -1
-        }),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+pub fn open<P: ToCStr>(path: &P,
+                       mode: FileMode,
+                       access: FileAccess
+                      ) -> Option<FileStream> {
+    do with_local_io |io| {
+        match io.fs_open(&path.to_c_str(), mode, access) {
+            Ok(fd) => Some(FileStream {
+                fd: fd,
+                last_nread: -1
+            }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }
@@ -113,7 +110,6 @@ pub fn open<P: PathLike>(path: &P,
 ///
 ///     use std;
 ///     use std::path::Path;
-///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::unlink;
 ///
 ///     let p = &Path("/some/file/path.txt");
@@ -129,17 +125,16 @@ pub fn open<P: PathLike>(path: &P,
 ///
 /// This function will raise an `io_error` condition if the user lacks permissions to
 /// remove the file or if some other filesystem-level error occurs
-pub fn unlink<P: PathLike>(path: &P) {
-    let unlink_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_unlink(path)
-    };
-    match unlink_result {
-        Ok(_) => (),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
+pub fn unlink<P: ToCStr>(path: &P) {
+    do with_local_io |io| {
+        match io.fs_unlink(&path.to_c_str()) {
+            Ok(_) => Some(()),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
-    }
+    };
 }
 
 /// Create a new, empty directory at the provided path
@@ -148,7 +143,6 @@ pub fn unlink<P: PathLike>(path: &P) {
 ///
 ///     use std;
 ///     use std::path::Path;
-///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::mkdir;
 ///
 ///     let p = &Path("/some/dir");
@@ -159,17 +153,16 @@ pub fn unlink<P: PathLike>(path: &P) {
 ///
 /// This call will raise an `io_error` condition if the user lacks permissions to make a
 /// new directory at the provided path, or if the directory already exists
-pub fn mkdir<P: PathLike>(path: &P) {
-    let mkdir_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_mkdir(path)
-    };
-    match mkdir_result {
-        Ok(_) => (),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
+pub fn mkdir<P: ToCStr>(path: &P) {
+    do with_local_io |io| {
+        match io.fs_mkdir(&path.to_c_str()) {
+            Ok(_) => Some(()),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
-    }
+    };
 }
 
 /// Remove an existing, empty directory
@@ -178,7 +171,6 @@ pub fn mkdir<P: PathLike>(path: &P) {
 ///
 ///     use std;
 ///     use std::path::Path;
-///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::rmdir;
 ///
 ///     let p = &Path("/some/dir");
@@ -189,23 +181,22 @@ pub fn mkdir<P: PathLike>(path: &P) {
 ///
 /// This call will raise an `io_error` condition if the user lacks permissions to remove the
 /// directory at the provided path, or if the directory isn't empty
-pub fn rmdir<P: PathLike>(path: &P) {
-    let rmdir_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_rmdir(path)
-    };
-    match rmdir_result {
-        Ok(_) => (),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
+pub fn rmdir<P: ToCStr>(path: &P) {
+    do with_local_io |io| {
+        match io.fs_rmdir(&path.to_c_str()) {
+            Ok(_) => Some(()),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
-    }
+    };
 }
 
 /// Get information on the file, directory, etc at the provided path
 ///
-/// Given a `rt::io::support::PathLike`, query the file system to get
-/// information about a file, directory, etc.
+/// Given a path, query the file system to get information about a file,
+/// directory, etc.
 ///
 /// Returns a `Some(std::rt::io::PathInfo)` on success
 ///
@@ -213,7 +204,6 @@ pub fn rmdir<P: PathLike>(path: &P) {
 ///
 ///     use std;
 ///     use std::path::Path;
-///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::stat;
 ///
 ///     let p = &Path("/some/file/path.txt");
@@ -238,18 +228,14 @@ pub fn rmdir<P: PathLike>(path: &P) {
 /// This call will raise an `io_error` condition if the user lacks the requisite
 /// permissions to perform a `stat` call on the given path or if there is no
 /// entry in the filesystem at the provided path.
-pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
-    let open_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_stat(path)
-    };
-    match open_result {
-        Ok(p) => {
-            Some(p)
-        },
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+pub fn stat<P: ToCStr>(path: &P) -> Option<FileStat> {
+    do with_local_io |io| {
+        match io.fs_stat(&path.to_c_str()) {
+            Ok(p) => Some(p),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }
@@ -260,7 +246,6 @@ pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
 ///
 ///     use std;
 ///     use std::path::Path;
-///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::readdir;
 ///
 ///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
@@ -279,18 +264,14 @@ pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
 /// Will raise an `io_error` condition if the provided `path` doesn't exist,
 /// the process lacks permissions to view the contents or if the `path` points
 /// at a non-directory file
-pub fn readdir<P: PathLike>(path: &P) -> Option<~[Path]> {
-    let readdir_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_readdir(path, 0)
-    };
-    match readdir_result {
-        Ok(p) => {
-            Some(p)
-        },
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
+pub fn readdir<P: ToCStr>(path: &P) -> Option<~[Path]> {
+    do with_local_io |io| {
+        match io.fs_readdir(&path.to_c_str(), 0) {
+            Ok(p) => Some(p),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
         }
     }
 }
@@ -380,7 +361,7 @@ impl Reader for FileStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 return None;
             }
@@ -407,7 +388,7 @@ impl Writer for FileStream {
         match self.fd.flush() {
             Ok(_) => (),
             Err(ioerr) => {
-                read_error::cond.raise(ioerr);
+                io_error::cond.raise(ioerr);
             }
         }
     }
@@ -420,7 +401,7 @@ impl Seek for FileStream {
         match res {
             Ok(cursor) => cursor,
             Err(ioerr) => {
-                read_error::cond.raise(ioerr);
+                io_error::cond.raise(ioerr);
                 return -1;
             }
         }
@@ -434,7 +415,7 @@ impl Seek for FileStream {
                 ()
             },
             Err(ioerr) => {
-                read_error::cond.raise(ioerr);
+                io_error::cond.raise(ioerr);
             }
         }
     }
