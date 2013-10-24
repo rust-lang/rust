@@ -8,14 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name="extern_foreign", vers="0.0")];
+#[link(name="external_linkage", vers="0.0")];
+
+#[cfg(target_os="macos")]
+pub mod linkhack {
+    // Lovely hack to get Linuxy shlib behaviour on OSX
+    // Will fail with SIGTRAP at runtime if any symbol can't be resolved.
+    #[link_args="-Wl,-flat_namespace -Wl,-undefined,suppress"]
+    extern {
+    }
+}
 
 extern "C" {
     fn foreign();
 }
 
-#[fixed_stack_segment]
-pub unsafe fn doer() {
-    foreign();
+extern {
+    fn visible();
+    static x: int;
 }
 
+#[fixed_stack_segment]
+pub unsafe fn doer() -> int {
+    foreign();
+    visible();
+    x
+}

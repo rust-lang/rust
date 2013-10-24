@@ -8,15 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:extern_foreign.rs
+// aux-build:external_linkage.rs
+// xfail-fast
 
-extern mod extern_foreign;
+extern mod external_linkage;
 
 #[no_mangle]
 pub extern "C" fn foreign() {
 }
 
-pub fn main() {
-    unsafe { extern_foreign::doer() };
+fn notvisible() {
 }
 
+#[no_mangle]
+pub fn visible() {
+}
+
+#[no_mangle]
+pub static x: int = 5;
+static y: int = 0;
+
+pub fn main() {
+    // this variant of external_linkage will cause the runtime linker to try
+    // and find visible() and x, which are public.
+    unsafe { external_linkage::doer() };
+    notvisible();
+    visible();
+}
