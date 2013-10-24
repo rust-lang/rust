@@ -2554,13 +2554,14 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                                                                    i.span,
                                                                                    sym,
                                                                                    i.id);
-                                if ccx.exported_items.contains(&i.id) {
-                                    // Expose with external linkage, if the full path is
-                                    // publically visible.
-                                    lib::llvm::SetLinkage(f, lib::llvm::ExternalLinkage);
-                                }
                                 f
                             };
+                            if ccx.exported_items.contains(&i.id) {
+                                // Expose with external linkage, if the full path is
+                                // publically visible.
+                                lib::llvm::SetLinkage(llfn, lib::llvm::ExternalLinkage);
+                                exprt = true
+                            }
                             set_llvm_fn_attrs(i.attrs, llfn);
                             llfn
                         }
