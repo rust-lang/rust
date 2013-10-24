@@ -98,8 +98,6 @@ rust_uv_get_base_from_buf
 rust_uv_get_len_from_buf
 rust_uv_getaddrinfo
 rust_uv_freeaddrinfo
-rust_uv_idle_new
-rust_uv_idle_delete
 rust_uv_idle_init
 rust_uv_idle_start
 rust_uv_idle_stop
@@ -191,6 +189,9 @@ rust_set_stdio_container_fd
 rust_set_stdio_container_stream
 rust_uv_process_pid
 rust_uv_pipe_init
+rust_uv_signal_init
+rust_uv_signal_start
+rust_uv_signal_stop
 sdhtml_renderer
 sd_markdown_new
 sd_markdown_render
@@ -199,3 +200,10 @@ bufrelease
 bufnew
 rust_take_dlerror_lock
 rust_drop_dlerror_lock
+rust_uv_pipe_open
+rust_uv_pipe_bind
+rust_uv_pipe_connect
+rust_uv_tty_init
+rust_uv_tty_set_mode
+rust_uv_tty_get_winsize
+rust_uv_guess_handle

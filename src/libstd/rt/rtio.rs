@@ -11,40 +11,29 @@
 use libc;
 use option::*;
 use result::*;
+use comm::SharedChan;
 use libc::c_int;
+use c_str::CString;
 
+use ai = rt::io::net::addrinfo;
 use rt::io::IoError;
+use rt::io::signal::Signum;
 use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
-use rt::uv::uvio;
 use path::Path;
-use super::io::support::PathLike;
 use super::io::{SeekStyle};
 use super::io::{FileMode, FileAccess, FileStat};
-
-// XXX: ~object doesn't work currently so these are some placeholder
-// types to use instead
-pub type EventLoopObject = uvio::UvEventLoop;
-pub type RemoteCallbackObject = uvio::UvRemoteCallback;
-pub type IoFactoryObject = uvio::UvIoFactory;
-pub type RtioTcpStreamObject = uvio::UvTcpStream;
-pub type RtioTcpAcceptorObject = uvio::UvTcpAcceptor;
-pub type RtioTcpListenerObject = uvio::UvTcpListener;
-pub type RtioUdpSocketObject = uvio::UvUdpSocket;
-pub type RtioTimerObject = uvio::UvTimer;
-pub type PausibleIdleCallback = uvio::UvPausibleIdleCallback;
-pub type RtioPipeObject = uvio::UvPipeStream;
-pub type RtioUnboundPipeObject = uvio::UvUnboundPipe;
-pub type RtioProcessObject = uvio::UvProcess;
 
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
     fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback;
     fn callback_ms(&mut self, ms: u64, ~fn());
-    fn remote_callback(&mut self, ~fn()) -> ~RemoteCallbackObject;
+    fn remote_callback(&mut self, ~fn()) -> ~RemoteCallback;
+
     /// The asynchronous I/O services. Not all event loops may provide one
-    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject>;
+    // FIXME(#9382) this is an awful interface
+    fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory));
 }
 
 pub trait RemoteCallback {
@@ -69,32 +58,74 @@ pub struct FileOpenConfig {
     priv mode: int
 }
 
+/// Description of what to do when a file handle is closed
+pub enum CloseBehavior {
+    /// Do not close this handle when the object is destroyed
+    DontClose,
+    /// Synchronously close the handle, meaning that the task will block when
+    /// the handle is destroyed until it has been fully closed.
+    CloseSynchronously,
+    /// Asynchronously closes a handle, meaning that the task will *not* block
+    /// when the handle is destroyed, but the handle will still get deallocated
+    /// and cleaned up (but this will happen asynchronously on the local event
+    /// loop).
+    CloseAsynchronously,
+}
+
+pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
+    use rt::sched::Scheduler;
+    use rt::local::Local;
+    use rt::io::{io_error, standard_error, IoUnavailable};
+
+    unsafe {
+        let sched: *mut Scheduler = Local::unsafe_borrow();
+        let mut io = None;
+        (*sched).event_loop.io(|i| io = Some(i));
+        match io {
+            Some(io) => f(io),
+            None => {
+                io_error::cond.raise(standard_error(IoUnavailable));
+                None
+            }
+        }
+    }
+}
+
 pub trait IoFactory {
-    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStreamObject, IoError>;
-    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError>;
-    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError>;
-    fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError>;
-    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream;
-    fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
+    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
+    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError>;
+    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError>;
+    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
+                          hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
+    fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
+    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;
+    fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
-    fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
-    fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError>;
-    fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError>;
-    fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
-    fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
-    fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
+    fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError>;
+    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
         Result<~[Path], IoError>;
-    fn pipe_init(&mut self, ipc: bool) -> Result<~RtioUnboundPipeObject, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
-            -> Result<(~RtioProcessObject, ~[Option<RtioPipeObject>]), IoError>;
+            -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
+
+    fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
+    fn unix_bind(&mut self, path: &CString) ->
+        Result<~RtioUnixListener, IoError>;
+    fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
+    fn tty_open(&mut self, fd: c_int, readable: bool)
+            -> Result<~RtioTTY, IoError>;
+    fn signal(&mut self, signal: Signum, channel: SharedChan<Signum>)
+        -> Result<~RtioSignal, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
-    fn listen(self) -> Result<~RtioTcpAcceptorObject, IoError>;
+    fn listen(~self) -> Result<~RtioTcpAcceptor, IoError>;
 }
 
 pub trait RtioTcpAcceptor : RtioSocket {
-    fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
+    fn accept(&mut self) -> Result<~RtioTcpStream, IoError>;
     fn accept_simultaneously(&mut self) -> Result<(), IoError>;
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
 }
@@ -154,3 +185,30 @@ pub trait RtioPipe {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }
+
+pub trait RtioUnixListener {
+    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError>;
+}
+
+pub trait RtioUnixAcceptor {
+    fn accept(&mut self) -> Result<~RtioPipe, IoError>;
+    fn accept_simultaneously(&mut self) -> Result<(), IoError>;
+    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
+}
+
+pub trait RtioTTY {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+    fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
+    fn get_winsize(&mut self) -> Result<(int, int), IoError>;
+    fn isatty(&self) -> bool;
+}
+
+pub trait PausibleIdleCallback {
+    fn start(&mut self, f: ~fn());
+    fn pause(&mut self);
+    fn resume(&mut self);
+    fn close(&mut self);
+}
+
+pub trait RtioSignal {}

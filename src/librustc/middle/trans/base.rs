@@ -70,7 +70,6 @@ use middle::trans::type_::Type;
 use std::c_str::ToCStr;
 use std::hash;
 use std::hashmap::HashMap;
-use std::io;
 use std::libc::c_uint;
 use std::vec;
 use std::local_data;
@@ -3163,7 +3162,7 @@ pub fn trans_crate(sess: session::Session,
     // Translate the metadata.
     write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
-        io::println("--- trans stats ---");
+        println("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs);
         println!("n_glues_created: {}", ccx.stats.n_glues_created);
         println!("n_null_glues: {}", ccx.stats.n_null_glues);
@@ -3173,7 +3172,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_monos: {}", ccx.stats.n_monos);
         println!("n_inlines: {}", ccx.stats.n_inlines);
         println!("n_closures: {}", ccx.stats.n_closures);
-        io::println("fn stats:");
+        println("fn stats:");
         do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_a > insns_b
         }

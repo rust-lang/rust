@@ -18,7 +18,7 @@
 
 
 use std::cast;
-use std::io;
+use std::rt::io;
 use std::uint;
 use std::vec;
 use std::hashmap::HashMap;
@@ -349,12 +349,12 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
         debug!("Dataflow result:");
         debug!("{}", {
             let this = @(*self).clone();
-            this.pretty_print_to(io::stderr(), blk);
+            this.pretty_print_to(@mut io::stderr() as @mut io::Writer, blk);
             ""
         });
     }
 
-    fn pretty_print_to(@self, wr: @io::Writer, blk: &ast::Block) {
+    fn pretty_print_to(@self, wr: @mut io::Writer, blk: &ast::Block) {
         let ps = pprust::rust_printer_annotated(wr,
                                                 self.tcx.sess.intr(),
                                                 self as @pprust::pp_ann);

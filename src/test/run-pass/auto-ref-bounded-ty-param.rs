@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
-
 trait Foo {
     fn f(&self);
 }
@@ -30,7 +28,7 @@ impl<T:Baz> Foo for T {
 
 impl Baz for Bar {
     fn g(&self) {
-        io::println(self.x.to_str());
+        println(self.x.to_str());
     }
 }
 

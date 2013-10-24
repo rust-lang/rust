@@ -15,8 +15,6 @@ The test runner should check that, after `rustpkg build hello-world`:
   * testsuite/hello-world/build/ does not contain a library
 */
 
-use std::io;
-
 fn main() {
-    io::println(~"Hello world!");
+    println(~"Hello world!");
 }

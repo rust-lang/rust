@@ -11,12 +11,12 @@
 //! Bindings for executing child processes
 
 use prelude::*;
+use cell::Cell;
 
 use libc;
 use rt::io;
 use rt::io::io_error;
-use rt::local::Local;
-use rt::rtio::{RtioProcess, RtioProcessObject, IoFactoryObject, IoFactory};
+use rt::rtio::{RtioProcess, IoFactory, with_local_io};
 
 // windows values don't matter as long as they're at least one of unix's
 // TERM/KILL/INT signals
@@ -26,7 +26,7 @@ use rt::rtio::{RtioProcess, RtioProcessObject, IoFactoryObject, IoFactory};
 #[cfg(not(windows))] pub static MustDieSignal: int = libc::SIGKILL as int;
 
 pub struct Process {
-    priv handle: ~RtioProcessObject,
+    priv handle: ~RtioProcess,
     io: ~[Option<io::PipeStream>],
 }
 
@@ -57,7 +57,7 @@ pub struct ProcessConfig<'self> {
     ///     0 - stdin
     ///     1 - stdout
     ///     2 - stderr
-    io: ~[StdioContainer]
+    io: &'self [StdioContainer]
 }
 
 /// Describes what to do with a standard io stream for a child process.
@@ -70,42 +70,32 @@ pub enum StdioContainer {
     /// specified for.
     InheritFd(libc::c_int),
 
-    // XXX: these two shouldn't have libuv-specific implementation details
-
-    /// The specified libuv stream is inherited for the corresponding file
-    /// descriptor it is assigned to.
-    // XXX: this needs to be thought out more.
-    //InheritStream(uv::net::StreamWatcher),
-
-    /// Creates a pipe for the specified file descriptor which will be directed
-    /// into the previously-initialized pipe passed in.
+    /// Creates a pipe for the specified file descriptor which will be created
+    /// when the process is spawned.
     ///
     /// The first boolean argument is whether the pipe is readable, and the
     /// second is whether it is writable. These properties are from the view of
     /// the *child* process, not the parent process.
-    CreatePipe(io::UnboundPipeStream,
-               bool /* readable */,
-               bool /* writable */),
+    CreatePipe(bool /* readable */, bool /* writable */),
 }
 
 impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
     pub fn new(config: ProcessConfig) -> Option<Process> {
-        let process = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).spawn(config)
-        };
-        match process {
-            Ok((p, io)) => Some(Process{
-                handle: p,
-                io: io.move_iter().map(|p|
-                    p.map(|p| io::PipeStream::bind(p))
-                ).collect()
-            }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
+        let config = Cell::new(config);
+        do with_local_io |io| {
+            match io.spawn(config.take()) {
+                Ok((p, io)) => Some(Process{
+                    handle: p,
+                    io: io.move_iter().map(|p|
+                        p.map(|p| io::PipeStream::new(p))
+                    ).collect()
+                }),
+                Err(ioerr) => {
+                    io_error::cond.raise(ioerr);
+                    None
+                }
             }
         }
     }

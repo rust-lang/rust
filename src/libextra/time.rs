@@ -10,7 +10,8 @@
 
 #[allow(missing_doc)];
 
-use std::io;
+use std::rt::io::Reader;
+use std::rt::io::mem::BufReader;
 use std::num;
 use std::str;
 
@@ -666,61 +667,69 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    do io::with_str_reader(format) |rdr| {
-        let mut tm = Tm {
-            tm_sec: 0_i32,
-            tm_min: 0_i32,
-            tm_hour: 0_i32,
-            tm_mday: 0_i32,
-            tm_mon: 0_i32,
-            tm_year: 0_i32,
-            tm_wday: 0_i32,
-            tm_yday: 0_i32,
-            tm_isdst: 0_i32,
-            tm_gmtoff: 0_i32,
-            tm_zone: ~"",
-            tm_nsec: 0_i32,
+    let mut rdr = BufReader::new(format.as_bytes());
+    let mut tm = Tm {
+        tm_sec: 0_i32,
+        tm_min: 0_i32,
+        tm_hour: 0_i32,
+        tm_mday: 0_i32,
+        tm_mon: 0_i32,
+        tm_year: 0_i32,
+        tm_wday: 0_i32,
+        tm_yday: 0_i32,
+        tm_isdst: 0_i32,
+        tm_gmtoff: 0_i32,
+        tm_zone: ~"",
+        tm_nsec: 0_i32,
+    };
+    let mut pos = 0u;
+    let len = s.len();
+    let mut result = Err(~"Invalid time");
+
+    while pos < len {
+        let range = s.char_range_at(pos);
+        let ch = range.ch;
+        let next = range.next;
+
+        let mut buf = [0];
+        let c = match rdr.read(buf) {
+            Some(*) => buf[0] as u8 as char,
+            None => break
         };
-        let mut pos = 0u;
-        let len = s.len();
-        let mut result = Err(~"Invalid time");
-
-        while !rdr.eof() && pos < len {
-            let range = s.char_range_at(pos);
-            let ch = range.ch;
-            let next = range.next;
-
-            match rdr.read_char() {
-                '%' => {
-                    match parse_type(s, pos, rdr.read_char(), &mut tm) {
-                        Ok(next) => pos = next,
-                        Err(e) => { result = Err(e); break; }
-                    }
-                },
-                c => {
-                    if c != ch { break }
-                    pos = next;
+        match c {
+            '%' => {
+                let ch = match rdr.read(buf) {
+                    Some(*) => buf[0] as u8 as char,
+                    None => break
+                };
+                match parse_type(s, pos, ch, &mut tm) {
+                    Ok(next) => pos = next,
+                    Err(e) => { result = Err(e); break; }
                 }
+            },
+            c => {
+                if c != ch { break }
+                pos = next;
             }
         }
-
-        if pos == len && rdr.eof() {
-            Ok(Tm {
-                tm_sec: tm.tm_sec,
-                tm_min: tm.tm_min,
-                tm_hour: tm.tm_hour,
-                tm_mday: tm.tm_mday,
-                tm_mon: tm.tm_mon,
-                tm_year: tm.tm_year,
-                tm_wday: tm.tm_wday,
-                tm_yday: tm.tm_yday,
-                tm_isdst: tm.tm_isdst,
-                tm_gmtoff: tm.tm_gmtoff,
-                tm_zone: tm.tm_zone.clone(),
-                tm_nsec: tm.tm_nsec,
-            })
-        } else { result }
     }
+
+    if pos == len && rdr.eof() {
+        Ok(Tm {
+            tm_sec: tm.tm_sec,
+            tm_min: tm.tm_min,
+            tm_hour: tm.tm_hour,
+            tm_mday: tm.tm_mday,
+            tm_mon: tm.tm_mon,
+            tm_year: tm.tm_year,
+            tm_wday: tm.tm_wday,
+            tm_yday: tm.tm_yday,
+            tm_isdst: tm.tm_isdst,
+            tm_gmtoff: tm.tm_gmtoff,
+            tm_zone: tm.tm_zone.clone(),
+            tm_nsec: tm.tm_nsec,
+        })
+    } else { result }
 }
 
 /// Formats the time according to the format string.
@@ -929,18 +938,26 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         }
     }
 
-    let mut buf = ~"";
+    let mut buf = ~[];
 
-    do io::with_str_reader(format) |rdr| {
-        while !rdr.eof() {
-            match rdr.read_char() {
-                '%' => buf.push_str(parse_type(rdr.read_char(), tm)),
-                ch => buf.push_char(ch)
+    let mut rdr = BufReader::new(format.as_bytes());
+    loop {
+        let mut b = [0];
+        let ch = match rdr.read(b) {
+            Some(*) => b[0],
+            None => break,
+        };
+        match ch as char {
+            '%' => {
+                rdr.read(b);
+                let s = parse_type(b[0] as char, tm);
+                buf.push_all(s.as_bytes());
             }
+            ch => buf.push(ch as u8)
         }
     }
 
-    buf
+    str::from_utf8_owned(buf)
 }
 
 #[cfg(test)]

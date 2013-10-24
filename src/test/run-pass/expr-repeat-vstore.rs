@@ -1,7 +1,5 @@
 #[feature(managed_boxes)];
 
-use std::io::println;
-
 pub fn main() {
     let v: ~[int] = ~[ 1, ..5 ];
     println(v[0].to_str());

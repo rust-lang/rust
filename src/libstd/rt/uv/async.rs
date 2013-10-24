@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_int, c_void};
+use libc::c_int;
 use option::Some;
 use rt::uv::uvll;
 use rt::uv::uvll::UV_ASYNC;
-use rt::uv::{Watcher, Loop, NativeHandle, AsyncCallback, NullCallback};
+use rt::uv::{Watcher, Loop, NativeHandle, AsyncCallback};
 use rt::uv::WatcherInterop;
 use rt::uv::status_to_maybe_uv_error;
 
@@ -45,27 +45,6 @@ impl AsyncWatcher {
         unsafe {
             let handle = self.native_handle();
             uvll::async_send(handle);
-        }
-    }
-
-    pub fn close(self, cb: NullCallback) {
-        let mut this = self;
-        let data = this.get_watcher_data();
-        assert!(data.close_cb.is_none());
-        data.close_cb = Some(cb);
-
-        unsafe {
-            uvll::close(self.native_handle(), close_cb);
-        }
-
-        extern fn close_cb(handle: *uvll::uv_stream_t) {
-            let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
-            {
-                let data = watcher.get_watcher_data();
-                data.close_cb.take_unwrap()();
-            }
-            watcher.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *c_void); }
         }
     }
 }

@@ -15,14 +15,16 @@ extern mod extra;
 use extra::glob::glob;
 use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
-use std::{io, os, unstable};
+use std::{os, unstable};
+use std::rt::io;
+use std::rt::io::file::FileInfo;
 
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
             os::make_dir(&Path::new(path), 0xFFFF);
         } else {
-            io::mk_file_writer(&Path::new(path), [io::Create]);
+            Path::new(path).open_writer(io::Create);
         }
     }
 

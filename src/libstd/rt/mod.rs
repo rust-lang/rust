@@ -279,7 +279,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         rtdebug!("inserting a regular scheduler");
 
         // Every scheduler is driven by an I/O event loop.
-        let loop_ = ~UvEventLoop::new();
+        let loop_ = ~UvEventLoop::new() as ~rtio::EventLoop;
         let mut sched = ~Scheduler::new(loop_,
                                         work_queue.clone(),
                                         work_queues.clone(),
@@ -303,7 +303,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         // set.
         let work_queue = WorkQueue::new();
 
-        let main_loop = ~UvEventLoop::new();
+        let main_loop = ~UvEventLoop::new() as ~rtio::EventLoop;
         let mut main_sched = ~Scheduler::new_special(main_loop,
                                                      work_queue,
                                                      work_queues.clone(),

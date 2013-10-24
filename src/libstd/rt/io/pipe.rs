@@ -15,37 +15,47 @@
 
 use prelude::*;
 use super::{Reader, Writer};
-use rt::io::{io_error, read_error, EndOfFile};
-use rt::local::Local;
-use rt::rtio::{RtioPipe, RtioPipeObject, IoFactoryObject, IoFactory};
-use rt::rtio::RtioUnboundPipeObject;
+use rt::io::{io_error, EndOfFile};
+use rt::io::native::file;
+use rt::rtio::{RtioPipe, with_local_io};
 
 pub struct PipeStream {
-    priv obj: RtioPipeObject
+    priv obj: ~RtioPipe,
 }
 
-// This should not be a newtype, but rt::uv::process::set_stdio needs to reach
-// into the internals of this :(
-pub struct UnboundPipeStream(~RtioUnboundPipeObject);
-
 impl PipeStream {
-    /// Creates a new pipe initialized, but not bound to any particular
-    /// source/destination
-    pub fn new() -> Option<UnboundPipeStream> {
-        let pipe = unsafe {
-            let io: *mut IoFactoryObject = Local::unsafe_borrow();
-            (*io).pipe_init(false)
-        };
-        match pipe {
-            Ok(p) => Some(UnboundPipeStream(p)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
+    /// Consumes a file descriptor to return a pipe stream that will have
+    /// synchronous, but non-blocking reads/writes. This is useful if the file
+    /// descriptor is acquired via means other than the standard methods.
+    ///
+    /// This operation consumes ownership of the file descriptor and it will be
+    /// closed once the object is deallocated.
+    ///
+    /// # Example
+    ///
+    ///     use std::libc;
+    ///     use std::rt::io::pipe;
+    ///
+    ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
+    ///     pipe.write(bytes!("Hello, stderr!"));
+    ///
+    /// # Failure
+    ///
+    /// If the pipe cannot be created, an error will be raised on the
+    /// `io_error` condition.
+    pub fn open(fd: file::fd_t) -> Option<PipeStream> {
+        do with_local_io |io| {
+            match io.pipe_open(fd) {
+                Ok(obj) => Some(PipeStream { obj: obj }),
+                Err(e) => {
+                    io_error::cond.raise(e);
+                    None
+                }
             }
         }
     }
 
-    pub fn bind(inner: RtioPipeObject) -> PipeStream {
+    pub fn new(inner: ~RtioPipe) -> PipeStream {
         PipeStream { obj: inner }
     }
 }
@@ -57,14 +67,14 @@ impl Reader for PipeStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    read_error::cond.raise(ioerr);
+                    io_error::cond.raise(ioerr);
                 }
                 return None;
             }
         }
     }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { false }
 }
 
 impl Writer for PipeStream {
@@ -77,5 +87,5 @@ impl Writer for PipeStream {
         }
     }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) {}
 }

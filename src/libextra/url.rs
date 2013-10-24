@@ -12,10 +12,9 @@
 
 #[allow(missing_doc)];
 
-
+use std::rt::io::{Reader, Seek};
+use std::rt::io::mem::BufReader;
 use std::cmp::Eq;
-use std::io::{Reader, ReaderUtil};
-use std::io;
 use std::hashmap::HashMap;
 use std::to_bytes;
 use std::uint;
@@ -68,42 +67,46 @@ impl UserInfo {
 }
 
 fn encode_inner(s: &str, full_url: bool) -> ~str {
-    do io::with_str_reader(s) |rdr| {
-        let mut out = ~"";
+    let mut rdr = BufReader::new(s.as_bytes());
+    let mut out = ~"";
 
-        while !rdr.eof() {
-            let ch = rdr.read_byte() as u8 as char;
-            match ch {
-              // unreserved:
-              'A' .. 'Z' |
-              'a' .. 'z' |
-              '0' .. '9' |
-              '-' | '.' | '_' | '~' => {
-                out.push_char(ch);
-              }
-              _ => {
-                  if full_url {
-                    match ch {
-                      // gen-delims:
-                      ':' | '/' | '?' | '#' | '[' | ']' | '@' |
+    loop {
+        let mut buf = [0];
+        let ch = match rdr.read(buf) {
+            None => break,
+            Some(*) => buf[0] as char,
+        };
 
-                      // sub-delims:
-                      '!' | '$' | '&' | '"' | '(' | ')' | '*' |
-                      '+' | ',' | ';' | '=' => {
-                        out.push_char(ch);
-                      }
+        match ch {
+          // unreserved:
+          'A' .. 'Z' |
+          'a' .. 'z' |
+          '0' .. '9' |
+          '-' | '.' | '_' | '~' => {
+            out.push_char(ch);
+          }
+          _ => {
+              if full_url {
+                match ch {
+                  // gen-delims:
+                  ':' | '/' | '?' | '#' | '[' | ']' | '@' |
 
-                      _ => out.push_str(format!("%{:X}", ch as uint))
-                    }
-                } else {
-                    out.push_str(format!("%{:X}", ch as uint));
+                  // sub-delims:
+                  '!' | '$' | '&' | '"' | '(' | ')' | '*' |
+                  '+' | ',' | ';' | '=' => {
+                    out.push_char(ch);
+                  }
+
+                  _ => out.push_str(format!("%{:X}", ch as uint))
                 }
-              }
+            } else {
+                out.push_str(format!("%{:X}", ch as uint));
             }
+          }
         }
-
-        out
     }
+
+    out
 }
 
 /**
@@ -128,41 +131,49 @@ pub fn encode_component(s: &str) -> ~str {
 }
 
 fn decode_inner(s: &str, full_url: bool) -> ~str {
-    do io::with_str_reader(s) |rdr| {
-        let mut out = ~"";
+    let mut rdr = BufReader::new(s.as_bytes());
+    let mut out = ~"";
 
-        while !rdr.eof() {
-            match rdr.read_char() {
-              '%' => {
-                let bytes = rdr.read_bytes(2u);
-                let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
-
-                if full_url {
-                    // Only decode some characters:
-                    match ch {
-                      // gen-delims:
-                      ':' | '/' | '?' | '#' | '[' | ']' | '@' |
-
-                      // sub-delims:
-                      '!' | '$' | '&' | '"' | '(' | ')' | '*' |
-                      '+' | ',' | ';' | '=' => {
-                        out.push_char('%');
-                        out.push_char(bytes[0u] as char);
-                        out.push_char(bytes[1u] as char);
-                      }
-
-                      ch => out.push_char(ch)
-                    }
-                } else {
-                      out.push_char(ch);
-                }
-              }
-              ch => out.push_char(ch)
+    loop {
+        let mut buf = [0];
+        let ch = match rdr.read(buf) {
+            None => break,
+            Some(*) => buf[0] as char
+        };
+        match ch {
+          '%' => {
+            let mut bytes = [0, 0];
+            match rdr.read(bytes) {
+                Some(2) => {}
+                _ => fail!() // XXX: malformed url?
             }
-        }
+            let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
 
-        out
+            if full_url {
+                // Only decode some characters:
+                match ch {
+                  // gen-delims:
+                  ':' | '/' | '?' | '#' | '[' | ']' | '@' |
+
+                  // sub-delims:
+                  '!' | '$' | '&' | '"' | '(' | ')' | '*' |
+                  '+' | ',' | ';' | '=' => {
+                    out.push_char('%');
+                    out.push_char(bytes[0u] as char);
+                    out.push_char(bytes[1u] as char);
+                  }
+
+                  ch => out.push_char(ch)
+                }
+            } else {
+                  out.push_char(ch);
+            }
+          }
+          ch => out.push_char(ch)
+        }
     }
+
+    out
 }
 
 /**
@@ -182,22 +193,25 @@ pub fn decode_component(s: &str) -> ~str {
 }
 
 fn encode_plus(s: &str) -> ~str {
-    do io::with_str_reader(s) |rdr| {
-        let mut out = ~"";
+    let mut rdr = BufReader::new(s.as_bytes());
+    let mut out = ~"";
 
-        while !rdr.eof() {
-            let ch = rdr.read_byte() as u8 as char;
-            match ch {
-              'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
-                out.push_char(ch);
-              }
-              ' ' => out.push_char('+'),
-              _ => out.push_str(format!("%{:X}", ch as uint))
-            }
+    loop {
+        let mut buf = [0];
+        let ch = match rdr.read(buf) {
+            Some(*) => buf[0] as char,
+            None => break,
+        };
+        match ch {
+          'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
+            out.push_char(ch);
+          }
+          ' ' => out.push_char('+'),
+          _ => out.push_str(format!("%{:X}", ch as uint))
         }
-
-        out
     }
+
+    out
 }
 
 /**
@@ -230,61 +244,69 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
  * type into a hashmap.
  */
 pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
-    do io::with_bytes_reader(s) |rdr| {
-        let mut m = HashMap::new();
-        let mut key = ~"";
-        let mut value = ~"";
-        let mut parsing_key = true;
+    let mut rdr = BufReader::new(s);
+    let mut m = HashMap::new();
+    let mut key = ~"";
+    let mut value = ~"";
+    let mut parsing_key = true;
 
-        while !rdr.eof() {
-            match rdr.read_char() {
-                '&' | ';' => {
-                    if key != ~"" && value != ~"" {
-                        let mut values = match m.pop(&key) {
-                            Some(values) => values,
-                            None => ~[],
-                        };
-
-                        values.push(value);
-                        m.insert(key, values);
-                    }
-
-                    parsing_key = true;
-                    key = ~"";
-                    value = ~"";
-                }
-                '=' => parsing_key = false,
-                ch => {
-                    let ch = match ch {
-                        '%' => {
-                            let bytes = rdr.read_bytes(2u);
-                            uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
-                        }
-                        '+' => ' ',
-                        ch => ch
+    loop {
+        let mut buf = [0];
+        let ch = match rdr.read(buf) {
+            Some(*) => buf[0] as char,
+            None => break,
+        };
+        match ch {
+            '&' | ';' => {
+                if key != ~"" && value != ~"" {
+                    let mut values = match m.pop(&key) {
+                        Some(values) => values,
+                        None => ~[],
                     };
 
-                    if parsing_key {
-                        key.push_char(ch)
-                    } else {
-                        value.push_char(ch)
+                    values.push(value);
+                    m.insert(key, values);
+                }
+
+                parsing_key = true;
+                key = ~"";
+                value = ~"";
+            }
+            '=' => parsing_key = false,
+            ch => {
+                let ch = match ch {
+                    '%' => {
+                        let mut bytes = [0, 0];
+                        match rdr.read(bytes) {
+                            Some(2) => {}
+                            _ => fail!() // XXX: malformed?
+                        }
+                        uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
                     }
+                    '+' => ' ',
+                    ch => ch
+                };
+
+                if parsing_key {
+                    key.push_char(ch)
+                } else {
+                    value.push_char(ch)
                 }
             }
         }
-
-        if key != ~"" && value != ~"" {
-            let mut values = match m.pop(&key) {
-                Some(values) => values,
-                None => ~[],
-            };
-
-            values.push(value);
-            m.insert(key, values);
-        }
-
-        m
     }
+
+    if key != ~"" && value != ~"" {
+        let mut values = match m.pop(&key) {
+            Some(values) => values,
+            None => ~[],
+        };
+
+        values.push(value);
+        m.insert(key, values);
+    }
+
+    m
 }
 
 
@@ -292,16 +314,18 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     let len = s.len();
     let mut index = len;
     let mut mat = 0;
-    do io::with_str_reader(s) |rdr| {
-        let mut ch;
-        while !rdr.eof() {
-            ch = rdr.read_byte() as u8 as char;
-            if ch == c {
-                // found a match, adjust markers
-                index = rdr.tell()-1;
-                mat = 1;
-                break;
-            }
+    let mut rdr = BufReader::new(s.as_bytes());
+    loop {
+        let mut buf = [0];
+        let ch = match rdr.read(buf) {
+            Some(*) => buf[0] as char,
+            None => break,
+        };
+        if ch == c {
+            // found a match, adjust markers
+            index = (rdr.tell() as uint) - 1;
+            mat = 1;
+            break;
         }
     }
     if index+mat == len {

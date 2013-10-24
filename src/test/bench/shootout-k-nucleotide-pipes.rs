@@ -18,10 +18,9 @@ use std::cmp::Ord;
 use std::comm::{stream, Port, Chan};
 use std::comm;
 use std::hashmap::HashMap;
-use std::io::ReaderUtil;
-use std::io;
 use std::option;
 use std::os;
+use std::rt::io;
 use std::str;
 use std::task;
 use std::util;
@@ -195,48 +194,48 @@ fn main() {
    let mut proc_mode = false;
 
    loop {
-      let line = match rdr.read_line() {
-          Some(ln) => ln, None => break,
-      };
-      let line = line.trim().to_owned();
+       let line = match io::ignore_io_error(|| rdr.read_line()) {
+           Some(ln) => ln, None => break,
+       };
+       let line = line.trim().to_owned();
 
-      if line.len() == 0u { continue; }
+       if line.len() == 0u { continue; }
 
-      match (line[0] as char, proc_mode) {
+       match (line[0] as char, proc_mode) {
 
-         // start processing if this is the one
-         ('>', false) => {
-            match line.slice_from(1).find_str("THREE") {
-               option::Some(_) => { proc_mode = true; }
-               option::None    => { }
-            }
-         }
+           // start processing if this is the one
+           ('>', false) => {
+               match line.slice_from(1).find_str("THREE") {
+                   option::Some(_) => { proc_mode = true; }
+                   option::None    => { }
+               }
+           }
 
-         // break our processing
-         ('>', true) => { break; }
+           // break our processing
+           ('>', true) => { break; }
 
-         // process the sequence for k-mers
-         (_, true) => {
-            let line_bytes = line.as_bytes();
+           // process the sequence for k-mers
+           (_, true) => {
+               let line_bytes = line.as_bytes();
 
-           for (ii, _sz) in sizes.iter().enumerate() {
-               let lb = line_bytes.to_owned();
-               to_child[ii].send(lb);
-            }
-         }
+               for (ii, _sz) in sizes.iter().enumerate() {
+                   let lb = line_bytes.to_owned();
+                   to_child[ii].send(lb);
+               }
+           }
 
-         // whatever
-         _ => { }
-      }
+           // whatever
+           _ => { }
+       }
    }
 
    // finish...
-    for (ii, _sz) in sizes.iter().enumerate() {
-      to_child[ii].send(~[]);
+   for (ii, _sz) in sizes.iter().enumerate() {
+       to_child[ii].send(~[]);
    }
 
    // now fetch and print result messages
-    for (ii, _sz) in sizes.iter().enumerate() {
-      io::println(from_child[ii].recv());
+   for (ii, _sz) in sizes.iter().enumerate() {
+       println(from_child[ii].recv());
    }
 }

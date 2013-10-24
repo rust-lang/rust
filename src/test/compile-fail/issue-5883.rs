@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+trait A {}
 
 struct Struct {
-    r: io::Reader //~ ERROR reference to trait `io::Reader` where a type is expected
+    r: A //~ ERROR reference to trait `A` where a type is expected
 }
 
-fn new_struct(r: io::Reader) -> Struct { //~ ERROR reference to trait `io::Reader` where a type is expected
+fn new_struct(r: A) -> Struct { //~ ERROR reference to trait `A` where a type is expected
     Struct { r: r }
 }
 

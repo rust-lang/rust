@@ -13,12 +13,10 @@
 //! I/O constructors return option types to allow errors to be handled.
 //! These implementations allow e.g. `Option<FileStream>` to be used
 //! as a `Reader` without unwrapping the option first.
-//!
-//! # XXX Seek and Close
 
 use option::*;
-use super::{Reader, Writer, Listener, Acceptor};
-use super::{standard_error, PreviousIoError, io_error, read_error, IoError};
+use super::{Reader, Writer, Listener, Acceptor, Seek, SeekStyle};
+use super::{standard_error, PreviousIoError, io_error, IoError};
 
 fn prev_io_error() -> IoError {
     standard_error(PreviousIoError)
@@ -45,7 +43,7 @@ impl<R: Reader> Reader for Option<R> {
         match *self {
             Some(ref mut reader) => reader.read(buf),
             None => {
-                read_error::cond.raise(prev_io_error());
+                io_error::cond.raise(prev_io_error());
                 None
             }
         }
@@ -58,6 +56,24 @@ impl<R: Reader> Reader for Option<R> {
                 io_error::cond.raise(prev_io_error());
                 true
             }
+        }
+    }
+}
+
+impl<S: Seek> Seek for Option<S> {
+    fn tell(&self) -> u64 {
+        match *self {
+            Some(ref seeker) => seeker.tell(),
+            None => {
+                io_error::cond.raise(prev_io_error());
+                0
+            }
+        }
+    }
+    fn seek(&mut self, pos: i64, style: SeekStyle) {
+        match *self {
+            Some(ref mut seeker) => seeker.seek(pos, style),
+            None => io_error::cond.raise(prev_io_error())
         }
     }
 }
@@ -91,7 +107,7 @@ mod test {
     use option::*;
     use super::super::mem::*;
     use rt::test::*;
-    use super::super::{PreviousIoError, io_error, read_error};
+    use super::super::{PreviousIoError, io_error, io_error};
 
     #[test]
     fn test_option_writer() {
@@ -145,7 +161,7 @@ mod test {
         let mut buf = [];
 
         let mut called = false;
-        do read_error::cond.trap(|err| {
+        do io_error::cond.trap(|err| {
             assert_eq!(err.kind, PreviousIoError);
             called = true;
         }).inside {
