@@ -1147,22 +1147,15 @@ mod test {
 
     #[test]
     fn test_io_callback() {
+        use rt::io::timer;
+
         // This is a regression test that when there are no schedulable tasks
         // in the work queue, but we are performing I/O, that once we do put
         // something in the work queue again the scheduler picks it up and doesn't
         // exit before emptying the work queue
         do run_in_newsched_task {
             do spawntask {
-                let sched: ~Scheduler = Local::take();
-                do sched.deschedule_running_task_and_then |sched, task| {
-                    let task = Cell::new(task);
-                    do sched.event_loop.callback_ms(10) {
-                        rtdebug!("in callback");
-                        let mut sched: ~Scheduler = Local::take();
-                        sched.enqueue_blocked_task(task.take());
-                        Local::put(sched);
-                    }
-                }
+                timer::sleep(10);
             }
         }
     }
