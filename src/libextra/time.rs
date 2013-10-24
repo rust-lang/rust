@@ -120,6 +120,21 @@ pub struct Tm {
     tm_nsec: i32, // nanoseconds
 }
 
+pub struct HTm {
+    sec: bool, // have seconds set in Tm
+    min: bool, // have minutes set in Tm
+    hour: bool, // have hours after midnight set in Tm
+    mday: bool, // have day of the month set in Tm
+    mon: bool, // have month set in Tm
+    year: bool, // have year set in Tm
+    wday: bool, // have days since Sunday set in Tm
+    yday: bool, // have days since January set in Tm
+    isdst: bool, // have daylight savings time flag set in Tm
+    gmtoff: bool, // have offset from UTC set in Tm
+    zone: bool, // have timezone set in Tm
+    nsec: bool, // have nanoseconds set in Tm
+}
+
 pub fn empty_tm() -> Tm {
     // 64 is the max size of the timezone buffer allocated on windows
     // in rust_localtime. In glibc the max timezone size is supposedly 3.
@@ -362,7 +377,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm)
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm, h: &mut HTm)
       -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, [
@@ -374,7 +389,16 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
               (~"Friday", 5_i32),
               (~"Saturday", 6_i32)
           ]) {
-            Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
+            Some(item) => {
+                if !h.wday {
+                    let (v, pos) = item;
+                    tm.tm_wday = v;
+                    h.wday = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Day already set")
+                }
+            }
             None => Err(~"Invalid day")
           },
           'a' => match match_strs(s, pos, [
@@ -386,7 +410,16 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
               (~"Fri", 5_i32),
               (~"Sat", 6_i32)
           ]) {
-            Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
+            Some(item) => {
+                if !h.wday {
+                    let (v, pos) = item;
+                    tm.tm_wday = v;
+                    h.wday = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Day already set")
+                }
+            }
             None => Err(~"Invalid day")
           },
           'B' => match match_strs(s, pos, [
@@ -403,7 +436,16 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
               (~"November", 10_i32),
               (~"December", 11_i32)
           ]) {
-            Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
+            Some(item) => {
+                if !h.mon {
+                    let (v, pos) = item;
+                    tm.tm_mon = v;
+                    h.mon = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Month already set")
+                }
+            }
             None => Err(~"Invalid month")
           },
           'b' | 'h' => match match_strs(s, pos, [
@@ -420,70 +462,121 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
               (~"Nov", 10_i32),
               (~"Dec", 11_i32)
           ]) {
-            Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
+            Some(item) => {
+                if !h.mon {
+                    let (v, pos) = item;
+                    tm.tm_mon = v;
+                    h.mon = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Month already set")
+                }
+            }
             None => Err(~"Invalid month")
           },
           'C' => match match_digits_in_range(s, pos, 2u, false, 0_i32,
                                              99_i32) {
             Some(item) => {
-                let (v, pos) = item;
-                  tm.tm_year += (v * 100_i32) - 1900_i32;
-                  Ok(pos)
+                if !h.year {
+                    let (v, pos) = item;
+                    tm.tm_year += (v * 100_i32) - 1900_i32;
+                    h.year = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Year already set")
+                }
               }
             None => Err(~"Invalid year")
           },
           'c' => {
-            parse_type(s, pos, 'a', &mut *tm)
+            parse_type(s, pos, 'a', &mut *tm, &mut *h)
                 .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'e', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'e', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'T', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'T', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm, &mut *h))
           }
           'D' | 'x' => {
-            parse_type(s, pos, 'm', &mut *tm)
+            parse_type(s, pos, 'm', &mut *tm, &mut *h)
                 .and_then(|pos| parse_char(s, pos, '/'))
-                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, '/'))
-                .and_then(|pos| parse_type(s, pos, 'y', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'y', &mut *tm, &mut *h))
           }
           'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32,
                                              31_i32) {
-            Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
+            Some(item) => {
+                if !h.mday {
+                    let (v, pos) = item;
+                    tm.tm_mday = v;
+                    h.mday = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Day of the month already set")
+                }
+            }
             None => Err(~"Invalid day of the month")
           },
           'e' => match match_digits_in_range(s, pos, 2u, true, 1_i32,
                                              31_i32) {
-            Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
+            Some(item) => {
+                if !h.mday {
+                    let (v, pos) = item;
+                    tm.tm_mday = v;
+                    h.mday = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Day of the month already set")
+                }
+            }
             None => Err(~"Invalid day of the month")
           },
           'f' => {
-            let (val, pos) = match_fractional_seconds(s, pos);
-            tm.tm_nsec = val;
-            Ok(pos)
+            if !h.nsec {
+                let (val, pos) = match_fractional_seconds(s, pos);
+                tm.tm_nsec = val;
+                h.nsec = true;
+                Ok(pos)
+            } else {
+                Err(~"Nanoseconds already set")
+            }
           }
           'F' => {
-            parse_type(s, pos, 'Y', &mut *tm)
+            parse_type(s, pos, 'Y', &mut *tm, &mut *h)
                 .and_then(|pos| parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'm', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'm', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm, &mut *h))
           }
           'H' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 23_i32) {
-              Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
+              Some(item) => {
+                  if !h.hour {
+                      let (v, pos) = item;
+                      tm.tm_hour = v;
+                      h.hour = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Hour already set")
+                  }
+              }
               None => Err(~"Invalid hour")
             }
           }
           'I' => {
             match match_digits_in_range(s, pos, 2u, false, 1_i32, 12_i32) {
               Some(item) => {
-                  let (v, pos) = item;
-                  tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
-                  Ok(pos)
+                  if !h.hour {
+                      let (v, pos) = item;
+                      tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
+                      h.hour = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Hour already set")
+                  }
               }
               None => Err(~"Invalid hour")
             }
@@ -491,41 +584,74 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           'j' => {
             match match_digits_in_range(s, pos, 3u, false, 1_i32, 366_i32) {
               Some(item) => {
-                let (v, pos) = item;
-                tm.tm_yday = v - 1_i32;
-                Ok(pos)
+                  if !h.yday {
+                      let (v, pos) = item;
+                      tm.tm_yday = v - 1_i32;
+                      h.yday = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Day of year already set")
+                  }
               }
               None => Err(~"Invalid day of year")
             }
           }
           'k' => {
             match match_digits_in_range(s, pos, 2u, true, 0_i32, 23_i32) {
-              Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
+              Some(item) => {
+                  if !h.hour {
+                      let (v, pos) = item;
+                      tm.tm_hour = v;
+                      h.hour = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Hour already set")
+                  }
+              }
               None => Err(~"Invalid hour")
             }
           }
           'l' => {
             match match_digits_in_range(s, pos, 2u, true, 1_i32, 12_i32) {
               Some(item) => {
-                  let (v, pos) = item;
-                  tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
-                  Ok(pos)
+                  if !h.hour {
+                      let (v, pos) = item;
+                      tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
+                      h.hour = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Hour already set")
+                  }
               }
               None => Err(~"Invalid hour")
             }
           }
           'M' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 59_i32) {
-              Some(item) => { let (v, pos) = item; tm.tm_min = v; Ok(pos) }
+              Some(item) => {
+                  if !h.min {
+                      let (v, pos) = item;
+                      tm.tm_min = v;
+                      h.min = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Minute already set")
+                  }
+              }
               None => Err(~"Invalid minute")
             }
           }
           'm' => {
             match match_digits_in_range(s, pos, 2u, false, 1_i32, 12_i32) {
               Some(item) => {
-                let (v, pos) = item;
-                tm.tm_mon = v - 1_i32;
-                Ok(pos)
+                  if !h.mon {
+                      let (v, pos) = item;
+                      tm.tm_mon = v - 1_i32;
+                      h.mon = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Month already set")
+                  }
               }
               None => Err(~"Invalid month")
             }
@@ -534,7 +660,16 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           'P' => match match_strs(s, pos,
                                   [(~"am", 0_i32), (~"pm", 12_i32)]) {
 
-            Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
+            Some(item) => {
+                if !h.hour {
+                    let (v, pos) = item;
+                    tm.tm_hour += v;
+                    h.hour = true;
+                    Ok(pos)
+                } else {
+                    Err(~"Hour already set")
+                }
+            }
             None => Err(~"Invalid hour")
           },
           'p' => match match_strs(s, pos,
@@ -544,68 +679,105 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             None => Err(~"Invalid hour")
           },
           'R' => {
-            parse_type(s, pos, 'H', &mut *tm)
+            parse_type(s, pos, 'H', &mut *tm, &mut *h)
                 .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm, &mut *h))
           }
           'r' => {
-            parse_type(s, pos, 'I', &mut *tm)
+            parse_type(s, pos, 'I', &mut *tm, &mut *h)
                 .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, ' '))
-                .and_then(|pos| parse_type(s, pos, 'p', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'p', &mut *tm, &mut *h))
           }
           'S' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 60_i32) {
               Some(item) => {
-                let (v, pos) = item;
-                tm.tm_sec = v;
-                Ok(pos)
+                  if !h.sec {
+                      let (v, pos) = item;
+                      tm.tm_sec = v;
+                      h.sec = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Second already set")
+                  }
               }
               None => Err(~"Invalid second")
             }
           }
           //'s' {}
           'T' | 'X' => {
-            parse_type(s, pos, 'H', &mut *tm)
+            parse_type(s, pos, 'H', &mut *tm, &mut *h)
                 .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, ':'))
-                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm, &mut *h))
           }
           't' => parse_char(s, pos, '\t'),
           'u' => {
             match match_digits_in_range(s, pos, 1u, false, 1_i32, 7_i32) {
               Some(item) => {
-                let (v, pos) = item;
-                tm.tm_wday = if v == 7 { 0 } else { v };
-                Ok(pos)
+                  if !h.wday {
+                      let (v, pos) = item;
+                      tm.tm_wday = if v == 7 { 0 } else { v };
+                      h.wday = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Day of week already set")
+                  }
               }
               None => Err(~"Invalid day of week")
             }
           }
           'v' => {
-            parse_type(s, pos, 'e', &mut *tm)
+            parse_type(s, pos, 'e', &mut *tm, &mut *h)
                 .and_then(|pos|  parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm, &mut *h))
                 .and_then(|pos| parse_char(s, pos, '-'))
-                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
+                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm, &mut *h))
           }
-          //'W' {}
+          'W' => {
+            match match_digits_in_range(s, pos, 2u, false, 0_i32, 52_i32) {
+              Some(item) => {
+                  let (v, pos) = item;   // If the day of the weeh has been set,
+                  if h.wday {            // get day of the year with it.
+                      tm.tm_yday = ((7 - tm.tm_wday) % 7 + (v - 1) * 7
+                                + (tm.tm_wday + 7) % 7);
+                      h.yday = true;
+                }
+                Ok(pos)
+              }
+              None => Err(~"Invalid week number")
+            }
+          }
           'w' => {
             match match_digits_in_range(s, pos, 1u, false, 0_i32, 6_i32) {
-              Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
+              Some(item) => {
+                  if !h.wday {
+                      let (v, pos) = item;
+                      tm.tm_wday = v;
+                      h.wday = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Day of week already set")
+                  }
+              }
               None => Err(~"Invalid day of week")
             }
           }
           'Y' => {
             match match_digits(s, pos, 4u, false) {
               Some(item) => {
-                let (v, pos) = item;
-                tm.tm_year = v - 1900_i32;
-                Ok(pos)
+                  if !h.year {
+                      let (v, pos) = item;
+                      tm.tm_year = v - 1900_i32;
+                      h.year = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Year already set")
+                  }
               }
               None => Err(~"Invalid year")
             }
@@ -613,18 +785,29 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           'y' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 99_i32) {
               Some(item) => {
-                let (v, pos) = item;
-                tm.tm_year = v;
-                Ok(pos)
+                  if !h.year {
+                      let (v, pos) = item;
+                      tm.tm_year = v;
+                      h.year = true;
+                      Ok(pos)
+                  } else {
+                      Err(~"Year already set")
+                  }
               }
               None => Err(~"Invalid year")
             }
           }
           'Z' => {
             if match_str(s, pos, "UTC") || match_str(s, pos, "GMT") {
-                tm.tm_gmtoff = 0_i32;
-                tm.tm_zone = ~"UTC";
-                Ok(pos + 3u)
+                if !h.gmtoff && !h.zone {
+                    tm.tm_gmtoff = 0_i32;
+                    tm.tm_zone = ~"UTC";
+                    h.gmtoff = true;
+                    h.zone = true;
+                    Ok(pos + 3u)
+                } else {
+                    Err(~"Zone already set")
+                }
             } else {
                 // It's odd, but to maintain compatibility with c's
                 // strptime we ignore the timezone.
@@ -645,13 +828,19 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             if range.ch == '+' || range.ch == '-' {
                 match match_digits(s, range.next, 4u, false) {
                   Some(item) => {
-                    let (v, pos) = item;
-                    if v == 0_i32 {
-                        tm.tm_gmtoff = 0_i32;
-                        tm.tm_zone = ~"UTC";
-                    }
+                      if !h.gmtoff && !h.zone {
+                          let (v, pos) = item;
+                          if v == 0_i32 {
+                              tm.tm_gmtoff = 0_i32;
+                              tm.tm_zone = ~"UTC";
+                              h.gmtoff = true;
+                              h.zone = true;
+                          }
 
-                    Ok(pos)
+                          Ok(pos)
+                      } else {
+                          Err(~"Zone already set")
+                      }
                   }
                   None => Err(~"Invalid zone offset")
                 }
@@ -667,6 +856,21 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     do io::with_str_reader(format) |rdr| {
+        let mut have_tm = HTm {
+            sec: false,
+            min: false,
+            hour: false,
+            mday: false,
+            mon: false,
+            year: false,
+            wday: false,
+            yday: false,
+            isdst: false,
+            gmtoff: false,
+            zone: false,
+            nsec: false,
+        };
+
         let mut tm = Tm {
             tm_sec: 0_i32,
             tm_min: 0_i32,
@@ -692,7 +896,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
             match rdr.read_char() {
                 '%' => {
-                    match parse_type(s, pos, rdr.read_char(), &mut tm) {
+                    match parse_type(s, pos, rdr.read_char(), &mut tm, &mut have_tm) {
                         Ok(next) => pos = next,
                         Err(e) => { result = Err(e); break; }
                     }
@@ -1227,7 +1431,10 @@ mod tests {
         assert!(test("%", "%%"));
 
         // Test for #7256
-        assert_eq!(strptime("360", "%Y-%m-%d"), Err(~"Invalid year"))
+        assert_eq!(strptime("360", "%Y-%m-%d"), Err(~"Invalid year"));
+
+        assert_eq!(strptime("2009 4 07", "%Y %w %W").unwrap().tm_yday, 49i32);
+        assert_eq!(strptime("Friday Sat", "%A %a"), Err(~"Day already set"));
     }
 
     fn test_ctime() {
