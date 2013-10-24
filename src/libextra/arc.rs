@@ -117,10 +117,12 @@ pub struct Arc<T> { priv x: UnsafeArc<T> }
  */
 impl<T:Freeze+Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
+    #[inline]
     pub fn new(data: T) -> Arc<T> {
         Arc { x: UnsafeArc::new(data) }
     }
 
+    #[inline]
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
