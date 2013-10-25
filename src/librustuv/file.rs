@@ -206,6 +206,21 @@ impl FsRequest {
         assert_eq!(ret, 0);
     }
 
+    pub fn rename(self, loop_: &Loop, path: &CString, to: &CString, cb: FsCallback) {
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
+        let ret = unsafe {
+            uvll::fs_rename(loop_.native_handle(),
+                            self.native_handle(),
+                            path.with_ref(|p| p),
+                            to.with_ref(|p| p),
+                            complete_cb_ptr)
+        };
+        assert_eq!(ret, 0);
+    }
+
     pub fn readdir(self, loop_: &Loop, path: &CString,
                    flags: c_int, cb: FsCallback) {
         let complete_cb_ptr = {

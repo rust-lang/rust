@@ -807,6 +807,12 @@ pub unsafe fn fs_rmdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
 
     rust_uv_fs_rmdir(loop_ptr, req, path, cb)
 }
+pub unsafe fn fs_rename(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                        to: *c_char, cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_rename(loop_ptr, req, path, to, cb)
+}
 pub unsafe fn fs_readdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
                 flags: c_int, cb: *u8) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
@@ -1107,6 +1113,8 @@ extern {
                         mode: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_rmdir(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
                         cb: *u8) -> c_int;
+    fn rust_uv_fs_rename(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
+                         to: *c_char, cb: *u8) -> c_int;
     fn rust_uv_fs_readdir(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
                         flags: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_req_cleanup(req: *uv_fs_t);
