@@ -13,6 +13,8 @@ use from_str::from_str;
 use libc::exit;
 use option::{Some, None, Option};
 use rt::io;
+use rt::io::stdio::StdWriter;
+use rt::io::buffered::LineBufferedWriter;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
 use u32;
@@ -170,7 +172,7 @@ pub trait Logger {
 /// This logger emits output to the stderr of the process, and contains a lazily
 /// initialized event-loop driven handle to the stream.
 pub struct StdErrLogger {
-    priv handle: Option<io::stdio::StdWriter>,
+    priv handle: Option<LineBufferedWriter<StdWriter>>,
 }
 
 impl StdErrLogger {
@@ -181,7 +183,7 @@ impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
         // First time logging? Get a handle to the stderr of this process.
         if self.handle.is_none() {
-            self.handle = Some(io::stderr());
+            self.handle = Some(LineBufferedWriter::new(io::stderr()));
         }
         fmt::writeln(self.handle.get_mut_ref() as &mut io::Writer, args);
     }

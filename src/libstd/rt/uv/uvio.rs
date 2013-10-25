@@ -1782,7 +1782,7 @@ impl RtioTTY for UvTTY {
     }
 
     fn isatty(&self) -> bool {
-        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY }
+        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY as c_int }
     }
 }
 

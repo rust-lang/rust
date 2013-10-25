@@ -977,7 +977,8 @@ pub unsafe fn tty_get_winsize(tty: *uv_tty_t, width: *c_int,
     #[fixed_stack_segment]; #[inline(never)];
     rust_uv_tty_get_winsize(tty, width, height)
 }
-pub unsafe fn guess_handle(fd: c_int) -> uv_handle_type {
+// FIXME(#9613) this should return uv_handle_type, not a c_int
+pub unsafe fn guess_handle(fd: c_int) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
     rust_uv_guess_handle(fd)
 }
@@ -1148,7 +1149,7 @@ extern {
     fn rust_uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int;
     fn rust_uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
                                height: *c_int) -> c_int;
-    fn rust_uv_guess_handle(fd: c_int) -> uv_handle_type;
+    fn rust_uv_guess_handle(fd: c_int) -> c_int;
 
     // XXX: see comments in addrinfo.rs
     // These should all really be constants...
