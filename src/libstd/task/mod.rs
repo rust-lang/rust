@@ -645,7 +645,7 @@ fn test_kill_unkillable_task() {
     // CPU, *after* the spawner is already switched-back-to (and passes the
     // killed check at the start of its timeslice). As far as I know, it's not
     // possible to make this race deterministic, or even more likely to happen.
-    do run_in_newsched_task {
+    do run_in_uv_task {
         do task::try {
             do task::spawn {
                 fail!();
@@ -662,7 +662,7 @@ fn test_kill_rekillable_task() {
 
     // Tests that when a kill signal is received, 'rekillable' and
     // 'unkillable' unwind correctly in conjunction with each other.
-    do run_in_newsched_task {
+    do run_in_uv_task {
         do task::try {
             do task::unkillable {
                 do task::rekillable {
@@ -730,8 +730,8 @@ fn block_forever() { let (po, _ch) = stream::<()>(); po.recv(); }
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let (po, ch) = stream();
         let ch = SharedChan::new(ch);
         do spawn_unlinked {
@@ -749,16 +749,16 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         do spawn_unlinked { fail!(); }
     }
 }
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         do spawn_supervised { fail!(); }
         // Give child a chance to fail-but-not-kill-us.
         do 16.times { task::deschedule(); }
@@ -767,8 +767,8 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_unlinked_sup_fail_down() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             do spawn_supervised { block_forever(); }
             fail!(); // Shouldn't leave a child hanging around.
@@ -780,8 +780,8 @@ fn test_spawn_unlinked_sup_fail_down() {
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Unidirectional "parenting" shouldn't override bidirectional linked.
             // We have to cheat with opts - the interface doesn't support them because
@@ -801,8 +801,8 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // We have to cheat with opts - the interface doesn't support them because
             // they don't make sense (redundant with task().supervised()).
@@ -818,8 +818,8 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Default options are to spawn linked & unsupervised.
             do spawn { fail!(); }
@@ -831,8 +831,8 @@ fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Default options are to spawn linked & unsupervised.
             do spawn { block_forever(); }
@@ -844,8 +844,8 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Make sure the above test is the same as this one.
             let mut builder = task();
@@ -863,8 +863,8 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_failure_propagate_grandchild() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Middle task exits; does grandparent's failure propagate across the gap?
             do spawn_supervised {
@@ -880,8 +880,8 @@ fn test_spawn_failure_propagate_grandchild() {
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_failure_propagate_secondborn() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // First-born child exits; does parent's failure propagate to sibling?
             do spawn_supervised {
@@ -897,8 +897,8 @@ fn test_spawn_failure_propagate_secondborn() {
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_failure_propagate_nephew_or_niece() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Our sibling exits; does our failure propagate to sibling's child?
             do spawn { // linked
@@ -914,8 +914,8 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_linked_sup_propagate_sibling() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result: Result<(),()> = do try {
             // Middle sibling exits - does eldest's failure propagate to youngest?
             do spawn { // linked
@@ -930,9 +930,9 @@ fn test_spawn_linked_sup_propagate_sibling() {
 
 #[test]
 fn test_unnamed_task() {
-    use rt::test::run_in_newsched_task;
+    use rt::test::run_in_uv_task;
 
-    do run_in_newsched_task {
+    do run_in_uv_task {
         do spawn {
             do with_task_name |name| {
                 assert!(name.is_none());
@@ -943,9 +943,9 @@ fn test_unnamed_task() {
 
 #[test]
 fn test_owned_named_task() {
-    use rt::test::run_in_newsched_task;
+    use rt::test::run_in_uv_task;
 
-    do run_in_newsched_task {
+    do run_in_uv_task {
         let mut t = task();
         t.name(~"ada lovelace");
         do t.spawn {
@@ -958,9 +958,9 @@ fn test_owned_named_task() {
 
 #[test]
 fn test_static_named_task() {
-    use rt::test::run_in_newsched_task;
+    use rt::test::run_in_uv_task;
 
-    do run_in_newsched_task {
+    do run_in_uv_task {
         let mut t = task();
         t.name("ada lovelace");
         do t.spawn {
@@ -973,9 +973,9 @@ fn test_static_named_task() {
 
 #[test]
 fn test_send_named_task() {
-    use rt::test::run_in_newsched_task;
+    use rt::test::run_in_uv_task;
 
-    do run_in_newsched_task {
+    do run_in_uv_task {
         let mut t = task();
         t.name("ada lovelace".into_send_str());
         do t.spawn {
@@ -1326,9 +1326,9 @@ fn test_child_doesnt_ref_parent() {
 
 #[test]
 fn test_simple_newsched_spawn() {
-    use rt::test::run_in_newsched_task;
+    use rt::test::run_in_uv_task;
 
-    do run_in_newsched_task {
+    do run_in_uv_task {
         spawn(||())
     }
 }
@@ -1336,8 +1336,8 @@ fn test_simple_newsched_spawn() {
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_spawn_watched() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result = do try {
             let mut t = task();
             t.unlinked();
@@ -1359,8 +1359,8 @@ fn test_spawn_watched() {
 #[ignore(reason = "linked failure")]
 #[test]
 fn test_indestructible() {
-    use rt::test::run_in_newsched_task;
-    do run_in_newsched_task {
+    use rt::test::run_in_uv_task;
+    do run_in_uv_task {
         let result = do try {
             let mut t = task();
             t.watched();
