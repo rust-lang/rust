@@ -288,37 +288,6 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
         return c;
     }
 }
-pub fn umax(cx: @mut Block, a: ValueRef, b: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("umax");
-    let cond = ICmp(cx, lib::llvm::IntULT, a, b);
-    return Select(cx, cond, b, a);
-}
-
-pub fn umin(cx: @mut Block, a: ValueRef, b: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("umin");
-    let cond = ICmp(cx, lib::llvm::IntULT, a, b);
-    return Select(cx, cond, a, b);
-}
-
-// Given a pointer p, returns a pointer sz(p) (i.e., inc'd by sz bytes).
-// The type of the returned pointer is always i8*.  If you care about the
-// return type, use bump_ptr().
-pub fn ptr_offs(bcx: @mut Block, base: ValueRef, sz: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("ptr_offs");
-    let raw = PointerCast(bcx, base, Type::i8p());
-    InBoundsGEP(bcx, raw, [sz])
-}
-
-// Increment a pointer by a given amount and then cast it to be a pointer
-// to a given type.
-pub fn bump_ptr(bcx: @mut Block, t: ty::t, base: ValueRef, sz: ValueRef) ->
-   ValueRef {
-    let _icx = push_ctxt("bump_ptr");
-    let ccx = bcx.ccx();
-    let bumped = ptr_offs(bcx, base, sz);
-    let typ = type_of(ccx, t).ptr_to();
-    PointerCast(bcx, bumped, typ)
-}
 
 // Returns a pointer to the body for the box. The box may be an opaque
 // box. The result will be casted to the type of body_t, if it is statically
@@ -433,10 +402,6 @@ pub fn malloc_general(bcx: @mut Block, t: ty::t, heap: heap) -> MallocResult {
     let ty = type_of(bcx.ccx(), t);
     assert!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
-}
-pub fn malloc_boxed(bcx: @mut Block, t: ty::t)
-    -> MallocResult {
-    malloc_general(bcx, t, heap_managed)
 }
 
 pub fn heap_for_unique(bcx: @mut Block, t: ty::t) -> heap {
