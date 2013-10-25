@@ -102,8 +102,9 @@ pub trait IoFactory {
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError>;
     fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError>;
-    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_mkdir(&mut self, path: &CString, mode: int) -> Result<(), IoError>;
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
         Result<~[Path], IoError>;
     fn spawn(&mut self, config: ProcessConfig)

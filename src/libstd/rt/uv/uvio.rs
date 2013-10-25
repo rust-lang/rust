@@ -37,7 +37,7 @@ use rt::uv::addrinfo::{GetAddrInfoRequest, accum_addrinfo};
 use unstable::sync::Exclusive;
 use path::{GenericPath, Path};
 use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
-          S_IRUSR, S_IWUSR, S_IRWXU};
+          S_IRUSR, S_IWUSR};
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
              CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
              FileStat};
@@ -697,10 +697,9 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
-    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError> {
-        let mode = S_IRWXU as int;
+    fn fs_mkdir(&mut self, path: &CString, mode: int) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
-            do mkdir_req.mkdir(l, p, mode as int) |req, err| {
+            do mkdir_req.mkdir(l, p, mode) |req, err| {
                 cb(req, err)
             };
         }
@@ -708,6 +707,15 @@ impl IoFactory for UvIoFactory {
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |rmdir_req, l, p, cb| {
             do rmdir_req.rmdir(l, p) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError> {
+        let to = to.with_ref(|p| p);
+        do uv_fs_helper(self.uv_loop(), path) |rename_req, l, p, cb| {
+            let to = unsafe { CString::new(to, false) };
+            do rename_req.rename(l, p, &to) |req, err| {
                 cb(req, err)
             };
         }
