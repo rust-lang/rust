@@ -606,6 +606,13 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
                 detail: None
             }
         }
+        IoUnavailable => {
+            IoError {
+                kind: IoUnavailable,
+                desc: "I/O is unavailable",
+                detail: None
+            }
+        }
         _ => fail!()
     }
 }

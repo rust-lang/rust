@@ -222,15 +222,6 @@ impl EventLoop for UvEventLoop {
         } as ~PausibleIdleCallback
     }
 
-    fn callback_ms(&mut self, ms: u64, f: ~fn()) {
-        let mut timer =  TimerWatcher::new(self.uvio.uv_loop());
-        do timer.start(ms, 0) |timer, status| {
-            assert!(status.is_none());
-            timer.close(||());
-            f();
-        }
-    }
-
     fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback {
         ~UvRemoteCallback::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }

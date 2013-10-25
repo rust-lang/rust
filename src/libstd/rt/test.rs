@@ -21,6 +21,7 @@ use iter::{Iterator, range};
 use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec::{OwnedVector, MutableVector, ImmutableVector};
 use path::GenericPath;
+use rt::basic;
 use rt::sched::Scheduler;
 use rt::rtio::EventLoop;
 use unstable::{run_in_bare_thread};
@@ -48,6 +49,28 @@ pub fn new_test_uv_sched() -> Scheduler {
 
 }
 
+pub fn new_test_sched() -> Scheduler {
+
+    let queue = WorkQueue::new();
+    let queues = ~[queue.clone()];
+
+    let mut sched = Scheduler::new(basic::event_loop(),
+                                   queue,
+                                   queues,
+                                   SleeperList::new());
+
+    // Don't wait for the Shutdown message
+    sched.no_sleep = true;
+    return sched;
+}
+
+pub fn run_in_uv_task(f: ~fn()) {
+    let f = Cell::new(f);
+    do run_in_bare_thread {
+        run_in_uv_task_core(f.take());
+    }
+}
+
 pub fn run_in_newsched_task(f: ~fn()) {
     let f = Cell::new(f);
     do run_in_bare_thread {
@@ -55,11 +78,28 @@ pub fn run_in_newsched_task(f: ~fn()) {
     }
 }
 
-pub fn run_in_newsched_task_core(f: ~fn()) {
+pub fn run_in_uv_task_core(f: ~fn()) {
 
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_uv_sched();
+    let exit_handle = Cell::new(sched.make_handle());
+
+    let on_exit: ~fn(bool) = |exit_status| {
+        exit_handle.take().send(Shutdown);
+        rtassert!(exit_status);
+    };
+    let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
+    task.death.on_exit = Some(on_exit);
+
+    sched.bootstrap(task);
+}
+
+pub fn run_in_newsched_task_core(f: ~fn()) {
+
+    use rt::sched::Shutdown;
+
+    let mut sched = ~new_test_sched();
     let exit_handle = Cell::new(sched.make_handle());
 
     let on_exit: ~fn(bool) = |exit_status| {
@@ -310,7 +350,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
 /// Get a ~Task for testing purposes other than actually scheduling it.
 pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
     do run_in_bare_thread {
-        let mut sched = ~new_test_uv_sched();
+        let mut sched = ~new_test_sched();
         let task = blk(~Task::new_root(&mut sched.stack_pool, None, ||{}));
         cleanup_task(task);
     }

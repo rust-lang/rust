@@ -62,8 +62,6 @@ pub struct Scheduler {
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
     stack_pool: StackPool,
-    /// The event loop used to drive the scheduler and perform I/O
-    event_loop: ~EventLoop,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
     priv sched_task: Option<~Task>,
@@ -85,7 +83,17 @@ pub struct Scheduler {
     priv yield_check_count: uint,
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
-    priv steal_for_yield: bool
+    priv steal_for_yield: bool,
+
+    // n.b. currently destructors of an object are run in top-to-bottom in order
+    //      of field declaration. Due to its nature, the pausible idle callback
+    //      must have some sort of handle to the event loop, so it needs to get
+    //      destroyed before the event loop itself. For this reason, we destroy
+    //      the event loop last to ensure that any unsafe references to it are
+    //      destroyed before it's actually destroyed.
+
+    /// The event loop used to drive the scheduler and perform I/O
+    event_loop: ~EventLoop,
 }
 
 /// An indication of how hard to work on a given operation, the difference
@@ -905,7 +913,7 @@ mod test {
     use cell::Cell;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
-    use rt::rtio::EventLoop;
+    use rt::basic;
     use rt::util;
     use option::{Some};
 
@@ -1005,7 +1013,6 @@ mod test {
     #[test]
     fn test_schedule_home_states() {
 
-        use rt::uv::uvio::UvEventLoop;
         use rt::sleeper_list::SleeperList;
         use rt::work_queue::WorkQueue;
         use rt::sched::Shutdown;
@@ -1021,7 +1028,7 @@ mod test {
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
-                ~UvEventLoop::new() as ~EventLoop,
+                basic::event_loop(),
                 normal_queue,
                 queues.clone(),
                 sleepers.clone());
@@ -1032,7 +1039,7 @@ mod test {
 
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
-                ~UvEventLoop::new() as ~EventLoop,
+                basic::event_loop(),
                 special_queue.clone(),
                 queues.clone(),
                 sleepers.clone(),
@@ -1137,22 +1144,15 @@ mod test {
 
     #[test]
     fn test_io_callback() {
+        use rt::io::timer;
+
         // This is a regression test that when there are no schedulable tasks
         // in the work queue, but we are performing I/O, that once we do put
         // something in the work queue again the scheduler picks it up and doesn't
         // exit before emptying the work queue
-        do run_in_newsched_task {
+        do run_in_uv_task {
             do spawntask {
-                let sched: ~Scheduler = Local::take();
-                do sched.deschedule_running_task_and_then |sched, task| {
-                    let task = Cell::new(task);
-                    do sched.event_loop.callback_ms(10) {
-                        rtdebug!("in callback");
-                        let mut sched: ~Scheduler = Local::take();
-                        sched.enqueue_blocked_task(task.take());
-                        Local::put(sched);
-                    }
-                }
+                timer::sleep(10);
             }
         }
     }
@@ -1192,7 +1192,6 @@ mod test {
         use rt::work_queue::WorkQueue;
         use rt::sleeper_list::SleeperList;
         use rt::stack::StackPool;
-        use rt::uv::uvio::UvEventLoop;
         use rt::sched::{Shutdown, TaskFromFriend};
         use util;
 
@@ -1203,7 +1202,7 @@ mod test {
                 let queues = ~[queue.clone()];
 
                 let mut sched = ~Scheduler::new(
-                    ~UvEventLoop::new() as ~EventLoop,
+                    basic::event_loop(),
                     queue,
                     queues.clone(),
                     sleepers.clone());

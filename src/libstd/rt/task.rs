@@ -637,7 +637,7 @@ mod test {
 
     #[test]
     fn rng() {
-        do run_in_newsched_task() {
+        do run_in_uv_task() {
             use rand::{rng, Rng};
             let mut r = rng();
             let _ = r.next_u32();
@@ -646,7 +646,7 @@ mod test {
 
     #[test]
     fn logging() {
-        do run_in_newsched_task() {
+        do run_in_uv_task() {
             info!("here i am. logging in a newsched task");
         }
     }
