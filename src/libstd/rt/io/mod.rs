@@ -52,10 +52,18 @@ Some examples of obvious things you might want to do
 
 * Make an simple HTTP request
 
-    let socket = TcpStream::open("localhost:8080");
-    socket.write_line("GET / HTTP/1.0");
-    socket.write_line("");
-    let response = socket.read_to_end();
+    let s = TcpStream::connect(SocketAddr{ip:Ipv4Addr(127,0,0,1), port:8080});
+    let mut socket = s.unwrap();
+    socket.write(bytes!("GET / HTTP/1.0\n"));
+    socket.write(bytes!("\n"));
+    let mut buf = [0u8, ..2000];
+    let response = socket.read(buf);
+    if response.is_some() {
+      let optBytes = str::from_utf8_opt(buf);
+      if optBytes.is_some() {
+        println!("answer: {}", optBytes.unwrap());
+      }
+    }
 
 * Connect based on URL? Requires thinking about where the URL type lives
   and how to make protocol handlers extensible, e.g. the "tcp" protocol
