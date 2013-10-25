@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test
-// -*- rust -*-
 extern mod std;
 use std::gc;
 use std::gc::rustrt;

@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 mod inner {
     pub mod inner2 {
         pub fn hello() { info!("hello, modular world"); }

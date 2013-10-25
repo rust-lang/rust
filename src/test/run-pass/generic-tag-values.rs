@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 enum noption<T> { some(T), }
 
 struct Pair { x: int, y: int }

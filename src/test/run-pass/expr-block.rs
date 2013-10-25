@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 // Tests for standalone blocks as expressions
 fn test_basic() { let rs: bool = { true }; assert!((rs)); }

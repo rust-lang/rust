@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test FIXME #7308
-// -*- rust -*-
 
 native mod libc = target_libc {
   fn open(int name, int flags, int mode) -> int;

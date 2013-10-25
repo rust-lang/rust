@@ -11,5 +11,4 @@
 
 
 
-// -*- rust -*-
 pub fn main() { let _x: int = 10; }

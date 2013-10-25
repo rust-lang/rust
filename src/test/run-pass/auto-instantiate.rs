@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 struct Pair<T, U> { a: T, b: U }
 struct Triple { x: int, y: int, z: int }

@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 fn f() -> int {
     if true {
         let _s: ~str = ~"should not leak";

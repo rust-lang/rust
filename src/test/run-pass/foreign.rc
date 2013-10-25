@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test
-// -*- rust -*-
 
 native "cdecl" mod rustrt {
   fn str_buf(str s) -> int;
