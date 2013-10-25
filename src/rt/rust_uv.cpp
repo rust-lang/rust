@@ -592,6 +592,11 @@ extern "C" int
 rust_uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb) {
   return uv_fs_readdir(loop, req, path, flags, cb);
 }
+extern "C" int
+rust_uv_fs_rename(uv_loop_t *loop, uv_fs_t* req, const char *path,
+                  const char *to, uv_fs_cb cb) {
+    return uv_fs_rename(loop, req, path, to, cb);
+}
 
 extern "C" int
 rust_uv_spawn(uv_loop_t *loop, uv_process_t *p, uv_process_options_t options) {
