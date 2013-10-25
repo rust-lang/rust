@@ -526,10 +526,17 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
         inputs.push(parse_ty(st, |x,y| conv(x,y)));
     }
     st.pos += 1u; // eat the ']'
+    let variadic = if peek(st) == 'A' {
+        st.pos += 1; // eat the 'A'
+        true
+    } else { false };
     let ret_ty = parse_ty(st, conv);
-    ty::FnSig {bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
-               inputs: inputs,
-               output: ret_ty}
+    ty::FnSig {
+        bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
+        inputs: inputs,
+        output: ret_ty,
+        variadic: variadic
+    }
 }
 
 // Rust metadata parsing

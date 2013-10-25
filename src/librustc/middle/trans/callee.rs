@@ -750,8 +750,12 @@ pub fn trans_call_inner(in_cx: @mut Block,
             let mut llargs = ~[];
             bcx = trans_args(bcx, args, callee_ty,
                              autoref_arg, &mut llargs);
+            let arg_tys = match args {
+                ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, *x)).collect(),
+                ArgVals(_) => fail!("expected arg exprs.")
+            };
             bcx = foreign::trans_native_call(bcx, callee_ty,
-                                             llfn, opt_llretslot.unwrap(), llargs);
+                                             llfn, opt_llretslot.unwrap(), llargs, arg_tys);
         }
 
         // If the caller doesn't care about the result of this fn call,
@@ -789,6 +793,7 @@ pub fn trans_args(cx: @mut Block,
     let _icx = push_ctxt("trans_args");
     let mut temp_cleanups = ~[];
     let arg_tys = ty::ty_fn_args(fn_ty);
+    let variadic = ty::fn_is_variadic(fn_ty);
 
     let mut bcx = cx;
 
@@ -797,10 +802,17 @@ pub fn trans_args(cx: @mut Block,
     // to cast her view of the arguments to the caller's view.
     match args {
       ArgExprs(arg_exprs) => {
+        let num_formal_args = arg_tys.len();
         for (i, arg_expr) in arg_exprs.iter().enumerate() {
+            let arg_ty = if i >= num_formal_args {
+                assert!(variadic);
+                expr_ty_adjusted(cx, *arg_expr)
+            } else {
+                arg_tys[i]
+            };
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx,
-                               arg_tys[i],
+                               arg_ty,
                                ty::ByCopy,
                                *arg_expr,
                                &mut temp_cleanups,

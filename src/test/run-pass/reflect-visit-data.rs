@@ -366,8 +366,8 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_fn_output(&mut self, retstyle: uint, inner: *TyDesc) -> bool {
-        if ! self.inner.visit_fn_output(retstyle, inner) { return false; }
+    fn visit_fn_output(&mut self, retstyle: uint, variadic: bool, inner: *TyDesc) -> bool {
+        if ! self.inner.visit_fn_output(retstyle, variadic, inner) { return false; }
         true
     }
 
@@ -603,7 +603,7 @@ impl TyVisitor for my_visitor {
     fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
         true
     }
-    fn visit_fn_output(&mut self, _retstyle: uint, _inner: *TyDesc) -> bool {
+    fn visit_fn_output(&mut self, _retstyle: uint, _variadic: bool, _inner: *TyDesc) -> bool {
         true
     }
     fn visit_leave_fn(&mut self, _purity: uint, _proto: uint,
