@@ -23,6 +23,7 @@ use option::{Option, Some, None};
 use rt::borrowck;
 use rt::borrowck::BorrowRecord;
 use rt::env;
+use rt::io::Writer;
 use rt::kill::Death;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
@@ -56,7 +57,8 @@ pub struct Task {
     sched: Option<~Scheduler>,
     task_type: TaskType,
     // Dynamic borrowck debugging info
-    borrow_list: Option<~[BorrowRecord]>
+    borrow_list: Option<~[BorrowRecord]>,
+    stdout_handle: Option<~Writer>,
 }
 
 pub enum TaskType {
@@ -141,7 +143,8 @@ impl Task {
             name: None,
             sched: None,
             task_type: SchedTask,
-            borrow_list: None
+            borrow_list: None,
+            stdout_handle: None,
         }
     }
 
@@ -175,7 +178,8 @@ impl Task {
             coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
             sched: None,
             task_type: GreenTask(Some(home)),
-            borrow_list: None
+            borrow_list: None,
+            stdout_handle: None,
         }
     }
 
@@ -198,7 +202,8 @@ impl Task {
             coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
             sched: None,
             task_type: GreenTask(Some(home)),
-            borrow_list: None
+            borrow_list: None,
+            stdout_handle: None,
         }
     }
 
@@ -234,6 +239,7 @@ impl Task {
 
             // Run the task main function, then do some cleanup.
             do f.finally {
+
                 // First, destroy task-local storage. This may run user dtors.
                 //
                 // FIXME #8302: Dear diary. I'm so tired and confused.
@@ -257,6 +263,17 @@ impl Task {
 
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
+
+                // Finally flush and destroy any output handles which the task
+                // owns. There are no boxes here, and no user destructors should
+                // run after this any more.
+                match self.stdout_handle.take() {
+                    Some(handle) => {
+                        let mut handle = handle;
+                        handle.flush();
+                    }
+                    None => {}
+                }
             }
         }
 
@@ -331,7 +348,7 @@ impl Task {
 impl Drop for Task {
     fn drop(&mut self) {
         rtdebug!("called drop for a task: {}", borrow::to_uint(self));
-        rtassert!(self.destroyed)
+        rtassert!(self.destroyed);
     }
 }
 

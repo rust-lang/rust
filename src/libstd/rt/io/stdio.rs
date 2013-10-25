@@ -30,6 +30,7 @@ use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
+use rt::io::buffered::{LineBufferedWriter, BufferedWriter};
 use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io,
                CloseAsynchronously};
 use super::{Reader, Writer, io_error, IoError, OtherIoError};
@@ -111,37 +112,78 @@ pub fn stderr() -> StdWriter {
     do src(libc::STDERR_FILENO, false) |src| { StdWriter { inner: src } }
 }
 
+/// Executes a closure with the local task's handle on stdout. By default, this
+/// stream is a buffering stream, so the handled yielded to the given closure
+/// can be used to flush the stdout stream (if necessary). The buffering used is
+/// line-buffering when stdout is attached to a terminal, and a fixed sized
+/// buffer if it is not attached to a terminal.
+///
+/// Note that handles generated via the `stdout()` function all output to the
+/// same stream, and output among all task may be interleaved as a result of
+/// this. This is provided to have access to the default stream for `print` and
+/// `println` (and the related macros) for this task.
+///
+/// Also note that logging macros do not use this stream. Using the logging
+/// macros will emit output to stderr.
+pub fn with_task_stdout(f: &fn(&mut Writer)) {
+    use rt::local::Local;
+    use rt::task::Task;
+
+    unsafe {
+        // Logging may require scheduling operations, so we can't remove the
+        // task from TLS right now, hence the unsafe borrow. Sad.
+        let task: *mut Task = Local::unsafe_borrow();
+
+        match (*task).stdout_handle {
+            Some(ref mut handle) => f(*handle),
+            None => {
+                let handle = stdout();
+                let mut handle = if handle.isatty() {
+                    ~LineBufferedWriter::new(handle) as ~Writer
+                } else {
+                    // The default capacity is very large, 64k, but this is just
+                    // a stdout stream, and possibly per task, so let's not make
+                    // this too expensive.
+                    ~BufferedWriter::with_capacity(4096, handle) as ~Writer
+                };
+                f(handle);
+                (*task).stdout_handle = Some(handle);
+            }
+        }
+    }
+}
+
 /// Prints a string to the stdout of the current process. No newline is emitted
 /// after the string is printed.
 pub fn print(s: &str) {
-    // XXX: need to see if not caching stdin() is the cause of performance
-    //      issues, it should be possible to cache a stdout handle in each Task
-    //      and then re-use that across calls to print/println. Note that the
-    //      resolution of this comment will affect all of the prints below as
-    //      well.
-    stdout().write(s.as_bytes());
+    do with_task_stdout |io| {
+        io.write(s.as_bytes());
+    }
 }
 
 /// Prints a string as a line. to the stdout of the current process. A literal
 /// `\n` character is printed to the console after the string.
 pub fn println(s: &str) {
-    let mut out = stdout();
-    out.write(s.as_bytes());
-    out.write(['\n' as u8]);
+    do with_task_stdout |io| {
+        io.write(s.as_bytes());
+        io.write(['\n' as u8]);
+    }
 }
 
 /// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
 /// with the `format_args!` macro.
 pub fn print_args(fmt: &fmt::Arguments) {
-    let mut out = stdout();
-    fmt::write(&mut out as &mut Writer, fmt);
+    do with_task_stdout |io| {
+        fmt::write(io, fmt);
+    }
 }
 
 /// Similar to `println`, but takes a `fmt::Arguments` structure to be
 /// compatible with the `format_args!` macro.
 pub fn println_args(fmt: &fmt::Arguments) {
-    let mut out = stdout();
-    fmt::writeln(&mut out as &mut Writer, fmt);
+    do with_task_stdout |io| {
+        fmt::writeln(io, fmt);
+    }
 }
 
 /// Representation of a reader of a standard input stream
