@@ -534,12 +534,6 @@ pub fn set_no_split_stack(f: ValueRef) {
     }
 }
 
-pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
-    if ty::type_is_structural(t) {
-        set_optimize_for_size(f);
-    } else { set_always_inline(f); }
-}
-
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: &mut CrateContext, sym: @str) {
