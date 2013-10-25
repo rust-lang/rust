@@ -128,6 +128,8 @@ rust_create_little_lock
 rust_destroy_little_lock
 rust_lock_little_lock
 rust_unlock_little_lock
+rust_signal_little_lock
+rust_wait_little_lock
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_uv_ip4_port

@@ -377,6 +377,16 @@ rust_unlock_little_lock(lock_and_signal *lock) {
     lock->unlock();
 }
 
+extern "C" void
+rust_wait_little_lock(lock_and_signal *lock) {
+    lock->wait();
+}
+
+extern "C" void
+rust_signal_little_lock(lock_and_signal *lock) {
+    lock->signal();
+}
+
 typedef void(startfn)(void*, void*);
 
 class raw_thread: public rust_thread {

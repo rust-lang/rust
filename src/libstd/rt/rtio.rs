@@ -28,7 +28,6 @@ pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
     fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback;
-    fn callback_ms(&mut self, ms: u64, ~fn());
     fn remote_callback(&mut self, ~fn()) -> ~RemoteCallback;
 
     /// The asynchronous I/O services. Not all event loops may provide one
