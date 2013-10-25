@@ -47,6 +47,13 @@ impl<T> Clone for *T {
     }
 }
 
+impl<T> Clone for *mut T {
+    #[inline]
+    fn clone(&self) -> *mut T {
+        *self
+    }
+}
+
 /// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline]
 pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
