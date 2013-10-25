@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 fn f() -> int { return 42; }
 
 pub fn main() {

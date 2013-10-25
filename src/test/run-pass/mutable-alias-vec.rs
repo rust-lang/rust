@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// -*- rust -*-
 extern mod extra;
 
 fn grow(v: &mut ~[int]) {

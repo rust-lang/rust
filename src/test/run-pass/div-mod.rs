@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 pub fn main() {
     let x: int = 15;
     let y: int = 5;

@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 struct Point {x: int, y: int}
 
 pub fn main() {

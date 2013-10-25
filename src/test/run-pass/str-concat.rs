@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 pub fn main() {
     let a: ~str = ~"hello";
     let b: ~str = ~"world";

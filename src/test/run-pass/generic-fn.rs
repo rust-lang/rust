@@ -10,7 +10,6 @@
 
 #[allow(dead_assignment)];
 
-// -*- rust -*-
 fn id<T>(x: T) -> T { return x; }
 
 struct Triple {x: int, y: int, z: int}
