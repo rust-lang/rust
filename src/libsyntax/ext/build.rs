@@ -728,6 +728,7 @@ impl AstBuilder for @ExtCtxt {
             inputs: inputs,
             output: output,
             cf: ast::return_val,
+            variadic: false
         }
     }
 

@@ -1774,6 +1774,9 @@ pub fn print_fn_args_and_ret(s: @ps, decl: &ast::fn_decl,
                              opt_explicit_self: Option<ast::explicit_self_>) {
     popen(s);
     print_fn_args(s, decl, opt_explicit_self);
+    if decl.variadic {
+        word(s.s, ", ...");
+    }
     pclose(s);
 
     maybe_print_comment(s, decl.output.span.lo);
@@ -2066,6 +2069,9 @@ pub fn print_ty_fn(s: @ps,
 
         opt_bounds.as_ref().map(|bounds| print_bounds(s, bounds, true));
     } else {
+        if decl.variadic {
+            word(s.s, ", ...");
+        }
         pclose(s);
     }
 
@@ -2408,7 +2414,8 @@ mod test {
             output: ast::Ty {id: 0,
                               node: ast::ty_nil,
                               span: codemap::dummy_sp()},
-            cf: ast::return_val
+            cf: ast::return_val,
+            variadic: false
         };
         let generics = ast_util::empty_generics();
         assert_eq!(&fun_to_str(&decl, ast::impure_fn, abba_ident,

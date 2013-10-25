@@ -863,7 +863,7 @@ impl Parser {
         let abis = opt_abis.unwrap_or(AbiSet::Rust());
         let purity = self.parse_unsafety();
         self.expect_keyword(keywords::Fn);
-        let (decl, lifetimes) = self.parse_ty_fn_decl();
+        let (decl, lifetimes) = self.parse_ty_fn_decl(true);
         return ty_bare_fn(@TyBareFn {
             abis: abis,
             purity: purity,
@@ -875,7 +875,7 @@ impl Parser {
     // Parses a procedure type (`proc`). The initial `proc` keyword must
     // already have been parsed.
     pub fn parse_proc_type(&self) -> ty_ {
-        let (decl, lifetimes) = self.parse_ty_fn_decl();
+        let (decl, lifetimes) = self.parse_ty_fn_decl(false);
         ty_closure(@TyClosure {
             sigil: OwnedSigil,
             region: None,
@@ -919,7 +919,7 @@ impl Parser {
                 // Old-style closure syntax (`fn(A)->B`).
                 self.expect_keyword(keywords::Fn);
                 let bounds = self.parse_optional_ty_param_bounds();
-                let (decl, lifetimes) = self.parse_ty_fn_decl();
+                let (decl, lifetimes) = self.parse_ty_fn_decl(false);
                 (sigil, decl, lifetimes, bounds)
             }
             None => {
@@ -960,6 +960,7 @@ impl Parser {
                     inputs: inputs,
                     output: output,
                     cf: return_style,
+                    variadic: false
                 };
 
                 (BorrowedSigil, decl, lifetimes, bounds)
@@ -994,7 +995,7 @@ impl Parser {
     }
 
     // parse a function type (following the 'fn')
-    pub fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
+    pub fn parse_ty_fn_decl(&self, allow_variadic: bool) -> (fn_decl, OptVec<ast::Lifetime>) {
         /*
 
         (fn) <'lt> (S) -> T
@@ -1013,17 +1014,13 @@ impl Parser {
             opt_vec::Empty
         };
 
-        let inputs = self.parse_unspanned_seq(
-            &token::LPAREN,
-            &token::RPAREN,
-            seq_sep_trailing_disallowed(token::COMMA),
-            |p| p.parse_arg_general(false)
-        );
+        let (inputs, variadic) = self.parse_fn_args(false, allow_variadic);
         let (ret_style, ret_ty) = self.parse_ret_ty();
         let decl = ast::fn_decl {
             inputs: inputs,
             output: ret_ty,
-            cf: ret_style
+            cf: ret_style,
+            variadic: variadic
         };
         (decl, lifetimes)
     }
@@ -2475,7 +2472,8 @@ impl Parser {
                               node: ty_infer,
                               span: *self.span
                           },
-                          cf: return_val
+                          cf: return_val,
+                          variadic: false
                       }
                   }
                 }
@@ -3526,21 +3524,63 @@ impl Parser {
         (lifetimes, opt_vec::take_vec(result))
     }
 
-    // parse the argument list and result type of a function declaration
-    pub fn parse_fn_decl(&self) -> fn_decl {
-        let args: ~[arg] =
+    fn parse_fn_args(&self, named_args: bool, allow_variadic: bool) -> (~[arg], bool) {
+        let sp = *self.span;
+        let mut args: ~[Option<arg>] =
             self.parse_unspanned_seq(
                 &token::LPAREN,
                 &token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA),
-                |p| p.parse_arg()
+                |p| {
+                    if *p.token == token::DOTDOTDOT {
+                        p.bump();
+                        if allow_variadic {
+                            if *p.token != token::RPAREN {
+                                p.span_fatal(*p.span,
+                                    "`...` must be last in argument list for variadic function");
+                            }
+                        } else {
+                            p.span_fatal(*p.span,
+                                         "only foreign functions are allowed to be variadic");
+                        }
+                        None
+                    } else {
+                        Some(p.parse_arg_general(named_args))
+                    }
+                }
             );
 
+        let variadic = match args.pop_opt() {
+            Some(None) => true,
+            Some(x) => {
+                // Need to put back that last arg
+                args.push(x);
+                false
+            }
+            None => false
+        };
+
+        if variadic && args.is_empty() {
+            self.span_err(sp,
+                          "variadic function must be declared with at least one named argument");
+        }
+
+        let args = args.move_iter().map(|x| x.unwrap()).collect();
+
+        (args, variadic)
+    }
+
+    // parse the argument list and result type of a function declaration
+    pub fn parse_fn_decl(&self, allow_variadic: bool) -> fn_decl {
+
+        let (args, variadic) = self.parse_fn_args(true, allow_variadic);
         let (ret_style, ret_ty) = self.parse_ret_ty();
+
         ast::fn_decl {
             inputs: args,
             output: ret_ty,
             cf: ret_style,
+            variadic: variadic
         }
     }
 
@@ -3729,7 +3769,8 @@ impl Parser {
         let fn_decl = ast::fn_decl {
             inputs: fn_inputs,
             output: ret_ty,
-            cf: ret_style
+            cf: ret_style,
+            variadic: false
         };
 
         (spanned(lo, hi, explicit_self), fn_decl)
@@ -3759,6 +3800,7 @@ impl Parser {
             inputs: inputs_captures,
             output: output,
             cf: return_val,
+            variadic: false
         }
     }
 
@@ -3784,6 +3826,7 @@ impl Parser {
             inputs: inputs,
             output: output,
             cf: return_val,
+            variadic: false
         }
     }
 
@@ -3808,7 +3851,7 @@ impl Parser {
     // parse an item-position function declaration.
     fn parse_item_fn(&self, purity: purity, abis: AbiSet) -> item_info {
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl();
+        let decl = self.parse_fn_decl(false);
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         (ident,
          item_fn(decl, purity, abis, generics, body),
@@ -4239,7 +4282,7 @@ impl Parser {
         }
 
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl();
+        let decl = self.parse_fn_decl(true);
         let hi = self.span.hi;
         self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,

@@ -701,7 +701,8 @@ mod test {
                                 output: ast::Ty{id: ast::DUMMY_NODE_ID,
                                                  node: ast::ty_nil,
                                                  span:sp(15,15)}, // not sure
-                                cf: ast::return_val
+                                cf: ast::return_val,
+                                variadic: false
                             },
                                     ast::impure_fn,
                                     abi::AbiSet::Rust(),

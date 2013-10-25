@@ -99,6 +99,7 @@ pub trait ast_fold {
                                                                       self)),
                                 output: self.fold_ty(&fdec.output),
                                 cf: fdec.cf,
+                                variadic: fdec.variadic
                             },
                             fold_generics(generics, self))
                     }
@@ -466,6 +467,7 @@ pub fn fold_fn_decl<T:ast_fold>(decl: &ast::fn_decl, fld: &T)
         inputs: decl.inputs.map(|x| fold_arg_(x, fld)), // bad copy
         output: fld.fold_ty(&decl.output),
         cf: decl.cf,
+        variadic: decl.variadic
     }
 }
 
