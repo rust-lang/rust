@@ -221,17 +221,48 @@ impl<W: Writer> Writer for BufferedWriter<W> {
 }
 
 impl<W: Writer> Decorator<W> for BufferedWriter<W> {
-    fn inner(self) -> W {
-        self.inner
+    fn inner(self) -> W { self.inner }
+    fn inner_ref<'a>(&'a self) -> &'a W { &self.inner }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W { &mut self.inner }
+}
+
+/// Wraps a Writer and buffers output to it, flushing whenever a newline (0xa,
+/// '\n') is detected.
+///
+/// Note that this structure does NOT flush the output when dropped.
+pub struct LineBufferedWriter<W> {
+    priv inner: BufferedWriter<W>,
+}
+
+impl<W: Writer> LineBufferedWriter<W> {
+    /// Creates a new `LineBufferedWriter`
+    pub fn new(inner: W) -> LineBufferedWriter<W> {
+        // Lines typically aren't that long, don't use a giant buffer
+        LineBufferedWriter {
+            inner: BufferedWriter::with_capacity(1024, inner)
+        }
+    }
+}
+
+impl<W: Writer> Writer for LineBufferedWriter<W> {
+    fn write(&mut self, buf: &[u8]) {
+        match buf.iter().position(|&b| b == '\n' as u8) {
+            Some(i) => {
+                self.inner.write(buf.slice_to(i + 1));
+                self.inner.flush();
+                self.inner.write(buf.slice_from(i + 1));
+            }
+            None => self.inner.write(buf),
+        }
     }
 
-    fn inner_ref<'a>(&'a self) -> &'a W {
-        &self.inner
-    }
+    fn flush(&mut self) { self.inner.flush() }
+}
 
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W {
-        &mut self.inner
-    }
+impl<W: Writer> Decorator<W> for LineBufferedWriter<W> {
+    fn inner(self) -> W { self.inner.inner() }
+    fn inner_ref<'a>(&'a self) -> &'a W { self.inner.inner_ref() }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W { self.inner.inner_mut_ref() }
 }
 
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
@@ -412,5 +443,20 @@ mod test {
         assert_eq!(reader.read_until(1), Some(~[1]));
         assert_eq!(reader.read_until(8), Some(~[0]));
         assert_eq!(reader.read_until(9), None);
+    }
+
+    #[test]
+    fn test_line_buffer() {
+        let mut writer = LineBufferedWriter::new(MemWriter::new());
+        writer.write([0]);
+        assert_eq!(*writer.inner_ref().inner_ref(), ~[]);
+        writer.write([1]);
+        assert_eq!(*writer.inner_ref().inner_ref(), ~[]);
+        writer.flush();
+        assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1]);
+        writer.write([0, '\n' as u8, 1]);
+        assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1, 0, '\n' as u8]);
+        writer.flush();
+        assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1, 0, '\n' as u8, 1]);
     }
 }
