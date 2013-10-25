@@ -117,10 +117,12 @@ pub struct Arc<T> { priv x: UnsafeArc<T> }
  */
 impl<T:Freeze+Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
+    #[inline]
     pub fn new(data: T) -> Arc<T> {
         Arc { x: UnsafeArc::new(data) }
     }
 
+    #[inline]
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
@@ -148,6 +150,7 @@ impl<T:Freeze + Send> Clone for Arc<T> {
     * object. However, one of the `arc` objects can be sent to another task,
     * allowing them to share the underlying data.
     */
+    #[inline]
     fn clone(&self) -> Arc<T> {
         Arc { x: self.x.clone() }
     }
@@ -167,6 +170,7 @@ pub struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
 
 impl<T:Send> Clone for MutexArc<T> {
     /// Duplicate a mutex-protected Arc. See arc::clone for more details.
+    #[inline]
     fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
@@ -349,6 +353,7 @@ pub struct RWArc<T> {
 
 impl<T:Freeze + Send> Clone for RWArc<T> {
     /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
+    #[inline]
     fn clone(&self) -> RWArc<T> {
         RWArc { x: self.x.clone() }
     }
