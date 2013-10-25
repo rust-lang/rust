@@ -230,12 +230,15 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
         // make sure that the thing we are pointing out stays valid
         // for the lifetime `scope_r` of the resulting ptr:
-        let scope_r = ty_region(tcx, ex.span, ty::expr_ty(tcx, ex));
-        this.guarantee_valid(ex.id,
-                             ex.span,
-                             base_cmt,
-                             LoanMutability::from_ast_mutability(mutbl),
-                             scope_r);
+        let expr_ty = ty::expr_ty(tcx, ex);
+        if !ty::type_is_bot(expr_ty) {
+            let scope_r = ty_region(tcx, ex.span, expr_ty);
+            this.guarantee_valid(ex.id,
+                                 ex.span,
+                                 base_cmt,
+                                 LoanMutability::from_ast_mutability(mutbl),
+                                 scope_r);
+        }
         visit::walk_expr(this, ex, ());
       }
 
