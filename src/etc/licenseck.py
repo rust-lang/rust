@@ -76,6 +76,8 @@ exceptions = [
     "rt/isaac/randport.cpp", # public domain
     "rt/isaac/rand.h", # public domain
     "rt/isaac/standard.h", # public domain
+    "libstd/rt/mpsc_queue.rs", # BSD
+    "libstd/rt/mpmc_bounded_queue.rs", # BSD
 ]
 
 def check_license(name, contents):
