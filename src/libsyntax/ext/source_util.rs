@@ -21,7 +21,7 @@ use print::pprust;
 
 use std::rt::io;
 use std::rt::io::Reader;
-use std::rt::io::file::FileInfo;
+use std::rt::io::file;
 use std::str;
 
 // These macros all relate to the file system; they either return
@@ -92,17 +92,13 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
     let file = res_rel_file(cx, sp, &Path::new(file));
-    let mut error = None;
-    let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
-        file.open_reader(io::Open).read_to_end()
-    };
-    match error {
-        Some(e) => {
+    let bytes = match io::result(|| file::open(&file).read_to_end()) {
+        Err(e) => {
             cx.span_fatal(sp, format!("couldn't read {}: {}",
                                       file.display(), e.desc));
         }
-        None => {}
-    }
+        Ok(bytes) => bytes,
+    };
     match str::from_utf8_owned_opt(bytes) {
         Some(s) => base::MRExpr(cx.expr_str(sp, s.to_managed())),
         None => {
@@ -118,17 +114,12 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
     let file = res_rel_file(cx, sp, &Path::new(file));
-
-    let mut error = None;
-    let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
-        file.open_reader(io::Open).read_to_end()
-    };
-    match error {
-        Some(e) => {
+    match io::result(|| file::open(&file).read_to_end()) {
+        Err(e) => {
             cx.span_fatal(sp, format!("couldn't read {}: {}",
                                       file.display(), e.desc));
         }
-        None => {
+        Ok(bytes) => {
             let bytes = at_vec::to_managed_move(bytes);
             base::MRExpr(cx.expr_lit(sp, ast::lit_binary(bytes)))
         }

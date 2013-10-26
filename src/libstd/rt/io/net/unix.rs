@@ -157,7 +157,6 @@ mod tests {
     use rt::test::*;
     use rt::io::*;
     use rt::comm::oneshot;
-    use os;
 
     fn smalltest(server: ~fn(UnixStream), client: ~fn(UnixStream)) {
         let server = Cell::new(server);
@@ -291,7 +290,7 @@ mod tests {
         do run_in_mt_newsched_task {
             let path = next_test_unix();
             let _acceptor = UnixListener::bind(&path).listen();
-            assert!(os::path_exists(&path));
+            assert!(path.exists());
         }
     }
 }

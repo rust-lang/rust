@@ -14,7 +14,6 @@ use extra::workcache;
 use rustc::driver::session::{OptLevel, No};
 
 use std::hashmap::HashSet;
-use std::os;
 
 #[deriving(Clone)]
 pub struct Context {
@@ -176,7 +175,7 @@ pub fn in_target(sysroot: &Path) -> bool {
     debug!("Checking whether {} is in target", sysroot.display());
     let mut p = sysroot.dir_path();
     p.set_filename("rustc");
-    os::path_is_dir(&p)
+    p.is_dir()
 }
 
 impl RustcFlags {

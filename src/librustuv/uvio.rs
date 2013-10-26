@@ -20,6 +20,7 @@ use std::option::*;
 use std::ptr;
 use std::str;
 use std::result::*;
+use std::rt::io;
 use std::rt::io::IoError;
 use std::rt::io::net::ip::{SocketAddr, IpAddr};
 use std::rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur,
@@ -34,7 +35,7 @@ use std::rt::task::Task;
 use std::unstable::sync::Exclusive;
 use std::path::{GenericPath, Path};
 use std::libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY,
-                O_WRONLY, S_IRUSR, S_IWUSR, S_IRWXU};
+                O_WRONLY, S_IRUSR, S_IWUSR};
 use std::rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
                   CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
                   FileStat};
@@ -122,10 +123,9 @@ trait HomingIO {
         a // return the result of the IO
     }
 
-    fn home_for_io_consume<A>(self, io: &fn(Self) -> A) -> A {
-        let mut this = self;
-        let home = this.go_to_IO_home();
-        let a = io(this); // do IO
+    fn home_for_io_consume<A>(mut self, io: &fn(Self) -> A) -> A {
+        let home = self.go_to_IO_home();
+        let a = io(self); // do IO
         HomingIO::restore_original_home(None::<Self>, home);
         a // return the result of the IO
     }
@@ -700,10 +700,10 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
-    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError> {
-        let mode = S_IRWXU as int;
+    fn fs_mkdir(&mut self, path: &CString,
+                perm: io::FilePermission) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
-            do mkdir_req.mkdir(l, p, mode as int) |req, err| {
+            do mkdir_req.mkdir(l, p, perm as c_int) |req, err| {
                 cb(req, err)
             };
         }
@@ -711,6 +711,23 @@ impl IoFactory for UvIoFactory {
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |rmdir_req, l, p, cb| {
             do rmdir_req.rmdir(l, p) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError> {
+        let to = to.with_ref(|p| p);
+        do uv_fs_helper(self.uv_loop(), path) |rename_req, l, p, cb| {
+            let to = unsafe { CString::new(to, false) };
+            do rename_req.rename(l, p, &to) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_chmod(&mut self, path: &CString,
+                perm: io::FilePermission) -> Result<(), IoError> {
+        do uv_fs_helper(self.uv_loop(), path) |chmod_req, l, p, cb| {
+            do chmod_req.chmod(l, p, perm as c_int) |req, err| {
                 cb(req, err)
             };
         }

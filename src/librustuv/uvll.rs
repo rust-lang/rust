@@ -795,8 +795,8 @@ pub unsafe fn fs_fstat(loop_ptr: *uv_loop_t, req: *uv_fs_t, fd: c_int, cb: *u8) 
 
     rust_uv_fs_fstat(loop_ptr, req, fd, cb)
 }
-pub unsafe fn fs_mkdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char, mode: int,
-                cb: *u8) -> c_int {
+pub unsafe fn fs_mkdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                       mode: c_int, cb: *u8) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     rust_uv_fs_mkdir(loop_ptr, req, path, mode as c_int, cb)
@@ -806,6 +806,18 @@ pub unsafe fn fs_rmdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
     #[fixed_stack_segment]; #[inline(never)];
 
     rust_uv_fs_rmdir(loop_ptr, req, path, cb)
+}
+pub unsafe fn fs_rename(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                        to: *c_char, cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_rename(loop_ptr, req, path, to, cb)
+}
+pub unsafe fn fs_chmod(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                       mode: c_int, cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_chmod(loop_ptr, req, path, mode as c_int, cb)
 }
 pub unsafe fn fs_readdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
                 flags: c_int, cb: *u8) -> c_int {
@@ -1105,6 +1117,10 @@ extern {
                         mode: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_rmdir(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
                         cb: *u8) -> c_int;
+    fn rust_uv_fs_rename(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
+                         to: *c_char, cb: *u8) -> c_int;
+    fn rust_uv_fs_chmod(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
+                        mode: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_readdir(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
                         flags: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_req_cleanup(req: *uv_fs_t);
