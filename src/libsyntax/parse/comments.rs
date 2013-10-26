@@ -19,7 +19,6 @@ use parse::token;
 use parse::token::{get_ident_interner};
 
 use std::rt::io;
-use std::rt::io::extensions::ReaderUtil;
 use std::str;
 use std::uint;
 
@@ -347,7 +346,7 @@ pub struct lit {
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @mut diagnostic::span_handler,
                                     path: @str,
-                                    mut srdr: &mut io::Reader)
+                                    srdr: &mut io::Reader)
                                  -> (~[cmnt], ~[lit]) {
     let src = str::from_utf8(srdr.read_to_end()).to_managed();
     let cm = CodeMap::new();

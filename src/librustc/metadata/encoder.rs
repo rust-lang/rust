@@ -22,7 +22,6 @@ use middle::typeck;
 use middle;
 
 use std::hashmap::{HashMap, HashSet};
-use std::rt::io::extensions::WriterByteConversions;
 use std::rt::io::{Writer, Seek, Decorator};
 use std::rt::io::mem::MemWriter;
 use std::str;
@@ -894,11 +893,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         vis: ast::visibility) {
     let tcx = ecx.tcx;
 
-    fn add_to_index_(item: @item, ebml_w: &writer::Encoder,
+    fn add_to_index(item: @item, ebml_w: &writer::Encoder,
                      index: @mut ~[entry<i64>]) {
         index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
     }
-    let add_to_index: &fn() = || add_to_index_(item, ebml_w, index);
+    let add_to_index: &fn() = || add_to_index(item, ebml_w, index);
 
     debug!("encoding info for item at {}",
            ecx.tcx.sess.codemap.span_to_str(item.span));
@@ -1411,7 +1410,7 @@ fn encode_index<T:'static>(
             assert!(elt.pos < 0xffff_ffff);
             {
                 let wr: &mut MemWriter = ebml_w.writer;
-                wr.write_be_u32_(elt.pos as u32);
+                wr.write_be_u32(elt.pos as u32);
             }
             write_fn(ebml_w.writer, &elt.val);
             ebml_w.end_tag();
@@ -1423,7 +1422,7 @@ fn encode_index<T:'static>(
     for pos in bucket_locs.iter() {
         assert!(*pos < 0xffff_ffff);
         let wr: &mut MemWriter = ebml_w.writer;
-        wr.write_be_u32_(*pos as u32);
+        wr.write_be_u32(*pos as u32);
     }
     ebml_w.end_tag();
     ebml_w.end_tag();
@@ -1436,7 +1435,7 @@ fn write_str(writer: @mut MemWriter, s: ~str) {
 fn write_i64(writer: @mut MemWriter, &n: &i64) {
     let wr: &mut MemWriter = writer;
     assert!(n < 0x7fff_ffff);
-    wr.write_be_u32_(n as u32);
+    wr.write_be_u32(n as u32);
 }
 
 fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
@@ -1591,14 +1590,14 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
                 ebml_w.start_tag(tag_lang_items_item_id);
                 {
                     let wr: &mut MemWriter = ebml_w.writer;
-                    wr.write_be_u32_(i as u32);
+                    wr.write_be_u32(i as u32);
                 }
                 ebml_w.end_tag();   // tag_lang_items_item_id
 
                 ebml_w.start_tag(tag_lang_items_item_node_id);
                 {
                     let wr: &mut MemWriter = ebml_w.writer;
-                    wr.write_be_u32_(id.node as u32);
+                    wr.write_be_u32(id.node as u32);
                 }
                 ebml_w.end_tag();   // tag_lang_items_item_node_id
 
