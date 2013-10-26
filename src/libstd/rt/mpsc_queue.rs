@@ -27,6 +27,7 @@
  */
 
 //! A mostly lock-free multi-producer, single consumer queue.
+// http://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue
 
 use unstable::sync::UnsafeArc;
 use unstable::atomics::{AtomicPtr,Relaxed,Release,Acquire};
