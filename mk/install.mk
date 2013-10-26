@@ -23,6 +23,10 @@ else
  INSTALL = $(Q)$(call E, install: $(2)/$(3)) && install -m755 $(1)/$(3) $(2)/$(3)
 endif
 
+# For MK_INSTALL_DIR
+# $(1) is the directory to create
+MK_INSTALL_DIR = (umask 022 && mkdir -p $(1))
+
 # For INSTALL_LIB,
 # Target-specific $(LIB_SOURCE_DIR) is the source directory
 # Target-specific $(LIB_DESTIN_DIR) is the destination directory
@@ -83,7 +87,7 @@ define INSTALL_TARGET_N
 install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
 install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
-	$$(Q)mkdir -p $$(PTL$(1)$(2))
+	$$(Q)$$(call MK_INSTALL_DIR,$$(PTL$(1)$(2)))
 	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_GLOB_$(1)))
@@ -95,7 +99,7 @@ define INSTALL_HOST_N
 install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
 install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
-	$$(Q)mkdir -p $$(PTL$(1)$(2))
+	$$(Q)$$(call MK_INSTALL_DIR,$$(PTL$(1)$(2)))
 	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUSTLLVM_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
@@ -131,9 +135,9 @@ PHL = $(PREFIX_LIB)
 install-host: LIB_SOURCE_DIR=$(HL)
 install-host: LIB_DESTIN_DIR=$(PHL)
 install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
-	$(Q)mkdir -p $(PREFIX_BIN)
-	$(Q)mkdir -p $(PREFIX_LIB)
-	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
+	$(Q)$(call MK_INSTALL_DIR,$(PREFIX_BIN))
+	$(Q)$(call MK_INSTALL_DIR,$(PREFIX_LIB))
+	$(Q)$(call MK_INSTALL_DIR,$(PREFIX_ROOT)/share/man/man1)
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustpkg$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD_TRIPLE)))
