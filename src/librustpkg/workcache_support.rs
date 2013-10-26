@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::rt::io;
-use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::Reader;
 use std::rt::io::file::FileInfo;
 use extra::workcache;
 use sha1::{Digest, Sha1};

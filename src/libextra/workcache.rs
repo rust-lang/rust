@@ -20,6 +20,7 @@ use std::comm::{PortOne, oneshot};
 use std::{os, str, task};
 use std::rt::io;
 use std::rt::io::Writer;
+use std::rt::io::Reader;
 use std::rt::io::Decorator;
 use std::rt::io::mem::MemWriter;
 use std::rt::io::file::FileInfo;
@@ -481,7 +482,7 @@ impl<'self, T:Send +
 #[test]
 fn test() {
     use std::{os, run};
-    use std::rt::io::ReaderUtil;
+    use std::rt::io::Reader;
     use std::str::from_utf8_owned;
 
     // Create a path to a new file 'filename' in the directory in which
