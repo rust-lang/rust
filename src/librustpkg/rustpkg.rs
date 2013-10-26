@@ -55,8 +55,6 @@ pub mod api;
 mod conditions;
 pub mod context;
 mod crate;
-mod cryptoutil;
-mod digest;
 pub mod exit_codes;
 mod installed_packages;
 mod messages;
