@@ -15,8 +15,8 @@ use unstable::intrinsics::TyDesc;
 pub struct Box<T> {
     ref_count: uint,
     type_desc: *TyDesc,
-    priv prev: *Box<T>,
-    next: *Box<T>,
+    prev: *mut Box<T>,
+    next: *mut Box<T>,
     data: T
 }
 
