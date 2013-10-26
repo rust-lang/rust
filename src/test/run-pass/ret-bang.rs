@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 fn my_err(s: ~str) -> ! { error!("{:?}", s); fail!(); }
 
 fn okay(i: uint) -> int {

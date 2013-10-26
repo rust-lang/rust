@@ -11,5 +11,4 @@
 
 
 
-// -*- rust -*-
 pub fn main() { if 1 == 1 { return; } info!("Paul is dead"); }

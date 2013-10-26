@@ -10,7 +10,6 @@
 
 
 
-// -*- rust -*-
 extern mod extra;
 
 fn test1() {

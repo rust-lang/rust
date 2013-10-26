@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 mod foo {
     pub fn baz() { }
 }

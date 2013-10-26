@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-// -*- rust -*-
 
 type compare<'self, T> = &'self fn(T, T) -> bool;
 

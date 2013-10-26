@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-// -*- rust -*-
 
 // Tests for if as expressions with dynamic type sizes
 type compare<T> = &'static fn(T, T) -> bool;

@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 enum clam<T> { a(T, int), b, }
 
 fn uhoh<T>(v: ~[clam<T>]) {

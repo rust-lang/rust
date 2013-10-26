@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 struct Rect {x: int, y: int, w: int, h: int}
 
 fn f(r: Rect, x: int, y: int, w: int, h: int) {

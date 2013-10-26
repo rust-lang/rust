@@ -11,7 +11,6 @@
 #[allow(unused_variable)];
 #[allow(dead_assignment)];
 
-// -*- rust -*-
 fn f(u: ()) { return u; }
 
 pub fn main() {

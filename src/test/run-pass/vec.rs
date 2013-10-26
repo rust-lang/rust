@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 pub fn main() {
     let v: ~[int] = ~[10, 20];
     assert_eq!(v[0], 10);

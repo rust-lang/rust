@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 pub fn main() {
     let mut x: int = 1;
     x *= 2;

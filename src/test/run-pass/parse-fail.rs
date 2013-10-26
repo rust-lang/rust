@@ -10,7 +10,6 @@
 
 #[allow(unreachable_code)];
 
-// -*- rust -*-
 fn dont_call_me() { fail!(); info!("{}", 1); }
 
 pub fn main() { }

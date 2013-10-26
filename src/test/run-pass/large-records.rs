@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 struct Large {a: int,
              b: int,
