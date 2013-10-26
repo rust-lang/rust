@@ -23,6 +23,7 @@ use cast;
 use option::{Option,Some,None};
 use libc::c_void;
 use ops::Drop;
+use ptr;
 
 /**
  * A simple atomic flag, that can be set and cleared. The most basic atomic type.
@@ -205,6 +206,36 @@ impl AtomicInt {
     pub fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(&mut self.v, val, order) }
     }
+
+    #[inline]
+    pub fn fetch_and(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_and(&mut self.v, val, order) }
+    }
+
+    #[inline]
+    pub fn fetch_nand(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_nand(&mut self.v, val, order) }
+    }
+
+    #[inline]
+    pub fn fetch_or(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_or(&mut self.v, val, order) }
+    }
+
+    #[inline]
+    pub fn fetch_xor(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_xor(&mut self.v, val, order) }
+    }
+
+    #[inline]
+    pub fn fetch_min(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_min(&mut self.v, val, order) }
+    }
+
+    #[inline]
+    pub fn fetch_max(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_max(&mut self.v, val, order) }
+    }
 }
 
 impl AtomicUint {
@@ -243,6 +274,42 @@ impl AtomicUint {
     pub fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(&mut self.v, val, order) }
     }
+
+    /// Returns the old value.
+    #[inline]
+    pub fn fetch_and(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_and(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value.
+    #[inline]
+    pub fn fetch_nand(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_nand(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value.
+    #[inline]
+    pub fn fetch_or(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_or(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value.
+    #[inline]
+    pub fn fetch_xor(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_xor(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value and stores the minimum.
+    #[inline]
+    pub fn fetch_min(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_umin(&mut self.v, val, order) }
+    }
+
+    /// Returns the old value and stores the maximum.
+    #[inline]
+    pub fn fetch_max(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_umax(&mut self.v, val, order) }
+    }
 }
 
 impl<T> AtomicPtr<T> {
@@ -268,6 +335,29 @@ impl<T> AtomicPtr<T> {
     #[inline]
     pub fn compare_and_swap(&mut self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
         unsafe { atomic_compare_and_swap(&mut self.p, old, new, order) }
+    }
+
+    // delta is interpreted as in C pointer arithmetic, that is:
+    // if self.p is a *mut int on a 64 bit platform, then a delta of 1
+    // results in a value, stored in self.p, that points 8 bytes past
+    // the old pointer.
+    #[inline]
+    pub fn fetch_add(&mut self, delta: int, order: Ordering) -> *mut T {
+        unsafe {
+            let delta_ptr: *mut T = ptr::mut_offset(ptr::mut_null(), delta);
+
+            atomic_add(&mut self.p, delta_ptr, order)
+        }
+    }
+
+    // see comment of fetch_add for the meaning of delta.
+    #[inline]
+    pub fn fetch_sub(&mut self, delta: int, order: Ordering) -> *mut T {
+        unsafe {
+            let delta_ptr: *mut T = ptr::mut_offset(ptr::mut_null(), delta);
+
+            atomic_sub(&mut self.p, delta_ptr, order)
+        }
     }
 }
 
@@ -485,6 +575,55 @@ pub unsafe fn atomic_xor<T>(dst: &mut T, val: T, order: Ordering) -> T {
 }
 
 
+#[inline]
+pub unsafe fn atomic_max(dst: &mut int, val: int, order: Ordering) -> int {
+    match order {
+        Acquire => intrinsics::atomic_max_acq(dst, val),
+        Release => intrinsics::atomic_max_rel(dst, val),
+        AcqRel  => intrinsics::atomic_max_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_max_relaxed(dst, val),
+        _       => intrinsics::atomic_max(dst, val)
+    }
+}
+
+#[inline]
+pub unsafe fn atomic_min(dst: &mut int, val: int, order: Ordering) -> int {
+    match order {
+        Acquire => intrinsics::atomic_min_acq(dst, val),
+        Release => intrinsics::atomic_min_rel(dst, val),
+        AcqRel  => intrinsics::atomic_min_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_min_relaxed(dst, val),
+        _       => intrinsics::atomic_min(dst, val)
+    }
+}
+
+#[inline]
+pub unsafe fn atomic_umax(dst: &mut uint, val: uint, order: Ordering) -> uint {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_umax_acq(dst, val),
+        Release => intrinsics::atomic_umax_rel(dst, val),
+        AcqRel  => intrinsics::atomic_umax_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_umax_relaxed(dst, val),
+        _       => intrinsics::atomic_umax(dst, val)
+    })
+}
+
+#[inline]
+pub unsafe fn atomic_umin(dst: &mut uint, val: uint, order: Ordering) -> uint {
+    let dst = cast::transmute(dst);
+    let val = cast::transmute(val);
+
+    cast::transmute(match order {
+        Acquire => intrinsics::atomic_umin_acq(dst, val),
+        Release => intrinsics::atomic_umin_rel(dst, val),
+        AcqRel  => intrinsics::atomic_umin_acqrel(dst, val),
+        Relaxed => intrinsics::atomic_umin_relaxed(dst, val),
+        _       => intrinsics::atomic_umin(dst, val)
+    })
+}
 /**
  * An atomic fence.
  *
@@ -519,6 +658,8 @@ pub fn fence(order: Ordering) {
 mod test {
     use option::*;
     use super::*;
+    use cast;
+    use ptr;
 
     #[test]
     fn flag() {
@@ -575,6 +716,61 @@ mod test {
         let mut a = AtomicBool::new(true);
         assert_eq!(a.fetch_and(false, SeqCst),true);
         assert_eq!(a.load(SeqCst),false);
+    }
+
+    #[test]
+    fn atomic_int() {
+        let mut i = AtomicInt::new(16);
+        assert_eq!(i.load(SeqCst), 16);
+        i.store(32, SeqCst);
+        assert_eq!(i.swap(64, SeqCst), 32);
+        assert_eq!(i.compare_and_swap(64, 15, SeqCst), 64);
+        assert_eq!(i.fetch_add(1, SeqCst), 15);
+        assert_eq!(i.fetch_sub(1, SeqCst), 16);
+        assert_eq!(i.fetch_and(8, SeqCst), 15);
+        assert_eq!(i.fetch_or(7, SeqCst), 8);
+        assert_eq!(i.fetch_nand(-2, SeqCst), 15);
+        assert_eq!(i.fetch_xor(-8, SeqCst), -15);
+        assert_eq!(i.fetch_min(-1, SeqCst), 9);
+        assert_eq!(i.fetch_max(3, SeqCst), -1);
+        assert_eq!(i.load(SeqCst), 3);
+    }
+
+    #[test]
+    fn atomic_uint() {
+        let minus_1: uint = unsafe { cast::transmute(-1) };
+        let minus_2: uint = unsafe { cast::transmute(-2) };
+        let mut u = AtomicUint::new(16);
+        assert_eq!(u.load(SeqCst), 16);
+        u.store(32, SeqCst);
+        assert_eq!(u.swap(64, SeqCst), 32);
+        assert_eq!(u.compare_and_swap(64, 15, SeqCst), 64);
+        assert_eq!(u.fetch_add(1, SeqCst), 15);
+        assert_eq!(u.fetch_sub(1, SeqCst), 16);
+        assert_eq!(u.fetch_and(8, SeqCst), 15);
+        assert_eq!(u.fetch_or(7, SeqCst), 8);
+        u.store(minus_1, SeqCst);
+        assert_eq!(u.fetch_nand(minus_2, SeqCst), minus_1);
+        assert_eq!(u.fetch_xor(3, SeqCst), 1);
+        assert_eq!(u.fetch_min(minus_1, SeqCst), 2);
+        assert_eq!(u.fetch_max(3, SeqCst), 2);
+        assert_eq!(u.load(SeqCst), 3);
+    }
+
+    #[test]
+    fn atomic_ptr() {
+        // This test assumes a contiguous memory layout for a (tuple) pair of ints
+        unsafe {
+            let mut mem: ~(int, int) = ~(1, 2);
+            let mut ptr: *mut int = cast::transmute(ptr::to_mut_unsafe_ptr(mem));
+            let mut atomic = AtomicPtr::new(ptr);
+            assert_eq!(atomic.fetch_add(1, SeqCst), ptr);
+            ptr = atomic.load(SeqCst);
+            assert_eq!(*ptr, 2);
+            atomic.fetch_sub(1, SeqCst);
+            ptr = atomic.load(SeqCst);
+            assert_eq!(*ptr, 1);
+        }
     }
 
     static mut S_FLAG : AtomicFlag = INIT_ATOMIC_FLAG;
