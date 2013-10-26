@@ -338,6 +338,12 @@ impl Scheduler {
                 this.process_task(task, Scheduler::resume_task_immediately_cl);
                 return None;
             }
+            Some(RunOnce(task)) => {
+                // bypass the process_task logic to force running this task once
+                // on this home scheduler. This is often used for I/O (homing).
+                Scheduler::resume_task_immediately_cl(this, task);
+                return None;
+            }
             Some(Wake) => {
                 this.sleepy = false;
                 Local::put(this);
@@ -797,7 +803,8 @@ pub enum SchedMessage {
     Wake,
     Shutdown,
     PinnedTask(~Task),
-    TaskFromFriend(~Task)
+    TaskFromFriend(~Task),
+    RunOnce(~Task),
 }
 
 pub struct SchedHandle {
