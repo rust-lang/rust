@@ -159,10 +159,6 @@ impl<T: Send> Queue<T> {
         unsafe { (*self.state.get()).push(value) }
     }
 
-    pub fn casual_pop(&mut self) -> Option<T> {
-        unsafe { (*self.state.get()).pop() }
-    }
-
     pub fn pop(&mut self) -> Option<T> {
         unsafe{ (*self.state.get()).pop() }
     }
