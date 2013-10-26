@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-pretty
+// xfail-test
 
 extern mod extra;
 extern mod syntax;

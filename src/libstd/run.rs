@@ -604,8 +604,8 @@ mod tests {
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.trim());
 
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
+        let parent_stat = parent_dir.stat();
+        let child_stat = child_dir.stat();
 
         assert_eq!(parent_stat.device, child_stat.device);
         assert_eq!(parent_stat.inode, child_stat.inode);
@@ -621,8 +621,8 @@ mod tests {
         let output = str::from_utf8(prog.finish_with_output().output);
         let child_dir = Path::new(output.trim());
 
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
+        let parent_stat = parent_dir.stat();
+        let child_stat = child_dir.stat();
 
         assert_eq!(parent_stat.device, child_stat.device);
         assert_eq!(parent_stat.inode, child_stat.inode);
