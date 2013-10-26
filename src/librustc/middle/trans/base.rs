@@ -2065,7 +2065,6 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     // Translate variant arguments to function arguments.
     let fn_args = do args.map |varg| {
         ast::arg {
-            is_mutbl: false,
             ty: (*varg.ty()).clone(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),

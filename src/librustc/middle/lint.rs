@@ -813,27 +813,24 @@ fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
 }
 
 fn check_unused_mut_pat(cx: &Context, p: @ast::Pat) {
-    let mut used = false;
-    let mut bindings = 0;
-    do pat_util::pat_bindings(cx.tcx.def_map, p) |_, id, _, _| {
-        used = used || cx.tcx.used_mut_nodes.contains(&id);
-        bindings += 1;
-    }
-    if !used {
-        let msg = if bindings == 1 {
-            "variable does not need to be mutable"
-        } else {
-            "variables do not need to be mutable"
-        };
-        cx.span_lint(unused_mut, p.span, msg);
-    }
-}
-
-fn check_unused_mut_fn_decl(cx: &Context, fd: &ast::fn_decl) {
-    for arg in fd.inputs.iter() {
-        if arg.is_mutbl {
-            check_unused_mut_pat(cx, arg.pat);
+    match p.node {
+        ast::PatIdent(ast::BindByValue(ast::MutMutable), _, _) => {
+            let mut used = false;
+            let mut bindings = 0;
+            do pat_util::pat_bindings(cx.tcx.def_map, p) |_, id, _, _| {
+                used = used || cx.tcx.used_mut_nodes.contains(&id);
+                bindings += 1;
+            }
+            if !used {
+                let msg = if bindings == 1 {
+                    "variable does not need to be mutable"
+                } else {
+                    "variables do not need to be mutable"
+                };
+                cx.span_lint(unused_mut, p.span, msg);
+            }
         }
+        _ => ()
     }
 }
 
@@ -1075,6 +1072,8 @@ impl Visitor<()> for Context {
 
     fn visit_pat(&mut self, p: @ast::Pat, _: ()) {
         check_pat_non_uppercase_statics(self, p);
+        check_unused_mut_pat(self, p);
+
         visit::walk_pat(self, p, ());
     }
 
@@ -1095,30 +1094,9 @@ impl Visitor<()> for Context {
         visit::walk_stmt(self, s, ());
     }
 
-    fn visit_ty_method(&mut self, tm: &ast::TypeMethod, _: ()) {
-        check_unused_mut_fn_decl(self, &tm.decl);
-        visit::walk_ty_method(self, tm, ());
-    }
-
-    fn visit_trait_method(&mut self, tm: &ast::trait_method, _: ()) {
-        match *tm {
-            ast::required(ref m) => check_unused_mut_fn_decl(self, &m.decl),
-            ast::provided(ref m) => check_unused_mut_fn_decl(self, &m.decl)
-        }
-        visit::walk_trait_method(self, tm, ());
-    }
-
-    fn visit_local(&mut self, l: @ast::Local, _: ()) {
-        if l.is_mutbl {
-            check_unused_mut_pat(self, l.pat);
-        }
-        visit::walk_local(self, l, ());
-    }
-
     fn visit_fn(&mut self, fk: &visit::fn_kind, decl: &ast::fn_decl,
                 body: &ast::Block, span: Span, id: ast::NodeId, _: ()) {
         let recurse = |this: &mut Context| {
-            check_unused_mut_fn_decl(this, decl);
             visit::walk_fn(this, fk, decl, body, span, id, ());
         };
 

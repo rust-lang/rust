@@ -432,14 +432,12 @@ fn is_nullary_variant(cx: &Context, ex: @Expr) -> bool {
 
 fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
     match def {
-        DefLocal(_, is_mutbl) => {
-            if is_mutbl {
-                cx.tcx.sess.span_err(
-                    sp,
-                    "mutable variables cannot be implicitly captured");
-            }
+        DefLocal(_, BindByValue(MutMutable)) => {
+            cx.tcx.sess.span_err(
+                sp,
+                "mutable variables cannot be implicitly captured");
         }
-        DefArg(*) => { /* ok */ }
+        DefLocal(*) | DefArg(*) => { /* ok */ }
         DefUpvar(_, def1, _, _) => { check_imm_free_var(cx, *def1, sp); }
         DefBinding(*) | DefSelf(*) => { /*ok*/ }
         _ => {

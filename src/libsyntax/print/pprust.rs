@@ -1476,10 +1476,6 @@ pub fn print_decl(s: @ps, decl: &ast::Decl) {
         ibox(s, indent_unit);
         word_nbsp(s, "let");
 
-        if loc.is_mutbl {
-            word_nbsp(s, "mut");
-        }
-
         fn print_local(s: @ps, loc: &ast::Local) {
             ibox(s, indent_unit);
             print_local_decl(s, loc);
@@ -1589,7 +1585,10 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
                   word_nbsp(s, "ref");
                   print_mutability(s, mutbl);
               }
-              ast::BindInfer => {}
+              ast::BindByValue(ast::MutImmutable) => {}
+              ast::BindByValue(ast::MutMutable) => {
+                  word_nbsp(s, "mut");
+              }
           }
           print_path(s, path, true);
           match sub {
@@ -1932,9 +1931,6 @@ pub fn print_mt(s: @ps, mt: &ast::mt) {
 
 pub fn print_arg(s: @ps, input: &ast::arg) {
     ibox(s, indent_unit);
-    if input.is_mutbl {
-        word_space(s, "mut");
-    }
     match input.ty.node {
       ast::ty_infer => print_pat(s, input.pat),
       _ => {
