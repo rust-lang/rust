@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 fn f(x: int) -> int {
     // info!("in f:");
 

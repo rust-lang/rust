@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 enum color {
     rgb(int, int, int),
     rgba(int, int, int, int),

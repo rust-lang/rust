@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 // Tests for using match as an expression
 fn test_basic() {

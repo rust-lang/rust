@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 mod foomod {
     pub fn foo<T>() { }
 }

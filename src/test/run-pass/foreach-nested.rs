@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 fn two(it: &fn(int)) { it(0); it(1); }
 
 pub fn main() {

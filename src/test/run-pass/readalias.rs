@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 struct Point {x: int, y: int, z: int}
 
 fn f(p: Point) { assert!((p.z == 12)); }

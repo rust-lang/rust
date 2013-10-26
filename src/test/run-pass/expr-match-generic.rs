@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-// -*- rust -*-
 
 type compare<T> = extern "Rust" fn(T, T) -> bool;
 

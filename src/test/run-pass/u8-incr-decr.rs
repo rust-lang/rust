@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 // These constants were chosen because they aren't used anywhere
 // in the rest of the generated code so they're easily grep-able.

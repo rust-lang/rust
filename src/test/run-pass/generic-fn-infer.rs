@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 // Issue #45: infer type parameters in function applications
 fn id<T>(x: T) -> T { return x; }

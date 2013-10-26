@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 pub fn main() {
     let mut x: u8 = 12u8;
     let y: u8 = 12u8;
