@@ -182,7 +182,7 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn mkdir(self, loop_: &Loop, path: &CString, mode: int, cb: FsCallback) {
+    pub fn mkdir(self, loop_: &Loop, path: &CString, mode: c_int, cb: FsCallback) {
         let complete_cb_ptr = {
             let mut me = self;
             me.req_boilerplate(Some(cb))
@@ -218,6 +218,18 @@ impl FsRequest {
                             to.with_ref(|p| p),
                             complete_cb_ptr)
         };
+        assert_eq!(ret, 0);
+    }
+
+    pub fn chmod(self, loop_: &Loop, path: &CString, mode: c_int, cb: FsCallback) {
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
+        let ret = path.with_ref(|p| unsafe {
+            uvll::fs_chmod(loop_.native_handle(), self.native_handle(), p, mode,
+                           complete_cb_ptr)
+        });
         assert_eq!(ret, 0);
     }
 
@@ -593,7 +605,7 @@ mod test {
                 S_IRUSR;
             let mkdir_req = FsRequest::new();
             do mkdir_req.mkdir(&loop_, &path.to_c_str(),
-                               mode as int) |req,uverr| {
+                               mode as c_int) |req,uverr| {
                 assert!(uverr.is_none());
                 let loop_ = req.get_loop();
                 let stat_req = FsRequest::new();
@@ -626,12 +638,12 @@ mod test {
             let mode = S_IWUSR |
                 S_IRUSR;
             let mkdir_req = FsRequest::new();
-            do mkdir_req.mkdir(&loop_, &path.to_c_str(), mode as int) |req,uverr| {
+            do mkdir_req.mkdir(&loop_, &path.to_c_str(), mode as c_int) |req,uverr| {
                 assert!(uverr.is_none());
                 let loop_ = req.get_loop();
                 let mkdir_req = FsRequest::new();
                 do mkdir_req.mkdir(&loop_, &path.to_c_str(),
-                                   mode as int) |req,uverr| {
+                                   mode as c_int) |req,uverr| {
                     assert!(uverr.is_some());
                     let loop_ = req.get_loop();
                     let _stat = req.get_stat();

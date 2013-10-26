@@ -20,6 +20,7 @@ use std::option::*;
 use std::ptr;
 use std::str;
 use std::result::*;
+use std::rt::io;
 use std::rt::io::IoError;
 use std::rt::io::net::ip::{SocketAddr, IpAddr};
 use std::rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur,
@@ -34,7 +35,7 @@ use std::rt::task::Task;
 use std::unstable::sync::Exclusive;
 use std::path::{GenericPath, Path};
 use std::libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY,
-                O_WRONLY, S_IRUSR, S_IWUSR, S_IRWXU};
+                O_WRONLY, S_IRUSR, S_IWUSR};
 use std::rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
                   CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
                   FileStat};
@@ -699,9 +700,10 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
-    fn fs_mkdir(&mut self, path: &CString, mode: int) -> Result<(), IoError> {
+    fn fs_mkdir(&mut self, path: &CString,
+                perm: io::FilePermission) -> Result<(), IoError> {
         do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
-            do mkdir_req.mkdir(l, p, mode) |req, err| {
+            do mkdir_req.mkdir(l, p, perm as c_int) |req, err| {
                 cb(req, err)
             };
         }
@@ -722,6 +724,15 @@ impl IoFactory for UvIoFactory {
             };
         }
     }
+    fn fs_chmod(&mut self, path: &CString,
+                perm: io::FilePermission) -> Result<(), IoError> {
+        do uv_fs_helper(self.uv_loop(), path) |chmod_req, l, p, cb| {
+            do chmod_req.chmod(l, p, perm as c_int) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+>>>>>>> Remove all blocking std::os blocking functions
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
         Result<~[Path], IoError> {
         use str::StrSlice;

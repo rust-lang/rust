@@ -244,9 +244,12 @@ Out of scope
 
 use cast;
 use int;
+use libc;
 use path::Path;
-use prelude::*;
 use str::{StrSlice, OwnedStr};
+use option::{Option, Some, None};
+use result::{Ok, Err, Result};
+use iter::Iterator;
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
@@ -415,6 +418,18 @@ pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
         // won't care
     }).inside {
         cb()
+    }
+}
+
+/// Helper for catching an I/O error and wrapping it in a Result object. The
+/// return result will be the last I/O error that happened or the result of the
+/// closure if no error occurred.
+pub fn result<T>(cb: &fn() -> T) -> Result<T, IoError> {
+    let mut err = None;
+    let ret = io_error::cond.trap(|e| err = Some(e)).inside(cb);
+    match err {
+        Some(e) => Err(e),
+        None => Ok(ret),
     }
 }
 
@@ -1137,3 +1152,7 @@ pub struct FileStat {
     /// platform-dependent msecs
     accessed: u64,
 }
+
+// FIXME(#10131): this needs to get designed for real
+pub type FilePermission = u32;
+pub static UserRWX: FilePermission = libc::S_IRWXU as FilePermission;

@@ -31,7 +31,7 @@ pub fn main() {
 
     let sysroot_arg = args[1].clone();
     let sysroot = Path::new(sysroot_arg);
-    if !os::path_exists(&sysroot) {
+    if !sysroot.exists() {
         fail!("Package script requires a sysroot that exists; {} doesn't", sysroot.display());
     }
 

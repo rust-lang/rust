@@ -17,14 +17,13 @@ use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
 use std::{os, unstable};
 use std::rt::io;
-use std::rt::io::file::FileInfo;
 
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
-            os::make_dir(&Path::new(path), 0xFFFF);
+            io::file::mkdir(&Path::new(path), io::UserRWX);
         } else {
-            Path::new(path).open_writer(io::Create);
+            io::file::create(&Path::new(path));
         }
     }
 

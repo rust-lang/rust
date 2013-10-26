@@ -22,7 +22,7 @@ use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
 use path::Path;
 use super::io::{SeekStyle};
-use super::io::{FileMode, FileAccess, FileStat};
+use super::io::{FileMode, FileAccess, FileStat, FilePermission};
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -102,7 +102,10 @@ pub trait IoFactory {
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError>;
     fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError>;
-    fn fs_mkdir(&mut self, path: &CString, mode: int) -> Result<(), IoError>;
+    fn fs_mkdir(&mut self, path: &CString,
+                mode: FilePermission) -> Result<(), IoError>;
+    fn fs_chmod(&mut self, path: &CString,
+                mode: FilePermission) -> Result<(), IoError>;
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError>;
     fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
