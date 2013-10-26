@@ -10,7 +10,6 @@
 
 
 
-// -*- rust -*-
 type compare<'self, T> = &'self fn(~T, ~T) -> bool;
 
 fn test_generic<T:Clone>(expected: ~T, eq: compare<T>) {

@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 // Tests for match as expressions resulting in struct types
 struct R { i: int }

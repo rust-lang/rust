@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// -*- rust -*-
 pub fn main() {
     let i: int = 'Q' as int;
     assert_eq!(i, 0x51);

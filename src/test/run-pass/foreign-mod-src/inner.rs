@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 pub fn main() {
     let f = "Makefile";
     let s = rustrt.str_buf(f);

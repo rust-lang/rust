@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 
 // Tests for if as expressions returning nominal types
 

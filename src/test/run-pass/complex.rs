@@ -11,7 +11,6 @@
 
 
 
-// -*- rust -*-
 type t = int;
 
 fn nothing() { }
