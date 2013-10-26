@@ -382,30 +382,38 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
         CEnum(ity, _, _) => ~[ll_inttype(cx, ity)],
         Univariant(ref st, _dtor) => struct_llfields(cx, st, sizing),
         NullablePointer{ nonnull: ref st, _ } => struct_llfields(cx, st, sizing),
-        General(_ity, ref sts) => {
-            // To get "the" type of a general enum, we pick the case
-            // with the largest alignment (so it will always align
-            // correctly in containing structures) and pad it out.
-            assert!(sts.len() >= 1);
-            let mut most_aligned = None;
-            let mut largest_align = 0;
-            let mut largest_size = 0;
-            for st in sts.iter() {
-                if largest_size < st.size {
-                    largest_size = st.size;
-                }
-                if largest_align < st.align {
-                    // Clang breaks ties by size; it is unclear if
-                    // that accomplishes anything important.
-                    largest_align = st.align;
-                    most_aligned = Some(st);
-                }
-            }
-            let most_aligned = most_aligned.unwrap();
-            let padding = largest_size - most_aligned.size;
-
-            struct_llfields(cx, most_aligned, sizing)
-                + &[Type::array(&Type::i8(), padding)]
+        General(ity, ref sts) => {
+            // We need a representation that has:
+            // * The alignment of the most-aligned field
+            // * The size of the largest variant (rounded up to that alignment)
+            // * No alignment padding anywhere any variant has actual data
+            //   (currently matters only for enums small enough to be immediate)
+            // * The discriminant in an obvious place.
+            //
+            // So we start with the discriminant, pad it up to the alignment with
+            // more of its own type, then use alignment-sized ints to get the rest
+            // of the size.
+            //
+            // Note: if/when we start exposing SIMD vector types (or f80, on some
+            // platforms that have it), this will need some adjustment.
+            let size = sts.iter().map(|st| st.size).max().unwrap();
+            let most_aligned = sts.iter().max_by(|st| st.align).unwrap();
+            let align = most_aligned.align;
+            let discr_ty = ll_inttype(cx, ity);
+            let discr_size = machine::llsize_of_alloc(cx, discr_ty) as u64;
+            let pad_ty = match align {
+                1 => Type::i8(),
+                2 => Type::i16(),
+                4 => Type::i32(),
+                8 if machine::llalign_of_min(cx, Type::i64()) == 8 => Type::i64(),
+                _ => fail!("Unsupported enum alignment: {:?}", align)
+            };
+            assert_eq!(machine::llalign_of_min(cx, pad_ty) as u64, align);
+            let align_units = (size + align - 1) / align;
+            assert_eq!(align % discr_size, 0);
+            ~[discr_ty,
+              Type::array(&discr_ty, align / discr_size - 1),
+              Type::array(&pad_ty, align_units - 1)]
         }
     }
 }
