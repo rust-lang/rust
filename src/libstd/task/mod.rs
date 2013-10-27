@@ -60,7 +60,8 @@ use comm::{stream, Chan, GenericChan, GenericPort, Port, Peekable};
 use result::{Result, Ok, Err};
 use rt::in_green_task_context;
 use rt::local::Local;
-use rt::task::{UnwindReasonAny, UnwindReasonLinked, UnwindReasonStr};
+use rt::task::{UnwindMessageAny, UnwindMessageLinked};
+use rt::task::{UnwindMessageStrStatic, UnwindMessageStrOwned};
 use rt::task::{UnwindResult, Success, Failure};
 use send_str::{SendStr, IntoSendStr};
 use unstable::finally::Finally;
@@ -93,9 +94,10 @@ pub struct LinkedFailure;
 fn wrap_as_any(res: UnwindResult) -> TaskResult {
     match res {
         Success => Ok(()),
-        Failure(UnwindReasonStr(s)) => Err(~s as ~Any),
-        Failure(UnwindReasonAny(a)) => Err(a),
-        Failure(UnwindReasonLinked) => Err(~LinkedFailure as ~Any)
+        Failure(UnwindMessageAny(a)) => Err(a),
+        Failure(UnwindMessageLinked) => Err(~LinkedFailure as ~Any),
+        Failure(UnwindMessageStrOwned(s))  => Err(~s as ~Any),
+        Failure(UnwindMessageStrStatic(s)) => Err(~s as ~Any),
     }
 }
 
@@ -1425,38 +1427,52 @@ fn test_indestructible() {
 }
 
 #[test]
-fn test_try_fail_cause_static_str() {
+fn test_try_fail_message_static_str() {
     match do try {
         fail!("static string");
     } {
-        Err(ref e) if e.is::<SendStr>() => {}
-        Err(_) | Ok(()) => fail!()
+        Err(e) => {
+            type T = &'static str;
+            assert!(e.is::<T>());
+            assert_eq!(*e.move::<T>().unwrap(), "static string");
+        }
+        Ok(()) => fail!()
     }
 }
 
 #[test]
-fn test_try_fail_cause_owned_str() {
+fn test_try_fail_message_owned_str() {
     match do try {
         fail!(~"owned string");
     } {
-        Err(ref e) if e.is::<SendStr>() => {}
-        Err(_) | Ok(()) => fail!()
+        Err(e) => {
+            type T = ~str;
+            assert!(e.is::<T>());
+            assert_eq!(*e.move::<T>().unwrap(), ~"owned string");
+        }
+        Ok(()) => fail!()
     }
 }
 
 #[test]
-fn test_try_fail_cause_any() {
+fn test_try_fail_message_any() {
     match do try {
         fail!(~413u16 as ~Any);
     } {
-        Err(ref e) if e.is::<u16>() => {}
-        Err(_) | Ok(()) => fail!()
+        Err(e) => {
+            type T = ~Any;
+            assert!(e.is::<T>());
+            let any = e.move::<T>().unwrap();
+            assert!(any.is::<u16>());
+            assert_eq!(*any.move::<u16>().unwrap(), 413u16);
+        }
+        Ok(()) => fail!()
     }
 }
 
 #[ignore(reason = "linked failure")]
 #[test]
-fn test_try_fail_cause_linked() {
+fn test_try_fail_message_linked() {
     match do try {
         do spawn {
             fail!()
@@ -1468,11 +1484,11 @@ fn test_try_fail_cause_linked() {
 }
 
 #[test]
-fn test_try_fail_cause_any_wrapped() {
+fn test_try_fail_message_unit_struct() {
     struct Juju;
 
     match do try {
-        fail!(~Juju)
+        fail!(Juju)
     } {
         Err(ref e) if e.is::<Juju>() => {}
         Err(_) | Ok(()) => fail!()
