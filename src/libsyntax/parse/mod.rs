@@ -639,7 +639,7 @@ mod test {
         assert_eq!(parser.parse_pat(),
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
-                                ast::BindInfer,
+                                ast::BindByValue(ast::MutImmutable),
                                 ast::Path {
                                     span:sp(0,1),
                                     global:false,
@@ -666,7 +666,6 @@ mod test {
                             id: ast::DUMMY_NODE_ID,
                             node: ast::item_fn(ast::fn_decl{
                                 inputs: ~[ast::arg{
-                                    is_mutbl: false,
                                     ty: ast::Ty{id: ast::DUMMY_NODE_ID,
                                                 node: ast::ty_path(ast::Path{
                                         span:sp(10,13),
@@ -685,7 +684,7 @@ mod test {
                                     pat: @ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: ast::PatIdent(
-                                            ast::BindInfer,
+                                            ast::BindByValue(ast::MutImmutable),
                                             ast::Path {
                                                 span:sp(6,7),
                                                 global:false,

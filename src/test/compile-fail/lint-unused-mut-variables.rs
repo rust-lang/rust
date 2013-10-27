@@ -20,6 +20,14 @@ fn main() {
     let mut a = 2; //~ ERROR: variable does not need to be mutable
     let mut b = 3; //~ ERROR: variable does not need to be mutable
     let mut a = ~[3]; //~ ERROR: variable does not need to be mutable
+    let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
+
+    match 30 {
+        mut x => {} //~ ERROR: variable does not need to be mutable
+    }
+
+    let x = |mut y: int| 10; //~ ERROR: variable does not need to be mutable
+    fn what(mut foo: int) {} //~ ERROR: variable does not need to be mutable
 
     // positive cases
     let mut a = 2;
@@ -30,6 +38,17 @@ fn main() {
     do callback {
         a.push(3);
     }
+    let (mut a, b) = (1, 2);
+    a = 34;
+
+    match 30 {
+        mut x => {
+            x = 21;
+        }
+    }
+
+    let x = |mut y: int| y = 32;
+    fn nothing(mut foo: int) { foo = 37; }
 }
 
 fn callback(f: &fn()) {}

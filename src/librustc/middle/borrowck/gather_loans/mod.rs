@@ -730,7 +730,7 @@ impl<'self> GatherLoanCtxt<'self> {
                                          loan_mutability,
                                          scope_r);
                   }
-                  ast::BindInfer => {
+                  ast::BindByValue(_) => {
                       // No borrows here, but there may be moves
                       if self.bccx.is_move(pat.id) {
                           gather_moves::gather_move_from_pat(
