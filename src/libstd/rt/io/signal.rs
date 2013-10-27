@@ -183,7 +183,7 @@ mod test {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
         }
-        match s1.port.recv() {
+        match s2.port.recv() {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
         }
