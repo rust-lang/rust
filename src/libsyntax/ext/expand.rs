@@ -763,8 +763,7 @@ pub fn new_span(cx: @ExtCtxt, sp: Span) -> Span {
 // syntax elements.
 
 pub fn std_macros() -> @str {
-    return
-@"mod __std_macros {
+@r#"mod __std_macros {
     #[macro_escape];
     #[doc(hidden)];
 
@@ -789,31 +788,30 @@ pub fn std_macros() -> @str {
 
     macro_rules! fail(
         () => (
-            fail!(\"explicit failure\")
+            fail!("explicit failure")
         );
-        ($fmt:expr) => (
-            ::std::sys::FailWithCause::fail_with($fmt, file!(), line!())
+        ($msg:expr) => (
+            ::std::rt::task::begin_unwind($msg, file!(), line!())
         );
         ($fmt:expr, $($arg:tt)*) => (
-            ::std::sys::FailWithCause::fail_with(format!($fmt, $($arg)*), file!(), line!())
+            ::std::rt::task::begin_unwind(format!($fmt, $($arg)*), file!(), line!())
         )
     )
 
     macro_rules! assert(
         ($cond:expr) => {
             if !$cond {
-                ::std::sys::FailWithCause::fail_with(
-                    \"assertion failed: \" + stringify!($cond), file!(), line!())
+                fail!("assertion failed: {:s}", stringify!($cond))
             }
         };
         ($cond:expr, $msg:expr) => {
             if !$cond {
-                ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
+                fail!($msg)
             }
         };
         ($cond:expr, $( $arg:expr ),+) => {
             if !$cond {
-                ::std::sys::FailWithCause::fail_with(format!( $($arg),+ ), file!(), line!())
+                fail!( $($arg),+ )
             }
         }
     )
@@ -826,9 +824,8 @@ pub fn std_macros() -> @str {
                 // check both directions of equality....
                 if !((*given_val == *expected_val) &&
                      (*expected_val == *given_val)) {
-                    fail!(\"assertion failed: `(left == right) && (right == \
-                             left)` (left: `{:?}`, right: `{:?}`)\",
-                           *given_val, *expected_val);
+                    fail!("assertion failed: `(left == right) && (right == left)` \
+                           (left: `{:?}`, right: `{:?}`)", *given_val, *expected_val)
                 }
             }
         )
@@ -846,7 +843,7 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq(&expected_val) &&
                     expected_val.approx_eq(&given_val)
                 ) {
-                    fail!(\"left: {:?} does not approximately equal right: {:?}\",
+                    fail!("left: {:?} does not approximately equal right: {:?}",
                            given_val, expected_val);
                 }
             }
@@ -863,42 +860,37 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
                     expected_val.approx_eq_eps(&given_val, &epsilon_val)
                 ) {
-                    fail!(\"left: {:?} does not approximately equal right: \
-                             {:?} with epsilon: {:?}\",
+                    fail!("left: {:?} does not approximately equal right: \
+                             {:?} with epsilon: {:?}",
                           given_val, expected_val, epsilon_val);
                 }
             }
         )
     )
 
-    // FIXME(#6266): change the /* to /** when attributes are supported on macros
-    // (Though even then—is it going to work according to the clear intent here?)
-    /*
-    A utility macro for indicating unreachable code. It will fail if
-    executed. This is occasionally useful to put after loops that never
-    terminate normally, but instead directly return from a function.
-
-    # Example
-
-    ```rust
-    fn choose_weighted_item(v: &[Item]) -> Item {
-        assert!(!v.is_empty());
-        let mut so_far = 0u;
-        for v.each |item| {
-            so_far += item.weight;
-            if so_far > 100 {
-                return item;
-            }
-        }
-        // The above loop always returns, so we must hint to the
-        // type checker that it isn't possible to get down here
-        unreachable!();
-    }
-    ```
-
-    */
+    /// A utility macro for indicating unreachable code. It will fail if
+    /// executed. This is occasionally useful to put after loops that never
+    /// terminate normally, but instead directly return from a function.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// fn choose_weighted_item(v: &[Item]) -> Item {
+    ///     assert!(!v.is_empty());
+    ///     let mut so_far = 0u;
+    ///     for item in v.iter() {
+    ///         so_far += item.weight;
+    ///         if so_far > 100 {
+    ///             return item;
+    ///         }
+    ///     }
+    ///     // The above loop always returns, so we must hint to the
+    ///     // type checker that it isn't possible to get down here
+    ///     unreachable!();
+    /// }
+    /// ```
     macro_rules! unreachable (() => (
-        fail!(\"internal error: entered unreachable code\");
+        fail!("internal error: entered unreachable code");
     ))
 
     macro_rules! condition (
@@ -968,18 +960,18 @@ pub fn std_macros() -> @str {
         )
     )
 
-    // externfn! declares a wrapper for an external function.
-    // It is intended to be used like:
-    //
-    // externfn!(#[nolink]
-    //           fn memcmp(cx: *u8, ct: *u8, n: u32) -> u32)
-    //
-    // Due to limitations in the macro parser, this pattern must be
-    // implemented with 4 distinct patterns (with attrs / without
-    // attrs CROSS with args / without ARGS).
-    //
-    // Also, this macro grammar allows for any number of return types
-    // because I couldn't figure out the syntax to specify at most one.
+    /// externfn! declares a wrapper for an external function.
+    /// It is intended to be used like:
+    ///
+    /// externfn!(#[nolink]
+    ///           fn memcmp(cx: *u8, ct: *u8, n: u32) -> u32)
+    ///
+    /// Due to limitations in the macro parser, this pattern must be
+    /// implemented with 4 distinct patterns (with attrs / without
+    /// attrs CROSS with args / without ARGS).
+    ///
+    /// Also, this macro grammar allows for any number of return types
+    /// because I couldn't figure out the syntax to specify at most one.
     macro_rules! externfn(
         (fn $name:ident () $(-> $ret_ty:ty),*) => (
             pub unsafe fn $name() $(-> $ret_ty),* {
@@ -1045,7 +1037,7 @@ pub fn std_macros() -> @str {
         )
     )
 
-}";
+}"#
 }
 
 struct Injector {
