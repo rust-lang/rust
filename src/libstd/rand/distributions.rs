@@ -341,20 +341,30 @@ impl IndependentSample<f64> for Normal {
  // has to be unwrapped before use as an `f64` (using either
 /// `*` or `cast::transmute` is safe).
 ///
-/// Implemented via the ZIGNOR variant[1] of the Ziggurat method. The
-/// exact description in the paper was adjusted to use tables for the
-/// exponential distribution rather than normal.
-///
-/// [1]: Jurgen A. Doornik (2005). [*An Improved Ziggurat Method to
-/// Generate Normal Random
-/// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
-/// College, Oxford
+/// Implemented via the inverse cdf transform, that is, `-ln(U)` where
+/// `U` is uniformly distributed 0 to 1.
+
+// FIXME #10084: The Ziggurat implementation is biased (mean of 0.994
+// rather than 1). This inverse cdf transform with logs is 4 times
+// slower than the (incorrect) Ziggurat implementation. (Note: the
+// Normal Ziggurat code appears to be unbiased.)
+//
+// Old docs:
+// Implemented via the ZIGNOR variant[1] of the
+// Ziggurat method. The exact description in the paper was adjusted to
+// use tables for the exponential distribution rather than normal.
+//
+// [1]: Jurgen A. Doornik (2005). [*An Improved Ziggurat Method to
+// Generate Normal Random
+// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
+// College, Oxford
 pub struct Exp1(f64);
 
 // This could be done via `-rng.gen::<f64>().ln()` but that is slower.
 impl Rand for Exp1 {
     #[inline]
     fn rand<R:Rng>(rng: &mut R) -> Exp1 {
+        /* FIXME #10084: see above.
         #[inline]
         fn pdf(x: f64) -> f64 {
             (-x).exp()
@@ -368,6 +378,11 @@ impl Rand for Exp1 {
                       &ziggurat_tables::ZIG_EXP_X,
                       &ziggurat_tables::ZIG_EXP_F, &ziggurat_tables::ZIG_EXP_F_DIFF,
                       pdf, zero_case))
+        */
+
+        // we use 1 - U, because U is [0, 1), and log(0) is bad, so we
+        // convert it into (0, 1]
+        Exp1(-(1.0 - rng.gen::<f64>()).ln())
     }
 }
 
