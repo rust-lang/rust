@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:literal out of range
+// compile-flags: -D type-overflow
 
-fn main() { info!("{}", 300u8); }
+fn main() { info!("{}", 300u8); } //~ error: literal out of range for its type
