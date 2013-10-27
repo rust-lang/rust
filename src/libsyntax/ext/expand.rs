@@ -551,13 +551,13 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
             let pending_renames = block_info.pending_renames;
 
             // take it apart:
-            let @Local{is_mutbl:is_mutbl,
-                       ty:_,
-                       pat:pat,
-                       init:init,
-                       id:id,
-                       span:span
-                      } = *local;
+            let @Local {
+                ty: _,
+                pat: pat,
+                init: init,
+                id: id,
+                span: span
+            } = *local;
             // types can't be copied automatically because of the owned ptr in ty_tup...
             let ty = local.ty.clone();
             // expand the pat (it might contain exprs... #:(o)>
@@ -585,7 +585,6 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
             let new_init_opt = init.map(|e| fld.fold_expr(e));
             let rewritten_local =
                 @Local {
-                    is_mutbl: is_mutbl,
                     ty: ty,
                     pat: rewritten_pat,
                     init: new_init_opt,

@@ -234,7 +234,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
 
 pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @Pat {
     @ast::Pat { id: id,
-                node: PatIdent(BindInfer, ident_to_path(s, i), None),
+                node: PatIdent(BindByValue(MutImmutable), ident_to_path(s, i), None),
                 span: s }
 }
 

@@ -618,7 +618,7 @@ impl VisitContext {
         do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, path| {
             let binding_moves = match bm {
                 BindByRef(_) => false,
-                BindInfer => {
+                BindByValue(_) => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
                     debug!("pattern {:?} {} type is {}",
                            id,
