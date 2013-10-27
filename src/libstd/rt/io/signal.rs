@@ -160,6 +160,7 @@ mod test {
     }
 
     #[test] #[cfg(unix)]
+    #[ignore] // FIXME(#10096) might cause deadlock on the bots
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
         signal.register(Interrupt);
@@ -172,6 +173,7 @@ mod test {
     }
 
     #[test] #[cfg(unix)]
+    #[ignore] // FIXME(#10096) might cause deadlock on the bots
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -190,6 +192,7 @@ mod test {
     }
 
     #[test] #[cfg(unix)]
+    #[ignore] // FIXME(#10096) might cause deadlock on the bots
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -205,6 +208,7 @@ mod test {
 
     #[cfg(windows)]
     #[test]
+    #[ignore] // FIXME(#10096) might cause deadlock on the bots
     fn test_io_signal_invalid_signum() {
         let mut s = Listener::new();
         let mut called = false;
