@@ -23,13 +23,10 @@
  * In the check phase, when the @FnCtxt is used as the `AstConv`,
  * `get_item_ty()` just looks up the item type in `tcx.tcache`.
  *
- * The `RegionScope` trait controls how region references are
- * handled.  It has two methods which are used to resolve anonymous
- * region references (e.g., `&T`) and named region references (e.g.,
- * `&a.T`).  There are numerous region scopes that can be used, but most
- * commonly you want either `EmptyRscope`, which permits only the static
- * region, or `TypeRscope`, which permits the self region if the type in
- * question is parameterized by a region.
+ * The `RegionScope` trait controls what happens when the user does
+ * not specify a region in some location where a region is required
+ * (e.g., if the user writes `&Foo` as a type rather than `&'a Foo`).
+ * See the `rscope` module for more details.
  *
  * Unlike the `AstConv` trait, the region scope can change as we descend
  * the type.  This is to accommodate the fact that (a) fn types are binding
@@ -57,20 +54,17 @@ use middle::const_eval;
 use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::rscope::in_binding_rscope;
-use middle::typeck::rscope::{RegionScope, RegionError};
-use middle::typeck::rscope::RegionParamNames;
+use middle::typeck::rscope;
+use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
 
-use std::result;
+use std::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
-use syntax::parse::token::special_idents;
-use util::common::indenter;
 
 pub trait AstConv {
     fn tcx(&self) -> ty::ctxt;
@@ -81,55 +75,83 @@ pub trait AstConv {
     fn ty_infer(&self, span: Span) -> ty::t;
 }
 
-pub fn get_region_reporting_err(
+pub fn ast_region_to_region(
     tcx: ty::ctxt,
-    span: Span,
-    a_r: &Option<ast::Lifetime>,
-    res: Result<ty::Region, RegionError>) -> ty::Region
+    lifetime: &ast::Lifetime)
+    -> ty::Region
 {
-    match res {
-        result::Ok(r) => r,
-        result::Err(ref e) => {
-            let descr = match a_r {
-                &None => ~"anonymous lifetime",
-                &Some(ref a) => format!("lifetime {}",
-                                lifetime_to_str(a, tcx.sess.intr()))
-            };
-            tcx.sess.span_err(
-                span,
-                format!("Illegal {}: {}",
-                     descr, e.msg));
-            e.replacement
+    let r = match tcx.named_region_map.find(&lifetime.id) {
+        None => {
+            // should have been recorded by the `resolve_lifetime` pass
+            tcx.sess.span_bug(lifetime.span, "unresolved lifetime");
         }
-    }
+
+        Some(&ast::DefStaticRegion) => {
+            ty::re_static
+        }
+
+        Some(&ast::DefFnBoundRegion(binder_id, _, id)) => {
+            ty::re_fn_bound(binder_id, ty::br_named(ast_util::local_def(id),
+                                                    lifetime.ident))
+        }
+
+        Some(&ast::DefTypeBoundRegion(index, id)) => {
+            ty::re_type_bound(id, index, lifetime.ident)
+        }
+
+        Some(&ast::DefFreeRegion(scope_id, id)) => {
+            ty::re_free(ty::FreeRegion {
+                    scope_id: scope_id,
+                    bound_region: ty::br_named(ast_util::local_def(id),
+                                               lifetime.ident)
+                })
+        }
+    };
+
+    debug!("ast_region_to_region(lifetime={} id={}) yields {}",
+            lifetime_to_str(lifetime, tcx.sess.intr()),
+            lifetime.id,
+            r.repr(tcx));
+
+    r
 }
 
-pub fn ast_region_to_region<AC:AstConv,RS:RegionScope + Clone + 'static>(
+pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     default_span: Span,
     opt_lifetime: &Option<ast::Lifetime>) -> ty::Region
 {
-    let (span, res) = match opt_lifetime {
-        &None => {
-            (default_span, rscope.anon_region(default_span))
+    let r = match *opt_lifetime {
+        Some(ref lifetime) => {
+            ast_region_to_region(this.tcx(), lifetime)
         }
-        &Some(ref lifetime) if lifetime.ident == special_idents::statik => {
-            (lifetime.span, Ok(ty::re_static))
-        }
-        &Some(ref lifetime) if lifetime.ident == special_idents::self_ => {
-            (lifetime.span, rscope.self_region(lifetime.span))
-        }
-        &Some(ref lifetime) => {
-            (lifetime.span, rscope.named_region(lifetime.span,
-                                                lifetime.ident))
+
+        None => {
+            match rscope.anon_regions(default_span, 1) {
+                None => {
+                    debug!("optional region in illegal location");
+                    this.tcx().sess.span_err(
+                        default_span, "missing lifetime specifier");
+                    ty::re_static
+                }
+
+                Some(rs) => {
+                    rs[0]
+                }
+            }
         }
     };
 
-    get_region_reporting_err(this.tcx(), span, opt_lifetime, res)
+    debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {}",
+            opt_lifetime.as_ref().map(
+                |e| lifetime_to_str(e, this.tcx().sess.intr())),
+            r.repr(this.tcx()));
+
+    r
 }
 
-fn ast_path_substs<AC:AstConv,RS:RegionScope + Clone + 'static>(
+fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     def_id: ast::DefId,
@@ -200,7 +222,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope + Clone + 'static>(
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,
-                                 RS:RegionScope + Clone + 'static>(
+                                 RS:RegionScope>(
                                  this: &AC,
                                  rscope: &RS,
                                  did: ast::DefId,
@@ -217,7 +239,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
-pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope + Clone + 'static>(
+pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     trait_def_id: ast::DefId,
@@ -240,7 +262,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope + Clone + 'static>(
     return trait_ref;
 }
 
-pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope + Clone + 'static>(
+pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
         this: &AC,
         rscope: &RS,
         did: ast::DefId,
@@ -262,10 +284,10 @@ pub static NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
+pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC:AstConv, RS:RegionScope + Clone + 'static>(
+    fn ast_mt_to_mt<AC:AstConv, RS:RegionScope>(
         this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(this, rscope, mt.ty), mutbl: mt.mutbl}
@@ -274,7 +296,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle first-class trait types.
-    fn mk_pointer<AC:AstConv,RS:RegionScope + Clone + 'static>(
+    fn mk_pointer<AC:AstConv,RS:RegionScope>(
         this: &AC,
         rscope: &RS,
         a_seq_ty: &ast::mt,
@@ -387,7 +409,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
         ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
       }
       ast::ty_rptr(ref region, ref mt) => {
-        let r = ast_region_to_region(this, rscope, ast_ty.span, region);
+        let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
+        debug!("ty_rptr r={}", r.repr(this.tcx()));
         mk_pointer(this, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
@@ -551,7 +574,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
 }
 
 pub fn ty_of_arg<AC:AstConv,
-                 RS:RegionScope + Clone + 'static>(
+                 RS:RegionScope>(
                  this: &AC,
                  rscope: &RS,
                  a: &ast::arg,
@@ -564,42 +587,12 @@ pub fn ty_of_arg<AC:AstConv,
     }
 }
 
-pub fn bound_lifetimes<AC:AstConv>(
-    this: &AC,
-    ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::Ident>
-{
-    /*!
-     *
-     * Converts a list of lifetimes into a list of bound identifier
-     * names.  Does not permit special names like 'static or 'this to
-     * be bound.  Note that this function is for use in closures,
-     * methods, and fn definitions.  It is legal to bind 'this in a
-     * type.  Eventually this distinction should go away and the same
-     * rules should apply everywhere ('this would not be a special name
-     * at that point).
-     */
-
-    let special_idents = [special_idents::statik, special_idents::self_];
-    let mut bound_lifetime_names = opt_vec::Empty;
-    ast_lifetimes.map_to_vec(|ast_lifetime| {
-        if special_idents.iter().any(|&i| i == ast_lifetime.ident) {
-            this.tcx().sess.span_err(
-                ast_lifetime.span,
-                format!("illegal lifetime parameter name: `{}`",
-                     lifetime_to_str(ast_lifetime, this.tcx().sess.intr())));
-        } else {
-            bound_lifetime_names.push(ast_lifetime.ident);
-        }
-    });
-    bound_lifetime_names
-}
-
 struct SelfInfo {
     untransformed_self_ty: ty::t,
     explicit_self: ast::explicit_self
 }
 
-pub fn ty_of_method<AC:AstConv,RS:RegionScope + Clone + 'static>(
+pub fn ty_of_method<AC:AstConv>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -643,10 +636,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let bound_lifetime_names = bound_lifetimes(this, lifetimes);
-    let rb =
-        in_binding_rscope(rscope,
-                          RegionParamNames(bound_lifetime_names.clone()));
+    let rb = rscope::BindingRscope::new(id);
 
     let opt_transformed_self_ty = do opt_self_info.map |self_info| {
         transform_self_ty(this, &rb, self_info)
@@ -671,7 +661,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
                 }
             });
 
-    fn transform_self_ty<AC:AstConv,RS:RegionScope + Clone + 'static>(
+    fn transform_self_ty<AC:AstConv,RS:RegionScope>(
         this: &AC,
         rscope: &RS,
         self_info: &SelfInfo) -> Option<ty::t>
@@ -683,9 +673,9 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
             }
             ast::sty_region(ref lifetime, mutability) => {
                 let region =
-                    ast_region_to_region(this, rscope,
-                                         self_info.explicit_self.span,
-                                         lifetime);
+                    opt_ast_region_to_region(this, rscope,
+                                             self_info.explicit_self.span,
+                                             lifetime);
                 Some(ty::mk_rptr(this.tcx(), region,
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
@@ -704,7 +694,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
     }
 }
 
-pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
+pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     sigil: ast::Sigil,
@@ -729,8 +719,8 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
     // resolve the function bound region in the original region
     // scope `rscope`, not the scope of the function parameters
     let bound_region = match opt_lifetime {
-        &Some(_) => {
-            ast_region_to_region(this, rscope, span, opt_lifetime)
+        &Some(ref lifetime) => {
+            ast_region_to_region(this.tcx(), lifetime)
         }
         &None => {
             match sigil {
@@ -741,7 +731,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
                 }
                 ast::BorrowedSigil => {
                     // &fn() defaults as normal for an omitted lifetime:
-                    ast_region_to_region(this, rscope, span, opt_lifetime)
+                    opt_ast_region_to_region(this, rscope, span, opt_lifetime)
                 }
             }
         }
@@ -749,10 +739,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let bound_lifetime_names = bound_lifetimes(this, lifetimes);
-    let rb =
-        in_binding_rscope(rscope,
-                          RegionParamNames(bound_lifetime_names.clone()));
+    let rb = rscope::BindingRscope::new(id);
 
     let input_tys = do decl.inputs.iter().enumerate().map |(i, a)| {
         let expected_arg_ty = do expected_sig.as_ref().and_then |e| {
