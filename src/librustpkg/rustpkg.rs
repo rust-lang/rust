@@ -587,8 +587,6 @@ impl CtxMethods for BuildContext {
                                            build_inputs,
                                            &pkg_src.destination_workspace,
                                            &id).map(|s| Path::new(s.as_slice()));
-        debug!("install: id = {}, about to call discover_outputs, {:?}",
-               id.to_str(), result.map(|p| p.display().to_str()));
         installed_files = installed_files + result;
         note(format!("Installed package {} to {}",
                      id.to_str(),

@@ -465,22 +465,31 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         // Find all the workspaces in the RUST_PATH that contain this package.
                         let workspaces = pkg_parent_workspaces(&self.context.context,
                                                                &pkg_id);
-                        // Two cases:
+                        // Three cases:
                         // (a) `workspaces` is empty. That means there's no local source
                         // for this package. In that case, we pass the default workspace
                         // into `PkgSrc::new`, so that if it exists as a remote repository,
-                        // its sources will be fetched into it.
-                        // (b) `workspaces` is non-empty -- we found a local source for this
-                        // package.
-                        let dest_workspace = if workspaces.is_empty() {
-                            default_workspace()
-                        } else { workspaces[0] };
+                        // its sources will be fetched into it. We also put the output in the
+                        // same workspace.
+                        // (b) We're using the Rust path hack. In that case, the output goes
+                        // in the destination workspace.
+                        // (c) `workspaces` is non-empty -- we found a local source for this
+                        // package and will build in that workspace.
+                        let (source_workspace, dest_workspace) = if workspaces.is_empty() {
+                            (default_workspace(), default_workspace())
+                        } else {
+                            if self.context.context.use_rust_path_hack {
+                                (workspaces[0], default_workspace())
+                            } else {
+                                 (workspaces[0].clone(), workspaces[0])
+                            }
+                        };
                         // In this case, the source and destination workspaces are the same:
                         // Either it's a remote package, so the local sources don't exist
                         // and the `PkgSrc` constructor will detect that;
                         // or else it's already in a workspace and we'll build into that
                         // workspace
-                        let pkg_src = PkgSrc::new(dest_workspace.clone(),
+                        let pkg_src = PkgSrc::new(source_workspace,
                                                   dest_workspace,
                         // Use the rust_path_hack to search for dependencies iff
                         // we were already using it
