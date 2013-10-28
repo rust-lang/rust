@@ -368,6 +368,7 @@ pub enum IoErrorKind {
     Closed,
     ConnectionRefused,
     ConnectionReset,
+    ConnectionAborted,
     NotConnected,
     BrokenPipe,
     PathAlreadyExists,
@@ -397,6 +398,7 @@ impl ToStr for IoErrorKind {
             MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation",
             IoUnavailable => ~"IoUnavailable",
             ResourceUnavailable => ~"ResourceUnavailable",
+            ConnectionAborted => ~"ConnectionAborted",
         }
     }
 }
