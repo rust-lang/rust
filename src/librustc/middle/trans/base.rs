@@ -2844,6 +2844,8 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     ifn!(intrinsics, "llvm.umul.with.overflow.i64",
         [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
 
+    ifn!(intrinsics, "llvm.expect.i1", [Type::i1(), Type::i1()], Type::i1());
+
     return intrinsics;
 }
 
