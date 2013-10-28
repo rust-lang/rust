@@ -11,7 +11,7 @@
 use libc;
 use option::*;
 use result::*;
-use comm::SharedChan;
+use comm::{SharedChan, PortOne, Port};
 use libc::c_int;
 use c_str::CString;
 
@@ -162,6 +162,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
+    fn oneshot(&mut self, msecs: u64) -> PortOne<()>;
+    fn period(&mut self, msecs: u64) -> Port<()>;
 }
 
 pub trait RtioFileStream {

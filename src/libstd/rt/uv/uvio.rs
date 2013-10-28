@@ -13,7 +13,7 @@ use cast::transmute;
 use cast;
 use cell::Cell;
 use clone::Clone;
-use comm::{SendDeferred, SharedChan};
+use comm::{SendDeferred, SharedChan, Port, PortOne, GenericChan};
 use libc::{c_int, c_uint, c_void, pid_t};
 use ops::Drop;
 use option::*;
@@ -1473,6 +1473,41 @@ impl RtioTimer for UvTimer {
             }
             self_.watcher.stop();
         }
+    }
+
+    fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
+        use comm::oneshot;
+
+        let (port, chan) = oneshot();
+        let chan = Cell::new(chan);
+        do self.home_for_io |self_| {
+            let chan = Cell::new(chan.take());
+            do self_.watcher.start(msecs, 0) |_, status| {
+                assert!(status.is_none());
+                assert!(!chan.is_empty());
+                chan.take().send_deferred(());
+            }
+        }
+
+        return port;
+    }
+
+    fn period(&mut self, msecs: u64) -> Port<()> {
+        use comm::stream;
+
+        let (port, chan) = stream();
+        let chan = Cell::new(chan);
+        do self.home_for_io |self_| {
+            let chan = Cell::new(chan.take());
+            do self_.watcher.start(msecs, msecs) |_, status| {
+                assert!(status.is_none());
+                do chan.with_ref |chan| {
+                    chan.send_deferred(());
+                }
+            }
+        }
+
+        return port;
     }
 }
 
