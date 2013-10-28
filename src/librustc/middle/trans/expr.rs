@@ -981,7 +981,9 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         debug!("trans_index: len {}", bcx.val_to_str(len));
 
         let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
-        let bcx = do with_cond(bcx, bounds_check) |bcx| {
+        let expect = ccx.intrinsics.get_copy(&("llvm.expect.i1"));
+        let expected = Call(bcx, expect, [bounds_check, C_i1(false)], []);
+        let bcx = do with_cond(bcx, expected) |bcx| {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
         };
         let elt = InBoundsGEP(bcx, base, [ix_val]);
