@@ -314,6 +314,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             ECONNRESET => ConnectionReset,
             ENOTCONN => NotConnected,
             EPIPE => BrokenPipe,
+            ECONNABORTED => ConnectionAborted,
             err => {
                 rtdebug!("uverr.code {}", err as int);
                 // XXX: Need to map remaining uv error types

@@ -364,7 +364,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8811
     fn write_close_ip4() {
         do run_in_mt_newsched_task {
             let addr = next_test_ip4();
@@ -380,8 +379,11 @@ mod test {
                 loop {
                     let mut stop = false;
                     do io_error::cond.trap(|e| {
-                        // NB: ECONNRESET on linux, EPIPE on mac
-                        assert!(e.kind == ConnectionReset || e.kind == BrokenPipe);
+                        // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
+                        //     on windows
+                        assert!(e.kind == ConnectionReset ||
+                                e.kind == BrokenPipe ||
+                                e.kind == ConnectionAborted);
                         stop = true;
                     }).inside {
                         stream.write(buf);
@@ -399,7 +401,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8811
     fn write_close_ip6() {
         do run_in_mt_newsched_task {
             let addr = next_test_ip6();
@@ -415,8 +416,11 @@ mod test {
                 loop {
                     let mut stop = false;
                     do io_error::cond.trap(|e| {
-                        // NB: ECONNRESET on linux, EPIPE on mac
-                        assert!(e.kind == ConnectionReset || e.kind == BrokenPipe);
+                        // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
+                        //     on windows
+                        assert!(e.kind == ConnectionReset ||
+                                e.kind == BrokenPipe ||
+                                e.kind == ConnectionAborted);
                         stop = true;
                     }).inside {
                         stream.write(buf);
