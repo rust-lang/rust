@@ -424,7 +424,7 @@ impl mem_categorization_ctxt {
 
           ast::ExprAddrOf(*) | ast::ExprCall(*) |
           ast::ExprAssign(*) | ast::ExprAssignOp(*) |
-          ast::ExprFnBlock(*) | ast::ExprRet(*) |
+          ast::ExprFnBlock(*) | ast::ExprProc(*) | ast::ExprRet(*) |
           ast::ExprDoBody(*) | ast::ExprUnary(*) |
           ast::ExprMethodCall(*) | ast::ExprCast(*) | ast::ExprVstore(*) |
           ast::ExprVec(*) | ast::ExprTup(*) | ast::ExprIf(*) |

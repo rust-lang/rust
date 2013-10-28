@@ -431,7 +431,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         self.merge_with_entry_set(expr.id, in_out);
 
         match expr.node {
-            ast::ExprFnBlock(ref decl, ref body) => {
+            ast::ExprFnBlock(ref decl, ref body) |
+            ast::ExprProc(ref decl, ref body) => {
                 if self.dfcx.oper.walk_closures() {
                     // In the absence of once fns, we must assume that
                     // every function body will execute more than

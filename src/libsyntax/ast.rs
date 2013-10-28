@@ -537,6 +537,7 @@ pub enum Expr_ {
     ExprLoop(Block, Option<Ident>),
     ExprMatch(@Expr, ~[Arm]),
     ExprFnBlock(fn_decl, Block),
+    ExprProc(fn_decl, Block),
     ExprDoBody(@Expr),
     ExprBlock(Block),
 

@@ -337,7 +337,14 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
     fn closure_to_str(cx: ctxt, cty: &ty::ClosureTy) -> ~str
     {
-        let mut s = cty.sigil.to_str();
+        let is_proc =
+            (cty.sigil, cty.onceness) == (ast::OwnedSigil, ast::Once);
+
+        let mut s = if is_proc {
+            ~""
+        } else {
+            cty.sigil.to_str()
+        };
 
         match (cty.sigil, cty.region) {
             (ast::ManagedSigil, ty::re_static) |
@@ -356,15 +363,19 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             }
         };
 
-        match cty.onceness {
-            ast::Many => {}
-            ast::Once => {
-                s.push_str(cty.onceness.to_str());
-                s.push_char(' ');
-            }
-        };
+        if is_proc {
+            s.push_str("proc");
+        } else {
+            match cty.onceness {
+                ast::Many => {}
+                ast::Once => {
+                    s.push_str(cty.onceness.to_str());
+                    s.push_char(' ');
+                }
+            };
 
-        s.push_str("fn");
+            s.push_str("fn");
+        }
 
         if !cty.bounds.is_empty() {
             s.push_str(":");
