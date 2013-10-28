@@ -340,13 +340,10 @@ pub struct Parser {
     mod_path_stack: @mut ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: @mut ~[Span]
+    ///	removed empty drop function and added a priv new_field of type std::util::NonCopyable
+    priv new_field: util::NonCopyable
 }
 
-#[unsafe_destructor]
-impl Drop for Parser {
-    /* do not copy the parser; its state is tied to outside state */
-    fn drop(&mut self) {}
-}
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
     is_plain_ident(t) || *t == token::UNDERSCORE
