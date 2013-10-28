@@ -151,6 +151,7 @@ pub mod clone;
 pub mod hash;
 pub mod container;
 pub mod default;
+pub mod any;
 
 /* Common data structures */
 
@@ -213,15 +214,16 @@ mod std {
     pub use clone;
     pub use cmp;
     pub use condition;
-    pub use option;
+    pub use fmt;
     pub use kinds;
     pub use local_data;
     pub use logging;
-    pub use sys;
-    pub use unstable;
-    pub use str;
-    pub use os;
-    pub use fmt;
-    pub use to_bytes;
     pub use logging;
+    pub use option;
+    pub use os;
+    pub use str;
+    pub use sys;
+    pub use to_bytes;
+    pub use to_str;
+    pub use unstable;
 }

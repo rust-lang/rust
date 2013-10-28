@@ -145,10 +145,10 @@ impl Listener {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+
     use libc;
     use rt::io::timer;
-    use rt::io;
-    use super::*;
 
     // kill is only available on Unixes
     #[cfg(unix)]
@@ -206,6 +206,7 @@ mod test {
     #[cfg(windows)]
     #[test]
     fn test_io_signal_invalid_signum() {
+        use rt::io;
         let mut s = Listener::new();
         let mut called = false;
         do io::io_error::cond.trap(|_| {

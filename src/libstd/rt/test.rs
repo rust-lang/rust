@@ -8,30 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rand;
-use rand::Rng;
-use os;
-use libc;
-use option::{Some, None};
-use path::Path;
+use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
+
 use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iter::{Iterator, range};
-use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
-use vec::{OwnedVector, MutableVector, ImmutableVector};
+use libc;
+use option::{Some, None};
+use os;
 use path::GenericPath;
+use path::Path;
+use rand::Rng;
+use rand;
+use result::{Result, Ok, Err};
 use rt::basic;
-use rt::sched::Scheduler;
+use rt::comm::oneshot;
 use rt::rtio::EventLoop;
-use unstable::{run_in_bare_thread};
-use rt::thread::Thread;
+use rt::sched::Scheduler;
+use rt::sleeper_list::SleeperList;
 use rt::task::Task;
+use rt::task::UnwindResult;
+use rt::thread::Thread;
 use rt::uv::uvio::UvEventLoop;
 use rt::work_queue::WorkQueue;
-use rt::sleeper_list::SleeperList;
-use rt::comm::oneshot;
-use result::{Result, Ok, Err};
+use unstable::{run_in_bare_thread};
+use vec::{OwnedVector, MutableVector, ImmutableVector};
 
 pub fn new_test_uv_sched() -> Scheduler {
 
@@ -85,9 +87,9 @@ pub fn run_in_uv_task_core(f: ~fn()) {
     let mut sched = ~new_test_uv_sched();
     let exit_handle = Cell::new(sched.make_handle());
 
-    let on_exit: ~fn(bool) = |exit_status| {
+    let on_exit: ~fn(UnwindResult) = |exit_status| {
         exit_handle.take().send(Shutdown);
-        rtassert!(exit_status);
+        rtassert!(exit_status.is_success());
     };
     let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
     task.death.on_exit = Some(on_exit);
@@ -96,15 +98,14 @@ pub fn run_in_uv_task_core(f: ~fn()) {
 }
 
 pub fn run_in_newsched_task_core(f: ~fn()) {
-
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_sched();
     let exit_handle = Cell::new(sched.make_handle());
 
-    let on_exit: ~fn(bool) = |exit_status| {
+    let on_exit: ~fn(UnwindResult) = |exit_status| {
         exit_handle.take().send(Shutdown);
-        rtassert!(exit_status);
+        rtassert!(exit_status.is_success());
     };
     let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
     task.death.on_exit = Some(on_exit);
@@ -248,14 +249,14 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         let handles = Cell::new(handles);
-        let on_exit: ~fn(bool) = |exit_status| {
+        let on_exit: ~fn(UnwindResult) = |exit_status| {
             let mut handles = handles.take();
             // Tell schedulers to exit
             for handle in handles.mut_iter() {
                 handle.send(Shutdown);
             }
 
-            rtassert!(exit_status);
+            rtassert!(exit_status.is_success());
         };
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, f.take());
         main_task.death.on_exit = Some(on_exit);
@@ -323,7 +324,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
 
     let (port, chan) = oneshot();
     let chan = Cell::new(chan);
-    let on_exit: ~fn(bool) = |exit_status| chan.take().send(exit_status);
+    let on_exit: ~fn(UnwindResult) = |exit_status| chan.take().send(exit_status);
 
     let mut new_task = Task::build_root(None, f);
     new_task.death.on_exit = Some(on_exit);
@@ -331,7 +332,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
     Scheduler::run_task(new_task);
 
     let exit_status = port.recv();
-    if exit_status { Ok(()) } else { Err(()) }
+    if exit_status.is_success() { Ok(()) } else { Err(()) }
 
 }
 

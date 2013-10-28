@@ -43,6 +43,8 @@ pub use iter::range;
 pub use rt::io::stdio::{print, println};
 
 // Reexported types and traits
+
+pub use any::{Any, AnyOwnExt, AnyRefExt, AnyMutRefExt};
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, ToBytesConsume};
 pub use bool::Bool;
 pub use c_str::ToCStr;
