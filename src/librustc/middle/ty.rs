@@ -17,6 +17,7 @@ use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::lang_items::OpaqueStructLangItem;
 use middle::freevars;
 use middle::resolve;
+use middle::resolve_lifetime;
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
@@ -257,6 +258,8 @@ struct ctxt_ {
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
+
+    named_region_map: @mut resolve_lifetime::NamedRegionMap,
 
     region_maps: @mut middle::region::RegionMaps,
     region_paramd_items: middle::region::region_paramd_items,
@@ -919,6 +922,7 @@ pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
 
 pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
+               named_region_map: @mut resolve_lifetime::NamedRegionMap,
                amap: ast_map::map,
                freevars: freevars::freevar_map,
                region_maps: @mut middle::region::RegionMaps,
@@ -926,6 +930,7 @@ pub fn mk_ctxt(s: session::Session,
                lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
     @ctxt_ {
+        named_region_map: named_region_map,
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,

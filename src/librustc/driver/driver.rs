@@ -239,6 +239,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         time(time_passes, "resolution", (), |_|
              middle::resolve::resolve_crate(sess, lang_items, crate));
 
+    let named_region_map = time(time_passes, "lifetime resolution", (),
+                                |_| middle::resolve_lifetime::crate(sess, crate));
+
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(sess, crate, ast_map));
 
@@ -251,8 +254,8 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let rp_set = time(time_passes, "region parameterization inference", (), |_|
                       middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                            region_map, rp_set, lang_items);
+    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map, freevars,
+                            region_map, lang_items);
 
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(

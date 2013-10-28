@@ -251,6 +251,20 @@ pub enum Def {
     DefMethod(DefId /* method */, Option<DefId> /* trait */),
 }
 
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+pub enum DefRegion {
+    DefStaticRegion,
+    DefTypeBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
+    DefFnBoundRegion(/* binder_id */ NodeId, /* depth */ uint, /* lifetime decl */ NodeId),
+    DefFreeRegion(/* block scope */ NodeId, /* lifetime decl */ NodeId),
+}
+
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+pub struct DefNamedRegion {
+    node_id: NodeId,
+    depth: uint,
+}
+
 // The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
 pub type CrateConfig = ~[@MetaItem];
