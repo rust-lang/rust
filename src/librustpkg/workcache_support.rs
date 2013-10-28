@@ -11,10 +11,8 @@
 use std::rt::io;
 use std::rt::io::extensions::ReaderUtil;
 use std::rt::io::file::FileInfo;
-
-use extra::sha1::Sha1;
-use extra::digest::Digest;
 use extra::workcache;
+use sha1::{Digest, Sha1};
 
 /// Hashes the file contents along with the last-modified time
 pub fn digest_file_with_date(path: &Path) -> ~str {

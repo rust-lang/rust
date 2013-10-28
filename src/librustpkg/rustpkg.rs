@@ -62,6 +62,7 @@ mod package_id;
 mod package_source;
 mod path_util;
 mod search;
+mod sha1;
 mod source_control;
 mod target;
 #[cfg(test)]
