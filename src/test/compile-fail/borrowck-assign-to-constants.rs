@@ -12,6 +12,5 @@ static foo: int = 5;
 
 fn main() {
     // assigning to various global constants
-    None = Some(3); //~ ERROR cannot assign to immutable static item
     foo = 6; //~ ERROR cannot assign to immutable static item
 }
