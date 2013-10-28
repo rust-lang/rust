@@ -20,7 +20,7 @@ use parse::token::{get_ident_interner};
 use print::pprust;
 
 use std::rt::io;
-use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::Reader;
 use std::rt::io::file::FileInfo;
 use std::str;
 
