@@ -29,7 +29,7 @@ use syntax::parse::token;
 use syntax;
 
 use std::int;
-use std::hashmap::HashMap;
+use std::hashmap::{HashMap,HashSet};
 
 #[deriving(Eq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
@@ -158,9 +158,9 @@ pub struct options {
     save_temps: bool,
     jit: bool,
     output_type: back::link::output_type,
-    addl_lib_search_paths: @mut ~[Path], // This is mutable for rustpkg, which
-                                         // updates search paths based on the
-                                         // parsed code
+    addl_lib_search_paths: @mut HashSet<Path>, // This is mutable for rustpkg, which
+                                               // updates search paths based on the
+                                               // parsed code
     linker: Option<~str>,
     linker_args: ~[~str],
     maybe_sysroot: Option<@Path>,
@@ -366,7 +366,7 @@ pub fn basic_options() -> @options {
         save_temps: false,
         jit: false,
         output_type: link::output_type_exe,
-        addl_lib_search_paths: @mut ~[],
+        addl_lib_search_paths: @mut HashSet::new(),
         linker: None,
         linker_args: ~[],
         maybe_sysroot: None,
