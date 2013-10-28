@@ -55,6 +55,7 @@ pub mod errors {
     pub static ECONNRESET: c_int = -4078;
     pub static ENOTCONN: c_int = -4054;
     pub static EPIPE: c_int = -4048;
+    pub static ECONNABORTED: c_int = -4080;
 }
 #[cfg(not(windows))]
 pub mod errors {
@@ -66,6 +67,7 @@ pub mod errors {
     pub static ECONNRESET: c_int = -libc::ECONNRESET;
     pub static ENOTCONN: c_int = -libc::ENOTCONN;
     pub static EPIPE: c_int = -libc::EPIPE;
+    pub static ECONNABORTED: c_int = -libc::ECONNABORTED;
 }
 
 pub static PROCESS_SETUID: c_int = 1 << 0;
