@@ -555,7 +555,8 @@ impl VisitContext {
                 self.use_expr(base, comp_mode);
             }
 
-            ExprFnBlock(ref decl, ref body) => {
+            ExprFnBlock(ref decl, ref body) |
+            ExprProc(ref decl, ref body) => {
                 for a in decl.inputs.iter() {
                     self.use_pat(a.pat);
                 }

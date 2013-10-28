@@ -48,7 +48,7 @@ pub fn run(lib_path: &str,
            input: Option<~str>) -> Result {
 
     let env = env + target_env(lib_path, prog);
-    let mut proc = run::Process::new(prog, args, run::ProcessOptions {
+    let mut process = run::Process::new(prog, args, run::ProcessOptions {
         env: Some(env),
         dir: None,
         in_fd: None,
@@ -57,9 +57,9 @@ pub fn run(lib_path: &str,
     });
 
     for input in input.iter() {
-        proc.input().write(input.as_bytes());
+        process.input().write(input.as_bytes());
     }
-    let output = proc.finish_with_output();
+    let output = process.finish_with_output();
 
     Result {
         status: output.status,

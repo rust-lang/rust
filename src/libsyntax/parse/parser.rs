@@ -27,7 +27,7 @@ use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprDoBody};
 use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
-use ast::{ExprMethodCall, ExprParen, ExprPath, ExprRepeat};
+use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc, ExprRepeat};
 use ast::{ExprRet, ExprSelf, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprVstore, ExprVstoreMutBox};
 use ast::{ExprVstoreSlice, ExprVstoreBox};
@@ -814,6 +814,21 @@ impl Parser {
         });
     }
 
+    // Parses a procedure type (`proc`). The initial `proc` keyword must
+    // already have been parsed.
+    pub fn parse_proc_type(&self) -> ty_ {
+        let (decl, lifetimes) = self.parse_ty_fn_decl();
+        ty_closure(@TyClosure {
+            sigil: OwnedSigil,
+            region: None,
+            purity: impure_fn,
+            onceness: Once,
+            bounds: None,
+            decl: decl,
+            lifetimes: lifetimes,
+        })
+    }
+
     // parse a ty_closure type
     pub fn parse_ty_closure(&self,
                             sigil: ast::Sigil,
@@ -1123,6 +1138,8 @@ impl Parser {
             let e = self.parse_expr();
             self.expect(&token::RPAREN);
             ty_typeof(e)
+        } else if self.eat_keyword(keywords::Proc) {
+            self.parse_proc_type()
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(self.token) {
             // NAMED TYPE
@@ -1672,6 +1689,19 @@ impl Parser {
                                  ExprBlock(blk));
         } else if token::is_bar(&*self.token) {
             return self.parse_lambda_expr();
+        } else if self.eat_keyword(keywords::Proc) {
+            let decl = self.parse_proc_decl();
+            let body = self.parse_expr();
+            let fakeblock = ast::Block {
+                view_items: ~[],
+                stmts: ~[],
+                expr: Some(body),
+                id: ast::DUMMY_NODE_ID,
+                rules: DefaultBlock,
+                span: body.span,
+            };
+
+            return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
         } else if self.eat_keyword(keywords::Self) {
             ex = ExprSelf;
             hi = self.span.hi;
@@ -3611,6 +3641,31 @@ impl Parser {
 
         ast::fn_decl {
             inputs: inputs_captures,
+            output: output,
+            cf: return_val,
+        }
+    }
+
+    // Parses the `(arg, arg) -> return_type` header on a procedure.
+    fn parse_proc_decl(&self) -> fn_decl {
+        let inputs =
+            self.parse_unspanned_seq(&token::LPAREN,
+                                     &token::RPAREN,
+                                     seq_sep_trailing_allowed(token::COMMA),
+                                     |p| p.parse_fn_block_arg());
+
+        let output = if self.eat(&token::RARROW) {
+            self.parse_ty(false)
+        } else {
+            Ty {
+                id: ast::DUMMY_NODE_ID,
+                node: ty_infer,
+                span: *self.span,
+            }
+        };
+
+        ast::fn_decl {
+            inputs: inputs,
             output: output,
             cf: return_val,
         }

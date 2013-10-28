@@ -717,10 +717,11 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
         ast::ExprVec(*) | ast::ExprRepeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        ast::ExprFnBlock(ref decl, ref body) => {
+        ast::ExprFnBlock(ref decl, ref body) |
+        ast::ExprProc(ref decl, ref body) => {
             let expr_ty = expr_ty(bcx, expr);
             let sigil = ty::ty_closure_sigil(expr_ty);
-            debug!("translating fn_block {} with type {}",
+            debug!("translating block function {} with type {}",
                    expr_to_str(expr, tcx.sess.intr()),
                    expr_ty.repr(tcx));
             return closure::trans_expr_fn(bcx, sigil, decl, body,

@@ -132,7 +132,8 @@ impl Visitor<()> for Context {
 
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
         match t.node {
-            ast::ty_closure(closure) if closure.onceness == ast::Once => {
+            ast::ty_closure(closure) if closure.onceness == ast::Once &&
+                    closure.sigil != ast::OwnedSigil => {
                 self.gate_feature("once_fns", t.span,
                                   "once functions are \
                                    experimental and likely to be removed");

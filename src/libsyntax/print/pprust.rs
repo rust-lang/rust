@@ -1350,6 +1350,33 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         // empty box to satisfy the close.
         ibox(s, 0);
       }
+      ast::ExprProc(ref decl, ref body) => {
+        // in do/for blocks we don't want to show an empty
+        // argument list, but at this point we don't know which
+        // we are inside.
+        //
+        // if !decl.inputs.is_empty() {
+        print_proc_args(s, decl);
+        space(s.s);
+        // }
+        assert!(body.stmts.is_empty());
+        assert!(body.expr.is_some());
+        // we extract the block, so as not to create another set of boxes
+        match body.expr.unwrap().node {
+            ast::ExprBlock(ref blk) => {
+                print_block_unclosed(s, blk);
+            }
+            _ => {
+                // this is a bare expression
+                print_expr(s, body.expr.unwrap());
+                end(s); // need to close a box
+            }
+        }
+        // a box will be closed by print_expr, but we didn't want an overall
+        // wrapper so we closed the corresponding opening. so create an
+        // empty box to satisfy the close.
+        ibox(s, 0);
+      }
       ast::ExprDoBody(body) => {
         print_expr(s, body);
       }
@@ -1777,6 +1804,24 @@ pub fn print_fn_block_args(s: @ps, decl: &ast::fn_decl) {
     maybe_print_comment(s, decl.output.span.lo);
 }
 
+pub fn print_proc_args(s: @ps, decl: &ast::fn_decl) {
+    word(s.s, "proc");
+    word(s.s, "(");
+    print_fn_args(s, decl, None);
+    word(s.s, ")");
+
+    match decl.output.node {
+        ast::ty_infer => {}
+        _ => {
+            space_if_not_bol(s);
+            word_space(s, "->");
+            print_type(s, &decl.output);
+        }
+    }
+
+    maybe_print_comment(s, decl.output.span.lo);
+}
+
 pub fn print_bounds(s: @ps, bounds: &OptVec<ast::TyParamBound>,
                     print_colon_anyway: bool) {
     if !bounds.is_empty() {
@@ -1968,12 +2013,16 @@ pub fn print_ty_fn(s: @ps,
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
     // function prints the sigil in the wrong place.  That should be fixed.
-    print_extern_opt_abis(s, opt_abis);
-    print_opt_sigil(s, opt_sigil);
-    print_opt_lifetime(s, opt_region);
-    print_purity(s, purity);
-    print_onceness(s, onceness);
-    word(s.s, "fn");
+    if opt_sigil == Some(ast::OwnedSigil) && onceness == ast::Once {
+        word(s.s, "proc");
+    } else {
+        print_extern_opt_abis(s, opt_abis);
+        print_opt_sigil(s, opt_sigil);
+        print_opt_lifetime(s, opt_region);
+        print_purity(s, purity);
+        print_onceness(s, onceness);
+        word(s.s, "fn");
+    }
     match id { Some(id) => { word(s.s, " "); print_ident(s, id); } _ => () }
     do opt_bounds.as_ref().map |bounds| { print_bounds(s, bounds, true); };
     match generics { Some(g) => print_generics(s, g), _ => () }

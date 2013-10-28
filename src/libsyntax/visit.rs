@@ -560,6 +560,14 @@ pub fn walk_expr<E:Clone, V:Visitor<E>>(visitor: &mut V, expression: @Expr, env:
                              expression.id,
                              env.clone())
         }
+        ExprProc(ref function_declaration, ref body) => {
+            visitor.visit_fn(&fk_fn_block,
+                             function_declaration,
+                             body,
+                             expression.span,
+                             expression.id,
+                             env.clone())
+        }
         ExprBlock(ref block) => visitor.visit_block(block, env.clone()),
         ExprAssign(left_hand_expression, right_hand_expression) => {
             visitor.visit_expr(right_hand_expression, env.clone());
