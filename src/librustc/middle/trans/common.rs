@@ -70,6 +70,7 @@ pub fn type_is_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
         return true;
     }
     match ty::get(ty).sty {
+        ty::ty_bot => true,
         ty::ty_struct(*) | ty::ty_enum(*) | ty::ty_tup(*) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
