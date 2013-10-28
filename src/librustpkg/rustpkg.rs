@@ -25,6 +25,7 @@ extern mod rustc;
 extern mod syntax;
 
 use std::{os, result, run, str, task};
+use std::hashmap::HashSet;
 pub use std::path::Path;
 
 use extra::workcache;
@@ -841,7 +842,8 @@ pub fn main_args(args: &[~str]) -> int {
         save_temps: save_temps,
         target: target,
         target_cpu: target_cpu,
-        additional_library_paths: ~[], // No way to set this from the rustpkg command line
+        additional_library_paths:
+            HashSet::new(), // No way to set this from the rustpkg command line
         experimental_features: experimental_features
     };
 

@@ -198,7 +198,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     info!("starting to run rustc");
     let (crate, analysis) = do std::task::try {
         let cr = cr.take();
-        core::run_core(libs.take(), &cr)
+        core::run_core(libs.take().move_iter().collect(), &cr)
     }.unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);

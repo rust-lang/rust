@@ -40,11 +40,11 @@ pub trait FileSearch {
 
 pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                      target_triple: &str,
-                     addl_lib_search_paths: @mut ~[Path])
+                     addl_lib_search_paths: @mut HashSet<Path>)
                   -> @FileSearch {
     struct FileSearchImpl {
         sysroot: @Path,
-        addl_lib_search_paths: @mut ~[Path],
+        addl_lib_search_paths: @mut HashSet<Path>,
         target_triple: ~str
     }
     impl FileSearch for FileSearchImpl {

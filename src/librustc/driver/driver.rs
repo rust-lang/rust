@@ -757,7 +757,9 @@ pub fn build_session_options(binary: @str,
 
     let statik = debugging_opts & session::statik != 0;
 
-    let addl_lib_search_paths = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
+    let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
+      Path::new(s.as_slice())
+    }).move_iter().collect();
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
         a.split_iter(' ').map(|arg| arg.to_owned()).collect()
