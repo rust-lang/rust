@@ -20,7 +20,7 @@ use syntax;
 
 use std::os;
 use std::local_data;
-use std::hashmap::HashMap;
+use std::hashmap::{HashMap,HashSet};
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -39,7 +39,7 @@ pub struct CrateAnalysis {
 
 /// Parses, resolves, and typechecks the given crate
 fn get_ast_and_resolve(cpath: &Path,
-                       libs: ~[Path]) -> (DocContext, CrateAnalysis) {
+                       libs: HashSet<Path>) -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{file_input, build_configuration,
                                 phase_1_parse_input,
@@ -89,7 +89,7 @@ fn get_ast_and_resolve(cpath: &Path,
             CrateAnalysis { reexports: reexports, exported_items: exported_items });
 }
 
-pub fn run_core (libs: ~[Path], path: &Path) -> (clean::Crate, CrateAnalysis) {
+pub fn run_core (libs: HashSet<Path>, path: &Path) -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs);
     let ctxt = @ctxt;
     debug!("defmap:");

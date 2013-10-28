@@ -285,11 +285,7 @@ pub fn compile_input(context: &BuildContext,
                                       debug!("a dependency: {}", p.display());
                                       // Pass the directory containing a dependency
                                       // as an additional lib search path
-                                      if !addl_lib_search_paths.contains(&p) {
-                                          // Might be inefficient, but this set probably
-                                          // won't get too large -- tjc
-                                          addl_lib_search_paths.push(p);
-                                      }
+                                      addl_lib_search_paths.insert(p);
                                   });
 
     // Inject the link attributes so we get the right package name and version

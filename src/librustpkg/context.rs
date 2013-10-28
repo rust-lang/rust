@@ -10,9 +10,11 @@
 
 // Context data structure used by rustpkg
 
-use std::os;
 use extra::workcache;
 use rustc::driver::session::{OptLevel, No};
+
+use std::hashmap::HashSet;
+use std::os;
 
 #[deriving(Clone)]
 pub struct Context {
@@ -60,7 +62,7 @@ impl BuildContext {
         self.context.add_library_path(p);
     }
 
-    pub fn additional_library_paths(&self) -> ~[Path] {
+    pub fn additional_library_paths(&self) -> HashSet<Path> {
         self.context.rustc_flags.additional_library_paths.clone()
     }
 }
@@ -96,7 +98,7 @@ pub struct RustcFlags {
     target_cpu: Option<~str>,
     // Additional library directories, which get passed with the -L flag
     // This can't be set with a rustpkg flag, only from package scripts
-    additional_library_paths: ~[Path],
+    additional_library_paths: HashSet<Path>,
     // Any -Z features
     experimental_features: Option<~[~str]>
 }
@@ -163,7 +165,7 @@ impl Context {
     }
 
     pub fn add_library_path(&mut self, p: Path) {
-        self.rustc_flags.additional_library_paths.push(p);
+        self.rustc_flags.additional_library_paths.insert(p);
     }
 }
 
@@ -227,7 +229,7 @@ impl RustcFlags {
             save_temps: false,
             target: None,
             target_cpu: None,
-            additional_library_paths: ~[],
+            additional_library_paths: HashSet::new(),
             experimental_features: None
         }
     }
