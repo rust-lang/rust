@@ -526,8 +526,8 @@ pub fn spawn_with<A:Send>(arg: A, f: ~fn(v: A)) {
 
 pub fn spawn_sched(mode: SchedMode, f: ~fn()) {
     /*!
-     * Creates a new task on a new or existing scheduler
-
+     * Creates a new task on a new or existing scheduler.
+     *
      * When there are no more tasks to execute the
      * scheduler terminates.
      *
