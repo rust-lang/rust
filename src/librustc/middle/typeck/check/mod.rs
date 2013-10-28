@@ -2366,6 +2366,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let result_t = fcx.expr_ty(expr);
         demand::suptype(fcx, expr.span, result_t, lhs_t);
 
+        let tcx = fcx.tcx();
+        if !ty::expr_is_lval(tcx, fcx.ccx.method_map, lhs) {
+            tcx.sess.span_err(lhs.span, "illegal left-hand side expression");
+        }
+
         // Overwrite result of check_binop...this preserves existing behavior
         // but seems quite dubious with regard to user-defined methods
         // and so forth. - Niko
@@ -2538,6 +2543,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::ExprAssign(lhs, rhs) => {
         check_assignment(fcx, lhs, rhs, id);
+
+        let tcx = fcx.tcx();
+        if !ty::expr_is_lval(tcx, fcx.ccx.method_map, lhs) {
+            tcx.sess.span_err(lhs.span, "illegal left-hand side expression");
+        }
+
         let lhs_ty = fcx.expr_ty(lhs);
         let rhs_ty = fcx.expr_ty(rhs);
         if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
