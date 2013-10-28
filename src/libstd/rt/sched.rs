@@ -915,7 +915,6 @@ mod test {
     use rt::test::*;
     use unstable::run_in_bare_thread;
     use borrow::to_uint;
-    use rt::local::*;
     use rt::sched::{Scheduler};
     use cell::Cell;
     use rt::thread::Thread;
@@ -923,6 +922,7 @@ mod test {
     use rt::basic;
     use rt::util;
     use option::{Some};
+    use rt::task::UnwindResult;
 
     #[test]
     fn trivial_run_in_newsched_task_test() {
@@ -1007,7 +1007,7 @@ mod test {
                 assert!(Task::on_appropriate_sched());
             };
 
-            let on_exit: ~fn(bool) = |exit_status| rtassert!(exit_status);
+            let on_exit: ~fn(UnwindResult) = |exit_status| rtassert!(exit_status.is_success());
             task.death.on_exit = Some(on_exit);
 
             sched.bootstrap(task);

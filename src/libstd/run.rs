@@ -426,7 +426,7 @@ mod tests {
         os::close(pipe_err.out);
 
         do spawn {
-            writeclose(pipe_in.out, ~"test");
+            writeclose(pipe_in.out, "test");
         }
         let actual = readclose(pipe_out.input);
         readclose(pipe_err.input);

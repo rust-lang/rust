@@ -76,21 +76,24 @@ use prelude::*;
 use cast::transmute;
 use cast;
 use cell::Cell;
-use container::MutableMap;
 use comm::{Chan, GenericChan, oneshot};
+use container::MutableMap;
 use hashmap::{HashSet, HashSetMoveIterator};
 use local_data;
-use task::{Failure, SingleThreaded};
-use task::{Success, TaskOpts, TaskResult};
-use task::unkillable;
-use uint;
-use util;
-use unstable::sync::Exclusive;
 use rt::in_green_task_context;
 use rt::local::Local;
-use rt::task::{Task, Sched};
 use rt::shouldnt_be_public::{Scheduler, KillHandle, WorkQueue, Thread, EventLoop};
+use rt::task::{Task, Sched};
+use rt::task::{UnwindReasonLinked, UnwindReasonStr};
+use rt::task::{UnwindResult, Success, Failure};
 use rt::uv::uvio::UvEventLoop;
+use send_str::IntoSendStr;
+use task::SingleThreaded;
+use task::TaskOpts;
+use task::unkillable;
+use uint;
+use unstable::sync::Exclusive;
+use util;
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -321,7 +324,7 @@ impl Drop for Taskgroup {
         do RuntimeGlue::with_task_handle_and_failing |me, failing| {
             if failing {
                 for x in self.notifier.mut_iter() {
-                    x.failed = true;
+                    x.task_result = Some(Failure(UnwindReasonLinked));
                 }
                 // Take everybody down with us. After this point, every
                 // other task in the group will see 'tg' as none, which
@@ -353,7 +356,7 @@ pub fn Taskgroup(tasks: TaskGroupArc,
        ancestors: AncestorList,
        mut notifier: Option<AutoNotify>) -> Taskgroup {
     for x in notifier.mut_iter() {
-        x.failed = false;
+        x.task_result = Some(Success);
     }
 
     Taskgroup {
@@ -364,21 +367,28 @@ pub fn Taskgroup(tasks: TaskGroupArc,
 }
 
 struct AutoNotify {
-    notify_chan: Chan<TaskResult>,
-    failed: bool,
+    notify_chan: Chan<UnwindResult>,
+
+    // XXX: By value self drop would allow this to be a plain UnwindResult
+    task_result: Option<UnwindResult>,
+}
+
+impl AutoNotify {
+    pub fn new(chan: Chan<UnwindResult>) -> AutoNotify {
+        AutoNotify {
+            notify_chan: chan,
+
+            // Un-set above when taskgroup successfully made.
+            task_result: Some(Failure(UnwindReasonStr("AutoNotify::new()".into_send_str())))
+        }
+    }
 }
 
 impl Drop for AutoNotify {
     fn drop(&mut self) {
-        let result = if self.failed { Failure } else { Success };
-        self.notify_chan.send(result);
-    }
-}
+        let result = self.task_result.take_unwrap();
 
-fn AutoNotify(chan: Chan<TaskResult>) -> AutoNotify {
-    AutoNotify {
-        notify_chan: chan,
-        failed: true // Un-set above when taskgroup successfully made.
+        self.notify_chan.send(result);
     }
 }
 
@@ -675,10 +685,8 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
         let notify_chan = Cell::new(notify_chan);
-        let on_exit: ~fn(bool) = |success| {
-            notify_chan.take().send(
-                if success { Success } else { Failure }
-            )
+        let on_exit: ~fn(UnwindResult) = |task_result| {
+            notify_chan.take().send(task_result)
         };
         task.death.on_exit = Some(on_exit);
     }
@@ -721,7 +729,7 @@ fn test_spawn_raw_notify_success() {
     };
     do spawn_raw(opts) {
     }
-    assert_eq!(notify_po.recv(), Success);
+    assert!(notify_po.recv().is_success());
 }
 
 #[test]
@@ -738,5 +746,5 @@ fn test_spawn_raw_notify_failure() {
     do spawn_raw(opts) {
         fail!();
     }
-    assert_eq!(notify_po.recv(), Failure);
+    assert!(notify_po.recv().is_failure());
 }
