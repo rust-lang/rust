@@ -23,7 +23,7 @@ use util::logv;
 use std::cell::Cell;
 use std::rt::io;
 use std::rt::io::Writer;
-use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::Reader;
 use std::rt::io::file::FileInfo;
 use std::os;
 use std::str;
