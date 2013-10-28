@@ -918,7 +918,7 @@ mod tests {
         let m = Mutex::new();
         let m2 = m.clone();
 
-        let result: result::Result<(),()> = do task::try {
+        let result: result::Result<(), ~Any> = do task::try {
             do m2.lock {
                 fail!();
             }
@@ -935,7 +935,7 @@ mod tests {
         let m = Mutex::new();
         let m2 = m.clone();
 
-        let result: result::Result<(),()> = do task::try {
+        let result: result::Result<(), ~Any> = do task::try {
             let (p, c) = comm::stream();
             do task::spawn || { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
@@ -963,7 +963,7 @@ mod tests {
         let m2 = m.clone();
         let (p, c) = comm::stream();
 
-        let result: result::Result<(),()> = do task::try {
+        let result: result::Result<(), ~Any> = do task::try {
             let mut sibling_convos = ~[];
             do 2.times {
                 let (p, c) = comm::stream();
@@ -1272,7 +1272,7 @@ mod tests {
         let x = RWLock::new();
         let x2 = x.clone();
 
-        let result: result::Result<(),()> = do task::try || {
+        let result: result::Result<(), ~Any> = do task::try || {
             do lock_rwlock_in_mode(&x2, mode1) {
                 fail!();
             }

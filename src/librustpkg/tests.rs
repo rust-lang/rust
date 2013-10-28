@@ -640,9 +640,8 @@ fn test_install_invalid() {
                                   pkgid.clone());
         ctxt.install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything));
     };
-    // Not the best test -- doesn't test that we failed in the right way.
-    // Best we can do for now.
-    assert!(result == Err(()));
+    assert!(result.unwrap_err()
+            .to_str().contains("supplied path for package dir does not exist"));
 }
 
 #[test]

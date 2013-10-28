@@ -1899,6 +1899,7 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
     use rt::thread::Thread;
     use rt::task::Task;
     use rt::sched::{Shutdown, TaskFromFriend};
+    use rt::task::UnwindResult;
     do run_in_bare_thread {
         let sleepers = SleeperList::new();
         let work_queue1 = WorkQueue::new();
@@ -1916,10 +1917,10 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
         let handle2 = Cell::new(sched2.make_handle());
         let tasksFriendHandle = Cell::new(sched2.make_handle());
 
-        let on_exit: ~fn(bool) = |exit_status| {
+        let on_exit: ~fn(UnwindResult) = |exit_status| {
             handle1.take().send(Shutdown);
             handle2.take().send(Shutdown);
-            rtassert!(exit_status);
+            rtassert!(exit_status.is_success());
         };
 
         let test_function: ~fn() = || {
@@ -1978,6 +1979,7 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
     use rt::task::Task;
     use rt::comm::oneshot;
     use rt::sched::Shutdown;
+    use rt::task::UnwindResult;
     do run_in_bare_thread {
         let sleepers = SleeperList::new();
         let work_queue1 = WorkQueue::new();
@@ -2017,10 +2019,10 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
              */
         };
 
-        let on_exit: ~fn(bool) = |exit| {
+        let on_exit: ~fn(UnwindResult) = |exit| {
             handle1.take().send(Shutdown);
             handle2.take().send(Shutdown);
-            rtassert!(exit);
+            rtassert!(exit.is_success());
         };
 
         let task1 = Cell::new(~Task::new_root(&mut sched1.stack_pool, None, body1));
@@ -2088,6 +2090,7 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
     use rt::thread::Thread;
     use rt::task::Task;
     use rt::sched::{Shutdown};
+    use rt::task::UnwindResult;
     do run_in_bare_thread {
         let sleepers = SleeperList::new();
 
@@ -2108,14 +2111,14 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         let server_handle = Cell::new(server_sched.make_handle());
         let client_handle = Cell::new(client_sched.make_handle());
 
-        let server_on_exit: ~fn(bool) = |exit_status| {
+        let server_on_exit: ~fn(UnwindResult) = |exit_status| {
             server_handle.take().send(Shutdown);
-            rtassert!(exit_status);
+            rtassert!(exit_status.is_success());
         };
 
-        let client_on_exit: ~fn(bool) = |exit_status| {
+        let client_on_exit: ~fn(UnwindResult) = |exit_status| {
             client_handle.take().send(Shutdown);
-            rtassert!(exit_status);
+            rtassert!(exit_status.is_success());
         };
 
         let server_fn: ~fn() = || {
