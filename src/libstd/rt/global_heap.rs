@@ -19,7 +19,7 @@ extern {
 }
 
 #[inline]
-fn get_box_size(body_size: uint, body_align: uint) -> uint {
+pub fn get_box_size(body_size: uint, body_align: uint) -> uint {
     let header_size = size_of::<raw::Box<()>>();
     // FIXME (#2699): This alignment calculation is suspicious. Is it right?
     let total_size = align_to(header_size, body_align) + body_size;
