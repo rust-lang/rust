@@ -51,10 +51,9 @@ impl<A:Clone> Future<A> {
 
 impl<A> Future<A> {
     /// Gets the value from this future, forcing evaluation.
-    pub fn unwrap(self) -> A {
-        let mut this = self;
-        this.get_ref();
-        let state = replace(&mut this.state, Evaluating);
+    pub fn unwrap(mut self) -> A {
+        self.get_ref();
+        let state = replace(&mut self.state, Evaluating);
         match state {
             Forced(v) => v,
             _ => fail!( "Logic error." ),
