@@ -164,13 +164,6 @@ rust_uv_free_ip4_addr
 rust_uv_free_ip6_addr
 rust_initialize_rt_tls_key
 rust_dbg_next_port
-rust_new_memory_region
-rust_delete_memory_region
-rust_new_boxed_region
-rust_delete_boxed_region
-rust_boxed_region_malloc
-rust_boxed_region_realloc
-rust_boxed_region_free
 rust_try
 rust_begin_unwind
 rust_valgrind_stack_register

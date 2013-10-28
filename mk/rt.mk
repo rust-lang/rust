@@ -89,8 +89,6 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/miniz.cpp \
-              rt/memory_region.cpp \
-              rt/boxed_region.cpp \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
