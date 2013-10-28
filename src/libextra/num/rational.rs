@@ -57,6 +57,30 @@ impl<T: Clone + Integer + Ord>
         ret
     }
 
+    /// Convert to an integer.
+    #[inline]
+    pub fn to_integer(&self) -> T {
+        self.trunc().numer
+    }
+
+    /// Gets an immutable reference to the numerator.
+    #[inline]
+    pub fn numer<'a>(&'a self) -> &'a T {
+        &self.numer
+    }
+
+    /// Gets an immutable reference to the denominator.
+    #[inline]
+    pub fn denom<'a>(&'a self) -> &'a T {
+        &self.denom
+    }
+
+    /// Return true if the rational number is an integer (denominator is 1).
+    #[inline]
+    pub fn is_integer(&self) -> bool {
+        self.denom == One::one()
+    }
+
     /// Put self into lowest terms, with denom > 0.
     fn reduce(&mut self) {
         let g : T = self.numer.gcd(&self.denom);
@@ -359,6 +383,48 @@ mod test {
 
         assert!(_0 >= _0 && _1 >= _1);
         assert!(_1 >= _0 && !(_0 >= _1));
+    }
+
+
+    #[test]
+    fn test_to_integer() {
+        assert_eq!(_0.to_integer(), 0);
+        assert_eq!(_1.to_integer(), 1);
+        assert_eq!(_2.to_integer(), 2);
+        assert_eq!(_1_2.to_integer(), 0);
+        assert_eq!(_3_2.to_integer(), 1);
+        assert_eq!(_neg1_2.to_integer(), 0);
+    }
+
+
+    #[test]
+    fn test_numer() {
+        assert_eq!(_0.numer(), &0);
+        assert_eq!(_1.numer(), &1);
+        assert_eq!(_2.numer(), &2);
+        assert_eq!(_1_2.numer(), &1);
+        assert_eq!(_3_2.numer(), &3);
+        assert_eq!(_neg1_2.numer(), &(-1));
+    }
+    #[test]
+    fn test_denom() {
+        assert_eq!(_0.denom(), &1);
+        assert_eq!(_1.denom(), &1);
+        assert_eq!(_2.denom(), &1);
+        assert_eq!(_1_2.denom(), &2);
+        assert_eq!(_3_2.denom(), &2);
+        assert_eq!(_neg1_2.denom(), &2);
+    }
+
+
+    #[test]
+    fn test_is_integer() {
+        assert!(_0.is_integer());
+        assert!(_1.is_integer());
+        assert!(_2.is_integer());
+        assert!(!_1_2.is_integer());
+        assert!(!_3_2.is_integer());
+        assert!(!_neg1_2.is_integer());
     }
 
 
