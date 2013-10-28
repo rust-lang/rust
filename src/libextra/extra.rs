@@ -68,25 +68,12 @@ pub mod sort;
 pub mod dlist;
 pub mod treemap;
 
-// Crypto
-#[path="crypto/cryptoutil.rs"]
-mod cryptoutil;
-#[path="crypto/digest.rs"]
-pub mod digest;
-#[path="crypto/md5.rs"]
-pub mod md5;
-#[path="crypto/sha1.rs"]
-pub mod sha1;
-#[path="crypto/sha2.rs"]
-pub mod sha2;
-
 // And ... other stuff
 
 pub mod url;
 pub mod ebml;
 pub mod getopts;
 pub mod json;
-pub mod md4;
 pub mod tempfile;
 pub mod glob;
 pub mod term;
