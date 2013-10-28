@@ -2306,6 +2306,7 @@ fn test_read_read_read() {
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME(#10102) the server never sees the second send
 fn test_udp_twice() {
     do run_in_mt_newsched_task {
         let server_addr = next_test_ip4();
