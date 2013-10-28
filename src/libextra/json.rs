@@ -22,7 +22,6 @@ use std::f64;
 use std::hashmap::HashMap;
 use std::rt::io;
 use std::rt::io::Decorator;
-use std::rt::io::extensions::ReaderUtil;
 use std::rt::io::mem::MemWriter;
 use std::num;
 use std::str;
@@ -843,7 +842,7 @@ impl<T : Iterator<char>> Parser<T> {
 }
 
 /// Decodes a json value from an `&mut io::Reader`
-pub fn from_reader(mut rdr: &mut io::Reader) -> Result<Json, Error> {
+pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, Error> {
     let s = str::from_utf8(rdr.read_to_end());
     let mut parser = Parser(~s.iter());
     parser.parse()

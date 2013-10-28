@@ -242,10 +242,15 @@ Out of scope
 
 */
 
-use prelude::*;
-use to_str::ToStr;
-use str::{StrSlice, OwnedStr};
+use cast;
+use int;
 use path::Path;
+use prelude::*;
+use str::{StrSlice, OwnedStr};
+use to_str::ToStr;
+use uint;
+use unstable::finally::Finally;
+use vec;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -262,11 +267,6 @@ pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::Process;
-
-// Some extension traits that all Readers and Writers get.
-pub use self::extensions::ReaderUtil;
-pub use self::extensions::ReaderByteConversions;
-pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
 pub mod file;
@@ -422,6 +422,9 @@ pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
 }
 
 pub trait Reader {
+
+    // Only two methods which need to get implemented for this trait
+
     /// Read bytes, up to the length of `buf` and place them in `buf`.
     /// Returns the number of bytes read. The number of bytes read my
     /// be less than the number requested, even 0. Returns `None` on EOF.
@@ -459,6 +462,329 @@ pub trait Reader {
     ///
     /// Returns `true` on failure.
     fn eof(&mut self) -> bool;
+
+    // Convenient helper methods based on the above methods
+
+    /// Reads a single byte. Returns `None` on EOF.
+    ///
+    /// # Failure
+    ///
+    /// Raises the same conditions as the `read` method. Returns
+    /// `None` if the condition is handled.
+    fn read_byte(&mut self) -> Option<u8> {
+        let mut buf = [0];
+        match self.read(buf) {
+            Some(0) => {
+                debug!("read 0 bytes. trying again");
+                self.read_byte()
+            }
+            Some(1) => Some(buf[0]),
+            Some(_) => unreachable!(),
+            None => None
+        }
+    }
+
+    /// Reads `len` bytes and appends them to a vector.
+    ///
+    /// May push fewer than the requested number of bytes on error
+    /// or EOF. Returns true on success, false on EOF or error.
+    ///
+    /// # Failure
+    ///
+    /// Raises the same conditions as `read`. Additionally raises `io_error`
+    /// on EOF. If `io_error` is handled then `push_bytes` may push less
+    /// than the requested number of bytes.
+    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) {
+        unsafe {
+            let start_len = buf.len();
+            let mut total_read = 0;
+
+            buf.reserve_additional(len);
+            vec::raw::set_len(buf, start_len + len);
+
+            do (|| {
+                while total_read < len {
+                    let len = buf.len();
+                    let slice = buf.mut_slice(start_len + total_read, len);
+                    match self.read(slice) {
+                        Some(nread) => {
+                            total_read += nread;
+                        }
+                        None => {
+                            io_error::cond.raise(standard_error(EndOfFile));
+                            break;
+                        }
+                    }
+                }
+            }).finally {
+                vec::raw::set_len(buf, start_len + total_read);
+            }
+        }
+    }
+
+    /// Reads `len` bytes and gives you back a new vector of length `len`
+    ///
+    /// # Failure
+    ///
+    /// Raises the same conditions as `read`. Additionally raises `io_error`
+    /// on EOF. If `io_error` is handled then the returned vector may
+    /// contain less than the requested number of bytes.
+    fn read_bytes(&mut self, len: uint) -> ~[u8] {
+        let mut buf = vec::with_capacity(len);
+        self.push_bytes(&mut buf, len);
+        return buf;
+    }
+
+    /// Reads all remaining bytes from the stream.
+    ///
+    /// # Failure
+    ///
+    /// Raises the same conditions as the `read` method.
+    fn read_to_end(&mut self) -> ~[u8] {
+        let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
+        let mut keep_reading = true;
+        do io_error::cond.trap(|e| {
+            if e.kind == EndOfFile {
+                keep_reading = false;
+            } else {
+                io_error::cond.raise(e)
+            }
+        }).inside {
+            while keep_reading {
+                self.push_bytes(&mut buf, DEFAULT_BUF_SIZE)
+            }
+        }
+        return buf;
+    }
+
+    /// Create an iterator that reads a single byte on
+    /// each iteration, until EOF.
+    ///
+    /// # Failure
+    ///
+    /// Raises the same conditions as the `read` method, for
+    /// each call to its `.next()` method.
+    /// Ends the iteration if the condition is handled.
+    fn bytes(self) -> extensions::ByteIterator<Self> {
+        extensions::ByteIterator::new(self)
+    }
+
+    // Byte conversion helpers
+
+    /// Reads `n` little-endian unsigned integer bytes.
+    ///
+    /// `n` must be between 1 and 8, inclusive.
+    fn read_le_uint_n(&mut self, nbytes: uint) -> u64 {
+        assert!(nbytes > 0 && nbytes <= 8);
+
+        let mut val = 0u64;
+        let mut pos = 0;
+        let mut i = nbytes;
+        while i > 0 {
+            val += (self.read_u8() as u64) << pos;
+            pos += 8;
+            i -= 1;
+        }
+        val
+    }
+
+    /// Reads `n` little-endian signed integer bytes.
+    ///
+    /// `n` must be between 1 and 8, inclusive.
+    fn read_le_int_n(&mut self, nbytes: uint) -> i64 {
+        extend_sign(self.read_le_uint_n(nbytes), nbytes)
+    }
+
+    /// Reads `n` big-endian unsigned integer bytes.
+    ///
+    /// `n` must be between 1 and 8, inclusive.
+    fn read_be_uint_n(&mut self, nbytes: uint) -> u64 {
+        assert!(nbytes > 0 && nbytes <= 8);
+
+        let mut val = 0u64;
+        let mut i = nbytes;
+        while i > 0 {
+            i -= 1;
+            val += (self.read_u8() as u64) << i * 8;
+        }
+        val
+    }
+
+    /// Reads `n` big-endian signed integer bytes.
+    ///
+    /// `n` must be between 1 and 8, inclusive.
+    fn read_be_int_n(&mut self, nbytes: uint) -> i64 {
+        extend_sign(self.read_be_uint_n(nbytes), nbytes)
+    }
+
+    /// Reads a little-endian unsigned integer.
+    ///
+    /// The number of bytes returned is system-dependant.
+    fn read_le_uint(&mut self) -> uint {
+        self.read_le_uint_n(uint::bytes) as uint
+    }
+
+    /// Reads a little-endian integer.
+    ///
+    /// The number of bytes returned is system-dependant.
+    fn read_le_int(&mut self) -> int {
+        self.read_le_int_n(int::bytes) as int
+    }
+
+    /// Reads a big-endian unsigned integer.
+    ///
+    /// The number of bytes returned is system-dependant.
+    fn read_be_uint(&mut self) -> uint {
+        self.read_be_uint_n(uint::bytes) as uint
+    }
+
+    /// Reads a big-endian integer.
+    ///
+    /// The number of bytes returned is system-dependant.
+    fn read_be_int(&mut self) -> int {
+        self.read_be_int_n(int::bytes) as int
+    }
+
+    /// Reads a big-endian `u64`.
+    ///
+    /// `u64`s are 8 bytes long.
+    fn read_be_u64(&mut self) -> u64 {
+        self.read_be_uint_n(8) as u64
+    }
+
+    /// Reads a big-endian `u32`.
+    ///
+    /// `u32`s are 4 bytes long.
+    fn read_be_u32(&mut self) -> u32 {
+        self.read_be_uint_n(4) as u32
+    }
+
+    /// Reads a big-endian `u16`.
+    ///
+    /// `u16`s are 2 bytes long.
+    fn read_be_u16(&mut self) -> u16 {
+        self.read_be_uint_n(2) as u16
+    }
+
+    /// Reads a big-endian `i64`.
+    ///
+    /// `i64`s are 8 bytes long.
+    fn read_be_i64(&mut self) -> i64 {
+        self.read_be_int_n(8) as i64
+    }
+
+    /// Reads a big-endian `i32`.
+    ///
+    /// `i32`s are 4 bytes long.
+    fn read_be_i32(&mut self) -> i32 {
+        self.read_be_int_n(4) as i32
+    }
+
+    /// Reads a big-endian `i16`.
+    ///
+    /// `i16`s are 2 bytes long.
+    fn read_be_i16(&mut self) -> i16 {
+        self.read_be_int_n(2) as i16
+    }
+
+    /// Reads a big-endian `f64`.
+    ///
+    /// `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
+    fn read_be_f64(&mut self) -> f64 {
+        unsafe {
+            cast::transmute::<u64, f64>(self.read_be_u64())
+        }
+    }
+
+    /// Reads a big-endian `f32`.
+    ///
+    /// `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
+    fn read_be_f32(&mut self) -> f32 {
+        unsafe {
+            cast::transmute::<u32, f32>(self.read_be_u32())
+        }
+    }
+
+    /// Reads a little-endian `u64`.
+    ///
+    /// `u64`s are 8 bytes long.
+    fn read_le_u64(&mut self) -> u64 {
+        self.read_le_uint_n(8) as u64
+    }
+
+    /// Reads a little-endian `u32`.
+    ///
+    /// `u32`s are 4 bytes long.
+    fn read_le_u32(&mut self) -> u32 {
+        self.read_le_uint_n(4) as u32
+    }
+
+    /// Reads a little-endian `u16`.
+    ///
+    /// `u16`s are 2 bytes long.
+    fn read_le_u16(&mut self) -> u16 {
+        self.read_le_uint_n(2) as u16
+    }
+
+    /// Reads a little-endian `i64`.
+    ///
+    /// `i64`s are 8 bytes long.
+    fn read_le_i64(&mut self) -> i64 {
+        self.read_le_int_n(8) as i64
+    }
+
+    /// Reads a little-endian `i32`.
+    ///
+    /// `i32`s are 4 bytes long.
+    fn read_le_i32(&mut self) -> i32 {
+        self.read_le_int_n(4) as i32
+    }
+
+    /// Reads a little-endian `i16`.
+    ///
+    /// `i16`s are 2 bytes long.
+    fn read_le_i16(&mut self) -> i16 {
+        self.read_le_int_n(2) as i16
+    }
+
+    /// Reads a little-endian `f64`.
+    ///
+    /// `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
+    fn read_le_f64(&mut self) -> f64 {
+        unsafe {
+            cast::transmute::<u64, f64>(self.read_le_u64())
+        }
+    }
+
+    /// Reads a little-endian `f32`.
+    ///
+    /// `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
+    fn read_le_f32(&mut self) -> f32 {
+        unsafe {
+            cast::transmute::<u32, f32>(self.read_le_u32())
+        }
+    }
+
+    /// Read a u8.
+    ///
+    /// `u8`s are 1 byte.
+    fn read_u8(&mut self) -> u8 {
+        match self.read_byte() {
+            Some(b) => b as u8,
+            None => 0
+        }
+    }
+
+    /// Read an i8.
+    ///
+    /// `i8`s are 1 byte.
+    fn read_i8(&mut self) -> i8 {
+        match self.read_byte() {
+            Some(b) => b as i8,
+            None => 0
+        }
+    }
+
 }
 
 impl Reader for ~Reader {
@@ -471,6 +797,11 @@ impl<'self> Reader for &'self mut Reader {
     fn eof(&mut self) -> bool { self.eof() }
 }
 
+fn extend_sign(val: u64, nbytes: uint) -> i64 {
+    let shift = (8 - nbytes) * 8;
+    (val << shift) as i64 >> shift
+}
+
 pub trait Writer {
     /// Write the given buffer
     ///
@@ -481,6 +812,136 @@ pub trait Writer {
 
     /// Flush output
     fn flush(&mut self);
+
+    /// Write the result of passing n through `int::to_str_bytes`.
+    fn write_int(&mut self, n: int) {
+        int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+    }
+
+    /// Write the result of passing n through `uint::to_str_bytes`.
+    fn write_uint(&mut self, n: uint) {
+        uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+    }
+
+    /// Write a little-endian uint (number of bytes depends on system).
+    fn write_le_uint(&mut self, n: uint) {
+        extensions::u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
+    }
+
+    /// Write a little-endian int (number of bytes depends on system).
+    fn write_le_int(&mut self, n: int) {
+        extensions::u64_to_le_bytes(n as u64, int::bytes, |v| self.write(v))
+    }
+
+    /// Write a big-endian uint (number of bytes depends on system).
+    fn write_be_uint(&mut self, n: uint) {
+        extensions::u64_to_be_bytes(n as u64, uint::bytes, |v| self.write(v))
+    }
+
+    /// Write a big-endian int (number of bytes depends on system).
+    fn write_be_int(&mut self, n: int) {
+        extensions::u64_to_be_bytes(n as u64, int::bytes, |v| self.write(v))
+    }
+
+    /// Write a big-endian u64 (8 bytes).
+    fn write_be_u64(&mut self, n: u64) {
+        extensions::u64_to_be_bytes(n, 8u, |v| self.write(v))
+    }
+
+    /// Write a big-endian u32 (4 bytes).
+    fn write_be_u32(&mut self, n: u32) {
+        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    /// Write a big-endian u16 (2 bytes).
+    fn write_be_u16(&mut self, n: u16) {
+        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    /// Write a big-endian i64 (8 bytes).
+    fn write_be_i64(&mut self, n: i64) {
+        extensions::u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
+    }
+
+    /// Write a big-endian i32 (4 bytes).
+    fn write_be_i32(&mut self, n: i32) {
+        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    /// Write a big-endian i16 (2 bytes).
+    fn write_be_i16(&mut self, n: i16) {
+        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
+    fn write_be_f64(&mut self, f: f64) {
+        unsafe {
+            self.write_be_u64(cast::transmute(f))
+        }
+    }
+
+    /// Write a big-endian IEEE754 single-precision floating-point (4 bytes).
+    fn write_be_f32(&mut self, f: f32) {
+        unsafe {
+            self.write_be_u32(cast::transmute(f))
+        }
+    }
+
+    /// Write a little-endian u64 (8 bytes).
+    fn write_le_u64(&mut self, n: u64) {
+        extensions::u64_to_le_bytes(n, 8u, |v| self.write(v))
+    }
+
+    /// Write a little-endian u32 (4 bytes).
+    fn write_le_u32(&mut self, n: u32) {
+        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    /// Write a little-endian u16 (2 bytes).
+    fn write_le_u16(&mut self, n: u16) {
+        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    /// Write a little-endian i64 (8 bytes).
+    fn write_le_i64(&mut self, n: i64) {
+        extensions::u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
+    }
+
+    /// Write a little-endian i32 (4 bytes).
+    fn write_le_i32(&mut self, n: i32) {
+        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    /// Write a little-endian i16 (2 bytes).
+    fn write_le_i16(&mut self, n: i16) {
+        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    /// Write a little-endian IEEE754 double-precision floating-point
+    /// (8 bytes).
+    fn write_le_f64(&mut self, f: f64) {
+        unsafe {
+            self.write_le_u64(cast::transmute(f))
+        }
+    }
+
+    /// Write a little-endian IEEE754 single-precision floating-point
+    /// (4 bytes).
+    fn write_le_f32(&mut self, f: f32) {
+        unsafe {
+            self.write_le_u32(cast::transmute(f))
+        }
+    }
+
+    /// Write a u8 (1 byte).
+    fn write_u8(&mut self, n: u8) {
+        self.write([n])
+    }
+
+    /// Write a i8 (1 byte).
+    fn write_i8(&mut self, n: i8) {
+        self.write([n as u8])
+    }
 }
 
 impl Writer for ~Writer {

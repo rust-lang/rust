@@ -12,7 +12,6 @@
 
 use option::{Some, None};
 use rt::io::Reader;
-use rt::io::ReaderByteConversions;
 
 use rand::Rng;
 
@@ -51,17 +50,17 @@ impl<R: Reader> Rng for ReaderRng<R> {
         // platform just involves blitting the bytes into the memory
         // of the u32, similarly for BE on BE; avoiding byteswapping.
         if cfg!(target_endian="little") {
-            self.reader.read_le_u32_()
+            self.reader.read_le_u32()
         } else {
-            self.reader.read_be_u32_()
+            self.reader.read_be_u32()
         }
     }
     fn next_u64(&mut self) -> u64 {
         // see above for explanation.
         if cfg!(target_endian="little") {
-            self.reader.read_le_u64_()
+            self.reader.read_le_u64()
         } else {
-            self.reader.read_be_u64_()
+            self.reader.read_be_u64()
         }
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {

@@ -19,7 +19,7 @@ use libc;
 use prelude::*;
 use rt::io::process;
 use rt::io;
-use rt::io::extensions::ReaderUtil;
+use rt::io::Reader;
 use task;
 
 /**

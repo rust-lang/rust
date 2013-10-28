@@ -37,7 +37,7 @@ use middle::lint;
 
 use std::comm;
 use std::rt::io;
-use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::Reader;
 use std::num;
 use std::os;
 use std::result;
