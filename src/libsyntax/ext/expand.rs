@@ -566,12 +566,11 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
             // oh dear heaven... this is going to include the enum names, as well....
             // ... but that should be okay, as long as the new names are gensyms
             // for the old ones.
-            let idents = @mut ~[];
-            let name_finder = new_name_finder(idents);
+            let mut name_finder = new_name_finder(~[]);
             name_finder.visit_pat(expanded_pat,());
             // generate fresh names, push them to a new pending list
             let new_pending_renames = @mut ~[];
-            for ident in idents.iter() {
+            for ident in name_finder.ident_accumulator.iter() {
                 let new_name = fresh_name(ident);
                 new_pending_renames.push((*ident,new_name));
             }
@@ -609,7 +608,7 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
 // array (passed in to the traversal)
 #[deriving(Clone)]
 struct NewNameFinderContext {
-    ident_accumulator: @mut ~[ast::Ident],
+    ident_accumulator: ~[ast::Ident],
 }
 
 impl Visitor<()> for NewNameFinderContext {
@@ -653,50 +652,13 @@ impl Visitor<()> for NewNameFinderContext {
 
 }
 
-// a visitor that extracts the paths
-// from a given thingy and puts them in a mutable
-// array (passed in to the traversal)
-#[deriving(Clone)]
-struct NewPathExprFinderContext {
-    path_accumulator: @mut ~[ast::Path],
-}
-
-impl Visitor<()> for NewPathExprFinderContext {
-
-    fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
-        match *expr {
-            ast::Expr{id:_,span:_,node:ast::ExprPath(ref p)} => {
-                self.path_accumulator.push(p.clone());
-                // not calling visit_path, should be fine.
-            }
-            _ => visit::walk_expr(self,expr,())
-        }
-    }
-
-    fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
-        visit::walk_ty(self, typ, ())
-    }
-
-}
-
 // return a visitor that extracts the pat_ident paths
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
-pub fn new_name_finder(idents: @mut ~[ast::Ident]) -> @mut Visitor<()> {
-    let context = @mut NewNameFinderContext {
+pub fn new_name_finder(idents: ~[ast::Ident]) -> NewNameFinderContext {
+    NewNameFinderContext {
         ident_accumulator: idents,
-    };
-    context as @mut Visitor<()>
-}
-
-// return a visitor that extracts the paths
-// from a given pattern and puts them in a mutable
-// array (passed in to the traversal)
-pub fn new_path_finder(paths: @mut ~[ast::Path]) -> @mut Visitor<()> {
-    let context = @mut NewPathExprFinderContext {
-        path_accumulator: paths,
-    };
-    context as @mut Visitor<()>
+    }
 }
 
 // expand a block. pushes a new exts_frame, then calls expand_block_elts
@@ -1371,6 +1333,42 @@ mod test {
     use util::parser_testing::{string_to_crate, string_to_crate_and_sess};
     use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
     use visit;
+    use visit::Visitor;
+
+    // a visitor that extracts the paths
+    // from a given thingy and puts them in a mutable
+    // array (passed in to the traversal)
+    #[deriving(Clone)]
+    struct NewPathExprFinderContext {
+        path_accumulator: ~[ast::Path],
+    }
+
+    impl Visitor<()> for NewPathExprFinderContext {
+
+        fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
+            match *expr {
+                ast::Expr{id:_,span:_,node:ast::ExprPath(ref p)} => {
+                    self.path_accumulator.push(p.clone());
+                    // not calling visit_path, should be fine.
+                }
+                _ => visit::walk_expr(self,expr,())
+            }
+        }
+
+        fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
+            visit::walk_ty(self, typ, ())
+        }
+
+    }
+
+    // return a visitor that extracts the paths
+    // from a given pattern and puts them in a mutable
+    // array (passed in to the traversal)
+    pub fn new_path_finder(paths: ~[ast::Path]) -> NewPathExprFinderContext {
+        NewPathExprFinderContext {
+            path_accumulator: paths
+        }
+    }
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -1498,10 +1496,11 @@ mod test {
         let renamer = new_rename_folder(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
                                         a2_name);
         let renamed_ast = renamer.fold_crate(item_ast.clone());
-        let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs), &renamed_ast, ());
-        match varrefs {
-            @[ast::Path{segments:[ref seg],_}] =>
+        let mut path_finder = new_path_finder(~[]);
+        visit::walk_crate(&mut path_finder, &renamed_ast, ());
+
+        match path_finder.path_accumulator {
+            [ast::Path{segments:[ref seg],_}] =>
                 assert_eq!(mtwt_resolve(seg.identifier),a2_name),
             _ => assert_eq!(0,1)
         }
@@ -1513,10 +1512,10 @@ mod test {
         let pending_renames = @mut ~[(ast::Ident::new(a_name),a2_name),
                                      (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)];
         let double_renamed = renames_to_fold(pending_renames).fold_crate(item_ast);
-        let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs), &double_renamed, ());
-        match varrefs {
-            @[ast::Path{segments:[ref seg],_}] =>
+        let mut path_finder = new_path_finder(~[]);
+        visit::walk_crate(&mut path_finder, &double_renamed, ());
+        match path_finder.path_accumulator {
+            [ast::Path{segments:[ref seg],_}] =>
                 assert_eq!(mtwt_resolve(seg.identifier),a3_name),
             _ => assert_eq!(0,1)
         }
@@ -1623,11 +1622,15 @@ mod test {
         };
         let cr = expand_crate_str(teststr.to_managed());
         // find the bindings:
-        let bindings = @mut ~[];
-        visit::walk_crate(&mut new_name_finder(bindings),&cr,());
+        let mut name_finder = new_name_finder(~[]);
+        visit::walk_crate(&mut name_finder,&cr,());
+        let bindings = name_finder.ident_accumulator;
+
         // find the varrefs:
-        let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs),&cr,());
+        let mut path_finder = new_path_finder(~[]);
+        visit::walk_crate(&mut path_finder,&cr,());
+        let varrefs = path_finder.path_accumulator;
+
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
@@ -1686,8 +1689,10 @@ foo_module!()
 ";
         let cr = expand_crate_str(crate_str);
         // find the xx binding
-        let bindings = @mut ~[];
-        visit::walk_crate(&mut new_name_finder(bindings), &cr, ());
+        let mut name_finder = new_name_finder(~[]);
+        visit::walk_crate(&mut name_finder, &cr, ());
+        let bindings = name_finder.ident_accumulator;
+
         let cxbinds : ~[&ast::Ident] =
             bindings.iter().filter(|b|{@"xx" == (ident_to_str(*b))}).collect();
         let cxbind = match cxbinds {
@@ -1696,8 +1701,10 @@ foo_module!()
         };
         let resolved_binding = mtwt_resolve(*cxbind);
         // find all the xx varrefs:
-        let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs), &cr, ());
+        let mut path_finder = new_path_finder(~[]);
+        visit::walk_crate(&mut path_finder, &cr, ());
+        let varrefs = path_finder.path_accumulator;
+
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p|{ p.segments.len() == 1
                                           && (@"xx" == (ident_to_str(&p.segments[0].identifier)))
@@ -1723,10 +1730,10 @@ foo_module!()
     #[test]
     fn pat_idents(){
         let pat = string_to_pat(@"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
-        let idents = @mut ~[];
-        let pat_idents = new_name_finder(idents);
+        let mut pat_idents = new_name_finder(~[]);
         pat_idents.visit_pat(pat, ());
-        assert_eq!(idents, @mut strs_to_idents(~["a","c","b","d"]));
+        assert_eq!(pat_idents.ident_accumulator,
+                   strs_to_idents(~["a","c","b","d"]));
     }
 
 }
