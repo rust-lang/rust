@@ -340,7 +340,7 @@ pub struct Parser {
     mod_path_stack: @mut ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: @mut ~[Span]
-    ///	removed empty drop function and added a priv new_field of type std::util::NonCopyable
+    /* do not copy the parser; its state is tied to outside state */
     priv new_field: util::NonCopyable
 }
 
