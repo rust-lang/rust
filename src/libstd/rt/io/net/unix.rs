@@ -243,7 +243,8 @@ mod tests {
             let mut stop = false;
             while !stop{
                 do io_error::cond.trap(|e| {
-                    assert_eq!(e.kind, BrokenPipe);
+                    assert!(e.kind == BrokenPipe || e.kind == NotConnected,
+                            "unknown error {:?}", e);
                     stop = true;
                 }).inside {
                     server.write(buf);
