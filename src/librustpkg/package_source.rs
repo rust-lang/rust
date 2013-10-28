@@ -422,6 +422,8 @@ impl PkgSrc {
                                 fail!("Bad kind in build_crates")
                             });
                     }
+                    debug!("Compiling crate {}; its output will be in {}",
+                           subpath.display(), sub_dir.display());
                     let result = compile_crate(&subcx,
                                                exec,
                                                &id,
@@ -473,8 +475,8 @@ impl PkgSrc {
         let tests = self.tests.clone();
         let benchs = self.benchs.clone();
         debug!("Building libs in {}, destination = {}",
-               self.destination_workspace.display(),
-               self.destination_workspace.display());
+               self.source_workspace.display(),
+               self.build_workspace().display());
         self.build_crates(build_context,
                           &mut deps,
                           libs,

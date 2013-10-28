@@ -1512,6 +1512,30 @@ fn rust_path_hack_build_no_arg() {
 }
 
 #[test]
+fn rust_path_hack_build_with_dependency() {
+    let foo_id = PkgId::new("foo");
+    let dep_id = PkgId::new("dep");
+    // Tests that when --rust-path-hack is in effect, dependencies get built
+    // into the destination workspace and not the source directory
+    let work_dir = create_local_package(&foo_id);
+    let work_dir = work_dir.path();
+    let dep_workspace = create_local_package(&dep_id);
+    let dep_workspace = dep_workspace.path();
+    let dest_workspace = mk_emptier_workspace("dep");
+    let dest_workspace = dest_workspace.path();
+    let source_dir = work_dir.join_many(["src", "foo-0.1"]);
+    writeFile(&source_dir.join("lib.rs"), "extern mod dep; pub fn f() { }");
+    let dep_dir = dep_workspace.join_many(["src", "dep-0.1"]);
+    let rust_path = Some(~[(~"RUST_PATH",
+                          format!("{}:{}",
+                                  dest_workspace.display(),
+                                  dep_dir.display()))]);
+    command_line_test_with_env([~"build", ~"--rust-path-hack", ~"foo"], work_dir, rust_path);
+    assert_built_library_exists(dest_workspace, "dep");
+    assert!(!built_library_exists(dep_workspace, "dep"));
+}
+
+#[test]
 fn rust_path_install_target() {
     let dir_for_path = TempDir::new(
         "source_workspace").expect("rust_path_install_target failed");
