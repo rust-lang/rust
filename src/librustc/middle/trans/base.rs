@@ -469,8 +469,40 @@ pub fn set_inline_hint(f: ValueRef) {
     lib::llvm::SetFunctionAttribute(f, lib::llvm::InlineHintAttribute)
 }
 
+pub fn set_llvm_linkage_attr(attrs: &[ast::Attribute], ll: ValueRef) {
+    use lib::llvm::*;
+    use syntax::attr::*;
+
+    // Convert to the LLVM linkage values.
+    let linkage = match find_linkage_attr(attrs) {
+        LinkageDefault => { return; },
+        LinkageExternal => ExternalLinkage,
+        LinkageAvailableExternally => AvailableExternallyLinkage,
+        LinkageLinkOnceAny => LinkOnceAnyLinkage,
+        LinkageLinkOnceODR => LinkOnceODRLinkage,
+        LinkageLinkOnceODRAutoHide => LinkOnceODRAutoHideLinkage,
+        LinkageWeakAny => WeakAnyLinkage,
+        LinkageWeakODR => WeakODRLinkage,
+        LinkageAppending => AppendingLinkage,
+        LinkageInternal => InternalLinkage,
+        LinkagePrivate => PrivateLinkage,
+        LinkageDLLImport => DLLImportLinkage,
+        LinkageDLLExport => DLLExportLinkage,
+        LinkageExternalWeak => ExternalWeakLinkage,
+        LinkageGhost => GhostLinkage,
+        LinkageCommon => CommonLinkage,
+        LinkageLinkerPrivate => LinkerPrivateLinkage,
+        LinkageLinkerPrivateWeak => LinkerPrivateWeakLinkage
+    };
+    lib::llvm::SetLinkage(ll, linkage);
+}
+
 pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
+
+    // Change the function linkage if requested.
+    set_llvm_linkage_attr(attrs, llfn);
+
     // Set the inline hint if there is one
     match find_inline_attr(attrs) {
         InlineHint   => set_inline_hint(llfn),
@@ -2608,9 +2640,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     let ty = type_of(ccx, ty);
                                     llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
                                 };
-                                if attr::contains_name(ni.attrs, "weak_linkage") {
-                                    lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
-                                }
+                                set_llvm_linkage_attr(ni.attrs, g);
                                 g
                             }
                         }
