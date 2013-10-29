@@ -317,19 +317,19 @@ pub fn require_same_types(
 
 // a list of mapping from in-scope-region-names ("isr") to the
 // corresponding ty::Region
-pub type isr_alist = @List<(ty::bound_region, ty::Region)>;
+pub type isr_alist = @List<(ty::BoundRegion, ty::Region)>;
 
 trait get_and_find_region {
-    fn get(&self, br: ty::bound_region) -> ty::Region;
-    fn find(&self, br: ty::bound_region) -> Option<ty::Region>;
+    fn get(&self, br: ty::BoundRegion) -> ty::Region;
+    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region>;
 }
 
 impl get_and_find_region for isr_alist {
-    fn get(&self, br: ty::bound_region) -> ty::Region {
+    fn get(&self, br: ty::BoundRegion) -> ty::Region {
         self.find(br).unwrap()
     }
 
-    fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
+    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region> {
         let mut ret = None;
         do list::each(*self) |isr| {
             let (isr_br, isr_r) = *isr;

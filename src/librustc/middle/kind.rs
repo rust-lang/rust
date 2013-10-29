@@ -545,7 +545,7 @@ pub fn check_cast_for_escaping_regions(
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item).
-    if target_regions.iter().any(|r| is_re_scope(*r)) {
+    if target_regions.iter().any(|r| is_ReScope(*r)) {
         return; /* case (1) */
     }
 
@@ -584,9 +584,9 @@ pub fn check_cast_for_escaping_regions(
             }
         });
 
-    fn is_re_scope(r: ty::Region) -> bool {
+    fn is_ReScope(r: ty::Region) -> bool {
         match r {
-            ty::re_scope(*) => true,
+            ty::ReScope(*) => true,
             _ => false
         }
     }

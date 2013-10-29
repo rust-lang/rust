@@ -181,7 +181,7 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     let adjustment = cx.tcx.adjustments.find_copy(&e.id);
     match adjustment {
         None => { }
-        Some(@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
+        Some(@ty::AutoAddEnv(ty::ReStatic, ast::BorrowedSigil)) => {
             llconst = C_struct([llconst, C_null(Type::opaque_box(cx).ptr_to())], false)
         }
         Some(@ty::AutoAddEnv(ref r, ref s)) => {
@@ -211,11 +211,11 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
                     };
                     match *autoref {
                         ty::AutoUnsafe(m) |
-                        ty::AutoPtr(ty::re_static, m) => {
+                        ty::AutoPtr(ty::ReStatic, m) => {
                             assert!(m != ast::MutMutable);
                             llconst = llptr;
                         }
-                        ty::AutoBorrowVec(ty::re_static, m) => {
+                        ty::AutoBorrowVec(ty::ReStatic, m) => {
                             assert!(m != ast::MutMutable);
                             assert_eq!(abi::slice_elt_base, 0);
                             assert_eq!(abi::slice_elt_len, 1);

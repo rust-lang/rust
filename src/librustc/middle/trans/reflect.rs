@@ -59,7 +59,7 @@ impl Reflector {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
-        let str_vstore = ty::vstore_slice(ty::re_static);
+        let str_vstore = ty::vstore_slice(ty::ReStatic);
         let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
         let scratch = scratch_datum(bcx, str_ty, "", false);
         let len = C_uint(bcx.ccx(), s.len());

@@ -87,23 +87,23 @@ pub fn ast_region_to_region(
         }
 
         Some(&ast::DefStaticRegion) => {
-            ty::re_static
+            ty::ReStatic
         }
 
-        Some(&ast::DefFnBoundRegion(binder_id, _, id)) => {
-            ty::re_fn_bound(binder_id, ty::br_named(ast_util::local_def(id),
-                                                    lifetime.ident))
+        Some(&ast::DefLateBoundRegion(binder_id, _, id)) => {
+            ty::ReLateBound(binder_id, ty::BrNamed(ast_util::local_def(id),
+                                                   lifetime.ident))
         }
 
-        Some(&ast::DefTypeBoundRegion(index, id)) => {
-            ty::re_type_bound(id, index, lifetime.ident)
+        Some(&ast::DefEarlyBoundRegion(index, id)) => {
+            ty::ReEarlyBound(id, index, lifetime.ident)
         }
 
         Some(&ast::DefFreeRegion(scope_id, id)) => {
-            ty::re_free(ty::FreeRegion {
+            ty::ReFree(ty::FreeRegion {
                     scope_id: scope_id,
-                    bound_region: ty::br_named(ast_util::local_def(id),
-                                               lifetime.ident)
+                    bound_region: ty::BrNamed(ast_util::local_def(id),
+                                              lifetime.ident)
                 })
         }
     };
@@ -133,7 +133,7 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
                     debug!("optional region in illegal location");
                     this.tcx().sess.span_err(
                         default_span, "missing lifetime specifier");
-                    ty::re_static
+                    ty::ReStatic
                 }
 
                 Some(rs) => {
@@ -190,7 +190,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         match anon_regions {
             Some(v) => opt_vec::from(v),
             None => opt_vec::from(vec::from_fn(expected_num_region_params,
-                                               |_| ty::re_static)) // hokey
+                                               |_| ty::ReStatic)) // hokey
         }
     };
 
@@ -431,7 +431,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
           let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, match f.sigil {
               // Use corresponding trait store to figure out default bounds
               // if none were specified.
-              ast::BorrowedSigil => ty::RegionTraitStore(ty::re_empty), // dummy region
+              ast::BorrowedSigil => ty::RegionTraitStore(ty::ReEmpty), // dummy region
               ast::OwnedSigil    => ty::UniqTraitStore,
               ast::ManagedSigil  => ty::BoxTraitStore,
           });
@@ -713,7 +713,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
                 ast::OwnedSigil | ast::ManagedSigil => {
                     // @fn(), ~fn() default to static as the bound
                     // on their upvars:
-                    ty::re_static
+                    ty::ReStatic
                 }
                 ast::BorrowedSigil => {
                     // &fn() defaults as normal for an omitted lifetime:
@@ -803,7 +803,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
         // @Trait is sugar for @Trait:'static.
         // &'static Trait is sugar for &'static Trait:'static.
         (&None, ty::BoxTraitStore) |
-        (&None, ty::RegionTraitStore(ty::re_static)) => {
+        (&None, ty::RegionTraitStore(ty::ReStatic)) => {
             let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundStatic); set
         }
         // &'r Trait is sugar for &'r Trait:<no-bounds>.

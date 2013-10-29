@@ -216,11 +216,11 @@ pub enum RegionVariableOrigin {
 
     // Region variables created for bound regions
     // in a function or method that is called
-    BoundRegionInFnCall(Span, ty::bound_region),
+    BoundRegionInFnCall(Span, ty::BoundRegion),
 
     // Region variables created for bound regions
     // when doing subtyping/lub/glb computations
-    BoundRegionInFnType(Span, ty::bound_region),
+    BoundRegionInFnType(Span, ty::BoundRegion),
 
     BoundRegionInTypeOrImpl(Span),
 
@@ -638,7 +638,7 @@ impl InferCtxt {
     }
 
     pub fn next_region_var(&mut self, origin: RegionVariableOrigin) -> ty::Region {
-        ty::re_infer(ty::ReVar(self.region_vars.new_region_var(origin)))
+        ty::ReInfer(ty::ReVar(self.region_vars.new_region_var(origin)))
     }
 
     pub fn next_region_vars(&mut self,
@@ -798,7 +798,7 @@ impl InferCtxt {
                                                     trace: TypeTrace,
                                                     fsig: &ty::FnSig)
                                                     -> (ty::FnSig,
-                                                        HashMap<ty::bound_region,
+                                                        HashMap<ty::BoundRegion,
                                                                 ty::Region>) {
         let (map, _, fn_sig) =
             replace_bound_regions_in_fn_sig(self.tcx, None, fsig, |br| {
@@ -933,13 +933,13 @@ impl Repr for RegionVariableOrigin {
             AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
             Autoref(a) => format!("Autoref({})", a.repr(tcx)),
             Coercion(a) => format!("Coercion({})", a.repr(tcx)),
-            BoundRegionInFnCall(a, b) => format!("BoundRegionInFnCall({},{})",
+            BoundRegionInFnCall(a, b) => format!("bound_regionInFnCall({},{})",
                                               a.repr(tcx), b.repr(tcx)),
-            BoundRegionInFnType(a, b) => format!("BoundRegionInFnType({},{})",
+            BoundRegionInFnType(a, b) => format!("bound_regionInFnType({},{})",
                                               a.repr(tcx), b.repr(tcx)),
-            BoundRegionInTypeOrImpl(a) => format!("BoundRegionInTypeOrImpl({})",
+            BoundRegionInTypeOrImpl(a) => format!("bound_regionInTypeOrImpl({})",
                                                a.repr(tcx)),
-            BoundRegionInCoherence => format!("BoundRegionInCoherence"),
+            BoundRegionInCoherence => format!("bound_regionInCoherence"),
         }
     }
 }

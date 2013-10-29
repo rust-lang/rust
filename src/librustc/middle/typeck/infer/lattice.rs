@@ -522,10 +522,10 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
 // fn types
 
 pub fn var_ids<T:Combine>(this: &T,
-                          map: &HashMap<ty::bound_region, ty::Region>)
+                          map: &HashMap<ty::BoundRegion, ty::Region>)
                           -> ~[RegionVid] {
     map.iter().map(|(_, r)| match *r {
-            ty::re_infer(ty::ReVar(r)) => { r }
+            ty::ReInfer(ty::ReVar(r)) => { r }
             r => {
                 this.infcx().tcx.sess.span_bug(
                     this.trace().origin.span(),
@@ -536,7 +536,7 @@ pub fn var_ids<T:Combine>(this: &T,
 
 pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
     match r {
-        ty::re_infer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
+        ty::ReInfer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
         _ => false
     }
 }

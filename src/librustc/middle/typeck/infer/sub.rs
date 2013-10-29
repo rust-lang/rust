@@ -192,7 +192,7 @@ impl Combine for Sub {
                 // Each skolemized should only be relatable to itself
                 // or new variables:
                 match *tainted_region {
-                    ty::re_infer(ty::ReVar(ref vid)) => {
+                    ty::ReInfer(ty::ReVar(ref vid)) => {
                         if new_vars.iter().any(|x| x == vid) { continue; }
                     }
                     _ => {

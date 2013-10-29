@@ -155,49 +155,49 @@ fn enc_region_substs(w: @mut MemWriter, cx: @ctxt, substs: &ty::RegionSubsts) {
 
 fn enc_region(w: @mut MemWriter, cx: @ctxt, r: ty::Region) {
     match r {
-        ty::re_fn_bound(id, br) => {
+        ty::ReLateBound(id, br) => {
             mywrite!(w, "b[{}|", id);
             enc_bound_region(w, cx, br);
             mywrite!(w, "]");
         }
-        ty::re_type_bound(node_id, index, ident) => {
+        ty::ReEarlyBound(node_id, index, ident) => {
             mywrite!(w, "B[{}|{}|{}]",
                      node_id,
                      index,
                      cx.tcx.sess.str_of(ident));
         }
-        ty::re_free(ref fr) => {
+        ty::ReFree(ref fr) => {
             mywrite!(w, "f[{}|", fr.scope_id);
             enc_bound_region(w, cx, fr.bound_region);
             mywrite!(w, "]");
         }
-        ty::re_scope(nid) => {
+        ty::ReScope(nid) => {
             mywrite!(w, "s{}|", nid);
         }
-        ty::re_static => {
+        ty::ReStatic => {
             mywrite!(w, "t");
         }
-        ty::re_empty => {
+        ty::ReEmpty => {
             mywrite!(w, "e");
         }
-        ty::re_infer(_) => {
+        ty::ReInfer(_) => {
             // these should not crop up after typeck
             cx.diag.handler().bug("Cannot encode region variables");
         }
     }
 }
 
-fn enc_bound_region(w: @mut MemWriter, cx: @ctxt, br: ty::bound_region) {
+fn enc_bound_region(w: @mut MemWriter, cx: @ctxt, br: ty::BoundRegion) {
     match br {
-        ty::br_anon(idx) => {
+        ty::BrAnon(idx) => {
             mywrite!(w, "a{}|", idx);
         }
-        ty::br_named(d, s) => {
+        ty::BrNamed(d, s) => {
             mywrite!(w, "[{}|{}]",
                      (cx.ds)(d),
                      cx.tcx.sess.str_of(s));
         }
-        ty::br_fresh(id) => {
+        ty::BrFresh(id) => {
             mywrite!(w, "f{}|", id);
         }
     }

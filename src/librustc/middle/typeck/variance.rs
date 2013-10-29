@@ -613,20 +613,20 @@ impl<'self> ConstraintContext<'self> {
                                    region: ty::Region,
                                    variance: VarianceTermPtr<'self>) {
         match region {
-            ty::re_type_bound(param_id, _, _) => {
+            ty::ReEarlyBound(param_id, _, _) => {
                 let index = self.inferred_index(param_id);
                 self.add_constraint(index, variance);
             }
 
-            ty::re_static => { }
+            ty::ReStatic => { }
 
-            ty::re_fn_bound(*) => {
+            ty::ReLateBound(*) => {
                 // We do not infer variance for region parameters on
                 // methods or in fn types.
             }
 
-            ty::re_free(*) | ty::re_scope(*) | ty::re_infer(*) |
-            ty::re_empty => {
+            ty::ReFree(*) | ty::ReScope(*) | ty::ReInfer(*) |
+            ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 self.tcx().sess.bug(format!("Unexpected region encountered in \

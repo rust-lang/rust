@@ -23,8 +23,8 @@ pub fn replace_bound_regions_in_fn_sig(
     tcx: ty::ctxt,
     opt_self_ty: Option<ty::t>,
     fn_sig: &ty::FnSig,
-    mapf: &fn(ty::bound_region) -> ty::Region)
-    -> (HashMap<ty::bound_region,ty::Region>, Option<ty::t>, ty::FnSig)
+    mapf: &fn(ty::BoundRegion) -> ty::Region)
+    -> (HashMap<ty::BoundRegion,ty::Region>, Option<ty::t>, ty::FnSig)
 {
     debug!("replace_bound_regions_in_fn_sig(self_ty={}, fn_sig={})",
             opt_self_ty.repr(tcx),
@@ -35,7 +35,7 @@ pub fn replace_bound_regions_in_fn_sig(
         let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
                 debug!("region r={}", r.to_str());
                 match r {
-                ty::re_fn_bound(s, br) if s == fn_sig.binder_id => {
+                ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
                     *map.find_or_insert_with(br, |_| mapf(br))
                 }
                 _ => r
@@ -175,7 +175,7 @@ pub fn relate_free_regions(
         debug!("relate_free_regions(t={})", ppaux::ty_to_str(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {
-                (&ty::re_free(free_a), &ty::re_free(free_b)) => {
+                (&ty::ReFree(free_a), &ty::ReFree(free_b)) => {
                     tcx.region_maps.relate_free_regions(free_a, free_b);
                 }
                 _ => {}

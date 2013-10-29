@@ -282,8 +282,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         // Convert the regions 'a, 'b, 'c defined on the trait into
         // bound regions on the fn.
         let rps_from_trait = trait_ty_generics.region_param_defs.iter().map(|d| {
-            ty::re_fn_bound(m.fty.sig.binder_id,
-                            ty::br_named(d.def_id, d.ident))
+            ty::ReLateBound(m.fty.sig.binder_id,
+                            ty::BrNamed(d.def_id, d.ident))
         }).collect();
 
         // build up the substitution from
@@ -964,7 +964,7 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 
     let regions: OptVec<ty::Region> =
         ty_generics.region_param_defs.iter().enumerate().map(
-            |(i, l)| ty::re_type_bound(l.def_id.node, i, l.ident)).collect();
+            |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.ident)).collect();
 
     substs {regions: ty::NonerasedRegions(regions),
             self_ty: self_ty,

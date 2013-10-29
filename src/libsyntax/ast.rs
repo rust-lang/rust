@@ -254,8 +254,8 @@ pub enum Def {
 #[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum DefRegion {
     DefStaticRegion,
-    DefTypeBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
-    DefFnBoundRegion(/* binder_id */ NodeId, /* depth */ uint, /* lifetime decl */ NodeId),
+    DefEarlyBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
+    DefLateBoundRegion(/* binder_id */ NodeId, /* depth */ uint, /* lifetime decl */ NodeId),
     DefFreeRegion(/* block scope */ NodeId, /* lifetime decl */ NodeId),
 }
 
