@@ -471,10 +471,12 @@ pub struct Arm {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Field {
-    ident: Ident,
+    ident: SpannedIdent,
     expr: @Expr,
     span: Span,
 }
+
+pub type SpannedIdent = Spanned<Ident>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum BlockCheckMode {

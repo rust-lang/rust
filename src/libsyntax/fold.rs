@@ -10,7 +10,7 @@
 
 use ast::*;
 use ast;
-use codemap::{Span, Spanned};
+use codemap::{respan, Span, Spanned};
 use parse::token;
 use opt_vec::OptVec;
 
@@ -551,7 +551,7 @@ fn fold_struct_field<T:ast_fold>(f: @struct_field, fld: &T) -> @struct_field {
 
 fn fold_field_<T:ast_fold>(field: Field, folder: &T) -> Field {
     ast::Field {
-        ident: folder.fold_ident(field.ident),
+        ident: respan(field.ident.span, folder.fold_ident(field.ident.node)),
         expr: folder.fold_expr(field.expr),
         span: folder.new_span(field.span),
     }
@@ -797,7 +797,8 @@ pub fn noop_fold_expr<T:ast_fold>(e: @ast::Expr, folder: &T) -> @ast::Expr {
                          folder.fold_expr(er))
         }
         ExprField(el, id, ref tys) => {
-            ExprField(folder.fold_expr(el), folder.fold_ident(id),
+            ExprField(folder.fold_expr(el),
+                      folder.fold_ident(id),
                       tys.map(|x| folder.fold_ty(x)))
         }
         ExprIndex(callee_id, el, er) => {
