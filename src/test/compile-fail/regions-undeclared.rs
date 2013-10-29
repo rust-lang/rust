@@ -8,23 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that lifetimes must be declared for use on enums.
-// See also regions-undeclared.rs
+static c_x: &'blk int = &22; //~ ERROR use of undeclared lifetime name `'blk`
 
-enum yes0<'lt> {
-    X3(&'lt uint)
+enum EnumDecl {
+    Foo(&'a int), //~ ERROR use of undeclared lifetime name `'a`
+    Bar(&'self int), //~ ERROR use of undeclared lifetime name `'self`
 }
 
-enum yes1<'self> {
-    X4(&'self uint)
-}
+fn fnDecl(x: &'a int, //~ ERROR use of undeclared lifetime name `'a`
+          y: &'self int) //~ ERROR use of undeclared lifetime name `'self`
+{}
 
-enum no0 {
-    X5(&'foo uint) //~ ERROR use of undeclared lifetime name `'foo`
+fn main() {
 }
-
-enum no1 {
-    X6(&'self uint) //~ ERROR use of undeclared lifetime name `'self`
-}
-
-fn main() {}

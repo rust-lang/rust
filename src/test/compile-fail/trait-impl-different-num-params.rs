@@ -13,7 +13,7 @@ trait foo {
 }
 impl foo for int {
     fn bar(&self) -> int {
-        //~^ ERROR method `bar` has 0 parameters but the trait has 1
+        //~^ ERROR method `bar` has 0 parameter(s) but the trait has 1
         *self
     }
 }

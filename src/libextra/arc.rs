@@ -233,10 +233,10 @@ impl<T:Send> MutexArc<T> {
 
     /// As unsafe_access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline]
-    pub unsafe fn unsafe_access_cond<'x, 'c, U>(&self,
-                                         blk: &fn(x: &'x mut T,
-                                                  c: &'c Condvar) -> U)
-                                         -> U {
+    pub unsafe fn unsafe_access_cond<U>(&self,
+                                        blk: &fn(x: &mut T,
+                                                 c: &Condvar) -> U)
+                                        -> U {
         let state = self.x.get();
         do (&(*state).lock).lock_cond |cond| {
             check_poison(true, (*state).failed);
@@ -290,10 +290,10 @@ impl<T:Freeze + Send> MutexArc<T> {
 
     /// As unsafe_access_cond but safe and Freeze.
     #[inline]
-    pub fn access_cond<'x, 'c, U>(&self,
-                                  blk: &fn(x: &'x mut T,
-                                           c: &'c Condvar) -> U)
-                                  -> U {
+    pub fn access_cond<U>(&self,
+                          blk: &fn(x: &mut T,
+                                   c: &Condvar) -> U)
+                          -> U {
         unsafe { self.unsafe_access_cond(blk) }
     }
 }
@@ -402,9 +402,9 @@ impl<T:Freeze + Send> RWArc<T> {
 
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline]
-    pub fn write_cond<'x, 'c, U>(&self,
-                                 blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
-                                 -> U {
+    pub fn write_cond<U>(&self,
+                         blk: &fn(x: &mut T, c: &Condvar) -> U)
+                         -> U {
         unsafe {
             let state = self.x.get();
             do (*borrow_rwlock(state)).write_cond |cond| {
@@ -554,9 +554,9 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
     }
 
     /// Access the pre-downgrade RWArc in write mode with a condvar.
-    pub fn write_cond<'x, 'c, U>(&mut self,
-                                 blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
-                                 -> U {
+    pub fn write_cond<U>(&mut self,
+                         blk: &fn(x: &mut T, c: &Condvar) -> U)
+                         -> U {
         match *self {
             RWWriteMode {
                 data: &ref mut data,

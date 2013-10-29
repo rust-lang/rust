@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn id<T>(t: T) -> T { t }
+// Test that anonymous lifetimes are not permitted in enum declarations
 
-fn f<'r, T>(v: &'r T) -> &'r fn()->T { id::<&'r fn()->T>(|| *v) } //~ ERROR cannot infer an appropriate lifetime
-
-fn main() {
-    let v = &5;
-    println!("{}", f(v)());
+enum Foo {
+    Bar(&int) //~ ERROR missing lifetime specifier
 }
+
+fn main() {}

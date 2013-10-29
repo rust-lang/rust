@@ -249,10 +249,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                         freevars::annotate_freevars(def_map, crate));
 
     let region_map = time(time_passes, "region resolution", (), |_|
-                          middle::region::resolve_crate(sess, def_map, crate));
-
-    let rp_set = time(time_passes, "region parameterization inference", (), |_|
-                      middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
+                          middle::region::resolve_crate(sess, crate));
 
     let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map, freevars,
                             region_map, lang_items);
