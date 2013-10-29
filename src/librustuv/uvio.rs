@@ -8,50 +8,52 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use c_str::{ToCStr, CString};
-use cast::transmute;
-use cast;
-use cell::Cell;
-use clone::Clone;
-use comm::{SendDeferred, SharedChan, Port, PortOne, GenericChan};
-use libc::{c_int, c_uint, c_void, pid_t};
-use ops::Drop;
-use option::*;
-use ptr;
-use str;
-use result::*;
-use rt::io::IoError;
-use rt::io::net::ip::{SocketAddr, IpAddr};
-use rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur, SeekEnd};
-use rt::io::process::ProcessConfig;
-use rt::kill::BlockedTask;
-use rt::local::Local;
-use rt::rtio::*;
-use rt::sched::{Scheduler, SchedHandle};
-use rt::tube::Tube;
-use rt::task::Task;
-use rt::uv::*;
-use rt::uv::idle::IdleWatcher;
-use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
-use rt::uv::addrinfo::{GetAddrInfoRequest, accum_addrinfo};
-use unstable::sync::Exclusive;
-use path::{GenericPath, Path};
-use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
-          S_IRUSR, S_IWUSR, S_IRWXU};
-use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
-             CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
-             FileStat};
-use rt::io::signal::Signum;
-use task;
-use ai = rt::io::net::addrinfo;
+use std::c_str::{ToCStr, CString};
+use std::cast::transmute;
+use std::cast;
+use std::cell::Cell;
+use std::clone::Clone;
+use std::comm::{SendDeferred, SharedChan, Port, PortOne, GenericChan};
+use std::libc::{c_int, c_uint, c_void, pid_t};
+use std::ops::Drop;
+use std::option::*;
+use std::ptr;
+use std::str;
+use std::result::*;
+use std::rt::io::IoError;
+use std::rt::io::net::ip::{SocketAddr, IpAddr};
+use std::rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur,
+                  SeekEnd};
+use std::rt::io::process::ProcessConfig;
+use std::rt::BlockedTask;
+use std::rt::local::Local;
+use std::rt::rtio::*;
+use std::rt::sched::{Scheduler, SchedHandle};
+use std::rt::tube::Tube;
+use std::rt::task::Task;
+use std::unstable::sync::Exclusive;
+use std::path::{GenericPath, Path};
+use std::libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY,
+                O_WRONLY, S_IRUSR, S_IWUSR, S_IRWXU};
+use std::rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
+                  CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
+                  FileStat};
+use std::rt::io::signal::Signum;
+use std::task;
+use ai = std::rt::io::net::addrinfo;
 
-#[cfg(test)] use container::Container;
-#[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use rt::test::{spawntask,
-                            next_test_ip4,
-                            run_in_mt_newsched_task};
-#[cfg(test)] use iter::{Iterator, range};
-#[cfg(test)] use rt::comm::oneshot;
+#[cfg(test)] use std::container::Container;
+#[cfg(test)] use std::unstable::run_in_bare_thread;
+#[cfg(test)] use std::rt::test::{spawntask,
+                                 next_test_ip4,
+                                 run_in_mt_newsched_task};
+#[cfg(test)] use std::iter::{Iterator, range};
+#[cfg(test)] use std::rt::comm::oneshot;
+
+use super::*;
+use idle::IdleWatcher;
+use net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
+use addrinfo::{GetAddrInfoRequest, accum_addrinfo};
 
 // XXX we should not be calling uvll functions in here.
 
@@ -63,7 +65,7 @@ trait HomingIO {
     /// that this function does *not* pin the task to the I/O scheduler, but
     /// rather it simply moves it to running on the I/O scheduler.
     fn go_to_IO_home(&mut self) -> uint {
-        use rt::sched::RunOnce;
+        use std::rt::sched::RunOnce;
 
         let current_sched_id = do Local::borrow |sched: &mut Scheduler| {
             sched.sched_id()
@@ -120,9 +122,10 @@ trait HomingIO {
         a // return the result of the IO
     }
 
-    fn home_for_io_consume<A>(mut self, io: &fn(Self) -> A) -> A {
-        let home = self.go_to_IO_home();
-        let a = io(self); // do IO
+    fn home_for_io_consume<A>(self, io: &fn(Self) -> A) -> A {
+        let mut this = self;
+        let home = this.go_to_IO_home();
+        let a = io(this); // do IO
         HomingIO::restore_original_home(None::<Self>, home);
         a // return the result of the IO
     }
@@ -236,7 +239,7 @@ impl EventLoop for UvEventLoop {
     }
 }
 
-#[cfg(not(stage0))]
+#[cfg(not(stage0), not(test))]
 #[lang = "event_loop_factory"]
 pub extern "C" fn new_loop() -> ~EventLoop {
     ~UvEventLoop::new() as ~EventLoop
@@ -372,13 +375,13 @@ impl Drop for UvRemoteCallback {
 
 #[cfg(test)]
 mod test_remote {
-    use cell::Cell;
-    use rt::test::*;
-    use rt::thread::Thread;
-    use rt::tube::Tube;
-    use rt::rtio::EventLoop;
-    use rt::local::Local;
-    use rt::sched::Scheduler;
+    use std::cell::Cell;
+    use std::rt::test::*;
+    use std::rt::thread::Thread;
+    use std::rt::tube::Tube;
+    use std::rt::rtio::EventLoop;
+    use std::rt::local::Local;
+    use std::rt::sched::Scheduler;
 
     #[test]
     fn test_uv_remote() {
@@ -1452,7 +1455,7 @@ impl UvTimer {
 impl Drop for UvTimer {
     fn drop(&mut self) {
         do self.home_for_io_with_sched |self_, scheduler| {
-            rtdebug!("closing UvTimer");
+            uvdebug!("closing UvTimer");
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.close {
@@ -1468,7 +1471,7 @@ impl RtioTimer for UvTimer {
     fn sleep(&mut self, msecs: u64) {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_sched, task| {
-                rtdebug!("sleep: entered scheduler context");
+                uvdebug!("sleep: entered scheduler context");
                 let task_cell = Cell::new(task);
                 do self_.watcher.start(msecs, 0) |_, status| {
                     assert!(status.is_none());
@@ -1481,7 +1484,7 @@ impl RtioTimer for UvTimer {
     }
 
     fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
-        use comm::oneshot;
+        use std::comm::oneshot;
 
         let (port, chan) = oneshot();
         let chan = Cell::new(chan);
@@ -1498,7 +1501,7 @@ impl RtioTimer for UvTimer {
     }
 
     fn period(&mut self, msecs: u64) -> Port<()> {
-        use comm::stream;
+        use std::comm::stream;
 
         let (port, chan) = stream();
         let chan = Cell::new(chan);
@@ -1637,7 +1640,7 @@ impl RtioFileStream for UvFileStream {
         self.base_write(buf, offset as i64)
     }
     fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError> {
-        use libc::{SEEK_SET, SEEK_CUR, SEEK_END};
+        use std::libc::{SEEK_SET, SEEK_CUR, SEEK_END};
         let whence = match whence {
             SeekSet => SEEK_SET,
             SeekCur => SEEK_CUR,
@@ -1646,7 +1649,7 @@ impl RtioFileStream for UvFileStream {
         self.seek_common(pos, whence)
     }
     fn tell(&self) -> Result<u64, IoError> {
-        use libc::SEEK_CUR;
+        use std::libc::SEEK_CUR;
         // this is temporary
         let self_ = unsafe { cast::transmute::<&UvFileStream, &mut UvFileStream>(self) };
         self_.seek_common(0, SEEK_CUR)
@@ -1887,7 +1890,7 @@ impl RtioSignal for UvSignal {}
 impl Drop for UvSignal {
     fn drop(&mut self) {
         do self.home_for_io_with_sched |self_, scheduler| {
-            rtdebug!("closing UvSignal");
+            uvdebug!("closing UvSignal");
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.close {
@@ -1934,12 +1937,12 @@ fn test_simple_udp_io_bind_only() {
 
 #[test]
 fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
-    use rt::sleeper_list::SleeperList;
-    use rt::work_queue::WorkQueue;
-    use rt::thread::Thread;
-    use rt::task::Task;
-    use rt::sched::{Shutdown, TaskFromFriend};
-    use rt::task::UnwindResult;
+    use std::rt::sleeper_list::SleeperList;
+    use std::rt::work_queue::WorkQueue;
+    use std::rt::thread::Thread;
+    use std::rt::task::Task;
+    use std::rt::sched::{Shutdown, TaskFromFriend};
+    use std::rt::task::UnwindResult;
     do run_in_bare_thread {
         let sleepers = SleeperList::new();
         let work_queue1 = WorkQueue::new();
@@ -1960,7 +1963,7 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
         let on_exit: ~fn(UnwindResult) = |exit_status| {
             handle1.take().send(Shutdown);
             handle2.take().send(Shutdown);
-            rtassert!(exit_status.is_success());
+            assert!(exit_status.is_success());
         };
 
         let test_function: ~fn() = || {
@@ -2013,13 +2016,13 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
 
 #[test]
 fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
-    use rt::sleeper_list::SleeperList;
-    use rt::work_queue::WorkQueue;
-    use rt::thread::Thread;
-    use rt::task::Task;
-    use rt::comm::oneshot;
-    use rt::sched::Shutdown;
-    use rt::task::UnwindResult;
+    use std::rt::sleeper_list::SleeperList;
+    use std::rt::work_queue::WorkQueue;
+    use std::rt::thread::Thread;
+    use std::rt::task::Task;
+    use std::rt::comm::oneshot;
+    use std::rt::sched::Shutdown;
+    use std::rt::task::UnwindResult;
     do run_in_bare_thread {
         let sleepers = SleeperList::new();
         let work_queue1 = WorkQueue::new();
@@ -2062,7 +2065,7 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
         let on_exit: ~fn(UnwindResult) = |exit| {
             handle1.take().send(Shutdown);
             handle2.take().send(Shutdown);
-            rtassert!(exit.is_success());
+            assert!(exit.is_success());
         };
 
         let task1 = Cell::new(~Task::new_root(&mut sched1.stack_pool, None, body1));
@@ -2106,7 +2109,7 @@ fn test_simple_tcp_server_and_client() {
                 let nread = stream.read(buf).unwrap();
                 assert_eq!(nread, 8);
                 for i in range(0u, nread) {
-                    rtdebug!("{}", buf[i]);
+                    uvdebug!("{}", buf[i]);
                     assert_eq!(buf[i], i as u8);
                 }
             }
@@ -2125,12 +2128,12 @@ fn test_simple_tcp_server_and_client() {
 
 #[test]
 fn test_simple_tcp_server_and_client_on_diff_threads() {
-    use rt::sleeper_list::SleeperList;
-    use rt::work_queue::WorkQueue;
-    use rt::thread::Thread;
-    use rt::task::Task;
-    use rt::sched::{Shutdown};
-    use rt::task::UnwindResult;
+    use std::rt::sleeper_list::SleeperList;
+    use std::rt::work_queue::WorkQueue;
+    use std::rt::thread::Thread;
+    use std::rt::task::Task;
+    use std::rt::sched::{Shutdown};
+    use std::rt::task::UnwindResult;
     do run_in_bare_thread {
         let sleepers = SleeperList::new();
 
@@ -2153,12 +2156,12 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
 
         let server_on_exit: ~fn(UnwindResult) = |exit_status| {
             server_handle.take().send(Shutdown);
-            rtassert!(exit_status.is_success());
+            assert!(exit_status.is_success());
         };
 
         let client_on_exit: ~fn(UnwindResult) = |exit_status| {
             client_handle.take().send(Shutdown);
-            rtassert!(exit_status.is_success());
+            assert!(exit_status.is_success());
         };
 
         let server_fn: ~fn() = || {
@@ -2224,7 +2227,7 @@ fn test_simple_udp_server_and_client() {
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
                 assert_eq!(nread, 8);
                 for i in range(0u, nread) {
-                    rtdebug!("{}", buf[i]);
+                    uvdebug!("{}", buf[i]);
                     assert_eq!(buf[i], i as u8);
                 }
                 assert_eq!(src, client_addr);
@@ -2336,13 +2339,13 @@ fn test_read_read_read() {
                 let mut total_bytes_read = 0;
                 while total_bytes_read < MAX {
                     let nread = stream.read(buf).unwrap();
-                    rtdebug!("read {} bytes", nread);
+                    uvdebug!("read {} bytes", nread);
                     total_bytes_read += nread;
                     for i in range(0u, nread) {
                         assert_eq!(buf[i], 1);
                     }
                 }
-                rtdebug!("read {} bytes total", total_bytes_read);
+                uvdebug!("read {} bytes total", total_bytes_read);
             }
         }
     }
@@ -2471,10 +2474,7 @@ fn test_timer_sleep_simple() {
 }
 
 fn file_test_uvio_full_simple_impl() {
-    use str::StrSlice; // why does this have to be explicitly imported to work?
-                       // compiler was complaining about no trait for str that
-                       // does .as_bytes() ..
-    use rt::io::{Open, Create, ReadWrite, Read};
+    use std::rt::io::{Open, Create, ReadWrite, Read};
     unsafe {
         let io = local_io();
         let write_val = "hello uvio!";
@@ -2507,9 +2507,8 @@ fn file_test_uvio_full_simple() {
 }
 
 fn uvio_naive_print(input: &str) {
-    use str::StrSlice;
     unsafe {
-        use libc::{STDOUT_FILENO};
+        use std::libc::{STDOUT_FILENO};
         let io = local_io();
         {
             let mut fd = io.fs_from_raw_fd(STDOUT_FILENO, DontClose);

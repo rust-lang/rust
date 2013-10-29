@@ -14,7 +14,7 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_TARGET_CRATES = std extra
+TEST_TARGET_CRATES = std extra rustuv
 TEST_HOST_CRATES = rustpkg rustc rustdoc syntax
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
@@ -164,6 +164,8 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
                   $(CFG_ADB_TEST_DIR)) \
  $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
                   $(CFG_ADB_TEST_DIR)) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
  )
 else
 CFG_ADB_TEST_DIR=
@@ -189,6 +191,7 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 
 check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-std check-stage2-extra check-stage2-rpass \
+	check-stage2-rustuv \
 	check-stage2-rustpkg \
 	check-stage2-rfail check-stage2-cfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
@@ -333,7 +336,8 @@ define TEST_RUNNER
 # test crates without rebuilding std and extra first
 ifeq ($(NO_REBUILD),)
 STDTESTDEP_$(1)_$(2)_$(3) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_EXTRALIB_$(2))
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_EXTRALIB_$(2)) \
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTUV_$(2))
 else
 STDTESTDEP_$(1)_$(2)_$(3) =
 endif
@@ -346,6 +350,12 @@ $(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
 
 $(3)/stage$(1)/test/extratest-$(2)$$(X_$(2)):			\
 		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS)	\
+		$$(STDTESTDEP_$(1)_$(2)_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+$(3)/stage$(1)/test/rustuvtest-$(2)$$(X_$(2)):			\
+		$$(LIBRUSTUV_CRATE) $$(LIBRUSTUV_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test

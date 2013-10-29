@@ -221,6 +221,7 @@ CFG_LIBRUSTC_$(1) :=$(call CFG_LIB_NAME_$(1),rustc)
 CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
 CFG_LIBRUSTPKG_$(1) :=$(call CFG_LIB_NAME_$(1),rustpkg)
 CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
+CFG_LIBRUSTUV_$(1) :=$(call CFG_LIB_NAME_$(1),rustuv)
 
 EXTRALIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),extra)
 STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
@@ -228,12 +229,14 @@ LIBRUSTC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustc)
 LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
 LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
 LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
+LIBRUSTUV_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustuv)
 EXTRALIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),extra)
 STDLIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),std)
 LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
 LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
 LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
 LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
+LIBRUSTUV_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustuv)
 
 endef
 
@@ -287,6 +290,14 @@ STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,        \
 
 EXTRALIB_CRATE := $(S)src/libextra/extra.rs
 EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
+                                          *.rs */*.rs))
+
+######################################################################
+# Rust UV library variables
+######################################################################
+
+LIBRUSTUV_CRATE := $(S)src/librustuv/rustuv.rs
+LIBRUSTUV_INPUTS := $(wildcard $(addprefix $(S)src/librustuv/,          \
                                           *.rs */*.rs))
 
 ######################################################################
@@ -410,6 +421,11 @@ else
     $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC_$(3))
   TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2))
+
+  HLIBRUSTUV_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTUV_$(3))
+  TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
 endif
 
 # Preqrequisites for using the stageN compiler
@@ -421,6 +437,7 @@ HSREQ$(1)_H_$(3) = \
 	$$(HEXTRALIB_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBSYNTAX_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBRUSTC_DEFAULT$(1)_H_$(3)) \
+	$$(HLIBRUSTUV_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
 
 # Prerequisites for using the stageN compiler to build target artifacts
@@ -433,7 +450,8 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
 
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 CSREQ$(1)_T_$(2)_H_$(3) = \
@@ -447,7 +465,8 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2))
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed

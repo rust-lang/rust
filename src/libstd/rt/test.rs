@@ -24,13 +24,12 @@ use rand;
 use result::{Result, Ok, Err};
 use rt::basic;
 use rt::comm::oneshot;
-use rt::rtio::EventLoop;
+use rt::new_event_loop;
 use rt::sched::Scheduler;
 use rt::sleeper_list::SleeperList;
 use rt::task::Task;
 use rt::task::UnwindResult;
 use rt::thread::Thread;
-use rt::uv::uvio::UvEventLoop;
 use rt::work_queue::WorkQueue;
 use unstable::{run_in_bare_thread};
 use vec::{OwnedVector, MutableVector, ImmutableVector};
@@ -40,7 +39,7 @@ pub fn new_test_uv_sched() -> Scheduler {
     let queue = WorkQueue::new();
     let queues = ~[queue.clone()];
 
-    let mut sched = Scheduler::new(~UvEventLoop::new() as ~EventLoop,
+    let mut sched = Scheduler::new(new_event_loop(),
                                    queue,
                                    queues,
                                    SleeperList::new());
@@ -237,7 +236,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         for i in range(0u, nthreads) {
-            let loop_ = ~UvEventLoop::new() as ~EventLoop;
+            let loop_ = new_event_loop();
             let mut sched = ~Scheduler::new(loop_,
                                             work_queues[i].clone(),
                                             work_queues.clone(),

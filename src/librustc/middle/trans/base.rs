@@ -2602,16 +2602,36 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
                         ast::foreign_item_static(*) => {
-                            let ident = foreign::link_name(ccx, ni);
-                            unsafe {
-                                let g = do ident.with_c_str |buf| {
-                                    let ty = type_of(ccx, ty);
-                                    llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
-                                };
-                                if attr::contains_name(ni.attrs, "weak_linkage") {
-                                    lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
+                            // Treat the crate map static specially in order to
+                            // a weak-linkage-like functionality where it's
+                            // dynamically resolved at runtime. If we're
+                            // building a library, then we declare the static
+                            // with weak linkage, but if we're building a
+                            // library then we've already declared the crate map
+                            // so use that instead.
+                            if attr::contains_name(ni.attrs, "crate_map") {
+                                if *ccx.sess.building_library {
+                                    let s = "_rust_crate_map_toplevel";
+                                    let g = unsafe { do s.with_c_str |buf| {
+                                        let ty = type_of(ccx, ty);
+                                        llvm::LLVMAddGlobal(ccx.llmod,
+                                                            ty.to_ref(), buf)
+                                    } };
+                                    lib::llvm::SetLinkage(g,
+                                        lib::llvm::ExternalWeakLinkage);
+                                    g
+                                } else {
+                                    ccx.crate_map
                                 }
-                                g
+                            } else {
+                                let ident = foreign::link_name(ccx, ni);
+                                unsafe {
+                                    do ident.with_c_str |buf| {
+                                        let ty = type_of(ccx, ty);
+                                        llvm::LLVMAddGlobal(ccx.llmod,
+                                                            ty.to_ref(), buf)
+                                    }
+                                }
                             }
                         }
                     }
@@ -2937,7 +2957,12 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
 
     let sym_name = ~"_rust_crate_map_" + mapname;
     let slicetype = Type::struct_([int_type, int_type], false);
-    let maptype = Type::struct_([Type::i32(), slicetype, slicetype], false);
+    let maptype = Type::struct_([
+        Type::i32(),        // version
+        slicetype,          // child modules
+        slicetype,          // sub crate-maps
+        int_type.ptr_to(),  // event loop factory
+    ], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -2972,6 +2997,20 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         subcrates.push(p2i(ccx, cr));
         i += 1;
     }
+    let event_loop_factory = if !*ccx.sess.building_library {
+        match ccx.tcx.lang_items.event_loop_factory() {
+            Some(did) => unsafe {
+                let name = csearch::get_symbol(ccx.sess.cstore, did);
+                let global = do name.with_c_str |buf| {
+                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
+                };
+                global
+            },
+            None => C_null(ccx.int_type.ptr_to())
+        }
+    } else {
+        C_null(ccx.int_type.ptr_to())
+    };
     unsafe {
         let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
         let vec_elements = do "_crate_map_child_vectors".with_c_str |buf| {
@@ -2991,7 +3030,8 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
              C_struct([
                 p2i(ccx, vec_elements),
                 C_uint(ccx, subcrates.len())
-             ], false)
+             ], false),
+            event_loop_factory,
         ], false));
     }
 }
