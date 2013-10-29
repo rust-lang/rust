@@ -55,13 +55,12 @@ impl Thread {
         }
     }
 
-    pub fn join(self) {
+    pub fn join(mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         assert!(!self.joined);
-        let mut this = self;
-        unsafe { rust_raw_thread_join(this.raw_thread); }
-        this.joined = true;
+        unsafe { rust_raw_thread_join(self.raw_thread); }
+        self.joined = true;
     }
 }
 
