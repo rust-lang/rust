@@ -1211,7 +1211,7 @@ fn trans_rec_or_struct(bcx: @mut Block,
         let numbered_fields = do fields.map |field| {
             let opt_pos =
                 field_tys.iter().position(|field_ty|
-                                          field_ty.ident.name == field.ident.name);
+                                          field_ty.ident.name == field.ident.node.name);
             match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
