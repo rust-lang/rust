@@ -209,13 +209,19 @@ pub enum ast_ty_to_ty_cache_entry {
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
 
-pub type opt_region_variance = Option<region_variance>;
+#[deriving(Clone, Eq, Decodable, Encodable)]
+pub struct ItemVariances {
+    self_param: Option<Variance>,
+    type_params: OptVec<Variance>,
+    region_params: OptVec<Variance>
+}
 
 #[deriving(Clone, Eq, Decodable, Encodable)]
-pub enum region_variance {
-    rv_covariant,
-    rv_invariant,
-    rv_contravariant,
+pub enum Variance {
+    Covariant,
+    Invariant,
+    Contravariant,
+    Bivariant,
 }
 
 #[deriving(Decodable, Encodable)]
@@ -264,7 +270,6 @@ struct ctxt_ {
     named_region_map: @mut resolve_lifetime::NamedRegionMap,
 
     region_maps: @mut middle::region::RegionMaps,
-    region_paramd_items: middle::region::region_paramd_items,
 
     // Stores the types for various nodes in the AST.  Note that this table
     // is not guaranteed to be populated until after typeck.  See
@@ -308,6 +313,10 @@ struct ctxt_ {
     // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: @mut HashMap<ast::DefId, ast::DefId>,
     supertraits: @mut HashMap<ast::DefId, @~[@TraitRef]>,
+
+    // Maps from def-id of a type or region parameter to its
+    // (inferred) variance.
+    item_variance_map: @mut HashMap<ast::DefId, @ItemVariances>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
@@ -954,11 +963,11 @@ pub fn mk_ctxt(s: session::Session,
                amap: ast_map::map,
                freevars: freevars::freevar_map,
                region_maps: @mut middle::region::RegionMaps,
-               region_paramd_items: middle::region::region_paramd_items,
                lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
     @ctxt_ {
         named_region_map: named_region_map,
+        item_variance_map: @mut HashMap::new(),
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
@@ -966,7 +975,6 @@ pub fn mk_ctxt(s: session::Session,
         sess: s,
         def_map: dm,
         region_maps: region_maps,
-        region_paramd_items: region_paramd_items,
         node_types: @mut HashMap::new(),
         node_type_substs: @mut HashMap::new(),
         trait_refs: @mut HashMap::new(),
@@ -4410,6 +4418,12 @@ pub fn visitor_object_ty(tcx: ctxt,
                  EmptyBuiltinBounds())))
 }
 
+pub fn item_variances(tcx: ctxt, item_id: ast::DefId) -> @ItemVariances {
+    lookup_locally_or_in_crate_store(
+        "item_variance_map", item_id, tcx.item_variance_map,
+        || @csearch::get_item_variances(tcx.cstore, item_id))
+}
+
 /// Records a trait-to-implementation mapping.
 fn record_trait_implementation(tcx: ctxt,
                                trait_def_id: DefId,
@@ -4690,6 +4704,17 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
     }
 
     hash.result_u64()
+}
+
+impl Variance {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            Covariant => "+",
+            Contravariant => "-",
+            Invariant => "o",
+            Bivariant => "*",
+        }
+    }
 }
 
 pub fn construct_parameter_environment(

@@ -14,7 +14,6 @@
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
-use metadata;
 use middle::ty;
 use middle::typeck;
 
@@ -142,6 +141,12 @@ pub fn get_trait_method_def_ids(cstore: @mut cstore::CStore,
                                 def: ast::DefId) -> ~[ast::DefId] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_trait_method_def_ids(cdata, def.node)
+}
+
+pub fn get_item_variances(cstore: @mut cstore::CStore,
+                          def: ast::DefId) -> ty::ItemVariances {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_item_variances(cdata, def.node)
 }
 
 pub fn get_provided_trait_methods(tcx: ty::ctxt,
