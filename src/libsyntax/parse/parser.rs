@@ -310,7 +310,7 @@ pub fn Parser(sess: @mut ParseSess,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
         open_braces: @mut ~[],
-	non_copyable: util::NonCopyable
+        non_copyable: util::NonCopyable
     }
 }
 
