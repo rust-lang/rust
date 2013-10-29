@@ -31,20 +31,20 @@ where you would like to use data for a short time.
 
 As an example, consider a simple struct type `Point`:
 
-~~~
+~~~~
 struct Point {x: f64, y: f64}
-~~~
+~~~~
 
 We can use this simple definition to allocate points in many different ways. For
 example, in this code, each of these three local variables contains a
 point, but allocated in a different place:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};
 let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
 let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
-~~~
+~~~~
 
 Suppose we wanted to write a procedure that computed the distance between any
 two points, no matter where they were stored. For example, we might like to
@@ -58,7 +58,7 @@ the semantics of your program in unexpected ways. So we'd like to define a
 function that takes the points by pointer. We can use borrowed pointers to do
 this:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 # fn sqrt(f: f64) -> f64 { 0.0 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
@@ -66,11 +66,11 @@ fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let y_d = p1.y - p2.y;
     sqrt(x_d * x_d + y_d * y_d)
 }
-~~~
+~~~~
 
 Now we can call `compute_distance()` in various ways:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 # let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};
 # let managed_box  : @Point = @Point{x: 5.0, y: 1.0};
@@ -78,7 +78,7 @@ Now we can call `compute_distance()` in various ways:
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&on_the_stack, managed_box);
 compute_distance(managed_box, owned_box);
-~~~
+~~~~
 
 Here, the `&` operator takes the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
@@ -107,30 +107,30 @@ before you can make full use of it again.
 
 In the previous example, the value `on_the_stack` was defined like so:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 let on_the_stack: Point = Point {x: 3.0, y: 4.0};
-~~~
+~~~~
 
 This declaration means that code can only pass `Point` by value to other
 functions. As a consequence, we had to explicitly take the address of
 `on_the_stack` to get a borrowed pointer. Sometimes however it is more
 convenient to move the & operator into the definition of `on_the_stack`:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
-~~~
+~~~~
 
 Applying `&` to an rvalue (non-assignable location) is just a convenient
 shorthand for creating a temporary and taking its address. A more verbose
 way to write the same code is:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 let tmp = Point {x: 3.0, y: 4.0};
 let on_the_stack2 : &Point = &tmp;
-~~~
+~~~~
 
 # Taking the address of fields
 
@@ -139,15 +139,15 @@ local variables. It can also take the address of fields or
 individual array elements. For example, consider this type definition
 for `rectangle`:
 
-~~~
+~~~~
 struct Point {x: f64, y: f64} // as before
 struct Size {w: f64, h: f64} // as before
 struct Rectangle {origin: Point, size: Size}
-~~~
+~~~~
 
 Now, as before, we can define rectangles in a few different ways:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}
 # struct Size {w: f64, h: f64} // as before
 # struct Rectangle {origin: Point, size: Size}
@@ -157,12 +157,12 @@ let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0},
                                size: Size {w: 3.0, h: 4.0}};
 let rect_owned   = ~Rectangle {origin: Point {x: 5.0, y: 6.0},
                                size: Size {w: 3.0, h: 4.0}};
-~~~
+~~~~
 
 In each case, we can extract out individual subcomponents with the `&`
 operator. For example, I could write:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64} // as before
 # struct Size {w: f64, h: f64} // as before
 # struct Rectangle {origin: Point, size: Size}
@@ -171,7 +171,7 @@ operator. For example, I could write:
 # let rect_owned = ~Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&rect_stack.origin, &rect_managed.origin);
-~~~
+~~~~
 
 which would borrow the field `origin` from the rectangle on the stack
 as well as from the managed box, and then compute the distance between them.
@@ -200,14 +200,14 @@ ensure that the pointer remains valid for its entire
 lifetime. Sometimes this is relatively easy, such as when taking the
 address of a local variable or a field that is stored on the stack:
 
-~~~
+~~~~
 struct X { f: int }
 fn example1() {
     let mut x = X { f: 3 };
     let y = &mut x.f;  // -+ L
     ...                //  |
 }                      // -+
-~~~
+~~~~
 
 Here, the lifetime of the borrowed pointer `y` is simply L, the
 remainder of the function body. The compiler need not do any other
@@ -216,14 +216,14 @@ code mutates `x`.
 
 The situation gets more complex when borrowing data inside heap boxes:
 
-~~~
+~~~~
 # struct X { f: int }
 fn example2() {
     let mut x = @X { f: 3 };
     let y = &x.f;      // -+ L
     ...                //  |
 }                      // -+
-~~~
+~~~~
 
 In this example, the value `x` is a heap box, and `y` is therefore a
 pointer into that heap box. Again the lifetime of `y` is L, the
@@ -245,7 +245,7 @@ temporary that ensures that the managed box remains live for the
 entire lifetime. So, the above example would be compiled as if it were
 written
 
-~~~
+~~~~
 # struct X { f: int }
 fn example2() {
     let mut x = @X {f: 3};
@@ -253,7 +253,7 @@ fn example2() {
     let y = &x1.f;     // -+ L
     ...                //  |
 }                      // -+
-~~~
+~~~~
 
 Now if `x` is reassigned, the pointer `y` will still remain valid. This
 process is called *rooting*.
@@ -272,7 +272,7 @@ or moved for the lifetime of the pointer*. This does not necessarily
 mean that the owned box is stored in immutable memory. For example,
 the following function is legal:
 
-~~~
+~~~~
 # fn some_condition() -> bool { true }
 # struct Foo { f: int }
 fn example3() -> int {
@@ -285,7 +285,7 @@ fn example3() -> int {
     ...
 # return 0;
 }
-~~~
+~~~~
 
 Here, as before, the interior of the variable `x` is being borrowed
 and `x` is declared as mutable. However, the compiler can prove that
@@ -299,19 +299,19 @@ _as soon as its owning reference changes or goes out of
 scope_. Therefore, a program like this is illegal (and would be
 rejected by the compiler):
 
-~~~ {.xfail-test}
+~~~~ {.xfail-test}
 fn example3() -> int {
     let mut x = ~X {f: 3};
     let y = &x.f;
     x = ~X {f: 4};  // Error reported here.
     *y
 }
-~~~
+~~~~
 
 To make this clearer, consider this diagram showing the state of
 memory immediately before the re-assignment of `x`:
 
-~~~ {.notrust}
+~~~~ {.notrust}
     Stack               Exchange Heap
 
   x +----------+
@@ -321,11 +321,11 @@ memory immediately before the re-assignment of `x`:
     +----------+     |    +---------+
                      +--> |  f: 3   |
                           +---------+
-~~~
+~~~~
 
 Once the reassignment occurs, the memory will look like this:
 
-~~~ {.notrust}
+~~~~ {.notrust}
     Stack               Exchange Heap
 
   x +----------+          +---------+
@@ -335,7 +335,7 @@ Once the reassignment occurs, the memory will look like this:
     +----------+     |    +---------+
                      +--> | (freed) |
                           +---------+
-~~~
+~~~~
 
 Here you can see that the variable `y` still points at the old box,
 which has been freed.
@@ -346,7 +346,7 @@ modify the previous example to introduce additional owned pointers
 and structs, and the compiler will still be able to detect possible
 mutations:
 
-~~~ {.xfail-test}
+~~~~ {.xfail-test}
 fn example3() -> int {
     struct R { g: int }
     struct S { f: ~R }
@@ -357,7 +357,7 @@ fn example3() -> int {
     x.f = ~R {g: 5};        // Error reported here.
     *y
 }
-~~~
+~~~~
 
 In this case, two errors are reported, one when the variable `x` is
 modified and another when `x.f` is modified. Either modification would
@@ -374,20 +374,20 @@ remain valid: pointers into the interior of an `enum`.
 As an example, let’s look at the following `shape` type that can
 represent both rectangles and circles:
 
-~~~
+~~~~
 struct Point {x: f64, y: f64}; // as before
 struct Size {w: f64, h: f64}; // as before
 enum Shape {
     Circle(Point, f64),   // origin, radius
     Rectangle(Point, Size)  // upper-left, dimensions
 }
-~~~
+~~~~
 
 Now we might write a function to compute the area of a shape. This
 function takes a borrowed pointer to a shape, to avoid the need for
 copying.
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}; // as before
 # struct Size {w: f64, h: f64}; // as before
 # enum Shape {
@@ -401,7 +401,7 @@ fn compute_area(shape: &Shape) -> f64 {
         Rectangle(_, ref size) => size.w * size.h
     }
 }
-~~~
+~~~~
 
 The first case matches against circles. Here, the pattern extracts the
 radius from the shape variant and the action uses it to compute the
@@ -419,7 +419,7 @@ to a pointer of type `&size` into the _interior of the enum_.
 To make this more clear, let's look at a diagram of memory layout in
 the case where `shape` points at a rectangle:
 
-~~~ {.notrust}
+~~~~ {.notrust}
 Stack             Memory
 
 +-------+         +---------------+
@@ -429,7 +429,7 @@ Stack             Memory
 +-------+  +----> |   {w: f64,    |
                   |    h: f64})   |
                   +---------------+
-~~~
+~~~~
 
 Here you can see that rectangular shapes are composed of five words of
 memory. The first is a tag indicating which variant this enum is
@@ -444,7 +444,7 @@ to store that shape value would still be valid, _it would have a
 different type_! The following diagram shows what memory would look
 like if code overwrote `shape` with a circle:
 
-~~~ {.notrust}
+~~~~ {.notrust}
 Stack             Memory
 
 +-------+         +---------------+
@@ -454,7 +454,7 @@ Stack             Memory
 +-------+  +----> |   f64)        |
                   |               |
                   +---------------+
-~~~
+~~~~
 
 As you can see, the `size` pointer would be pointing at a `f64`
 instead of a struct. This is not good: dereferencing the second field
@@ -483,10 +483,10 @@ as we'll see, doing so requires some explicit annotation.
 
 For example, we could write a subroutine like this:
 
-~~~
+~~~~
 struct Point {x: f64, y: f64}
 fn get_x<'r>(p: &'r Point) -> &'r f64 { &p.x }
-~~~
+~~~~
 
 Here, the function `get_x()` returns a pointer into the structure it
 was given. The type of the parameter (`&'r Point`) and return type
@@ -524,12 +524,12 @@ the compiler accepts the function `get_x()`.
 To emphasize this point, let’s look at a variation on the example, this
 time one that does not compile:
 
-~~~ {.xfail-test}
+~~~~ {.xfail-test}
 struct Point {x: f64, y: f64}
 fn get_x_sh(p: @Point) -> &f64 {
     &p.x // Error reported here
 }
-~~~
+~~~~
 
 Here, the function `get_x_sh()` takes a managed box as input and
 returns a borrowed pointer. As before, the lifetime of the borrowed
@@ -563,7 +563,7 @@ Let's look at named lifetimes in more detail. Named lifetimes allow
 for grouping of parameters by lifetime. For example, consider this
 function:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}; // as before
 # struct Size {w: f64, h: f64}; // as before
 # enum Shape {
@@ -575,7 +575,7 @@ fn select<'r, T>(shape: &'r Shape, threshold: f64,
                  a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
-~~~
+~~~~
 
 This function takes three borrowed pointers and assigns each the same
 lifetime `r`.  In practice, this means that, in the caller, the
@@ -583,7 +583,7 @@ lifetime `r` will be the *intersection of the lifetime of the three
 region parameters*. This may be overly conservative, as in this
 example:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}; // as before
 # struct Size {w: f64, h: f64}; // as before
 # enum Shape {
@@ -603,7 +603,7 @@ fn select_based_on_unit_circle<'r, T>(               //  |-+ B
     select(&shape, threshold, a, b)                  //  | |
 }                                                    //  |-+
                                                      // -+
-~~~
+~~~~
 
 In this call to `select()`, the lifetime of the first parameter shape
 is B, the function body. Both of the second two parameters `a` and `b`
@@ -620,7 +620,7 @@ distinguish the lifetime of the first parameter from the lifetime of
 the latter two. After all, the first parameter is not being
 returned. Here is how the new `select()` might look:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}; // as before
 # struct Size {w: f64, h: f64}; // as before
 # enum Shape {
@@ -632,14 +632,14 @@ fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: f64,
                        a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
-~~~
+~~~~
 
 Here you can see that `shape`'s lifetime is now named `tmp`. The
 parameters `a`, `b`, and the return value all have the lifetime `r`.
 However, since the lifetime `tmp` is not returned, it would be more
 concise to just omit the named lifetime for `shape` altogether:
 
-~~~
+~~~~
 # struct Point {x: f64, y: f64}; // as before
 # struct Size {w: f64, h: f64}; // as before
 # enum Shape {
@@ -651,7 +651,7 @@ fn select<'r, T>(shape: &Shape, threshold: f64,
                  a: &'r T, b: &'r T) -> &'r T {
     if compute_area(shape) > threshold {a} else {b}
 }
-~~~
+~~~~
 
 This is equivalent to the previous definition.
 
