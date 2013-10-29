@@ -73,7 +73,10 @@ pub struct Coroutine {
     /// The segment of stack on which the task is currently running or
     /// if the task is blocked, on which the task will resume
     /// execution.
-    priv current_stack_segment: StackSegment,
+    ///
+    /// Servo needs this to be public in order to tell SpiderMonkey
+    /// about the stack bounds.
+    current_stack_segment: StackSegment,
     /// Always valid if the task is alive and not running.
     saved_context: Context
 }
