@@ -23,7 +23,7 @@ reference is a unique handle and the type is marked as non-`Freeze`.
 use ptr::RawPtr;
 use unstable::intrinsics::transmute;
 use ops::Drop;
-use kinds::{Freeze, Send};
+use kinds::{Freeze, Send, KindMimic};
 use clone::{Clone, DeepClone};
 
 struct RcBox<T> {
@@ -35,13 +35,24 @@ struct RcBox<T> {
 #[unsafe_no_drop_flag]
 #[no_send]
 pub struct Rc<T> {
-    priv ptr: *mut RcBox<T>
+    priv ptr: *mut RcBox<T>,
+    priv mimic: KindMimic<T> // bubble up lack of a `Freeze` kind
 }
 
 impl<T: Freeze> Rc<T> {
     /// Construct a new reference-counted box from a `Freeze` value
     #[inline]
     pub fn new(value: T) -> Rc<T> {
+        unsafe {
+            Rc::new_unchecked(value)
+        }
+    }
+}
+
+impl<T: Send> Rc<T> {
+    /// Construct a new reference-counted box from a `Send` value
+    #[inline]
+    pub fn from_send(value: T) -> Rc<T> {
         unsafe {
             Rc::new_unchecked(value)
         }
@@ -56,7 +67,7 @@ impl<T> Rc<T> {
     /// managed pointers.
     #[inline]
     pub unsafe fn new_unchecked(value: T) -> Rc<T> {
-        Rc{ptr: transmute(~RcBox{value: value, count: 1})}
+        Rc{ptr: transmute(~RcBox{value: value, count: 1}), mimic: KindMimic}
     }
 
     /// Borrow the value contained in the reference-counted box
@@ -71,7 +82,7 @@ impl<T> Clone for Rc<T> {
     fn clone(&self) -> Rc<T> {
         unsafe {
             (*self.ptr).count += 1;
-            Rc{ptr: self.ptr}
+            Rc{ptr: self.ptr, mimic: KindMimic}
         }
     }
 }

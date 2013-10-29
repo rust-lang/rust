@@ -2129,13 +2129,18 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
-                let mut res = flds.iter().fold(
-                    TC_NONE,
-                    |tc, f| tc + tc_mt(cx, f.mt, cache));
-                if ty::has_dtor(cx, did) {
-                    res = res + TC_DTOR;
+                let mimic_item = cx.lang_items.kind_mimic();
+                if mimic_item.map_default(false, |x| did == x) {
+                    tc_ty(cx, substs.tps[0], cache)
+                } else {
+                    let mut res = flds.iter().fold(
+                        TC_NONE,
+                        |tc, f| tc + tc_mt(cx, f.mt, cache));
+                    if ty::has_dtor(cx, did) {
+                        res = res + TC_DTOR;
+                    }
+                    apply_tc_attr(cx, did, res)
                 }
-                apply_tc_attr(cx, did, res)
             }
 
             ty_tup(ref tys) => {

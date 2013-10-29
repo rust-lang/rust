@@ -37,3 +37,12 @@ pub trait Freeze {
 pub trait Sized {
     // Empty.
 }
+
+/// A special zero-size type with the kinds of the type parameter.
+///
+/// It can be used to define new low-level types like smart pointers or dynamic
+/// arrays with the correct kinds, since raw pointers are *always* `Send` and
+/// `Freeze`.
+#[lang="kind_mimic"]
+#[unstable]
+pub struct KindMimic<T>;
