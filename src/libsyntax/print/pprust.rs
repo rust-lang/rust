@@ -1905,7 +1905,7 @@ pub fn print_meta_item(s: @ps, item: &ast::MetaItem) {
 pub fn print_view_path(s: @ps, vp: &ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, ref path, _) => {
-            // FIXME can't compare identifiers directly here
+        // FIXME(#6993) can't compare identifiers directly here
         if path.segments.last().identifier.name != ident.name {
             print_ident(s, ident);
             space(s.s);

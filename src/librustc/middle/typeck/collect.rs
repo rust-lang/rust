@@ -359,7 +359,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         let num_trait_type_params = trait_generics.type_param_defs.len();
         ty::Method::new(
             *m_ident,
-            // FIXME -- what about lifetime parameters here?
+            // FIXME(#5121) -- distinguish early vs late lifetime params
             ty_generics(this, m_generics, num_trait_type_params),
             transformed_self_ty,
             fty,
@@ -486,7 +486,7 @@ fn convert_methods(ccx: &CrateCtxt,
         let num_rcvr_type_params = rcvr_generics.ty_params.len();
         ty::Method::new(
             m.ident,
-            // FIXME region param
+            // FIXME(#5121) -- distinguish early vs late lifetime params
             ty_generics(ccx, &m.generics, num_rcvr_type_params),
             transformed_self_ty,
             fty,
@@ -683,7 +683,8 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
      * trait. Fails if the type is a type other than an trait type.
      */
 
-    let rscope = ExplicitRscope; // FIXME
+    // FIXME(#5121) -- distinguish early vs late lifetime params
+    let rscope = ExplicitRscope;
 
     match lookup_def_tcx(ccx.tcx, ast_trait_ref.path.span, ast_trait_ref.ref_id) {
         ast::DefTrait(trait_did) => {

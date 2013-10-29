@@ -583,9 +583,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_fn(ref decl, _, _, _, ref body) => {
         let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
-            // FIXME -- this won't fly for the case where people reference
-            // a lifetime from within a type parameter. That's actually fairly
-            // tricky.
+        // FIXME(#5121) -- won't work for lifetimes that appear in type bounds
         let param_env = ty::construct_parameter_environment(
                 ccx.tcx,
                 None,
