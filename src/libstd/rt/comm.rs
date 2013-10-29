@@ -23,7 +23,7 @@ use select::{Select, SelectPort};
 use unstable::atomics::{AtomicUint, AtomicOption, Acquire, Relaxed, SeqCst};
 use unstable::sync::UnsafeArc;
 use util::Void;
-use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
+use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable, SendDeferred};
 use cell::Cell;
 use clone::Clone;
 use tuple::ImmutableTuple;
@@ -419,12 +419,6 @@ impl<T> Drop for PortOne<T> {
             }
         }
     }
-}
-
-/// Trait for non-rescheduling send operations, similar to `send_deferred` on ChanOne.
-pub trait SendDeferred<T> {
-    fn send_deferred(&self, val: T);
-    fn try_send_deferred(&self, val: T) -> bool;
 }
 
 struct StreamPayload<T> {
