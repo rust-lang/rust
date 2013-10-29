@@ -16,11 +16,13 @@ use libc::{c_char, size_t, uintptr_t};
 use rt::task;
 use rt::borrowck;
 
+#[cold]
 #[lang="fail_"]
 pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
     task::begin_unwind(expr, file, line);
 }
 
+#[cold]
 #[lang="fail_bounds_check"]
 pub fn fail_bounds_check(file: *c_char, line: size_t, index: size_t, len: size_t) -> ! {
     let msg = format!("index out of bounds: the len is {} but the index is {}",
