@@ -225,15 +225,14 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    fn close(self, cb: NullCallback) {
-        let mut this = self;
+    fn close(mut self, cb: NullCallback) {
         {
-            let data = this.get_watcher_data();
+            let data = self.get_watcher_data();
             assert!(data.close_cb.is_none());
             data.close_cb = Some(cb);
         }
 
-        unsafe { uvll::close(this.native_handle(), close_cb); }
+        unsafe { uvll::close(self.native_handle(), close_cb); }
 
         extern fn close_cb(handle: *uvll::uv_handle_t) {
             let mut h: Handle = NativeHandle::from_native_handle(handle);

@@ -113,7 +113,7 @@ impl<T> ChanOne<T> {
 
     // 'do_resched' configures whether the scheduler immediately switches to
     // the receiving task, or leaves the sending task still running.
-    fn try_send_inner(self, val: T, do_resched: bool) -> bool {
+    fn try_send_inner(mut self, val: T, do_resched: bool) -> bool {
         if do_resched {
             rtassert!(!rt::in_sched_context());
         }
@@ -129,9 +129,8 @@ impl<T> ChanOne<T> {
             sched.maybe_yield();
         }
 
-        let mut this = self;
         let mut recvr_active = true;
-        let packet = this.packet();
+        let packet = self.packet();
 
         unsafe {
 
@@ -150,7 +149,7 @@ impl<T> ChanOne<T> {
             // done with the packet. NB: In case of do_resched, this *must*
             // happen before waking up a blocked task (or be unkillable),
             // because we might get a kill signal during the reschedule.
-            this.suppress_finalize = true;
+            self.suppress_finalize = true;
 
             match oldstate {
                 STATE_BOTH => {
@@ -158,7 +157,7 @@ impl<T> ChanOne<T> {
                 }
                 STATE_ONE => {
                     // Port has closed. Need to clean up.
-                    let _packet: ~Packet<T> = cast::transmute(this.void_packet);
+                    let _packet: ~Packet<T> = cast::transmute(self.void_packet);
                     recvr_active = false;
                 }
                 task_as_state => {
@@ -202,22 +201,20 @@ impl<T> PortOne<T> {
     }
 
     /// As `recv`, but returns `None` if the send end is closed rather than failing.
-    pub fn try_recv(self) -> Option<T> {
-        let mut this = self;
-
+    pub fn try_recv(mut self) -> Option<T> {
         // Optimistic check. If data was sent already, we don't even need to block.
         // No release barrier needed here; we're not handing off our task pointer yet.
-        if !this.optimistic_check() {
+        if !self.optimistic_check() {
             // No data available yet.
             // Switch to the scheduler to put the ~Task into the Packet state.
             let sched: ~Scheduler = Local::take();
             do sched.deschedule_running_task_and_then |sched, task| {
-                this.block_on(sched, task);
+                self.block_on(sched, task);
             }
         }
 
         // Task resumes.
-        this.recv_ready()
+        self.recv_ready()
     }
 }
 
@@ -325,9 +322,8 @@ impl<T> SelectInner for PortOne<T> {
 impl<T> Select for PortOne<T> { }
 
 impl<T> SelectPortInner<T> for PortOne<T> {
-    fn recv_ready(self) -> Option<T> {
-        let mut this = self;
-        let packet = this.packet();
+    fn recv_ready(mut self) -> Option<T> {
+        let packet = self.packet();
 
         // No further memory barrier is needed here to access the
         // payload. Some scenarios:
@@ -348,9 +344,9 @@ impl<T> SelectPortInner<T> for PortOne<T> {
             let payload = (*packet).payload.take();
 
             // The sender has closed up shop. Drop the packet.
-            let _packet: ~Packet<T> = cast::transmute(this.void_packet);
+            let _packet: ~Packet<T> = cast::transmute(self.void_packet);
             // Suppress the synchronizing actions in the finalizer. We're done with the packet.
-            this.suppress_finalize = true;
+            self.suppress_finalize = true;
             return payload;
         }
     }
@@ -378,18 +374,17 @@ impl<T> Drop for ChanOne<T> {
         if self.suppress_finalize { return }
 
         unsafe {
-            let this = cast::transmute_mut(self);
-            let oldstate = (*this.packet()).state.swap(STATE_ONE, SeqCst);
+            let oldstate = (*self.packet()).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Port still active. It will destroy the Packet.
                 },
                 STATE_ONE => {
-                    let _packet: ~Packet<T> = cast::transmute(this.void_packet);
+                    let _packet: ~Packet<T> = cast::transmute(self.void_packet);
                 },
                 task_as_state => {
                     // The port is blocked waiting for a message we will never send. Wake it.
-                    rtassert!((*this.packet()).payload.is_none());
+                    rtassert!((*self.packet()).payload.is_none());
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     do recvr.wake().map |woken_task| {
                         Scheduler::run_task(woken_task);
@@ -406,14 +401,13 @@ impl<T> Drop for PortOne<T> {
         if self.suppress_finalize { return }
 
         unsafe {
-            let this = cast::transmute_mut(self);
-            let oldstate = (*this.packet()).state.swap(STATE_ONE, SeqCst);
+            let oldstate = (*self.packet()).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Chan still active. It will destroy the packet.
                 },
                 STATE_ONE => {
-                    let _packet: ~Packet<T> = cast::transmute(this.void_packet);
+                    let _packet: ~Packet<T> = cast::transmute(self.void_packet);
                 }
                 task_as_state => {
                     // This case occurs during unwinding, when the blocked
