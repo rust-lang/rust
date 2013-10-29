@@ -81,16 +81,18 @@ pub enum LangItem {
     TyDescStructLangItem,              // 36
     TyVisitorTraitLangItem,            // 37
     OpaqueStructLangItem,              // 38
+
+    KindMimicLangItem,                 // 39
 }
 
 pub struct LanguageItems {
-    items: [Option<DefId>, ..39]
+    items: [Option<DefId>, ..40]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..39 ]
+            items: [ None, ..40 ]
         }
     }
 
@@ -144,6 +146,8 @@ impl LanguageItems {
             36 => "ty_desc",
             37 => "ty_visitor",
             38 => "opaque",
+
+            39 => "kind_mimic",
 
             _ => "???"
         }
@@ -292,6 +296,9 @@ impl LanguageItems {
     pub fn opaque(&self) -> Option<DefId> {
         self.items[OpaqueStructLangItem as uint]
     }
+    pub fn kind_mimic(&self) -> Option<DefId> {
+        self.items[KindMimicLangItem as uint]
+    }
 }
 
 struct LanguageItemCollector<'self> {
@@ -374,6 +381,7 @@ impl<'self> LanguageItemCollector<'self> {
         item_refs.insert("ty_desc", TyDescStructLangItem as uint);
         item_refs.insert("ty_visitor", TyVisitorTraitLangItem as uint);
         item_refs.insert("opaque", OpaqueStructLangItem as uint);
+        item_refs.insert("kind_mimic", KindMimicLangItem as uint);
 
         LanguageItemCollector {
             crate: crate,

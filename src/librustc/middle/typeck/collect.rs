@@ -91,6 +91,9 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
     match ccx.tcx.lang_items.opaque() {
         Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
     }
+    match ccx.tcx.lang_items.kind_mimic() {
+        Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
+    }
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
     visit::walk_crate(&mut visitor, crate, ());
