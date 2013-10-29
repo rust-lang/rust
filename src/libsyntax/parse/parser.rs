@@ -309,7 +309,8 @@ pub fn Parser(sess: @mut ParseSess,
         quote_depth: @mut 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
-        open_braces: @mut ~[]
+        open_braces: @mut ~[],
+        non_copyable: util::NonCopyable
     }
 }
 
@@ -339,13 +340,9 @@ pub struct Parser {
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: @mut ~[Span]
-}
-
-#[unsafe_destructor]
-impl Drop for Parser {
+    open_braces: @mut ~[Span],
     /* do not copy the parser; its state is tied to outside state */
-    fn drop(&mut self) {}
+    priv non_copyable: util::NonCopyable
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
