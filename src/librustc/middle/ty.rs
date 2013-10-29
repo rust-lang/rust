@@ -21,6 +21,8 @@ use middle::resolve_lifetime;
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
+use middle::ty_fold;
+use middle::ty_fold::TypeFolder;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
@@ -983,7 +985,7 @@ pub fn mk_ctxt(s: session::Session,
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
-fn mk_t(cx: ctxt, st: sty) -> t {
+pub fn mk_t(cx: ctxt, st: sty) -> t {
     // Check for primitive types.
     match st {
         ty_nil => return mk_nil(),
@@ -992,6 +994,8 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         ty_int(i) => return mk_mach_int(i),
         ty_uint(u) => return mk_mach_uint(u),
         ty_float(f) => return mk_mach_float(f),
+        ty_char => return mk_char(),
+        ty_bot => return mk_bot(),
         _ => {}
     };
 
@@ -1338,223 +1342,69 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
     }
 }
 
-pub fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: &fn(t) -> t) -> t {
-    mk_t(tcx, fold_sty(sty, foldop))
-}
-
-pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
-    let args = sig.inputs.map(|arg| fldop(*arg));
-
-    FnSig {
-        bound_lifetime_names: sig.bound_lifetime_names.clone(),
-        inputs: args,
-        output: fldop(sig.output),
-        variadic: sig.variadic
-    }
-}
-
-pub fn fold_bare_fn_ty(fty: &BareFnTy, fldop: &fn(t) -> t) -> BareFnTy {
-    BareFnTy {sig: fold_sig(&fty.sig, fldop),
-              abis: fty.abis,
-              purity: fty.purity}
-}
-
-fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
-    fn fold_substs(substs: &substs, fldop: &fn(t) -> t) -> substs {
-        substs {regions: substs.regions.clone(),
-                self_ty: substs.self_ty.map(|t| fldop(t)),
-                tps: substs.tps.map(|t| fldop(*t))}
-    }
-
-    match *sty {
-        ty_box(ref tm) => {
-            ty_box(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
-        }
-        ty_uniq(ref tm) => {
-            ty_uniq(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
-        }
-        ty_ptr(ref tm) => {
-            ty_ptr(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
-        }
-        ty_unboxed_vec(ref tm) => {
-            ty_unboxed_vec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
-        }
-        ty_evec(ref tm, vst) => {
-            ty_evec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl}, vst)
-        }
-        ty_enum(tid, ref substs) => {
-            ty_enum(tid, fold_substs(substs, fldop))
-        }
-        ty_trait(did, ref substs, st, mutbl, bounds) => {
-            ty_trait(did, fold_substs(substs, fldop), st, mutbl, bounds)
-        }
-        ty_tup(ref ts) => {
-            let new_ts = ts.map(|tt| fldop(*tt));
-            ty_tup(new_ts)
-        }
-        ty_bare_fn(ref f) => {
-            ty_bare_fn(fold_bare_fn_ty(f, fldop))
-        }
-        ty_closure(ref f) => {
-            let sig = fold_sig(&f.sig, fldop);
-            ty_closure(ClosureTy {
-                sig: sig,
-                purity: f.purity,
-                sigil: f.sigil,
-                onceness: f.onceness,
-                region: f.region,
-                bounds: f.bounds,
-            })
-        }
-        ty_rptr(r, ref tm) => {
-            ty_rptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
-        }
-        ty_struct(did, ref substs) => {
-            ty_struct(did, fold_substs(substs, fldop))
-        }
-        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
-        ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self(_) => {
-            (*sty).clone()
-        }
-    }
-}
-
 // Folds types from the bottom up.
 pub fn fold_ty(cx: ctxt, t0: t, fldop: &fn(t) -> t) -> t {
-    let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), |t| fldop(t)));
-    fldop(mk_t(cx, sty))
+    let mut f = ty_fold::BottomUpFolder {tcx: cx, fldop: fldop};
+    f.fold_ty(t0)
 }
 
-pub fn walk_regions_and_ty(
-    cx: ctxt,
-    ty: t,
-    walkr: &fn(r: Region),
-    walkt: &fn(t: t) -> bool) {
-
-    if (walkt(ty)) {
-        fold_regions_and_ty(
-            cx, ty,
-            |r| { walkr(r); r },
-            |t| { walk_regions_and_ty(cx, t, |r| walkr(r), |t| walkt(t)); t },
-            |t| { walk_regions_and_ty(cx, t, |r| walkr(r), |t| walkt(t)); t });
-    }
+pub fn walk_regions_and_ty(cx: ctxt,
+                           ty: t,
+                           fldr: &fn(r: Region),
+                           fldt: &fn(t: t))
+                           -> t {
+    ty_fold::RegionFolder::general(cx,
+                                   |r| { fldr(r); r },
+                                   |t| { fldt(t); t }).fold_ty(ty)
 }
 
-pub fn fold_regions_and_ty(
-    cx: ctxt,
-    ty: t,
-    fldr: &fn(r: Region) -> Region,
-    fldfnt: &fn(t: t) -> t,
-    fldt: &fn(t: t) -> t) -> t {
-
-    fn fold_substs(
-        substs: &substs,
-        fldr: &fn(r: Region) -> Region,
-        fldt: &fn(t: t) -> t)
-     -> substs {
-        let regions = match substs.regions {
-            ErasedRegions => ErasedRegions,
-            NonerasedRegions(ref regions) => {
-                NonerasedRegions(regions.map(|r| fldr(*r)))
-            }
-        };
-
-        substs {
-            regions: regions,
-            self_ty: substs.self_ty.map(|t| fldt(t)),
-            tps: substs.tps.map(|t| fldt(*t))
-        }
-    }
-
-    let tb = ty::get(ty);
-    match tb.sty {
-      ty::ty_rptr(r, mt) => {
-        let m_r = fldr(r);
-        let m_t = fldt(mt.ty);
-        ty::mk_rptr(cx, m_r, mt {ty: m_t, mutbl: mt.mutbl})
-      }
-      ty_estr(vstore_slice(r)) => {
-        let m_r = fldr(r);
-        ty::mk_estr(cx, vstore_slice(m_r))
-      }
-      ty_evec(mt, vstore_slice(r)) => {
-        let m_r = fldr(r);
-        let m_t = fldt(mt.ty);
-        ty::mk_evec(cx, mt {ty: m_t, mutbl: mt.mutbl}, vstore_slice(m_r))
-      }
-      ty_enum(def_id, ref substs) => {
-        ty::mk_enum(cx, def_id, fold_substs(substs, fldr, fldt))
-      }
-      ty_struct(def_id, ref substs) => {
-        ty::mk_struct(cx, def_id, fold_substs(substs, fldr, fldt))
-      }
-      ty_trait(def_id, ref substs, st, mutbl, bounds) => {
-        let st = match st {
-            RegionTraitStore(region) => RegionTraitStore(fldr(region)),
-            st => st,
-        };
-        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), st, mutbl, bounds)
-      }
-      ty_bare_fn(ref f) => {
-          ty::mk_bare_fn(cx, BareFnTy {
-            sig: fold_sig(&f.sig, fldfnt),
-            purity: f.purity,
-            abis: f.abis.clone(),
-          })
-      }
-      ty_closure(ref f) => {
-          ty::mk_closure(cx, ClosureTy {
-            region: fldr(f.region),
-            sig: fold_sig(&f.sig, fldfnt),
-            purity: f.purity,
-            sigil: f.sigil,
-            onceness: f.onceness,
-            bounds: f.bounds,
-          })
-      }
-      ref sty => {
-        fold_sty_to_ty(cx, sty, |t| fldt(t))
-      }
-    }
-}
-
-// n.b. this function is intended to eventually replace fold_region() below,
-// that is why its name is so similar.
-pub fn fold_regions(
-    cx: ctxt,
-    ty: t,
-    fldr: &fn(r: Region, in_fn: bool) -> Region) -> t {
-    fn do_fold(cx: ctxt, ty: t, in_fn: bool,
-               fldr: &fn(Region, bool) -> Region) -> t {
-        debug!("do_fold(ty={}, in_fn={})", ty_to_str(cx, ty), in_fn);
-        if !type_has_regions(ty) { return ty; }
-        fold_regions_and_ty(
-            cx, ty,
-            |r| fldr(r, in_fn),
-            |t| do_fold(cx, t, true,  |r,b| fldr(r,b)),
-            |t| do_fold(cx, t, in_fn, |r,b| fldr(r,b)))
-    }
-    do_fold(cx, ty, false, fldr)
+pub fn fold_regions(cx: ctxt,
+                    ty: t,
+                    fldr: &fn(r: Region) -> Region)
+                    -> t {
+    ty_fold::RegionFolder::regions(cx, fldr).fold_ty(ty)
 }
 
 // Substitute *only* type parameters.  Used in trans where regions are erased.
-pub fn subst_tps(cx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
-    if tps.len() == 0u && self_ty_opt.is_none() { return typ; }
-    let tb = ty::get(typ);
-    if self_ty_opt.is_none() && !tbox_has_flag(tb, has_params) { return typ; }
-    match tb.sty {
-        ty_param(p) => tps[p.idx],
-        ty_self(_) => {
-            match self_ty_opt {
-                None => cx.sess.bug("ty_self unexpected here"),
-                Some(self_ty) => {
-                    subst_tps(cx, tps, self_ty_opt, self_ty)
+pub fn subst_tps(tcx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
+    let mut subst = TpsSubst { tcx: tcx, self_ty_opt: self_ty_opt, tps: tps };
+    return subst.fold_ty(typ);
+
+    pub struct TpsSubst<'self> {
+        tcx: ctxt,
+        self_ty_opt: Option<t>,
+        tps: &'self [t],
+    }
+
+    impl<'self> TypeFolder for TpsSubst<'self> {
+        fn tcx(&self) -> ty::ctxt { self.tcx }
+
+        fn fold_ty(&mut self, t: ty::t) -> ty::t {
+            if self.tps.len() == 0u && self.self_ty_opt.is_none() {
+                return t;
+            }
+
+            let tb = ty::get(t);
+            if self.self_ty_opt.is_none() && !tbox_has_flag(tb, has_params) {
+                return t;
+            }
+
+            match ty::get(t).sty {
+                ty_param(p) => {
+                    self.tps[p.idx]
+                }
+
+                ty_self(_) => {
+                    match self.self_ty_opt {
+                        None => self.tcx.sess.bug("ty_self unexpected here"),
+                        Some(self_ty) => self_ty
+                    }
+                }
+
+                _ => {
+                    ty_fold::super_fold_ty(self, t)
                 }
             }
-        }
-        ref sty => {
-            fold_sty_to_ty(cx, sty, |t| subst_tps(cx, tps, self_ty_opt, t))
         }
     }
 }
@@ -2727,55 +2577,6 @@ pub fn index_sty(sty: &sty) -> Option<mt> {
     }
 }
 
-/**
- * Enforces an arbitrary but consistent total ordering over
- * free regions.  This is needed for establishing a consistent
- * LUB in region_inference. */
-impl cmp::TotalOrd for FreeRegion {
-    fn cmp(&self, other: &FreeRegion) -> Ordering {
-        cmp::cmp2(&self.scope_id, &self.bound_region,
-                  &other.scope_id, &other.bound_region)
-    }
-}
-
-impl cmp::TotalEq for FreeRegion {
-    fn equals(&self, other: &FreeRegion) -> bool {
-        *self == *other
-    }
-}
-
-/**
- * Enforces an arbitrary but consistent total ordering over
- * bound regions.  This is needed for establishing a consistent
- * LUB in region_inference. */
-impl cmp::TotalOrd for bound_region {
-    fn cmp(&self, other: &bound_region) -> Ordering {
-        match (self, other) {
-            (&ty::br_self, &ty::br_self) => cmp::Equal,
-            (&ty::br_self, _) => cmp::Less,
-
-            (&ty::br_anon(ref a1), &ty::br_anon(ref a2)) => a1.cmp(a2),
-            (&ty::br_anon(*), _) => cmp::Less,
-
-            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.name.cmp(&a2.name),
-            (&ty::br_named(*), _) => cmp::Less,
-
-            (&ty::br_cap_avoid(ref a1, @ref b1),
-             &ty::br_cap_avoid(ref a2, @ref b2)) => cmp::cmp2(a1, b1, a2, b2),
-            (&ty::br_cap_avoid(*), _) => cmp::Less,
-
-            (&ty::br_fresh(ref a1), &ty::br_fresh(ref a2)) => a1.cmp(a2),
-            (&ty::br_fresh(*), _) => cmp::Less,
-        }
-    }
-}
-
-impl cmp::TotalEq for bound_region {
-    fn equals(&self, other: &bound_region) -> bool {
-        *self == *other
-    }
-}
-
 pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
     match cx.trait_refs.find(&id) {
        Some(&t) => t,
@@ -3684,7 +3485,6 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
     load_external: &fn() -> V) -> V
 {
     /*!
-     *
      * Helper for looking things up in the various maps
      * that are populated during typeck::collect (e.g.,
      * `cx.methods`, `cx.tcache`, etc).  All of these share
@@ -3694,8 +3494,8 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
      * the crate loading code (and cache the result for the future).
      */
 
-    match map.find(&def_id) {
-        Some(&ref v) => { return (*v).clone(); }
+    match map.find_copy(&def_id) {
+        Some(v) => { return v; }
         None => { }
     }
 
@@ -3733,7 +3533,7 @@ pub fn method(cx: ctxt, id: ast::DefId) -> @Method {
 
 pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @~[DefId] {
     lookup_locally_or_in_crate_store(
-        "methods", id, cx.trait_method_def_ids,
+        "trait_method_def_ids", id, cx.trait_method_def_ids,
         || @csearch::get_trait_method_def_ids(cx.cstore, id))
 }
 
@@ -4359,77 +4159,56 @@ pub fn ty_params_to_tys(tcx: ty::ctxt, generics: &ast::Generics) -> ~[t] {
 
 /// Returns an equivalent type with all the typedefs and self regions removed.
 pub fn normalize_ty(cx: ctxt, t: t) -> t {
-    fn normalize_mt(cx: ctxt, mt: mt) -> mt {
-        mt { ty: normalize_ty(cx, mt.ty), mutbl: mt.mutbl }
-    }
-    fn normalize_vstore(vstore: vstore) -> vstore {
-        match vstore {
-            vstore_fixed(*) | vstore_uniq | vstore_box => vstore,
-            vstore_slice(_) => vstore_slice(re_static)
-        }
-    }
+    let u = TypeNormalizer(cx).fold_ty(t);
+    return u;
 
-    match cx.normalized_cache.find(&t) {
-      Some(&t) => return t,
-      None => ()
-    }
+    struct TypeNormalizer(ctxt);
 
-    let t = match get(t).sty {
-        ty_evec(mt, vstore) =>
-            // This type has a vstore. Get rid of it
-            mk_evec(cx, normalize_mt(cx, mt), normalize_vstore(vstore)),
+    impl TypeFolder for TypeNormalizer {
+        fn tcx(&self) -> ty::ctxt { **self }
 
-        ty_estr(vstore) =>
-            // This type has a vstore. Get rid of it
-            mk_estr(cx, normalize_vstore(vstore)),
-
-        ty_rptr(_, mt) =>
-            // This type has a region. Get rid of it
-            mk_rptr(cx, re_static, normalize_mt(cx, mt)),
-
-        ty_closure(ref closure_ty) => {
-            mk_closure(cx, ClosureTy {
-                region: ty::re_static,
-                ..(*closure_ty).clone()
-            })
-        }
-
-        ty_enum(did, ref r) => {
-            match (*r).regions {
-                NonerasedRegions(_) => {
-                    // trans doesn't care about regions
-                    mk_enum(cx, did, substs {regions: ty::ErasedRegions,
-                                             self_ty: None,
-                                             tps: (*r).tps.clone()})
+        fn fold_ty(&mut self, t: ty::t) -> ty::t {
+            match self.tcx().normalized_cache.find_copy(&t) {
+                Some(u) => {
+                    return u;
                 }
-                ErasedRegions => {
-                    t
+                None => {
+                    let t_norm = ty_fold::super_fold_ty(self, t);
+                    self.tcx().normalized_cache.insert(t, t_norm);
+                    return t_norm;
                 }
             }
         }
 
-        ty_struct(did, ref r) => {
-            match (*r).regions {
-                NonerasedRegions(_) => {
-                    // Ditto.
-                    mk_struct(cx, did, substs {regions: ty::ErasedRegions,
-                                               self_ty: None,
-                                               tps: (*r).tps.clone()})
-                }
-                ErasedRegions => {
-                    t
-                }
+        fn fold_vstore(&mut self, vstore: vstore) -> vstore {
+            match vstore {
+                vstore_fixed(*) | vstore_uniq | vstore_box => vstore,
+                vstore_slice(_) => vstore_slice(re_static)
             }
         }
 
-        _ =>
-            t
-    };
+        fn fold_region(&mut self, _: ty::Region) -> ty::Region {
+            ty::re_static
+        }
 
-    let sty = fold_sty(&get(t).sty, |t| { normalize_ty(cx, t) });
-    let t_norm = mk_t(cx, sty);
-    cx.normalized_cache.insert(t, t_norm);
-    return t_norm;
+        fn fold_substs(&mut self,
+                       substs: &substs)
+                       -> substs {
+            substs { regions: ErasedRegions,
+                     self_ty: ty_fold::fold_opt_ty(self, substs.self_ty),
+                     tps: ty_fold::fold_ty_vec(self, substs.tps) }
+        }
+
+        fn fold_sig(&mut self,
+                    sig: &ty::FnSig)
+                    -> ty::FnSig {
+            // The binder-id is only relevant to bound regions, which
+            // are erased at trans time.
+            ty::FnSig { binder_id: ast::DUMMY_NODE_ID,
+                        inputs: ty_fold::fold_ty_vec(self, sig.inputs),
+                        output: self.fold_ty(sig.output) }
+        }
+    }
 }
 
 pub trait ExprTyProvider {
