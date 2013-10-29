@@ -165,3 +165,13 @@ impl<'self, T> Iterator<&'self T> for OptVecIterator<'self, T> {
         }
     }
 }
+
+impl<A> FromIterator<A> for OptVec<A> {
+    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> OptVec<A> {
+        let mut r = Empty;
+        for x in *iterator {
+            r.push(x);
+        }
+        r
+    }
+}

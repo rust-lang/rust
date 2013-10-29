@@ -64,7 +64,6 @@ use extra::list;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
-use syntax::opt_vec;
 
 pub mod check;
 pub mod rscope;
@@ -266,7 +265,7 @@ pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: @~[],
-                                region_param: None},
+                                region_param_defs: @[]},
         ty: t
     }
 }
@@ -354,7 +353,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 purity: ast::impure_fn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
+                    binder_id: main_id,
                     inputs: ~[],
                     output: ty::mk_nil(),
                     variadic: false
@@ -400,7 +399,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 purity: ast::impure_fn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
+                    binder_id: start_id,
                     inputs: ~[
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))

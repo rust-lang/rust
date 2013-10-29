@@ -540,7 +540,7 @@ pub fn check_cast_for_escaping_regions(
                 target_regions.push(r);
             }
         },
-        |_| true);
+        |_| ());
 
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
@@ -582,7 +582,6 @@ pub fn check_cast_for_escaping_regions(
                 }
                 _ => {}
             }
-            true
         });
 
     fn is_re_scope(r: ty::Region) -> bool {

@@ -173,35 +173,30 @@ impl Subst for ty::Generics {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::Generics {
         ty::Generics {
             type_param_defs: self.type_param_defs.subst(tcx, substs),
-            region_param: self.region_param
+            region_param_defs: self.region_param_defs.subst(tcx, substs),
         }
     }
 }
 
+impl Subst for ty::RegionParameterDef {
+    fn subst(&self, _: ty::ctxt, _: &ty::substs) -> ty::RegionParameterDef {
+        *self
+    }
+}
+
 impl Subst for ty::Region {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::Region {
-        // Note: This routine only handles the self region, because it
-        // is only concerned with substitutions of regions that appear
-        // in types. Region substitution of the bound regions that
-        // appear in a function signature is done using the
-        // specialized routine
+    fn subst(&self, _tcx: ty::ctxt, substs: &ty::substs) -> ty::Region {
+        // Note: This routine only handles regions that are bound on
+        // type declarationss and other outer declarations, not those
+        // bound in *fn types*. Region substitution of the bound
+        // regions that appear in a function signature is done using
+        // the specialized routine
         // `middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig()`.
-        // As we transition to the new region syntax this distinction
-        // will most likely disappear.
         match self {
-            &ty::re_bound(ty::br_self) => {
+            &ty::re_type_bound(_, i, _) => {
                 match substs.regions {
                     ty::ErasedRegions => ty::re_static,
-                    ty::NonerasedRegions(ref regions) => {
-                        if regions.len() != 1 {
-                            tcx.sess.bug(
-                                format!("ty::Region\\#subst(): \
-                                      Reference to self region when \
-                                      given substs with no self region: {}",
-                                     substs.repr(tcx)));
-                        }
-                        *regions.get(0)
-                    }
+                    ty::NonerasedRegions(ref regions) => *regions.get(i),
                 }
             }
             _ => *self

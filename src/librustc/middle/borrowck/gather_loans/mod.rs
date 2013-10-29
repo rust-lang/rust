@@ -486,7 +486,8 @@ impl<'self> GatherLoanCtxt<'self> {
                     }
 
                     ty::re_empty |
-                    ty::re_bound(*) |
+                    ty::re_fn_bound(*) |
+                    ty::re_type_bound(*) |
                     ty::re_infer(*) => {
                         self.tcx().sess.span_bug(
                             cmt.span,

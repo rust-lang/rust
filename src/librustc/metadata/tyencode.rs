@@ -155,18 +155,31 @@ fn enc_region_substs(w: @mut MemWriter, cx: @ctxt, substs: &ty::RegionSubsts) {
 
 fn enc_region(w: @mut MemWriter, cx: @ctxt, r: ty::Region) {
     match r {
-        ty::re_bound(br) => {
-            mywrite!(w, "b");
+        ty::re_fn_bound(id, br) => {
+            mywrite!(w, "b[{}|", id);
             enc_bound_region(w, cx, br);
+            mywrite!(w, "]");
+        }
+        ty::re_type_bound(node_id, index, ident) => {
+            mywrite!(w, "B[{}|{}|{}]",
+                     node_id,
+                     index,
+                     cx.tcx.sess.str_of(ident));
         }
         ty::re_free(ref fr) => {
             mywrite!(w, "f[{}|", fr.scope_id);
             enc_bound_region(w, cx, fr.bound_region);
             mywrite!(w, "]");
         }
-        ty::re_scope(nid) => mywrite!(w, "s{}|", nid),
-        ty::re_static => mywrite!(w, "t"),
-        ty::re_empty => mywrite!(w, "e"),
+        ty::re_scope(nid) => {
+            mywrite!(w, "s{}|", nid);
+        }
+        ty::re_static => {
+            mywrite!(w, "t");
+        }
+        ty::re_empty => {
+            mywrite!(w, "e");
+        }
         ty::re_infer(_) => {
             // these should not crop up after typeck
             cx.diag.handler().bug("Cannot encode region variables");
@@ -176,14 +189,17 @@ fn enc_region(w: @mut MemWriter, cx: @ctxt, r: ty::Region) {
 
 fn enc_bound_region(w: @mut MemWriter, cx: @ctxt, br: ty::bound_region) {
     match br {
-        ty::br_self => mywrite!(w, "s"),
-        ty::br_anon(idx) => mywrite!(w, "a{}|", idx),
-        ty::br_named(s) => mywrite!(w, "[{}]", cx.tcx.sess.str_of(s)),
-        ty::br_cap_avoid(id, br) => {
-            mywrite!(w, "c{}|", id);
-            enc_bound_region(w, cx, *br);
+        ty::br_anon(idx) => {
+            mywrite!(w, "a{}|", idx);
         }
-        ty::br_fresh(id) => mywrite!(w, "{}", id),
+        ty::br_named(d, s) => {
+            mywrite!(w, "[{}|{}]",
+                     (cx.ds)(d),
+                     cx.tcx.sess.str_of(s));
+        }
+        ty::br_fresh(id) => {
+            mywrite!(w, "f{}|", id);
+        }
     }
 }
 
@@ -366,13 +382,15 @@ fn enc_closure_ty(w: @mut MemWriter, cx: @ctxt, ft: &ty::ClosureTy) {
 }
 
 fn enc_fn_sig(w: @mut MemWriter, cx: @ctxt, fsig: &ty::FnSig) {
-    mywrite!(w, "[");
+    mywrite!(w, "[{}|", fsig.binder_id);
     for ty in fsig.inputs.iter() {
         enc_ty(w, cx, *ty);
     }
     mywrite!(w, "]");
     if fsig.variadic {
-        mywrite!(w, "A");
+        mywrite!(w, "V");
+    } else {
+        mywrite!(w, "N");
     }
     enc_ty(w, cx, fsig.output);
 }

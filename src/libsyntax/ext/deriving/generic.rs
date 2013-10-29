@@ -375,14 +375,10 @@ impl<'self> TraitDef<'self> {
             cx.ty_ident(trait_span, ty_param.ident)
         };
 
-        let self_lifetime = if generics.lifetimes.is_empty() {
-            None
-        } else {
-            Some(*generics.lifetimes.get(0))
-        };
+        let self_lifetimes = generics.lifetimes.clone();
 
         // Create the type of `self`.
-        let self_type = cx.ty_path(cx.path_all(trait_span, false, ~[ type_ident ], self_lifetime,
+        let self_type = cx.ty_path(cx.path_all(trait_span, false, ~[ type_ident ], self_lifetimes,
                                                opt_vec::take_vec(self_ty_params)), None);
 
         let doc_attr = cx.attribute(
