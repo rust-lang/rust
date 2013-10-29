@@ -94,15 +94,9 @@ pub fn relate_nested_regions(
         relate_op: &'self fn(ty::Region, ty::Region),
     }
 
-    // FIXME we should define more precisely when a
-    //       region is considered "nested" and take variance into account.
-    //
-    //       I can't decide whether skipping closure parameter types and
-    //       so on is necessary or not. What is the difference, after all,
-    //       between `&'a |&'b T|` and `&'a Fn<&'b T>`? And yet in the
-    //       latter case I'm inclined to think we should probably track
-    //       the relationship (but then again maybe we should just skip
-    //       all such cases until it "proves necessary")
+    // FIXME(#10151) -- Define more precisely when a region is
+    // considered "nested". Consider taking variance into account as
+    // well.
 
     impl<'self> TypeFolder for RegionRelator<'self> {
         fn tcx(&self) -> ty::ctxt {
