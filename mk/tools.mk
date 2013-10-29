@@ -16,11 +16,11 @@ COMPILETEST_CRATE := $(S)src/compiletest/compiletest.rs
 COMPILETEST_INPUTS := $(wildcard $(S)src/compiletest/*.rs)
 
 # Rustpkg, the package manager and build system
-RUSTPKG_LIB := $(S)src/librustpkg/rustpkg.rs
+RUSTPKG_LIB := $(S)src/librustpkg/lib.rs
 RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*.rs)
 
 # Rustdoc, the documentation tool
-RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rs
+RUSTDOC_LIB := $(S)src/librustdoc/lib.rs
 RUSTDOC_INPUTS := $(wildcard $(addprefix $(S)src/librustdoc/,        \
                                            *.rs */*.rs */*/*.rs))
 
