@@ -22,9 +22,7 @@ use util::logv;
 
 use std::cell::Cell;
 use std::rt::io;
-use std::rt::io::Writer;
-use std::rt::io::Reader;
-use std::rt::io::file::FileInfo;
+use std::rt::io::file;
 use std::os;
 use std::str;
 use std::task::{spawn_sched, SingleThreaded};
@@ -173,7 +171,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let src = testfile.open_reader(io::Open).read_to_end();
+    let src = file::open(testfile).read_to_end();
     let src = str::from_utf8_owned(src);
     let mut srcs = ~[src];
 
@@ -195,7 +193,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut expected = match props.pp_exact {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
-            let s = filepath.open_reader(io::Open).read_to_end();
+            let s = file::open(&filepath).read_to_end();
             str::from_utf8_owned(s)
           }
           None => { srcs[srcs.len() - 2u].clone() }
@@ -628,10 +626,8 @@ fn compose_and_run_compiler(
 }
 
 fn ensure_dir(path: &Path) {
-    if os::path_is_dir(path) { return; }
-    if !os::make_dir(path, 0x1c0i32) {
-        fail!("can't make dir {}", path.display());
-    }
+    if path.is_dir() { return; }
+    file::mkdir(path, io::UserRWX);
 }
 
 fn compose_and_run(config: &config, testfile: &Path,
@@ -745,7 +741,7 @@ fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
 fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    outfile.open_writer(io::CreateOrTruncate).write(out.as_bytes());
+    file::create(&outfile).write(out.as_bytes());
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
@@ -901,7 +897,7 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
-    let dirs = os::list_dir_path(&tdir);
+    let dirs = file::readdir(&tdir);
     for file in dirs.iter() {
         if file.extension_str() == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
@@ -996,7 +992,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = p.with_extension("ll").open_reader(io::Open).read_to_end();
+    let x = file::open(&p.with_extension("ll")).read_to_end();
     let x = str::from_utf8_owned(x);
     x.line_iter().len()
 }

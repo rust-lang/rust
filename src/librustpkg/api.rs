@@ -21,7 +21,7 @@ pub use path_util::default_workspace;
 
 pub use source_control::{safe_git_clone, git_clone_url};
 
-use std::{os, run};
+use std::run;
 use extra::arc::{Arc,RWArc};
 use extra::workcache;
 use extra::workcache::{Database, Logger, FreshnessMap};
@@ -57,12 +57,12 @@ pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
 
 fn file_is_fresh(path: &str, in_hash: &str) -> bool {
     let path = Path::new(path);
-    os::path_exists(&path) && in_hash == digest_file_with_date(&path)
+    path.exists() && in_hash == digest_file_with_date(&path)
 }
 
 fn binary_is_fresh(path: &str, in_hash: &str) -> bool {
     let path = Path::new(path);
-    os::path_exists(&path) && in_hash == digest_only_date(&path)
+    path.exists() && in_hash == digest_only_date(&path)
 }
 
 pub fn new_workcache_context(p: &Path) -> workcache::Context {

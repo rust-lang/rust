@@ -14,7 +14,7 @@
 extern mod std;
 
 use extra::semver;
-use std::{char, os, result, run, str};
+use std::{char, result, run, str};
 use extra::tempfile::TempDir;
 use path_util::rust_path;
 
@@ -100,7 +100,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
     for rp in rustpath.iter() {
         let local_path = rp.join(local_path);
         let git_dir = local_path.join(".git");
-        if !os::path_is_dir(&git_dir) {
+        if !git_dir.is_dir() {
             continue;
         }
         // FIXME (#9639): This needs to handle non-utf8 paths

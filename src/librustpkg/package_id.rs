@@ -10,7 +10,6 @@
 
 use version::{try_getting_version, try_getting_local_version,
               Version, NoVersion, split_version};
-use std::rt::io::Writer;
 use std::hash::Streaming;
 use std::hash;
 

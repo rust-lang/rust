@@ -116,6 +116,8 @@ rust_uv_populate_uv_stat
 rust_uv_fs_mkdir
 rust_uv_fs_rmdir
 rust_uv_fs_readdir
+rust_uv_fs_rename
+rust_uv_fs_chmod
 rust_dbg_lock_create
 rust_dbg_lock_destroy
 rust_dbg_lock_lock
