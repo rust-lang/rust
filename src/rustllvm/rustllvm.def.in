@@ -629,3 +629,4 @@ LLVMRustAddAlwaysInlinePass
 LLVMAddReturnAttribute
 LLVMRemoveReturnAttribute
 LLVMTypeToString
+LLVMAddColdAttribute

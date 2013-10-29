@@ -365,6 +365,11 @@ extern "C" void LLVMRemoveReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
                       AttributeSet::get(A->getContext(), AttributeSet::ReturnIndex,  B));
 }
 
+extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {
+  Function *A = unwrap<Function>(Fn);
+  A->addAttribute(AttributeSet::FunctionIndex, Attribute::Cold);
+}
+
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
                                             LLVMValueRef source,
                                             const char* Name,
