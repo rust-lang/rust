@@ -121,10 +121,6 @@ pub mod io;
 /// The EventLoop and internal synchronous I/O interface.
 pub mod rtio;
 
-/// libuv and default rtio implementation.
-#[cfg(stage0)]
-pub mod uv;
-
 /// The Local trait for types that are accessible via thread-local
 /// or task-local storage.
 pub mod local;
@@ -463,13 +459,6 @@ pub fn in_green_task_context() -> bool {
     }
 }
 
-#[cfg(stage0)]
-pub fn new_event_loop() -> ~rtio::EventLoop {
-    use rt::uv::uvio::UvEventLoop;
-    ~UvEventLoop::new() as ~rtio::EventLoop
-}
-
-#[cfg(not(stage0))]
 pub fn new_event_loop() -> ~rtio::EventLoop {
     #[fixed_stack_segment]; #[allow(cstack)];
 
