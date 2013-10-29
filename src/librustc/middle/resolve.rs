@@ -5043,7 +5043,8 @@ impl Resolver {
                 visit::walk_expr(self, expr, ());
             }
 
-            ExprFnBlock(ref fn_decl, ref block) => {
+            ExprFnBlock(ref fn_decl, ref block) |
+            ExprProc(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl),
                                       NoTypeParameters,

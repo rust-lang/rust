@@ -409,6 +409,7 @@ impl CFGBuilder {
             ast::ExprInlineAsm(*) |
             ast::ExprSelf |
             ast::ExprFnBlock(*) |
+            ast::ExprProc(*) |
             ast::ExprLit(*) |
             ast::ExprPath(*) => {
                 self.straightline(expr, pred, [])

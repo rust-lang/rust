@@ -413,7 +413,7 @@ mod tests {
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
 
-        let mut proc = run::Process::new("cat", [], run::ProcessOptions {
+        let mut process = run::Process::new("cat", [], run::ProcessOptions {
             dir: None,
             env: None,
             in_fd: Some(pipe_in.input),
@@ -430,7 +430,7 @@ mod tests {
         }
         let actual = readclose(pipe_out.input);
         readclose(pipe_err.input);
-        proc.finish();
+        process.finish();
 
         assert_eq!(~"test", actual);
     }

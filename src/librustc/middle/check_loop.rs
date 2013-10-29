@@ -49,7 +49,7 @@ impl Visitor<Context> for CheckLoopVisitor {
               ExprLoop(ref b, _) => {
                 self.visit_block(b, Context { in_loop: true,.. cx });
               }
-              ExprFnBlock(_, ref b) => {
+              ExprFnBlock(_, ref b) | ExprProc(_, ref b) => {
                 self.visit_block(b, Context { in_loop: false, can_ret: false });
               }
               ExprBreak(_) => {
