@@ -363,18 +363,18 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_param(st.tcx, parse_uint(st), did);
       }
       's' => {
-        let did = parse_def(st, TypeParameter, conv);
+        let did = parse_def(st, TypeParameter, |x,y| conv(x,y));
         return ty::mk_self(st.tcx, did);
       }
-      '@' => return ty::mk_box(st.tcx, parse_mt(st, conv)),
-      '~' => return ty::mk_uniq(st.tcx, parse_mt(st, conv)),
-      '*' => return ty::mk_ptr(st.tcx, parse_mt(st, conv)),
+      '@' => return ty::mk_box(st.tcx, parse_mt(st, |x,y| conv(x,y))),
+      '~' => return ty::mk_uniq(st.tcx, parse_mt(st, |x,y| conv(x,y))),
+      '*' => return ty::mk_ptr(st.tcx, parse_mt(st, |x,y| conv(x,y))),
       '&' => {
-        let r = parse_region(st);
-        let mt = parse_mt(st, conv);
+        let r = parse_region(st, |x,y| conv(x,y));
+        let mt = parse_mt(st, |x,y| conv(x,y));
         return ty::mk_rptr(st.tcx, r, mt);
       }
-      'U' => return ty::mk_unboxed_vec(st.tcx, parse_mt(st, conv)),
+      'U' => return ty::mk_unboxed_vec(st.tcx, parse_mt(st, |x,y| conv(x,y))),
       'V' => {
         let mt = parse_mt(st, |x,y| conv(x,y));
         let v = parse_vstore(st, |x,y| conv(x,y));
@@ -392,10 +392,10 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_tup(st.tcx, params);
       }
       'f' => {
-        return ty::mk_closure(st.tcx, parse_closure_ty(st, conv));
+        return ty::mk_closure(st.tcx, parse_closure_ty(st, |x,y| conv(x,y)));
       }
       'F' => {
-        return ty::mk_bare_fn(st.tcx, parse_bare_fn_ty(st, conv));
+        return ty::mk_bare_fn(st.tcx, parse_bare_fn_ty(st, |x,y| conv(x,y)));
       }
       'Y' => return ty::mk_type(st.tcx),
       'C' => {
@@ -417,7 +417,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
                 pos: pos,
                 .. *st
             };
-            let tt = parse_ty(&mut ps, conv);
+            let tt = parse_ty(&mut ps, |x,y| conv(x,y));
             st.tcx.rcache.insert(key, tt);
             return tt;
           }
@@ -449,7 +449,7 @@ fn parse_mutability(st: &mut PState) -> ast::Mutability {
 
 fn parse_mt(st: &mut PState, conv: conv_did) -> ty::mt {
     let m = parse_mutability(st);
-    ty::mt { ty: parse_ty(st, conv), mutbl: m }
+    ty::mt { ty: parse_ty(st, |x,y| conv(x,y)), mutbl: m }
 }
 
 fn parse_def(st: &mut PState, source: DefIdSource,

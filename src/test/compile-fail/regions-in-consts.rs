@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static c_x: &'blk int = &22; //~ ERROR Illegal lifetime 'blk: only 'static is allowed here
-static c_y: &int = &22; //~ ERROR Illegal anonymous lifetime: only 'static is allowed here
+static c_y: &int = &22; //~ ERROR missing lifetime specifier
 static c_z: &'static int = &22;
 
 fn main() {

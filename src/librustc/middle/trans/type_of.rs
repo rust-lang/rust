@@ -14,6 +14,7 @@ use middle::trans::common::*;
 use middle::trans::foreign;
 use middle::ty;
 use util::ppaux;
+use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
@@ -172,13 +173,15 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
-    debug!("type_of {:?}: {:?}", t, ty::get(t));
-
     // Check the cache.
     match cx.lltypes.find(&t) {
-        Some(&t) => return t,
+        Some(&llty) => {
+            return llty;
+        }
         None => ()
     }
+
+    debug!("type_of {} {:?}", t.repr(cx.tcx), t);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -189,6 +192,12 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);
+        debug!("--> normalized {} {:?} to {} {:?} llty={}",
+                t.repr(cx.tcx),
+                t,
+                t_norm.repr(cx.tcx),
+                t_norm,
+                cx.tn.type_to_str(llty));
         cx.lltypes.insert(t, llty);
         return llty;
     }
@@ -299,6 +308,10 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_err(*) => cx.tcx.sess.bug("type_of with ty_err")
     };
 
+    debug!("--> mapped t={} {:?} to llty={}",
+            t.repr(cx.tcx),
+            t,
+            cx.tn.type_to_str(llty));
     cx.lltypes.insert(t, llty);
 
     // If this was an enum or struct, fill in the type now.

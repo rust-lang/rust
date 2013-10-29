@@ -13,6 +13,6 @@
 use std::local_data;
 
 local_data_key!(key: @&int)
-//~^ ERROR only 'static is allowed
+//~^ ERROR missing lifetime specifier
 
 fn main() {}

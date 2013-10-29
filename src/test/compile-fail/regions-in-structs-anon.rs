@@ -8,18 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(cond: bool) {
-    let x = 5;
-    let mut y: &'blk int = &x;
+// Test that anonymous lifetimes are not permitted in struct declarations
 
-    let mut z: &'blk int;
-    if cond {
-        z = &x; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
-    } else {
-        let w: &'blk int = &x;
-        z = w;
-    }
+struct Foo {
+    x: &int //~ ERROR missing lifetime specifier
 }
 
-fn main() {
-}
+fn main() {}
