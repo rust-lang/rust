@@ -17,7 +17,6 @@ Message passing
 use clone::Clone;
 use kinds::Send;
 use option::Option;
-pub use rt::comm::SendDeferred;
 use rtcomm = rt::comm;
 
 /// A trait for things that can send multiple messages.
@@ -31,6 +30,12 @@ pub trait GenericChan<T> {
 pub trait GenericSmartChan<T> {
     /// Sends a message, or report if the receiver has closed the connection.
     fn try_send(&self, x: T) -> bool;
+}
+
+/// Trait for non-rescheduling send operations, similar to `send_deferred` on ChanOne.
+pub trait SendDeferred<T> {
+    fn send_deferred(&self, val: T);
+    fn try_send_deferred(&self, val: T) -> bool;
 }
 
 /// A trait for things that can receive multiple messages.
