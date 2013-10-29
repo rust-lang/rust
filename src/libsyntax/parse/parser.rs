@@ -341,7 +341,7 @@ pub struct Parser {
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: @mut ~[Span]
     /* do not copy the parser; its state is tied to outside state */
-    priv new_field: util::NonCopyable
+    priv non_copyable: util::NonCopyable
 }
 
 
