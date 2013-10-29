@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:missing method `eat`
 trait animal {
   fn eat(&self);
 }
@@ -18,6 +17,7 @@ struct cat {
 }
 
 impl animal for cat {
+    //~^ ERROR not all trait methods implemented, missing: `eat`
 }
 
 fn cat(in_x : uint) -> cat {

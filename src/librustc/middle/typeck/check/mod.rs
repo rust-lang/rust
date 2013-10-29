@@ -603,7 +603,23 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         for m in ms.iter() {
             check_method_body(ccx, &impl_tpt.generics, None, *m);
         }
-        vtable::resolve_impl(ccx, it);
+
+        match *opt_trait_ref {
+            Some(ref ast_trait_ref) => {
+                let impl_trait_ref =
+                    ty::node_id_to_trait_ref(ccx.tcx, ast_trait_ref.ref_id);
+                check_impl_methods_against_trait(ccx,
+                                             it.span,
+                                             &impl_tpt.generics,
+                                             ast_trait_ref,
+                                             impl_trait_ref,
+                                             *ms);
+                vtable::resolve_impl(ccx, it, &impl_tpt.generics,
+                                     impl_trait_ref);
+            }
+            None => { }
+        }
+
       }
       ast::item_trait(_, _, ref trait_methods) => {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
@@ -705,6 +721,311 @@ fn check_method_body(ccx: @mut CrateCtxt,
         opt_self_info,
         fty,
         param_env);
+}
+
+fn check_impl_methods_against_trait(ccx: @mut CrateCtxt,
+                                    impl_span: Span,
+                                    impl_generics: &ty::Generics,
+                                    ast_trait_ref: &ast::trait_ref,
+                                    impl_trait_ref: &ty::TraitRef,
+                                    impl_methods: &[@ast::method]) {
+    // Locate trait methods
+    let tcx = ccx.tcx;
+    let trait_methods = ty::trait_methods(tcx, impl_trait_ref.def_id);
+
+    // Check existing impl methods to see if they are both present in trait
+    // and compatible with trait signature
+    for impl_method in impl_methods.iter() {
+        let impl_method_def_id = local_def(impl_method.id);
+        let impl_method_ty = ty::method(ccx.tcx, impl_method_def_id);
+
+        // If this is an impl of a trait method, find the corresponding
+        // method definition in the trait.
+        let opt_trait_method_ty =
+            trait_methods.iter().
+            find(|tm| tm.ident.name == impl_method_ty.ident.name);
+        match opt_trait_method_ty {
+            Some(trait_method_ty) => {
+                compare_impl_method(ccx.tcx,
+                                    impl_generics,
+                                    impl_method_ty,
+                                    impl_method.span,
+                                    impl_method.body.id,
+                                    *trait_method_ty,
+                                    &impl_trait_ref.substs);
+            }
+            None => {
+                tcx.sess.span_err(
+                    impl_method.span,
+                    format!("method `{}` is not a member of trait `{}`",
+                            tcx.sess.str_of(impl_method_ty.ident),
+                            pprust::path_to_str(&ast_trait_ref.path,
+                                                tcx.sess.intr())));
+            }
+        }
+    }
+
+    // Check for missing methods from trait
+    let provided_methods = ty::provided_trait_methods(tcx,
+                                                      impl_trait_ref.def_id);
+    let mut missing_methods = ~[];
+    for trait_method in trait_methods.iter() {
+        let is_implemented =
+            impl_methods.iter().any(
+                |m| m.ident.name == trait_method.ident.name);
+        let is_provided =
+            provided_methods.iter().any(
+                |m| m.ident.name == trait_method.ident.name);
+        if !is_implemented && !is_provided {
+            missing_methods.push(
+                format!("`{}`", ccx.tcx.sess.str_of(trait_method.ident)));
+        }
+    }
+
+    if !missing_methods.is_empty() {
+        tcx.sess.span_err(
+            impl_span,
+            format!("not all trait methods implemented, missing: {}",
+                    missing_methods.connect(", ")));
+    }
+}
+
+/**
+ * Checks that a method from an impl/class conforms to the signature of
+ * the same method as declared in the trait.
+ *
+ * # Parameters
+ *
+ * - impl_generics: the generics declared on the impl itself (not the method!)
+ * - impl_m: type of the method we are checking
+ * - impl_m_span: span to use for reporting errors
+ * - impl_m_body_id: id of the method body
+ * - trait_m: the method in the trait
+ * - trait_substs: the substitutions used on the type of the trait
+ * - self_ty: the self type of the impl
+ */
+pub fn compare_impl_method(tcx: ty::ctxt,
+                           impl_generics: &ty::Generics,
+                           impl_m: @ty::Method,
+                           impl_m_span: Span,
+                           impl_m_body_id: ast::NodeId,
+                           trait_m: &ty::Method,
+                           trait_substs: &ty::substs) {
+    debug!("compare_impl_method()");
+    let infcx = infer::new_infer_ctxt(tcx);
+
+    let impl_tps = impl_generics.type_param_defs.len();
+
+    // Try to give more informative error messages about self typing
+    // mismatches.  Note that any mismatch will also be detected
+    // below, where we construct a canonical function type that
+    // includes the self parameter as a normal parameter.  It's just
+    // that the error messages you get out of this code are a bit more
+    // inscrutable, particularly for cases where one method has no
+    // self.
+    match (&trait_m.explicit_self, &impl_m.explicit_self) {
+        (&ast::sty_static, &ast::sty_static) => {}
+        (&ast::sty_static, _) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has a `{}` declaration in the impl, \
+                        but not in the trait",
+                        tcx.sess.str_of(trait_m.ident),
+                        pprust::explicit_self_to_str(&impl_m.explicit_self,
+                                                     tcx.sess.intr())));
+            return;
+        }
+        (_, &ast::sty_static) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has a `{}` declaration in the trait, \
+                        but not in the impl",
+                        tcx.sess.str_of(trait_m.ident),
+                        pprust::explicit_self_to_str(&trait_m.explicit_self,
+                                                     tcx.sess.intr())));
+            return;
+        }
+        _ => {
+            // Let the type checker catch other errors below
+        }
+    }
+
+    let num_impl_m_type_params = impl_m.generics.type_param_defs.len();
+    let num_trait_m_type_params = trait_m.generics.type_param_defs.len();
+    if num_impl_m_type_params != num_trait_m_type_params {
+        tcx.sess.span_err(
+            impl_m_span,
+            format!("method `{}` has {} type parameter(s), but its trait \
+                    declaration has {} type parameter(s)",
+                    tcx.sess.str_of(trait_m.ident),
+                    num_impl_m_type_params,
+                    num_trait_m_type_params));
+        return;
+    }
+
+    if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
+        tcx.sess.span_err(
+            impl_m_span,
+            format!("method `{}` has {} parameter(s) \
+                    but the trait has {} parameter(s)",
+                    tcx.sess.str_of(trait_m.ident),
+                    impl_m.fty.sig.inputs.len(),
+                    trait_m.fty.sig.inputs.len()));
+        return;
+    }
+
+    for (i, trait_param_def) in trait_m.generics.type_param_defs.iter().enumerate() {
+        // For each of the corresponding impl ty param's bounds...
+        let impl_param_def = &impl_m.generics.type_param_defs[i];
+
+        // Check that the impl does not require any builtin-bounds
+        // that the trait does not guarantee:
+        let extra_bounds =
+            impl_param_def.bounds.builtin_bounds -
+            trait_param_def.bounds.builtin_bounds;
+        if !extra_bounds.is_empty() {
+           tcx.sess.span_err(
+               impl_m_span,
+               format!("in method `{}`, \
+                       type parameter {} requires `{}`, \
+                       which is not required by \
+                       the corresponding type parameter \
+                       in the trait declaration",
+                       tcx.sess.str_of(trait_m.ident),
+                       i,
+                       extra_bounds.user_string(tcx)));
+           return;
+        }
+
+        // FIXME(#2687)---we should be checking that the bounds of the
+        // trait imply the bounds of the subtype, but it appears we
+        // are...not checking this.
+        if impl_param_def.bounds.trait_bounds.len() !=
+            trait_param_def.bounds.trait_bounds.len()
+        {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("in method `{}`, \
+                        type parameter {} has {} trait bound(s), but the \
+                        corresponding type parameter in \
+                        the trait declaration has {} trait bound(s)",
+                        tcx.sess.str_of(trait_m.ident),
+                        i, impl_param_def.bounds.trait_bounds.len(),
+                        trait_param_def.bounds.trait_bounds.len()));
+            return;
+        }
+    }
+
+    // Create a substitution that maps the type parameters on the impl
+    // to themselves and which replace any references to bound regions
+    // in the self type with free regions.  So, for example, if the
+    // impl type is "&'self str", then this would replace the self
+    // type with a free region `self`.
+    let dummy_impl_tps: ~[ty::t] =
+        impl_generics.type_param_defs.iter().enumerate().
+        map(|(i,t)| ty::mk_param(tcx, i, t.def_id)).
+        collect();
+    let dummy_method_tps: ~[ty::t] =
+        impl_m.generics.type_param_defs.iter().enumerate().
+        map(|(i,t)| ty::mk_param(tcx, i + impl_tps, t.def_id)).
+        collect();
+    let dummy_impl_regions: OptVec<ty::Region> =
+        impl_generics.region_param_defs.iter().
+        map(|l| ty::re_free(ty::FreeRegion {
+                scope_id: impl_m_body_id,
+                bound_region: ty::br_named(l.def_id, l.ident)})).
+        collect();
+    let dummy_substs = ty::substs {
+        tps: vec::append(dummy_impl_tps, dummy_method_tps),
+        regions: ty::NonerasedRegions(dummy_impl_regions),
+        self_ty: None };
+
+    // We are going to create a synthetic fn type that includes
+    // both the method's self argument and its normal arguments.
+    // So a method like `fn(&self, a: uint)` would be converted
+    // into a function `fn(self: &T, a: uint)`.
+    let mut trait_fn_args = ~[];
+    let mut impl_fn_args = ~[];
+
+    // For both the trait and the impl, create an argument to
+    // represent the self argument (unless this is a static method).
+    // This argument will have the *transformed* self type.
+    for &t in trait_m.transformed_self_ty.iter() {
+        trait_fn_args.push(t);
+    }
+    for &t in impl_m.transformed_self_ty.iter() {
+        impl_fn_args.push(t);
+    }
+
+    // Add in the normal arguments.
+    trait_fn_args.push_all(trait_m.fty.sig.inputs);
+    impl_fn_args.push_all(impl_m.fty.sig.inputs);
+
+    // Create a bare fn type for trait/impl that includes self argument
+    let trait_fty =
+        ty::mk_bare_fn(tcx,
+                       ty::BareFnTy {
+                            purity: trait_m.fty.purity,
+                            abis: trait_m.fty.abis,
+                            sig: ty::FnSig {
+                                binder_id: trait_m.fty.sig.binder_id,
+                                inputs: trait_fn_args,
+                                output: trait_m.fty.sig.output,
+                                variadic: false
+                            }
+                        });
+    let impl_fty =
+        ty::mk_bare_fn(tcx,
+                       ty::BareFnTy {
+                            purity: impl_m.fty.purity,
+                            abis: impl_m.fty.abis,
+                            sig: ty::FnSig {
+                                binder_id: impl_m.fty.sig.binder_id,
+                                inputs: impl_fn_args,
+                                output: impl_m.fty.sig.output,
+                                variadic: false
+                            }
+                        });
+
+    // Perform substitutions so that the trait/impl methods are expressed
+    // in terms of the same set of type/region parameters:
+    // - replace trait type parameters with those from `trait_substs`,
+    //   except with any reference to bound self replaced with `dummy_self_r`
+    // - replace method parameters on the trait with fresh, dummy parameters
+    //   that correspond to the parameters we will find on the impl
+    // - replace self region with a fresh, dummy region
+    let impl_fty = {
+        debug!("impl_fty (pre-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
+        impl_fty.subst(tcx, &dummy_substs)
+    };
+    debug!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
+    let trait_fty = {
+        let substs { regions: trait_regions,
+                     tps: trait_tps,
+                     self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
+        let substs = substs {
+            regions: trait_regions,
+            tps: vec::append(trait_tps, dummy_method_tps),
+            self_ty: self_ty,
+        };
+        debug!("trait_fty (pre-subst): {} substs={}",
+               trait_fty.repr(tcx), substs.repr(tcx));
+        trait_fty.subst(tcx, &substs)
+    };
+    debug!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
+
+    match infer::mk_subty(infcx, false, infer::MethodCompatCheck(impl_m_span),
+                          impl_fty, trait_fty) {
+        result::Ok(()) => {}
+        result::Err(ref terr) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has an incompatible type: {}",
+                        tcx.sess.str_of(trait_m.ident),
+                        ty::type_err_to_str(tcx, terr)));
+            ty::note_and_explain_type_err(tcx, terr);
+        }
+    }
 }
 
 impl AstConv for FnCtxt {

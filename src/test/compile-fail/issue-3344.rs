@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct thing(uint);
-impl Ord for thing { //~ ERROR missing method `lt`
+impl Ord for thing { //~ ERROR not all trait methods implemented, missing: `lt`
     fn le(&self, other: &thing) -> bool { **self < **other }
     fn ge(&self, other: &thing) -> bool { **self < **other }
 }

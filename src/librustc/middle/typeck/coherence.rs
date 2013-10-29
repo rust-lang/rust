@@ -536,33 +536,6 @@ impl CoherenceChecker {
         return trait_id;
     }
 
-    // This check doesn't really have anything to do with coherence. It's
-    // here for historical reasons
-    pub fn check_trait_methods_are_implemented(
-        &self,
-        all_methods: &mut ~[@Method],
-        trait_did: DefId,
-        trait_ref_span: Span) {
-
-        let tcx = self.crate_context.tcx;
-
-        let mut provided_names = HashSet::new();
-        // Implemented methods
-        for elt in all_methods.iter() {
-            provided_names.insert(elt.ident.name);
-        }
-
-        let r = ty::trait_methods(tcx, trait_did);
-        for method in r.iter() {
-            debug!("checking for {}", method.ident.repr(tcx));
-            if provided_names.contains(&method.ident.name) { continue; }
-
-            tcx.sess.span_err(trait_ref_span,
-                              format!("missing method `{}`",
-                                   tcx.sess.str_of(method.ident)));
-        }
-    }
-
     /// For coherence, when we have `impl Type`, we need to guarantee that
     /// `Type` is "local" to the crate. For our purposes, this means that it
     /// must precisely name some nominal type defined in this crate.
@@ -617,17 +590,10 @@ impl CoherenceChecker {
                     let ty_trait_ref = ty::node_id_to_trait_ref(
                         self.crate_context.tcx,
                         trait_ref.ref_id);
-                    let trait_did = ty_trait_ref.def_id;
 
                     self.instantiate_default_methods(local_def(item.id),
                                                      ty_trait_ref,
                                                      &mut methods);
-
-                    // Check that we have implementations of every trait method
-                    self.check_trait_methods_are_implemented(
-                        &mut methods,
-                        trait_did,
-                        trait_ref.path.span);
                 }
 
                 return @Impl {
