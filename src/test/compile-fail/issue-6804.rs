@@ -1,18 +1,16 @@
-#[allow(non_uppercase_pattern_statics)];
-
 // Matching against NaN should result in a warning
 
-use std::f64::NaN;
+use std::f64::NAN;
 
 fn main() {
-    let x = NaN;
+    let x = NAN;
     match x {
-        NaN => {},
+        NAN => {},
         _ => {},
     };
     //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
     match [x, 1.0] {
-        [NaN, _] => {},
+        [NAN, _] => {},
         _ => {},
     };
     //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
