@@ -1,7 +1,7 @@
 " Vim indent file
 " Language:         Rust
 " Author:           Chris Morgan <me@chrismorgan.info>
-" Last Change:      2013 Jul 10
+" Last Change:      2013 Oct 29
 
 " Only load this indent file when no other was loaded.
 if exists("b:did_indent")
@@ -104,8 +104,23 @@ function GetRustIndent(lnum)
 	let prevline = s:get_line_trimmed(prevnonblank(a:lnum - 1))
 	if prevline[len(prevline) - 1] == ","
 				\ && s:get_line_trimmed(a:lnum) !~ "^\\s*[\\[\\]{}]"
+				\ && prevline !~ "^\\s*fn\\s"
 		" Oh ho! The previous line ended in a comma! I bet cindent will try to
-		" take this too far... For now, let's use the previous line's indent
+		" take this too far... For now, let's normally use the previous line's
+		" indent.
+
+		" One case where this doesn't work out is where *this* line contains
+		" square or curly brackets; then we normally *do* want to be indenting
+		" further.
+		"
+		" Another case where we don't want to is one like a function
+		" definition with arguments spread over multiple lines:
+		"
+		" fn foo(baz: Baz,
+		"        baz: Baz) // <-- cindent gets this right by itself
+		"
+		" There are probably other cases where we don't want to do this as
+		" well. Add them as needed.
 		return GetRustIndent(a:lnum - 1)
 	endif
 
