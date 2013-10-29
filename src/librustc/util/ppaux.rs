@@ -11,11 +11,11 @@
 
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
-use middle::ty::{bound_region, br_anon, br_named};
-use middle::ty::{br_fresh, ctxt, field};
+use middle::ty::{BoundRegion, BrAnon, BrNamed};
+use middle::ty::{BrFresh, ctxt, field};
 use middle::ty::{mt, t, param_ty};
-use middle::ty::{re_free, re_scope, re_infer, re_static, Region,
-                 re_empty};
+use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region,
+                 ReEmpty};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
@@ -71,7 +71,7 @@ pub fn explain_region(cx: ctxt, region: ty::Region) -> ~str {
 pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                             -> (~str, Option<Span>) {
     return match region {
-      re_scope(node_id) => {
+      ReScope(node_id) => {
         match cx.items.find(&node_id) {
           Some(&ast_map::node_block(ref blk)) => {
             explain_span(cx, "block", blk.span)
@@ -104,11 +104,11 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
         }
       }
 
-      re_free(ref fr) => {
+      ReFree(ref fr) => {
         let prefix = match fr.bound_region {
-          br_anon(idx) => format!("the anonymous lifetime \\#{} defined on",
+          BrAnon(idx) => format!("the anonymous lifetime \\#{} defined on",
                                idx + 1),
-          br_fresh(_) => format!("an anonymous lifetime defined on"),
+          BrFresh(_) => format!("an anonymous lifetime defined on"),
           _ => format!("the lifetime {} as defined on",
                     bound_region_ptr_to_str(cx, fr.bound_region))
         };
@@ -130,13 +130,13 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
         }
       }
 
-      re_static => { (~"the static lifetime", None) }
+      ReStatic => { (~"the static lifetime", None) }
 
-      re_empty => { (~"the empty lifetime", None) }
+      ReEmpty => { (~"the empty lifetime", None) }
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
-      ty::re_infer(_) | ty::re_type_bound(*) | ty::re_fn_bound(*) => {
+      ty::ReInfer(_) | ty::ReEarlyBound(*) | ty::ReLateBound(*) => {
         (format!("lifetime {:?}", region), None)
       }
     };
@@ -150,13 +150,13 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
     }
 }
 
-pub fn bound_region_ptr_to_str(cx: ctxt, br: bound_region) -> ~str {
+pub fn bound_region_ptr_to_str(cx: ctxt, br: BoundRegion) -> ~str {
     bound_region_to_str(cx, "&", true, br)
 }
 
 pub fn bound_region_to_str(cx: ctxt,
                            prefix: &str, space: bool,
-                           br: bound_region) -> ~str {
+                           br: BoundRegion) -> ~str {
     let space_str = if space { " " } else { "" };
 
     if cx.sess.verbose() {
@@ -164,14 +164,14 @@ pub fn bound_region_to_str(cx: ctxt,
     }
 
     match br {
-      br_named(_, ident)   => format!("{}'{}{}", prefix,
+      BrNamed(_, ident)   => format!("{}'{}{}", prefix,
                                       cx.sess.str_of(ident), space_str),
-      br_anon(_)           => prefix.to_str(),
-      br_fresh(_)          => prefix.to_str(),
+      BrAnon(_)           => prefix.to_str(),
+      BrFresh(_)          => prefix.to_str(),
     }
 }
 
-pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
+pub fn ReScope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
     match cx.items.find(&node_id) {
       Some(&ast_map::node_block(ref blk)) => {
         format!("<block at {}>",
@@ -204,7 +204,7 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
         format!("<unknown-{}>", node_id)
       }
       _ => { cx.sess.bug(
-          format!("re_scope refers to {}",
+          format!("ReScope refers to {}",
                ast_map::node_id_to_str(cx.items, node_id,
                                        token::get_ident_interner()))) }
     }
@@ -229,16 +229,16 @@ pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~st
     // to fit that into a short string.  Hence the recommendation to use
     // `explain_region()` or `note_and_explain_region()`.
     match region {
-        ty::re_scope(_) => prefix.to_str(),
-        ty::re_type_bound(_, _, ident) => cx.sess.str_of(ident).to_owned(),
-        ty::re_fn_bound(_, br) => bound_region_to_str(cx, prefix, space, br),
-        ty::re_free(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
-        ty::re_infer(ReSkolemized(_, br)) => {
+        ty::ReScope(_) => prefix.to_str(),
+        ty::ReEarlyBound(_, _, ident) => cx.sess.str_of(ident).to_owned(),
+        ty::ReLateBound(_, br) => bound_region_to_str(cx, prefix, space, br),
+        ty::ReFree(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
+        ty::ReInfer(ReSkolemized(_, br)) => {
             bound_region_to_str(cx, prefix, space, br)
         }
-        ty::re_infer(ReVar(_)) => prefix.to_str(),
-        ty::re_static => format!("{}'static{}", prefix, space_str),
-        ty::re_empty => format!("{}'<empty>{}", prefix, space_str)
+        ty::ReInfer(ReVar(_)) => prefix.to_str(),
+        ty::ReStatic => format!("{}'static{}", prefix, space_str),
+        ty::ReEmpty => format!("{}'<empty>{}", prefix, space_str)
     }
 }
 
@@ -356,8 +356,8 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         };
 
         match (cty.sigil, cty.region) {
-            (ast::ManagedSigil, ty::re_static) |
-            (ast::OwnedSigil, ty::re_static) => {}
+            (ast::ManagedSigil, ty::ReStatic) |
+            (ast::OwnedSigil, ty::ReStatic) => {}
 
             (_, region) => {
                 s.push_str(region_to_str(cx, "", true, region));
@@ -689,14 +689,14 @@ impl Repr for ast::Pat {
     }
 }
 
-impl Repr for ty::bound_region {
+impl Repr for ty::BoundRegion {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
-            ty::br_anon(id) => format!("br_anon({})", id),
-            ty::br_named(id, ident) => format!("br_named({}, {})",
+            ty::BrAnon(id) => format!("BrAnon({})", id),
+            ty::BrNamed(id, ident) => format!("BrNamed({}, {})",
                                                id.repr(tcx),
                                                ident.repr(tcx)),
-            ty::br_fresh(id) => format!("br_fresh({})", id),
+            ty::BrFresh(id) => format!("BrFresh({})", id),
         }
     }
 }
@@ -704,41 +704,41 @@ impl Repr for ty::bound_region {
 impl Repr for ty::Region {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
-            ty::re_type_bound(id, index, ident) => {
-                format!("re_type_bound({}, {}, {})",
+            ty::ReEarlyBound(id, index, ident) => {
+                format!("ReEarlyBound({}, {}, {})",
                         id, index, ident.repr(tcx))
             }
 
-            ty::re_fn_bound(binder_id, ref bound_region) => {
-                format!("re_fn_bound({}, {})",
+            ty::ReLateBound(binder_id, ref bound_region) => {
+                format!("ReLateBound({}, {})",
                         binder_id, bound_region.repr(tcx))
             }
 
-            ty::re_free(ref fr) => {
-                format!("re_free({}, {})",
+            ty::ReFree(ref fr) => {
+                format!("ReFree({}, {})",
                         fr.scope_id,
                         fr.bound_region.repr(tcx))
             }
 
-            ty::re_scope(id) => {
-                format!("re_scope({})", id)
+            ty::ReScope(id) => {
+                format!("ReScope({})", id)
             }
 
-            ty::re_static => {
-                format!("re_static")
+            ty::ReStatic => {
+                format!("ReStatic")
             }
 
-            ty::re_infer(ReVar(ref vid)) => {
-                format!("re_infer({})", vid.id)
+            ty::ReInfer(ReVar(ref vid)) => {
+                format!("ReInfer({})", vid.id)
             }
 
-            ty::re_infer(ReSkolemized(id, ref bound_region)) => {
+            ty::ReInfer(ReSkolemized(id, ref bound_region)) => {
                 format!("re_skolemized({}, {})",
                         id, bound_region.repr(tcx))
             }
 
-            ty::re_empty => {
-                format!("re_empty")
+            ty::ReEmpty => {
+                format!("ReEmpty")
             }
         }
     }

@@ -476,27 +476,27 @@ impl tr for ty::AutoRef {
 impl tr for ty::Region {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::Region {
         match *self {
-            ty::re_fn_bound(id, br) => ty::re_fn_bound(xcx.tr_id(id),
+            ty::ReLateBound(id, br) => ty::ReLateBound(xcx.tr_id(id),
                                                        br.tr(xcx)),
-            ty::re_type_bound(id, index, ident) => ty::re_type_bound(xcx.tr_id(id),
+            ty::ReEarlyBound(id, index, ident) => ty::ReEarlyBound(xcx.tr_id(id),
                                                                      index,
                                                                      ident),
-            ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
-            ty::re_empty | ty::re_static | ty::re_infer(*) => *self,
-            ty::re_free(ref fr) => {
-                ty::re_free(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
+            ty::ReScope(id) => ty::ReScope(xcx.tr_id(id)),
+            ty::ReEmpty | ty::ReStatic | ty::ReInfer(*) => *self,
+            ty::ReFree(ref fr) => {
+                ty::ReFree(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
                                             bound_region: fr.bound_region.tr(xcx)})
             }
         }
     }
 }
 
-impl tr for ty::bound_region {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::bound_region {
+impl tr for ty::BoundRegion {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::BoundRegion {
         match *self {
-            ty::br_anon(_) |
-            ty::br_fresh(_) => *self,
-            ty::br_named(id, ident) => ty::br_named(xcx.tr_def_id(id),
+            ty::BrAnon(_) |
+            ty::BrFresh(_) => *self,
+            ty::BrNamed(id, ident) => ty::BrNamed(xcx.tr_def_id(id),
                                                     ident),
         }
     }

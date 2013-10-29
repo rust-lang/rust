@@ -176,7 +176,7 @@ impl LifetimeContext {
                 ItemScope(lifetimes) => {
                     match search_lifetimes(lifetimes, lifetime_ref) {
                         Some((index, decl_id)) => {
-                            let def = ast::DefTypeBoundRegion(index, decl_id);
+                            let def = ast::DefEarlyBoundRegion(index, decl_id);
                             self.insert_lifetime(lifetime_ref, def);
                             return;
                         }
@@ -189,7 +189,7 @@ impl LifetimeContext {
                 FnScope(id, lifetimes, s) => {
                     match search_lifetimes(lifetimes, lifetime_ref) {
                         Some((_index, decl_id)) => {
-                            let def = ast::DefFnBoundRegion(id, depth, decl_id);
+                            let def = ast::DefLateBoundRegion(id, depth, decl_id);
                             self.insert_lifetime(lifetime_ref, def);
                             return;
                         }

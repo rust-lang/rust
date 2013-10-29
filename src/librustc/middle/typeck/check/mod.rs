@@ -438,7 +438,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         let (_, opt_self_ty, fn_sig) =
             replace_bound_regions_in_fn_sig(
                 tcx, opt_self_ty, fn_sig,
-                |br| ty::re_free(ty::FreeRegion {scope_id: body.id,
+                |br| ty::ReFree(ty::FreeRegion {scope_id: body.id,
                                                  bound_region: br}));
         let opt_self_info =
             opt_self_info.map(
@@ -931,9 +931,9 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         collect();
     let dummy_impl_regions: OptVec<ty::Region> =
         impl_generics.region_param_defs.iter().
-        map(|l| ty::re_free(ty::FreeRegion {
+        map(|l| ty::ReFree(ty::FreeRegion {
                 scope_id: impl_m_body_id,
-                bound_region: ty::br_named(l.def_id, l.ident)})).
+                bound_region: ty::BrNamed(l.def_id, l.ident)})).
         collect();
     let dummy_substs = ty::substs {
         tps: vec::append(dummy_impl_tps, dummy_method_tps),
@@ -1090,7 +1090,7 @@ impl FnCtxt {
     }
 
     pub fn block_region(&self) -> ty::Region {
-        ty::re_scope(self.region_lb)
+        ty::ReScope(self.region_lb)
     }
 
     #[inline]
@@ -1357,10 +1357,10 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-      ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
+      ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::ReStatic)),
       ast::lit_binary(*) => {
           ty::mk_evec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
-                      ty::vstore_slice(ty::re_static))
+                      ty::vstore_slice(ty::ReStatic))
       }
       ast::lit_char(_) => ty::mk_char(),
       ast::lit_int(_, t) => ty::mk_mach_int(t),
@@ -3925,19 +3925,19 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         //We only care about the operation here
         match split[1] {
             "cxchg" => (0, ~[ty::mk_mut_rptr(tcx,
-                                             ty::re_fn_bound(it.id, ty::br_anon(0)),
+                                             ty::ReLateBound(it.id, ty::BrAnon(0)),
                                              ty::mk_int()),
                         ty::mk_int(),
                         ty::mk_int()
                         ], ty::mk_int()),
             "load" => (0,
                ~[
-                  ty::mk_imm_rptr(tcx, ty::re_fn_bound(it.id, ty::br_anon(0)), ty::mk_int())
+                  ty::mk_imm_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int())
                ],
               ty::mk_int()),
             "store" => (0,
                ~[
-                  ty::mk_mut_rptr(tcx, ty::re_fn_bound(it.id, ty::br_anon(0)), ty::mk_int()),
+                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int()),
                   ty::mk_int()
                ],
                ty::mk_nil()),
@@ -3945,7 +3945,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or"   | "xor"  | "max"  |
             "min"  | "umax" | "umin" => {
                 (0, ~[ty::mk_mut_rptr(tcx,
-                                      ty::re_fn_bound(it.id, ty::br_anon(0)),
+                                      ty::ReLateBound(it.id, ty::BrAnon(0)),
                                       ty::mk_int()), ty::mk_int() ], ty::mk_int())
             }
             "fence" => {
@@ -3971,7 +3971,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "move_val" | "move_val_init" => {
                 (1u,
                  ~[
-                    ty::mk_mut_rptr(tcx, ty::re_fn_bound(it.id, ty::br_anon(0)), param(ccx, 0)),
+                    ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), param(ccx, 0)),
                     param(ccx, 0u)
                   ],
                ty::mk_nil())
@@ -3983,7 +3983,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "atomic_xchg_rel" | "atomic_xadd_rel" | "atomic_xsub_rel" => {
               (0,
                ~[
-                  ty::mk_mut_rptr(tcx, ty::re_fn_bound(it.id, ty::br_anon(0)), ty::mk_int()),
+                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int()),
                   ty::mk_int()
                ],
                ty::mk_int())
@@ -4006,7 +4006,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   Ok(t) => t,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
               };
-              let region = ty::re_fn_bound(it.id, ty::br_anon(0));
+              let region = ty::ReLateBound(it.id, ty::BrAnon(0));
               let visitor_object_ty = match ty::visitor_object_ty(tcx, region) {
                   Ok((_, vot)) => vot,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }

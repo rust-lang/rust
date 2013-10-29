@@ -470,43 +470,45 @@ pub struct param_ty {
 /// Representation of regions:
 #[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum Region {
-    // Region bound in a type declaration (type/enum/struct/trait),
-    // which will be substituted when an instance of the type is accessed
-    re_type_bound(/* param id */ ast::NodeId, /*index*/ uint, ast::Ident),
+    // Region bound in a type or fn declaration which will be
+    // substituted 'early' -- that is, at the same time when type
+    // parameters are substituted.
+    ReEarlyBound(/* param id */ ast::NodeId, /*index*/ uint, ast::Ident),
 
-    // Region bound in a fn scope, which will be substituted when the
-    // fn is called.
-    re_fn_bound(/* binder_id */ ast::NodeId, bound_region),
+    // Region bound in a function scope, which will be substituted when the
+    // function is called. The first argument must be the `binder_id` of
+    // some enclosing function signature.
+    ReLateBound(/* binder_id */ ast::NodeId, BoundRegion),
 
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
-    re_free(FreeRegion),
+    ReFree(FreeRegion),
 
     /// A concrete region naming some expression within the current function.
-    re_scope(NodeId),
+    ReScope(NodeId),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
-    re_static,
+    ReStatic,
 
     /// A region variable.  Should not exist after typeck.
-    re_infer(InferRegion),
+    ReInfer(InferRegion),
 
     /// Empty lifetime is for data that is never accessed.
-    /// Bottom in the region lattice. We treat re_empty somewhat
+    /// Bottom in the region lattice. We treat ReEmpty somewhat
     /// specially; at least right now, we do not generate instances of
     /// it during the GLB computations, but rather
     /// generate an error instead. This is to improve error messages.
-    /// The only way to get an instance of re_empty is to have a region
+    /// The only way to get an instance of ReEmpty is to have a region
     /// variable with no constraints.
-    re_empty,
+    ReEmpty,
 }
 
 impl Region {
     pub fn is_bound(&self) -> bool {
         match self {
-            &ty::re_type_bound(*) => true,
-            &ty::re_fn_bound(*) => true,
+            &ty::ReEarlyBound(*) => true,
+            &ty::ReLateBound(*) => true,
             _ => false
         }
     }
@@ -515,28 +517,28 @@ impl Region {
 #[deriving(Clone, Eq, TotalOrd, TotalEq, IterBytes, Encodable, Decodable, ToStr)]
 pub struct FreeRegion {
     scope_id: NodeId,
-    bound_region: bound_region
+    bound_region: BoundRegion
 }
 
 #[deriving(Clone, Eq, TotalEq, TotalOrd, IterBytes, Encodable, Decodable, ToStr)]
-pub enum bound_region {
+pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
-    br_anon(uint),
+    BrAnon(uint),
 
     /// Named region parameters for functions (a in &'a T)
     ///
     /// The def-id is needed to distinguish free regions in
     /// the event of shadowing.
-    br_named(ast::DefId, ast::Ident),
+    BrNamed(ast::DefId, ast::Ident),
 
     /// Fresh bound identifiers created during GLB computations.
-    br_fresh(uint),
+    BrFresh(uint),
 }
 
 /**
  * Represents the values to use when substituting lifetime parameters.
  * If the value is `ErasedRegions`, then this subst is occurring during
- * trans, and all region parameters will be replaced with `ty::re_static`. */
+ * trans, and all region parameters will be replaced with `ty::ReStatic`. */
 #[deriving(Clone, Eq, IterBytes)]
 pub enum RegionSubsts {
     ErasedRegions,
@@ -701,8 +703,8 @@ pub enum type_err {
     terr_regions_does_not_outlive(Region, Region),
     terr_regions_not_same(Region, Region),
     terr_regions_no_overlap(Region, Region),
-    terr_regions_insufficiently_polymorphic(bound_region, Region),
-    terr_regions_overly_polymorphic(bound_region, Region),
+    terr_regions_insufficiently_polymorphic(BoundRegion, Region),
+    terr_regions_overly_polymorphic(BoundRegion, Region),
     terr_vstores_differ(terr_vstore_kind, expected_found<vstore>),
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
     terr_in_field(@type_err, ast::Ident),
@@ -778,7 +780,7 @@ pub enum InferTy {
 #[deriving(Clone, Encodable, Decodable, IterBytes, ToStr)]
 pub enum InferRegion {
     ReVar(RegionVid),
-    ReSkolemized(uint, bound_region)
+    ReSkolemized(uint, BoundRegion)
 }
 
 impl cmp::Eq for InferRegion {
@@ -1043,7 +1045,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
     fn rflags(r: Region) -> uint {
         (has_regions as uint) | {
             match r {
-              ty::re_infer(_) => needs_infer as uint,
+              ty::ReInfer(_) => needs_infer as uint,
               _ => 0u
             }
         }
@@ -2148,7 +2150,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ast::MutMutable => TC::ReachesMutable | TC::OwnsAffine,
             ast::MutImmutable => TC::None,
         };
-        b | (TC::ReachesBorrowed).when(region != ty::re_static)
+        b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
     }
 
     fn closure_contents(cx: ctxt, cty: &ClosureTy) -> TypeContents {
@@ -4220,12 +4222,12 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
         fn fold_vstore(&mut self, vstore: vstore) -> vstore {
             match vstore {
                 vstore_fixed(*) | vstore_uniq | vstore_box => vstore,
-                vstore_slice(_) => vstore_slice(re_static)
+                vstore_slice(_) => vstore_slice(ReStatic)
             }
         }
 
         fn fold_region(&mut self, _: ty::Region) -> ty::Region {
-            ty::re_static
+            ty::ReStatic
         }
 
         fn fold_substs(&mut self,
@@ -4564,10 +4566,16 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
     let mut hash = SipState::new(0, 0);
     let region = |_hash: &mut SipState, r: Region| {
         match r {
-            re_static => {}
+            ReStatic => {}
 
-            re_empty | re_bound(*) | re_free(*) | re_scope(*) | re_infer(*) =>
+            ReEmpty |
+            ReEarlyBound(*) |
+            ReLateBound(*) |
+            ReFree(*) |
+            ReStatic(*) |
+            ReInfer(*) => {
                 tcx.sess.bug("non-static region found when hashing a type")
+            }
         }
     };
     let vstore = |hash: &mut SipState, v: vstore| {
@@ -4751,9 +4759,9 @@ pub fn construct_parameter_environment(
 
     // map bound 'a => free 'a
     let region_params = item_region_params.iter().
-        map(|r| ty::re_free(ty::FreeRegion {
+        map(|r| ty::ReFree(ty::FreeRegion {
                 scope_id: free_id,
-                bound_region: ty::br_named(r.def_id, r.ident)})).
+                bound_region: ty::BrNamed(r.def_id, r.ident)})).
         collect();
 
     let free_substs = substs {

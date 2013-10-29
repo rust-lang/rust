@@ -149,7 +149,7 @@ impl Combine for Lub {
                              snapshot: uint,
                              new_vars: &[RegionVid],
                              new_scope: NodeId,
-                             a_map: &HashMap<ty::bound_region, ty::Region>,
+                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
                              r0: ty::Region)
                              -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
@@ -182,7 +182,7 @@ impl Combine for Lub {
                     debug!("generalize_region(r0={:?}): \
                             replacing with {:?}, tainted={:?}",
                            r0, *a_br, tainted);
-                    return ty::re_fn_bound(new_scope, *a_br);
+                    return ty::ReLateBound(new_scope, *a_br);
                 }
             }
 

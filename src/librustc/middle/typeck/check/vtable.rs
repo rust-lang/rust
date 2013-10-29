@@ -480,7 +480,7 @@ fn fixup_substs(vcx: &VtableContext,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
                          id, substs,
-                         ty::RegionTraitStore(ty::re_static),
+                         ty::RegionTraitStore(ty::ReStatic),
                          ast::MutImmutable,
                          ty::EmptyBuiltinBounds());
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {

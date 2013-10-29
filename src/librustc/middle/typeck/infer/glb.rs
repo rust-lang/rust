@@ -161,7 +161,7 @@ impl Combine for Glb {
                              snapshot: uint,
                              new_vars: &[RegionVid],
                              new_binder_id: NodeId,
-                             a_map: &HashMap<ty::bound_region, ty::Region>,
+                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
                              a_vars: &[RegionVid],
                              b_vars: &[RegionVid],
                              r0: ty::Region) -> ty::Region {
@@ -228,13 +228,13 @@ impl Combine for Glb {
         }
 
         fn rev_lookup(this: &Glb,
-                      a_map: &HashMap<ty::bound_region, ty::Region>,
+                      a_map: &HashMap<ty::BoundRegion, ty::Region>,
                       new_binder_id: NodeId,
                       r: ty::Region) -> ty::Region
         {
             for (a_br, a_r) in a_map.iter() {
                 if *a_r == r {
-                    return ty::re_fn_bound(new_binder_id, *a_br);
+                    return ty::ReLateBound(new_binder_id, *a_br);
                 }
             }
             this.infcx.tcx.sess.span_bug(

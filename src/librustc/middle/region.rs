@@ -137,7 +137,7 @@ impl RegionMaps {
     pub fn encl_region(&self, id: ast::NodeId) -> ty::Region {
         //! Returns the narrowest scope region that encloses `id`, if any.
 
-        ty::re_scope(self.encl_scope(id))
+        ty::ReScope(self.encl_scope(id))
     }
 
     pub fn scopes_intersect(&self, scope1: ast::NodeId, scope2: ast::NodeId)
@@ -227,19 +227,19 @@ impl RegionMaps {
 
         sub_region == super_region || {
             match (sub_region, super_region) {
-                (_, ty::re_static) => {
+                (_, ty::ReStatic) => {
                     true
                 }
 
-                (ty::re_scope(sub_scope), ty::re_scope(super_scope)) => {
+                (ty::ReScope(sub_scope), ty::ReScope(super_scope)) => {
                     self.is_subscope_of(sub_scope, super_scope)
                 }
 
-                (ty::re_scope(sub_scope), ty::re_free(ref fr)) => {
+                (ty::ReScope(sub_scope), ty::ReFree(ref fr)) => {
                     self.is_subscope_of(sub_scope, fr.scope_id)
                 }
 
-                (ty::re_free(sub_fr), ty::re_free(super_fr)) => {
+                (ty::ReFree(sub_fr), ty::ReFree(super_fr)) => {
                     self.sub_free_region(sub_fr, super_fr)
                 }
 

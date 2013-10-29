@@ -56,8 +56,8 @@ impl RegionScope for BindingRscope {
                     -> Option<~[ty::Region]> {
         let idx = *self.anon_bindings;
         *self.anon_bindings += count;
-        Some(vec::from_fn(count, |i| ty::re_fn_bound(self.binder_id,
-                                                     ty::br_anon(idx + i))))
+        Some(vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
+                                                     ty::BrAnon(idx + i))))
     }
 }
 
@@ -65,5 +65,5 @@ pub fn bound_type_regions(defs: &[ty::RegionParameterDef])
                           -> OptVec<ty::Region> {
     assert!(defs.iter().all(|def| def.def_id.crate == ast::LOCAL_CRATE));
     defs.iter().enumerate().map(
-        |(i, def)| ty::re_type_bound(def.def_id.node, i, def.ident)).collect()
+        |(i, def)| ty::ReEarlyBound(def.def_id.node, i, def.ident)).collect()
 }

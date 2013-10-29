@@ -228,22 +228,22 @@ fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
     }
 }
 
-fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::bound_region {
+fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
     match next(st) {
         'a' => {
             let id = parse_uint(st);
             assert_eq!(next(st), '|');
-            ty::br_anon(id)
+            ty::BrAnon(id)
         }
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
             let ident = st.tcx.sess.ident_of(parse_str(st, ']'));
-            ty::br_named(def, ident)
+            ty::BrNamed(def, ident)
         }
         'f' => {
             let id = parse_uint(st);
             assert_eq!(next(st), '|');
-            ty::br_fresh(id)
+            ty::BrFresh(id)
         }
         _ => fail!("parse_bound_region: bad input")
     }
@@ -257,7 +257,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         assert_eq!(next(st), '|');
         let br = parse_bound_region(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        ty::re_fn_bound(id, br)
+        ty::ReLateBound(id, br)
       }
       'B' => {
         assert_eq!(next(st), '[');
@@ -266,7 +266,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
         let nm = st.tcx.sess.ident_of(parse_str(st, ']'));
-        ty::re_type_bound(node_id, index, nm)
+        ty::ReEarlyBound(node_id, index, nm)
       }
       'f' => {
         assert_eq!(next(st), '[');
@@ -274,19 +274,19 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         assert_eq!(next(st), '|');
         let br = parse_bound_region(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        ty::re_free(ty::FreeRegion {scope_id: id,
+        ty::ReFree(ty::FreeRegion {scope_id: id,
                                     bound_region: br})
       }
       's' => {
         let id = parse_uint(st) as int;
         assert_eq!(next(st), '|');
-        ty::re_scope(id)
+        ty::ReScope(id)
       }
       't' => {
-        ty::re_static
+        ty::ReStatic
       }
       'e' => {
-        ty::re_static
+        ty::ReStatic
       }
       _ => fail!("parse_region: bad input")
     }

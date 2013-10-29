@@ -193,9 +193,9 @@ impl Subst for ty::Region {
         // the specialized routine
         // `middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig()`.
         match self {
-            &ty::re_type_bound(_, i, _) => {
+            &ty::ReEarlyBound(_, i, _) => {
                 match substs.regions {
-                    ty::ErasedRegions => ty::re_static,
+                    ty::ErasedRegions => ty::ReStatic,
                     ty::NonerasedRegions(ref regions) => *regions.get(i),
                 }
             }
