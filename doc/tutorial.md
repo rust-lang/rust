@@ -491,7 +491,7 @@ types.
 use std::f64;
 use std::num::atan;
 fn angle(vector: (f64, f64)) -> f64 {
-    let pi = f64::consts::pi;
+    let pi = f64::consts::PI;
     match vector {
       (0.0, y) if y < 0.0 => 1.5 * pi,
       (0.0, y) => 0.5 * pi,
@@ -689,7 +689,7 @@ use std::f64;
 # enum Shape { Circle(Point, f64), Rectangle(Point, Point) }
 fn area(sh: Shape) -> f64 {
     match sh {
-        Circle(_, size) => f64::consts::pi * size * size,
+        Circle(_, size) => f64::consts::PI * size * size,
         Rectangle(Point { x, y }, Point { x: x2, y: y2 }) => (x2 - x) * (y2 - y)
     }
 }
@@ -725,7 +725,7 @@ enum Shape {
 }
 fn area(sh: Shape) -> f64 {
     match sh {
-        Circle { radius: radius, _ } => f64::consts::pi * square(radius),
+        Circle { radius: radius, _ } => f64::consts::PI * square(radius),
         Rectangle { top_left: top_left, bottom_right: bottom_right } => {
             (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y)
         }
@@ -1699,10 +1699,10 @@ impl Circle {
 To call such a method, just prefix it with the type name and a double colon:
 
 ~~~~
-use std::f64::consts::pi;
+use std::f64::consts::PI;
 struct Circle { radius: f64 }
 impl Circle {
-    fn new(area: f64) -> Circle { Circle { radius: (area / pi).sqrt() } }
+    fn new(area: f64) -> Circle { Circle { radius: (area / PI).sqrt() } }
 }
 let c = Circle::new(42.5);
 ~~~~
@@ -1977,13 +1977,13 @@ name and a double colon.  The compiler uses type inference to decide which
 implementation to use.
 
 ~~~~
-use std::f64::consts::pi;
+use std::f64::consts::PI;
 trait Shape { fn new(area: f64) -> Self; }
 struct Circle { radius: f64 }
 struct Square { length: f64 }
 
 impl Shape for Circle {
-    fn new(area: f64) -> Circle { Circle { radius: (area / pi).sqrt() } }
+    fn new(area: f64) -> Circle { Circle { radius: (area / PI).sqrt() } }
 }
 impl Shape for Square {
     fn new(area: f64) -> Square { Square { length: (area).sqrt() } }
@@ -2157,17 +2157,17 @@ trait Circle : Shape { fn radius(&self) -> f64; }
 Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
-use std::f64::consts::pi;
+use std::f64::consts::PI;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # struct Point { x: f64, y: f64 }
 # fn square(x: f64) -> f64 { x * x }
 struct CircleStruct { center: Point, radius: f64 }
 impl Circle for CircleStruct {
-    fn radius(&self) -> f64 { (self.area() / pi).sqrt() }
+    fn radius(&self) -> f64 { (self.area() / PI).sqrt() }
 }
 impl Shape for CircleStruct {
-    fn area(&self) -> f64 { pi * square(self.radius) }
+    fn area(&self) -> f64 { PI * square(self.radius) }
 }
 ~~~~
 
@@ -2192,13 +2192,13 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-use std::f64::consts::pi;
+use std::f64::consts::PI;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # struct Point { x: f64, y: f64 }
 # struct CircleStruct { center: Point, radius: f64 }
-# impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / pi).sqrt() } }
-# impl Shape for CircleStruct { fn area(&self) -> f64 { pi * square(self.radius) } }
+# impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / PI).sqrt() } }
+# impl Shape for CircleStruct { fn area(&self) -> f64 { PI * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
 let mycircle: @Circle = concrete as @Circle;

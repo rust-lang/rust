@@ -27,7 +27,7 @@ pub enum Shape {
 impl Shape {
     pub fn area(&self, sh: Shape) -> f64 {
         match sh {
-            Circle(_, size) => f64::consts::pi * size * size,
+            Circle(_, size) => f64::consts::PI * size * size,
             Rectangle(Point {x, y}, Point {x: x2, y: y2}) => (x2 - x) * (y2 - y)
         }
     }
