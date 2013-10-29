@@ -64,14 +64,14 @@ fn test_destroy_actually_kills(force: bool) {
         use std::libc::consts::os::extra::{FALSE, PROCESS_QUERY_INFORMATION, STILL_ACTIVE };
 
         unsafe {
-            let proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
-            if proc.is_null() {
+            let process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
+            if process.is_null() {
                 return false;
             }
-            // proc will be non-null if the process is alive, or if it died recently
+            // process will be non-null if the process is alive, or if it died recently
             let mut status = 0;
-            GetExitCodeProcess(proc, &mut status);
-            CloseHandle(proc);
+            GetExitCodeProcess(process, &mut status);
+            CloseHandle(process);
             return status == STILL_ACTIVE;
         }
     }

@@ -786,6 +786,9 @@ pub fn noop_fold_expr<T:ast_fold>(e: @ast::Expr, folder: &T) -> @ast::Expr {
                 folder.fold_block(body)
             )
         }
+        ExprProc(ref decl, ref body) => {
+            ExprProc(fold_fn_decl(decl, folder), folder.fold_block(body))
+        }
         ExprBlock(ref blk) => ExprBlock(folder.fold_block(blk)),
         ExprAssign(el, er) => {
             ExprAssign(folder.fold_expr(el), folder.fold_expr(er))
