@@ -89,7 +89,7 @@ pub static tag_path_elt_name: uint = 0x43u;
 pub static tag_item_field: uint = 0x44u;
 pub static tag_struct_mut: uint = 0x45u;
 
-pub static tag_region_param: uint = 0x46u;
+pub static tag_item_variances: uint = 0x46;
 pub static tag_mod_impl_trait: uint = 0x47u;
 /*
   trait items contain tag_item_trait_method elements,

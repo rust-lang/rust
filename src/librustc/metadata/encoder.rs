@@ -211,6 +211,15 @@ fn encode_region_param_defs(ebml_w: &mut writer::Encoder,
     }
 }
 
+fn encode_item_variances(ebml_w: &mut writer::Encoder,
+                         ecx: &EncodeContext,
+                         id: ast::NodeId) {
+    let v = ty::item_variances(ecx.tcx, ast_util::local_def(id));
+    ebml_w.start_tag(tag_item_variances);
+    v.encode(ebml_w);
+    ebml_w.end_tag();
+}
+
 fn encode_bounds_and_type(ebml_w: &mut writer::Encoder,
                           ecx: &EncodeContext,
                           tpt: &ty::ty_param_bounds_and_ty) {
@@ -992,6 +1001,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 't');
+        encode_item_variances(ebml_w, ecx, item.id);
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
@@ -1032,6 +1042,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(ebml_w, 'S');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
 
+        encode_item_variances(ebml_w, ecx, item.id);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
@@ -1138,6 +1149,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'I');
+        encode_item_variances(ebml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_ty_type_param_defs(ebml_w, ecx,
                                   trait_def.generics.type_param_defs,

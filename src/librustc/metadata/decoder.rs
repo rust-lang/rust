@@ -1088,6 +1088,14 @@ pub fn get_trait_method_def_ids(cdata: Cmd,
     result
 }
 
+pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
+    let data = cdata.data;
+    let item_doc = lookup_item(id, data);
+    let variance_doc = reader::get_doc(item_doc, tag_item_variances);
+    let mut decoder = reader::Decoder(variance_doc);
+    Decodable::decode(&mut decoder)
+}
+
 pub fn get_provided_trait_methods(intr: @ident_interner, cdata: Cmd,
                                   id: ast::NodeId, tcx: ty::ctxt) ->
         ~[@ty::Method] {
