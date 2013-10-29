@@ -427,7 +427,7 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprFnBlock(*) => {
+        ast::ExprFnBlock(*) | ast::ExprProc(*) => {
             check_expr_fn_block(rcx, expr);
         }
 
@@ -457,7 +457,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                        expr: @ast::Expr) {
     let tcx = rcx.fcx.tcx();
     match expr.node {
-        ast::ExprFnBlock(_, ref body) => {
+        ast::ExprFnBlock(_, ref body) | ast::ExprProc(_, ref body) => {
             let function_type = rcx.resolve_node_type(expr.id);
             match ty::get(function_type).sty {
                 ty::ty_closure(
@@ -1027,6 +1027,7 @@ pub mod guarantor {
             ast::ExprIf(*) |
             ast::ExprMatch(*) |
             ast::ExprFnBlock(*) |
+            ast::ExprProc(*) |
             ast::ExprDoBody(*) |
             ast::ExprBlock(*) |
             ast::ExprRepeat(*) |

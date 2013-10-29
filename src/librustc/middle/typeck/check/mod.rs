@@ -1408,6 +1408,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             for (i, arg) in args.iter().enumerate() {
                 let is_block = match arg.node {
                     ast::ExprFnBlock(*) |
+                    ast::ExprProc(*) |
                     ast::ExprDoBody(*) => true,
                     _ => false
                 };
@@ -2591,6 +2592,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::ExprFnBlock(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
                       decl, body, Vanilla, expected);
+      }
+      ast::ExprProc(ref decl, ref body) => {
+        check_expr_fn(fcx,
+                      expr,
+                      Some(ast::OwnedSigil),
+                      decl,
+                      body,
+                      Vanilla,
+                      expected);
       }
       ast::ExprDoBody(b) => {
         let expected_sty = unpack_expected(fcx,

@@ -656,7 +656,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
     fn check_move_out_from_expr(&self, expr: @ast::Expr) {
         match expr.node {
-            ast::ExprFnBlock(*) => {
+            ast::ExprFnBlock(*) | ast::ExprProc(*) => {
                 // moves due to capture clauses are checked
                 // in `check_loans_in_fn`, so that we can
                 // give a better error message

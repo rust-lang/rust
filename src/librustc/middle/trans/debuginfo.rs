@@ -569,7 +569,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
-                ast::ExprFnBlock(ref fn_decl, ref top_level_block) => {
+                ast::ExprFnBlock(ref fn_decl, ref top_level_block) |
+                ast::ExprProc(ref fn_decl, ref top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(name);
                     (name, fn_decl,
@@ -2579,7 +2580,8 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
+            ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, _ }, ref block) |
+            ast::ExprProc(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
                 do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
                                                                            scope_stack,
                                                                            scope_map| {

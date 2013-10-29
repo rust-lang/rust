@@ -307,7 +307,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
           this.pop_repeating_id(body.id);
       }
 
-      ast::ExprFnBlock(*) => {
+      ast::ExprFnBlock(*) | ast::ExprProc(*) => {
           gather_moves::gather_captures(this.bccx, this.move_data, ex);
           visit::walk_expr(this, ex, ());
       }

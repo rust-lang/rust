@@ -47,7 +47,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
     fn visit_expr(&mut self, expr:@ast::Expr, depth:int) {
 
             match expr.node {
-              ast::ExprFnBlock(*) => {
+              ast::ExprFnBlock(*) | ast::ExprProc(*) => {
                 visit::walk_expr(self, expr, depth + 1)
               }
               ast::ExprPath(*) | ast::ExprSelf => {

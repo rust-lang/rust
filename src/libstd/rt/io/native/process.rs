@@ -649,23 +649,25 @@ fn waitpid(pid: pid_t) -> int {
 
         unsafe {
 
-            let proc = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
-            if proc.is_null() {
+            let process = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION,
+                                      FALSE,
+                                      pid as DWORD);
+            if process.is_null() {
                 fail!("failure in OpenProcess: {}", os::last_os_error());
             }
 
             loop {
                 let mut status = 0;
-                if GetExitCodeProcess(proc, &mut status) == FALSE {
-                    CloseHandle(proc);
+                if GetExitCodeProcess(process, &mut status) == FALSE {
+                    CloseHandle(process);
                     fail!("failure in GetExitCodeProcess: {}", os::last_os_error());
                 }
                 if status != STILL_ACTIVE {
-                    CloseHandle(proc);
+                    CloseHandle(process);
                     return status as int;
                 }
-                if WaitForSingleObject(proc, INFINITE) == WAIT_FAILED {
-                    CloseHandle(proc);
+                if WaitForSingleObject(process, INFINITE) == WAIT_FAILED {
+                    CloseHandle(process);
                     fail!("failure in WaitForSingleObject: {}", os::last_os_error());
                 }
             }

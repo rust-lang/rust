@@ -3263,6 +3263,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprIf(*) |
         ast::ExprMatch(*) |
         ast::ExprFnBlock(*) |
+        ast::ExprProc(*) |
         ast::ExprDoBody(*) |
         ast::ExprBlock(*) |
         ast::ExprRepeat(*) |

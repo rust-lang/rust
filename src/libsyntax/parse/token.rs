@@ -486,14 +486,15 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "while",              // 62
         "in",                 // 63
         "continue",           // 64
+        "proc",               // 65
 
-        "be",                 // 65
-        "pure",               // 66
-        "yield",              // 67
-        "typeof",             // 68
-        "alignof",            // 69
-        "offsetof",           // 70
-        "sizeof",             // 71
+        "be",                 // 66
+        "pure",               // 67
+        "yield",              // 68
+        "typeof",             // 69
+        "alignof",            // 70
+        "offsetof",           // 71
+        "sizeof",             // 72
     ];
 
     @interner::StrInterner::prefill(init_vec)
@@ -502,9 +503,9 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 static SELF_KEYWORD_NAME: uint = 8;
 static STATIC_KEYWORD_NAME: uint = 27;
 static STRICT_KEYWORD_START: uint = 32;
-static STRICT_KEYWORD_FINAL: uint = 64;
-static RESERVED_KEYWORD_START: uint = 65;
-static RESERVED_KEYWORD_FINAL: uint = 71;
+static STRICT_KEYWORD_FINAL: uint = 65;
+static RESERVED_KEYWORD_START: uint = 66;
+static RESERVED_KEYWORD_FINAL: uint = 72;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
@@ -645,6 +646,7 @@ pub mod keywords {
         Use,
         While,
         Continue,
+        Proc,
 
         // Reserved keywords
         Alignof,
@@ -694,14 +696,15 @@ pub mod keywords {
                 Use => Ident { name: 61, ctxt: 0 },
                 While => Ident { name: 62, ctxt: 0 },
                 Continue => Ident { name: 64, ctxt: 0 },
+                Proc => Ident { name: 65, ctxt: 0 },
 
-                Alignof => Ident { name: 69, ctxt: 0 },
-                Be => Ident { name: 65, ctxt: 0 },
-                Offsetof => Ident { name: 70, ctxt: 0 },
-                Pure => Ident { name: 66, ctxt: 0 },
-                Sizeof => Ident { name: 71, ctxt: 0 },
-                Typeof => Ident { name: 68, ctxt: 0 },
-                Yield => Ident { name: 67, ctxt: 0 },
+                Alignof => Ident { name: 70, ctxt: 0 },
+                Be => Ident { name: 66, ctxt: 0 },
+                Offsetof => Ident { name: 71, ctxt: 0 },
+                Pure => Ident { name: 67, ctxt: 0 },
+                Sizeof => Ident { name: 72, ctxt: 0 },
+                Typeof => Ident { name: 69, ctxt: 0 },
+                Yield => Ident { name: 68, ctxt: 0 },
             }
         }
     }

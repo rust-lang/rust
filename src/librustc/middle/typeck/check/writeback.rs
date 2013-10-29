@@ -245,7 +245,7 @@ fn visit_expr(e: @ast::Expr, wbcx: &mut WbCtxt) {
     }
 
     match e.node {
-        ast::ExprFnBlock(ref decl, _) => {
+        ast::ExprFnBlock(ref decl, _) | ast::ExprProc(ref decl, _) => {
             for input in decl.inputs.iter() {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
