@@ -2009,6 +2009,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_struct_or_variant_fields(fcx: @mut FnCtxt,
+                                      struct_ty: ty::t,
                                       span: Span,
                                       class_id: ast::DefId,
                                       node_id: ast::NodeId,
@@ -2033,10 +2034,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             let pair = class_field_map.find(&field.ident.node.name).map(|x| *x);
             match pair {
                 None => {
-                    tcx.sess.span_err(
-                        field.ident.span,
-                        format!("structure has no field named `{}`",
-                             tcx.sess.str_of(field.ident.node)));
+                    fcx.type_error_message(
+                      field.ident.span,
+                      |actual| {
+                          format!("structure `{}` has no field named `{}`",
+                                  actual, tcx.sess.str_of(field.ident.node))
+                    }, struct_ty, None);
                     error_happened = true;
                 }
                 Some((_, true)) => {
@@ -2161,6 +2164,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Look up and check the fields.
         let class_fields = ty::lookup_struct_fields(tcx, class_id);
         check_struct_or_variant_fields(fcx,
+                                           struct_type,
                                            span,
                                            class_id,
                                            id,
@@ -2248,6 +2252,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Look up and check the enum variant fields.
         let variant_fields = ty::lookup_struct_fields(tcx, variant_id);
         check_struct_or_variant_fields(fcx,
+                                       enum_type,
                                        span,
                                        variant_id,
                                        id,
