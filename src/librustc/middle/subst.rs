@@ -10,10 +10,11 @@
 
 // Type substitutions.
 
-
 use middle::ty;
+use middle::ty_fold;
+use middle::ty_fold::TypeFolder;
 use syntax::opt_vec::OptVec;
-use util::ppaux::Repr;
+use std::at_vec;
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -33,39 +34,43 @@ pub trait Subst {
 // to all subst methods but ran into trouble due to the limitations of
 // our current method/trait matching algorithm. - Niko
 
-trait EffectfulSubst {
-    fn effectfulSubst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self;
-}
-
 impl Subst for ty::t {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
         if ty::substs_is_noop(substs) {
-            return *self;
+            *self
         } else {
-            return self.effectfulSubst(tcx, substs);
+            let mut folder = SubstFolder {tcx: tcx, substs: substs};
+            folder.fold_ty(*self)
         }
     }
 }
 
-impl EffectfulSubst for ty::t {
-    fn effectfulSubst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
-        if !ty::type_needs_subst(*self) {
-            return *self;
+struct SubstFolder<'self> {
+    tcx: ty::ctxt,
+    substs: &'self ty::substs
+}
+
+impl<'self> TypeFolder for SubstFolder<'self> {
+    fn tcx(&self) -> ty::ctxt { self.tcx }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        r.subst(self.tcx, self.substs)
+    }
+
+    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+        if !ty::type_needs_subst(t) {
+            return t;
         }
 
-        match ty::get(*self).sty {
+        match ty::get(t).sty {
             ty::ty_param(p) => {
-                substs.tps[p.idx]
+                self.substs.tps[p.idx]
             }
             ty::ty_self(_) => {
-                substs.self_ty.expect("ty_self not found in substs")
+                self.substs.self_ty.expect("ty_self not found in substs")
             }
             _ => {
-                ty::fold_regions_and_ty(
-                    tcx, *self,
-                    |r| r.subst(tcx, substs),
-                    |t| t.effectfulSubst(tcx, substs),
-                    |t| t.effectfulSubst(tcx, substs))
+                ty_fold::super_fold_ty(self, t)
             }
         }
     }
@@ -77,6 +82,12 @@ impl EffectfulSubst for ty::t {
 impl<T:Subst> Subst for ~[T] {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ~[T] {
         self.map(|t| t.subst(tcx, substs))
+    }
+}
+
+impl<T:Subst> Subst for @[T] {
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @[T] {
+        at_vec::map(*self, |t| t.subst(tcx, substs))
     }
 }
 
@@ -134,7 +145,8 @@ impl Subst for ty::RegionSubsts {
 
 impl Subst for ty::BareFnTy {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::BareFnTy {
-        ty::fold_bare_fn_ty(self, |t| t.subst(tcx, substs))
+        let mut folder = SubstFolder {tcx: tcx, substs: substs};
+        folder.fold_bare_fn_ty(self)
     }
 }
 
