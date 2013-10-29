@@ -44,7 +44,7 @@ endif
 define DEF_LIBUV_ARCH_VAR
   LIBUV_ARCH_$(1) = $$(subst i386,ia32,$$(subst x86_64,x64,$$(HOST_$(1))))
 endef
-$(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_LIBUV_ARCH_VAR,$(t))))
+$(foreach t,$(CFG_TARGET),$(eval $(call DEF_LIBUV_ARCH_VAR,$(t))))
 
 ifdef CFG_ENABLE_FAST_MAKE
 LIBUV_DEPS := $(S)/.gitmodules
@@ -76,7 +76,7 @@ RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
 # XXX: Like with --cfg stage0, pass the defines for stage1 to the stage0
 # build of non-build-triple host compilers
 ifeq ($(2),0)
-ifneq ($(strip $(CFG_BUILD_TRIPLE)),$(strip $(1)))
+ifneq ($(strip $(CFG_BUILD)),$(strip $(1)))
 RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE1
 RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE1
 endif
@@ -131,7 +131,7 @@ $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.c $$(MKFILE_DEPS)
                  $$(SNAP_DEFINES) $$(RUNTIME_CFLAGS_$(1)_$(2))) $$<
 
 $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.S  $$(MKFILE_DEPS) \
-                     $$(LLVM_CONFIG_$$(CFG_BUILD_TRIPLE))
+                     $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 
@@ -242,12 +242,11 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 endif
-
 endef
 
 # Instantiate template for all stages/targets
-$(foreach target,$(CFG_TARGET_TRIPLES), \
+$(foreach target,$(CFG_TARGET), \
      $(eval $(call DEF_THIRD_PARTY_TARGETS,$(target))))
 $(foreach stage,$(STAGES), \
-    $(foreach target,$(CFG_TARGET_TRIPLES), \
+    $(foreach target,$(CFG_TARGET), \
 	 $(eval $(call DEF_RUNTIME_TARGETS,$(target),$(stage)))))
