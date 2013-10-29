@@ -11,8 +11,6 @@
 //! Operations and constants for `f64`
 
 #[allow(missing_doc)];
-#[allow(non_uppercase_statics)];
-#[allow(non_uppercase_pattern_statics)];
 
 use default::Default;
 use libc::c_int;
@@ -122,27 +120,27 @@ delegate!(
 // These are not defined inside consts:: for consistency with
 // the integer types
 
-pub static radix: uint = 2u;
+pub static RADIX: uint = 2u;
 
-pub static mantissa_digits: uint = 53u;
-pub static digits: uint = 15u;
+pub static MANTISSA_DIGITS: uint = 53u;
+pub static DIGITS: uint = 15u;
 
-pub static epsilon: f64 = 2.2204460492503131e-16_f64;
+pub static EPSILON: f64 = 2.2204460492503131e-16_f64;
 
-pub static min_value: f64 = 2.2250738585072014e-308_f64;
-pub static max_value: f64 = 1.7976931348623157e+308_f64;
+pub static MIN_VALUE: f64 = 2.2250738585072014e-308_f64;
+pub static MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
-pub static min_exp: int = -1021;
-pub static max_exp: int = 1024;
+pub static MIN_EXP: int = -1021;
+pub static MAX_EXP: int = 1024;
 
-pub static min_10_exp: int = -307;
-pub static max_10_exp: int = 308;
+pub static MIN_10_EXP: int = -307;
+pub static MAX_10_EXP: int = 308;
 
-pub static NaN: f64 = 0.0_f64/0.0_f64;
+pub static NAN: f64 = 0.0_f64/0.0_f64;
 
-pub static infinity: f64 = 1.0_f64/0.0_f64;
+pub static INFINITY: f64 = 1.0_f64/0.0_f64;
 
-pub static neg_infinity: f64 = -1.0_f64/0.0_f64;
+pub static NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
@@ -151,43 +149,43 @@ pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
     /// Archimedes' constant
-    pub static pi: f64 = 3.14159265358979323846264338327950288_f64;
+    pub static PI: f64 = 3.14159265358979323846264338327950288_f64;
 
     /// pi/2.0
-    pub static frac_pi_2: f64 = 1.57079632679489661923132169163975144_f64;
+    pub static FRAC_PI_2: f64 = 1.57079632679489661923132169163975144_f64;
 
     /// pi/4.0
-    pub static frac_pi_4: f64 = 0.785398163397448309615660845819875721_f64;
+    pub static FRAC_PI_4: f64 = 0.785398163397448309615660845819875721_f64;
 
     /// 1.0/pi
-    pub static frac_1_pi: f64 = 0.318309886183790671537767526745028724_f64;
+    pub static FRAC_1_PI: f64 = 0.318309886183790671537767526745028724_f64;
 
     /// 2.0/pi
-    pub static frac_2_pi: f64 = 0.636619772367581343075535053490057448_f64;
+    pub static FRAC_2_PI: f64 = 0.636619772367581343075535053490057448_f64;
 
     /// 2.0/sqrt(pi)
-    pub static frac_2_sqrtpi: f64 = 1.12837916709551257389615890312154517_f64;
+    pub static FRAC_2_SQRTPI: f64 = 1.12837916709551257389615890312154517_f64;
 
     /// sqrt(2.0)
-    pub static sqrt2: f64 = 1.41421356237309504880168872420969808_f64;
+    pub static SQRT2: f64 = 1.41421356237309504880168872420969808_f64;
 
     /// 1.0/sqrt(2.0)
-    pub static frac_1_sqrt2: f64 = 0.707106781186547524400844362104849039_f64;
+    pub static FRAC_1_SQRT2: f64 = 0.707106781186547524400844362104849039_f64;
 
     /// Euler's number
-    pub static e: f64 = 2.71828182845904523536028747135266250_f64;
+    pub static E: f64 = 2.71828182845904523536028747135266250_f64;
 
     /// log2(e)
-    pub static log2_e: f64 = 1.44269504088896340735992468100189214_f64;
+    pub static LOG2_E: f64 = 1.44269504088896340735992468100189214_f64;
 
     /// log10(e)
-    pub static log10_e: f64 = 0.434294481903251827651128918916605082_f64;
+    pub static LOG10_E: f64 = 0.434294481903251827651128918916605082_f64;
 
     /// ln(2.0)
-    pub static ln_2: f64 = 0.693147180559945309417232121458176568_f64;
+    pub static LN_2: f64 = 0.693147180559945309417232121458176568_f64;
 
     /// ln(10.0)
-    pub static ln_10: f64 = 2.30258509299404568401799145468436421_f64;
+    pub static LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
 impl Num for f64 {}
@@ -227,7 +225,7 @@ impl Ord for f64 {
 }
 
 impl Orderable for f64 {
-    /// Returns `NaN` if either of the numbers are `NaN`.
+    /// Returns `NAN` if either of the numbers are `NAN`.
     #[inline]
     fn min(&self, other: &f64) -> f64 {
         match () {
@@ -238,7 +236,7 @@ impl Orderable for f64 {
         }
     }
 
-    /// Returns `NaN` if either of the numbers are `NaN`.
+    /// Returns `NAN` if either of the numbers are `NAN`.
     #[inline]
     fn max(&self, other: &f64) -> f64 {
         match () {
@@ -250,7 +248,7 @@ impl Orderable for f64 {
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
-    /// If any of the numbers are `NaN` then `NaN` is returned.
+    /// If any of the numbers are `NAN` then `NAN` is returned.
     #[inline]
     fn clamp(&self, mn: &f64, mx: &f64) -> f64 {
         match () {
@@ -313,7 +311,7 @@ impl Neg<f64> for f64 {
 }
 
 impl Signed for f64 {
-    /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
+    /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
     #[inline]
     fn abs(&self) -> f64 { abs(*self) }
 
@@ -327,30 +325,30 @@ impl Signed for f64 {
     ///
     /// # Returns
     ///
-    /// - `1.0` if the number is positive, `+0.0` or `infinity`
-    /// - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
-    /// - `NaN` if the number is NaN
+    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// - `NAN` if the number is NaN
     ///
     #[inline]
     fn signum(&self) -> f64 {
-        if self.is_nan() { NaN } else { copysign(1.0, *self) }
+        if self.is_nan() { NAN } else { copysign(1.0, *self) }
     }
 
-    /// Returns `true` if the number is positive, including `+0.0` and `infinity`
+    /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
     #[inline]
-    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == INFINITY }
 
-    /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
+    /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
     #[inline]
-    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == NEG_INFINITY }
 }
 
 impl Round for f64 {
-    /// Round half-way cases toward `neg_infinity`
+    /// Round half-way cases toward `NEG_INFINITY`
     #[inline]
     fn floor(&self) -> f64 { floor(*self) }
 
-    /// Round half-way cases toward `infinity`
+    /// Round half-way cases toward `INFINITY`
     #[inline]
     fn ceil(&self) -> f64 { ceil(*self) }
 
@@ -467,13 +465,13 @@ impl Hyperbolic for f64 {
     /// # Returns
     ///
     /// - on success, the inverse hyperbolic sine of `self` will be returned
-    /// - `self` if `self` is `0.0`, `-0.0`, `infinity`, or `neg_infinity`
-    /// - `NaN` if `self` is `NaN`
+    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
+    /// - `NAN` if `self` is `NAN`
     ///
     #[inline]
     fn asinh(&self) -> f64 {
         match *self {
-            neg_infinity => neg_infinity,
+            NEG_INFINITY => NEG_INFINITY,
             x => (x + ((x * x) + 1.0).sqrt()).ln(),
         }
     }
@@ -484,8 +482,8 @@ impl Hyperbolic for f64 {
     /// # Returns
     ///
     /// - on success, the inverse hyperbolic cosine of `self` will be returned
-    /// - `infinity` if `self` is `infinity`
-    /// - `NaN` if `self` is `NaN` or `self < 1.0` (including `neg_infinity`)
+    /// - `INFINITY` if `self` is `INFINITY`
+    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
     ///
     #[inline]
     fn acosh(&self) -> f64 {
@@ -502,10 +500,10 @@ impl Hyperbolic for f64 {
     ///
     /// - on success, the inverse hyperbolic tangent of `self` will be returned
     /// - `self` if `self` is `0.0` or `-0.0`
-    /// - `infinity` if `self` is `1.0`
-    /// - `neg_infinity` if `self` is `-1.0`
-    /// - `NaN` if the `self` is `NaN` or outside the domain of `-1.0 <= self <= 1.0`
-    ///   (including `infinity` and `neg_infinity`)
+    /// - `INFINITY` if `self` is `1.0`
+    /// - `NEG_INFINITY` if `self` is `-1.0`
+    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
+    ///   (including `INFINITY` and `NEG_INFINITY`)
     ///
     #[inline]
     fn atanh(&self) -> f64 {
@@ -861,7 +859,7 @@ impl num::ToStrRadix for f64 {
     ///
     /// # Failure
     ///
-    /// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+    /// Fails if called on a special value like `inf`, `-inf` or `NAN` due to
     /// possible misinterpretation of the result at higher bases. If those values
     /// are expected, use `to_str_radix_special()` instead.
     #[inline]
@@ -898,7 +896,7 @@ impl num::ToStrRadix for f64 {
 ///
 /// # Return value
 ///
-/// `none` if the string did not represent a valid number.  Otherwise,
+/// `None` if the string did not represent a valid number.  Otherwise,
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
 ///
 #[inline]
@@ -959,7 +957,7 @@ impl num::FromStrRadix for f64 {
     ///
     /// # Return value
     ///
-    /// `none` if the string did not represent a valid number. Otherwise,
+    /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     ///
     #[inline]
@@ -1173,14 +1171,14 @@ mod tests {
 
     #[test]
     pub fn test_abs() {
-        assert_eq!(infinity.abs(), infinity);
+        assert_eq!(INFINITY.abs(), INFINITY);
         assert_eq!(1f64.abs(), 1f64);
         assert_eq!(0f64.abs(), 0f64);
         assert_eq!((-0f64).abs(), 0f64);
         assert_eq!((-1f64).abs(), 1f64);
-        assert_eq!(neg_infinity.abs(), infinity);
-        assert_eq!((1f64/neg_infinity).abs(), 0f64);
-        assert!(NaN.abs().is_nan());
+        assert_eq!(NEG_INFINITY.abs(), INFINITY);
+        assert_eq!((1f64/NEG_INFINITY).abs(), 0f64);
+        assert!(NAN.abs().is_nan());
     }
 
     #[test]
@@ -1189,52 +1187,52 @@ mod tests {
         assert_eq!(1f64.abs_sub(&1f64), 0f64);
         assert_eq!(1f64.abs_sub(&0f64), 1f64);
         assert_eq!(1f64.abs_sub(&-1f64), 2f64);
-        assert_eq!(neg_infinity.abs_sub(&0f64), 0f64);
-        assert_eq!(infinity.abs_sub(&1f64), infinity);
-        assert_eq!(0f64.abs_sub(&neg_infinity), infinity);
-        assert_eq!(0f64.abs_sub(&infinity), 0f64);
+        assert_eq!(NEG_INFINITY.abs_sub(&0f64), 0f64);
+        assert_eq!(INFINITY.abs_sub(&1f64), INFINITY);
+        assert_eq!(0f64.abs_sub(&NEG_INFINITY), INFINITY);
+        assert_eq!(0f64.abs_sub(&INFINITY), 0f64);
     }
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
     fn test_abs_sub_nowin() {
-        assert!(NaN.abs_sub(&-1f64).is_nan());
-        assert!(1f64.abs_sub(&NaN).is_nan());
+        assert!(NAN.abs_sub(&-1f64).is_nan());
+        assert!(1f64.abs_sub(&NAN).is_nan());
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!(infinity.signum(), 1f64);
+        assert_eq!(INFINITY.signum(), 1f64);
         assert_eq!(1f64.signum(), 1f64);
         assert_eq!(0f64.signum(), 1f64);
         assert_eq!((-0f64).signum(), -1f64);
         assert_eq!((-1f64).signum(), -1f64);
-        assert_eq!(neg_infinity.signum(), -1f64);
-        assert_eq!((1f64/neg_infinity).signum(), -1f64);
-        assert!(NaN.signum().is_nan());
+        assert_eq!(NEG_INFINITY.signum(), -1f64);
+        assert_eq!((1f64/NEG_INFINITY).signum(), -1f64);
+        assert!(NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_positive() {
-        assert!(infinity.is_positive());
+        assert!(INFINITY.is_positive());
         assert!(1f64.is_positive());
         assert!(0f64.is_positive());
         assert!(!(-0f64).is_positive());
         assert!(!(-1f64).is_positive());
-        assert!(!neg_infinity.is_positive());
-        assert!(!(1f64/neg_infinity).is_positive());
-        assert!(!NaN.is_positive());
+        assert!(!NEG_INFINITY.is_positive());
+        assert!(!(1f64/NEG_INFINITY).is_positive());
+        assert!(!NAN.is_positive());
     }
 
     #[test]
     fn test_is_negative() {
-        assert!(!infinity.is_negative());
+        assert!(!INFINITY.is_negative());
         assert!(!1f64.is_negative());
         assert!(!0f64.is_negative());
         assert!((-0f64).is_negative());
         assert!((-1f64).is_negative());
-        assert!(neg_infinity.is_negative());
-        assert!((1f64/neg_infinity).is_negative());
-        assert!(!NaN.is_negative());
+        assert!(NEG_INFINITY.is_negative());
+        assert!((1f64/NEG_INFINITY).is_negative());
+        assert!(!NAN.is_negative());
     }
 
     #[test]
