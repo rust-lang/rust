@@ -1549,10 +1549,11 @@ impl Parser {
     pub fn parse_field(&self) -> Field {
         let lo = self.span.lo;
         let i = self.parse_ident();
+        let hi = self.last_span.hi;
         self.expect(&token::COLON);
         let e = self.parse_expr();
         ast::Field {
-            ident: i,
+            ident: spanned(lo, hi, i),
             expr: e,
             span: mk_sp(lo, e.span.hi),
         }

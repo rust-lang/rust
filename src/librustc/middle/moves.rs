@@ -420,7 +420,7 @@ impl VisitContext {
                     // specified and (2) have a type that
                     // moves-by-default:
                     let consume_with = with_fields.iter().any(|tf| {
-                        !fields.iter().any(|f| f.ident.name == tf.ident.name) &&
+                        !fields.iter().any(|f| f.ident.node.name == tf.ident.name) &&
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 
