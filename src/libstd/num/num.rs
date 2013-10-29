@@ -86,9 +86,9 @@ pub trait Signed: Num
 /// Returns the sign of the number.
 ///
 /// For float, f32, f64:
-/// - `1.0` if the number is positive, `+0.0` or `infinity`
-/// - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
-/// - `NaN` if the number is `NaN`
+/// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+/// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+/// - `NAN` if the number is `NAN`
 ///
 /// For int:
 /// - `0` if the number is zero

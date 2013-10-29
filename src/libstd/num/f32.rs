@@ -10,8 +10,6 @@
 
 //! Operations and constants for `f32`
 #[allow(missing_doc)];
-#[allow(non_uppercase_statics)];
-#[allow(non_uppercase_pattern_statics)];
 
 use default::Default;
 use libc::c_int;
@@ -112,11 +110,11 @@ delegate!(
 // These are not defined inside consts:: for consistency with
 // the integer types
 
-pub static NaN: f32 = 0.0_f32/0.0_f32;
+pub static NAN: f32 = 0.0_f32/0.0_f32;
 
-pub static infinity: f32 = 1.0_f32/0.0_f32;
+pub static INFINITY: f32 = 1.0_f32/0.0_f32;
 
-pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
+pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
@@ -128,43 +126,43 @@ pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // staticants from cmath.
     /// Archimedes' constant
-    pub static pi: f32 = 3.14159265358979323846264338327950288_f32;
+    pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
 
     /// pi/2.0
-    pub static frac_pi_2: f32 = 1.57079632679489661923132169163975144_f32;
+    pub static FRAC_PI_2: f32 = 1.57079632679489661923132169163975144_f32;
 
     /// pi/4.0
-    pub static frac_pi_4: f32 = 0.785398163397448309615660845819875721_f32;
+    pub static FRAC_PI_4: f32 = 0.785398163397448309615660845819875721_f32;
 
     /// 1.0/pi
-    pub static frac_1_pi: f32 = 0.318309886183790671537767526745028724_f32;
+    pub static FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
 
     /// 2.0/pi
-    pub static frac_2_pi: f32 = 0.636619772367581343075535053490057448_f32;
+    pub static FRAC_2_PI: f32 = 0.636619772367581343075535053490057448_f32;
 
     /// 2.0/sqrt(pi)
-    pub static frac_2_sqrtpi: f32 = 1.12837916709551257389615890312154517_f32;
+    pub static FRAC_2_SQRTPI: f32 = 1.12837916709551257389615890312154517_f32;
 
     /// sqrt(2.0)
-    pub static sqrt2: f32 = 1.41421356237309504880168872420969808_f32;
+    pub static SQRT2: f32 = 1.41421356237309504880168872420969808_f32;
 
     /// 1.0/sqrt(2.0)
-    pub static frac_1_sqrt2: f32 = 0.707106781186547524400844362104849039_f32;
+    pub static FRAC_1_SQRT2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// Euler's number
-    pub static e: f32 = 2.71828182845904523536028747135266250_f32;
+    pub static E: f32 = 2.71828182845904523536028747135266250_f32;
 
     /// log2(e)
-    pub static log2_e: f32 = 1.44269504088896340735992468100189214_f32;
+    pub static LOG2_E: f32 = 1.44269504088896340735992468100189214_f32;
 
     /// log10(e)
-    pub static log10_e: f32 = 0.434294481903251827651128918916605082_f32;
+    pub static LOG10_E: f32 = 0.434294481903251827651128918916605082_f32;
 
     /// ln(2.0)
-    pub static ln_2: f32 = 0.693147180559945309417232121458176568_f32;
+    pub static LN_2: f32 = 0.693147180559945309417232121458176568_f32;
 
     /// ln(10.0)
-    pub static ln_10: f32 = 2.30258509299404568401799145468436421_f32;
+    pub static LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
 impl Num for f32 {}
@@ -204,7 +202,7 @@ impl Ord for f32 {
 }
 
 impl Orderable for f32 {
-    /// Returns `NaN` if either of the numbers are `NaN`.
+    /// Returns `NAN` if either of the numbers are `NAN`.
     #[inline]
     fn min(&self, other: &f32) -> f32 {
         match () {
@@ -215,7 +213,7 @@ impl Orderable for f32 {
         }
     }
 
-    /// Returns `NaN` if either of the numbers are `NaN`.
+    /// Returns `NAN` if either of the numbers are `NAN`.
     #[inline]
     fn max(&self, other: &f32) -> f32 {
         match () {
@@ -227,7 +225,7 @@ impl Orderable for f32 {
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
-    /// If any of the numbers are `NaN` then `NaN` is returned.
+    /// If any of the numbers are `NAN` then `NAN` is returned.
     #[inline]
     fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
         match () {
@@ -295,7 +293,7 @@ impl Neg<f32> for f32 {
 }
 
 impl Signed for f32 {
-    /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
+    /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
     #[inline]
     fn abs(&self) -> f32 { abs(*self) }
 
@@ -309,30 +307,30 @@ impl Signed for f32 {
     ///
     /// # Returns
     ///
-    /// - `1.0` if the number is positive, `+0.0` or `infinity`
-    /// - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
-    /// - `NaN` if the number is NaN
+    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
+    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
+    /// - `NAN` if the number is NaN
     ///
     #[inline]
     fn signum(&self) -> f32 {
-        if self.is_nan() { NaN } else { copysign(1.0, *self) }
+        if self.is_nan() { NAN } else { copysign(1.0, *self) }
     }
 
-    /// Returns `true` if the number is positive, including `+0.0` and `infinity`
+    /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
     #[inline]
-    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == INFINITY }
 
-    /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
+    /// Returns `true` if the number is negative, including `-0.0` and `NEG_INFINITY`
     #[inline]
-    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == NEG_INFINITY }
 }
 
 impl Round for f32 {
-    /// Round half-way cases toward `neg_infinity`
+    /// Round half-way cases toward `NEG_INFINITY`
     #[inline]
     fn floor(&self) -> f32 { floor(*self) }
 
-    /// Round half-way cases toward `infinity`
+    /// Round half-way cases toward `INFINITY`
     #[inline]
     fn ceil(&self) -> f32 { ceil(*self) }
 
@@ -449,13 +447,13 @@ impl Hyperbolic for f32 {
     /// # Returns
     ///
     /// - on success, the inverse hyperbolic sine of `self` will be returned
-    /// - `self` if `self` is `0.0`, `-0.0`, `infinity`, or `neg_infinity`
-    /// - `NaN` if `self` is `NaN`
+    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
+    /// - `NAN` if `self` is `NAN`
     ///
     #[inline]
     fn asinh(&self) -> f32 {
         match *self {
-            neg_infinity => neg_infinity,
+            NEG_INFINITY => NEG_INFINITY,
             x => (x + ((x * x) + 1.0).sqrt()).ln(),
         }
     }
@@ -466,8 +464,8 @@ impl Hyperbolic for f32 {
     /// # Returns
     ///
     /// - on success, the inverse hyperbolic cosine of `self` will be returned
-    /// - `infinity` if `self` is `infinity`
-    /// - `NaN` if `self` is `NaN` or `self < 1.0` (including `neg_infinity`)
+    /// - `INFINITY` if `self` is `INFINITY`
+    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
     ///
     #[inline]
     fn acosh(&self) -> f32 {
@@ -484,10 +482,10 @@ impl Hyperbolic for f32 {
     ///
     /// - on success, the inverse hyperbolic tangent of `self` will be returned
     /// - `self` if `self` is `0.0` or `-0.0`
-    /// - `infinity` if `self` is `1.0`
-    /// - `neg_infinity` if `self` is `-1.0`
-    /// - `NaN` if the `self` is `NaN` or outside the domain of `-1.0 <= self <= 1.0`
-    ///   (including `infinity` and `neg_infinity`)
+    /// - `INFINITY` if `self` is `1.0`
+    /// - `NEG_INFINITY` if `self` is `-1.0`
+    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
+    ///   (including `INFINITY` and `NEG_INFINITY`)
     ///
     #[inline]
     fn atanh(&self) -> f32 {
@@ -821,7 +819,7 @@ impl num::ToStrRadix for f32 {
         let (r, special) = strconv::float_to_str_common(
             *self, rdx, true, strconv::SignNeg, strconv::DigAll);
         if special { fail!("number has a special value, \
-                             try to_str_radix_special() if those are expected") }
+                            try to_str_radix_special() if those are expected") }
         r
     }
 }
@@ -850,7 +848,7 @@ impl num::ToStrRadix for f32 {
 ///
 /// # Return value
 ///
-/// `none` if the string did not represent a valid number.  Otherwise,
+/// `None` if the string did not represent a valid number.  Otherwise,
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
 ///
 #[inline]
@@ -884,7 +882,7 @@ impl FromStr for f32 {
     ///
     /// # Return value
     ///
-    /// `none` if the string did not represent a valid number.  Otherwise,
+    /// `None` if the string did not represent a valid number.  Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     ///
     #[inline]
@@ -911,7 +909,7 @@ impl num::FromStrRadix for f32 {
     ///
     /// # Return value
     ///
-    /// `none` if the string did not represent a valid number. Otherwise,
+    /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
     ///
     #[inline]
@@ -1122,14 +1120,14 @@ mod tests {
 
     #[test]
     pub fn test_abs() {
-        assert_eq!(infinity.abs(), infinity);
+        assert_eq!(INFINITY.abs(), INFINITY);
         assert_eq!(1f32.abs(), 1f32);
         assert_eq!(0f32.abs(), 0f32);
         assert_eq!((-0f32).abs(), 0f32);
         assert_eq!((-1f32).abs(), 1f32);
-        assert_eq!(neg_infinity.abs(), infinity);
-        assert_eq!((1f32/neg_infinity).abs(), 0f32);
-        assert!(NaN.abs().is_nan());
+        assert_eq!(NEG_INFINITY.abs(), INFINITY);
+        assert_eq!((1f32/NEG_INFINITY).abs(), 0f32);
+        assert!(NAN.abs().is_nan());
     }
 
     #[test]
@@ -1138,52 +1136,52 @@ mod tests {
         assert_eq!(1f32.abs_sub(&1f32), 0f32);
         assert_eq!(1f32.abs_sub(&0f32), 1f32);
         assert_eq!(1f32.abs_sub(&-1f32), 2f32);
-        assert_eq!(neg_infinity.abs_sub(&0f32), 0f32);
-        assert_eq!(infinity.abs_sub(&1f32), infinity);
-        assert_eq!(0f32.abs_sub(&neg_infinity), infinity);
-        assert_eq!(0f32.abs_sub(&infinity), 0f32);
+        assert_eq!(NEG_INFINITY.abs_sub(&0f32), 0f32);
+        assert_eq!(INFINITY.abs_sub(&1f32), INFINITY);
+        assert_eq!(0f32.abs_sub(&NEG_INFINITY), INFINITY);
+        assert_eq!(0f32.abs_sub(&INFINITY), 0f32);
     }
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
     fn test_abs_sub_nowin() {
-        assert!(NaN.abs_sub(&-1f32).is_nan());
-        assert!(1f32.abs_sub(&NaN).is_nan());
+        assert!(NAN.abs_sub(&-1f32).is_nan());
+        assert!(1f32.abs_sub(&NAN).is_nan());
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!(infinity.signum(), 1f32);
+        assert_eq!(INFINITY.signum(), 1f32);
         assert_eq!(1f32.signum(), 1f32);
         assert_eq!(0f32.signum(), 1f32);
         assert_eq!((-0f32).signum(), -1f32);
         assert_eq!((-1f32).signum(), -1f32);
-        assert_eq!(neg_infinity.signum(), -1f32);
-        assert_eq!((1f32/neg_infinity).signum(), -1f32);
-        assert!(NaN.signum().is_nan());
+        assert_eq!(NEG_INFINITY.signum(), -1f32);
+        assert_eq!((1f32/NEG_INFINITY).signum(), -1f32);
+        assert!(NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_positive() {
-        assert!(infinity.is_positive());
+        assert!(INFINITY.is_positive());
         assert!(1f32.is_positive());
         assert!(0f32.is_positive());
         assert!(!(-0f32).is_positive());
         assert!(!(-1f32).is_positive());
-        assert!(!neg_infinity.is_positive());
-        assert!(!(1f32/neg_infinity).is_positive());
-        assert!(!NaN.is_positive());
+        assert!(!NEG_INFINITY.is_positive());
+        assert!(!(1f32/NEG_INFINITY).is_positive());
+        assert!(!NAN.is_positive());
     }
 
     #[test]
     fn test_is_negative() {
-        assert!(!infinity.is_negative());
+        assert!(!INFINITY.is_negative());
         assert!(!1f32.is_negative());
         assert!(!0f32.is_negative());
         assert!((-0f32).is_negative());
         assert!((-1f32).is_negative());
-        assert!(neg_infinity.is_negative());
-        assert!((1f32/neg_infinity).is_negative());
-        assert!(!NaN.is_negative());
+        assert!(NEG_INFINITY.is_negative());
+        assert!((1f32/NEG_INFINITY).is_negative());
+        assert!(!NAN.is_negative());
     }
 
     #[test]
