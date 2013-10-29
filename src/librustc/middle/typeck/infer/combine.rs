@@ -429,23 +429,20 @@ pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<
         return Err(ty::terr_variadic_mismatch(expected_found(this, a.variadic, b.variadic)));
     }
 
-    do argvecs(this, a.inputs, b.inputs)
-            .and_then |inputs| {
-        do this.tys(a.output, b.output).and_then |output| {
-            Ok(FnSig {
-                bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
-                inputs: inputs.clone(),
-                output: output,
-                variadic: a.variadic
-            })
-        }
-    }
+    let inputs = if_ok!(argvecs(this, a.inputs, b.inputs));
+    let output = if_ok!(this.tys(a.output, b.output));
+    Ok(FnSig {binder_id: a.binder_id,
+              inputs: inputs,
+              output: output,
+              variadic: a.variadic})
 }
 
-pub fn super_tys<C:Combine>(
-    this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
+pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     let tcx = this.infcx().tcx;
-    return match (&ty::get(a).sty, &ty::get(b).sty) {
+    let a_sty = &ty::get(a).sty;
+    let b_sty = &ty::get(b).sty;
+    debug!("super_tys: a_sty={:?} b_sty={:?}", a_sty, b_sty);
+    return match (a_sty, b_sty) {
       // The "subtype" ought to be handling cases involving bot or var:
       (&ty::ty_bot, _) |
       (_, &ty::ty_bot) |
@@ -494,6 +491,7 @@ pub fn super_tys<C:Combine>(
             unify_float_variable(this, !this.a_is_expected(), v_id, v)
         }
 
+      (&ty::ty_char, _) |
       (&ty::ty_nil, _) |
       (&ty::ty_bool, _) |
       (&ty::ty_int(_), _) |

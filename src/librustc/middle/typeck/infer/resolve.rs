@@ -50,6 +50,7 @@
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot, IntType, UintType};
 use middle::ty;
+use middle::ty_fold;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
 use middle::typeck::infer::to_str::InferStr;
@@ -93,6 +94,20 @@ pub fn resolver(infcx: @mut InferCtxt, modes: uint) -> ResolveState {
         err: None,
         v_seen: ~[],
         type_depth: 0
+    }
+}
+
+impl ty_fold::TypeFolder for ResolveState {
+    fn tcx(&self) -> ty::ctxt {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+        self.resolve_type(t)
+    }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        self.resolve_region(r)
     }
 }
 
@@ -166,11 +181,7 @@ impl ResolveState {
                     typ
                 } else {
                     self.type_depth += 1;
-                    let result = ty::fold_regions_and_ty(
-                        self.infcx.tcx, typ,
-                        |r| self.resolve_region(r),
-                        |t| self.resolve_type(t),
-                        |t| self.resolve_type(t));
+                    let result = ty_fold::super_fold_ty(self, typ);
                     self.type_depth -= 1;
                     result
                 }

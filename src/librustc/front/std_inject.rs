@@ -116,12 +116,12 @@ impl fold::ast_fold for StandardLibraryInjector {
             segments: ~[
                 ast::PathSegment {
                     identifier: self.sess.ident_of("std"),
-                    lifetime: None,
+                    lifetimes: opt_vec::Empty,
                     types: opt_vec::Empty,
                 },
                 ast::PathSegment {
                     identifier: self.sess.ident_of("prelude"),
-                    lifetime: None,
+                    lifetimes: opt_vec::Empty,
                     types: opt_vec::Empty,
                 },
             ],

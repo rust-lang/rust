@@ -193,6 +193,11 @@ pub static tag_path_elt_pretty_name: uint = 0x87;
 pub static tag_path_elt_pretty_name_ident: uint = 0x88;
 pub static tag_path_elt_pretty_name_extra: uint = 0x89;
 
+pub static tag_region_param_def: uint = 0x100;
+pub static tag_region_param_def_ident: uint = 0x101;
+pub static tag_region_param_def_def_id: uint = 0x102;
+
+
 pub struct LinkMeta {
     name: @str,
     vers: @str,

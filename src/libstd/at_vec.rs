@@ -12,7 +12,7 @@
 
 use clone::Clone;
 use container::Container;
-use iter::Iterator;
+use iter::{Iterator, FromIterator};
 use option::{Option, Some, None};
 use mem;
 use unstable::raw::Repr;
@@ -131,6 +131,17 @@ pub fn to_managed<T:Clone>(v: &[T]) -> @[T] {
 impl<T> Clone for @[T] {
     fn clone(&self) -> @[T] {
         *self
+    }
+}
+
+impl<A> FromIterator<A> for @[A] {
+    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> @[A] {
+        let (lower, _) = iterator.size_hint();
+        do build(Some(lower)) |push| {
+            for x in *iterator {
+                push(x);
+            }
+        }
     }
 }
 

@@ -535,8 +535,14 @@ fn constrain_call(rcx: &mut Rcx,
     //! appear in the arguments appropriately.
 
     let tcx = rcx.fcx.tcx();
-    debug!("constrain_call(call_expr={}, implicitly_ref_args={:?})",
-           call_expr.repr(tcx), implicitly_ref_args);
+    debug!("constrain_call(call_expr={}, \
+            receiver={}, \
+            arg_exprs={}, \
+            implicitly_ref_args={:?})",
+            call_expr.repr(tcx),
+            receiver.repr(tcx),
+            arg_exprs.repr(tcx),
+            implicitly_ref_args);
     let callee_ty = rcx.resolve_node_type(callee_id);
     if ty::type_is_error(callee_ty) {
         // Bail, as function type is unknown
@@ -552,6 +558,8 @@ fn constrain_call(rcx: &mut Rcx,
     let callee_region = ty::re_scope(callee_scope);
 
     for &arg_expr in arg_exprs.iter() {
+        debug!("Argument");
+
         // ensure that any regions appearing in the argument type are
         // valid for at least the lifetime of the function:
         constrain_regions_in_type_of_node(
@@ -569,6 +577,7 @@ fn constrain_call(rcx: &mut Rcx,
 
     // as loop above, but for receiver
     for &r in receiver.iter() {
+        debug!("Receiver");
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, infer::CallRcvr(r.span));
         if implicitly_ref_args {
@@ -727,9 +736,9 @@ fn constrain_regions_in_type(
            ty_to_str(tcx, ty));
 
     do relate_nested_regions(tcx, Some(minimum_lifetime), ty) |r_sub, r_sup| {
-        debug!("relate(r_sub={}, r_sup={})",
-               region_to_str(tcx, "", false, r_sub),
-               region_to_str(tcx, "", false, r_sup));
+        debug!("relate_nested_regions(r_sub={}, r_sup={})",
+                r_sub.repr(tcx),
+                r_sup.repr(tcx));
 
         if r_sup.is_bound() || r_sub.is_bound() {
             // a bound region is one which appears inside an fn type.

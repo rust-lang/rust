@@ -436,14 +436,17 @@ pub struct ClosureTy {
  * Signature of a function type, which I have arbitrarily
  * decided to use to refer to the input/output types.
  *
- * - `lifetimes` is the list of region names bound in this fn.
+ * - `binder_id` is the node id where this fn type appeared;
+ *   it is used to identify all the bound regions appearing
+ *   in the input/output types that are bound by this fn type
+ *   (vs some enclosing or enclosed fn type)
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type.
  * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
  */
 #[deriving(Clone, Eq, IterBytes)]
 pub struct FnSig {
-    bound_lifetime_names: OptVec<ast::Ident>,
+    binder_id: ast::NodeId,
     inputs: ~[t],
     output: t,
     variadic: bool
@@ -458,16 +461,13 @@ pub struct param_ty {
 /// Representation of regions:
 #[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum Region {
-    /// Bound regions are found (primarily) in function types.  They indicate
-    /// region parameters that have yet to be replaced with actual regions
-    /// (analogous to type parameters, except that due to the monomorphic
-    /// nature of our type system, bound type parameters are always replaced
-    /// with fresh type variables whenever an item is referenced, so type
-    /// parameters only appear "free" in types.  Regions in contrast can
-    /// appear free or bound.).  When a function is called, all bound regions
-    /// tied to that function's node-id are replaced with fresh region
-    /// variables whose value is then inferred.
-    re_bound(bound_region),
+    // Region bound in a type declaration (type/enum/struct/trait),
+    // which will be substituted when an instance of the type is accessed
+    re_type_bound(/* param id */ ast::NodeId, /*index*/ uint, ast::Ident),
+
+    // Region bound in a fn scope, which will be substituted when the
+    // fn is called.
+    re_fn_bound(/* binder_id */ ast::NodeId, bound_region),
 
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
@@ -496,42 +496,32 @@ pub enum Region {
 impl Region {
     pub fn is_bound(&self) -> bool {
         match self {
-            &re_bound(*) => true,
+            &ty::re_type_bound(*) => true,
+            &ty::re_fn_bound(*) => true,
             _ => false
         }
     }
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, TotalOrd, TotalEq, IterBytes, Encodable, Decodable, ToStr)]
 pub struct FreeRegion {
     scope_id: NodeId,
     bound_region: bound_region
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, TotalEq, TotalOrd, IterBytes, Encodable, Decodable, ToStr)]
 pub enum bound_region {
-    /// The self region for structs, impls (&T in a type defn or &'self T)
-    br_self,
-
     /// An anonymous region parameter for a given fn (&T)
     br_anon(uint),
 
     /// Named region parameters for functions (a in &'a T)
-    br_named(ast::Ident),
+    ///
+    /// The def-id is needed to distinguish free regions in
+    /// the event of shadowing.
+    br_named(ast::DefId, ast::Ident),
 
     /// Fresh bound identifiers created during GLB computations.
     br_fresh(uint),
-
-    /**
-     * Handles capture-avoiding substitution in a rather subtle case.  If you
-     * have a closure whose argument types are being inferred based on the
-     * expected type, and the expected type includes bound regions, then we
-     * will wrap those bound regions in a br_cap_avoid() with the id of the
-     * fn expression.  This ensures that the names are not "captured" by the
-     * enclosing scope, which may define the same names.  For an example of
-     * where this comes up, see src/test/compile-fail/regions-ret-borrowed.rs
-     * and regions-ret-borrowed-1.rs. */
-    br_cap_avoid(ast::NodeId, @bound_region),
 }
 
 /**
@@ -868,18 +858,54 @@ pub struct TypeParameterDef {
     bounds: @ParamBounds
 }
 
-/// Information about the type/lifetime parametesr associated with an item.
+#[deriving(Encodable, Decodable, Clone)]
+pub struct RegionParameterDef {
+    ident: ast::Ident,
+    def_id: ast::DefId,
+}
+
+/// Information about the type/lifetime parameters associated with an item.
 /// Analogous to ast::Generics.
 #[deriving(Clone)]
 pub struct Generics {
+    /// List of type parameters declared on the item.
     type_param_defs: @~[TypeParameterDef],
-    region_param: Option<region_variance>,
+
+    /// List of region parameters declared on the item.
+    region_param_defs: @[RegionParameterDef],
 }
 
 impl Generics {
     pub fn has_type_params(&self) -> bool {
         !self.type_param_defs.is_empty()
     }
+}
+
+/// When type checking, we use the `ParameterEnvironment` to track
+/// details about the type/lifetime parameters that are in scope.
+/// It primarily stores the bounds information.
+///
+/// Note: This information might seem to be redundant with the data in
+/// `tcx.ty_param_defs`, but it is not. That table contains the
+/// parameter definitions from an "outside" perspective, but this
+/// struct will contain the bounds for a parameter as seen from inside
+/// the function body. Currently the only real distinction is that
+/// bound lifetime parameters are replaced with free ones, but in the
+/// future I hope to refine the representation of types so as to make
+/// more distinctions clearer.
+pub struct ParameterEnvironment {
+    /// A substitution that can be applied to move from
+    /// the "outer" view of a type or method to the "inner" view.
+    /// In general, this means converting from bound parameters to
+    /// free parameters. Since we currently represent bound/free type
+    /// parameters in the same way, this only has an affect on regions.
+    free_substs: ty::substs,
+
+    /// Bound on the Self parameter
+    self_param_bound: Option<@TraitRef>,
+
+    /// Bounds on each numbered type parameter
+    type_param_bounds: ~[ParamBounds],
 }
 
 /// A polytype.
@@ -1255,14 +1281,17 @@ pub fn mk_bare_fn(cx: ctxt, fty: BareFnTy) -> t {
     mk_t(cx, ty_bare_fn(fty))
 }
 
-pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
+pub fn mk_ctor_fn(cx: ctxt,
+                  binder_id: ast::NodeId,
+                  input_tys: &[ty::t],
+                  output: ty::t) -> t {
     let input_args = input_tys.map(|t| *t);
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::impure_fn,
                    abis: AbiSet::Rust(),
                    sig: FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
+                    binder_id: binder_id,
                     inputs: input_args,
                     output: output,
                     variadic: false
@@ -4661,4 +4690,80 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
     }
 
     hash.result_u64()
+}
+
+pub fn construct_parameter_environment(
+    tcx: ctxt,
+    self_bound: Option<@TraitRef>,
+    item_type_params: &[TypeParameterDef],
+    method_type_params: &[TypeParameterDef],
+    item_region_params: &[RegionParameterDef],
+    free_id: ast::NodeId)
+    -> ParameterEnvironment
+{
+    /*! See `ParameterEnvironment` struct def'n for details */
+
+    //
+    // Construct the free substs.
+    //
+
+    // map Self => Self
+    let self_ty = self_bound.map(|t| ty::mk_self(tcx, t.def_id));
+
+    // map A => A
+    let num_item_type_params = item_type_params.len();
+    let num_method_type_params = method_type_params.len();
+    let num_type_params = num_item_type_params + num_method_type_params;
+    let type_params = vec::from_fn(num_type_params, |i| {
+            let def_id = if i < num_item_type_params {
+                item_type_params[i].def_id
+            } else {
+                method_type_params[i - num_item_type_params].def_id
+            };
+
+            ty::mk_param(tcx, i, def_id)
+        });
+
+    // map bound 'a => free 'a
+    let region_params = item_region_params.iter().
+        map(|r| ty::re_free(ty::FreeRegion {
+                scope_id: free_id,
+                bound_region: ty::br_named(r.def_id, r.ident)})).
+        collect();
+
+    let free_substs = substs {
+        self_ty: self_ty,
+        tps: type_params,
+        regions: ty::NonerasedRegions(region_params)
+    };
+
+    //
+    // Compute the bounds on Self and the type parameters.
+    //
+
+    let self_bound_substd = self_bound.map(|b| b.subst(tcx, &free_substs));
+    let type_param_bounds_substd = vec::from_fn(num_type_params, |i| {
+        if i < num_item_type_params {
+            (*item_type_params[i].bounds).subst(tcx, &free_substs)
+        } else {
+            let j = i - num_item_type_params;
+            (*method_type_params[j].bounds).subst(tcx, &free_substs)
+        }
+    });
+
+    ty::ParameterEnvironment {
+        free_substs: free_substs,
+        self_param_bound: self_bound_substd,
+        type_param_bounds: type_param_bounds_substd,
+    }
+}
+
+impl substs {
+    pub fn empty() -> substs {
+        substs {
+            self_ty: None,
+            tps: ~[],
+            regions: NonerasedRegions(opt_vec::Empty)
+        }
+    }
 }

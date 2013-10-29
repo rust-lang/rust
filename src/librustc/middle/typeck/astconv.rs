@@ -154,13 +154,11 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
 fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
-    def_id: ast::DefId,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
     path: &ast::Path) -> ty::substs
 {
     /*!
-     *
      * Given a path `path` that refers to an item `I` with the
      * declared generics `decl_generics`, returns an appropriate
      * set of substitutions for this particular reference to `I`.
@@ -171,30 +169,28 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
-    let regions = match (&decl_generics.region_param,
-                         &path.segments.last().lifetime) {
-        (&None, &None) => {
-            opt_vec::Empty
-        }
-        (&None, &Some(_)) => {
+    let expected_num_region_params = decl_generics.region_param_defs.len();
+    let supplied_num_region_params = path.segments.last().lifetimes.len();
+    let regions = if expected_num_region_params == supplied_num_region_params {
+        path.segments.last().lifetimes.map(
+            |l| ast_region_to_region(this.tcx(), l))
+    } else {
+        let anon_regions =
+            rscope.anon_regions(path.span, expected_num_region_params);
+
+        if supplied_num_region_params != 0 || anon_regions.is_none() {
             tcx.sess.span_err(
                 path.span,
-                format!("no region bound is allowed on `{}`, \
-                      which is not declared as containing region pointers",
-                     ty::item_path_str(tcx, def_id)));
-            opt_vec::Empty
+                format!("wrong number of lifetime parameters: \
+                        expected {} but found {}",
+                        expected_num_region_params,
+                        supplied_num_region_params));
         }
-        (&Some(_), &None) => {
-            let res = rscope.anon_region(path.span);
-            let r = get_region_reporting_err(this.tcx(), path.span, &None, res);
-            opt_vec::with(r)
-        }
-        (&Some(_), &Some(_)) => {
-            opt_vec::with(
-                ast_region_to_region(this,
-                                     rscope,
-                                     path.span,
-                                     &path.segments.last().lifetime))
+
+        match anon_regions {
+            Some(v) => opt_vec::from(v),
+            None => opt_vec::from(vec::from_fn(expected_num_region_params,
+                                               |_| ty::re_static)) // hokey
         }
     };
 
@@ -234,7 +230,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
         ty: decl_ty
     } = this.get_item_ty(did);
 
-    let substs = ast_path_substs(this, rscope, did, &generics, None, path);
+    let substs = ast_path_substs(this, rscope, &generics, None, path);
     let ty = ty::subst(tcx, &substs, decl_ty);
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
@@ -252,7 +248,6 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope>(
         ast_path_substs(
             this,
             rscope,
-            trait_def.trait_ref.def_id,
             &trait_def.generics,
             self_ty,
             path);
@@ -304,6 +299,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         constr: &fn(ty::mt) -> ty::t) -> ty::t
     {
         let tcx = this.tcx();
+        debug!("mk_pointer(vst={:?})", vst);
 
         match a_seq_ty.ty.node {
             ast::ty_vec(ref mt) => {
@@ -311,6 +307,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 if a_seq_ty.mutbl == ast::MutMutable {
                     mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
                 }
+                debug!("&[]: vst={:?}", vst);
                 return ty::mk_evec(tcx, mt, vst);
             }
             ast::ty_path(ref path, ref bounds, id) => {
@@ -369,7 +366,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         }
 
         if (flags & NO_REGIONS) != 0u {
-            if path.segments.last().lifetime.is_some() {
+            if !path.segments.last().lifetimes.is_empty() {
                 tcx.sess.span_err(
                     path.span,
                     "region parameters are not allowed on this type");
@@ -422,8 +419,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
           if bf.decl.variadic && !bf.abis.is_c() {
             tcx.sess.span_err(ast_ty.span, "variadic function must have C calling convention");
           }
-          ty::mk_bare_fn(tcx, ty_of_bare_fn(this, rscope, bf.purity,
-                                            bf.abis, &bf.lifetimes, &bf.decl))
+          ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.purity,
+                                            bf.abis, &bf.decl))
       }
       ast::ty_closure(ref f) => {
         if f.sigil == ast::ManagedSigil {
@@ -440,6 +437,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
           });
           let fn_decl = ty_of_closure(this,
                                       rscope,
+                                      ast_ty.id,
                                       f.sigil,
                                       f.purity,
                                       f.onceness,
@@ -447,7 +445,6 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                       &f.region,
                                       &f.decl,
                                       None,
-                                      &f.lifetimes,
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
@@ -594,9 +591,8 @@ struct SelfInfo {
 
 pub fn ty_of_method<AC:AstConv>(
     this: &AC,
-    rscope: &RS,
+    id: ast::NodeId,
     purity: ast::purity,
-    lifetimes: &OptVec<ast::Lifetime>,
     untransformed_self_ty: ty::t,
     explicit_self: ast::explicit_self,
     decl: &ast::fn_decl) -> (Option<ty::t>, ty::BareFnTy)
@@ -606,33 +602,31 @@ pub fn ty_of_method<AC:AstConv>(
         explicit_self: explicit_self
     };
     let (a, b) = ty_of_method_or_bare_fn(
-        this, rscope, purity, AbiSet::Rust(), lifetimes, Some(&self_info), decl);
+        this, id, purity, AbiSet::Rust(), Some(&self_info), decl);
     (a.unwrap(), b)
 }
 
-pub fn ty_of_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
+pub fn ty_of_bare_fn<AC:AstConv>(
     this: &AC,
-    rscope: &RS,
+    id: ast::NodeId,
     purity: ast::purity,
     abi: AbiSet,
-    lifetimes: &OptVec<ast::Lifetime>,
     decl: &ast::fn_decl) -> ty::BareFnTy
 {
-    let (_, b) = ty_of_method_or_bare_fn(
-        this, rscope, purity, abi, lifetimes, None, decl);
+    let (_, b) = ty_of_method_or_bare_fn(this, id, purity,
+                                         abi, None, decl);
     b
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
+fn ty_of_method_or_bare_fn<AC:AstConv>(
     this: &AC,
-    rscope: &RS,
+    id: ast::NodeId,
     purity: ast::purity,
     abi: AbiSet,
-    lifetimes: &OptVec<ast::Lifetime>,
     opt_self_info: Option<&SelfInfo>,
     decl: &ast::fn_decl) -> (Option<Option<ty::t>>, ty::BareFnTy)
 {
-    debug!("ty_of_bare_fn");
+    debug!("ty_of_method_or_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
@@ -653,12 +647,10 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
             ty::BareFnTy {
                 purity: purity,
                 abis: abi,
-                sig: ty::FnSig {
-                    bound_lifetime_names: bound_lifetime_names,
-                    inputs: input_tys,
-                    output: output_ty,
-                    variadic: decl.variadic
-                }
+                sig: ty::FnSig {binder_id: id,
+                                inputs: input_tys,
+                                output: output_ty,
+                                variadic: decl.variadic}
             });
 
     fn transform_self_ty<AC:AstConv,RS:RegionScope>(
@@ -697,6 +689,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
 pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
+    id: ast::NodeId,
     sigil: ast::Sigil,
     purity: ast::purity,
     onceness: ast::Onceness,
@@ -704,17 +697,10 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     opt_lifetime: &Option<ast::Lifetime>,
     decl: &ast::fn_decl,
     expected_sig: Option<ty::FnSig>,
-    lifetimes: &OptVec<ast::Lifetime>,
     span: Span)
     -> ty::ClosureTy
 {
-    // The caller should not both provide explicit bound lifetime
-    // names and expected types.  Either we infer the bound lifetime
-    // names or they are provided, but not both.
-    assert!(lifetimes.is_empty() || expected_sig.is_none());
-
     debug!("ty_of_fn_decl");
-    let _i = indenter();
 
     // resolve the function bound region in the original region
     // scope `rscope`, not the scope of the function parameters
@@ -763,12 +749,10 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
         onceness: onceness,
         region: bound_region,
         bounds: bounds,
-        sig: ty::FnSig {
-            bound_lifetime_names: bound_lifetime_names,
-            inputs: input_tys,
-            output: output_ty,
-            variadic: decl.variadic
-        }
+        sig: ty::FnSig {binder_id: id,
+                        inputs: input_tys,
+                        output: output_ty,
+                        variadic: decl.variadic}
     }
 }
 
