@@ -1111,7 +1111,7 @@ pub fn print_call_post(s: @ps,
 pub fn print_expr(s: @ps, expr: &ast::Expr) {
     fn print_field(s: @ps, field: &ast::Field) {
         ibox(s, indent_unit);
-        print_ident(s, field.ident);
+        print_ident(s, field.ident.node);
         word_space(s, ":");
         print_expr(s, field.expr);
         end(s);

@@ -716,7 +716,7 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                 match ty::get(ty::expr_ty(self.tcx, expr)).sty {
                     ty::ty_struct(id, _) => {
                         for field in (*fields).iter() {
-                            self.check_field(expr.span, id, field.ident);
+                            self.check_field(expr.span, id, field.ident.node);
                         }
                     }
                     ty::ty_enum(_, _) => {
@@ -724,7 +724,7 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                             ast::DefVariant(_, variant_id, _) => {
                                 for field in fields.iter() {
                                     self.check_field(expr.span, variant_id,
-                                                     field.ident);
+                                                     field.ident.node);
                                 }
                             }
                             _ => self.tcx.sess.span_bug(expr.span,

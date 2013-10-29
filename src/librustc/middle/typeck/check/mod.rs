@@ -2030,20 +2030,20 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         for field in ast_fields.iter() {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.ident.name).map(|x| *x);
+            let pair = class_field_map.find(&field.ident.node.name).map(|x| *x);
             match pair {
                 None => {
                     tcx.sess.span_err(
-                        field.span,
+                        field.ident.span,
                         format!("structure has no field named `{}`",
-                             tcx.sess.str_of(field.ident)));
+                             tcx.sess.str_of(field.ident.node)));
                     error_happened = true;
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
-                        field.span,
+                        field.ident.span,
                         format!("field `{}` specified more than once",
-                             tcx.sess.str_of(field.ident)));
+                             tcx.sess.str_of(field.ident.node)));
                     error_happened = true;
                 }
                 Some((field_id, false)) => {
@@ -2051,7 +2051,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         ty::lookup_field_type(
                             tcx, class_id, field_id, &substitutions);
                     class_field_map.insert(
-                        field.ident.name, (field_id, true));
+                        field.ident.node.name, (field_id, true));
                     fields_found += 1;
                 }
             }
