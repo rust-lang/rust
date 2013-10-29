@@ -578,7 +578,7 @@ pub fn deschedule() {
     //! Yield control to the task scheduler
 
     use rt::local::Local;
-    use rt::shouldnt_be_public::Scheduler;
+    use rt::sched::Scheduler;
 
     // FIXME(#7544): Optimize this, since we know we won't block.
     let sched: ~Scheduler = Local::take();
@@ -1094,7 +1094,7 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    do Local::borrow |sched: &mut ::rt::shouldnt_be_public::Scheduler| {
+    do Local::borrow |sched: &mut ::rt::sched::Scheduler| {
         sched.sched_id() as int
     }
 }

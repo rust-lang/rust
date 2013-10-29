@@ -68,7 +68,6 @@ use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
 use rt::task::UnwindResult;
 use rt::task::{Task, SchedTask, GreenTask, Sched};
-use rt::uv::uvio::UvEventLoop;
 use unstable::atomics::{AtomicInt, AtomicBool, SeqCst};
 use unstable::sync::UnsafeArc;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
@@ -87,15 +86,13 @@ pub use self::util::set_exit_status;
 // method...
 pub use self::util::default_sched_threads;
 
+// Re-export of the functionality in the kill module
+pub use self::kill::{KillHandle, BlockedTask};
+
 // XXX: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
-    pub use super::sched::Scheduler;
-    pub use super::kill::KillHandle;
-    pub use super::thread::Thread;
-    pub use super::work_queue::WorkQueue;
     pub use super::select::SelectInner;
-    pub use super::rtio::EventLoop;
     pub use super::select::{SelectInner, SelectPortInner};
     pub use super::local_ptr::maybe_tls_key;
 }
@@ -116,15 +113,16 @@ pub mod task;
 mod kill;
 
 /// The coroutine task scheduler, built on the `io` event loop.
-mod sched;
+pub mod sched;
 
 /// Synchronous I/O.
 pub mod io;
 
 /// The EventLoop and internal synchronous I/O interface.
-mod rtio;
+pub mod rtio;
 
 /// libuv and default rtio implementation.
+#[cfg(stage0)]
 pub mod uv;
 
 /// The Local trait for types that are accessible via thread-local
@@ -132,10 +130,10 @@ pub mod uv;
 pub mod local;
 
 /// A parallel work-stealing deque.
-mod work_queue;
+pub mod work_queue;
 
 /// A parallel queue.
-mod message_queue;
+pub mod message_queue;
 
 /// A mostly lock-free multi-producer, single consumer queue.
 mod mpsc_queue;
@@ -144,7 +142,7 @@ mod mpsc_queue;
 mod mpmc_bounded_queue;
 
 /// A parallel data structure for tracking sleeping schedulers.
-mod sleeper_list;
+pub mod sleeper_list;
 
 /// Stack segments and caching.
 pub mod stack;
@@ -153,7 +151,7 @@ pub mod stack;
 mod context;
 
 /// Bindings to system threading libraries.
-mod thread;
+pub mod thread;
 
 /// The runtime configuration, read from environment variables.
 pub mod env;
@@ -289,7 +287,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         rtdebug!("inserting a regular scheduler");
 
         // Every scheduler is driven by an I/O event loop.
-        let loop_ = ~UvEventLoop::new() as ~rtio::EventLoop;
+        let loop_ = new_event_loop();
         let mut sched = ~Scheduler::new(loop_,
                                         work_queue.clone(),
                                         work_queues.clone(),
@@ -313,7 +311,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         // set.
         let work_queue = WorkQueue::new();
 
-        let main_loop = ~UvEventLoop::new() as ~rtio::EventLoop;
+        let main_loop = new_event_loop();
         let mut main_sched = ~Scheduler::new_special(main_loop,
                                                      work_queue,
                                                      work_queues.clone(),
@@ -327,7 +325,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         // waking up schedulers for work stealing; since this is a
         // non-work-stealing scheduler it should not be adding itself
         // to the list.
-        main_handle.send_shutdown();
+        main_handle.send(Shutdown);
         Some(main_sched)
     } else {
         None
@@ -463,4 +461,30 @@ pub fn in_green_task_context() -> bool {
             None => false
         }
     }
+}
+
+#[cfg(stage0)]
+pub fn new_event_loop() -> ~rtio::EventLoop {
+    use rt::uv::uvio::UvEventLoop;
+    ~UvEventLoop::new() as ~rtio::EventLoop
+}
+
+#[cfg(not(stage0))]
+pub fn new_event_loop() -> ~rtio::EventLoop {
+    #[fixed_stack_segment]; #[allow(cstack)];
+
+    match crate_map::get_crate_map() {
+        None => {}
+        Some(map) => {
+            match map.event_loop_factory {
+                None => {}
+                Some(factory) => return factory()
+            }
+        }
+    }
+
+    // If the crate map didn't specify a factory to create an event loop, then
+    // instead just use a basic event loop missing all I/O services to at least
+    // get the scheduler running.
+    return basic::event_loop();
 }
