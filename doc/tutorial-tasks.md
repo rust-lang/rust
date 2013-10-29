@@ -104,8 +104,8 @@ an environment that it carries across tasks.
 let child_task_number = generate_task_number();
 
 do spawn {
-   // Capture it in the remote task
-   println!("I am child number {}", child_task_number);
+    // Capture it in the remote task
+    println!("I am child number {}", child_task_number);
 }
 ~~~
 

@@ -237,10 +237,10 @@ alphabetic characters, numbers, or underscores. The preferred style is to
 write function, variable, and module names with lowercase letters, using
 underscores where they help readability, while writing types in camel case.
 
-~~~
+~~~~
 let my_variable = 100;
 type MyType = int;     // primitive types are _not_ camel case
-~~~
+~~~~
 
 ## Expressions and semicolons
 
@@ -466,13 +466,13 @@ expression to evaluate. Each case is separated by commas. It's often
 convenient to use a block expression for each case, in which case the
 commas are optional.
 
-~~~
+~~~~
 # let my_number = 1;
 match my_number {
   0 => { println("zero") }
   _ => { println("something else") }
 }
-~~~
+~~~~
 
 `match` constructs must be *exhaustive*: they must have an arm
 covering every possible case. For example, the typechecker would
@@ -611,13 +611,13 @@ the fields of a struct, a struct pattern may end with `, _` (as in
 Additionally, struct fields have a shorthand matching form that simply
 reuses the field name as the binding name.
 
-~~~
+~~~~
 # struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
     Point { x, _ } => { println(x.to_str()) }
 }
-~~~
+~~~~
 
 ## Enums
 
@@ -803,7 +803,7 @@ confusing numbers that correspond to different units.
 We've already seen several function definitions. Like all other static
 declarations, such as `type`, functions can be declared both at the
 top level and inside other functions (or in modules, which we'll come
-back to [later](#modules-and-crates)). The `fn` keyword introduces a
+back to [later](#crates-and-the-module-system)). The `fn` keyword introduces a
 function. A function has an argument list, which is a parenthesized
 list of `expr: type` pairs separated by commas. An arrow `->`
 separates the argument list and the function's return type.
@@ -852,9 +852,9 @@ As with `match` expressions and `let` bindings, function arguments support
 pattern destructuring. Like `let`, argument patterns must be irrefutable,
 as in this example that unpacks the first value from a tuple and returns it.
 
-~~~
+~~~~
 fn first((value, _): (int, f64)) -> int { value }
-~~~
+~~~~
 
 # Destructors
 
@@ -1063,7 +1063,7 @@ the object.
 
 As an example, consider a simple struct type, `Point`:
 
-~~~
+~~~~
 struct Point {
     x: f64,
     y: f64
@@ -1074,12 +1074,12 @@ We can use this simple definition to allocate points in many different
 ways. For example, in this code, each of these three local variables
 contains a point, but allocated in a different location:
 
-~~~
+~~~~
 # struct Point { x: f64, y: f64 }
 let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
 let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
-~~~
+~~~~
 
 Suppose we want to write a procedure that computes the distance
 between any two points, no matter where they are stored. For example,
@@ -1091,7 +1091,7 @@ copied when we call the function. For points, this is probably not so
 bad, but often copies are expensive. So we’d like to define a function
 that takes the points by pointer. We can use borrowed pointers to do this:
 
-~~~
+~~~~
 # struct Point { x: f64, y: f64 }
 # fn sqrt(f: f64) -> f64 { 0.0 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
@@ -1099,11 +1099,11 @@ fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let y_d = p1.y - p2.y;
     sqrt(x_d * x_d + y_d * y_d)
 }
-~~~
+~~~~
 
 Now we can call `compute_distance()` in various ways:
 
-~~~
+~~~~
 # struct Point{ x: f64, y: f64 };
 # let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
 # let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
@@ -1111,7 +1111,7 @@ Now we can call `compute_distance()` in various ways:
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&on_the_stack, managed_box);
 compute_distance(managed_box, owned_box);
-~~~
+~~~~
 
 Here the `&` operator is used to take the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
@@ -1173,19 +1173,19 @@ let y = x;
 Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
-~~~
+~~~~
 let managed = @10;
 let owned = ~20;
 let borrowed = &30;
 
 let sum = *managed + *owned + *borrowed;
-~~~
+~~~~
 
 Dereferenced mutable pointers may appear on the left hand side of
 assignments. Such an assignment modifies the value that the pointer
 points to.
 
-~~~
+~~~~
 let managed = @mut 10;
 let mut owned = ~20;
 
@@ -1195,13 +1195,13 @@ let borrowed = &mut value;
 *managed = *owned + 10;
 *owned = *borrowed + 100;
 *borrowed = *managed + 1000;
-~~~
+~~~~
 
 Pointers have high operator precedence, but lower precedence than the
 dot operator used for field and method access. This precedence order
 can sometimes make code awkward and parenthesis-filled.
 
-~~~
+~~~~
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
@@ -1209,13 +1209,13 @@ let start = @Point { x: 10.0, y: 20.0 };
 let end = ~Point { x: (*start).x + 100.0, y: (*start).y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = (*rect).area();
-~~~
+~~~~
 
 To combat this ugliness the dot operator applies _automatic pointer
 dereferencing_ to the receiver (the value on the left-hand side of the
 dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 
-~~~
+~~~~
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
@@ -1223,17 +1223,17 @@ let start = @Point { x: 10.0, y: 20.0 };
 let end = ~Point { x: start.x + 100.0, y: start.y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = rect.area();
-~~~
+~~~~
 
 You can write an expression that dereferences any number of pointers
 automatically. For example, if you feel inclined, you could write
 something silly like
 
-~~~
+~~~~
 # struct Point { x: f64, y: f64 }
 let point = &@~Point { x: 10.0, y: 20.0 };
 println!("{:f}", point.x);
-~~~
+~~~~
 
 The indexing operator (`[]`) also auto-dereferences.
 
@@ -1244,7 +1244,7 @@ values of the same type. Like other types in Rust, vectors can be
 stored on the stack, the local heap, or the exchange heap. Borrowed
 pointers to vectors are also called 'slices'.
 
-~~~
+~~~~
 # enum Crayon {
 #     Almond, AntiqueBrass, Apricot,
 #     Aquamarine, Asparagus, AtomicTangerine,
@@ -1262,7 +1262,7 @@ let local_crayons: @[Crayon] = @[BananaMania, Beaver, Bittersweet];
 
 // An exchange heap (owned) vector of crayons
 let exchange_crayons: ~[Crayon] = ~[Black, BlizzardBlue, Blue];
-~~~
+~~~~
 
 The `+` operator means concatenation when applied to vector types.
 
@@ -1322,18 +1322,18 @@ The elements of a vector _inherit the mutability of the vector_,
 and as such, individual elements may not be reassigned when the
 vector lives in an immutable slot.
 
-~~~ {.xfail-test}
+~~~~ {.xfail-test}
 # enum Crayon { Almond, AntiqueBrass, Apricot,
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
 let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
 
 crayons[0] = Apricot; // ERROR: Can't assign to immutable vector
-~~~
+~~~~
 
 Moving it into a mutable slot makes the elements assignable.
 
-~~~
+~~~~
 # enum Crayon { Almond, AntiqueBrass, Apricot,
 #               Aquamarine, Asparagus, AtomicTangerine,
 #               BananaMania, Beaver, Bittersweet };
@@ -1344,7 +1344,7 @@ let mut mutable_crayons = crayons;
 
 // Now it's mutable to the bone
 mutable_crayons[0] = Apricot;
-~~~
+~~~~
 
 This is a simple example of Rust's _dual-mode data structures_, also
 referred to as _freezing and thawing_.
@@ -1357,7 +1357,7 @@ example, `"foo"`) is treated differently than a comparable vector
 vectors, plain strings are borrowed pointers to read-only (static)
 memory. All strings are immutable.
 
-~~~
+~~~~
 // A plain string is a slice to read-only (static) memory
 let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
 
@@ -1369,7 +1369,7 @@ let local_crayons: @str = @"BananaMania, Beaver, Bittersweet";
 
 // An exchange heap (owned) string
 let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
-~~~
+~~~~
 
 Both vectors and strings support a number of useful
 [methods](#methods), defined in [`std::vec`]
@@ -1378,7 +1378,7 @@ and [`std::str`]. Here are some examples.
 [`std::vec`]: std/vec/index.html
 [`std::str`]: std/str/index.html
 
-~~~
+~~~~
 # enum Crayon {
 #     Almond, AntiqueBrass, Apricot,
 #     Aquamarine, Asparagus, AtomicTangerine,
@@ -1413,7 +1413,7 @@ if favorite_crayon_name.len() > 5 {
    // Create a substring
    println(favorite_crayon_name.slice_chars(0, 5));
 }
-~~~
+~~~~
 
 # Closures
 
@@ -1591,7 +1591,7 @@ _Implementations_, written with the `impl` keyword, can define
 methods on most Rust types, including structs and enums.
 As an example, let's define a `draw` method on our `Shape` enum.
 
-~~~
+~~~~
 # fn draw_circle(p: Point, f: f64) { }
 # fn draw_rectangle(p: Point, p: Point) { }
 struct Point {
@@ -1615,7 +1615,7 @@ impl Shape {
 
 let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 s.draw();
-~~~
+~~~~
 
 This defines an _implementation_ for `Shape` containing a single
 method, `draw`. In most respects the `draw` method is defined
@@ -1626,7 +1626,7 @@ or a pointer thereof. As an argument it is written either `self`,
 `&self`, `@self`, or `~self`.
 A caller must in turn have a compatible pointer type to call the method.
 
-~~~
+~~~~
 # fn draw_circle(p: Point, f: f64) { }
 # fn draw_rectangle(p: Point, p: Point) { }
 # struct Point { x: f64, y: f64 }
@@ -1647,13 +1647,13 @@ let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 (~s).draw_owned();
 (&s).draw_borrowed();
 s.draw_value();
-~~~
+~~~~
 
 Methods typically take a borrowed pointer self type,
 so the compiler will go to great lengths to convert a callee
 to a borrowed pointer.
 
-~~~
+~~~~
 # fn draw_circle(p: Point, f: f64) { }
 # fn draw_rectangle(p: Point, p: Point) { }
 # struct Point { x: f64, y: f64 }
@@ -1683,7 +1683,7 @@ s.draw_borrowed();
 
 // ... and dereferenced and borrowed
 (&@~s).draw_borrowed();
-~~~
+~~~~
 
 Implementations may also define standalone (sometimes called "static")
 methods. The absence of a `self` parameter distinguishes such methods.
@@ -1869,7 +1869,7 @@ called when a value of the type that implements this trait is
 destroyed, either because the value went out of scope or because the
 garbage collector reclaimed it.
 
-~~~
+~~~~
 struct TimeBomb {
     explosivity: uint
 }
@@ -1881,7 +1881,7 @@ impl Drop for TimeBomb {
         }
     }
 }
-~~~
+~~~~
 
 It is illegal to call `drop` directly. Only code inserted by the compiler
 may call it.
@@ -2019,7 +2019,7 @@ whose element type does not have a `Printable` implementation.
 Type parameters can have multiple bounds by separating them with `+`,
 as in this version of `print_all` that copies elements.
 
-~~~
+~~~~
 # trait Printable { fn print(&self); }
 fn print_all<T: Printable + Clone>(printable_things: ~[T]) {
     let mut i = 0;
@@ -2029,7 +2029,7 @@ fn print_all<T: Printable + Clone>(printable_things: ~[T]) {
         i += 1;
     }
 }
-~~~
+~~~~
 
 Method calls to bounded type parameters are _statically dispatched_,
 imposing no more overhead than normal function invocation, so are
@@ -2097,7 +2097,7 @@ Other pointer types work as well.
 Casts to traits may only be done with compatible pointers so,
 for example, an `@Circle` may not be cast to an `~Drawable`.
 
-~~~
+~~~~
 # type Circle = int; type Rectangle = int;
 # trait Drawable { fn draw(&self); }
 # impl Drawable for int { fn draw(&self) {} }
@@ -2109,7 +2109,7 @@ let boxy: @Drawable = @new_circle() as @Drawable;
 let owny: ~Drawable = ~new_circle() as ~Drawable;
 // A borrowed object
 let stacky: &Drawable = &new_circle() as &Drawable;
-~~~
+~~~~
 
 Method calls to trait types are _dynamically dispatched_. Since the
 compiler doesn't know specifically which functions to call at compile
@@ -2180,18 +2180,18 @@ In type-parameterized functions,
 methods of the supertrait may be called on values of subtrait-bound type parameters.
 Refering to the previous example of `trait Circle : Shape`:
 
-~~~
+~~~~
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 fn radius_times_area<T: Circle>(c: T) -> f64 {
     // `c` is both a Circle and a Shape
     c.radius() * c.area()
 }
-~~~
+~~~~
 
 Likewise, supertrait methods may also be called on trait objects.
 
-~~~ {.xfail-test}
+~~~~ {.xfail-test}
 use std::f64::consts::pi;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
@@ -2203,7 +2203,7 @@ use std::f64::consts::pi;
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
 let mycircle: @Circle = concrete as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
-~~~
+~~~~
 
 > ***Note:*** Trait inheritance does not actually work with objects yet
 
@@ -2216,13 +2216,13 @@ example, the following will mean that `Circle` has an implementation
 for `Eq` and can be used with the equality operators, and that a value
 of type `ABC` can be randomly generated and converted to a string:
 
-~~~
+~~~~
 #[deriving(Eq)]
 struct Circle { radius: f64 }
 
 #[deriving(Rand, ToStr)]
 enum ABC { A, B, C }
-~~~
+~~~~
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
@@ -2345,7 +2345,7 @@ struct level.
 For convenience, fields are _public_ by default, and can be made _private_ with
 the `priv` keyword:
 
-~~~
+~~~~
 mod farm {
 # pub type Chicken = int;
 # struct Human(int);
@@ -2378,7 +2378,7 @@ fn main() {
 }
 # fn make_me_a_farm() -> farm::Farm { farm::make_me_a_farm() }
 # fn make_me_a_chicken() -> farm::Chicken { 0 }
-~~~
+~~~~
 
 Exact details and specifications about visibility rules can be found in the Rust
 manual.
@@ -2440,7 +2440,7 @@ is contained in, if any.
 
 For example, given a file with this module body:
 
-~~~ {.ignore}
+~~~~ {.ignore}
 // src/main.rs
 mod plants;
 mod animals {
@@ -2449,11 +2449,11 @@ mod animals {
         mod humans;
     }
 }
-~~~
+~~~~
 
 The compiler would then try all these files:
 
-~~~ {.notrust}
+~~~~ {.notrust}
 src/plants.rs
 src/plants/mod.rs
 
@@ -2462,28 +2462,28 @@ src/animals/fish/mod.rs
 
 src/animals/mammals/humans.rs
 src/animals/mammals/humans/mod.rs
-~~~
+~~~~
 
 Keep in mind that identical module hierachies can still lead to different path lookups
 depending on how and where you've moved a module body to its own file.
 For example, if we move the `animals` module above into its own file...
 
-~~~ {.ignore}
+~~~~ {.ignore}
 // src/main.rs
 mod plants;
 mod animals;
-~~~
-~~~ {.ignore}
+~~~~
+~~~~ {.ignore}
 // src/animals.rs or src/animals/mod.rs
 mod fish;
 mod mammals {
     mod humans;
 }
-~~~
+~~~~
 ...then the source files of `mod animals`'s submodules can
 either be placed right next to that of its parents, or in a subdirectory if `animals` source file is:
 
-~~~ {.notrust}
+~~~~ {.notrust}
 src/plants.rs
 src/plants/mod.rs
 
@@ -2501,7 +2501,7 @@ src/animals/mod.rs - if file is in it's own subdirectory:
     src/animals/mammals/humans.rs
     src/animals/mammals/humans/mod.rs
 
-~~~
+~~~~
 
 These rules allow you to have both small modules that only need
 to consist of one source file each and can be conveniently placed right next to each other,
@@ -2509,10 +2509,10 @@ and big complicated modules that group the source files of submodules in subdire
 
 If you need to circumvent the defaults, you can also overwrite the path a `mod foo;` would take:
 
-~~~ {.ignore}
+~~~~ {.ignore}
 #[path="../../area51/alien.rs"]
 mod classified;
-~~~
+~~~~
 
 ## Importing names into the local scope
 
@@ -2524,11 +2524,11 @@ They work like this: At the beginning of any module body, `fn` body, or any othe
 you can write a list of `use`-statements, consisting of the keyword `use` and a __global path__ to an item
 without the `::` prefix. For example, this imports `cow` into the local scope:
 
-~~~
+~~~~
 use farm::cow;
 # mod farm { pub fn cow() { println("I'm a hidden ninja cow!") } }
 # fn main() { cow() }
-~~~
+~~~~
 
 The path you give to `use` is per default global, meaning relative to the crate root,
 no matter how deep the module hierarchy is, or whether the module body it's written in
@@ -2542,7 +2542,7 @@ However, it's also possible to import things relative to the module of the `use`
 Adding a `super::` in front of the path will start in the parent module,
 while adding a `self::` prefix will start in the current module:
 
-~~~
+~~~~
 # mod workaround {
 # pub fn some_parent_item(){ println("...") }
 # mod foo {
@@ -2552,7 +2552,7 @@ use self::some_child_module::some_item;
 # pub mod some_child_module { pub fn some_item() {} }
 # }
 # }
-~~~
+~~~~
 
 Again - relative to the module, not to the file.
 
@@ -2562,7 +2562,7 @@ will first look at all items that are defined locally,
 and only if that results in no match look at items you brought in
 scope with corresponding `use` statements.
 
-~~~ {.ignore}
+~~~~ {.ignore}
 # // XXX: Allow unused import in doc test
 use farm::cow;
 // ...
@@ -2572,7 +2572,7 @@ fn cow() { println("Mooo!") }
 fn main() {
     cow() // resolves to the locally defined cow() function
 }
-~~~
+~~~~
 
 To make this behavior more obvious, the rule has been made that `use`-statement always need to be written
 before any declaration, like in the example above. This is a purely artificial rule introduced
@@ -2582,14 +2582,14 @@ mutually recursive, order independent definitions.
 One odd consequence of that rule is that `use` statements also go in front of any `mod` declaration,
 even if they refer to things inside them:
 
-~~~
+~~~~
 use farm::cow;
 mod farm {
     pub fn cow() { println("Moooooo?") }
 }
 
 fn main() { cow() }
-~~~
+~~~~
 
 This is what our `farm` example looks like with `use` statements:
 
@@ -2618,44 +2618,44 @@ fn main() {
 ~~~~
 
 And here an example with multiple files:
-~~~{.ignore}
+~~~~ {.ignore}
 // a.rs - crate root
 use b::foo;
 mod b;
 fn main() { foo(); }
-~~~
-~~~{.ignore}
+~~~~
+~~~~ {.ignore}
 // b.rs
 use b::c::bar;
 pub mod c;
 pub fn foo() { bar(); }
-~~~
-~~~
+~~~~
+~~~~
 // c.rs
 pub fn bar() { println("Baz!"); }
-~~~
+~~~~
 
 There also exist two short forms for importing multiple names at once:
 
 1. Explicit mention multiple names as the last element of an `use` path:
-~~~
+~~~~
 use farm::{chicken, cow};
 # mod farm {
 #     pub fn cow() { println("Did I already mention how hidden and ninja I am?") }
 #     pub fn chicken() { println("I'm Bat-chicken, guardian of the hidden tutorial code.") }
 # }
 # fn main() { cow(); chicken() }
-~~~
+~~~~
 
 2. Import everything in a module with a wildcard:
-~~~
+~~~~
 use farm::*;
 # mod farm {
 #     pub fn cow() { println("Bat-chicken? What a stupid name!") }
 #     pub fn chicken() { println("Says the 'hidden ninja' cow.") }
 # }
 # fn main() { cow(); chicken() }
-~~~
+~~~~
 
 > ***Note:*** This feature of the compiler is currently gated behind the
 > `#[feature(globs)]` directive. More about these directives can be found in
@@ -2663,7 +2663,7 @@ use farm::*;
 
 However, that's not all. You can also rename an item while you're bringing it into scope:
 
-~~~
+~~~~
 use egg_layer = farm::chicken;
 # mod farm { pub fn chicken() { println("Laying eggs is fun!")  } }
 // ...
@@ -2671,7 +2671,7 @@ use egg_layer = farm::chicken;
 fn main() {
     egg_layer();
 }
-~~~
+~~~~
 
 In general, `use` creates an local alias:
 An alternate path and a possibly different name to access the same item,
@@ -2683,7 +2683,7 @@ It is also possible to reexport items to be accessible under your module.
 
 For that, you write `pub use`:
 
-~~~
+~~~~
 mod farm {
     pub use self::barn::hay;
 
@@ -2700,7 +2700,7 @@ fn main() {
     farm::cow();
     farm::hay();
 }
-~~~
+~~~~
 
 Just like in normal `use` statements, the exported names
 merely represent an alias to the same thing and can also be renamed.
@@ -2723,7 +2723,7 @@ In Rust terminology, we need a way to refer to other crates.
 
 For that, Rust offers you the `extern mod` declaration:
 
-~~~
+~~~~
 extern mod extra;
 // extra ships with Rust, you'll find more details further down.
 
@@ -2731,7 +2731,7 @@ fn main() {
     // The rational number '1/2':
     let one_half = ::extra::rational::Ratio::new(1, 2);
 }
-~~~
+~~~~
 
 Despite its name, `extern mod` is a distinct construct from regular `mod` declarations:
 A statement of the form `extern mod foo;` will cause `rustc` to search for the crate `foo`,
@@ -2752,7 +2752,7 @@ of both `use` and local declarations.
 
 Which can result in something like this:
 
-~~~
+~~~~
 extern mod extra;
 
 use farm::dog;
@@ -2766,7 +2766,7 @@ fn main() {
     farm::dog();
     let a_third = Ratio::new(1, 3);
 }
-~~~
+~~~~
 
 It's a bit weird, but it's the result of shadowing rules that have been set that way because
 they model most closely what people expect to shadow.
@@ -2781,9 +2781,9 @@ libraries if you use it for building your crate. How it works is explained [here
 but for this tutorial it's only important to know that you can optionally annotate an
 `extern mod` statement with an package id that rustpkg can use to identify it:
 
-~~~ {.ignore}
+~~~~ {.ignore}
 extern mod rust = "github.com/mozilla/rust"; // pretend Rust is an simple library
-~~~
+~~~~
 
 [rustpkg]: rustpkg.html
 
@@ -2888,15 +2888,15 @@ in the `std` library, which is a crate that ships with Rust.
 
 The only magical thing that happens is that `rustc` automatically inserts this line into your crate root:
 
-~~~ {.ignore}
+~~~~ {.ignore}
 extern mod std;
-~~~
+~~~~
 
 As well as this line into every module body:
 
-~~~ {.ignore}
+~~~~ {.ignore}
 use std::prelude::*;
-~~~
+~~~~
 
 The role of the `prelude` module is to re-export common definitions from `std`.
 
@@ -2904,29 +2904,29 @@ This allows you to use common types and functions like `Option<T>` or `println`
 without needing to import them. And if you need something from `std` that's not in the prelude,
 you just have to import it with an `use` statement.
 
-For example, it re-exports `println` which is defined in `std::io::println`:
+For example, it re-exports `println` which is defined in `std::rt::io::stdio::println`:
 
-~~~
+~~~~
 use puts = std::rt::io::stdio::println;
 
 fn main() {
     println("println is imported per default.");
-    puts("Doesn't hinder you from importing it under an different name yourself.");
+    puts("Doesn't hinder you from importing it under a different name yourself.");
     ::std::rt::io::stdio::println("Or from not using the automatic import.");
 }
-~~~
+~~~~
 
 Both auto-insertions can be disabled with an attribute if necessary:
 
-~~~
+~~~~
 // In the crate root:
 #[no_std];
-~~~
+~~~~
 
-~~~
+~~~~
 // In any module:
 #[no_implicit_prelude];
-~~~
+~~~~
 
 ## The standard library in detail
 

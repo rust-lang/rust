@@ -375,7 +375,7 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-~~~{.xfail-test}
+~~~~ {.xfail-test}
 use std::libc;
 
 #[link_args = "-lreadline"]
@@ -387,13 +387,13 @@ fn main() {
     println(fmt!("You have readline version %d installed.",
                  rl_readline_version as int));
 }
-~~~
+~~~~
 
 Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
-~~~{.xfail-test}
+~~~~ {.xfail-test}
 use std::libc;
 use std::ptr;
 
@@ -409,7 +409,7 @@ fn main() {
         unsafe { rl_prompt = ptr::null(); }
     }
 }
-~~~
+~~~~
 
 # Foreign calling conventions
 
