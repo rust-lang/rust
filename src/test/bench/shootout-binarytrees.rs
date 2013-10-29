@@ -9,81 +9,77 @@
 // except according to those terms.
 
 extern mod extra;
+
+use std::iter::range_step;
 use extra::arena::Arena;
+use extra::future::Future;
 
 enum Tree<'self> {
     Nil,
-    Node(&'self Tree<'self>, &'self Tree<'self>, int),
+    Node(&'self Tree<'self>, &'self Tree<'self>, int)
 }
 
 fn item_check(t: &Tree) -> int {
     match *t {
-      Nil => { return 0; }
-      Node(left, right, item) => {
-        return item + item_check(left) - item_check(right);
-      }
+        Nil => 0,
+        Node(l, r, i) => i + item_check(l) - item_check(r)
     }
 }
 
-fn bottom_up_tree<'r>(arena: &'r Arena, item: int, depth: int)
-                   -> &'r Tree<'r> {
+fn bottom_up_tree<'r>(arena: &'r Arena, item: int, depth: int) -> &'r Tree<'r> {
     if depth > 0 {
-        return arena.alloc(
-            || Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
-                    bottom_up_tree(arena, 2 * item, depth - 1),
-                    item));
-    }
-    return arena.alloc(|| Nil);
+        do arena.alloc {
+            Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+                 bottom_up_tree(arena, 2 * item, depth - 1),
+                 item)
+        }
+    } else {arena.alloc(|| Nil)}
 }
 
 fn main() {
-    use std::os;
-    use std::int;
     let args = std::os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"17"]
+    let n = if std::os::getenv("RUST_BENCH").is_some() {
+        17
     } else if args.len() <= 1u {
-        ~[~"", ~"8"]
+        8
     } else {
-        args
+        from_str(args[1]).unwrap()
     };
-
-    let n = from_str::<int>(args[1]).unwrap();
     let min_depth = 4;
-    let mut max_depth;
-    if min_depth + 2 > n {
-        max_depth = min_depth + 2;
-    } else {
-        max_depth = n;
+    let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};
+
+    {
+        let arena = Arena::new();
+        let depth = max_depth + 1;
+        let tree = bottom_up_tree(&arena, 0, depth);
+
+        println!("stretch tree of depth {}\t check: {}",
+                 depth, item_check(tree));
     }
-
-    let stretch_arena = Arena::new();
-    let stretch_depth = max_depth + 1;
-    let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
-
-    println!("stretch tree of depth {}\t check: {}",
-              stretch_depth,
-              item_check(stretch_tree));
 
     let long_lived_arena = Arena::new();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
-    let mut depth = min_depth;
-    while depth <= max_depth {
-        let iterations = int::pow(2, (max_depth - depth + min_depth) as uint);
-        let mut chk = 0;
-        let mut i = 1;
-        while i <= iterations {
-            let mut temp_tree = bottom_up_tree(&long_lived_arena, i, depth);
-            chk += item_check(temp_tree);
-            temp_tree = bottom_up_tree(&long_lived_arena, -i, depth);
-            chk += item_check(temp_tree);
-            i += 1;
-        }
-        println!("{}\t trees of depth {}\t check: {}",
-                  iterations * 2, depth, chk);
-        depth += 2;
+
+    let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
+            use std::int::pow;
+            let iterations = pow(2, (max_depth - depth + min_depth) as uint);
+            do Future::spawn {
+                let mut chk = 0;
+                for i in range(1, iterations + 1) {
+                    let arena = Arena::new();
+                    let a = bottom_up_tree(&arena, i, depth);
+                    let b = bottom_up_tree(&arena, -i, depth);
+                    chk += item_check(a) + item_check(b);
+                }
+                format!("{}\t trees of depth {}\t check: {}",
+                        iterations * 2, depth, chk)
+            }
+        }).to_owned_vec();
+
+    for message in messages.mut_iter() {
+        println(*message.get_ref());
     }
+
     println!("long lived tree of depth {}\t check: {}",
-              max_depth,
-              item_check(long_lived_tree));
+             max_depth, item_check(long_lived_tree));
 }
