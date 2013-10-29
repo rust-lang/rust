@@ -200,11 +200,10 @@ impl<T: Send> UnsafeArc<T> {
 
     /// As unwrap above, but without blocking. Returns 'UnsafeArcSelf(self)' if this is
     /// not the last reference; 'UnsafeArcT(unwrapped_data)' if so.
-    pub fn try_unwrap(self) -> UnsafeArcUnwrap<T> {
+    pub fn try_unwrap(mut self) -> UnsafeArcUnwrap<T> {
         unsafe {
-            let mut this = self; // FIXME(#4330) mutable self
             // The ~ dtor needs to run if this code succeeds.
-            let mut data: ~ArcData<T> = cast::transmute(this.data);
+            let mut data: ~ArcData<T> = cast::transmute(self.data);
             // This can of course race with anybody else who has a handle, but in
             // such a case, the returned count will always be at least 2. If we
             // see 1, no race was possible. All that matters is 1 or not-1.
@@ -216,12 +215,12 @@ impl<T: Send> UnsafeArc<T> {
             // (Note: using is_empty(), not take(), to not free the unwrapper.)
             if count == 1 && data.unwrapper.is_empty(Acquire) {
                 // Tell this handle's destructor not to run (we are now it).
-                this.data = ptr::mut_null();
+                self.data = ptr::mut_null();
                 // FIXME(#3224) as above
                 UnsafeArcT(data.data.take_unwrap())
             } else {
                 cast::forget(data);
-                UnsafeArcSelf(this)
+                UnsafeArcSelf(self)
             }
         }
     }
