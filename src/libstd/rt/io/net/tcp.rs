@@ -383,7 +383,8 @@ mod test {
                         //     on windows
                         assert!(e.kind == ConnectionReset ||
                                 e.kind == BrokenPipe ||
-                                e.kind == ConnectionAborted);
+                                e.kind == ConnectionAborted,
+                                "unknown error: {:?}", e);
                         stop = true;
                     }).inside {
                         stream.write(buf);
@@ -420,7 +421,8 @@ mod test {
                         //     on windows
                         assert!(e.kind == ConnectionReset ||
                                 e.kind == BrokenPipe ||
-                                e.kind == ConnectionAborted);
+                                e.kind == ConnectionAborted,
+                                "unknown error: {:?}", e);
                         stop = true;
                     }).inside {
                         stream.write(buf);

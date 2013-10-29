@@ -80,13 +80,14 @@ use comm::{Chan, GenericChan, oneshot};
 use container::MutableMap;
 use hashmap::{HashSet, HashSetMoveIterator};
 use local_data;
-use rt::in_green_task_context;
 use rt::local::Local;
-use rt::shouldnt_be_public::{Scheduler, KillHandle, WorkQueue, Thread, EventLoop};
+use rt::sched::{Scheduler, Shutdown, TaskFromFriend};
 use rt::task::{Task, Sched};
 use rt::task::{UnwindReasonLinked, UnwindReasonStr};
 use rt::task::{UnwindResult, Success, Failure};
-use rt::uv::uvio::UvEventLoop;
+use rt::thread::Thread;
+use rt::work_queue::WorkQueue;
+use rt::{in_green_task_context, new_event_loop, KillHandle};
 use send_str::IntoSendStr;
 use task::SingleThreaded;
 use task::TaskOpts;
@@ -617,8 +618,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let work_queue = WorkQueue::new();
 
             // Create a new scheduler to hold the new task
-            let new_loop = ~UvEventLoop::new() as ~EventLoop;
-            let mut new_sched = ~Scheduler::new_special(new_loop,
+            let mut new_sched = ~Scheduler::new_special(new_event_loop(),
                                                         work_queue,
                                                         (*sched).work_queues.clone(),
                                                         (*sched).sleeper_list.clone(),
@@ -627,7 +627,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             let mut new_sched_handle = new_sched.make_handle();
 
             // Allow the scheduler to exit when the pinned task exits
-            new_sched_handle.send_shutdown();
+            new_sched_handle.send(Shutdown);
 
             // Pin the new task to the new scheduler
             let new_task = if opts.watched {
@@ -665,7 +665,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 debug!("enqueing join_task");
                 // Now tell the original scheduler to join with this thread
                 // by scheduling a thread-joining task on the original scheduler
-                orig_sched_handle.send_task_from_friend(join_task);
+                orig_sched_handle.send(TaskFromFriend(join_task));
 
                 // NB: We can't simply send a message from here to another task
                 // because this code isn't running in a task and message passing doesn't

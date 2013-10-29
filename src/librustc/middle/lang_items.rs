@@ -24,10 +24,9 @@ use driver::session::Session;
 use metadata::csearch::each_lang_item;
 use metadata::cstore::iter_crate_data;
 use middle::ty::{BuiltinBound, BoundFreeze, BoundSend, BoundSized};
-use syntax::ast::{Crate, DefId, MetaItem};
+use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
-use syntax::ast::{item};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -81,20 +80,22 @@ pub enum LangItem {
     TyDescStructLangItem,              // 36
     TyVisitorTraitLangItem,            // 37
     OpaqueStructLangItem,              // 38
+
+    EventLoopFactoryLangItem,          // 39
 }
 
 pub struct LanguageItems {
-    items: [Option<DefId>, ..39]
+    items: [Option<ast::DefId>, ..40]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..39 ]
+            items: [ None, ..40 ]
         }
     }
 
-    pub fn items<'a>(&'a self) -> Enumerate<vec::VecIterator<'a, Option<DefId>>> {
+    pub fn items<'a>(&'a self) -> Enumerate<vec::VecIterator<'a, Option<ast::DefId>>> {
         self.items.iter().enumerate()
     }
 
@@ -145,13 +146,15 @@ impl LanguageItems {
             37 => "ty_visitor",
             38 => "opaque",
 
+            39 => "event_loop_factory",
+
             _ => "???"
         }
     }
 
     // FIXME #4621: Method macros sure would be nice here.
 
-    pub fn require(&self, it: LangItem) -> Result<DefId, ~str> {
+    pub fn require(&self, it: LangItem) -> Result<ast::DefId, ~str> {
         match self.items[it as uint] {
             Some(id) => Ok(id),
             None => Err(format!("requires `{}` lang_item",
@@ -159,7 +162,7 @@ impl LanguageItems {
         }
     }
 
-    pub fn to_builtin_kind(&self, id: DefId) -> Option<BuiltinBound> {
+    pub fn to_builtin_kind(&self, id: ast::DefId) -> Option<BuiltinBound> {
         if Some(id) == self.freeze_trait() {
             Some(BoundFreeze)
         } else if Some(id) == self.send_trait() {
@@ -171,162 +174,166 @@ impl LanguageItems {
         }
     }
 
-    pub fn freeze_trait(&self) -> Option<DefId> {
+    pub fn freeze_trait(&self) -> Option<ast::DefId> {
         self.items[FreezeTraitLangItem as uint]
     }
-    pub fn send_trait(&self) -> Option<DefId> {
+    pub fn send_trait(&self) -> Option<ast::DefId> {
         self.items[SendTraitLangItem as uint]
     }
-    pub fn sized_trait(&self) -> Option<DefId> {
+    pub fn sized_trait(&self) -> Option<ast::DefId> {
         self.items[SizedTraitLangItem as uint]
     }
 
-    pub fn drop_trait(&self) -> Option<DefId> {
+    pub fn drop_trait(&self) -> Option<ast::DefId> {
         self.items[DropTraitLangItem as uint]
     }
 
-    pub fn add_trait(&self) -> Option<DefId> {
+    pub fn add_trait(&self) -> Option<ast::DefId> {
         self.items[AddTraitLangItem as uint]
     }
-    pub fn sub_trait(&self) -> Option<DefId> {
+    pub fn sub_trait(&self) -> Option<ast::DefId> {
         self.items[SubTraitLangItem as uint]
     }
-    pub fn mul_trait(&self) -> Option<DefId> {
+    pub fn mul_trait(&self) -> Option<ast::DefId> {
         self.items[MulTraitLangItem as uint]
     }
-    pub fn div_trait(&self) -> Option<DefId> {
+    pub fn div_trait(&self) -> Option<ast::DefId> {
         self.items[DivTraitLangItem as uint]
     }
-    pub fn rem_trait(&self) -> Option<DefId> {
+    pub fn rem_trait(&self) -> Option<ast::DefId> {
         self.items[RemTraitLangItem as uint]
     }
-    pub fn neg_trait(&self) -> Option<DefId> {
+    pub fn neg_trait(&self) -> Option<ast::DefId> {
         self.items[NegTraitLangItem as uint]
     }
-    pub fn not_trait(&self) -> Option<DefId> {
+    pub fn not_trait(&self) -> Option<ast::DefId> {
         self.items[NotTraitLangItem as uint]
     }
-    pub fn bitxor_trait(&self) -> Option<DefId> {
+    pub fn bitxor_trait(&self) -> Option<ast::DefId> {
         self.items[BitXorTraitLangItem as uint]
     }
-    pub fn bitand_trait(&self) -> Option<DefId> {
+    pub fn bitand_trait(&self) -> Option<ast::DefId> {
         self.items[BitAndTraitLangItem as uint]
     }
-    pub fn bitor_trait(&self) -> Option<DefId> {
+    pub fn bitor_trait(&self) -> Option<ast::DefId> {
         self.items[BitOrTraitLangItem as uint]
     }
-    pub fn shl_trait(&self) -> Option<DefId> {
+    pub fn shl_trait(&self) -> Option<ast::DefId> {
         self.items[ShlTraitLangItem as uint]
     }
-    pub fn shr_trait(&self) -> Option<DefId> {
+    pub fn shr_trait(&self) -> Option<ast::DefId> {
         self.items[ShrTraitLangItem as uint]
     }
-    pub fn index_trait(&self) -> Option<DefId> {
+    pub fn index_trait(&self) -> Option<ast::DefId> {
         self.items[IndexTraitLangItem as uint]
     }
 
-    pub fn eq_trait(&self) -> Option<DefId> {
+    pub fn eq_trait(&self) -> Option<ast::DefId> {
         self.items[EqTraitLangItem as uint]
     }
-    pub fn ord_trait(&self) -> Option<DefId> {
+    pub fn ord_trait(&self) -> Option<ast::DefId> {
         self.items[OrdTraitLangItem as uint]
     }
 
-    pub fn str_eq_fn(&self) -> Option<DefId> {
+    pub fn str_eq_fn(&self) -> Option<ast::DefId> {
         self.items[StrEqFnLangItem as uint]
     }
-    pub fn uniq_str_eq_fn(&self) -> Option<DefId> {
+    pub fn uniq_str_eq_fn(&self) -> Option<ast::DefId> {
         self.items[UniqStrEqFnLangItem as uint]
     }
-    pub fn fail_fn(&self) -> Option<DefId> {
+    pub fn fail_fn(&self) -> Option<ast::DefId> {
         self.items[FailFnLangItem as uint]
     }
-    pub fn fail_bounds_check_fn(&self) -> Option<DefId> {
+    pub fn fail_bounds_check_fn(&self) -> Option<ast::DefId> {
         self.items[FailBoundsCheckFnLangItem as uint]
     }
-    pub fn exchange_malloc_fn(&self) -> Option<DefId> {
+    pub fn exchange_malloc_fn(&self) -> Option<ast::DefId> {
         self.items[ExchangeMallocFnLangItem as uint]
     }
-    pub fn closure_exchange_malloc_fn(&self) -> Option<DefId> {
+    pub fn closure_exchange_malloc_fn(&self) -> Option<ast::DefId> {
         self.items[ClosureExchangeMallocFnLangItem as uint]
     }
-    pub fn exchange_free_fn(&self) -> Option<DefId> {
+    pub fn exchange_free_fn(&self) -> Option<ast::DefId> {
         self.items[ExchangeFreeFnLangItem as uint]
     }
-    pub fn malloc_fn(&self) -> Option<DefId> {
+    pub fn malloc_fn(&self) -> Option<ast::DefId> {
         self.items[MallocFnLangItem as uint]
     }
-    pub fn free_fn(&self) -> Option<DefId> {
+    pub fn free_fn(&self) -> Option<ast::DefId> {
         self.items[FreeFnLangItem as uint]
     }
-    pub fn borrow_as_imm_fn(&self) -> Option<DefId> {
+    pub fn borrow_as_imm_fn(&self) -> Option<ast::DefId> {
         self.items[BorrowAsImmFnLangItem as uint]
     }
-    pub fn borrow_as_mut_fn(&self) -> Option<DefId> {
+    pub fn borrow_as_mut_fn(&self) -> Option<ast::DefId> {
         self.items[BorrowAsMutFnLangItem as uint]
     }
-    pub fn return_to_mut_fn(&self) -> Option<DefId> {
+    pub fn return_to_mut_fn(&self) -> Option<ast::DefId> {
         self.items[ReturnToMutFnLangItem as uint]
     }
-    pub fn check_not_borrowed_fn(&self) -> Option<DefId> {
+    pub fn check_not_borrowed_fn(&self) -> Option<ast::DefId> {
         self.items[CheckNotBorrowedFnLangItem as uint]
     }
-    pub fn strdup_uniq_fn(&self) -> Option<DefId> {
+    pub fn strdup_uniq_fn(&self) -> Option<ast::DefId> {
         self.items[StrDupUniqFnLangItem as uint]
     }
-    pub fn record_borrow_fn(&self) -> Option<DefId> {
+    pub fn record_borrow_fn(&self) -> Option<ast::DefId> {
         self.items[RecordBorrowFnLangItem as uint]
     }
-    pub fn unrecord_borrow_fn(&self) -> Option<DefId> {
+    pub fn unrecord_borrow_fn(&self) -> Option<ast::DefId> {
         self.items[UnrecordBorrowFnLangItem as uint]
     }
-    pub fn start_fn(&self) -> Option<DefId> {
+    pub fn start_fn(&self) -> Option<ast::DefId> {
         self.items[StartFnLangItem as uint]
     }
-    pub fn ty_desc(&self) -> Option<DefId> {
+    pub fn ty_desc(&self) -> Option<ast::DefId> {
         self.items[TyDescStructLangItem as uint]
     }
-    pub fn ty_visitor(&self) -> Option<DefId> {
+    pub fn ty_visitor(&self) -> Option<ast::DefId> {
         self.items[TyVisitorTraitLangItem as uint]
     }
-    pub fn opaque(&self) -> Option<DefId> {
+    pub fn opaque(&self) -> Option<ast::DefId> {
         self.items[OpaqueStructLangItem as uint]
+    }
+    pub fn event_loop_factory(&self) -> Option<ast::DefId> {
+        self.items[EventLoopFactoryLangItem as uint]
     }
 }
 
-struct LanguageItemCollector<'self> {
+struct LanguageItemCollector {
     items: LanguageItems,
 
-    crate: &'self Crate,
     session: Session,
 
     item_refs: HashMap<&'static str, uint>,
 }
 
 struct LanguageItemVisitor<'self> {
-    this: *mut LanguageItemCollector<'self>,
+    this: &'self mut LanguageItemCollector,
 }
 
 impl<'self> Visitor<()> for LanguageItemVisitor<'self> {
+    fn visit_item(&mut self, item: @ast::item, _: ()) {
+        match extract(item.attrs) {
+            Some(value) => {
+                let item_index = self.this.item_refs.find_equiv(&value).map(|x| *x);
 
-    fn visit_item(&mut self, item:@item, _:()) {
-
-                for attribute in item.attrs.iter() {
-                    unsafe {
-                        (*self.this).match_and_collect_meta_item(
-                            local_def(item.id),
-                            attribute.node.value
-                        );
+                match item_index {
+                    Some(item_index) => {
+                        self.this.collect_item(item_index, local_def(item.id))
                     }
+                    None => {}
                 }
+            }
+            None => {}
+        }
 
         visit::walk_item(self, item, ());
     }
 }
 
-impl<'self> LanguageItemCollector<'self> {
-    pub fn new<'a>(crate: &'a Crate, session: Session)
-                   -> LanguageItemCollector<'a> {
+impl LanguageItemCollector {
+    pub fn new(session: Session) -> LanguageItemCollector {
         let mut item_refs = HashMap::new();
 
         item_refs.insert("freeze", FreezeTraitLangItem as uint);
@@ -374,27 +381,16 @@ impl<'self> LanguageItemCollector<'self> {
         item_refs.insert("ty_desc", TyDescStructLangItem as uint);
         item_refs.insert("ty_visitor", TyVisitorTraitLangItem as uint);
         item_refs.insert("opaque", OpaqueStructLangItem as uint);
+        item_refs.insert("event_loop_factory", EventLoopFactoryLangItem as uint);
 
         LanguageItemCollector {
-            crate: crate,
             session: session,
             items: LanguageItems::new(),
             item_refs: item_refs
         }
     }
 
-    pub fn match_and_collect_meta_item(&mut self,
-                                       item_def_id: DefId,
-                                       meta_item: &MetaItem) {
-        match meta_item.name_str_pair() {
-            Some((key, value)) => {
-                self.match_and_collect_item(item_def_id, key, value);
-            }
-            None => {} // skip
-        }
-    }
-
-    pub fn collect_item(&mut self, item_index: uint, item_def_id: DefId) {
+    pub fn collect_item(&mut self, item_index: uint, item_def_id: ast::DefId) {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
@@ -410,33 +406,9 @@ impl<'self> LanguageItemCollector<'self> {
         self.items.items[item_index] = Some(item_def_id);
     }
 
-    pub fn match_and_collect_item(&mut self,
-                                  item_def_id: DefId,
-                                  key: &str,
-                                  value: @str) {
-        if "lang" != key {
-            return;    // Didn't match.
-        }
-
-        let item_index = self.item_refs.find_equiv(&value).map(|x| *x);
-        // prevent borrow checker from considering         ^~~~~~~~~~~
-        // self to be borrowed (annoying)
-
-        match item_index {
-            Some(item_index) => {
-                self.collect_item(item_index, item_def_id);
-            }
-            None => {
-                // Didn't match.
-                return;
-            }
-        }
-    }
-
-    pub fn collect_local_language_items(&mut self) {
-        let this: *mut LanguageItemCollector = &mut *self;
-        let mut v = LanguageItemVisitor { this: this };
-        visit::walk_crate(&mut v, self.crate, ());
+    pub fn collect_local_language_items(&mut self, crate: &ast::Crate) {
+        let mut v = LanguageItemVisitor { this: self };
+        visit::walk_crate(&mut v, crate, ());
     }
 
     pub fn collect_external_language_items(&mut self) {
@@ -444,24 +416,37 @@ impl<'self> LanguageItemCollector<'self> {
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             do each_lang_item(crate_store, crate_number)
                     |node_id, item_index| {
-                let def_id = DefId { crate: crate_number, node: node_id };
+                let def_id = ast::DefId { crate: crate_number, node: node_id };
                 self.collect_item(item_index, def_id);
                 true
             };
         }
     }
 
-    pub fn collect(&mut self) {
-        self.collect_local_language_items();
+    pub fn collect(&mut self, crate: &ast::Crate) {
+        self.collect_local_language_items(crate);
         self.collect_external_language_items();
     }
 }
 
-pub fn collect_language_items(crate: &Crate,
+pub fn extract(attrs: &[ast::Attribute]) -> Option<@str> {
+    for attribute in attrs.iter() {
+        match attribute.name_str_pair() {
+            Some((key, value)) if "lang" == key => {
+                return Some(value);
+            }
+            Some(*) | None => {}
+        }
+    }
+
+    return None;
+}
+
+pub fn collect_language_items(crate: &ast::Crate,
                               session: Session)
                            -> LanguageItems {
-    let mut collector = LanguageItemCollector::new(crate, session);
-    collector.collect();
+    let mut collector = LanguageItemCollector::new(session);
+    collector.collect(crate);
     let LanguageItemCollector { items, _ } = collector;
     session.abort_if_errors();
     items
