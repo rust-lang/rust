@@ -345,7 +345,6 @@ pub struct Parser {
     priv non_copyable: util::NonCopyable
 }
 
-
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
     is_plain_ident(t) || *t == token::UNDERSCORE
 }
