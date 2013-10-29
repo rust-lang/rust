@@ -309,7 +309,8 @@ pub fn Parser(sess: @mut ParseSess,
         quote_depth: @mut 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
-        open_braces: @mut ~[]
+        open_braces: @mut ~[],
+	non_copyable: util::NonCopyable
     }
 }
 
@@ -339,7 +340,7 @@ pub struct Parser {
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: @mut ~[Span]
+    open_braces: @mut ~[Span],
     /* do not copy the parser; its state is tied to outside state */
     priv non_copyable: util::NonCopyable
 }
