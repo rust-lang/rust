@@ -307,7 +307,8 @@
                                             item.path.replace(/::/g, '/') +
                                             '/index.html" class="' + type +
                                             '">' + name + '</a>';
-                    } else if (item.parent !== undefined) {
+                    } else if (item.parent !== undefined &&
+                               allPaths[item.parent] !== undefined) {
                         var myparent = allPaths[item.parent];
                         var anchor = '#' + type + '.' + name;
                         output += item.path + '::' + myparent.name +
