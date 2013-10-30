@@ -3700,6 +3700,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
               });
               (1u, ~[], td_ptr)
             }
+            "type_id" => (1u, ~[], ty::mk_u64()),
             "visit_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
                   Ok(t) => t,
