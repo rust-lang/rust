@@ -84,8 +84,6 @@ impl Writer for TcpStream {
             Err(ioerr) => io_error::cond.raise(ioerr),
         }
     }
-
-    fn flush(&mut self) { /* no-op */ }
 }
 
 pub struct TcpListener {

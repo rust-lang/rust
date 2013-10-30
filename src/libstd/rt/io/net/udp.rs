@@ -100,8 +100,6 @@ impl Writer for UdpStream {
             sock.sendto(buf, self.connectedTo);
         }
     }
-
-    fn flush(&mut self) { fail!() }
 }
 
 #[cfg(test)]

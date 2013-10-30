@@ -810,8 +810,12 @@ pub trait Writer {
     /// Raises the `io_error` condition on error
     fn write(&mut self, buf: &[u8]);
 
-    /// Flush output
-    fn flush(&mut self);
+    /// Flush this output stream, ensuring that all intermediately buffered
+    /// contents reach their destination.
+    ///
+    /// This is by default a no-op and implementors of the `Writer` trait should
+    /// decide whether their stream needs to be buffered or not.
+    fn flush(&mut self) {}
 
     /// Write the result of passing n through `int::to_str_bytes`.
     fn write_int(&mut self, n: int) {

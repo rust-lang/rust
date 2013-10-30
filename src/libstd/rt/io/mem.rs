@@ -62,8 +62,6 @@ impl Writer for MemWriter {
         // Bump us forward
         self.pos += buf.len();
     }
-
-    fn flush(&mut self) { /* no-op */ }
 }
 
 impl Seek for MemWriter {
