@@ -145,7 +145,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
         TreeMapIterator {
             stack: ~[],
-            node: &self.root,
+            node: deref(&self.root),
             remaining_min: self.length,
             remaining_max: self.length
         }
@@ -162,7 +162,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     fn iter_for_traversal<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
         TreeMapIterator {
             stack: ~[],
-            node: &self.root,
+            node: deref(&self.root),
             remaining_min: 0,
             remaining_max: self.length
         }
@@ -173,8 +173,8 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     pub fn lower_bound_iter<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
         let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
         loop {
-            match *iter.node {
-              Some(ref r) => {
+            match iter.node {
+              Some(r) => {
                 match k.cmp(&r.key) {
                   Less => iter_traverse_left(&mut iter),
                   Greater => iter_traverse_right(&mut iter),
@@ -197,8 +197,8 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     pub fn upper_bound_iter<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
         let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
         loop {
-            match *iter.node {
-              Some(ref r) => {
+            match iter.node {
+              Some(r) => {
                 match k.cmp(&r.key) {
                   Less => iter_traverse_left(&mut iter),
                   Greater => iter_traverse_right(&mut iter),
@@ -229,24 +229,34 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<'self, K, V> {
-    priv stack: ~[&'self ~TreeNode<K, V>],
-    priv node: &'self Option<~TreeNode<K, V>>,
+    priv stack: ~[&'self TreeNode<K, V>],
+    priv node: Option<&'self TreeNode<K, V>>,
     priv remaining_min: uint,
     priv remaining_max: uint
+}
+
+fn deref<'a, K, V>(node: &'a Option<~TreeNode<K, V>>) -> Option<&'a TreeNode<K, V>> {
+    match *node {
+        Some(ref n) => {
+            let n: &TreeNode<K, V> = *n;
+            Some(n)
+        }
+        None => None
+    }
 }
 
 impl<'self, K, V> TreeMapIterator<'self, K, V> {
     #[inline(always)]
     fn next_(&mut self, forward: bool) -> Option<(&'self K, &'self V)> {
         while !self.stack.is_empty() || self.node.is_some() {
-            match *self.node {
-              Some(ref x) => {
+            match self.node {
+              Some(x) => {
                 self.stack.push(x);
-                self.node = if forward { &x.left } else { &x.right };
+                self.node = deref(if forward { &x.left } else { &x.right });
               }
               None => {
                 let res = self.stack.pop();
-                self.node = if forward { &res.right } else { &res.left };
+                self.node = deref(if forward { &res.right } else { &res.left });
                 self.remaining_max -= 1;
                 if self.remaining_min > 0 {
                     self.remaining_min -= 1;
@@ -302,14 +312,14 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapRevIterator<'self, K
 ///   - complete initialization with `iter_traverse_complete`
 #[inline]
 fn iter_traverse_left<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
-    let node = it.node.get_ref();
+    let node = it.node.unwrap();
     it.stack.push(node);
-    it.node = &node.left;
+    it.node = deref(&node.left);
 }
 
 #[inline]
 fn iter_traverse_right<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
-    it.node = &(it.node.get_ref().right);
+    it.node = deref(&it.node.get_ref().right);
 }
 
 /// iter_traverse_left, iter_traverse_right and iter_traverse_complete are used to
@@ -321,11 +331,10 @@ fn iter_traverse_right<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
 /// traversed left.
 #[inline]
 fn iter_traverse_complete<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
-    static none: Option<~TreeNode<K, V>> = None;
-    match *it.node {
-        Some(ref n) => {
+    match it.node {
+        Some(n) => {
             it.stack.push(n);
-            it.node = &none;
+            it.node = None;
         }
         None => ()
     }
