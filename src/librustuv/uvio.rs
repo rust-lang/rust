@@ -1007,14 +1007,12 @@ fn read_stream(mut watcher: StreamWatcher,
     let result_cell = Cell::new_empty();
     let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
-    let buf_ptr: *&mut [u8] = &buf;
+    let uv_buf = slice_to_uv_buf(buf);
     do scheduler.deschedule_running_task_and_then |_sched, task| {
         let task_cell = Cell::new(task);
         // XXX: We shouldn't reallocate these callbacks every
         // call to read
-        let alloc: AllocCallback = |_| unsafe {
-            slice_to_uv_buf(*buf_ptr)
-        };
+        let alloc: AllocCallback = |_| uv_buf;
         do watcher.read_start(alloc) |mut watcher, nread, _buf, status| {
 
             // Stop reading so that no read callbacks are
@@ -1262,11 +1260,10 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io_with_sched |self_, scheduler| {
             let result_cell = Cell::new_empty();
             let result_cell_ptr: *Cell<Result<(uint, SocketAddr), IoError>> = &result_cell;
-
-            let buf_ptr: *&mut [u8] = &buf;
+            let uv_buf = slice_to_uv_buf(buf);
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
-                let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
+                let alloc: AllocCallback = |_| uv_buf;
                 do self_.watcher.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
                     let _ = flags; // /XXX add handling for partials?
 
