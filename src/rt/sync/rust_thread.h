@@ -33,7 +33,6 @@ class rust_thread {
     virtual void run() = 0;
 
     void join();
-    void detach();
 };
 
 #endif /* RUST_THREAD_H */
