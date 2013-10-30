@@ -63,12 +63,3 @@ rust_thread::join() {
 #endif
    thread = 0;
 }
-
-void
-rust_thread::detach() {
-#if !defined(__WIN32__)
-    // Don't leak pthread resources.
-    // http://crosstantine.blogspot.com/2010/01/pthreadcreate-memory-leak.html
-    CHECKED(pthread_detach(thread));
-#endif
-}
