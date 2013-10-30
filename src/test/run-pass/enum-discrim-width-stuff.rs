@@ -51,5 +51,5 @@ pub fn main() {
     check!(s, i64, -0x1727374757677787);
 
     enum Simple { A, B }
-    assert_eq!(std::mem::size_of::<Simple>(), 1);
+    assert_eq!(::std::mem::size_of::<Simple>(), 1);
 }
