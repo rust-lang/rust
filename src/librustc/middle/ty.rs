@@ -2088,7 +2088,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let result = match get(ty).sty {
             // Scalar and unique types are sendable, freezable, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_bare_fn(_) | ty_ptr(_) | ty::ty_char => {
+            ty_bare_fn(_) | ty::ty_char => {
                 TC::None
             }
 
@@ -2106,6 +2106,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_trait(_, _, store, mutbl, bounds) => {
                 object_contents(cx, store, mutbl, bounds)
+            }
+
+            ty_ptr(ref mt) => {
+                tc_ty(cx, mt.ty, cache).other_pointer(TC::None)
             }
 
             ty_rptr(r, ref mt) => {
