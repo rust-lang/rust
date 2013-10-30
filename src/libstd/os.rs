@@ -503,7 +503,7 @@ pub fn self_exe_path() -> Option<Path> {
  * 'USERPROFILE' environment variable if it is set and not equal to the empty
  * string.
  *
- * Otherwise, homedir returns option::none.
+ * Otherwise, homedir returns `None`.
  */
 pub fn homedir() -> Option<Path> {
     // FIXME (#7188): getenv needs a ~[u8] variant
@@ -627,7 +627,7 @@ pub fn path_exists(p: &Path) -> bool {
 }
 
 /**
- * Convert a relative path to an absolute path
+ * Converts a relative path to an absolute path
  *
  * If the given path is relative, return it prepended with the current working
  * directory. If the given path is already an absolute path, return it
@@ -676,7 +676,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 }
 
 /// Creates a directory with a given mode.
-/// Returns true iff creation
+/// Returns `true` iff creation
 /// succeeded. Also creates all intermediate subdirectories
 /// if they don't already exist, giving all of them the same mode.
 
@@ -788,11 +788,9 @@ pub fn list_dir(p: &Path) -> ~[Path] {
     }
 }
 
-/**
- * Lists the contents of a directory
- *
- * This version prepends each entry with the directory.
- */
+/// Lists the contents of a directory
+///
+/// This version prepends each entry with the directory.
 pub fn list_dir_path(p: &Path) -> ~[Path] {
     list_dir(p).map(|f| p.join(f))
 }
@@ -873,8 +871,26 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
-/// Copies a file from one location to another
+/**
+ * Copies a file from one location to another
+ *
+ * Returns `false` if the destination path exists, or if the source path is not
+ * a file.
+ *
+ * Note: this does not protect against concurrent systems which may create the
+ * destination before the file is copied, but after is it checked not to exist.
+ */
 pub fn copy_file(from: &Path, to: &Path) -> bool {
+    if to.exists() {
+        return false;
+    }
+
+    // Only proceed if `from` is a file
+    match from.stat() {
+        Some(st) => if !st.is_file { return false; },
+        None => ()
+    }
+
     return do_copy_file(from, to);
 
     #[cfg(windows)]
@@ -2005,6 +2021,21 @@ mod tests {
             assert!((remove_file(&input)));
             assert!((remove_file(&out)));
         }
+    }
+
+    #[test]
+    fn copy_file_destination_exists() {
+        let tempdir = getcwd();
+        let input = tempdir.join("in.txt");
+        let out = tempdir.join("in.txt"); // Same as above.
+        assert!(!os::copy_file(&input, &out));
+    }
+
+    #[test]
+    fn copy_file_source_is_dir() {
+        let tempdir = getcwd();
+        let out = tempdir.join("out.txt");
+        assert!(!os::copy_file(&tempdir, &out));
     }
 
     #[test]
