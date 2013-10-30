@@ -38,6 +38,7 @@ use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::parse::token;
@@ -715,6 +716,7 @@ pub struct ParamBounds {
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
 #[deriving(Clone, Eq, IterBytes, ToStr)]
+#[repr(uint)]
 pub enum BuiltinBound {
     BoundStatic,
     BoundSend,
@@ -4102,25 +4104,40 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
     }
 }
 
-/// Determine whether an item is annotated with an attribute
-pub fn has_attr(tcx: ctxt, did: DefId, attr: &str) -> bool {
+/// Iterate over meta_items of a definition.
+// (This should really be an iterator, but that would require csearch and
+// decoder to use iterators instead of higher-order functions.)
+pub fn each_attr(tcx: ctxt, did: DefId, f: &fn(@MetaItem) -> bool) -> bool {
     if is_local(did) {
         match tcx.items.find(&did.node) {
-            Some(
-                &ast_map::node_item(@ast::item {
-                    attrs: ref attrs,
-                    _
-                }, _)) => attr::contains_name(*attrs, attr),
+            Some(&ast_map::node_item(@ast::item {attrs: ref attrs, _}, _)) =>
+                attrs.iter().advance(|attr| f(attr.node.value)),
             _ => tcx.sess.bug(format!("has_attr: {:?} is not an item",
-                                   did))
+                                      did))
         }
     } else {
-        let mut ret = false;
+        let mut cont = true;
         do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
-            ret = ret || attr::contains_name(meta_items, attr);
+            if cont {
+                cont = meta_items.iter().advance(|ptrptr| f(*ptrptr));
+            }
         }
-        ret
+        return cont;
     }
+}
+
+/// Determine whether an item is annotated with an attribute
+pub fn has_attr(tcx: ctxt, did: DefId, attr: &str) -> bool {
+    let mut found = false;
+    each_attr(tcx, did, |item| {
+        if attr == item.name() {
+            found = true;
+            false
+        } else {
+            true
+        }
+    });
+    return found;
 }
 
 /// Determine whether an item is annotated with `#[packed]`
@@ -4131,6 +4148,16 @@ pub fn lookup_packed(tcx: ctxt, did: DefId) -> bool {
 /// Determine whether an item is annotated with `#[simd]`
 pub fn lookup_simd(tcx: ctxt, did: DefId) -> bool {
     has_attr(tcx, did, "simd")
+}
+
+// Obtain the the representation annotation for a definition.
+pub fn lookup_repr_hint(tcx: ctxt, did: DefId) -> attr::ReprAttr {
+    let mut acc = attr::ReprAny;
+    ty::each_attr(tcx, did, |meta| {
+        acc = attr::find_repr_attr(tcx.sess.diagnostic(), meta, acc);
+        true
+    });
+    return acc;
 }
 
 // Look up a field ID, whether or not it's local

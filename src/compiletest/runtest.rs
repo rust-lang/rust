@@ -281,7 +281,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     };
     let config = &mut config;
     let cmds = props.debugger_cmds.connect("\n");
-    let check_lines = props.check_lines.clone();
+    let check_lines = &props.check_lines;
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let mut ProcRes = compile_test(config, props, testfile);
@@ -315,11 +315,34 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 
     let num_check_lines = check_lines.len();
     if num_check_lines > 0 {
+        // Allow check lines to leave parts unspecified (e.g., uninitialized
+        // bits in the wrong case of an enum) with the notation "[...]".
+        let check_fragments: ~[~[&str]] = check_lines.map(|s| s.split_str_iter("[...]").collect());
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
         for line in ProcRes.stdout.line_iter() {
-            if check_lines[i].trim() == line.trim() {
+            let mut rest = line.trim();
+            let mut first = true;
+            let mut failed = false;
+            for &frag in check_fragments[i].iter() {
+                let found = if first {
+                    if rest.starts_with(frag) { Some(0) } else { None }
+                } else {
+                    rest.find_str(frag)
+                };
+                match found {
+                    None => {
+                        failed = true;
+                        break;
+                    }
+                    Some(i) => {
+                        rest = rest.slice_from(i + frag.len());
+                    }
+                }
+                first = false;
+            }
+            if !failed && rest.len() == 0 {
                 i += 1u;
             }
             if i == num_check_lines {

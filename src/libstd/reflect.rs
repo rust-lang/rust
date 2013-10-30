@@ -16,7 +16,7 @@ Runtime type reflection
 
 #[allow(missing_doc)];
 
-use unstable::intrinsics::{Opaque, TyDesc, TyVisitor};
+use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use libc::c_void;
 use mem;
 use unstable::raw;
@@ -396,7 +396,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint)
                      -> bool {
         self.align(align);
@@ -407,7 +407,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_enter_enum_variant(&mut self, variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool {
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
@@ -426,7 +426,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_leave_enum_variant(&mut self, variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool {
         if ! self.inner.visit_leave_enum_variant(variant, disr_val,
@@ -437,7 +437,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint) -> bool {
         if ! self.inner.visit_leave_enum(n_variants, get_disr, sz, align) {
             return false;

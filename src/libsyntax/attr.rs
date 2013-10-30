@@ -14,7 +14,7 @@ use extra;
 
 use ast;
 use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use codemap::{Spanned, spanned, dummy_spanned};
+use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -360,6 +360,118 @@ pub fn require_unique_names(diagnostic: @mut span_handler,
         if !set.insert(name) {
             diagnostic.span_fatal(meta.span,
                                   format!("duplicate meta item `{}`", name));
+        }
+    }
+}
+
+
+/**
+ * Fold this over attributes to parse #[repr(...)] forms.
+ *
+ * Valid repr contents: any of the primitive integral type names (see
+ * `int_type_of_word`, below) to specify the discriminant type; and `C`, to use
+ * the same discriminant size that the corresponding C enum would.  These are
+ * not allowed on univariant or zero-variant enums, which have no discriminant.
+ *
+ * If a discriminant type is so specified, then the discriminant will be
+ * present (before fields, if any) with that type; reprensentation
+ * optimizations which would remove it will not be done.
+ */
+pub fn find_repr_attr(diagnostic: @mut span_handler, attr: @ast::MetaItem, acc: ReprAttr)
+    -> ReprAttr {
+    let mut acc = acc;
+    match attr.node {
+        ast::MetaList(s, ref items) if "repr" == s => {
+            for item in items.iter() {
+                match item.node {
+                    ast::MetaWord(word) => {
+                        let hint = match word.as_slice() {
+                            // Can't use "extern" because it's not a lexical identifier.
+                            "C" => ReprExtern,
+                            _ => match int_type_of_word(word) {
+                                Some(ity) => ReprInt(item.span, ity),
+                                None => {
+                                    // Not a word we recognize
+                                    diagnostic.span_err(item.span,
+                                                        "unrecognized representation hint");
+                                    ReprAny
+                                }
+                            }
+                        };
+                        if hint != ReprAny {
+                            if acc == ReprAny {
+                                acc = hint;
+                            } else if acc != hint {
+                                diagnostic.span_warn(item.span,
+                                                     "conflicting representation hint ignored")
+                            }
+                        }
+                    }
+                    // Not a word:
+                    _ => diagnostic.span_err(item.span, "unrecognized representation hint")
+                }
+            }
+        }
+        // Not a "repr" hint: ignore.
+        _ => { }
+    }
+    return acc;
+}
+
+fn int_type_of_word(s: &str) -> Option<IntType> {
+    match s {
+        "i8" => Some(SignedInt(ast::ty_i8)),
+        "u8" => Some(UnsignedInt(ast::ty_u8)),
+        "i16" => Some(SignedInt(ast::ty_i16)),
+        "u16" => Some(UnsignedInt(ast::ty_u16)),
+        "i32" => Some(SignedInt(ast::ty_i32)),
+        "u32" => Some(UnsignedInt(ast::ty_u32)),
+        "i64" => Some(SignedInt(ast::ty_i64)),
+        "u64" => Some(UnsignedInt(ast::ty_u64)),
+        "int" => Some(SignedInt(ast::ty_i)),
+        "uint" => Some(UnsignedInt(ast::ty_u)),
+        _ => None
+    }
+}
+
+#[deriving(Eq)]
+pub enum ReprAttr {
+    ReprAny,
+    ReprInt(Span, IntType),
+    ReprExtern
+}
+
+impl ReprAttr {
+    pub fn is_ffi_safe(&self) -> bool {
+        match *self {
+            ReprAny => false,
+            ReprInt(_sp, ity) => ity.is_ffi_safe(),
+            ReprExtern => true
+        }
+    }
+}
+
+#[deriving(Eq)]
+pub enum IntType {
+    SignedInt(ast::int_ty),
+    UnsignedInt(ast::uint_ty)
+}
+
+impl IntType {
+    #[inline]
+    pub fn is_signed(self) -> bool {
+        match self {
+            SignedInt(*) => true,
+            UnsignedInt(*) => false
+        }
+    }
+    fn is_ffi_safe(self) -> bool {
+        match self {
+            SignedInt(ast::ty_i8) | UnsignedInt(ast::ty_u8) |
+            SignedInt(ast::ty_i16) | UnsignedInt(ast::ty_u16) |
+            SignedInt(ast::ty_i32) | UnsignedInt(ast::ty_u32) |
+            SignedInt(ast::ty_i64) | UnsignedInt(ast::ty_u64) => true,
+            _ => false
         }
     }
 }

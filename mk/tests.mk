@@ -465,6 +465,17 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
       $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \
      ))))))
 
+# FIXME (#10104): Raise the stack size to work around rustpkg bypassing
+# the code in rustc that would take care of it.
+define DEF_RUSTPKG_STACK_FIX
+$$(call TEST_OK_FILE,$(1),$(2),$(3),rustpkg): export RUST_MIN_STACK=8000000
+endef
+
+$(foreach host,$(CFG_HOST_TRIPLES), \
+ $(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(foreach stage,$(STAGES), \
+   $(eval $(call DEF_RUSTPKG_STACK_FIX,$(stage),$(target),$(host))))))
+
 
 ######################################################################
 # Rules for the compiletest tests (rpass, rfail, etc.)

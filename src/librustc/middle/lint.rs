@@ -34,6 +34,7 @@
 //! Context itself, span_lint should be used instead of add_lint.
 
 use driver::session;
+use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
 use middle::pat_util;
 use metadata::csearch;
@@ -626,6 +627,14 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `uint` in foreign module, while \
                                 libc::c_uint or libc::c_ulong should be used");
+                    }
+                    ast::DefTy(def_id) => {
+                        if !adt::is_ffi_safe(cx.tcx, def_id) {
+                            cx.span_lint(ctypes, ty.span,
+                                         "found enum type without foreign-function-safe \
+                                          representation annotation in foreign module");
+                            // NOTE this message could be more helpful
+                        }
                     }
                     _ => ()
                 }
