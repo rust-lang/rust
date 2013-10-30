@@ -25,7 +25,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use std::libc::c_uint;
-use std::option::None;
+use std::option::{Some,None};
 use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;
@@ -292,11 +292,11 @@ impl Reflector {
                                                                sub_path,
                                                                "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, [opaqueptrty], ty::mk_int(), sym);
+                let llfdecl = decl_internal_rust_fn(ccx, [opaqueptrty], ty::mk_u64(), sym);
                 let fcx = new_fn_ctxt(ccx,
                                       ~[],
                                       llfdecl,
-                                      ty::mk_uint(),
+                                      ty::mk_u64(),
                                       None);
                 let arg = unsafe {
                     //
@@ -308,7 +308,7 @@ impl Reflector {
                 };
                 let mut bcx = fcx.entry_bcx.unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
-                let ret = adt::trans_get_discr(bcx, repr, arg);
+                let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
                 Store(bcx, ret, fcx.llretptr.unwrap());
                 match fcx.llreturn {
                     Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
@@ -324,7 +324,7 @@ impl Reflector {
                 for (i, v) in variants.iter().enumerate() {
                     let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
-                                         C_integral(self.bcx.ccx().int_type, v.disr_val, false),
+                                         C_u64(v.disr_val),
                                          this.c_uint(v.args.len()),
                                          this.c_slice(name)];
                     do this.bracketed("enum_variant", variant_args) |this| {

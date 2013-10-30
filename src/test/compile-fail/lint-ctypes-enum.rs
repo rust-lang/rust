@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern:discriminant value already exists
+#[deny(ctypes)];
 
-// black and white have the same discriminator value ...
+enum Z { }
+enum U { A }
+enum B { C, D }
+enum T { E, F, G }
 
-enum color {
-    red = 0xff0000,
-    green = 0x00ff00,
-    blue = 0x0000ff,
-    black = 0x000000,
-    white = 0x000000,
+extern {
+   fn zf(x: Z);
+   fn uf(x: U);
+   fn bf(x: B); //~ ERROR found enum type without foreign-function-safe
+   fn tf(x: T); //~ ERROR found enum type without foreign-function-safe
 }
 
-fn main() { }
+pub fn main() { }

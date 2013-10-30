@@ -1251,7 +1251,7 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
                                   -> ~[MemberDescription] {
         // Capture type_rep, so we don't have to copy the struct_defs array
         let struct_defs = match *self.type_rep {
-            adt::General(ref struct_defs) => struct_defs,
+            adt::General(_, ref struct_defs) => struct_defs,
             _ => cx.sess.bug("unreachable")
         };
 
@@ -1400,14 +1400,6 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
         return FinalMetadata(empty_type_metadata);
     }
 
-    // Prepare some data (llvm type, size, align, etc) about the discriminant. This data will be
-    // needed in all of the following cases.
-    let discriminant_llvm_type = Type::enum_discrim(cx);
-    let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
-
-    assert!(Type::enum_discrim(cx) == cx.int_type);
-    let discriminant_base_type_metadata = type_metadata(cx, ty::mk_int(), codemap::dummy_sp());
-
     let variants = ty::enum_variants(cx.tcx, enum_def_id);
 
     let enumerators_metadata: ~[DIDescriptor] = variants
@@ -1427,26 +1419,32 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
         })
         .collect();
 
-    let discriminant_type_metadata = do enum_name.with_c_str |enum_name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateEnumerationType(
-                DIB(cx),
-                containing_scope,
-                enum_name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(discriminant_size),
-                bytes_to_bits(discriminant_align),
-                create_DIArray(DIB(cx), enumerators_metadata),
-                discriminant_base_type_metadata)
+    let discriminant_type_metadata = |inttype| {
+        let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
+        let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
+        let discriminant_base_type_metadata = type_metadata(cx, adt::ty_of_inttype(inttype),
+                                                            codemap::dummy_sp());
+        do enum_name.with_c_str |enum_name| {
+            unsafe {
+                llvm::LLVMDIBuilderCreateEnumerationType(
+                    DIB(cx),
+                    containing_scope,
+                    enum_name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    bytes_to_bits(discriminant_size),
+                    bytes_to_bits(discriminant_align),
+                    create_DIArray(DIB(cx), enumerators_metadata),
+                    discriminant_base_type_metadata)
+            }
         }
     };
 
     let type_rep = adt::represent_type(cx, enum_type);
 
     return match *type_rep {
-        adt::CEnum(*) => {
-            FinalMetadata(discriminant_type_metadata)
+        adt::CEnum(inttype, _, _) => {
+            FinalMetadata(discriminant_type_metadata(inttype))
         }
         adt::Univariant(ref struct_def, _) => {
             assert!(variants.len() == 1);
@@ -1467,7 +1465,8 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
                 member_description_factory: member_description_factory
             }
         }
-        adt::General(_) => {
+        adt::General(inttype, _) => {
+            let discriminant_type_metadata = discriminant_type_metadata(inttype);
             let enum_llvm_type = type_of::type_of(cx, enum_type);
             let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
 

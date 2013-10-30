@@ -15,7 +15,7 @@
 // STACK BY REF
 // debugger:finish
 // debugger:print *self
-// check:$1 = {{Variant2, x = 1799, y = 1799}, {Variant2, 117901063}}
+// check:$1 = {{Variant2, [...]}, {Variant2, 117901063}}
 // debugger:print arg1
 // check:$2 = -1
 // debugger:print arg2
@@ -25,7 +25,7 @@
 // STACK BY VAL
 // debugger:finish
 // d ebugger:print self -- ignored for now because of issue #8512
-// c heck:$X = {{Variant2, x = 1799, y = 1799}, {Variant2, 117901063}}
+// c heck:$X = {{Variant2, [...]}, {Variant2, 117901063}}
 // debugger:print arg1
 // check:$4 = -3
 // debugger:print arg2
@@ -35,7 +35,7 @@
 // OWNED BY REF
 // debugger:finish
 // debugger:print *self
-// check:$6 = {{Variant1, x = 1799, y = 1799}, {Variant1, 117901063}}
+// check:$6 = {{Variant1, x = 1799, y = 1799}, {Variant1, [...]}}
 // debugger:print arg1
 // check:$7 = -5
 // debugger:print arg2
@@ -45,7 +45,7 @@
 // OWNED BY VAL
 // debugger:finish
 // d ebugger:print self -- ignored for now because of issue #8512
-// c heck:$X = {{Variant1, x = 1799, y = 1799}, {Variant1, 117901063}}
+// c heck:$X = {{Variant1, x = 1799, y = 1799}, {Variant1, [...]}}
 // debugger:print arg1
 // check:$9 = -7
 // debugger:print arg2
@@ -55,7 +55,7 @@
 // OWNED MOVED
 // debugger:finish
 // debugger:print *self
-// check:$11 = {{Variant1, x = 1799, y = 1799}, {Variant1, 117901063}}
+// check:$11 = {{Variant1, x = 1799, y = 1799}, {Variant1, [...]}}
 // debugger:print arg1
 // check:$12 = -9
 // debugger:print arg2
@@ -65,7 +65,7 @@
 // MANAGED BY REF
 // debugger:finish
 // debugger:print *self
-// check:$14 = {{Variant2, x = 1799, y = 1799}, {Variant2, 117901063}}
+// check:$14 = {{Variant2, [...]}, {Variant2, 117901063}}
 // debugger:print arg1
 // check:$15 = -11
 // debugger:print arg2
@@ -75,7 +75,7 @@
 // MANAGED BY VAL
 // debugger:finish
 // d ebugger:print self -- ignored for now because of issue #8512
-// c heck:$X = {{Variant2, x = 1799, y = 1799}, {Variant2, 117901063}}
+// c heck:$X = {{Variant2, [...]}, {Variant2, 117901063}}
 // debugger:print arg1
 // check:$17 = -13
 // debugger:print arg2
@@ -85,7 +85,7 @@
 // MANAGED SELF
 // debugger:finish
 // debugger:print self->val
-// check:$19 = {{Variant2, x = 1799, y = 1799}, {Variant2, 117901063}}
+// check:$19 = {{Variant2, [...]}, {Variant2, 117901063}}
 // debugger:print arg1
 // check:$20 = -15
 // debugger:print arg2

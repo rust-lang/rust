@@ -121,6 +121,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::ast_util;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::opt_vec::OptVec;
@@ -3169,9 +3170,38 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            sp: Span,
                            vs: &[ast::variant],
                            id: ast::NodeId) {
+
+    fn disr_in_range(ccx: @mut CrateCtxt,
+                     ty: attr::IntType,
+                     disr: ty::Disr) -> bool {
+        fn uint_in_range(ccx: @mut CrateCtxt, ty: ast::uint_ty, disr: ty::Disr) -> bool {
+            match ty {
+                ast::ty_u8 => disr as u8 as Disr == disr,
+                ast::ty_u16 => disr as u16 as Disr == disr,
+                ast::ty_u32 => disr as u32 as Disr == disr,
+                ast::ty_u64 => disr as u64 as Disr == disr,
+                ast::ty_u => uint_in_range(ccx, ccx.tcx.sess.targ_cfg.uint_type, disr)
+            }
+        }
+        fn int_in_range(ccx: @mut CrateCtxt, ty: ast::int_ty, disr: ty::Disr) -> bool {
+            match ty {
+                ast::ty_i8 => disr as i8 as Disr == disr,
+                ast::ty_i16 => disr as i16 as Disr == disr,
+                ast::ty_i32 => disr as i32 as Disr == disr,
+                ast::ty_i64 => disr as i64 as Disr == disr,
+                ast::ty_i => int_in_range(ccx, ccx.tcx.sess.targ_cfg.int_type, disr)
+            }
+        }
+        match ty {
+            attr::UnsignedInt(ty) => uint_in_range(ccx, ty, disr),
+            attr::SignedInt(ty) => int_in_range(ccx, ty, disr)
+        }
+    }
+
     fn do_check(ccx: @mut CrateCtxt,
                 vs: &[ast::variant],
-                id: ast::NodeId)
+                id: ast::NodeId,
+                hint: attr::ReprAttr)
                 -> ~[@ty::VariantInfo] {
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
@@ -3213,9 +3243,20 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 None => ()
             };
 
-            // Check for duplicate discriminator values
+            // Check for duplicate discriminant values
             if disr_vals.contains(&current_disr_val) {
-                ccx.tcx.sess.span_err(v.span, "discriminator value already exists");
+                ccx.tcx.sess.span_err(v.span, "discriminant value already exists");
+            }
+            // Check for unrepresentable discriminant values
+            match hint {
+                attr::ReprAny | attr::ReprExtern => (),
+                attr::ReprInt(sp, ity) => {
+                    if !disr_in_range(ccx, ity, current_disr_val) {
+                        ccx.tcx.sess.span_err(v.span,
+                                              "discriminant value outside specified type");
+                        ccx.tcx.sess.span_note(sp, "discriminant type specified here");
+                    }
+                }
             }
             disr_vals.push(current_disr_val);
 
@@ -3229,8 +3270,13 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
     }
 
     let rty = ty::node_id_to_type(ccx.tcx, id);
+    let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { crate: ast::LOCAL_CRATE, node: id });
+    if hint != attr::ReprAny && vs.len() <= 1 {
+        ccx.tcx.sess.span_err(sp, format!("unsupported representation for {}variant enum",
+                                          if vs.len() == 1 { "uni" } else { "zero-" }))
+    }
 
-    let variants = do_check(ccx, vs, id);
+    let variants = do_check(ccx, vs, id, hint);
 
     // cache so that ty::enum_variants won't repeat this work
     ccx.tcx.enum_var_cache.insert(local_def(id), @variants);

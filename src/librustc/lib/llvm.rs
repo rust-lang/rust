@@ -147,6 +147,7 @@ pub static Vector: TypeKind    = 13;
 pub static Metadata: TypeKind  = 14;
 pub static X86_MMX: TypeKind   = 15;
 
+#[repr(C)]
 pub enum AtomicBinOp {
     Xchg = 0,
     Add  = 1,
@@ -161,6 +162,7 @@ pub enum AtomicBinOp {
     UMin = 10,
 }
 
+#[repr(C)]
 pub enum AtomicOrdering {
     NotAtomic = 0,
     Unordered = 1,
@@ -173,6 +175,7 @@ pub enum AtomicOrdering {
 }
 
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
+#[repr(C)]
 pub enum FileType {
     AssemblyFile = 0,
     ObjectFile = 1
@@ -194,6 +197,7 @@ pub enum AsmDialect {
 }
 
 #[deriving(Eq)]
+#[repr(C)]
 pub enum CodeGenOptLevel {
     CodeGenLevelNone = 0,
     CodeGenLevelLess = 1,
@@ -201,6 +205,7 @@ pub enum CodeGenOptLevel {
     CodeGenLevelAggressive = 3,
 }
 
+#[repr(C)]
 pub enum RelocMode {
     RelocDefault = 0,
     RelocStatic = 1,
@@ -208,6 +213,7 @@ pub enum RelocMode {
     RelocDynamicNoPic = 3,
 }
 
+#[repr(C)]
 pub enum CodeGenModel {
     CodeModelDefault = 0,
     CodeModelJITDefault = 1,

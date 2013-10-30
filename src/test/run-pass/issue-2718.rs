@@ -27,6 +27,7 @@ pub mod pipes {
     }
 
     #[deriving(Eq)]
+    #[repr(int)]
     pub enum state {
         empty,
         full,
