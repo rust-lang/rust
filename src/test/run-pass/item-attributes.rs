@@ -174,7 +174,9 @@ mod test_foreign_items {
     }
 }
 
-mod test_literals {
+
+// FIXME #623 - these aren't supported yet
+/*mod test_literals {
     #[str = "s"];
     #[char = 'c'];
     #[int = 100];
@@ -185,7 +187,7 @@ mod test_literals {
     #[nil = ()];
     #[bool = true];
     mod m {}
-}
+}*/
 
 fn test_fn_inner() {
     #[inner_fn_attr];
