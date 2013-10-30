@@ -104,9 +104,9 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
 
 fn iter_header(testfile: &Path, it: &fn(&str) -> bool) -> bool {
     use std::rt::io::buffered::BufferedReader;
-    use std::rt::io::file;
+    use std::rt::io::File;
 
-    let mut rdr = BufferedReader::new(file::open(testfile).unwrap());
+    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     loop {
         let ln = match rdr.read_line() {
             Some(ln) => ln, None => break

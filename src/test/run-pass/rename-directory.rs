@@ -19,6 +19,7 @@ use std::os;
 use std::libc;
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 
 fn rename_directory() {
     #[fixed_stack_segment];
@@ -50,7 +51,7 @@ fn rename_directory() {
 
         let new_path = tmpdir.join_many(["quux", "blat"]);
         file::mkdir_recursive(&new_path, io::UserRWX);
-        file::rename(&old_path, &new_path.join("newdir"));
+        File::rename(&old_path, &new_path.join("newdir"));
         assert!(new_path.join("newdir").is_dir());
         assert!(new_path.join_many(["newdir", "temp.txt"]).exists());
     }

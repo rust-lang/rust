@@ -14,7 +14,7 @@
 use std::{os, str};
 use std::os::getenv;
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::File;
 
 /// Return path to database entry for `term`
 pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
@@ -76,7 +76,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
 /// Return open file for `term`
 pub fn open(term: &str) -> Result<@mut io::Reader, ~str> {
     match get_dbpath_for_term(term) {
-        Some(x) => Ok(@mut file::open(x) as @mut io::Reader),
+        Some(x) => Ok(@mut File::open(x) as @mut io::Reader),
         None => Err(format!("could not find terminfo entry for {}", term))
     }
 }

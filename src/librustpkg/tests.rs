@@ -14,6 +14,7 @@ use context::{BuildContext, Context, RustcFlags};
 use std::{os, run, str, task};
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
@@ -83,7 +84,7 @@ fn git_repo_pkg_with_tag(a_tag: ~str) -> PkgId {
 }
 
 fn writeFile(file_path: &Path, contents: &str) {
-    let mut out = file::create(file_path);
+    let mut out = File::create(file_path);
     out.write(contents.as_bytes());
     out.write(['\n' as u8]);
 }
@@ -196,23 +197,13 @@ fn add_git_tag(repo: &Path, tag: ~str) {
 }
 
 fn is_rwx(p: &Path) -> bool {
-    use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-
     if !p.exists() { return false }
-    let m = p.stat().mode;
-    (m & S_IRUSR as u64) == S_IRUSR as u64
-     && (m & S_IWUSR as u64) == S_IWUSR as u64
-     && (m & S_IXUSR as u64) == S_IXUSR as u64
+    p.stat().perm & io::UserRWX == io::UserRWX
 }
 
 fn is_read_only(p: &Path) -> bool {
-    use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-
     if !p.exists() { return false }
-    let m = p.stat().mode;
-    (m & S_IRUSR as u64) == S_IRUSR as u64
-     && (m & S_IWUSR as u64) == 0 as u64
-     && (m & S_IXUSR as u64) == 0 as u64
+    p.stat().perm & io::UserRWX == io::UserRead
 }
 
 fn test_sysroot() -> Path {
@@ -398,7 +389,7 @@ fn test_executable_exists(repo: &Path, short_name: &str) -> bool {
 fn remove_executable_file(p: &PkgId, workspace: &Path) {
     let exec = target_executable_in_workspace(&PkgId::new(p.short_name), workspace);
     if exec.exists() {
-        file::unlink(&exec);
+        File::unlink(&exec);
     }
 }
 
@@ -419,7 +410,7 @@ fn built_executable_exists(repo: &Path, short_name: &str) -> bool {
 fn remove_built_executable_file(p: &PkgId, workspace: &Path) {
     let exec = built_executable_in_workspace(&PkgId::new(p.short_name), workspace);
     match exec {
-        Some(r) => file::unlink(&r),
+        Some(r) => File::unlink(&r),
         None    => ()
     }
 }
@@ -553,7 +544,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
             do io::io_error::cond.trap(|e| {
                 cond.raise((p.clone(), format!("Bad path: {}", e.desc)));
             }).inside {
-                let mut w = file::open_stream(p, io::Append, io::Write);
+                let mut w = File::open_mode(p, io::Append, io::Write);
                 w.write(bytes!("/* hi */\n"));
             }
         }
@@ -902,7 +893,7 @@ fn package_script_with_default_build() {
     let source = Path::new(file!()).dir_path().join_many(
         [~"testsuite", ~"pass", ~"src", ~"fancy-lib", ~"pkg.rs"]);
     debug!("package_script_with_default_build: {}", source.display());
-    file::copy(&source, &dir.join_many(["src", "fancy-lib-0.1", "pkg.rs"]));
+    File::copy(&source, &dir.join_many(["src", "fancy-lib-0.1", "pkg.rs"]));
     command_line_test([~"install", ~"fancy-lib"], dir);
     assert_lib_exists(dir, &Path::new("fancy-lib"), NoVersion);
     assert!(target_build_dir(dir).join_many([~"fancy-lib", ~"generated.rs"]).exists());
@@ -2288,7 +2279,7 @@ fn test_c_dependency_ok() {
     debug!("dir = {}", dir.display());
     let source = Path::new(file!()).dir_path().join_many(
         [~"testsuite", ~"pass", ~"src", ~"c-dependencies", ~"pkg.rs"]);
-    file::copy(&source, &dir.join_many([~"src", ~"cdep-0.1", ~"pkg.rs"]));
+    File::copy(&source, &dir.join_many([~"src", ~"cdep-0.1", ~"pkg.rs"]));
     command_line_test([~"build", ~"cdep"], dir);
     assert_executable_exists(dir, "cdep");
     let out_dir = target_build_dir(dir).join("cdep");
@@ -2309,7 +2300,7 @@ fn test_c_dependency_no_rebuilding() {
     debug!("dir = {}", dir.display());
     let source = Path::new(file!()).dir_path().join_many(
         [~"testsuite", ~"pass", ~"src", ~"c-dependencies", ~"pkg.rs"]);
-    file::copy(&source, &dir.join_many([~"src", ~"cdep-0.1", ~"pkg.rs"]));
+    File::copy(&source, &dir.join_many([~"src", ~"cdep-0.1", ~"pkg.rs"]));
     command_line_test([~"build", ~"cdep"], dir);
     assert_executable_exists(dir, "cdep");
     let out_dir = target_build_dir(dir).join("cdep");
@@ -2342,7 +2333,7 @@ fn test_c_dependency_yes_rebuilding() {
         [~"testsuite", ~"pass", ~"src", ~"c-dependencies", ~"pkg.rs"]);
     let target = dir.join_many([~"src", ~"cdep-0.1", ~"pkg.rs"]);
     debug!("Copying {} -> {}", source.display(), target.display());
-    file::copy(&source, &target);
+    File::copy(&source, &target);
     command_line_test([~"build", ~"cdep"], dir);
     assert_executable_exists(dir, "cdep");
     let out_dir = target_build_dir(dir).join("cdep");
@@ -2366,7 +2357,5 @@ fn test_c_dependency_yes_rebuilding() {
 
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
-    use std::libc::consts::os::posix88::{S_IXUSR};
-
-    p.exists() && p.stat().mode & S_IXUSR as u64 == S_IXUSR as u64
+    p.exists() && p.stat().perm & io::UserExec == io::UserExec
 }

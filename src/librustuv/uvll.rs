@@ -222,6 +222,7 @@ pub type uv_exit_cb = extern "C" fn(handle: *uv_process_t,
                                     term_signal: c_int);
 pub type uv_signal_cb = extern "C" fn(handle: *uv_signal_t,
                                       signum: c_int);
+pub type uv_fs_cb = extern "C" fn(req: *uv_fs_t);
 
 pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;
@@ -886,6 +887,11 @@ pub unsafe fn get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void {
 
     rust_uv_get_ptr_from_fs_req(req)
 }
+pub unsafe fn get_path_from_fs_req(req: *uv_fs_t) -> *c_char {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_get_path_from_fs_req(req)
+}
 pub unsafe fn get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -1129,6 +1135,7 @@ extern {
     fn rust_uv_populate_uv_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t);
     fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
     fn rust_uv_get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void;
+    fn rust_uv_get_path_from_fs_req(req: *uv_fs_t) -> *c_char;
     fn rust_uv_get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t;
     fn rust_uv_get_loop_from_getaddrinfo_req(req: *uv_fs_t) -> *uv_loop_t;
 
@@ -1189,7 +1196,24 @@ extern {
                             signal_cb: uv_signal_cb,
                             signum: c_int) -> c_int;
     fn rust_uv_signal_stop(handle: *uv_signal_t) -> c_int;
+
 }
+externfn!(fn uv_fs_fsync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
+                         cb: *u8) -> c_int)
+externfn!(fn uv_fs_fdatasync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
+                             cb: *u8) -> c_int)
+externfn!(fn uv_fs_ftruncate(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
+                             offset: i64, cb: *u8) -> c_int)
+externfn!(fn uv_fs_readlink(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
+                            cb: *u8) -> c_int)
+externfn!(fn uv_fs_symlink(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                           dst: *c_char, cb: *u8) -> c_int)
+externfn!(fn uv_fs_link(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                        dst: *c_char, cb: *u8) -> c_int)
+externfn!(fn uv_fs_chown(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                         uid: uv_uid_t, gid: uv_gid_t, cb: *u8) -> c_int)
+externfn!(fn uv_fs_lstat(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
+                         cb: *u8) -> c_int)
 
 // libuv requires various system libraries to successfully link on some
 // platforms

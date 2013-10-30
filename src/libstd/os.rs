@@ -1495,7 +1495,7 @@ mod tests {
         use result::{Ok, Err};
         use os::*;
         use libc::*;
-        use rt::io::file;
+        use rt::io::File;
 
         #[cfg(unix)]
         #[fixed_stack_segment]
@@ -1544,7 +1544,7 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
-        file::unlink(&path);
+        File::unlink(&path);
     }
 
     // More recursive_mkdir tests are in extra::tempfile

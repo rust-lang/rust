@@ -28,6 +28,7 @@ use std::{os, result, run, str, task};
 use std::hashmap::HashSet;
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 pub use std::path::Path;
 
 use extra::workcache;
@@ -661,7 +662,7 @@ impl CtxMethods for BuildContext {
                 for exec in subex.iter() {
                     debug!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
                     file::mkdir_recursive(&sub_target_ex.dir_path(), io::UserRWX);
-                    file::copy(exec, &sub_target_ex);
+                    File::copy(exec, &sub_target_ex);
                     // FIXME (#9639): This needs to handle non-utf8 paths
                     exe_thing.discover_output("binary",
                         sub_target_ex.as_str().unwrap(),
@@ -674,7 +675,7 @@ impl CtxMethods for BuildContext {
                                              didn't install it!", lib.display()));
                     target_lib.set_filename(lib.filename().expect("weird target lib"));
                     file::mkdir_recursive(&target_lib.dir_path(), io::UserRWX);
-                    file::copy(lib, &target_lib);
+                    File::copy(lib, &target_lib);
                     debug!("3. discovering output {}", target_lib.display());
                     exe_thing.discover_output("binary",
                                               target_lib.as_str().unwrap(),

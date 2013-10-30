@@ -11,7 +11,7 @@
 //! Implementations of I/O traits for the Option type
 //!
 //! I/O constructors return option types to allow errors to be handled.
-//! These implementations allow e.g. `Option<FileStream>` to be used
+//! These implementations allow e.g. `Option<File>` to be used
 //! as a `Reader` without unwrapping the option first.
 
 use option::*;

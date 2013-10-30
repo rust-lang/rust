@@ -19,7 +19,7 @@ use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::{str, task};
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::File;
 use std::rt::io::Decorator;
 use std::rt::io::mem::MemWriter;
 
@@ -176,14 +176,14 @@ impl Database {
 
     // FIXME #4330: This should have &mut self and should set self.db_dirty to false.
     fn save(&self) {
-        let f = @mut file::create(&self.db_filename);
+        let f = @mut File::create(&self.db_filename);
         self.db_cache.to_json().to_pretty_writer(f as @mut io::Writer);
     }
 
     fn load(&mut self) {
         assert!(!self.db_dirty);
         assert!(self.db_filename.exists());
-        match io::result(|| file::open(&self.db_filename)) {
+        match io::result(|| File::open(&self.db_filename)) {
             Err(e) => fail!("Couldn't load workcache database {}: {}",
                             self.db_filename.display(),
                             e.desc),
@@ -480,7 +480,6 @@ impl<'self, T:Send +
 #[test]
 fn test() {
     use std::{os, run};
-    use std::rt::io::file;
     use std::str::from_utf8_owned;
 
     // Create a path to a new file 'filename' in the directory in which
@@ -488,13 +487,13 @@ fn test() {
     fn make_path(filename: ~str) -> Path {
         let pth = os::self_exe_path().expect("workcache::test failed").with_filename(filename);
         if pth.exists() {
-            file::unlink(&pth);
+            File::unlink(&pth);
         }
         return pth;
     }
 
     let pth = make_path(~"foo.c");
-    file::create(&pth).write(bytes!("int main() { return 0; }"));
+    File::create(&pth).write(bytes!("int main() { return 0; }"));
 
     let db_path = make_path(~"db.json");
 
@@ -507,7 +506,7 @@ fn test() {
         let subcx = cx.clone();
         let pth = pth.clone();
 
-        let file_content = from_utf8_owned(file::open(&pth).read_to_end());
+        let file_content = from_utf8_owned(File::open(&pth).read_to_end());
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);

@@ -21,6 +21,7 @@ use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os;
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 use messages::*;
 
 pub fn default_workspace() -> Path {
@@ -72,9 +73,9 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     if !src_dir.is_dir() { return None }
 
     let mut found = None;
-    do file::walk_dir(&src_dir) |p| {
+    for p in file::walk_dir(&src_dir) {
         if p.is_dir() {
-            if *p == src_dir.join(&pkgid.path) || {
+            if p == src_dir.join(&pkgid.path) || {
                 let pf = p.filename_str();
                 do pf.iter().any |&g| {
                     match split_version_general(g, '-') {
@@ -89,9 +90,8 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
                 found = Some(p.clone());
             }
 
-        };
-        true
-    };
+        }
+    }
 
     if found.is_some() {
         debug!("Found {} in {}", pkgid.to_str(), workspace.display());
@@ -399,12 +399,12 @@ pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
     let mut did_something = false;
     let installed_bin = target_executable_in_workspace(pkgid, workspace);
     if installed_bin.exists() {
-        file::unlink(&installed_bin);
+        File::unlink(&installed_bin);
         did_something = true;
     }
     let installed_lib = target_library_in_workspace(pkgid, workspace);
     if installed_lib.exists() {
-        file::unlink(&installed_lib);
+        File::unlink(&installed_lib);
         did_something = true;
     }
     if !did_something {

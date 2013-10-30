@@ -31,7 +31,7 @@ use std::ptr;
 use std::run;
 use std::str;
 use std::vec;
-use std::rt::io::file;
+use std::rt::io::File;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
@@ -950,18 +950,17 @@ pub fn link_binary(sess: Session,
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
-        file::unlink(obj_filename);
+        File::unlink(obj_filename);
     }
 }
 
 fn is_writeable(p: &Path) -> bool {
     use std::rt::io;
-    use std::libc::consts::os::posix88::S_IWUSR;
 
     !p.exists() ||
         (match io::result(|| p.stat()) {
             Err(*) => false,
-            Ok(m) => (m.mode as uint) & S_IWUSR as uint == S_IWUSR as uint
+            Ok(m) => m.perm & io::UserWrite == io::UserWrite
         })
 }
 

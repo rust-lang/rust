@@ -309,14 +309,16 @@ mod tests {
 //      get bitrotted instantaneously.
 mod old_os {
     use prelude::*;
-    use c_str::CString;
-    use libc::fclose;
     use libc::{size_t, c_void, c_int};
     use libc;
     use vec;
 
-    #[cfg(test)] use os;
+    #[cfg(not(windows))] use c_str::CString;
+    #[cfg(not(windows))] use libc::fclose;
+    #[cfg(test)] #[cfg(windows)] use os;
     #[cfg(test)] use rand;
+    #[cfg(windows)] use str;
+    #[cfg(windows)] use ptr;
 
     // On Windows, wide character version of function must be used to support
     // unicode, so functions should be split into at least two versions,
@@ -651,7 +653,7 @@ mod old_os {
                     return false;
                 }
                 // Preserve permissions
-                let from_mode = from.stat().mode;
+                let from_mode = from.stat().perm;
 
                 let ostream = do to.with_c_str |top| {
                     do "w+b".with_c_str |modebuf| {
@@ -735,8 +737,8 @@ mod old_os {
 
     #[test]
     fn test_path_is_dir() {
-        use rt::io::file::{open_stream, mkdir_recursive};
-        use rt::io::{OpenOrCreate, Read, UserRWX};
+        use rt::io::file::{mkdir_recursive};
+        use rt::io::{File, UserRWX};
 
         assert!((path_is_dir(&Path::new("."))));
         assert!((!path_is_dir(&Path::new("test/stdtest/fs.rs"))));
@@ -754,7 +756,7 @@ mod old_os {
         filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
         debug!("path_is_dir filepath: {}", filepath.display());
 
-        open_stream(&filepath, OpenOrCreate, Read); // ignore return; touch only
+        File::create(&filepath); // ignore return; touch only
         assert!((!path_is_dir(&filepath)));
 
         assert!((!path_is_dir(&Path::new(
