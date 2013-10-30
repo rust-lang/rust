@@ -122,10 +122,9 @@ trait HomingIO {
         a // return the result of the IO
     }
 
-    fn home_for_io_consume<A>(self, io: &fn(Self) -> A) -> A {
-        let mut this = self;
-        let home = this.go_to_IO_home();
-        let a = io(this); // do IO
+    fn home_for_io_consume<A>(mut self, io: &fn(Self) -> A) -> A {
+        let home = self.go_to_IO_home();
+        let a = io(self); // do IO
         HomingIO::restore_original_home(None::<Self>, home);
         a // return the result of the IO
     }
@@ -239,7 +238,7 @@ impl EventLoop for UvEventLoop {
     }
 }
 
-#[cfg(not(stage0), not(test))]
+#[cfg(not(test))]
 #[lang = "event_loop_factory"]
 pub extern "C" fn new_loop() -> ~EventLoop {
     ~UvEventLoop::new() as ~EventLoop
