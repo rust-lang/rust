@@ -98,17 +98,13 @@ $$(HLIB0_H_$(1))/$(CFG_EXTRALIB_$(1)): \
 	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(EXTRALIB_GLOB_$(1)) $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
 
-$$(HLIB0_H_$(1))/$(CFG_LIBRUSTUV_$(1)):
-	touch $$@
-# NOTE: this should get uncommented after a snapshot and the rule above this can
-#	get deleted, right now we're not expecting a librustuv in a snapshot.
-# $$(HLIB0_H_$(1))/$(CFG_LIBRUSTUV_$(1)): \
-# 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTUV_$(1)) \
-# 		| $(HLIB0_H_$(1))/
-# 	@$$(call E, cp: $$@)
-# 	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
-# 	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(LIBRUSTUV_GLOB_$(1)) $$@
-# 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
+$$(HLIB0_H_$(1))/$(CFG_LIBRUSTUV_$(1)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTUV_$(1)) \
+		| $(HLIB0_H_$(1))/
+	@$$(call E, cp: $$@)
+	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
+	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(LIBRUSTUV_GLOB_$(1)) $$@
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB0_H_$(1))/$(CFG_LIBRUSTC_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTC_$(1)) \
