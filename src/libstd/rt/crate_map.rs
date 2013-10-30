@@ -12,7 +12,6 @@ use container::MutableSet;
 use hashmap::HashSet;
 use option::{Some, None, Option};
 use vec::ImmutableVector;
-#[cfg(not(stage0))]
 use rt::rtio::EventLoop;
 
 // Need to tell the linker on OS X to not barf on undefined symbols
@@ -27,14 +26,6 @@ pub struct ModEntry<'self> {
     log_level: *mut u32
 }
 
-#[cfg(stage0)]
-pub struct CrateMap<'self> {
-    version: i32,
-    entries: &'self [ModEntry<'self>],
-    children: &'self [&'self CrateMap<'self>]
-}
-
-#[cfg(not(stage0))]
 pub struct CrateMap<'self> {
     version: i32,
     entries: &'self [ModEntry<'self>],
@@ -45,12 +36,6 @@ pub struct CrateMap<'self> {
 #[cfg(not(windows))]
 pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
     extern {
-        #[cfg(stage0)]
-        #[weak_linkage]
-        #[link_name = "_rust_crate_map_toplevel"]
-        static CRATE_MAP: CrateMap<'static>;
-
-        #[cfg(not(stage0))]
         #[crate_map]
         static CRATE_MAP: CrateMap<'static>;
     }
