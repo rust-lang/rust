@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Oct 19
+" Last Change:  2013 Oct 29
 
 if version < 600
   syntax clear
@@ -64,47 +64,45 @@ syn keyword   rustEnumVariant Ok Err
 "syn keyword rustFunction from_str
 
 " Types and traits {{{3
+syn keyword rustTrait Any AnyOwnExt AnyRefExt AnyMutRefExt
+syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr ToBytesConsume
+syn keyword rustTrait Bool
 syn keyword rustTrait ToCStr
+syn keyword rustTrait Char
 syn keyword rustTrait Clone DeepClone
 syn keyword rustTrait Eq ApproxEq Ord TotalEq TotalOrd Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
-syn keyword rustTrait Char
 syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
+syn keyword rustTrait Default
 syn keyword rustTrait Hash
-syn keyword rustTrait Times
+syn keyword rustTrait FromStr
 syn keyword rustTrait FromIterator Extendable
 syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator ClonableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
+syn keyword rustTrait Times
+
+syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
+syn keyword rustTrait Bitwise BitCount Bounded
+syn keyword rustTrait Integer Fractional Real RealExt
 syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
 syn keyword rustTrait Orderable Signed Unsigned Round
-syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
-syn keyword rustTrait Integer Fractional Real RealExt
-syn keyword rustTrait Bitwise BitCount Bounded
 syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
-syn keyword rustTrait GenericPath
-syn keyword rustTrait Path
-syn keyword rustTrait PosixPath
-syn keyword rustTrait WindowsPath
+syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
-syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr ToBytesConsume
 syn keyword rustTrait SendStr SendStrOwned SendStrStatic IntoSendStr
 syn keyword rustTrait Str StrVector StrSlice OwnedStr
-syn keyword rustTrait FromStr
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr ToStrConsume
 syn keyword rustTrait CopyableTuple ImmutableTuple
-syn keyword rustTrait Tuple1 ImmutableTuple1
-syn keyword rustTrait Tuple2 Tuple3 Tuple4 Tuple5
-syn keyword rustTrait Tuple6 Tuple7 Tuple8 Tuple9
-syn keyword rustTrait Tuple10 Tuple11 Tuple12
-syn keyword rustTrait ImmutableTuple2 ImmutableTuple3 ImmutableTuple4 ImmutableTuple5
-syn keyword rustTrait ImmutableTuple6 ImmutableTuple7 ImmutableTuple8 ImmutableTuple9
-syn keyword rustTrait ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
-syn keyword rustTrait Vector VectorVector CopyableVector ImmutableVector
+syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
+syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
+syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
+syn keyword rustTrait ImmutableTuple1 ImmutableTuple2 ImmutableTuple3 ImmutableTuple4
+syn keyword rustTrait ImmutableTuple5 ImmutableTuple6 ImmutableTuple7 ImmutableTuple8
+syn keyword rustTrait ImmutableTuple9 ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
 syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCopyableVector
 syn keyword rustTrait OwnedVector OwnedCopyableVector OwnedEqVector MutableVector
-syn keyword rustTrait Reader ReaderUtil Writer WriterUtil
-syn keyword rustTrait Default
+syn keyword rustTrait Vector VectorVector CopyableVector ImmutableVector
 
 "syn keyword rustFunction stream
 syn keyword rustTrait Port Chan GenericChan GenericSmartChan GenericPort Peekable
