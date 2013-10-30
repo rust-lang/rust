@@ -15,7 +15,7 @@
 use std::libc::c_void;
 use std::ptr;
 use std::mem;
-use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
+use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
 use std::unstable::raw::Vec;
 
 #[doc = "High-level interfaces to `std::unstable::intrinsics::visit_ty` reflection system."]
@@ -380,7 +380,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint)
                      -> bool {
         self.align(align);
@@ -389,7 +389,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_enter_enum_variant(&mut self, variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool {
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
@@ -405,7 +405,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_leave_enum_variant(&mut self, variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool {
         if ! self.inner.visit_leave_enum_variant(variant, disr_val,
@@ -416,7 +416,7 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint)
                      -> bool {
         if ! self.inner.visit_leave_enum(n_variants, get_disr, sz, align) { return false; }
@@ -578,24 +578,24 @@ impl TyVisitor for my_visitor {
                        _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_enum(&mut self, _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         _sz: uint, _align: uint) -> bool {
         // FIXME (#3732): this needs to rewind between enum variants, or something.
         true
     }
     fn visit_enter_enum_variant(&mut self, _variant: uint,
-                                _disr_val: int,
+                                _disr_val: Disr,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
     fn visit_enum_variant_field(&mut self, _i: uint, _offset: uint, inner: *TyDesc) -> bool {
         self.visit_inner(inner)
     }
     fn visit_leave_enum_variant(&mut self, _variant: uint,
-                                _disr_val: int,
+                                _disr_val: Disr,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
     fn visit_leave_enum(&mut self, _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,

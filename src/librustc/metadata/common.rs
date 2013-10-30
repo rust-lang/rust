@@ -112,6 +112,7 @@ pub static tag_items_data_item_reexport_name: uint = 0x4f;
 
 // used to encode crate_ctxt side tables
 #[deriving(Eq)]
+#[repr(uint)]
 pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_ast = 0x50,
 
@@ -143,7 +144,7 @@ impl astencode_tag {
     pub fn from_uint(value : uint) -> Option<astencode_tag> {
         let is_a_tag = first_astencode_tag <= value && value <= last_astencode_tag;
         if !is_a_tag { None } else {
-            Some(unsafe { cast::transmute(value as int) })
+            Some(unsafe { cast::transmute(value) })
         }
     }
 }

@@ -29,7 +29,8 @@ pub static bits : uint = $bits;
 pub static bytes : uint = ($bits / 8);
 
 pub static min_value: $T = (-1 as $T) << (bits - 1);
-pub static max_value: $T = min_value - 1 as $T;
+// FIXME(#9837): Compute min_value like this so the high bits that shouldn't exist are 0.
+pub static max_value: $T = !min_value;
 
 impl CheckedDiv for $T {
     #[inline]

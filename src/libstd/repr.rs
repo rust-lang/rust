@@ -29,7 +29,7 @@ use reflect::{MovePtr, align};
 use str::StrSlice;
 use to_str::ToStr;
 use vec::OwnedVector;
-use unstable::intrinsics::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
+use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use unstable::raw;
 
 /// Representations
@@ -92,7 +92,7 @@ num_repr!(f64, "f64")
 // New implementation using reflect::MovePtr
 
 enum VariantState {
-    SearchingFor(int),
+    SearchingFor(Disr),
     Matched,
     AlreadyFound
 }
@@ -473,7 +473,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
 
     fn visit_enter_enum(&mut self,
                         _n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         _sz: uint,
                         _align: uint) -> bool {
         let disr = unsafe {
@@ -484,7 +484,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     }
 
     fn visit_enter_enum_variant(&mut self, _variant: uint,
-                                disr_val: int,
+                                disr_val: Disr,
                                 n_fields: uint,
                                 name: &str) -> bool {
         let mut write = false;
@@ -531,7 +531,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     }
 
     fn visit_leave_enum_variant(&mut self, _variant: uint,
-                                _disr_val: int,
+                                _disr_val: Disr,
                                 n_fields: uint,
                                 _name: &str) -> bool {
         match self.var_stk[self.var_stk.len() - 1] {
@@ -547,7 +547,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
 
     fn visit_leave_enum(&mut self,
                         _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
                         _sz: uint,
                         _align: uint)
                         -> bool {
