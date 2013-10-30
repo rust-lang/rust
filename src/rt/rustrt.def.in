@@ -25,10 +25,6 @@ rust_win32_rand_acquire
 rust_win32_rand_gen
 rust_win32_rand_release
 upcall_rust_personality
-upcall_call_shim_on_c_stack
-upcall_call_shim_on_rust_stack
-upcall_new_stack
-upcall_del_stack
 upcall_reset_stack_limit
 rust_uv_loop_new
 rust_uv_loop_delete
