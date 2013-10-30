@@ -31,7 +31,7 @@ use treemap::TreeMap;
 use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::File;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -353,7 +353,7 @@ struct ConsoleTestState {
 impl ConsoleTestState {
     pub fn new(opts: &TestOpts) -> ConsoleTestState {
         let log_out = match opts.logfile {
-            Some(ref path) => Some(@mut file::create(path) as @mut io::Writer),
+            Some(ref path) => Some(@mut File::create(path) as @mut io::Writer),
             None => None
         };
         let out = @mut io::stdio::stdout() as @mut io::Writer;
@@ -936,14 +936,14 @@ impl MetricMap {
     /// Load MetricDiff from a file.
     pub fn load(p: &Path) -> MetricMap {
         assert!(p.exists());
-        let f = @mut file::open(p) as @mut io::Reader;
+        let f = @mut File::open(p) as @mut io::Reader;
         let mut decoder = json::Decoder(json::from_reader(f).unwrap());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
-        self.to_json().to_pretty_writer(@mut file::create(p) as @mut io::Writer);
+        self.to_json().to_pretty_writer(@mut File::create(p) as @mut io::Writer);
     }
 
     /// Compare against another MetricMap. Optionally compare all

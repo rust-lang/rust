@@ -23,7 +23,7 @@ pub fn main() {
         if directory {
             io::file::mkdir(&Path::new(path), io::UserRWX);
         } else {
-            io::file::create(&Path::new(path));
+            io::File::create(&Path::new(path));
         }
     }
 

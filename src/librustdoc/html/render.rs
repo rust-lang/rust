@@ -42,6 +42,7 @@ use std::local_data;
 use std::rt::io::buffered::BufferedWriter;
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 use std::os;
 use std::str;
 use std::task;
@@ -263,7 +264,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     // Publish the search index
     {
         dst.push("search-index.js");
-        let mut w = BufferedWriter::new(file::create(&dst).unwrap());
+        let mut w = BufferedWriter::new(File::create(&dst).unwrap());
         let w = &mut w as &mut Writer;
         write!(w, "var searchIndex = [");
         for (i, item) in cache.search_index.iter().enumerate() {
@@ -313,7 +314,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
 fn write(dst: Path, contents: &str) {
-    file::create(&dst).write(contents.as_bytes());
+    File::create(&dst).write(contents.as_bytes());
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and
@@ -419,7 +420,7 @@ impl<'self> SourceCollector<'self> {
             // If we couldn't open this file, then just returns because it
             // probably means that it's some standard library macro thing and we
             // can't have the source to it anyway.
-            let mut r = match io::result(|| file::open(&p)) {
+            let mut r = match io::result(|| File::open(&p)) {
                 Ok(r) => r,
                 // eew macro hacks
                 Err(*) => return filename == "<std-macros>"
@@ -445,7 +446,7 @@ impl<'self> SourceCollector<'self> {
         }
 
         cur.push(p.filename().expect("source has no filename") + bytes!(".html"));
-        let mut w = BufferedWriter::new(file::create(&cur).unwrap());
+        let mut w = BufferedWriter::new(File::create(&cur).unwrap());
 
         let title = cur.filename_display().with_str(|s| format!("{} -- source", s));
         let page = layout::Page {
@@ -767,7 +768,7 @@ impl Context {
     ///
     /// The rendering driver uses this closure to queue up more work.
     fn item(&mut self, item: clean::Item, f: &fn(&mut Context, clean::Item)) {
-        fn render(w: file::FileWriter, cx: &mut Context, it: &clean::Item,
+        fn render(w: io::File, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
@@ -804,7 +805,7 @@ impl Context {
                 do self.recurse(name) |this| {
                     let item = item.take();
                     let dst = this.dst.join("index.html");
-                    render(file::create(&dst).unwrap(), this, &item, false);
+                    render(File::create(&dst).unwrap(), this, &item, false);
 
                     let m = match item.inner {
                         clean::ModuleItem(m) => m,
@@ -821,7 +822,7 @@ impl Context {
             // pages dedicated to them.
             _ if item.name.is_some() => {
                 let dst = self.dst.join(item_path(&item));
-                render(file::create(&dst).unwrap(), self, &item, true);
+                render(File::create(&dst).unwrap(), self, &item, true);
             }
 
             _ => {}

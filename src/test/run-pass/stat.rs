@@ -13,14 +13,14 @@
 extern mod extra;
 
 use extra::tempfile;
-use std::rt::io::file;
+use std::rt::io::File;
 
 pub fn main() {
     let dir = tempfile::TempDir::new_in(&Path::new("."), "").unwrap();
     let path = dir.path().join("file");
 
     {
-        match file::create(&path) {
+        match File::create(&path) {
             None => unreachable!(),
             Some(f) => {
                 let mut f = f;

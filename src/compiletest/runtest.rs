@@ -23,6 +23,7 @@ use util::logv;
 use std::cell::Cell;
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 use std::os;
 use std::str;
 use std::task::{spawn_sched, SingleThreaded};
@@ -171,7 +172,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let src = file::open(testfile).read_to_end();
+    let src = File::open(testfile).read_to_end();
     let src = str::from_utf8_owned(src);
     let mut srcs = ~[src];
 
@@ -193,7 +194,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut expected = match props.pp_exact {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
-            let s = file::open(&filepath).read_to_end();
+            let s = File::open(&filepath).read_to_end();
             str::from_utf8_owned(s)
           }
           None => { srcs[srcs.len() - 2u].clone() }
@@ -764,7 +765,7 @@ fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
 fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    file::create(&outfile).write(out.as_bytes());
+    File::create(&outfile).write(out.as_bytes());
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
@@ -1015,7 +1016,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = file::open(&p.with_extension("ll")).read_to_end();
+    let x = File::open(&p.with_extension("ll")).read_to_end();
     let x = str::from_utf8_owned(x);
     x.line_iter().len()
 }

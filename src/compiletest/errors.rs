@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::rt::io::buffered::BufferedReader;
-use std::rt::io::file;
+use std::rt::io::File;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
@@ -17,7 +17,7 @@ pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
 
     let mut error_patterns = ~[];
-    let mut rdr = BufferedReader::new(file::open(testfile).unwrap());
+    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     let mut line_num = 1u;
     loop {
         let ln = match rdr.read_line() {

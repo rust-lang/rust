@@ -532,6 +532,10 @@ extern "C" int
 rust_uv_get_result_from_fs_req(uv_fs_t* req) {
   return req->result;
 }
+extern "C" const char*
+rust_uv_get_path_from_fs_req(uv_fs_t* req) {
+  return req->path;
+}
 extern "C" void*
 rust_uv_get_ptr_from_fs_req(uv_fs_t* req) {
   return req->ptr;

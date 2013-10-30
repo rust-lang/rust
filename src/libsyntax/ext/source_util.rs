@@ -20,8 +20,7 @@ use parse::token::{get_ident_interner};
 use print::pprust;
 
 use std::rt::io;
-use std::rt::io::Reader;
-use std::rt::io::file;
+use std::rt::io::File;
 use std::str;
 
 // These macros all relate to the file system; they either return
@@ -92,7 +91,7 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
     let file = res_rel_file(cx, sp, &Path::new(file));
-    let bytes = match io::result(|| file::open(&file).read_to_end()) {
+    let bytes = match io::result(|| File::open(&file).read_to_end()) {
         Err(e) => {
             cx.span_fatal(sp, format!("couldn't read {}: {}",
                                       file.display(), e.desc));
@@ -114,7 +113,7 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
     let file = res_rel_file(cx, sp, &Path::new(file));
-    match io::result(|| file::open(&file).read_to_end()) {
+    match io::result(|| File::open(&file).read_to_end()) {
         Err(e) => {
             cx.span_fatal(sp, format!("couldn't read {}: {}",
                                       file.display(), e.desc));

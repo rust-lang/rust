@@ -12,7 +12,7 @@ extern mod rustpkg;
 extern mod rustc;
 
 use std::os;
-use std::rt::io::file;
+use std::rt::io::File;
 use rustpkg::api;
 use rustpkg::version::NoVersion;
 
@@ -43,7 +43,7 @@ pub fn main() {
     let out_path = os::self_exe_path().expect("Couldn't get self_exe path");
 
     debug!("Writing file");
-    let mut file = file::create(&out_path.join("generated.rs"));
+    let mut file = File::create(&out_path.join("generated.rs"));
     file.write("pub fn wheeeee() { let xs = [1, 2, 3]; \
                 for _ in xs.iter() { assert!(true); } }".as_bytes());
 

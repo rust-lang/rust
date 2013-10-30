@@ -14,6 +14,7 @@ use target::*;
 use package_id::PkgId;
 use std::rt::io;
 use std::rt::io::file;
+use std::rt::io::File;
 use std::os;
 use context::*;
 use crate::Crate;
@@ -301,7 +302,7 @@ impl PkgSrc {
                 // Move clone_target to local.
                 // First, create all ancestor directories.
                 let moved = make_dir_rwx_recursive(&local.dir_path())
-                    && io::result(|| file::rename(&clone_target, local)).is_ok();
+                    && io::result(|| File::rename(&clone_target, local)).is_ok();
                 if moved { Some(local.clone()) }
                     else { None }
             }
@@ -350,7 +351,7 @@ impl PkgSrc {
 
         let prefix = self.start_dir.component_iter().len();
         debug!("Matching against {}", self.id.short_name);
-        do file::walk_dir(&self.start_dir) |pth| {
+        for pth in file::walk_dir(&self.start_dir) {
             let maybe_known_crate_set = match pth.filename_str() {
                 Some(filename) if filter(filename) => match filename {
                     "lib.rs" => Some(&mut self.libs),
@@ -363,11 +364,10 @@ impl PkgSrc {
             };
 
             match maybe_known_crate_set {
-                Some(crate_set) => PkgSrc::push_crate(crate_set, prefix, pth),
+                Some(crate_set) => PkgSrc::push_crate(crate_set, prefix, &pth),
                 None => ()
             }
-            true
-        };
+        }
 
         let crate_sets = [&self.libs, &self.mains, &self.tests, &self.benchs];
         if crate_sets.iter().all(|crate_set| crate_set.is_empty()) {

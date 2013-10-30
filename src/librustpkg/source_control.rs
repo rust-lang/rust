@@ -96,12 +96,11 @@ pub enum CloneResult {
 
 pub fn make_read_only(target: &Path) {
     // Now, make all the files in the target dir read-only
-    do file::walk_dir(target) |p| {
+    for p in file::walk_dir(target) {
         if !p.is_dir() {
-            assert!(chmod_read_only(p));
-        };
-        true
-    };
+            assert!(chmod_read_only(&p));
+        }
+    }
 }
 
 /// Source can be either a URL or a local file path.

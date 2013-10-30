@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::File;
 use extra::workcache;
 use sha1::{Digest, Sha1};
 
@@ -17,7 +17,7 @@ use sha1::{Digest, Sha1};
 pub fn digest_file_with_date(path: &Path) -> ~str {
     use conditions::bad_path::cond;
 
-    match io::result(|| file::open(path).read_to_end()) {
+    match io::result(|| File::open(path).read_to_end()) {
         Ok(bytes) => {
             let mut sha = Sha1::new();
             sha.input(bytes);

@@ -13,12 +13,11 @@
 
 use rand::Rng;
 use ops::Drop;
-use path::Path;
 
 #[cfg(unix)]
 use rand::reader::ReaderRng;
 #[cfg(unix)]
-use rt::io::file;
+use rt::io::File;
 
 #[cfg(windows)]
 use cast;
@@ -41,7 +40,7 @@ type HCRYPTPROV = c_long;
 /// This does not block.
 #[cfg(unix)]
 pub struct OSRng {
-    priv inner: ReaderRng<file::FileReader>
+    priv inner: ReaderRng<File>
 }
 /// A random number generator that retrieves randomness straight from
 /// the operating system. Platform sources:
@@ -61,7 +60,8 @@ impl OSRng {
     /// Create a new `OSRng`.
     #[cfg(unix)]
     pub fn new() -> OSRng {
-        let reader = file::open(&Path::new("/dev/urandom"));
+        use path::Path;
+        let reader = File::open(&Path::new("/dev/urandom"));
         let reader = reader.expect("Error opening /dev/urandom");
         let reader_rng = ReaderRng::new(reader);
 
