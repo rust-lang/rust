@@ -78,7 +78,7 @@ pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
     }
 }
 
-impl<T> ChanOne<T> {
+impl<T: Send> ChanOne<T> {
     #[inline]
     fn packet(&self) -> *mut Packet<T> {
         unsafe {
@@ -181,7 +181,7 @@ impl<T> ChanOne<T> {
     }
 }
 
-impl<T> PortOne<T> {
+impl<T: Send> PortOne<T> {
     fn packet(&self) -> *mut Packet<T> {
         unsafe {
             let p: *mut ~Packet<T> = cast::transmute(&self.void_packet);
@@ -218,7 +218,7 @@ impl<T> PortOne<T> {
     }
 }
 
-impl<T> SelectInner for PortOne<T> {
+impl<T: Send> SelectInner for PortOne<T> {
     #[inline] #[cfg(not(test))]
     fn optimistic_check(&mut self) -> bool {
         unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
@@ -319,9 +319,9 @@ impl<T> SelectInner for PortOne<T> {
     }
 }
 
-impl<T> Select for PortOne<T> { }
+impl<T: Send> Select for PortOne<T> { }
 
-impl<T> SelectPortInner<T> for PortOne<T> {
+impl<T: Send> SelectPortInner<T> for PortOne<T> {
     fn recv_ready(mut self) -> Option<T> {
         let packet = self.packet();
 
@@ -352,9 +352,9 @@ impl<T> SelectPortInner<T> for PortOne<T> {
     }
 }
 
-impl<T> SelectPort<T> for PortOne<T> { }
+impl<T: Send> SelectPort<T> for PortOne<T> { }
 
-impl<T> Peekable<T> for PortOne<T> {
+impl<T: Send> Peekable<T> for PortOne<T> {
     fn peek(&self) -> bool {
         unsafe {
             let packet: *mut Packet<T> = self.packet();
@@ -369,7 +369,7 @@ impl<T> Peekable<T> for PortOne<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for ChanOne<T> {
+impl<T: Send> Drop for ChanOne<T> {
     fn drop(&mut self) {
         if self.suppress_finalize { return }
 
@@ -396,7 +396,7 @@ impl<T> Drop for ChanOne<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for PortOne<T> {
+impl<T: Send> Drop for PortOne<T> {
     fn drop(&mut self) {
         if self.suppress_finalize { return }
 
@@ -478,7 +478,7 @@ impl<T: Send> SendDeferred<T> for Chan<T> {
     }
 }
 
-impl<T> GenericPort<T> for Port<T> {
+impl<T: Send> GenericPort<T> for Port<T> {
     fn recv(&self) -> T {
         match self.try_recv() {
             Some(val) => val,
@@ -501,7 +501,7 @@ impl<T> GenericPort<T> for Port<T> {
     }
 }
 
-impl<T> Peekable<T> for Port<T> {
+impl<T: Send> Peekable<T> for Port<T> {
     fn peek(&self) -> bool {
         self.next.with_mut_ref(|p| p.peek())
     }
@@ -511,7 +511,7 @@ impl<T> Peekable<T> for Port<T> {
 // of them, but a &Port<T> should also be selectable so you can select2 on it
 // alongside a PortOne<U> without passing the port by value in recv_ready.
 
-impl<'self, T> SelectInner for &'self Port<T> {
+impl<'self, T: Send> SelectInner for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         do self.next.with_mut_ref |pone| { pone.optimistic_check() }
@@ -529,9 +529,9 @@ impl<'self, T> SelectInner for &'self Port<T> {
     }
 }
 
-impl<'self, T> Select for &'self Port<T> { }
+impl<'self, T: Send> Select for &'self Port<T> { }
 
-impl<T> SelectInner for Port<T> {
+impl<T: Send> SelectInner for Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         (&*self).optimistic_check()
@@ -548,9 +548,9 @@ impl<T> SelectInner for Port<T> {
     }
 }
 
-impl<T> Select for Port<T> { }
+impl<T: Send> Select for Port<T> { }
 
-impl<'self, T> SelectPortInner<T> for &'self Port<T> {
+impl<'self, T: Send> SelectPortInner<T> for &'self Port<T> {
     fn recv_ready(self) -> Option<T> {
         match self.next.take().recv_ready() {
             Some(StreamPayload { val, next }) => {
@@ -562,14 +562,14 @@ impl<'self, T> SelectPortInner<T> for &'self Port<T> {
     }
 }
 
-impl<'self, T> SelectPort<T> for &'self Port<T> { }
+impl<'self, T: Send> SelectPort<T> for &'self Port<T> { }
 
 pub struct SharedChan<T> {
     // Just like Chan, but a shared AtomicOption instead of Cell
     priv next: UnsafeArc<AtomicOption<StreamChanOne<T>>>
 }
 
-impl<T> SharedChan<T> {
+impl<T: Send> SharedChan<T> {
     pub fn new(chan: Chan<T>) -> SharedChan<T> {
         let next = chan.next.take();
         let next = AtomicOption::new(~next);
@@ -609,7 +609,7 @@ impl<T: Send> SendDeferred<T> for SharedChan<T> {
     }
 }
 
-impl<T> Clone for SharedChan<T> {
+impl<T: Send> Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
         SharedChan {
             next: self.next.clone()
@@ -622,7 +622,7 @@ pub struct SharedPort<T> {
     priv next_link: UnsafeArc<AtomicOption<PortOne<StreamPortOne<T>>>>
 }
 
-impl<T> SharedPort<T> {
+impl<T: Send> SharedPort<T> {
     pub fn new(port: Port<T>) -> SharedPort<T> {
         // Put the data port into a new link pipe
         let next_data_port = port.next.take();
@@ -664,7 +664,7 @@ impl<T: Send> GenericPort<T> for SharedPort<T> {
     }
 }
 
-impl<T> Clone for SharedPort<T> {
+impl<T: Send> Clone for SharedPort<T> {
     fn clone(&self) -> SharedPort<T> {
         SharedPort {
             next_link: self.next_link.clone()
