@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static foo: int = 5;
-
 fn main() {
-    // assigning to various global constants
-    foo = 6; //~ ERROR cannot assign to immutable static item
+    1 = 2; //~ ERROR illegal left-hand side expression
+    1 += 2; //~ ERROR illegal left-hand side expression
+    (1, 2) = (3, 4); //~ ERROR illegal left-hand side expression
+
+    let (a, b) = (1, 2);
+    (a, b) = (3, 4); //~ ERROR illegal left-hand side expression
+
+    None = Some(3); //~ ERROR illegal left-hand side expression
 }
