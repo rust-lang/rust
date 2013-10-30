@@ -193,7 +193,7 @@ impl<T: Send> SendDeferred<T> for SharedChan<T> {
     }
 }
 
-impl<T> Clone for SharedChan<T> {
+impl<T: Send> Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
         let &SharedChan { x: ref c } = self;
         SharedChan { x: c.clone() }
@@ -221,7 +221,7 @@ impl<T: Send> GenericPort<T> for SharedPort<T> {
     }
 }
 
-impl<T> Clone for SharedPort<T> {
+impl<T: Send> Clone for SharedPort<T> {
     fn clone(&self) -> SharedPort<T> {
         let &SharedPort { x: ref p } = self;
         SharedPort { x: p.clone() }
