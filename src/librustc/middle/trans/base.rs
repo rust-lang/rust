@@ -521,12 +521,12 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                     substs: &[ty::t])
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
+    let did = if did.crate != ast::LOCAL_CRATE {
+        inline::maybe_instantiate_inline(ccx, did)
+    } else {
+        did
+    };
     if !substs.is_empty() {
-        let did = if did.crate != ast::LOCAL_CRATE {
-            inline::maybe_instantiate_inline(ccx, did)
-        } else {
-            did
-        };
         assert_eq!(did.crate, ast::LOCAL_CRATE);
         let tsubsts = ty::substs {regions: ty::ErasedRegions,
                                   self_ty: None,
