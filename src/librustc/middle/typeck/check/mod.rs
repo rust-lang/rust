@@ -2765,12 +2765,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                         }
                         None => {
                             match *sty {
-                                ty::ty_enum(..) => {
-                                    tcx.sess.span_err(
-                                        expr.span,
-                                        "can only dereference enums with a single variant which \
-                                         has a single argument");
-                                }
                                 ty::ty_struct(..) => {
                                     tcx.sess.span_err(
                                         expr.span,

@@ -540,19 +540,6 @@ impl<'a> PrivacyVisitor<'a> {
         return false;
     }
 
-    // Checks that a dereference of a univariant enum can occur.
-    fn check_variant(&self, span: Span, enum_id: ast::DefId) {
-        let variant_info = ty::enum_variants(self.tcx, enum_id)[0];
-
-        match self.def_privacy(variant_info.id) {
-            Allowable => {}
-            ExternallyDenied | DisallowedBy(..) => {
-                self.tcx.sess.span_err(span, "can only dereference enums \
-                                              with a single, public variant");
-            }
-        }
-    }
-
     // Checks that a field is in scope.
     // FIXME #6993: change type (and name) from Ident to Name
     fn check_field(&mut self, span: Span, id: ast::DefId, ident: ast::Ident) {
@@ -711,18 +698,6 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     _ => self.tcx.sess.span_bug(expr.span, "struct expr \
                                                             didn't have \
                                                             struct type?!"),
-                }
-            }
-            ast::ExprUnary(_, ast::UnDeref, operand) => {
-                // In *e, we need to check that if e's type is an
-                // enum type t, then t's first variant is public or
-                // privileged. (We can assume it has only one variant
-                // since typeck already happened.)
-                match ty::get(ty::expr_ty(self.tcx, operand)).sty {
-                    ty::ty_enum(id, _) => {
-                        self.check_variant(expr.span, id);
-                    }
-                    _ => { /* No check needed */ }
                 }
             }
             _ => {}

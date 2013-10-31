@@ -2631,16 +2631,6 @@ pub fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
         Some(mt)
       }
 
-      ty_enum(did, ref substs) => {
-        let variants = enum_variants(cx, did);
-        if (*variants).len() == 1u && variants[0].args.len() == 1u {
-            let v_t = subst(cx, substs, variants[0].args[0]);
-            Some(mt {ty: v_t, mutbl: ast::MutImmutable})
-        } else {
-            None
-        }
-      }
-
       ty_struct(did, ref substs) => {
         let fields = struct_fields(cx, did, substs);
         if fields.len() == 1 && fields[0].ident ==
