@@ -132,8 +132,6 @@ impl Writer for FileDesc {
             raise_error();
         }
     }
-
-    fn flush(&mut self) {}
 }
 
 impl Drop for FileDesc {

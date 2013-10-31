@@ -173,7 +173,6 @@ pub trait RtioFileStream {
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError>;
     fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError>;
     fn tell(&self) -> Result<u64, IoError>;
-    fn flush(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioProcess {

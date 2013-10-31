@@ -32,19 +32,16 @@ impl Reader for MockReader {
 
 pub struct MockWriter {
     priv write: ~fn(buf: &[u8]),
-    priv flush: ~fn()
 }
 
 impl MockWriter {
     pub fn new() -> MockWriter {
         MockWriter {
             write: |_| (),
-            flush: || ()
         }
     }
 }
 
 impl Writer for MockWriter {
     fn write(&mut self, buf: &[u8]) { (self.write)(buf) }
-    fn flush(&mut self) { (self.flush)() }
 }

@@ -418,7 +418,6 @@ mod test {
 
         impl rt::io::Writer for S {
             fn write(&mut self, _: &[u8]) {}
-            fn flush(&mut self) {}
         }
 
         impl rt::io::Reader for S {
