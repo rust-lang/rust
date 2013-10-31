@@ -3488,10 +3488,17 @@ impl Resolver {
                     return None;
                 }
                 ConstantItemRibKind => {
-                    // Still doesn't deal with upvars
-                    self.resolve_error(span,
-                                          "attempt to use a non-constant \
-                                           value in a constant");
+                    if is_ty_param {
+                        // see #9186
+                        self.resolve_error(span,
+                                              "cannot use an outer type \
+                                               parameter in this context");
+                    } else {
+                        // Still doesn't deal with upvars
+                        self.resolve_error(span,
+                                              "attempt to use a non-constant \
+                                               value in a constant");
+                    }
 
                 }
             }
@@ -3764,7 +3771,9 @@ impl Resolver {
 
     fn with_constant_rib(&mut self, f: &fn(&mut Resolver)) {
         self.value_ribs.push(@Rib::new(ConstantItemRibKind));
+        self.type_ribs.push(@Rib::new(ConstantItemRibKind));
         f(self);
+        self.type_ribs.pop();
         self.value_ribs.pop();
     }
 
