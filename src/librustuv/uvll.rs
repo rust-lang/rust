@@ -1003,6 +1003,8 @@ pub struct uv_err_data {
     err_msg: ~str,
 }
 
+// uv_support is the result of compiling rust_uv.cpp
+#[link_args = "-luv_support -luv"]
 extern {
 
     fn rust_uv_handle_size(type_: uintptr_t) -> size_t;
@@ -1172,3 +1174,13 @@ extern {
                             signum: c_int) -> c_int;
     fn rust_uv_signal_stop(handle: *uv_signal_t) -> c_int;
 }
+
+// libuv requires various system libraries to successfully link on some
+// platforms
+#[cfg(target_os = "linux")]
+#[link_args = "-lpthread"]
+extern {}
+
+#[cfg(target_os = "win32")]
+#[link_args = "-lWs2_32 -lpsapi -liphlpapi"]
+extern {}
