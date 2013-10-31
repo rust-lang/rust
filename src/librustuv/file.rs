@@ -257,6 +257,7 @@ impl FsRequest {
             uvll::uv_fs_symlink(loop_.native_handle(), self.native_handle(),
                                 src.with_ref(|p| p),
                                 dst.with_ref(|p| p),
+                                0,
                                 complete_cb_ptr)
         }, 0);
     }

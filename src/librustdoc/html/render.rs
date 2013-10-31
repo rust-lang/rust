@@ -41,7 +41,7 @@ use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::rt::io::buffered::BufferedWriter;
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::fs;
 use std::rt::io::File;
 use std::os;
 use std::str;
@@ -326,7 +326,7 @@ fn mkdir(path: &Path) {
         fail!()
     }).inside {
         if !path.is_dir() {
-            file::mkdir(path, io::UserRWX);
+            fs::mkdir(path, io::UserRWX);
         }
     }
 }

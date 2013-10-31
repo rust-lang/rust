@@ -737,7 +737,7 @@ mod old_os {
 
     #[test]
     fn test_path_is_dir() {
-        use rt::io::file::{mkdir_recursive};
+        use rt::io::fs::{mkdir_recursive};
         use rt::io::{File, UserRWX};
 
         assert!((path_is_dir(&Path::new("."))));
@@ -765,7 +765,7 @@ mod old_os {
 
     #[test]
     fn test_path_exists() {
-        use rt::io::file::mkdir_recursive;
+        use rt::io::fs::mkdir_recursive;
         use rt::io::UserRWX;
 
         assert!((path_exists(&Path::new("."))));

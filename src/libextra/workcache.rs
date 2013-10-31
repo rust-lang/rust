@@ -19,8 +19,7 @@ use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::{str, task};
 use std::rt::io;
-use std::rt::io::File;
-use std::rt::io::Decorator;
+use std::rt::io::{File, Decorator};
 use std::rt::io::mem::MemWriter;
 
 /**
@@ -480,6 +479,7 @@ impl<'self, T:Send +
 #[test]
 fn test() {
     use std::{os, run};
+    use std::rt::io::fs;
     use std::str::from_utf8_owned;
 
     // Create a path to a new file 'filename' in the directory in which
@@ -487,7 +487,7 @@ fn test() {
     fn make_path(filename: ~str) -> Path {
         let pth = os::self_exe_path().expect("workcache::test failed").with_filename(filename);
         if pth.exists() {
-            File::unlink(&pth);
+            fs::unlink(&pth);
         }
         return pth;
     }

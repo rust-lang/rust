@@ -31,7 +31,7 @@ use std::ptr;
 use std::run;
 use std::str;
 use std::vec;
-use std::rt::io::File;
+use std::rt::io::fs;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
@@ -950,7 +950,7 @@ pub fn link_binary(sess: Session,
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
-        File::unlink(obj_filename);
+        fs::unlink(obj_filename);
     }
 }
 

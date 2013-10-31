@@ -20,8 +20,7 @@ use std::libc;
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os;
 use std::rt::io;
-use std::rt::io::file;
-use std::rt::io::File;
+use std::rt::io::fs;
 use messages::*;
 
 pub fn default_workspace() -> Path {
@@ -31,7 +30,7 @@ pub fn default_workspace() -> Path {
     }
     let result = p[0];
     if !result.is_dir() {
-        file::mkdir_recursive(&result, io::UserRWX);
+        fs::mkdir_recursive(&result, io::UserRWX);
     }
     result
 }
@@ -46,11 +45,11 @@ pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 /// and executable by the user. Returns true iff creation
 /// succeeded.
 pub fn make_dir_rwx(p: &Path) -> bool {
-    io::result(|| file::mkdir(p, io::UserRWX)).is_ok()
+    io::result(|| fs::mkdir(p, io::UserRWX)).is_ok()
 }
 
 pub fn make_dir_rwx_recursive(p: &Path) -> bool {
-    io::result(|| file::mkdir_recursive(p, io::UserRWX)).is_ok()
+    io::result(|| fs::mkdir_recursive(p, io::UserRWX)).is_ok()
 }
 
 // n.b. The next three functions ignore the package version right
@@ -73,7 +72,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     if !src_dir.is_dir() { return None }
 
     let mut found = None;
-    for p in file::walk_dir(&src_dir) {
+    for p in fs::walk_dir(&src_dir) {
         if p.is_dir() {
             if p == src_dir.join(&pkgid.path) || {
                 let pf = p.filename_str();
@@ -216,7 +215,7 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
     debug!("Listing directory {}", dir_to_search.display());
-    let dir_contents = do io::ignore_io_error { file::readdir(dir_to_search) };
+    let dir_contents = do io::ignore_io_error { fs::readdir(dir_to_search) };
     debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
@@ -339,7 +338,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
-    if io::result(|| file::mkdir_recursive(&result, io::UserRWX)).is_err() {
+    if io::result(|| fs::mkdir_recursive(&result, io::UserRWX)).is_err() {
         cond.raise((result.clone(), format!("target_file_in_workspace couldn't \
             create the {} dir (pkgid={}, workspace={}, what={:?}, where={:?}",
             subdir, pkgid.to_str(), workspace.display(), what, where)));
@@ -354,7 +353,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     result.push(&pkgid.path);
     debug!("Creating build dir {} for package id {}", result.display(),
            pkgid.to_str());
-    file::mkdir_recursive(&result, io::UserRWX);
+    fs::mkdir_recursive(&result, io::UserRWX);
     return result;
 }
 
@@ -399,12 +398,12 @@ pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
     let mut did_something = false;
     let installed_bin = target_executable_in_workspace(pkgid, workspace);
     if installed_bin.exists() {
-        File::unlink(&installed_bin);
+        fs::unlink(&installed_bin);
         did_something = true;
     }
     let installed_lib = target_library_in_workspace(pkgid, workspace);
     if installed_lib.exists() {
-        File::unlink(&installed_lib);
+        fs::unlink(&installed_lib);
         did_something = true;
     }
     if !did_something {

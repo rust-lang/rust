@@ -1207,7 +1207,7 @@ externfn!(fn uv_fs_ftruncate(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
 externfn!(fn uv_fs_readlink(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
                             cb: *u8) -> c_int)
 externfn!(fn uv_fs_symlink(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                           dst: *c_char, cb: *u8) -> c_int)
+                           dst: *c_char, flags: c_int, cb: *u8) -> c_int)
 externfn!(fn uv_fs_link(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
                         dst: *c_char, cb: *u8) -> c_int)
 externfn!(fn uv_fs_chown(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,

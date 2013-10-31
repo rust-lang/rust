@@ -12,7 +12,7 @@
 use std::option;
 use std::os;
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::fs;
 use std::hashmap::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }
@@ -119,7 +119,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 pub fn search(filesearch: @FileSearch, pick: pick) {
     do filesearch.for_each_lib_search_path() |lib_search_path| {
         debug!("searching {}", lib_search_path.display());
-        match io::result(|| file::readdir(lib_search_path)) {
+        match io::result(|| fs::readdir(lib_search_path)) {
             Ok(files) => {
                 let mut rslt = FileDoesntMatch;
                 for path in files.iter() {
