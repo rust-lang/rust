@@ -83,12 +83,11 @@ use local_data;
 use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown, TaskFromFriend};
 use rt::task::{Task, Sched};
-use rt::task::{UnwindReasonLinked, UnwindReasonStr};
+use rt::task::{UnwindMessageLinked, UnwindMessageStrStatic};
 use rt::task::{UnwindResult, Success, Failure};
 use rt::thread::Thread;
 use rt::work_queue::WorkQueue;
 use rt::{in_green_task_context, new_event_loop, KillHandle};
-use send_str::IntoSendStr;
 use task::SingleThreaded;
 use task::TaskOpts;
 use task::unkillable;
@@ -325,7 +324,7 @@ impl Drop for Taskgroup {
         do RuntimeGlue::with_task_handle_and_failing |me, failing| {
             if failing {
                 for x in self.notifier.mut_iter() {
-                    x.task_result = Some(Failure(UnwindReasonLinked));
+                    x.task_result = Some(Failure(UnwindMessageLinked));
                 }
                 // Take everybody down with us. After this point, every
                 // other task in the group will see 'tg' as none, which
@@ -380,7 +379,7 @@ impl AutoNotify {
             notify_chan: chan,
 
             // Un-set above when taskgroup successfully made.
-            task_result: Some(Failure(UnwindReasonStr("AutoNotify::new()".into_send_str())))
+            task_result: Some(Failure(UnwindMessageStrStatic("AutoNotify::new()")))
         }
     }
 }

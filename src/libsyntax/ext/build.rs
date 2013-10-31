@@ -604,9 +604,9 @@ impl AstBuilder for @ExtCtxt {
             span,
             ~[
                 self.ident_of("std"),
-                self.ident_of("sys"),
-                self.ident_of("FailWithCause"),
-                self.ident_of("fail_with"),
+                self.ident_of("rt"),
+                self.ident_of("task"),
+                self.ident_of("begin_unwind"),
             ],
             ~[
                 self.expr_str(span, msg),

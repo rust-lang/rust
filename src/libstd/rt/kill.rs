@@ -155,7 +155,7 @@ use cell::Cell;
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
-use rt::task::UnwindReasonLinked;
+use rt::task::UnwindMessageLinked;
 use rt::task::{UnwindResult, Failure};
 use task::spawn::Taskgroup;
 use to_bytes::IterBytes;
@@ -597,7 +597,7 @@ impl Death {
                 }
 
                 if !success {
-                    result = Cell::new(Failure(UnwindReasonLinked));
+                    result = Cell::new(Failure(UnwindMessageLinked));
                 }
             }
             on_exit(result.take());

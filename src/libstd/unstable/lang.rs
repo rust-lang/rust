@@ -19,7 +19,7 @@ use rt::borrowck;
 #[cold]
 #[lang="fail_"]
 pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
-    task::begin_unwind(expr, file, line);
+    task::begin_unwind_raw(expr, file, line);
 }
 
 #[cold]
