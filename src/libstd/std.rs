@@ -8,45 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-# The Rust standard library
-
-The Rust standard library is a group of interrelated modules defining
-the core language traits, operations on built-in data types, collections,
-platform abstractions, the task scheduler, runtime support for language
-features and other common functionality.
-
-`std` includes modules corresponding to each of the integer types,
-each of the floating point types, the `bool` type, tuples, characters,
-strings (`str`), vectors (`vec`), managed boxes (`managed`), owned
-boxes (`owned`), and unsafe and borrowed pointers (`ptr`, `borrowed`).
-Additionally, `std` provides pervasive types (`option` and `result`),
-task creation and communication primitives (`task`, `comm`), platform
-abstractions (`os` and `path`), basic I/O abstractions (`io`), common
-traits (`kinds`, `ops`, `cmp`, `num`, `to_str`), and complete bindings
-to the C standard library (`libc`).
-
-# Standard library injection and the Rust prelude
-
-`std` is imported at the topmost level of every crate by default, as
-if the first line of each crate was
-
-    extern mod std;
-
-This means that the contents of std can be accessed from any context
-with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
-etc.
-
-Additionally, `std` contains a `prelude` module that reexports many of the
-most common types, traits and functions. The contents of the prelude are
-imported into every *module* by default.  Implicitly, all modules behave as if
-they contained the following prologue:
-
-    use std::prelude::*;
-
-*/
-
+//! # The Rust standard library
+//!
+//! The Rust standard library is a group of interrelated modules defining
+//! the core language traits, operations on built-in data types, collections,
+//! platform abstractions, the task scheduler, runtime support for language
+//! features and other common functionality.
+//!
+//! `std` includes modules corresponding to each of the integer types,
+//! each of the floating point types, the `bool` type, tuples, characters,
+//! strings (`str`), vectors (`vec`), managed boxes (`managed`), owned
+//! boxes (`owned`), and unsafe and borrowed pointers (`ptr`, `borrowed`).
+//! Additionally, `std` provides pervasive types (`option` and `result`),
+//! task creation and communication primitives (`task`, `comm`), platform
+//! abstractions (`os` and `path`), basic I/O abstractions (`io`), common
+//! traits (`kinds`, `ops`, `cmp`, `num`, `to_str`), and complete bindings
+//! to the C standard library (`libc`).
+//!
+//! # Standard library injection and the Rust prelude
+//!
+//! `std` is imported at the topmost level of every crate by default, as
+//! if the first line of each crate was
+//!
+//!     extern mod std;
+//!
+//! This means that the contents of std can be accessed from any context
+//! with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
+//! etc.
+//!
+//! Additionally, `std` contains a `prelude` module that reexports many of the
+//! most common types, traits and functions. The contents of the prelude are
+//! imported into every *module* by default.  Implicitly, all modules behave as if
+//! they contained the following prologue:
+//!
+//!     use std::prelude::*;
 
 #[link(name = "std",
        vers = "0.9-pre",
@@ -96,6 +91,7 @@ pub mod linkhack {
 /* The Prelude. */
 
 pub mod prelude;
+
 
 /* Primitive types */
 
@@ -158,6 +154,7 @@ pub mod container;
 pub mod default;
 pub mod any;
 
+
 /* Common data structures */
 
 pub mod option;
@@ -198,10 +195,12 @@ pub mod util;
 pub mod routine;
 pub mod mem;
 
+
 /* Unsupported interfaces */
 
 // Private APIs
 pub mod unstable;
+
 
 /* For internal use, not exported */
 
