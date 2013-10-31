@@ -358,7 +358,9 @@ $(3)/stage$(1)/test/rustuvtest-$(2)$$(X_$(2)):			\
 		$$(LIBRUSTUV_CRATE) $$(LIBRUSTUV_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
+		-L $$(UV_SUPPORT_DIR_$(2)) \
+		-L $$(dir $$(LIBUV_LIB_$(2)))
 
 $(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
 		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
@@ -392,7 +394,8 @@ $(3)/stage$(1)/test/rustdoctest-$(2)$$(X_$(2)):					\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
+		-L $$(SUNDOWN_DIR_$(2))
 
 endef
 
