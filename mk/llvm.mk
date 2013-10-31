@@ -42,5 +42,5 @@ $$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
 
 endef
 
-$(foreach host,$(CFG_HOST_TRIPLES), \
+$(foreach host,$(CFG_HOST), \
  $(eval $(call DEF_LLVM_RULES,$(host))))

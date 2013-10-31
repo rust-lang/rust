@@ -235,7 +235,7 @@ endif
 ######################################################################
 
 # The rustdoc executable
-RUSTDOC = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc$(X_$(CFG_BUILD_TRIPLE))
+RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 
 # The library documenting macro
 # $(1) - The crate name (std/extra)
@@ -249,8 +249,8 @@ doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
 DOCS += doc/$(1)/index.html
 endef
 
-$(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD_TRIPLE)))
-$(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD_TRIPLE)))
+$(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD)))
 
 
 ifdef CFG_DISABLE_DOCS
