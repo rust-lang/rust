@@ -92,14 +92,7 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
-RUNTIME_CS_$(1)_$(2) := rt/sundown/src/autolink.c \
-			rt/sundown/src/buffer.c \
-			rt/sundown/src/stack.c \
-			rt/sundown/src/markdown.c \
-			rt/sundown/html/houdini_href_e.c \
-			rt/sundown/html/houdini_html_e.c \
-			rt/sundown/html/html_smartypants.c \
-			rt/sundown/html/html.c
+RUNTIME_CS_$(1)_$(2) :=
 
 RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/record_sp.S
@@ -109,8 +102,6 @@ RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
 RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1)) \
-                     -I $$(S)src/rt/sundown/src \
-                     -I $$(S)src/rt/sundown/html \
                      -I $$(S)src/libuv/include
 RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
                      $$(RUNTIME_CS_$(1)_$(2):rt/%.c=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
@@ -242,6 +233,33 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 endif
+
+SUNDOWN_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),sundown)
+SUNDOWN_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/sundown
+SUNDOWN_LIB_$(1) := $$(SUNDOWN_DIR_$(1))/$$(SUNDOWN_NAME_$(1))
+
+SUNDOWN_CS_$(1) := rt/sundown/src/autolink.c \
+			rt/sundown/src/buffer.c \
+			rt/sundown/src/stack.c \
+			rt/sundown/src/markdown.c \
+			rt/sundown/html/houdini_href_e.c \
+			rt/sundown/html/houdini_html_e.c \
+			rt/sundown/html/html_smartypants.c \
+			rt/sundown/html/html.c
+
+SUNDOWN_OBJS_$(1) := $$(SUNDOWN_CS_$(1):rt/%.c=$$(SUNDOWN_DIR_$(1))/%.o)
+
+$$(SUNDOWN_DIR_$(1))/%.o: rt/%.c
+	@$$(call E, compile: $$@)
+	@mkdir -p $$(@D)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
+		-I $$(S)src/rt/sundown/src -I $$(S)src/rt/sundown/html \
+                 $$(RUNTIME_CFLAGS_$(1))) $$<
+
+$$(SUNDOWN_LIB_$(1)): $$(SUNDOWN_OBJS_$(1))
+	@$$(call E, link: $$@)
+	$$(Q)$$(AR_$(1)) rcs $$@ $$^
+
 endef
 
 # Instantiate template for all stages/targets

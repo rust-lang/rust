@@ -183,12 +183,6 @@ rust_uv_pipe_init
 rust_uv_signal_init
 rust_uv_signal_start
 rust_uv_signal_stop
-sdhtml_renderer
-sd_markdown_new
-sd_markdown_render
-sd_markdown_free
-bufrelease
-bufnew
 rust_take_dlerror_lock
 rust_drop_dlerror_lock
 rust_uv_pipe_open
