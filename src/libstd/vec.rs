@@ -38,7 +38,7 @@ These traits include `ImmutableVector`, and `MutableVector` for the `&mut [T]`
 case.
 
 An example is the method `.slice(a, b)` that returns an immutable "view" into
-a vector or a vector slice from the index interval `[a, b)`:
+a vector or a vector slice from the index interval `(a, b)`:
 
 ```rust
 let numbers = [0, 1, 2];
