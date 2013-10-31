@@ -86,6 +86,4 @@ impl Writer for PipeStream {
             }
         }
     }
-
-    fn flush(&mut self) {}
 }

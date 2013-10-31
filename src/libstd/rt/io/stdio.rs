@@ -294,8 +294,6 @@ impl Writer for StdWriter {
             Err(e) => io_error::cond.raise(e)
         }
     }
-
-    fn flush(&mut self) { /* nothing to do */ }
 }
 
 #[cfg(test)]

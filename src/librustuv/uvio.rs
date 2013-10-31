@@ -1653,9 +1653,6 @@ impl RtioFileStream for UvFileStream {
         let self_ = unsafe { cast::transmute::<&UvFileStream, &mut UvFileStream>(self) };
         self_.seek_common(0, SEEK_CUR)
     }
-    fn flush(&mut self) -> Result<(), IoError> {
-        Ok(())
-    }
 }
 
 pub struct UvProcess {
