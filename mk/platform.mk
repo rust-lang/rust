@@ -193,6 +193,35 @@ CFG_LDPATH_i686-unknown-linux-gnu :=
 CFG_RUN_i686-unknown-linux-gnu=$(2)
 CFG_RUN_TARG_i686-unknown-linux-gnu=$(call CFG_RUN_i686-unknown-linux-gnu,,$(2))
 
+# arm-apple-darwin configuration
+ifeq ($(CFG_OSTYPE),apple-darwin)
+CFG_IOS_SDK = $(shell xcrun --show-sdk-path -sdk iphoneos)
+CFG_IOS_FLAGS = -target arm-apple-darwin -isysroot $(CFG_IOS_SDK) -I $(CFG_IOS_SDK)/usr/include -I $(CFG_IOS_SDK)/usr/include/c++/4.2.1 -I /usr/include
+CC_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos clang)
+CXX_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos clang++)
+CPP_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos clang++)
+AR_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos ar)
+CFG_LIB_NAME_arm-apple-darwin = lib$(1).dylib
+CFG_LIB_GLOB_arm-apple-darwin = lib$(1)-*.dylib
+CFG_LIB_DSYM_GLOB_arm-apple-darwin = lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_arm-apple-darwin := -Wall -Werror -g -fPIC $(CFG_IOS_FLAGS)
+CFG_GCCISH_CXXFLAGS_arm-apple-darwin := -fno-rtti $(CFG_IOS_FLAGS)
+CFG_GCCISH_LINK_FLAGS_arm-apple-darwin := -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind 
+CFG_GCCISH_DEF_FLAG_arm-apple-darwin := -Wl,-exported_symbols_list,
+CFG_GCCISH_PRE_LIB_FLAGS_arm-apple-darwin :=
+CFG_GCCISH_POST_LIB_FLAGS_arm-apple-darwin :=
+CFG_DEF_SUFFIX_arm-apple-darwin := .darwin.def
+CFG_INSTALL_NAME_arm-apple-darwin = -Wl,-install_name,@rpath/$(1)
+CFG_LIBUV_LINK_FLAGS_arm-apple-darwin =
+CFG_EXE_SUFFIX_arm-apple-darwin :=
+CFG_WINDOWSY_arm-apple-darwin :=
+CFG_UNIXY_arm-apple-darwin := 1
+CFG_PATH_MUNGE_arm-apple-darwin := true
+CFG_LDPATH_arm-apple-darwin :=
+CFG_RUN_arm-apple-darwin = $(2)
+CFG_RUN_TARG_arm-apple-darwin = $(call CFG_RUN_arm-apple-darwin,,$(2))
+endif
+
 # x86_64-apple-darwin configuration
 CC_x86_64-apple-darwin=$(CC)
 CXX_x86_64-apple-darwin=$(CXX)
