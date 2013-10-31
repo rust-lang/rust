@@ -383,15 +383,6 @@ impl Writer for FileStream {
             }
         }
     }
-
-    fn flush(&mut self) {
-        match self.fd.flush() {
-            Ok(_) => (),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-            }
-        }
-    }
 }
 
 /// a `std::rt::io:Seek` trait impl for file I/O.

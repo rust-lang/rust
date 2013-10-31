@@ -78,7 +78,6 @@ impl Reader for UnixStream {
 
 impl Writer for UnixStream {
     fn write(&mut self, buf: &[u8]) { self.obj.write(buf) }
-    fn flush(&mut self) { self.obj.flush() }
 }
 
 pub struct UnixListener {
