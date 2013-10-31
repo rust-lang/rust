@@ -323,9 +323,6 @@ pub mod native {
     }
 }
 
-/// Mock implementations for testing
-mod mock;
-
 /// Signal handling
 pub mod signal;
 
