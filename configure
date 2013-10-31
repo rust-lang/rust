@@ -336,7 +336,7 @@ then
 fi
 
 
-DEFAULT_BUILD_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
+DEFAULT_BUILD="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_BUILD_DIR="$(pwd)/"
@@ -385,11 +385,25 @@ opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
-valopt build-triple "${DEFAULT_BUILD_TRIPLE}" "LLVM build triple"
-valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
-valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt mingw32-cross-path "" "MinGW32 cross compiler path"
+
+valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
+valopt host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
+valopt target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
+
+valopt localstatedir "/var/lib" "local state directory"
+valopt sysconfdir "/etc" "install system configuration files"
+
+valopt datadir "${CFG_PREFIX}/share" "install data"
+valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
+valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
+valopt libdir "${CFG_PREFIX}/lib" "install libraries" 
+
+#Deprecated opts to keep compatibility
+valopt build-triple "${DEFAULT_BUILD}" "LLVM build triple"
+valopt host-triples "${CFG_BUILD}" "LLVM host triples"
+valopt target-triples "${CFG_HOST}" "LLVM target triples"
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
@@ -589,11 +603,21 @@ fi
 # a little post-processing of various config values
 
 CFG_PREFIX=${CFG_PREFIX%/}
-CFG_HOST_TRIPLES="$(echo $CFG_HOST_TRIPLES | tr ',' ' ')"
-CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
-CFG_SUPPORTED_TARGET_TRIPLES="$(grep ^CC_*=* $CFG_SRC_DIR/mk/platform.mk | sed -e 's/^CC_//' -e 's/\([^=]*\).*/\1/' | xargs)"
+CFG_MANDIR=${CFG_MANDIR%/}
+CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
+CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
+CFG_SUPPORTED_TARGET="$(grep ^CC_*=* $CFG_SRC_DIR/mk/platform.mk | sed -e 's/^CC_//' -e 's/\([^=]*\).*/\1/' | xargs)"
 
 # copy host-triples to target-triples so that hosts are a subset of targets
+V_TEMP=""
+for i in $CFG_HOST $CFG_TARGET;
+do
+   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+done
+CFG_TARGET=$V_TEMP
+
+# copy host-triples to target-triples so that hosts are a subset of targets
+# XXX: remove deprecated variables here
 V_TEMP=""
 for i in $CFG_HOST_TRIPLES $CFG_TARGET_TRIPLES;
 do
@@ -601,11 +625,22 @@ do
 done
 CFG_TARGET_TRIPLES=$V_TEMP
 
+# XXX: Support for deprecated syntax, should be dropped.
+if [ ! -z "$CFG_BUILD_TRIPLE" ]; then
+    CFG_BUILD=${CFG_BUILD_TRIPLE}
+fi
+if [ ! -z "$CFG_HOST_TRIPLES" ]; then
+    CFG_HOST=${CFG_HOST_TRIPLES}
+fi
+if [ ! -z "$CFG_TARGET_TRIPLES" ]; then
+    CFG_TARGET=${CFG_TARGET_TRIPLES}
+fi
+
 # check target-specific tool-chains
-for i in $CFG_TARGET_TRIPLES
+for i in $CFG_TARGET
 do
     L_CHECK=false
-    for j in $CFG_SUPPORTED_TARGET_TRIPLES
+    for j in $CFG_SUPPORTED_TARGET
     do
         if [ $i = $j ]
         then
@@ -664,17 +699,17 @@ do
     make_dir $i
 done
 
-for t in $CFG_HOST_TRIPLES
+for t in $CFG_HOST
 do
     make_dir $t/llvm
 done
 
-for t in $CFG_HOST_TRIPLES
+for t in $CFG_HOST
 do
     make_dir $t/rustllvm
 done
 
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_TARGET
 do
   make_dir $t/rt
   for s in 0 1 2 3
@@ -703,9 +738,9 @@ then
     CFG_LIBDIR=bin
 fi
 
-for h in $CFG_HOST_TRIPLES
+for h in $CFG_HOST
 do
-    for t in $CFG_TARGET_TRIPLES
+    for t in $CFG_TARGET
     do
         for i in 0 1 2 3
         do
@@ -785,7 +820,7 @@ fi
 # Configure llvm, only if necessary
 step_msg "looking at LLVM"
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
-for t in $CFG_HOST_TRIPLES
+for t in $CFG_HOST
 do
     do_reconfigure=1
 
@@ -961,20 +996,15 @@ putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
 putvar CFG_PREFIX
-putvar CFG_BUILD_TRIPLE
-putvar CFG_HOST_TRIPLES
-putvar CFG_TARGET_TRIPLES
+putvar CFG_BUILD
+putvar CFG_HOST
+putvar CFG_TARGET
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MINGW32_CROSS_PATH
-
-if [ ! -z "$CFG_ENABLE_PAX_FLAGS" ]
-then
-    putvar CFG_ENABLE_PAX_FLAGS
-    putvar CFG_PAXCTL
-fi
+putvar CFG_MANDIR
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.
@@ -1015,7 +1045,7 @@ fi
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_SRC_DIR
 
-for t in $CFG_HOST_TRIPLES
+for t in $CFG_HOST
 do
     CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
     CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)

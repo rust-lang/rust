@@ -14,13 +14,13 @@
 
 CLEAN_STAGE_RULES =								\
  $(foreach stage, $(STAGES),					\
-  $(foreach host, $(CFG_HOST_TRIPLES),		\
+  $(foreach host, $(CFG_HOST),		\
    clean$(stage)_H_$(host)						\
-   $(foreach target, $(CFG_TARGET_TRIPLES),		\
+   $(foreach target, $(CFG_TARGET),		\
     clean$(stage)_T_$(target)_H_$(host))))
 
 CLEAN_LLVM_RULES = 								\
- $(foreach target, $(CFG_HOST_TRIPLES),		\
+ $(foreach target, $(CFG_HOST),		\
   clean-llvm$(target))
 
 .PHONY: clean clean-all clean-misc clean-llvm
@@ -33,9 +33,9 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find $(CFG_BUILD_TRIPLE)/rustllvm \
-	         $(CFG_BUILD_TRIPLE)/rt \
-		 $(CFG_BUILD_TRIPLE)/test \
+	$(Q)find $(CFG_BUILD)/rustllvm \
+	         $(CFG_BUILD)/rt \
+		 $(CFG_BUILD)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -43,7 +43,7 @@ clean-misc:
          -name '*.def' -o     \
          -name '*.bc'         \
          | xargs rm -f
-	$(Q)find $(CFG_BUILD_TRIPLE)\
+	$(Q)find $(CFG_BUILD)\
          -name '*.dSYM'       \
          | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
@@ -87,7 +87,7 @@ clean$(1)_H_$(2):
 
 endef
 
-$(foreach host, $(CFG_HOST_TRIPLES), \
+$(foreach host, $(CFG_HOST), \
  $(eval $(foreach stage, $(STAGES), \
   $(eval $(call CLEAN_HOST_STAGE_N,$(stage),$(host))))))
 
@@ -121,8 +121,8 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows
 endef
 
-$(foreach host, $(CFG_HOST_TRIPLES), \
- $(eval $(foreach target, $(CFG_TARGET_TRIPLES), \
+$(foreach host, $(CFG_HOST), \
+ $(eval $(foreach target, $(CFG_TARGET), \
   $(eval $(foreach stage, 0 1 2 3, \
    $(eval $(call CLEAN_TARGET_STAGE_N,$(stage),$(target),$(host))))))))
 
@@ -136,5 +136,5 @@ clean-llvm$(1): ;
 endif
 endef
 
-$(foreach host, $(CFG_HOST_TRIPLES), \
+$(foreach host, $(CFG_HOST), \
  $(eval $(call DEF_CLEAN_LLVM_HOST,$(host))))

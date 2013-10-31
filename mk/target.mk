@@ -11,7 +11,7 @@
 # This is the compile-time target-triple for the compiler. For the compiler at
 # runtime, this should be considered the host-triple. More explanation for why
 # this exists can be found on issue #2400
-export CFG_COMPILER_TRIPLE
+export CFG_COMPILER
 
 # The standard libraries should be held up to a higher standard than any old
 # code, make sure that these common warnings are denied by default. These can
@@ -36,7 +36,7 @@ WFLAGS_ST2 = -D warnings
 # had its chance to clean it out; otherwise the other products will be
 # inadvertantly included in the clean out.
 
-SNAPSHOT_RUSTC_POST_CLEANUP=$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE))
+SNAPSHOT_RUSTC_POST_CLEANUP=$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD))
 
 define TARGET_STAGE_N
 
@@ -96,7 +96,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)): \
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBSYNTAX_GLOB_$(2)),$$(notdir $$@))
 
 # Only build the compiler for host triples
-ifneq ($$(findstring $(2),$$(CFG_HOST_TRIPLES)),)
+ifneq ($$(findstring $(2),$$(CFG_HOST)),)
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)): \
 		$(2)/rustllvm/$(CFG_RUSTLLVM_$(3)) \
@@ -105,7 +105,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)): CFG_COMPILER_TRIPLE = $(2)
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)): CFG_COMPILER = $(2)
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
@@ -142,8 +142,8 @@ endif
 endef
 
 # In principle, each host can build each target:
-$(foreach source,$(CFG_HOST_TRIPLES),				\
- $(foreach target,$(CFG_TARGET_TRIPLES),			\
+$(foreach source,$(CFG_HOST),				\
+ $(foreach target,$(CFG_TARGET),			\
   $(eval $(call TARGET_STAGE_N,0,$(target),$(source)))		\
   $(eval $(call TARGET_STAGE_N,1,$(target),$(source)))		\
   $(eval $(call TARGET_STAGE_N,2,$(target),$(source)))		\
