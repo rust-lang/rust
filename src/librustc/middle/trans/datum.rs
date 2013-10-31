@@ -628,37 +628,6 @@ impl Datum {
             ty::ty_rptr(_, mt) => {
                 return (Some(deref_ptr(bcx, self, mt.ty)), bcx);
             }
-            ty::ty_enum(did, ref substs) => {
-                // Check whether this enum is a newtype enum:
-                let variants = ty::enum_variants(ccx.tcx, did);
-                if (*variants).len() != 1 || variants[0].args.len() != 1 {
-                    return (None, bcx);
-                }
-
-                let repr = adt::represent_type(ccx, self.ty);
-                let ty = ty::subst(ccx.tcx, substs, variants[0].args[0]);
-                return match self.mode {
-                    ByRef(_) => {
-                        // Recast lv.val as a pointer to the newtype
-                        // rather than a ptr to the enum type.
-                        (
-                            Some(Datum {
-                                val: adt::trans_field_ptr(bcx, repr, self.val,
-                                                    0, 0),
-                                ty: ty,
-                                mode: ByRef(ZeroMem)
-                            }),
-                            bcx
-                        )
-                    }
-                    ByValue => {
-                        // Actually, this case cannot happen right
-                        // now, because enums are never immediate.
-                        assert!(type_is_immediate(bcx.ccx(), ty));
-                        (Some(Datum {ty: ty, ..*self}), bcx)
-                    }
-                };
-            }
             ty::ty_struct(did, ref substs) => {
                 // Check whether this struct is a newtype struct.
                 let fields = ty::struct_fields(ccx.tcx, did, substs);
