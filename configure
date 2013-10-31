@@ -401,9 +401,9 @@ valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 valopt libdir "${CFG_PREFIX}/lib" "install libraries" 
 
 #Deprecated opts to keep compatibility
-valopt build-triple "${DEFAULT_BUILD}" "LLVM build triple"
-valopt host-triples "${CFG_BUILD}" "LLVM host triples"
-valopt target-triples "${CFG_HOST}" "LLVM target triples"
+valopt build-triple "${CFG_BUILD}" "LLVM build triple"
+valopt host-triples "${CFG_HOST}" "LLVM host triples"
+valopt target-triples "${CFG_TARGET}" "LLVM target triples"
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
