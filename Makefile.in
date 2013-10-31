@@ -70,22 +70,22 @@ include config.mk
 ALL_OBJ_FILES :=
 
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
-NON_BUILD_HOST_TRIPLES = $(filter-out $(CFG_BUILD_TRIPLE),$(CFG_HOST_TRIPLES))
-NON_BUILD_TARGET_TRIPLES = $(filter-out $(CFG_BUILD_TRIPLE),$(CFG_TARGET_TRIPLES))
+NON_BUILD_HOST = $(filter-out $(CFG_BUILD),$(CFG_HOST))
+NON_BUILD_TARGET = $(filter-out $(CFG_BUILD),$(CFG_TARGET))
 
 ifneq ($(MAKE_RESTARTS),)
 CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
 endif
 
-CFG_INFO := $(info cfg: build triple $(CFG_BUILD_TRIPLE))
-CFG_INFO := $(info cfg: host triples $(CFG_HOST_TRIPLES))
-CFG_INFO := $(info cfg: target triples $(CFG_TARGET_TRIPLES))
+CFG_INFO := $(info cfg: build triple $(CFG_BUILD))
+CFG_INFO := $(info cfg: host triples $(CFG_HOST))
+CFG_INFO := $(info cfg: target triples $(CFG_TARGET))
 
-ifneq ($(wildcard $(NON_BUILD_HOST_TRIPLES)),)
-CFG_INFO := $(info cfg: non-build host triples $(NON_BUILD_HOST_TRIPLES))
+ifneq ($(wildcard $(NON_BUILD_HOST)),)
+CFG_INFO := $(info cfg: non-build host triples $(NON_BUILD_HOST))
 endif
-ifneq ($(wildcard $(NON_BUILD_TARGET_TRIPLES)),)
-CFG_INFO := $(info cfg: non-build target triples $(NON_BUILD_TARGET_TRIPLES))
+ifneq ($(wildcard $(NON_BUILD_TARGET)),)
+CFG_INFO := $(info cfg: non-build target triples $(NON_BUILD_TARGET))
 endif
 
 CFG_RUSTC_FLAGS := $(RUSTFLAGS)
@@ -189,7 +189,7 @@ S := $(CFG_SRC_DIR)
 define DEF_X
 X_$(1) := $(CFG_EXE_SUFFIX_$(1))
 endef
-$(foreach target,$(CFG_TARGET_TRIPLES),\
+$(foreach target,$(CFG_TARGET),\
   $(eval $(call DEF_X,$(target))))
 
 # Look in doc and src dirs.
@@ -273,7 +273,7 @@ define LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
 endef
 endif
 
-$(foreach target,$(CFG_TARGET_TRIPLES),\
+$(foreach target,$(CFG_TARGET),\
   $(eval $(call DEF_LIBS,$(target))))
 
 ######################################################################
@@ -347,7 +347,7 @@ LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X_$(1))
 
 endef
 
-$(foreach host,$(CFG_HOST_TRIPLES), \
+$(foreach host,$(CFG_HOST), \
  $(eval $(call DEF_LLVM_VARS,$(host))))
 
 ######################################################################
@@ -361,7 +361,7 @@ export CFG_SRC_DIR
 export CFG_BUILD_DIR
 export CFG_VERSION
 export CFG_VERSION_WIN
-export CFG_BUILD_TRIPLE
+export CFG_BUILD
 export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS
 export CFG_PREFIX
@@ -484,7 +484,7 @@ CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
 # if you're building a cross config, the host->* parts are
 # effectively stage1, since it uses the just-built stage0.
 ifeq ($(1),0)
-ifneq ($(strip $(CFG_BUILD_TRIPLE)),$(strip $(3)))
+ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 endif
 endif
@@ -507,8 +507,8 @@ PERF_STAGE$(1)_T_$(2)_H_$(3) := 				\
 
 endef
 
-$(foreach build,$(CFG_HOST_TRIPLES), \
- $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
+$(foreach build,$(CFG_HOST), \
+ $(eval $(foreach target,$(CFG_TARGET), \
   $(eval $(foreach stage,$(STAGES), \
    $(eval $(call SREQ,$(stage),$(target),$(build))))))))
 
@@ -523,18 +523,18 @@ define DEF_RUSTC_STAGE_TARGET
 # $(2) == stage
 
 rustc-stage$(2)-H-$(1):							\
-	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	$$(foreach target,$$(CFG_TARGET),	\
 		$$(SREQ$(2)_T_$$(target)_H_$(1)))
 
 endef
 
-$(foreach host,$(CFG_HOST_TRIPLES),							\
+$(foreach host,$(CFG_HOST),							\
  $(eval $(foreach stage,1 2 3,									\
   $(eval $(call DEF_RUSTC_STAGE_TARGET,$(host),$(stage))))))
 
-rustc-stage1: rustc-stage1-H-$(CFG_BUILD_TRIPLE)
-rustc-stage2: rustc-stage2-H-$(CFG_BUILD_TRIPLE)
-rustc-stage3: rustc-stage3-H-$(CFG_BUILD_TRIPLE)
+rustc-stage1: rustc-stage1-H-$(CFG_BUILD)
+rustc-stage2: rustc-stage2-H-$(CFG_BUILD)
+rustc-stage3: rustc-stage3-H-$(CFG_BUILD)
 
 define DEF_RUSTC_TARGET
 # $(1) == architecture
@@ -542,15 +542,15 @@ define DEF_RUSTC_TARGET
 rustc-H-$(1): rustc-stage2-H-$(1)
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES),			\
+$(foreach host,$(CFG_TARGET),			\
  $(eval $(call DEF_RUSTC_TARGET,$(host))))
 
-rustc-stage1: rustc-stage1-H-$(CFG_BUILD_TRIPLE)
-rustc-stage2: rustc-stage2-H-$(CFG_BUILD_TRIPLE)
-rustc-stage3: rustc-stage3-H-$(CFG_BUILD_TRIPLE)
-rustc: rustc-H-$(CFG_BUILD_TRIPLE)
+rustc-stage1: rustc-stage1-H-$(CFG_BUILD)
+rustc-stage2: rustc-stage2-H-$(CFG_BUILD)
+rustc-stage3: rustc-stage3-H-$(CFG_BUILD)
+rustc: rustc-H-$(CFG_BUILD)
 
-rustc-H-all: $(foreach host,$(CFG_HOST_TRIPLES),rustc-H-$(host))
+rustc-H-all: $(foreach host,$(CFG_HOST),rustc-H-$(host))
 
 ######################################################################
 # Entrypoint rule
@@ -566,12 +566,12 @@ CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
 
 #XXX This is surely busted
-all: $(SREQ1$(CFG_BUILD_TRIPLE)) $(GENERATED) docs
+all: $(SREQ1$(CFG_BUILD)) $(GENERATED) docs
 
 else
 
 define ALL_TARGET_N
-ifneq ($$(findstring $(1),$$(CFG_HOST_TRIPLES)),)
+ifneq ($$(findstring $(1),$$(CFG_HOST)),)
 # This is a host
 all-target-$(1)-host-$(2): $$(CSREQ2_T_$(1)_H_$(2))
 else
@@ -580,12 +580,12 @@ all-target-$(1)-host-$(2): $$(SREQ2_T_$(1)_H_$(2))
 endif
 endef
 
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(foreach host,$(CFG_HOST_TRIPLES), \
+$(foreach target,$(CFG_TARGET), \
+ $(foreach host,$(CFG_HOST), \
  $(eval $(call ALL_TARGET_N,$(target),$(host)))))
 
-ALL_TARGET_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
-	$(foreach host,$(CFG_HOST_TRIPLES), \
+ALL_TARGET_RULES = $(foreach target,$(CFG_TARGET), \
+	$(foreach host,$(CFG_HOST), \
  all-target-$(target)-host-$(host)))
 
 all: $(ALL_TARGET_RULES) $(GENERATED) docs

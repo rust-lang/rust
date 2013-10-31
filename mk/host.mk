@@ -161,7 +161,7 @@ endif
 
 endef
 
-$(foreach t,$(CFG_HOST_TRIPLES),					\
+$(foreach t,$(CFG_HOST),					\
 	$(eval $(call CP_HOST_STAGE_N,0,1,$(t),$(t)))	\
 	$(eval $(call CP_HOST_STAGE_N,1,2,$(t),$(t)))	\
 	$(eval $(call CP_HOST_STAGE_N,2,3,$(t),$(t))))

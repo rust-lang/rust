@@ -57,7 +57,7 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 	cp $< $@
 
 $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
-            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
+            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD))
 	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py i686-pc-mingw32/stage3/bin
 	@$(call E, ISCC: $@)
 	$(Q)"$(CFG_ISCC)" $<
@@ -84,7 +84,7 @@ $(PKG_TAR): $(PKG_FILES)
 
 .PHONY: dist distcheck
 
-ifdef CFG_WINDOWSY_$(CFG_BUILD_TRIPLE)
+ifdef CFG_WINDOWSY_$(CFG_BUILD)
 
 dist: $(PKG_EXE)
 
