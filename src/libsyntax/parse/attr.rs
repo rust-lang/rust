@@ -161,6 +161,16 @@ impl parser_attr for Parser {
             token::EQ => {
                 self.bump();
                 let lit = self.parse_lit();
+                // FIXME #623 Non-string meta items are not serialized correctly;
+                // just forbid them for now
+                match lit.node {
+                    ast::lit_str(*) => (),
+                    _ => {
+                        self.span_err(
+                            lit.span,
+                            "non-string literals are not allowed in meta-items");
+                    }
+                }
                 let hi = self.span.hi;
                 @spanned(lo, hi, ast::MetaNameValue(name, lit))
             }
