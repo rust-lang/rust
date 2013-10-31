@@ -75,7 +75,6 @@ struct Stats {
     attr_bytes: u64,
     dep_bytes: u64,
     lang_item_bytes: u64,
-    link_args_bytes: u64,
     impl_bytes: u64,
     misc_bytes: u64,
     item_bytes: u64,
@@ -1610,19 +1609,6 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();   // tag_lang_items
 }
 
-fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
-    ebml_w.start_tag(tag_link_args);
-
-    let link_args = cstore::get_used_link_args(ecx.cstore);
-    for link_arg in link_args.iter() {
-        ebml_w.start_tag(tag_link_args_arg);
-        ebml_w.writer.write(link_arg.as_bytes());
-        ebml_w.end_tag();
-    }
-
-    ebml_w.end_tag();
-}
-
 struct ImplVisitor<'self> {
     ecx: &'self EncodeContext<'self>,
     ebml_w: &'self mut writer::Encoder,
@@ -1740,7 +1726,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         attr_bytes: 0,
         dep_bytes: 0,
         lang_item_bytes: 0,
-        link_args_bytes: 0,
         impl_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
@@ -1797,11 +1782,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     encode_lang_items(&ecx, &mut ebml_w);
     ecx.stats.lang_item_bytes = wr.tell() - i;
 
-    // Encode the link args.
-    i = wr.tell();
-    encode_link_args(&ecx, &mut ebml_w);
-    ecx.stats.link_args_bytes = wr.tell() - i;
-
     // Encode the def IDs of impls, for coherence checking.
     i = wr.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
@@ -1838,7 +1818,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         println!(" attribute bytes: {}", ecx.stats.attr_bytes);
         println!("       dep bytes: {}", ecx.stats.dep_bytes);
         println!(" lang item bytes: {}", ecx.stats.lang_item_bytes);
-        println!(" link args bytes: {}", ecx.stats.link_args_bytes);
         println!("      impl bytes: {}", ecx.stats.impl_bytes);
         println!("      misc bytes: {}", ecx.stats.misc_bytes);
         println!("      item bytes: {}", ecx.stats.item_bytes);
