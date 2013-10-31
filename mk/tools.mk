@@ -57,10 +57,12 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4)):		\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)			\
 		$$(SREQ$(1)_T_$(4)_H_$(3))			\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4)) \
+		$$(SUNDOWN_LIB_$(4)) \
 		| $$(TLIB$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOC_GLOB_$(4)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(4)_H_$(3)) $$(WFLAGS_ST$(1)) --out-dir $$(@D) $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) $$(WFLAGS_ST$(1)) \
+		-L $$(SUNDOWN_DIR_$(4)) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOC_GLOB_$(4)),$$(notdir $$@))
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X_$(4)):			\
