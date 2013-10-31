@@ -25,6 +25,24 @@ defined in `std::path::Path`. The impl adds useful methods about inspecting the
 metadata of a file. This includes getting the `stat` information, reading off
 particular bits of it, etc.
 
+# Example
+
+    use std::rt::io::{File, fs};
+
+    let path = Path::new("foo.txt");
+
+    // create the file, whether it exists or not
+    let mut file = File::create(&path);
+    file.write(bytes!("foobar"));
+
+    // open the file in read-only mode
+    let mut file = File::open(&path);
+    file.read_to_end();
+
+    println!("{}", path.stat().size);
+    fs::symlink(&path, &Path::new("bar.txt"));
+    fs::unlink(&path);
+
 */
 
 use c_str::ToCStr;
@@ -42,16 +60,14 @@ use vec::OwnedVector;
 
 /// Unconstrained file access type that exposes read and write operations
 ///
-/// Can be retreived via `File::open()` and `Path.File::open_mode()`.
+/// Can be constructed via `File::open()`, `File::create()`, and
+/// `File::open_mode()`.
 ///
 /// # Errors
 ///
 /// This type will raise an io_error condition if operations are attempted against
 /// it for which its underlying file descriptor was not configured at creation
-/// time, via the `FileAccess` parameter to `file::open()`.
-///
-/// For this reason, it is best to use the access-constrained wrappers that are
-/// exposed via `Path.open()` and `Path.create()`.
+/// time, via the `FileAccess` parameter to `File::open_mode()`.
 pub struct File {
     priv fd: ~RtioFileStream,
     priv path: Path,
@@ -140,7 +156,7 @@ impl File {
     ///
     ///     use std::rt::io::File;
     ///
-    ///     let contents = File::open("foo.txt").read_to_end();
+    ///     let contents = File::open(&Path::new("foo.txt")).read_to_end();
     pub fn open(path: &Path) -> Option<File> {
         File::open_mode(path, Open, Read)
     }
@@ -155,237 +171,10 @@ impl File {
     ///
     ///     use std::rt::io::File;
     ///
-    ///     File::create("foo.txt").write(bytes!("This is a sample file"));
+    ///     let mut f = File::create(&Path::new("foo.txt"));
+    ///     f.write(bytes!("This is a sample file"));
     pub fn create(path: &Path) -> Option<File> {
         File::open_mode(path, Truncate, Write)
-    }
-
-    /// Unlink a file from the underlying filesystem.
-    ///
-    /// # Example
-    ///
-    ///     use std::rt::io::File;
-    ///
-    ///     let p = Path::new("/some/file/path.txt");
-    ///     File::unlink(&p);
-    ///     // if we made it here without failing, then the
-    ///     // unlink operation was successful
-    ///
-    /// Note that, just because an unlink call was successful, it is not
-    /// guaranteed that a file is immediately deleted (e.g. depending on
-    /// platform, other open file descriptors may prevent immediate removal)
-    ///
-    /// # Errors
-    ///
-    /// This function will raise an `io_error` condition if the path points to a
-    /// directory, the user lacks permissions to remove the file, or if some
-    /// other filesystem-level error occurs.
-    pub fn unlink(path: &Path) {
-        do io_raise |io| { io.fs_unlink(&path.to_c_str()) };
-    }
-
-    /// Given a path, query the file system to get information about a file,
-    /// directory, etc. This function will traverse symlinks to query
-    /// information about the destination file.
-    ///
-    /// Returns a fully-filled out stat structure on succes, and on failure it
-    /// will return a dummy stat structure (it is expected that the condition
-    /// raised is handled as well).
-    ///
-    /// # Example
-    ///
-    ///     use std::rt::io::{File, io_error};
-    ///
-    ///     let p = Path::new("/some/file/path.txt");
-    ///
-    ///     do io_error::cond.trap(|_| {
-    ///         // hoo-boy...
-    ///     }).inside {
-    ///         let info = File::stat(p);
-    ///         if info.is_file {
-    ///             // just imagine the possibilities ...
-    ///         }
-    ///     }
-    ///
-    /// # Errors
-    ///
-    /// This call will raise an `io_error` condition if the user lacks the
-    /// requisite permissions to perform a `stat` call on the given path or if
-    /// there is no entry in the filesystem at the provided path.
-    pub fn stat(path: &Path) -> FileStat {
-        do io_raise |io| {
-            io.fs_stat(&path.to_c_str())
-        }.unwrap_or_else(File::dummystat)
-    }
-
-    fn dummystat() -> FileStat {
-        FileStat {
-            path: Path::new(""),
-            size: 0,
-            kind: io::TypeFile,
-            perm: 0,
-            created: 0,
-            modified: 0,
-            accessed: 0,
-            device: 0,
-            inode: 0,
-            rdev: 0,
-            nlink: 0,
-            uid: 0,
-            gid: 0,
-            blksize: 0,
-            blocks: 0,
-            flags: 0,
-            gen: 0,
-        }
-    }
-
-    /// Perform the same operation as the `stat` function, except that this
-    /// function does not traverse through symlinks. This will return
-    /// information about the symlink file instead of the file that it points
-    /// to.
-    ///
-    /// # Errors
-    ///
-    /// See `stat`
-    pub fn lstat(path: &Path) -> FileStat {
-        do io_raise |io| {
-            io.fs_lstat(&path.to_c_str())
-        }.unwrap_or_else(File::dummystat)
-    }
-
-    /// Rename a file or directory to a new name.
-    ///
-    /// # Example
-    ///
-    ///     use std::rt::io::File;
-    ///
-    ///     File::rename(Path::new("foo"), Path::new("bar"));
-    ///     // Oh boy, nothing was raised!
-    ///
-    /// # Errors
-    ///
-    /// Will raise an `io_error` condition if the provided `path` doesn't exist,
-    /// the process lacks permissions to view the contents, or if some other
-    /// intermittent I/O error occurs.
-    pub fn rename(from: &Path, to: &Path) {
-        do io_raise |io| {
-            io.fs_rename(&from.to_c_str(), &to.to_c_str())
-        };
-    }
-
-    /// Copies the contents of one file to another. This function will also
-    /// copy the permission bits of the original file to the destination file.
-    ///
-    /// Note that if `from` and `to` both point to the same file, then the file
-    /// will likely get truncated by this operation.
-    ///
-    /// # Example
-    ///
-    ///     use std::rt::io::File;
-    ///
-    ///     File::copy(Path::new("foo.txt"), Path::new("bar.txt"));
-    ///     // Oh boy, nothing was raised!
-    ///
-    /// # Errors
-    ///
-    /// Will raise an `io_error` condition is the following situtations, but is
-    /// not limited to just these cases:
-    ///
-    /// * The `from` path is not a file
-    /// * The `from` file does not exist
-    /// * The current process does not have the permission rights to access
-    ///   `from` or write `to`
-    ///
-    /// Note that this copy is not atomic in that once the destination is
-    /// ensured to not exist, the is nothing preventing the destination from
-    /// being created and then destroyed by this operation.
-    pub fn copy(from: &Path, to: &Path) {
-        if !from.is_file() {
-            return io_error::cond.raise(IoError {
-                kind: io::MismatchedFileTypeForOperation,
-                desc: "the source path is not an existing file",
-                detail: None,
-            });
-        }
-
-        let mut reader = match File::open(from) { Some(f) => f, None => return };
-        let mut writer = match File::create(to) { Some(f) => f, None => return };
-        let mut buf = [0, ..io::DEFAULT_BUF_SIZE];
-
-        loop {
-            match reader.read(buf) {
-                Some(amt) => writer.write(buf.slice_to(amt)),
-                None => break
-            }
-        }
-
-        File::chmod(to, from.stat().perm)
-    }
-
-    /// Changes the permission mode bits found on a file or a directory. This
-    /// function takes a mask from the `io` module
-    ///
-    /// # Example
-    ///
-    ///     use std::rt::io;
-    ///     use std::rt::io::File;
-    ///
-    ///     File::chmod(&Path::new("file.txt"), io::UserFile);
-    ///     File::chmod(&Path::new("file.txt"), io::UserRead | io::UserWrite);
-    ///     File::chmod(&Path::new("dir"),      io::UserDir);
-    ///     File::chmod(&Path::new("file.exe"), io::UserExec);
-    ///
-    /// # Errors
-    ///
-    /// If this funciton encounters an I/O error, it will raise on the `io_error`
-    /// condition. Some possible error situations are not having the permission to
-    /// change the attributes of a file or the file not existing.
-    pub fn chmod(path: &Path, mode: io::FilePermission) {
-        do io_raise |io| {
-            io.fs_chmod(&path.to_c_str(), mode)
-        };
-    }
-
-    /// Change the user and group owners of a file at the specified path.
-    ///
-    /// # Errors
-    ///
-    /// This funtion will raise on the `io_error` condition on failure.
-    pub fn chown(path: &Path, uid: int, gid: int) {
-        do io_raise |io| { io.fs_chown(&path.to_c_str(), uid, gid) };
-    }
-
-    /// Creates a new hard link on the filesystem. The `dst` path will be a
-    /// link pointing to the `src` path. Note that systems often require these
-    /// two paths to both be located on the same filesystem.
-    ///
-    /// # Errors
-    ///
-    /// This function will raise on the `io_error` condition on failure.
-    pub fn link(src: &Path, dst: &Path) {
-        do io_raise |io| { io.fs_link(&src.to_c_str(), &dst.to_c_str()) };
-    }
-
-    /// Creates a new symbolic link on the filesystem. The `dst` path will be a
-    /// symlink pointing to the `src` path.
-    ///
-    /// # Errors
-    ///
-    /// This function will raise on the `io_error` condition on failure.
-    pub fn symlink(src: &Path, dst: &Path) {
-        do io_raise |io| { io.fs_symlink(&src.to_c_str(), &dst.to_c_str()) };
-    }
-
-    /// Reads a symlink, returning the file that the symlink points to.
-    ///
-    /// # Errors
-    ///
-    /// This function will raise on the `io_error` condition on failure.
-    ///
-    /// XXX: does this fail if called on files.
-    pub fn readlink(path: &Path) -> Option<Path> {
-        do io_raise |io| { io.fs_readlink(&path.to_c_str()) }
     }
 
     /// Returns the original path which was used to open this file.
@@ -433,15 +222,241 @@ impl File {
     }
 }
 
+/// Unlink a file from the underlying filesystem.
+///
+/// # Example
+///
+///     use std::rt::io::fs;
+///
+///     let p = Path::new("/some/file/path.txt");
+///     fs::unlink(&p);
+///     // if we made it here without failing, then the
+///     // unlink operation was successful
+///
+/// Note that, just because an unlink call was successful, it is not
+/// guaranteed that a file is immediately deleted (e.g. depending on
+/// platform, other open file descriptors may prevent immediate removal)
+///
+/// # Errors
+///
+/// This function will raise an `io_error` condition if the path points to a
+/// directory, the user lacks permissions to remove the file, or if some
+/// other filesystem-level error occurs.
+pub fn unlink(path: &Path) {
+    do io_raise |io| { io.fs_unlink(&path.to_c_str()) };
+}
+
+/// Given a path, query the file system to get information about a file,
+/// directory, etc. This function will traverse symlinks to query
+/// information about the destination file.
+///
+/// Returns a fully-filled out stat structure on succes, and on failure it
+/// will return a dummy stat structure (it is expected that the condition
+/// raised is handled as well).
+///
+/// # Example
+///
+///     use std::rt::io;
+///     use std::rt::io::fs;
+///
+///     let p = Path::new("/some/file/path.txt");
+///     match io::result(|| fs::stat(&p)) {
+///         Ok(stat) => { /* ... */ }
+///         Err(e) => { /* handle error */ }
+///     }
+///
+/// # Errors
+///
+/// This call will raise an `io_error` condition if the user lacks the
+/// requisite permissions to perform a `stat` call on the given path or if
+/// there is no entry in the filesystem at the provided path.
+pub fn stat(path: &Path) -> FileStat {
+    do io_raise |io| {
+        io.fs_stat(&path.to_c_str())
+    }.unwrap_or_else(dummystat)
+}
+
+fn dummystat() -> FileStat {
+    FileStat {
+        path: Path::new(""),
+        size: 0,
+        kind: io::TypeFile,
+        perm: 0,
+        created: 0,
+        modified: 0,
+        accessed: 0,
+        unstable: io::UnstableFileStat {
+            device: 0,
+            inode: 0,
+            rdev: 0,
+            nlink: 0,
+            uid: 0,
+            gid: 0,
+            blksize: 0,
+            blocks: 0,
+            flags: 0,
+            gen: 0,
+        }
+    }
+}
+
+/// Perform the same operation as the `stat` function, except that this
+/// function does not traverse through symlinks. This will return
+/// information about the symlink file instead of the file that it points
+/// to.
+///
+/// # Errors
+///
+/// See `stat`
+pub fn lstat(path: &Path) -> FileStat {
+    do io_raise |io| {
+        io.fs_lstat(&path.to_c_str())
+    }.unwrap_or_else(dummystat)
+}
+
+/// Rename a file or directory to a new name.
+///
+/// # Example
+///
+///     use std::rt::io::fs;
+///
+///     fs::rename(&Path::new("foo"), &Path::new("bar"));
+///     // Oh boy, nothing was raised!
+///
+/// # Errors
+///
+/// Will raise an `io_error` condition if the provided `path` doesn't exist,
+/// the process lacks permissions to view the contents, or if some other
+/// intermittent I/O error occurs.
+pub fn rename(from: &Path, to: &Path) {
+    do io_raise |io| {
+        io.fs_rename(&from.to_c_str(), &to.to_c_str())
+    };
+}
+
+/// Copies the contents of one file to another. This function will also
+/// copy the permission bits of the original file to the destination file.
+///
+/// Note that if `from` and `to` both point to the same file, then the file
+/// will likely get truncated by this operation.
+///
+/// # Example
+///
+///     use std::rt::io::fs;
+///
+///     fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
+///     // Oh boy, nothing was raised!
+///
+/// # Errors
+///
+/// Will raise an `io_error` condition is the following situtations, but is
+/// not limited to just these cases:
+///
+/// * The `from` path is not a file
+/// * The `from` file does not exist
+/// * The current process does not have the permission rights to access
+///   `from` or write `to`
+///
+/// Note that this copy is not atomic in that once the destination is
+/// ensured to not exist, there is nothing preventing the destination from
+/// being created and then destroyed by this operation.
+pub fn copy(from: &Path, to: &Path) {
+    if !from.is_file() {
+        return io_error::cond.raise(IoError {
+            kind: io::MismatchedFileTypeForOperation,
+            desc: "the source path is not an existing file",
+            detail: None,
+        });
+    }
+
+    let mut reader = match File::open(from) { Some(f) => f, None => return };
+    let mut writer = match File::create(to) { Some(f) => f, None => return };
+    let mut buf = [0, ..io::DEFAULT_BUF_SIZE];
+
+    loop {
+        match reader.read(buf) {
+            Some(amt) => writer.write(buf.slice_to(amt)),
+            None => break
+        }
+    }
+
+    chmod(to, from.stat().perm)
+}
+
+/// Changes the permission mode bits found on a file or a directory. This
+/// function takes a mask from the `io` module
+///
+/// # Example
+///
+///     use std::rt::io;
+///     use std::rt::io::fs;
+///
+///     fs::chmod(&Path::new("file.txt"), io::UserFile);
+///     fs::chmod(&Path::new("file.txt"), io::UserRead | io::UserWrite);
+///     fs::chmod(&Path::new("dir"),      io::UserDir);
+///     fs::chmod(&Path::new("file.exe"), io::UserExec);
+///
+/// # Errors
+///
+/// If this funciton encounters an I/O error, it will raise on the `io_error`
+/// condition. Some possible error situations are not having the permission to
+/// change the attributes of a file or the file not existing.
+pub fn chmod(path: &Path, mode: io::FilePermission) {
+    do io_raise |io| {
+        io.fs_chmod(&path.to_c_str(), mode)
+    };
+}
+
+/// Change the user and group owners of a file at the specified path.
+///
+/// # Errors
+///
+/// This funtion will raise on the `io_error` condition on failure.
+pub fn chown(path: &Path, uid: int, gid: int) {
+    do io_raise |io| { io.fs_chown(&path.to_c_str(), uid, gid) };
+}
+
+/// Creates a new hard link on the filesystem. The `dst` path will be a
+/// link pointing to the `src` path. Note that systems often require these
+/// two paths to both be located on the same filesystem.
+///
+/// # Errors
+///
+/// This function will raise on the `io_error` condition on failure.
+pub fn link(src: &Path, dst: &Path) {
+    do io_raise |io| { io.fs_link(&src.to_c_str(), &dst.to_c_str()) };
+}
+
+/// Creates a new symbolic link on the filesystem. The `dst` path will be a
+/// symlink pointing to the `src` path.
+///
+/// # Errors
+///
+/// This function will raise on the `io_error` condition on failure.
+pub fn symlink(src: &Path, dst: &Path) {
+    do io_raise |io| { io.fs_symlink(&src.to_c_str(), &dst.to_c_str()) };
+}
+
+/// Reads a symlink, returning the file that the symlink points to.
+///
+/// # Errors
+///
+/// This function will raise on the `io_error` condition on failure. Failure
+/// conditions include reading a file that does not exist or reading a file
+/// which is not a symlink.
+pub fn readlink(path: &Path) -> Option<Path> {
+    do io_raise |io| { io.fs_readlink(&path.to_c_str()) }
+}
+
 /// Create a new, empty directory at the provided path
 ///
 /// # Example
 ///
 ///     use std::libc::S_IRWXU;
-///     use std::rt::io::file;
+///     use std::rt::io::fs;
 ///
 ///     let p = Path::new("/some/dir");
-///     file::mkdir(&p, S_IRWXU as int);
+///     fs::mkdir(&p, S_IRWXU as int);
 ///     // If we got here, our directory exists! Horray!
 ///
 /// # Errors
@@ -459,10 +474,10 @@ pub fn mkdir(path: &Path, mode: FilePermission) {
 ///
 /// # Example
 ///
-///     use std::rt::io::file;
+///     use std::rt::io::fs;
 ///
 ///     let p = Path::new("/some/dir");
-///     file::rmdir(&p);
+///     fs::rmdir(&p);
 ///     // good riddance, you mean ol' directory
 ///
 /// # Errors
@@ -480,11 +495,12 @@ pub fn rmdir(path: &Path) {
 ///
 /// # Example
 ///
-///     use std::rt::io::file;
+///     use std::rt::io::fs;
 ///
+///     // one possible implementation of fs::walk_dir only visiting files
 ///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
 ///         if dir.is_dir() {
-///             let contents = file::readdir(dir).unwrap();
+///             let contents = fs::readdir(dir).unwrap();
 ///             for entry in contents.iter() {
 ///                 if entry.is_dir() { visit_dirs(entry, cb); }
 ///                 else { cb(entry); }
@@ -536,7 +552,7 @@ impl Iterator<Path> for WalkIterator {
 /// # Errors
 ///
 /// This function will raise on the `io_error` condition if an error
-/// happens, see `file::mkdir` for more information about error conditions
+/// happens, see `fs::mkdir` for more information about error conditions
 /// and performance.
 pub fn mkdir_recursive(path: &Path, mode: FilePermission) {
     // tjc: if directory exists but with different permissions,
@@ -556,7 +572,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) {
 /// # Errors
 ///
 /// This function will raise on the `io_error` condition if an error
-/// happens. See `file::unlink` and `file::readdir` for possible error
+/// happens. See `file::unlink` and `fs::readdir` for possible error
 /// conditions.
 pub fn rmdir_recursive(path: &Path) {
     let children = readdir(path);
@@ -564,7 +580,7 @@ pub fn rmdir_recursive(path: &Path) {
         if child.is_dir() {
             rmdir_recursive(child);
         } else {
-            File::unlink(child);
+            unlink(child);
         }
     }
     // Directory should now be empty
@@ -637,7 +653,7 @@ impl path::Path {
     /// Consult the `file::stat` documentation for more info.
     ///
     /// This call preserves identical runtime/error semantics with `file::stat`.
-    pub fn stat(&self) -> FileStat { File::stat(self) }
+    pub fn stat(&self) -> FileStat { stat(self) }
 
     /// Boolean value indicator whether the underlying file exists on the local
     /// filesystem. This will return true if the path points to either a
@@ -687,7 +703,9 @@ mod test {
     use rt::io::{SeekSet, SeekCur, SeekEnd, io_error, Read, Open, ReadWrite};
     use rt::io;
     use str;
-    use super::{File, rmdir, mkdir, readdir, rmdir_recursive, mkdir_recursive};
+    use super::{File, rmdir, mkdir, readdir, rmdir_recursive, mkdir_recursive,
+                copy, unlink, stat, symlink, link, readlink, chmod, chown,
+                lstat};
 
     fn tmpdir() -> Path {
         use os;
@@ -696,6 +714,8 @@ mod test {
         mkdir(&ret, io::UserRWX);
         ret
     }
+
+    fn free<T>(_: T) {}
 
     #[test]
     fn file_test_io_smoke_test() {
@@ -714,7 +734,7 @@ mod test {
             };
             assert!(read_str == message.to_owned());
         }
-        File::unlink(filename);
+        unlink(filename);
     }
 
     #[test]
@@ -737,7 +757,7 @@ mod test {
         do io_error::cond.trap(|_| {
             called = true;
         }).inside {
-            File::unlink(filename);
+            unlink(filename);
         }
         assert!(called);
     }
@@ -762,7 +782,7 @@ mod test {
                 read_stream.read(read_buf);
             }
         }
-        File::unlink(filename);
+        unlink(filename);
         let read_str = str::from_utf8(read_mem);
         assert!(read_str == message.to_owned());
     }
@@ -786,7 +806,7 @@ mod test {
             read_stream.read(read_mem);
             tell_pos_post_read = read_stream.tell();
         }
-        File::unlink(filename);
+        unlink(filename);
         let read_str = str::from_utf8(read_mem);
         assert!(read_str == message.slice(4, 8).to_owned());
         assert!(tell_pos_pre_read == set_cursor);
@@ -811,7 +831,7 @@ mod test {
             let mut read_stream = File::open_mode(filename, Open, Read);
             read_stream.read(read_mem);
         }
-        File::unlink(filename);
+        unlink(filename);
         let read_str = str::from_utf8(read_mem);
         assert!(read_str == final_msg.to_owned());
     }
@@ -847,7 +867,7 @@ mod test {
             let read_str = str::from_utf8(read_mem);
             assert!(read_str == chunk_one.to_owned());
         }
-        File::unlink(filename);
+        unlink(filename);
     }
 
     #[test]
@@ -858,9 +878,9 @@ mod test {
             let msg = "hw";
             fs.write(msg.as_bytes());
         }
-        let stat_res = File::stat(filename);
+        let stat_res = stat(filename);
         assert_eq!(stat_res.kind, io::TypeFile);
-        File::unlink(filename);
+        unlink(filename);
     }
 
     #[test]
@@ -885,7 +905,7 @@ mod test {
         let file = &Path::new("./tmp/fileinfo_check_exists_b_and_a.txt");
         File::create(file).write(bytes!("foo"));
         assert!(file.exists());
-        File::unlink(file);
+        unlink(file);
         assert!(!file.exists());
     }
 
@@ -926,7 +946,7 @@ mod test {
                 };
                 assert!(expected == read_str);
             }
-            File::unlink(f);
+            unlink(f);
         }
         rmdir(dir);
     }
@@ -975,7 +995,7 @@ mod test {
     fn copy_file_does_not_exist() {
         let from = Path::new("test/nonexistent-bogus-path");
         let to = Path::new("test/other-bogus-path");
-        match io::result(|| File::copy(&from, &to)) {
+        match io::result(|| copy(&from, &to)) {
             Ok(*) => fail!(),
             Err(*) => {
                 assert!(!from.exists());
@@ -991,7 +1011,7 @@ mod test {
         let out = tmpdir.join("out.txt");
 
         File::create(&input).write(bytes!("hello"));
-        File::copy(&input, &out);
+        copy(&input, &out);
         let contents = File::open(&out).read_to_end();
         assert_eq!(contents.as_slice(), bytes!("hello"));
 
@@ -1005,7 +1025,7 @@ mod test {
         let out = tmpdir.join("out");
 
         File::create(&out);
-        match io::result(|| File::copy(&out, &tmpdir)) {
+        match io::result(|| copy(&out, &tmpdir)) {
             Ok(*) => fail!(), Err(*) => {}
         }
         rmdir_recursive(&tmpdir);
@@ -1019,7 +1039,7 @@ mod test {
 
         File::create(&input).write("foo".as_bytes());
         File::create(&output).write("bar".as_bytes());
-        File::copy(&input, &output);
+        copy(&input, &output);
 
         assert_eq!(File::open(&output).read_to_end(),
                    (bytes!("foo")).to_owned());
@@ -1032,7 +1052,7 @@ mod test {
         let tmpdir = tmpdir();
         let out = tmpdir.join("out");
 
-        match io::result(|| File::copy(&tmpdir, &out)) {
+        match io::result(|| copy(&tmpdir, &out)) {
             Ok(*) => fail!(), Err(*) => {}
         }
         assert!(!out.exists());
@@ -1046,40 +1066,48 @@ mod test {
         let out = tmpdir.join("out.txt");
 
         File::create(&input);
-        File::chmod(&input, io::UserExec);
-        File::copy(&input, &out);
-        assert_eq!(out.stat().perm, io::UserExec);
+        chmod(&input, io::UserRead);
+        copy(&input, &out);
+        assert!(out.stat().perm & io::UserWrite == 0);
 
+        chmod(&input, io::UserFile);
+        chmod(&out, io::UserFile);
         rmdir_recursive(&tmpdir);
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#10264) operation not permitted?
     fn symlinks_work() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
         File::create(&input).write("foobar".as_bytes());
-        File::symlink(&input, &out);
-        assert_eq!(File::lstat(&out).kind, io::TypeSymlink);
-        assert_eq!(File::stat(&out).size, File::stat(&input).size);
+        symlink(&input, &out);
+        assert_eq!(lstat(&out).kind, io::TypeSymlink);
+        assert_eq!(stat(&out).size, stat(&input).size);
         assert_eq!(File::open(&out).read_to_end(), (bytes!("foobar")).to_owned());
 
-        // can't link to yourself
-        match io::result(|| File::symlink(&input, &input)) {
-            Ok(*) => fail!("wanted a failure"),
-            Err(*) => {}
-        }
+        rmdir_recursive(&tmpdir);
+    }
+
+    #[test]
+    #[ignore(cfg(windows))] // apparently windows doesn't like symlinks
+    fn symlink_noexist() {
+        let tmpdir = tmpdir();
         // symlinks can point to things that don't exist
-        File::symlink(&tmpdir.join("foo"), &tmpdir.join("bar"));
+        symlink(&tmpdir.join("foo"), &tmpdir.join("bar"));
+        assert!(readlink(&tmpdir.join("bar")).unwrap() == tmpdir.join("foo"));
+        rmdir_recursive(&tmpdir);
+    }
 
-        assert!(File::readlink(&tmpdir.join("bar")).unwrap() == tmpdir.join("bar"));
-
-        match io::result(|| File::readlink(&tmpdir)) {
+    #[test]
+    fn readlink_not_symlink() {
+        let tmpdir = tmpdir();
+        match io::result(|| readlink(&tmpdir)) {
             Ok(*) => fail!("wanted a failure"),
             Err(*) => {}
         }
-
         rmdir_recursive(&tmpdir);
     }
 
@@ -1090,19 +1118,19 @@ mod test {
         let out = tmpdir.join("out.txt");
 
         File::create(&input).write("foobar".as_bytes());
-        File::link(&input, &out);
-        assert_eq!(File::lstat(&out).kind, io::TypeFile);
-        assert_eq!(File::stat(&out).size, File::stat(&input).size);
-        assert_eq!(File::stat(&out).nlink, 2);
+        link(&input, &out);
+        assert_eq!(lstat(&out).kind, io::TypeFile);
+        assert_eq!(stat(&out).size, stat(&input).size);
+        assert_eq!(stat(&out).unstable.nlink, 2);
         assert_eq!(File::open(&out).read_to_end(), (bytes!("foobar")).to_owned());
 
         // can't link to yourself
-        match io::result(|| File::link(&input, &input)) {
+        match io::result(|| link(&input, &input)) {
             Ok(*) => fail!("wanted a failure"),
             Err(*) => {}
         }
         // can't link to something that doesn't exist
-        match io::result(|| File::link(&tmpdir.join("foo"), &tmpdir.join("bar"))) {
+        match io::result(|| link(&tmpdir.join("foo"), &tmpdir.join("bar"))) {
             Ok(*) => fail!("wanted a failure"),
             Err(*) => {}
         }
@@ -1116,14 +1144,16 @@ mod test {
         let file = tmpdir.join("in.txt");
 
         File::create(&file);
-        File::chmod(&file, io::UserRWX);
-        assert_eq!(File::stat(&file).perm, io::UserRWX);
+        assert!(stat(&file).perm & io::UserWrite == io::UserWrite);
+        chmod(&file, io::UserRead);
+        assert!(stat(&file).perm & io::UserWrite == 0);
 
-        match io::result(|| File::chmod(&tmpdir.join("foo"), io::UserRWX)) {
+        match io::result(|| chmod(&tmpdir.join("foo"), io::UserRWX)) {
             Ok(*) => fail!("wanted a failure"),
             Err(*) => {}
         }
 
+        chmod(&file, io::UserFile);
         rmdir_recursive(&tmpdir);
     }
 
@@ -1138,6 +1168,7 @@ mod test {
         file.write(bytes!("foo"));
         file.fsync();
         file.datasync();
+        free(file);
 
         rmdir_recursive(&tmpdir);
     }
@@ -1151,11 +1182,11 @@ mod test {
         file.write(bytes!("foo"));
 
         // Do some simple things with truncation
-        assert_eq!(File::stat(&path).size, 3);
+        assert_eq!(stat(&path).size, 3);
         file.truncate(10);
-        assert_eq!(File::stat(&path).size, 10);
+        assert_eq!(stat(&path).size, 10);
         file.write(bytes!("bar"));
-        assert_eq!(File::stat(&path).size, 10);
+        assert_eq!(stat(&path).size, 10);
         assert_eq!(File::open(&path).read_to_end(),
                    (bytes!("foobar", 0, 0, 0, 0)).to_owned());
 
@@ -1163,11 +1194,12 @@ mod test {
         // Ensure that the intermediate zeroes are all filled in (we're seeked
         // past the end of the file).
         file.truncate(2);
-        assert_eq!(File::stat(&path).size, 2);
+        assert_eq!(stat(&path).size, 2);
         file.write(bytes!("wut"));
-        assert_eq!(File::stat(&path).size, 9);
+        assert_eq!(stat(&path).size, 9);
         assert_eq!(File::open(&path).read_to_end(),
                    (bytes!("fo", 0, 0, 0, 0, "wut")).to_owned());
+        free(file);
 
         rmdir_recursive(&tmpdir);
     }
@@ -1196,19 +1228,19 @@ mod test {
                 Ok(*) => fail!(), Err(*) => {}
             }
         }
-        assert_eq!(File::stat(&tmpdir.join("h")).size, 3);
+        assert_eq!(stat(&tmpdir.join("h")).size, 3);
         {
             let mut f = File::open_mode(&tmpdir.join("h"), io::Append,
                                         io::Write).unwrap();
             f.write("bar".as_bytes());
         }
-        assert_eq!(File::stat(&tmpdir.join("h")).size, 6);
+        assert_eq!(stat(&tmpdir.join("h")).size, 6);
         {
             let mut f = File::open_mode(&tmpdir.join("h"), io::Truncate,
                                         io::Write).unwrap();
             f.write("bar".as_bytes());
         }
-        assert_eq!(File::stat(&tmpdir.join("h")).size, 3);
+        assert_eq!(stat(&tmpdir.join("h")).size, 3);
 
         rmdir_recursive(&tmpdir);
     }

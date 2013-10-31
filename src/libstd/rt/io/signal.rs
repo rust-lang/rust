@@ -208,6 +208,7 @@ mod test {
     #[cfg(windows)]
     #[test]
     fn test_io_signal_invalid_signum() {
+        use rt::io;
         use super::User1;
         let mut s = Listener::new();
         let mut called = false;

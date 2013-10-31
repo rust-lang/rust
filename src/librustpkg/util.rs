@@ -11,7 +11,7 @@
 use std::libc;
 use std::os;
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::fs;
 use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
@@ -185,7 +185,7 @@ pub fn compile_input(context: &BuildContext,
     let mut out_dir = target_build_dir(workspace);
     out_dir.push(&pkg_id.path);
     // Make the output directory if it doesn't exist already
-    file::mkdir_recursive(&out_dir, io::UserRWX);
+    fs::mkdir_recursive(&out_dir, io::UserRWX);
 
     let binary = os::args()[0].to_managed();
 
@@ -261,7 +261,7 @@ pub fn compile_input(context: &BuildContext,
             assert!(p.is_dir())
         }
         else {
-            file::mkdir_recursive(p, io::UserRWX);
+            fs::mkdir_recursive(p, io::UserRWX);
         }
     }
 

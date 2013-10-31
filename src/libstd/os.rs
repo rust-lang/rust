@@ -42,7 +42,6 @@ use ptr;
 use str;
 use to_str;
 use unstable::finally::Finally;
-use vec;
 
 pub use os::consts::*;
 
@@ -382,6 +381,7 @@ pub fn self_exe_path() -> Option<Path> {
         unsafe {
             use libc::funcs::bsd44::*;
             use libc::consts::os::extra::*;
+            use vec;
             let mib = ~[CTL_KERN as c_int,
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
@@ -405,23 +405,11 @@ pub fn self_exe_path() -> Option<Path> {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     fn load_self() -> Option<~[u8]> {
-        #[fixed_stack_segment]; #[inline(never)];
-        unsafe {
-            use libc::funcs::posix01::unistd::readlink;
+        use std::rt::io;
 
-            let mut path: ~[u8] = vec::with_capacity(TMPBUF_SZ);
-
-            let len = do path.as_mut_buf |buf, _| {
-                do "/proc/self/exe".with_c_str |proc_self_buf| {
-                    readlink(proc_self_buf, buf as *mut c_char, TMPBUF_SZ as size_t) as uint
-                }
-            };
-            if len == -1 {
-                None
-            } else {
-                vec::raw::set_len(&mut path, len as uint);
-                Some(path)
-            }
+        match io::result(|| io::fs::readlink(&Path::new("/proc/self/exe"))) {
+            Ok(Some(path)) => Some(path.as_vec().to_owned()),
+            Ok(None) | Err(*) => None
         }
     }
 
@@ -430,6 +418,7 @@ pub fn self_exe_path() -> Option<Path> {
         #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             use libc::funcs::extra::_NSGetExecutablePath;
+            use vec;
             let mut sz: u32 = 0;
             _NSGetExecutablePath(ptr::mut_null(), &mut sz);
             if sz == 0 { return None; }
@@ -814,6 +803,7 @@ fn real_args() -> ~[~str] {
 #[cfg(windows)]
 fn real_args() -> ~[~str] {
     #[fixed_stack_segment]; #[inline(never)];
+    use vec;
 
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;
@@ -1495,7 +1485,8 @@ mod tests {
         use result::{Ok, Err};
         use os::*;
         use libc::*;
-        use rt::io::File;
+        use rt::io;
+        use rt::io::fs;
 
         #[cfg(unix)]
         #[fixed_stack_segment]
@@ -1544,7 +1535,7 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
-        File::unlink(&path);
+        do io::ignore_io_error { fs::unlink(&path); }
     }
 
     // More recursive_mkdir tests are in extra::tempfile

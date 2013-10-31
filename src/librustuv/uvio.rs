@@ -464,16 +464,18 @@ fn fs_mkstat(f: &mut FsRequest) -> FileStat {
         created: to_msec(stat.st_birthtim),
         modified: to_msec(stat.st_mtim),
         accessed: to_msec(stat.st_atim),
-        device: stat.st_dev as u64,
-        inode: stat.st_ino as u64,
-        rdev: stat.st_rdev as u64,
-        nlink: stat.st_nlink as u64,
-        uid: stat.st_uid as u64,
-        gid: stat.st_gid as u64,
-        blksize: stat.st_blksize as u64,
-        blocks: stat.st_blocks as u64,
-        flags: stat.st_flags as u64,
-        gen: stat.st_gen as u64,
+        unstable: io::UnstableFileStat {
+            device: stat.st_dev as u64,
+            inode: stat.st_ino as u64,
+            rdev: stat.st_rdev as u64,
+            nlink: stat.st_nlink as u64,
+            uid: stat.st_uid as u64,
+            gid: stat.st_gid as u64,
+            blksize: stat.st_blksize as u64,
+            blocks: stat.st_blocks as u64,
+            flags: stat.st_flags as u64,
+            gen: stat.st_gen as u64,
+        }
     }
 }
 
@@ -764,7 +766,7 @@ impl IoFactory for UvIoFactory {
     }
     fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError> {
         fn getlink(f: &mut FsRequest) -> Path {
-            Path::new(unsafe { CString::new(f.get_path(), false) })
+            Path::new(unsafe { CString::new(f.get_ptr() as *libc::c_char, false) })
         }
         do uv_fs_helper(self.uv_loop(), getlink) |req, l, cb| {
             req.readlink(l, path, cb)

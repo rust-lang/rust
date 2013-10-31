@@ -27,8 +27,7 @@ extern mod syntax;
 use std::{os, result, run, str, task};
 use std::hashmap::HashSet;
 use std::rt::io;
-use std::rt::io::file;
-use std::rt::io::File;
+use std::rt::io::fs;
 pub use std::path::Path;
 
 use extra::workcache;
@@ -545,7 +544,7 @@ impl CtxMethods for BuildContext {
         note(format!("Cleaning package {} (removing directory {})",
                         id.to_str(), dir.display()));
         if dir.exists() {
-            file::rmdir_recursive(&dir);
+            fs::rmdir_recursive(&dir);
             note(format!("Removed directory {}", dir.display()));
         }
 
@@ -661,8 +660,8 @@ impl CtxMethods for BuildContext {
 
                 for exec in subex.iter() {
                     debug!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
-                    file::mkdir_recursive(&sub_target_ex.dir_path(), io::UserRWX);
-                    File::copy(exec, &sub_target_ex);
+                    fs::mkdir_recursive(&sub_target_ex.dir_path(), io::UserRWX);
+                    fs::copy(exec, &sub_target_ex);
                     // FIXME (#9639): This needs to handle non-utf8 paths
                     exe_thing.discover_output("binary",
                         sub_target_ex.as_str().unwrap(),
@@ -674,8 +673,8 @@ impl CtxMethods for BuildContext {
                         .clone().expect(format!("I built {} but apparently \
                                              didn't install it!", lib.display()));
                     target_lib.set_filename(lib.filename().expect("weird target lib"));
-                    file::mkdir_recursive(&target_lib.dir_path(), io::UserRWX);
-                    File::copy(lib, &target_lib);
+                    fs::mkdir_recursive(&target_lib.dir_path(), io::UserRWX);
+                    fs::copy(lib, &target_lib);
                     debug!("3. discovering output {}", target_lib.display());
                     exe_thing.discover_output("binary",
                                               target_lib.as_str().unwrap(),
@@ -708,10 +707,10 @@ impl CtxMethods for BuildContext {
     }
 
     fn init(&self) {
-        file::mkdir_recursive(&Path::new("src"), io::UserRWX);
-        file::mkdir_recursive(&Path::new("bin"), io::UserRWX);
-        file::mkdir_recursive(&Path::new("lib"), io::UserRWX);
-        file::mkdir_recursive(&Path::new("build"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("src"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("bin"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("lib"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("build"), io::UserRWX);
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {

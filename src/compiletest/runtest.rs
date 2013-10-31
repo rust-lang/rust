@@ -20,43 +20,18 @@ use procsrv;
 use util;
 use util::logv;
 
-use std::cell::Cell;
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::fs;
 use std::rt::io::File;
 use std::os;
 use std::str;
-use std::task::{spawn_sched, SingleThreaded};
 use std::vec;
-use std::unstable::running_on_valgrind;
 
 use extra::test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
-    let config = Cell::new(config);
-    let testfile = Cell::new(testfile);
-    // FIXME #6436: Creating another thread to run the test because this
-    // is going to call waitpid. The new scheduler has some strange
-    // interaction between the blocking tasks and 'friend' schedulers
-    // that destroys parallelism if we let normal schedulers block.
-    // It should be possible to remove this spawn once std::run is
-    // rewritten to be non-blocking.
-    //
-    // We do _not_ create another thread if we're running on V because
-    // it serializes all threads anyways.
-    if running_on_valgrind() {
-        let config = config.take();
-        let testfile = testfile.take();
-        let mut _mm = MetricMap::new();
-        run_metrics(config, testfile, &mut _mm);
-    } else {
-        do spawn_sched(SingleThreaded) {
-            let config = config.take();
-            let testfile = testfile.take();
-            let mut _mm = MetricMap::new();
-            run_metrics(config, testfile, &mut _mm);
-        }
-    }
+    let mut _mm = MetricMap::new();
+    run_metrics(config, testfile, &mut _mm);
 }
 
 pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
@@ -651,7 +626,7 @@ fn compose_and_run_compiler(
 
 fn ensure_dir(path: &Path) {
     if path.is_dir() { return; }
-    file::mkdir(path, io::UserRWX);
+    fs::mkdir(path, io::UserRWX);
 }
 
 fn compose_and_run(config: &config, testfile: &Path,
@@ -921,7 +896,7 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
-    let dirs = file::readdir(&tdir);
+    let dirs = fs::readdir(&tdir);
     for file in dirs.iter() {
         if file.extension_str() == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths

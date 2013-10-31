@@ -25,7 +25,7 @@ use std::os;
 use std::task;
 use std::cell::Cell;
 use std::rt::io;
-use std::rt::io::file;
+use std::rt::io::fs;
 
 fn test_tempdir() {
     let path = {
@@ -75,7 +75,7 @@ fn test_rm_tempdir() {
         path = tmp.unwrap();
     }
     assert!(path.exists());
-    file::rmdir_recursive(&path);
+    fs::rmdir_recursive(&path);
     assert!(!path.exists());
 }
 
@@ -86,17 +86,17 @@ fn recursive_mkdir_rel() {
     let cwd = os::getcwd();
     debug!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
-    file::mkdir_recursive(&path, io::UserRWX);
+    fs::mkdir_recursive(&path, io::UserRWX);
     assert!(path.is_dir());
-    file::mkdir_recursive(&path, io::UserRWX);
+    fs::mkdir_recursive(&path, io::UserRWX);
     assert!(path.is_dir());
 }
 
 fn recursive_mkdir_dot() {
     let dot = Path::new(".");
-    file::mkdir_recursive(&dot, io::UserRWX);
+    fs::mkdir_recursive(&dot, io::UserRWX);
     let dotdot = Path::new("..");
-    file::mkdir_recursive(&dotdot, io::UserRWX);
+    fs::mkdir_recursive(&dotdot, io::UserRWX);
 }
 
 fn recursive_mkdir_rel_2() {
@@ -104,13 +104,13 @@ fn recursive_mkdir_rel_2() {
     let cwd = os::getcwd();
     debug!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
-    file::mkdir_recursive(&path, io::UserRWX);
+    fs::mkdir_recursive(&path, io::UserRWX);
     assert!(path.is_dir());
     assert!(path.dir_path().is_dir());
     let path2 = Path::new("quux/blat");
     debug!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
-    file::mkdir_recursive(&path2, io::UserRWX);
+    fs::mkdir_recursive(&path2, io::UserRWX);
     assert!(path2.is_dir());
     assert!(path2.dir_path().is_dir());
 }
@@ -125,11 +125,11 @@ pub fn test_rmdir_recursive_ok() {
     let root = tmpdir.join("foo");
 
     debug!("making {}", root.display());
-    file::mkdir(&root, rwx);
-    file::mkdir(&root.join("foo"), rwx);
-    file::mkdir(&root.join("foo").join("bar"), rwx);
-    file::mkdir(&root.join("foo").join("bar").join("blat"), rwx);
-    file::rmdir_recursive(&root);
+    fs::mkdir(&root, rwx);
+    fs::mkdir(&root.join("foo"), rwx);
+    fs::mkdir(&root.join("foo").join("bar"), rwx);
+    fs::mkdir(&root.join("foo").join("bar").join("blat"), rwx);
+    fs::rmdir_recursive(&root);
     assert!(!root.exists());
     assert!(!root.join("bar").exists());
     assert!(!root.join("bar").join("blat").exists());

@@ -259,7 +259,7 @@ pub use self::stdio::stderr;
 pub use self::stdio::print;
 pub use self::stdio::println;
 
-pub use self::file::File;
+pub use self::fs::File;
 pub use self::timer::Timer;
 pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
@@ -268,8 +268,8 @@ pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::Process;
 
-/// Synchronous, non-blocking file I/O.
-pub mod file;
+/// Synchronous, non-blocking filesystem operations.
+pub mod fs;
 
 /// Synchronous, in-memory I/O.
 pub mod pipe;
@@ -1155,7 +1155,23 @@ pub struct FileStat {
     /// milliseconds
     accessed: u64,
 
-    // Various filesytem info
+    /// Information returned by stat() which is not guaranteed to be
+    /// platform-independent. This information may be useful on some platforms,
+    /// but it may have different meanings or no meaning at all on other
+    /// platforms.
+    ///
+    /// Usage of this field is discouraged, but if access is desired then the
+    /// fields are located here.
+    #[unstable]
+    unstable: UnstableFileStat,
+}
+
+/// This structure represents all of the possible information which can be
+/// returned from a `stat` syscall which is not contained in the `FileStat`
+/// structure. This information is not necessarily platform independent, and may
+/// have different meanings or no meaning at all on some platforms.
+#[unstable]
+pub struct UnstableFileStat {
     device: u64,
     inode: u64,
     rdev: u64,

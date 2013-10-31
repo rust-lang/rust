@@ -21,7 +21,7 @@ use std::rt::io;
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
-            io::file::mkdir(&Path::new(path), io::UserRWX);
+            io::fs::mkdir(&Path::new(path), io::UserRWX);
         } else {
             io::File::create(&Path::new(path));
         }
