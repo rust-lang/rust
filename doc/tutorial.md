@@ -1142,7 +1142,7 @@ For a more in-depth explanation of borrowed pointers, read the
 
 ## Freezing
 
-Borrowing an immutable pointer to an object freezes it and prevents mutation.
+Lending an immutable pointer to an object freezes it and prevents mutation.
 `Owned` objects have freezing enforced statically at compile-time.
 
 ~~~~
