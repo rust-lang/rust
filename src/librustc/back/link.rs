@@ -16,7 +16,7 @@ use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
-use metadata::{encoder, csearch, cstore, filesearch};
+use metadata::{encoder, cstore, filesearch};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
@@ -1042,14 +1042,6 @@ pub fn link_args(sess: Session,
 
     let ula = cstore::get_used_link_args(cstore);
     for arg in ula.iter() { args.push(arg.to_owned()); }
-
-    // Add all the link args for external crates.
-    do cstore::iter_crate_data(cstore) |crate_num, _| {
-        let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
-        for link_arg in link_args.move_iter() {
-            args.push(link_arg);
-        }
-    }
 
     // # Extern library linking
 
