@@ -6,8 +6,11 @@
 .text
 .code 32
 .arm
+#if defined(__APPLE__)
+.align 2
+#else
 .align
-
+#endif
 
 .globl record_sp_limit
 .globl get_sp_limit
