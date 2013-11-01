@@ -18,7 +18,8 @@ use fmt;
 use iter::Iterator;
 use kinds::Send;
 use option::{None, Option, Some, OptionIterator};
-use option;
+use option::{ToOption, IntoOption, AsOption};
+use str::OwnedStr;
 use to_str::ToStr;
 use vec::OwnedVector;
 use vec;
@@ -28,7 +29,7 @@ use vec;
 /// In order to provide informative error messages, `E` is required to implement `ToStr`.
 /// It is further recommended for `E` to be a descriptive error type, eg a `enum` for
 /// all possible errors cases.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
 pub enum Result<T, E> {
     /// Contains the successful result value
     Ok(T),
@@ -300,7 +301,7 @@ impl<T, E> AsResult<T, E> for Result<T, E> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-impl<T: Clone, E> option::ToOption<T> for Result<T, E> {
+impl<T: Clone, E> ToOption<T> for Result<T, E> {
     #[inline]
     fn to_option(&self) -> Option<T> {
         match *self {
@@ -310,7 +311,7 @@ impl<T: Clone, E> option::ToOption<T> for Result<T, E> {
     }
 }
 
-impl<T, E> option::IntoOption<T> for Result<T, E> {
+impl<T, E> IntoOption<T> for Result<T, E> {
     #[inline]
     fn into_option(self) -> Option<T> {
         match self {
@@ -320,7 +321,7 @@ impl<T, E> option::IntoOption<T> for Result<T, E> {
     }
 }
 
-impl<T, E> option::AsOption<T> for Result<T, E> {
+impl<T, E> AsOption<T> for Result<T, E> {
     #[inline]
     fn as_option<'a>(&'a self) -> Option<&'a T> {
         match *self {
@@ -356,16 +357,6 @@ impl<T, E> either::AsEither<E, T> for Result<T, E> {
         match *self {
             Ok(ref t) => either::Right(t),
             Err(ref e) => either::Left(e),
-        }
-    }
-}
-
-impl<T: ToStr, E: ToStr> ToStr for Result<T, E> {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        match *self {
-            Ok(ref t) => format!("Ok({:s})", t.to_str()),
-            Err(ref e) => format!("Err({:s})", e.to_str())
         }
     }
 }
@@ -457,7 +448,7 @@ mod tests {
     use either;
     use iter::range;
     use option::{IntoOption, ToOption, AsOption};
-    use option;
+    use option::{Option, Some, None};
     use vec::ImmutableVector;
     use to_str::ToStr;
 
@@ -588,8 +579,8 @@ mod tests {
         let ok: Result<int, int> = Ok(100);
         let err: Result<int, int> = Err(404);
 
-        assert_eq!(ok.to_option(), option::Some(100));
-        assert_eq!(err.to_option(), option::None);
+        assert_eq!(ok.to_option(), Some(100));
+        assert_eq!(err.to_option(), None);
     }
 
     #[test]
@@ -597,8 +588,8 @@ mod tests {
         let ok: Result<int, int> = Ok(100);
         let err: Result<int, int> = Err(404);
 
-        assert_eq!(ok.into_option(), option::Some(100));
-        assert_eq!(err.into_option(), option::None);
+        assert_eq!(ok.into_option(), Some(100));
+        assert_eq!(err.into_option(), None);
     }
 
     #[test]
@@ -607,7 +598,7 @@ mod tests {
         let err: Result<int, int> = Err(404);
 
         assert_eq!(ok.as_option().unwrap(), &100);
-        assert_eq!(err.as_option(), option::None);
+        assert_eq!(err.as_option(), None);
     }
 
     #[test]

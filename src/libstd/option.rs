@@ -40,44 +40,26 @@
 use any::Any;
 use clone::Clone;
 use clone::DeepClone;
-use cmp::{Eq,Ord};
+use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
 use either;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, ExactSize};
-use iter;
 use kinds::Send;
 use num::Zero;
-use result;
-use str::{StrSlice, OwnedStr};
+use result::{IntoResult, ToResult, AsResult};
+use result::{Result, Ok, Err};
+use str::OwnedStr;
 use to_str::ToStr;
 use util;
 
 /// The option type
-#[deriving(Clone, DeepClone, Eq, ToStr)]
+#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
 pub enum Option<T> {
     /// No value
     None,
     /// Some value `T`
     Some(T)
-}
-
-impl<T: Eq + Ord> Ord for Option<T> {
-    fn lt(&self, other: &Option<T>) -> bool {
-        iter::order::lt(self.iter(), other.iter())
-    }
-
-    fn le(&self, other: &Option<T>) -> bool {
-        iter::order::le(self.iter(), other.iter())
-    }
-
-    fn ge(&self, other: &Option<T>) -> bool {
-        iter::order::ge(self.iter(), other.iter())
-    }
-
-    fn gt(&self, other: &Option<T>) -> bool {
-        iter::order::gt(self.iter(), other.iter())
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -436,22 +418,33 @@ impl<T> AsOption<T> for Option<T> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-impl<T: Clone> result::ToResult<T, ()> for Option<T> {
+impl<T: Clone> ToResult<T, ()> for Option<T> {
     #[inline]
-    fn to_result(&self) -> result::Result<T, ()> {
+    fn to_result(&self) -> Result<T, ()> {
         match *self {
-            Some(ref x) => result::Ok(x.clone()),
-            None => result::Err(()),
+            Some(ref x) => Ok(x.clone()),
+            None => Err(()),
         }
     }
 }
 
-impl<T> result::IntoResult<T, ()> for Option<T> {
+impl<T> IntoResult<T, ()> for Option<T> {
     #[inline]
-    fn into_result(self) -> result::Result<T, ()> {
+    fn into_result(self) -> Result<T, ()> {
         match self {
-            Some(x) => result::Ok(x),
-            None => result::Err(()),
+            Some(x) => Ok(x),
+            None => Err(()),
+        }
+    }
+}
+
+impl<T> AsResult<T, ()> for Option<T> {
+    #[inline]
+    fn as_result<'a>(&'a self) -> Result<&'a T, &'a ()> {
+        static UNIT: () = ();
+        match *self {
+            Some(ref t) => Ok(t),
+            None => Err(&UNIT),
         }
     }
 }
@@ -536,7 +529,8 @@ mod tests {
     use either::{IntoEither, ToEither};
     use either;
     use result::{IntoResult, ToResult};
-    use result;
+    use result::{Result, Ok, Err};
+    use str::StrSlice;
     use util;
 
     #[test]
@@ -814,8 +808,8 @@ mod tests {
         let some: Option<int> = Some(100);
         let none: Option<int> = None;
 
-        assert_eq!(some.to_result(), result::Ok(100));
-        assert_eq!(none.to_result(), result::Err(()));
+        assert_eq!(some.to_result(), Ok(100));
+        assert_eq!(none.to_result(), Err(()));
     }
 
     #[test]
@@ -823,8 +817,8 @@ mod tests {
         let some: Option<int> = Some(100);
         let none: Option<int> = None;
 
-        assert_eq!(some.into_result(), result::Ok(100));
-        assert_eq!(none.into_result(), result::Err(()));
+        assert_eq!(some.into_result(), Ok(100));
+        assert_eq!(none.into_result(), Err(()));
     }
 
     #[test]
