@@ -42,11 +42,9 @@ use clone::Clone;
 use clone::DeepClone;
 use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
-use either;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, ExactSize};
 use kinds::Send;
-use num::Zero;
 use result::{IntoResult, ToResult, AsResult};
 use result::{Result, Ok, Err};
 use str::OwnedStr;
@@ -361,17 +359,6 @@ impl<T: Default> Option<T> {
     }
 }
 
-impl<T: Zero> Option<T> {
-    /// Returns the contained value or zero (for this type)
-    #[inline]
-    pub fn unwrap_or_zero(self) -> T {
-        match self {
-            Some(x) => x,
-            None => Zero::zero()
-        }
-    }
-}
-
 /////////////////////////////////////////////////////////////////////////////
 // Constructor extension trait
 /////////////////////////////////////////////////////////////////////////////
@@ -449,26 +436,6 @@ impl<T> AsResult<T, ()> for Option<T> {
     }
 }
 
-impl<T: Clone> either::ToEither<(), T> for Option<T> {
-    #[inline]
-    fn to_either(&self) -> either::Either<(), T> {
-        match *self {
-            Some(ref x) => either::Right(x.clone()),
-            None => either::Left(()),
-        }
-    }
-}
-
-impl<T> either::IntoEither<(), T> for Option<T> {
-    #[inline]
-    fn into_either(self) -> either::Either<(), T> {
-        match self {
-            Some(x) => either::Right(x),
-            None => either::Left(()),
-        }
-    }
-}
-
 impl<T: fmt::Default> fmt::Default for Option<T> {
     #[inline]
     fn fmt(s: &Option<T>, f: &mut fmt::Formatter) {
@@ -526,8 +493,6 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 mod tests {
     use super::*;
 
-    use either::{IntoEither, ToEither};
-    use either;
     use result::{IntoResult, ToResult};
     use result::{Result, Ok, Err};
     use str::StrSlice;
@@ -697,14 +662,6 @@ mod tests {
     }
 
     #[test]
-    fn test_unwrap_or_zero() {
-        let some_stuff = Some(42);
-        assert_eq!(some_stuff.unwrap_or_zero(), 42);
-        let no_stuff: Option<int> = None;
-        assert_eq!(no_stuff.unwrap_or_zero(), 0);
-    }
-
-    #[test]
     fn test_filtered() {
         let some_stuff = Some(42);
         let modified_stuff = some_stuff.filtered(|&x| {x < 10});
@@ -819,23 +776,5 @@ mod tests {
 
         assert_eq!(some.into_result(), Ok(100));
         assert_eq!(none.into_result(), Err(()));
-    }
-
-    #[test]
-    pub fn test_to_either() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.to_either(), either::Right(100));
-        assert_eq!(none.to_either(), either::Left(()));
-    }
-
-    #[test]
-    pub fn test_into_either() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.into_either(), either::Right(100));
-        assert_eq!(none.into_either(), either::Left(()));
     }
 }
