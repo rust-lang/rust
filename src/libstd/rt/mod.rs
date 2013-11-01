@@ -68,6 +68,7 @@ use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
 use rt::task::UnwindResult;
 use rt::task::{Task, SchedTask, GreenTask, Sched};
+use send_str::SendStrStatic;
 use unstable::atomics::{AtomicInt, AtomicBool, SeqCst};
 use unstable::sync::UnsafeArc;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
@@ -373,6 +374,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         // run the main task in one of our threads.
 
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, main.take());
+        main_task.name = Some(SendStrStatic("<main>"));
         main_task.death.on_exit = Some(on_exit.take());
         let main_task_cell = Cell::new(main_task);
 
@@ -410,6 +412,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         let home = Sched(main_sched.make_handle());
         let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool, None,
                                                   home, main.take());
+        main_task.name = Some(SendStrStatic("<main>"));
         main_task.death.on_exit = Some(on_exit.take());
         rtdebug!("bootstrapping main_task");
 
