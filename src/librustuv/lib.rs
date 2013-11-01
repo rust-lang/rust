@@ -191,7 +191,6 @@ pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
-pub type SignalCallback = ~fn(SignalWatcher, Signum);
 
 
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle.
@@ -206,7 +205,6 @@ struct WatcherData {
     async_cb: Option<AsyncCallback>,
     udp_recv_cb: Option<UdpReceiveCallback>,
     udp_send_cb: Option<UdpSendCallback>,
-    signal_cb: Option<SignalCallback>,
 }
 
 pub trait WatcherInterop {
