@@ -17,6 +17,7 @@ use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::resolve;
+use middle::privacy;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
@@ -49,6 +50,7 @@ pub struct CrateContext {
      item_vals: HashMap<ast::NodeId, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: @mut HashSet<ast::NodeId>,
+     exported_items: privacy::ExportedItems,
      item_symbols: HashMap<ast::NodeId, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
@@ -126,7 +128,8 @@ impl CrateContext {
                maps: astencode::Maps,
                symbol_hasher: hash::State,
                link_meta: LinkMeta,
-               reachable: @mut HashSet<ast::NodeId>)
+               reachable: @mut HashSet<ast::NodeId>,
+               exported_items: privacy::ExportedItems)
                -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
@@ -183,6 +186,7 @@ impl CrateContext {
                   item_vals: HashMap::new(),
                   exp_map2: emap2,
                   reachable: reachable,
+                  exported_items: exported_items,
                   item_symbols: HashMap::new(),
                   link_meta: link_meta,
                   enum_sizes: HashMap::new(),
