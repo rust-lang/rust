@@ -182,6 +182,8 @@ pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) 
     };
 
     lib::llvm::SetFunctionCallConv(llfn, cc);
+    // Function addresses in Rust are never significant, allowing functions to be merged.
+    lib::llvm::SetUnnamedAddr(llfn, true);
     return llfn;
 }
 
