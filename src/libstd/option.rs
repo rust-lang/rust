@@ -494,7 +494,7 @@ mod tests {
     use super::*;
 
     use result::{IntoResult, ToResult};
-    use result::{Result, Ok, Err};
+    use result::{Ok, Err};
     use str::StrSlice;
     use util;
 

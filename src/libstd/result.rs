@@ -415,7 +415,7 @@ mod tests {
 
     use iter::range;
     use option::{IntoOption, ToOption, AsOption};
-    use option::{Option, Some, None};
+    use option::{Some, None};
     use vec::ImmutableVector;
     use to_str::ToStr;
 
