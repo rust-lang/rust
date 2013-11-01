@@ -400,11 +400,6 @@ valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 valopt libdir "${CFG_PREFIX}/lib" "install libraries" 
 
-#Deprecated opts to keep compatibility
-valopt build-triple "${CFG_BUILD}" "LLVM build triple"
-valopt host-triples "${CFG_HOST}" "LLVM host triples"
-valopt target-triples "${CFG_TARGET}" "LLVM target triples"
-
 # Validate Options
 step_msg "validating $CFG_SELF args"
 validate_opt
@@ -601,7 +596,6 @@ then
 fi
 
 # a little post-processing of various config values
-
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
@@ -615,26 +609,6 @@ do
    echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
 done
 CFG_TARGET=$V_TEMP
-
-# copy host-triples to target-triples so that hosts are a subset of targets
-# XXX: remove deprecated variables here
-V_TEMP=""
-for i in $CFG_HOST_TRIPLES $CFG_TARGET_TRIPLES;
-do
-   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
-done
-CFG_TARGET_TRIPLES=$V_TEMP
-
-# XXX: Support for deprecated syntax, should be dropped.
-if [ ! -z "$CFG_BUILD_TRIPLE" ]; then
-    CFG_BUILD=${CFG_BUILD_TRIPLE}
-fi
-if [ ! -z "$CFG_HOST_TRIPLES" ]; then
-    CFG_HOST=${CFG_HOST_TRIPLES}
-fi
-if [ ! -z "$CFG_TARGET_TRIPLES" ]; then
-    CFG_TARGET=${CFG_TARGET_TRIPLES}
-fi
 
 # check target-specific tool-chains
 for i in $CFG_TARGET
