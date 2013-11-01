@@ -187,7 +187,7 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 #[inline]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     if radix > 36 {
-        fail!("to_digit: radix {} is to high (maximum 36)", radix);
+        fail!("to_digit: radix {} is too high (maximum 36)", radix);
     }
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
