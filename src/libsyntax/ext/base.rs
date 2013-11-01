@@ -14,6 +14,7 @@ use codemap;
 use codemap::{CodeMap, Span, ExpnInfo};
 use diagnostic::span_handler;
 use ext;
+use ext::expand;
 use parse;
 use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
@@ -246,6 +247,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("concat_idents"),
                             builtin_normal_tt_no_ctxt(
                                     ext::concat_idents::expand_syntax_ext));
+    syntax_expanders.insert(intern("concat"),
+                            builtin_normal_tt_no_ctxt(
+                                    ext::concat::expand_syntax_ext));
     syntax_expanders.insert(intern(&"log_syntax"),
                             builtin_normal_tt_no_ctxt(
                                     ext::log_syntax::expand_syntax_ext));
@@ -335,6 +339,22 @@ impl ExtCtxt {
             backtrace: @mut None,
             mod_path: @mut ~[],
             trace_mac: @mut false
+        }
+    }
+
+    pub fn expand_expr(@self, mut e: @ast::Expr) -> @ast::Expr {
+        loop {
+            match e.node {
+                ast::ExprMac(*) => {
+                    let extsbox = @mut syntax_expander_table();
+                    let expander = expand::MacroExpander {
+                        extsbox: extsbox,
+                        cx: self,
+                    };
+                    e = expand::expand_expr(extsbox, self, e, &expander);
+                }
+                _ => return e
+            }
         }
     }
 
