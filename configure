@@ -670,6 +670,13 @@ do
             fi
             ;;
 
+        arm-apple-darwin)
+            if [ $CFG_OSTYPE != apple-darwin ]
+            then
+                err "The iOS target is only supported on Mac OS X"
+            fi
+            ;;
+
         *)
             ;;
     esac
