@@ -155,9 +155,9 @@ use cell::Cell;
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
-use rt::task::UnwindMessageLinked;
 use rt::task::{UnwindResult, Failure};
 use task::spawn::Taskgroup;
+use task::LinkedFailure;
 use to_bytes::IterBytes;
 use unstable::atomics::{AtomicUint, Relaxed};
 use unstable::sync::{UnsafeArc, UnsafeArcSelf, UnsafeArcT, LittleLock};
@@ -597,7 +597,7 @@ impl Death {
                 }
 
                 if !success {
-                    result = Cell::new(Failure(UnwindMessageLinked));
+                    result = Cell::new(Failure(~LinkedFailure as ~Any));
                 }
             }
             on_exit(result.take());

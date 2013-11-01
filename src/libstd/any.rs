@@ -20,7 +20,6 @@ use util::Void;
 
 ///////////////////////////////////////////////////////////////////////////////
 // TypeId
-// FIXME: #9913 - Needs proper intrinsic support to work reliably cross crate
 ///////////////////////////////////////////////////////////////////////////////
 
 /// `TypeId` represents a globally unique identifier for a type
@@ -199,8 +198,10 @@ mod tests {
 
     #[test]
     fn type_id() {
-        let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&str>(), TypeId::of::<Test>());
-        let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&str>(), TypeId::of::<Test>());
+        let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+                         TypeId::of::<Test>());
+        let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+                         TypeId::of::<Test>());
 
         assert!(a != b);
         assert!(a != c);
