@@ -308,10 +308,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
                       -> ~str {
-        let mut s = ~"extern ";
-
-        s.push_str(abis.to_str());
-        s.push_char(' ');
+        let mut s = if abis.is_rust() {
+            ~""
+        } else {
+            format!("extern {} ", abis.to_str())
+        };
 
         match purity {
             ast::impure_fn => {}
@@ -331,16 +332,16 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           _ => { }
         }
 
-        push_sig_to_str(cx, &mut s, sig);
+        push_sig_to_str(cx, &mut s, '(', ')', sig);
 
         return s;
     }
-    fn closure_to_str(cx: ctxt, cty: &ty::ClosureTy) -> ~str
-    {
+    fn closure_to_str(cx: ctxt, cty: &ty::ClosureTy) -> ~str {
         let is_proc =
             (cty.sigil, cty.onceness) == (ast::OwnedSigil, ast::Once);
+        let is_borrowed_closure = cty.sigil == ast::BorrowedSigil;
 
-        let mut s = if is_proc {
+        let mut s = if is_proc || is_borrowed_closure {
             ~""
         } else {
             cty.sigil.to_str()
@@ -374,23 +375,42 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                 }
             };
 
-            s.push_str("fn");
+            if !is_borrowed_closure {
+                s.push_str("fn");
+            }
         }
 
-        if !cty.bounds.is_empty() {
-            s.push_str(":");
-        }
-        s.push_str(cty.bounds.repr(cx));
+        if !is_borrowed_closure {
+            // Print bounds before `fn` if this is not a borrowed closure.
+            if !cty.bounds.is_empty() {
+                s.push_str(":");
+                s.push_str(cty.bounds.repr(cx));
+            }
 
-        push_sig_to_str(cx, &mut s, &cty.sig);
+            push_sig_to_str(cx, &mut s, '(', ')', &cty.sig);
+        } else {
+            // Print bounds after the signature if this is a borrowed closure.
+            push_sig_to_str(cx, &mut s, '|', '|', &cty.sig);
+
+            if is_borrowed_closure {
+                if !cty.bounds.is_empty() {
+                    s.push_str(":");
+                    s.push_str(cty.bounds.repr(cx));
+                }
+            }
+        }
 
         return s;
     }
-    fn push_sig_to_str(cx: ctxt, s: &mut ~str, sig: &ty::FnSig) {
-        s.push_char('(');
+    fn push_sig_to_str(cx: ctxt,
+                       s: &mut ~str,
+                       bra: char,
+                       ket: char,
+                       sig: &ty::FnSig) {
+        s.push_char(bra);
         let strs = sig.inputs.map(|a| fn_input_to_str(cx, *a));
         s.push_str(strs.connect(", "));
-        s.push_char(')');
+        s.push_char(ket);
         if ty::get(sig.output).sty != ty_nil {
             s.push_str(" -> ");
             if ty::type_is_bot(sig.output) {
