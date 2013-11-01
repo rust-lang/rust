@@ -112,20 +112,17 @@ pub fn stderr() -> StdWriter {
     do src(libc::STDERR_FILENO, false) |src| { StdWriter { inner: src } }
 }
 
-/// Executes a closure with the local task's handle on stdout. By default, this
-/// stream is a buffering stream, so the handled yielded to the given closure
-/// can be used to flush the stdout stream (if necessary). The buffering used is
-/// line-buffering when stdout is attached to a terminal, and a fixed sized
-/// buffer if it is not attached to a terminal.
-///
-/// Note that handles generated via the `stdout()` function all output to the
-/// same stream, and output among all task may be interleaved as a result of
-/// this. This is provided to have access to the default stream for `print` and
-/// `println` (and the related macros) for this task.
-///
-/// Also note that logging macros do not use this stream. Using the logging
-/// macros will emit output to stderr.
-pub fn with_task_stdout(f: &fn(&mut Writer)) {
+// Helper to access the local task's stdout handle
+//
+// Note that this is not a safe function to expose because you can create an
+// aliased pointer very easily:
+//
+//  do with_task_stdout |io1| {
+//      do with_task_stdout |io2| {
+//          // io1 aliases io2
+//      }
+//  }
+fn with_task_stdout(f: &fn(&mut Writer)) {
     use rt::local::Local;
     use rt::task::Task;
 
@@ -150,6 +147,22 @@ pub fn with_task_stdout(f: &fn(&mut Writer)) {
                 (*task).stdout_handle = Some(handle);
             }
         }
+    }
+}
+
+/// Flushes the local task's stdout handle.
+///
+/// By default, this stream is a buffering stream, flushing may be necessary to
+/// ensure output is on the terminal screen. The buffering used is
+/// line-buffering when stdout is attached to a terminal, and a fixed sized
+/// buffer if it is not attached to a terminal.
+///
+/// Note that logging macros do not use this stream. Using the logging macros
+/// will emit output to stderr, and while they are line buffered the log
+/// messages are always terminated in a newline (no need to flush).
+pub fn flush() {
+    do with_task_stdout |io| {
+        io.flush();
     }
 }
 
