@@ -561,6 +561,45 @@ impl Parser {
         }
     }
 
+    // Expect and consume a `|`. If `||` is seen, replace it with a single
+    // `|` and continue. If a `|` is not seen, signal an error.
+    fn expect_or(&self) {
+        match *self.token {
+            token::BINOP(token::OR) => self.bump(),
+            token::OROR => {
+                self.replace_token(token::BINOP(token::OR),
+                                   self.span.lo + BytePos(1),
+                                   self.span.hi)
+            }
+            _ => {
+                let found_token = self.token_to_str(&token::BINOP(token::OR));
+                self.fatal(format!("expected `{}`, found `{}`",
+                                   found_token,
+                                   self.this_token_to_str()))
+            }
+        }
+    }
+
+    // Parse a sequence bracketed by `|` and `|`, stopping before the `|`.
+    fn parse_seq_to_before_or<T>(&self,
+                                 sep: &token::Token,
+                                 f: &fn(&Parser) -> T)
+                                 -> ~[T] {
+        let mut first = true;
+        let mut vector = ~[];
+        while *self.token != token::BINOP(token::OR) &&
+                *self.token != token::OROR {
+            if first {
+                first = false
+            } else {
+                self.expect(sep)
+            }
+
+            vector.push(f(self))
+        }
+        vector
+    }
+
     // expect and consume a GT. if a >> is seen, replace it
     // with a single > and continue. If a GT is not seen,
     // signal an error.
@@ -761,11 +800,33 @@ impl Parser {
         get_ident_interner().get(id.name)
     }
 
-    // is this one of the keywords that signals a closure type?
-    pub fn token_is_closure_keyword(&self, tok: &token::Token) -> bool {
-        token::is_keyword(keywords::Unsafe, tok) ||
-            token::is_keyword(keywords::Once, tok) ||
-            token::is_keyword(keywords::Fn, tok)
+    // Is the current token one of the keywords that signals a bare function
+    // type?
+    pub fn token_is_bare_fn_keyword(&self) -> bool {
+        if token::is_keyword(keywords::Fn, self.token) {
+            return true
+        }
+
+        if token::is_keyword(keywords::Unsafe, self.token) ||
+            token::is_keyword(keywords::Once, self.token) {
+            return self.look_ahead(1, |t| token::is_keyword(keywords::Fn, t))
+        }
+
+        false
+    }
+
+    // Is the current token one of the keywords that signals a closure type?
+    pub fn token_is_closure_keyword(&self) -> bool {
+        token::is_keyword(keywords::Unsafe, self.token) ||
+            token::is_keyword(keywords::Once, self.token)
+    }
+
+    // Is the current token one of the keywords that signals an old-style
+    // closure type (with explicit sigil)?
+    pub fn token_is_old_style_closure_keyword(&self) -> bool {
+        token::is_keyword(keywords::Unsafe, self.token) ||
+            token::is_keyword(keywords::Once, self.token) ||
+            token::is_keyword(keywords::Fn, self.token)
     }
 
     pub fn token_is_lifetime(&self, tok: &token::Token) -> bool {
@@ -786,15 +847,15 @@ impl Parser {
     pub fn parse_ty_bare_fn(&self) -> ty_ {
         /*
 
-        extern "ABI" [unsafe] fn <'lt> (S) -> T
-               ^~~~^ ^~~~~~~^    ^~~~^ ^~^    ^
-                 |     |           |    |     |
-                 |     |           |    |   Return type
-                 |     |           |  Argument types
-                 |     |       Lifetimes
-                 |     |
-                 |   Purity
-                ABI
+        [extern "ABI"] [unsafe] fn <'lt> (S) -> T
+                ^~~~^  ^~~~~~~^    ^~~~^ ^~^    ^
+                  |      |           |    |     |
+                  |      |           |    |   Return type
+                  |      |           |  Argument types
+                  |      |       Lifetimes
+                  |      |
+                  |    Purity
+                 ABI
 
         */
 
@@ -828,8 +889,8 @@ impl Parser {
 
     // parse a ty_closure type
     pub fn parse_ty_closure(&self,
-                            sigil: ast::Sigil,
-                            region: Option<ast::Lifetime>)
+                            opt_sigil: Option<ast::Sigil>,
+                            mut region: Option<ast::Lifetime>)
                             -> ty_ {
         /*
 
@@ -852,10 +913,58 @@ impl Parser {
 
         let purity = self.parse_unsafety();
         let onceness = parse_onceness(self);
-        self.expect_keyword(keywords::Fn);
-        let bounds = self.parse_optional_ty_param_bounds();
 
-        let (decl, lifetimes) = self.parse_ty_fn_decl();
+        let (sigil, decl, lifetimes, bounds) = match opt_sigil {
+            Some(sigil) => {
+                // Old-style closure syntax (`fn(A)->B`).
+                self.expect_keyword(keywords::Fn);
+                let bounds = self.parse_optional_ty_param_bounds();
+                let (decl, lifetimes) = self.parse_ty_fn_decl();
+                (sigil, decl, lifetimes, bounds)
+            }
+            None => {
+                // New-style closure syntax (`<'lt>|A|:K -> B`).
+                let lifetimes = if self.eat(&token::LT) {
+                    let lifetimes = self.parse_lifetimes();
+                    self.expect_gt();
+
+                    // Re-parse the region here. What a hack.
+                    if region.is_some() {
+                        self.span_err(*self.last_span,
+                                      "lifetime declarations must precede \
+                                       the lifetime associated with a \
+                                       closure");
+                    }
+                    region = self.parse_opt_lifetime();
+
+                    lifetimes
+                } else {
+                    opt_vec::Empty
+                };
+
+                let inputs = if self.eat(&token::OROR) {
+                    ~[]
+                } else {
+                    self.expect_or();
+                    let inputs = self.parse_seq_to_before_or(
+                        &token::COMMA,
+                        |p| p.parse_arg_general(false));
+                    self.expect_or();
+                    inputs
+                };
+
+                let bounds = self.parse_optional_ty_param_bounds();
+
+                let (return_style, output) = self.parse_ret_ty();
+                let decl = ast::fn_decl {
+                    inputs: inputs,
+                    output: output,
+                    cf: return_style,
+                };
+
+                (BorrowedSigil, decl, lifetimes, bounds)
+            }
+        };
 
         return ty_closure(@TyClosure {
             sigil: sigil,
@@ -1120,13 +1229,23 @@ impl Parser {
             // BORROWED POINTER
             self.bump();
             self.parse_borrowed_pointee()
-        } else if self.eat_keyword(keywords::Extern) {
-            // EXTERN FUNCTION
+        } else if self.is_keyword(keywords::Extern) ||
+                self.token_is_bare_fn_keyword() {
+            // BARE FUNCTION
             self.parse_ty_bare_fn()
-        } else if self.token_is_closure_keyword(self.token) {
+        } else if self.token_is_closure_keyword() ||
+                *self.token == token::BINOP(token::OR) ||
+                *self.token == token::OROR ||
+                *self.token == token::LT ||
+                self.token_is_lifetime(self.token) {
             // CLOSURE
-            let result = self.parse_ty_closure(ast::BorrowedSigil, None);
-            self.obsolete(*self.last_span, ObsoleteBareFnType);
+            //
+            // XXX(pcwalton): Eventually `token::LT` will not unambiguously
+            // introduce a closure, once procs can have lifetime bounds. We
+            // will need to refactor the grammar a little bit at that point.
+
+            let lifetime = self.parse_opt_lifetime();
+            let result = self.parse_ty_closure(None, lifetime);
             result
         } else if self.eat_keyword(keywords::Typeof) {
             // TYPEOF
@@ -1161,12 +1280,12 @@ impl Parser {
         match *self.token {
             token::LIFETIME(*) => {
                 let lifetime = self.parse_lifetime();
-                return self.parse_ty_closure(sigil, Some(lifetime));
+                return self.parse_ty_closure(Some(sigil), Some(lifetime));
             }
 
             token::IDENT(*) => {
-                if self.token_is_closure_keyword(self.token) {
-                    return self.parse_ty_closure(sigil, None);
+                if self.token_is_old_style_closure_keyword() {
+                    return self.parse_ty_closure(Some(sigil), None);
                 }
             }
             _ => {}
@@ -1187,8 +1306,8 @@ impl Parser {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
 
-        if self.token_is_closure_keyword(self.token) {
-            return self.parse_ty_closure(BorrowedSigil, opt_lifetime);
+        if self.token_is_old_style_closure_keyword() {
+            return self.parse_ty_closure(Some(BorrowedSigil), opt_lifetime);
         }
 
         let mt = self.parse_mt();
@@ -4390,8 +4509,13 @@ impl Parser {
         }
     }
 
-    // parse a string as an ABI spec on an extern type or module
+    // Parses a string as an ABI spec on an extern type or module. Consumes
+    // the `extern` keyword, if one is found.
     fn parse_opt_abis(&self) -> Option<AbiSet> {
+        if !self.eat_keyword(keywords::Extern) {
+            return None
+        }
+
         match *self.token {
             token::LIT_STR(s)
             | token::LIT_STR_RAW(s, _) => {
@@ -4467,7 +4591,7 @@ impl Parser {
             });
         }
         // either a view item or an item:
-        if self.eat_keyword(keywords::Extern) {
+        if self.is_keyword(keywords::Extern) {
             let opt_abis = self.parse_opt_abis();
 
             if self.eat_keyword(keywords::Fn) {

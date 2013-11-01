@@ -2015,20 +2015,39 @@ pub fn print_ty_fn(s: @ps,
     // function prints the sigil in the wrong place.  That should be fixed.
     if opt_sigil == Some(ast::OwnedSigil) && onceness == ast::Once {
         word(s.s, "proc");
-    } else {
+    } else if opt_sigil == Some(ast::BorrowedSigil) {
         print_extern_opt_abis(s, opt_abis);
+        for lifetime in opt_region.iter() {
+            print_lifetime(s, lifetime);
+        }
+        print_purity(s, purity);
+        print_onceness(s, onceness);
+    } else {
+        print_opt_abis_and_extern_if_nondefault(s, opt_abis);
         print_opt_sigil(s, opt_sigil);
         print_opt_lifetime(s, opt_region);
         print_purity(s, purity);
         print_onceness(s, onceness);
         word(s.s, "fn");
     }
+
     match id { Some(id) => { word(s.s, " "); print_ident(s, id); } _ => () }
-    do opt_bounds.as_ref().map |bounds| { print_bounds(s, bounds, true); };
+
+    if opt_sigil != Some(ast::BorrowedSigil) {
+        do opt_bounds.as_ref().map |bounds| {
+            print_bounds(s, bounds, true);
+        };
+    }
+
     match generics { Some(g) => print_generics(s, g), _ => () }
     zerobreak(s.s);
 
-    popen(s);
+    if opt_sigil == Some(ast::BorrowedSigil) {
+        word(s.s, "|");
+    } else {
+        popen(s);
+    }
+
     // It is unfortunate to duplicate the commasep logic, but we want the
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
@@ -2041,7 +2060,14 @@ pub fn print_ty_fn(s: @ps,
         print_arg(s, arg);
     }
     end(s);
-    pclose(s);
+
+    if opt_sigil == Some(ast::BorrowedSigil) {
+        word(s.s, "|");
+
+        opt_bounds.as_ref().map(|bounds| print_bounds(s, bounds, true));
+    } else {
+        pclose(s);
+    }
 
     maybe_print_comment(s, decl.output.span.lo);
 
@@ -2272,6 +2298,17 @@ pub fn print_opt_purity(s: @ps, opt_purity: Option<ast::purity>) {
         }
         None => {}
     }
+}
+
+pub fn print_opt_abis_and_extern_if_nondefault(s: @ps,
+                                               opt_abis: Option<AbiSet>) {
+    match opt_abis {
+        Some(abis) if !abis.is_rust() => {
+            word_nbsp(s, "extern");
+            word_nbsp(s, abis.to_str());
+        }
+        Some(_) | None => {}
+    };
 }
 
 pub fn print_extern_opt_abis(s: @ps, opt_abis: Option<AbiSet>) {
