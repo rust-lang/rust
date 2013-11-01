@@ -102,8 +102,7 @@ impl RtioTimer for TimerWatcher {
 }
 
 extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
-    let handle = handle as *uvll::uv_handle_t;
-    let timer : &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
+    let timer: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
 
     match timer.action.take_unwrap() {
         WakeTask(task) => {

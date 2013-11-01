@@ -8,65 +8,72 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
 use std::libc::c_int;
 use std::rt::io::signal::Signum;
+use std::rt::sched::{SchedHandle, Scheduler};
+use std::comm::{SharedChan, SendDeferred};
+use std::rt::local::Local;
+use std::rt::rtio::RtioSignal;
 
-use super::{Loop, NativeHandle, SignalCallback, UvError, Watcher};
+use super::{Loop, UvError, UvHandle};
 use uvll;
+use uvio::HomingIO;
 
-pub struct SignalWatcher(*uvll::uv_signal_t);
+pub struct SignalWatcher {
+    handle: *uvll::uv_signal_t,
+    home: SchedHandle,
 
-impl Watcher for SignalWatcher { }
+    channel: SharedChan<Signum>,
+    signal: Signum,
+}
 
 impl SignalWatcher {
-    pub fn new(loop_: &mut Loop) -> SignalWatcher {
-        unsafe {
-            let handle = uvll::malloc_handle(uvll::UV_SIGNAL);
-            assert!(handle.is_not_null());
-            assert!(0 == uvll::uv_signal_init(loop_.native_handle(), handle));
-            let mut watcher: SignalWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher;
-        }
-    }
+    pub fn new(loop_: &mut Loop, signum: Signum,
+               channel: SharedChan<Signum>) -> Result<~SignalWatcher, UvError> {
+        let handle = UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL);
+        assert_eq!(unsafe {
+            uvll::signal_init(loop_.native_handle(), handle)
+        }, 0);
 
-    pub fn start(&mut self, signum: Signum, callback: SignalCallback)
-            -> Result<(), UvError>
-    {
-        return unsafe {
-            match uvll::uv_signal_start(self.native_handle(), signal_cb,
-                                        signum as c_int) {
-                0 => {
-                    let data = self.get_watcher_data();
-                    data.signal_cb = Some(callback);
-                    Ok(())
-                }
-                n => Err(UvError(n)),
+        match unsafe { uvll::signal_start(handle, signal_cb, signum as c_int) } {
+            0 => {
+                let s = ~SignalWatcher {
+                    handle: handle,
+                    home: get_handle_to_current_scheduler!(),
+                    channel: channel,
+                    signal: signum,
+                };
+                Ok(s.install())
             }
-        };
-
-        extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
-            let mut watcher: SignalWatcher = NativeHandle::from_native_handle(handle);
-            let data = watcher.get_watcher_data();
-            let cb = data.signal_cb.get_ref();
-            (*cb)(watcher, unsafe { cast::transmute(signum as int) });
+            n => {
+                unsafe { uvll::free_handle(handle) }
+                Err(UvError(n))
+            }
         }
-    }
 
-    pub fn stop(&mut self) {
-        unsafe {
-            uvll::uv_signal_stop(self.native_handle());
-        }
     }
 }
 
-impl NativeHandle<*uvll::uv_signal_t> for SignalWatcher {
-    fn from_native_handle(handle: *uvll::uv_signal_t) -> SignalWatcher {
-        SignalWatcher(handle)
-    }
+extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
+    let s: &mut SignalWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
+    assert_eq!(signum as int, s.signal as int);
+    s.channel.send_deferred(s.signal);
+}
 
-    fn native_handle(&self) -> *uvll::uv_signal_t {
-        match self { &SignalWatcher(ptr) => ptr }
+impl HomingIO for SignalWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl UvHandle<uvll::uv_signal_t> for SignalWatcher {
+    fn uv_handle(&self) -> *uvll::uv_signal_t { self.handle }
+}
+
+impl RtioSignal for SignalWatcher {}
+
+impl Drop for SignalWatcher {
+    fn drop(&mut self) {
+        do self.home_for_io |self_| {
+            self_.close_async_();
+        }
     }
 }

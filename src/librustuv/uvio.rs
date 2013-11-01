@@ -13,8 +13,8 @@ use std::cast::transmute;
 use std::cast;
 use std::cell::Cell;
 use std::clone::Clone;
-use std::comm::{SendDeferred, SharedChan, GenericChan};
-use std::libc::{c_int, c_uint, c_void, pid_t};
+use std::comm::{SharedChan, GenericChan};
+use std::libc::{c_int, c_uint, c_void};
 use std::ptr;
 use std::str;
 use std::rt::io;
@@ -841,11 +841,8 @@ impl IoFactory for UvIoFactory {
 
     fn signal(&mut self, signum: Signum, channel: SharedChan<Signum>)
         -> Result<~RtioSignal, IoError> {
-        let watcher = SignalWatcher::new(self.uv_loop());
-        let home = get_handle_to_current_scheduler!();
-        let mut signal = ~UvSignal::new(watcher, home);
-        match signal.watcher.start(signum, |_, _| channel.send_deferred(signum)) {
-            Ok(()) => Ok(signal as ~RtioSignal),
+        match SignalWatcher::new(self.uv_loop(), signum, channel) {
+            Ok(s) => Ok(s as ~RtioSignal),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
@@ -1588,37 +1585,6 @@ impl RtioUnixAcceptor for UvUnixAcceptor {
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         accept_simultaneously(self.listener.inner.pipe.as_stream(), 0)
-    }
-}
-
-pub struct UvSignal {
-    watcher: signal::SignalWatcher,
-    home: SchedHandle,
-}
-
-impl HomingIO for UvSignal {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
-}
-
-impl UvSignal {
-    fn new(w: signal::SignalWatcher, home: SchedHandle) -> UvSignal {
-        UvSignal { watcher: w, home: home }
-    }
-}
-
-impl RtioSignal for UvSignal {}
-
-impl Drop for UvSignal {
-    fn drop(&mut self) {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        uvdebug!("closing UvSignal");
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            do self.watcher.close {
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
     }
 }
 

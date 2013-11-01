@@ -103,7 +103,6 @@ impl Process {
 extern fn on_exit(handle: *uvll::uv_process_t,
                   exit_status: libc::c_int,
                   term_signal: libc::c_int) {
-    let handle = handle as *uvll::uv_handle_t;
     let p: &mut Process = unsafe { UvHandle::from_uv_handle(&handle) };
 
     assert!(p.exit_status.is_none());
