@@ -207,7 +207,6 @@ fn ziggurat<R:Rng>(rng: &mut R,
                    symmetric: bool,
                    X: ziggurat_tables::ZigTable,
                    F: ziggurat_tables::ZigTable,
-                   F_DIFF: ziggurat_tables::ZigTable,
                    pdf: &'static fn(f64) -> f64,
                    zero_case: &'static fn(&mut R, f64) -> f64) -> f64 {
     static SCALE: f64 = (1u64 << 53) as f64;
@@ -237,7 +236,7 @@ fn ziggurat<R:Rng>(rng: &mut R,
             return zero_case(rng, u);
         }
         // algebraically equivalent to f1 + DRanU()*(f0 - f1) < 1
-        if F[i + 1] + F_DIFF[i + 1] * rng.gen() < pdf(x) {
+        if F[i + 1] + (F[i] - F[i + 1]) * rng.gen() < pdf(x) {
             return x;
         }
     }
@@ -288,7 +287,7 @@ impl Rand for StandardNormal {
             rng,
             true, // this is symmetric
             &ziggurat_tables::ZIG_NORM_X,
-            &ziggurat_tables::ZIG_NORM_F, &ziggurat_tables::ZIG_NORM_F_DIFF,
+            &ziggurat_tables::ZIG_NORM_F,
             pdf, zero_case))
     }
 }
@@ -366,7 +365,7 @@ impl Rand for Exp1 {
 
         Exp1(ziggurat(rng, false,
                       &ziggurat_tables::ZIG_EXP_X,
-                      &ziggurat_tables::ZIG_EXP_F, &ziggurat_tables::ZIG_EXP_F_DIFF,
+                      &ziggurat_tables::ZIG_EXP_F,
                       pdf, zero_case))
     }
 }
