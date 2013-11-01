@@ -164,7 +164,7 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
                   $(CFG_ADB_TEST_DIR)) \
  $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
                   $(CFG_ADB_TEST_DIR)) \
- $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
                   $(CFG_ADB_TEST_DIR)) \
  )
 else
@@ -471,8 +471,8 @@ define DEF_RUSTPKG_STACK_FIX
 $$(call TEST_OK_FILE,$(1),$(2),$(3),rustpkg): export RUST_MIN_STACK=8000000
 endef
 
-$(foreach host,$(CFG_HOST_TRIPLES), \
- $(foreach target,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
   $(foreach stage,$(STAGES), \
    $(eval $(call DEF_RUSTPKG_STACK_FIX,$(stage),$(target),$(host))))))
 
