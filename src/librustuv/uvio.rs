@@ -2464,7 +2464,7 @@ fn test_timer_sleep_simple() {
         unsafe {
             let io = local_io();
             let timer = io.timer_init();
-            do timer.map_move |mut t| { t.sleep(1) };
+            do timer.map |mut t| { t.sleep(1) };
         }
     }
 }
