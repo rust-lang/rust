@@ -4560,14 +4560,14 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
 }
 
 pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {
-    do tcx.lang_items.require(TyDescStructLangItem).map_move |tydesc_lang_item| {
+    do tcx.lang_items.require(TyDescStructLangItem).map |tydesc_lang_item| {
         tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     }
 }
 
 pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
-    do tcx.lang_items.require(OpaqueStructLangItem).map_move |opaque_lang_item| {
+    do tcx.lang_items.require(OpaqueStructLangItem).map |opaque_lang_item| {
         tcx.intrinsic_defs.find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
     }

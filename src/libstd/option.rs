@@ -8,94 +8,86 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! Operations on the ubiquitous `Option` type.
+//!
+//! Type `Option` represents an optional value.
+//!
+//! Every `Option<T>` value can either be `Some(T)` or `None`. Where in other
+//! languages you might use a nullable type, in Rust you would use an option
+//! type.
+//!
+//! Options are most commonly used with pattern matching to query the presence
+//! of a value and take action, always accounting for the `None` case.
+//!
+//! # Example
+//!
+//! ```
+//! let msg = Some(~"howdy");
+//!
+//! // Take a reference to the contained string
+//! match msg {
+//!     Some(ref m) => io::println(*m),
+//!     None => ()
+//! }
+//!
+//! // Remove the contained string, destroying the Option
+//! let unwrapped_msg = match msg {
+//!     Some(m) => m,
+//!     None => ~"default message"
+//! };
+//! ```
 
-Operations on the ubiquitous `Option` type.
-
-Type `Option` represents an optional value.
-
-Every `Option<T>` value can either be `Some(T)` or `None`. Where in other
-languages you might use a nullable type, in Rust you would use an option
-type.
-
-Options are most commonly used with pattern matching to query the presence
-of a value and take action, always accounting for the `None` case.
-
-# Example
-
- ```
-let msg = Some(~"howdy");
-
-// Take a reference to the contained string
-match msg {
-    Some(ref m) => io::println(*m),
-    None => ()
-}
-
-// Remove the contained string, destroying the Option
-let unwrapped_msg = match msg {
-    Some(m) => m,
-    None => ~"default message"
-};
- ```
-
-*/
-
+use any::Any;
 use clone::Clone;
-use cmp::{Eq,Ord};
-use default::Default;
-use either;
-use util;
-use num::Zero;
-use iter;
-use iter::{Iterator, DoubleEndedIterator, ExactSize};
-use result;
-use str::{StrSlice, OwnedStr};
-use to_str::ToStr;
 use clone::DeepClone;
+use cmp::{Eq, TotalEq, TotalOrd};
+use default::Default;
+use fmt;
+use iter::{Iterator, DoubleEndedIterator, ExactSize};
+use kinds::Send;
+use result::{IntoResult, ToResult, AsResult};
+use result::{Result, Ok, Err};
+use str::OwnedStr;
+use to_str::ToStr;
+use util;
 
 /// The option type
-#[deriving(Clone, DeepClone, Eq)]
-#[allow(missing_doc)]
+#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
 pub enum Option<T> {
+    /// No value
     None,
-    Some(T),
+    /// Some value `T`
+    Some(T)
 }
 
-impl<T: Eq + Ord> Ord for Option<T> {
-    fn lt(&self, other: &Option<T>) -> bool {
-        iter::order::lt(self.iter(), other.iter())
-    }
-
-    fn le(&self, other: &Option<T>) -> bool {
-        iter::order::le(self.iter(), other.iter())
-    }
-
-    fn ge(&self, other: &Option<T>) -> bool {
-        iter::order::ge(self.iter(), other.iter())
-    }
-
-    fn gt(&self, other: &Option<T>) -> bool {
-        iter::order::gt(self.iter(), other.iter())
-    }
-}
-
-// FIXME: #8242 implementing manually because deriving doesn't work for some reason
-impl<T: ToStr> ToStr for Option<T> {
-    fn to_str(&self) -> ~str {
-        match *self {
-            Some(ref x) => {
-                let mut s = ~"Some(";
-                s.push_str(x.to_str());
-                s.push_str(")");
-                s
-            }
-            None => ~"None"
-        }
-    }
-}
+/////////////////////////////////////////////////////////////////////////////
+// Type implementation
+/////////////////////////////////////////////////////////////////////////////
 
 impl<T> Option<T> {
+    /////////////////////////////////////////////////////////////////////////
+    // Querying the contained values
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Returns true if the option contains a `Some` value
+    #[inline]
+    pub fn is_some(&self) -> bool {
+        match *self {
+            Some(_) => true,
+            None => false
+        }
+    }
+
+    /// Returns true if the option equals `None`
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        !self.is_some()
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Adapter for working with references
+    /////////////////////////////////////////////////////////////////////////
+
     /// Convert from `Option<T>` to `Option<&T>`
     #[inline]
     pub fn as_ref<'r>(&'r self) -> Option<&'r T> {
@@ -108,6 +100,64 @@ impl<T> Option<T> {
         match *self { Some(ref mut x) => Some(x), None => None }
     }
 
+    /////////////////////////////////////////////////////////////////////////
+    // Getting to contained values
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Unwraps a option, yielding the content of a `Some`
+    /// Fails if the value is a `None` with a custom failure message provided by `msg`.
+    #[inline]
+    pub fn expect<M: Any + Send>(self, msg: M) -> T {
+        match self {
+            Some(val) => val,
+            None => fail!(msg),
+        }
+    }
+
+    /// Moves a value out of an option type and returns it.
+    ///
+    /// Useful primarily for getting strings, vectors and unique pointers out
+    /// of option types without copying them.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value equals `None`.
+    ///
+    /// # Safety note
+    ///
+    /// In general, because this function may fail, its use is discouraged.
+    /// Instead, prefer to use pattern matching and handle the `None`
+    /// case explicitly.
+    #[inline]
+    pub fn unwrap(self) -> T {
+        match self {
+            Some(val) => val,
+            None => fail!("called `Option::unwrap()` on a `None` value"),
+        }
+    }
+
+    /// Returns the contained value or a default
+    #[inline]
+    pub fn unwrap_or(self, def: T) -> T {
+        match self {
+            Some(x) => x,
+            None => def
+        }
+    }
+
+    /// Returns the contained value or computes it from a closure
+    #[inline]
+    pub fn unwrap_or_else(self, f: &fn() -> T) -> T {
+        match self {
+            Some(x) => x,
+            None => f()
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Transforming contained values
+    /////////////////////////////////////////////////////////////////////////
+
     /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value.
     #[inline]
     pub fn map<U>(self, f: &fn(T) -> U) -> Option<U> {
@@ -119,6 +169,31 @@ impl<T> Option<T> {
     pub fn map_default<U>(self, def: U, f: &fn(T) -> U) -> U {
         match self { None => def, Some(t) => f(t) }
     }
+
+    /// Apply a function to the contained value or do nothing.
+    /// Returns true if the contained value was mutated.
+    pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
+        if self.is_some() {
+            *self = Some(f(self.take_unwrap()));
+            true
+        } else { false }
+    }
+
+    /// Apply a function to the contained value or set it to a default.
+    /// Returns true if the contained value was mutated, or false if set to the default.
+    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) -> bool {
+        if self.is_some() {
+            *self = Some(f(self.take_unwrap()));
+            true
+        } else {
+            *self = Some(def);
+            false
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Iterator constructors
+    /////////////////////////////////////////////////////////////////////////
 
     /// Return an iterator over the possibly contained value
     #[inline]
@@ -144,19 +219,13 @@ impl<T> Option<T> {
         OptionIterator{opt: self}
     }
 
-    /// Returns true if the option equals `None`
-    #[inline]
-    pub fn is_none(&self) -> bool {
-        match *self { None => true, Some(_) => false }
-    }
-
-    /// Returns true if the option contains a `Some` value
-    #[inline]
-    pub fn is_some(&self) -> bool { !self.is_none() }
+    /////////////////////////////////////////////////////////////////////////
+    // Boolean operations on the values, eager and lazy
+    /////////////////////////////////////////////////////////////////////////
 
     /// Returns `None` if the option is `None`, otherwise returns `optb`.
     #[inline]
-    pub fn and(self, optb: Option<T>) -> Option<T> {
+    pub fn and<U>(self, optb: Option<U>) -> Option<U> {
         match self {
             Some(_) => optb,
             None => None,
@@ -192,7 +261,17 @@ impl<T> Option<T> {
         }
     }
 
-    /// Filters an optional value using given function.
+    /////////////////////////////////////////////////////////////////////////
+    // Misc
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Take the value out of the option, leaving a `None` in its place.
+    #[inline]
+    pub fn take(&mut self) -> Option<T> {
+        util::replace(self, None)
+    }
+
+    /// Filters an optional value using a given function.
     #[inline(always)]
     pub fn filtered(self, f: &fn(t: &T) -> bool) -> Option<T> {
         match self {
@@ -201,31 +280,31 @@ impl<T> Option<T> {
         }
     }
 
-    /// Take the value out of the option, leaving a `None` in its place.
+    /// Applies a function zero or more times until the result is `None`.
     #[inline]
-    pub fn take(&mut self) -> Option<T> {
-        util::replace(self, None)
-    }
-
-    /// Apply a function to the contained value or do nothing.
-    /// Returns true if the contained value was mutated.
-    pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
-        if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
-            true
-        } else { false }
-    }
-
-    /// Apply a function to the contained value or set it to a default.
-    /// Returns true if the contained value was mutated, or false if set to the default.
-    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) -> bool {
-        if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
-            true
-        } else {
-            *self = Some(def);
-            false
+    pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
+        let mut opt = self;
+        while opt.is_some() {
+            opt = blk(opt.unwrap());
         }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Common special cases
+    /////////////////////////////////////////////////////////////////////////
+
+    /// The option dance. Moves a value out of an option type and returns it,
+    /// replacing the original with `None`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value equals `None`.
+    #[inline]
+    pub fn take_unwrap(&mut self) -> T {
+        if self.is_none() {
+            fail!("called `Option::take_unwrap()` on a `None` value")
+        }
+        self.take().unwrap()
     }
 
     /// Gets an immutable reference to the value inside an option.
@@ -267,84 +346,22 @@ impl<T> Option<T> {
             None => fail!("called `Option::get_mut_ref()` on a `None` value"),
         }
     }
+}
 
-    /// Moves a value out of an option type and returns it.
-    ///
-    /// Useful primarily for getting strings, vectors and unique pointers out
-    /// of option types without copying them.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value equals `None`.
-    ///
-    /// # Safety note
-    ///
-    /// In general, because this function may fail, its use is discouraged.
-    /// Instead, prefer to use pattern matching and handle the `None`
-    /// case explicitly.
+impl<T: Default> Option<T> {
+    /// Returns the contained value or default (for this type)
     #[inline]
-    pub fn unwrap(self) -> T {
+    pub fn unwrap_or_default(self) -> T {
         match self {
             Some(x) => x,
-            None => fail!("called `Option::unwrap()` on a `None` value"),
-        }
-    }
-
-    /// The option dance. Moves a value out of an option type and returns it,
-    /// replacing the original with `None`.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value equals `None`.
-    #[inline]
-    pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() {
-            fail!("called `Option::take_unwrap()` on a `None` value")
-        }
-        self.take().unwrap()
-    }
-
-    ///  Gets the value out of an option, printing a specified message on
-    ///  failure
-    ///
-    ///  # Failure
-    ///
-    ///  Fails if the value equals `None`
-    #[inline]
-    pub fn expect(self, reason: &str) -> T {
-        match self {
-            Some(val) => val,
-            None => fail!("{}", reason.to_owned()),
-        }
-    }
-
-    /// Returns the contained value or a default
-    #[inline]
-    pub fn unwrap_or(self, def: T) -> T {
-        match self {
-            Some(x) => x,
-            None => def
-        }
-    }
-
-    /// Returns the contained value or computes it from a closure
-    #[inline]
-    pub fn unwrap_or_else(self, f: &fn() -> T) -> T {
-        match self {
-            Some(x) => x,
-            None => f()
-        }
-    }
-
-    /// Applies a function zero or more times until the result is `None`.
-    #[inline]
-    pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
-        let mut opt = self;
-        while opt.is_some() {
-            opt = blk(opt.unwrap());
+            None => Default::default()
         }
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// Constructor extension trait
+/////////////////////////////////////////////////////////////////////////////
 
 /// A generic trait for converting a value to a `Option`
 pub trait ToOption<T> {
@@ -384,53 +401,47 @@ impl<T> AsOption<T> for Option<T> {
     }
 }
 
-impl<T: Clone> result::ToResult<T, ()> for Option<T> {
+/////////////////////////////////////////////////////////////////////////////
+// Trait implementations
+/////////////////////////////////////////////////////////////////////////////
+
+impl<T: Clone> ToResult<T, ()> for Option<T> {
     #[inline]
-    fn to_result(&self) -> result::Result<T, ()> {
+    fn to_result(&self) -> Result<T, ()> {
         match *self {
-            Some(ref x) => result::Ok(x.clone()),
-            None => result::Err(()),
+            Some(ref x) => Ok(x.clone()),
+            None => Err(()),
         }
     }
 }
 
-impl<T> result::IntoResult<T, ()> for Option<T> {
+impl<T> IntoResult<T, ()> for Option<T> {
     #[inline]
-    fn into_result(self) -> result::Result<T, ()> {
+    fn into_result(self) -> Result<T, ()> {
         match self {
-            Some(x) => result::Ok(x),
-            None => result::Err(()),
+            Some(x) => Ok(x),
+            None => Err(()),
         }
     }
 }
 
-impl<T: Clone> either::ToEither<(), T> for Option<T> {
+impl<T> AsResult<T, ()> for Option<T> {
     #[inline]
-    fn to_either(&self) -> either::Either<(), T> {
+    fn as_result<'a>(&'a self) -> Result<&'a T, &'a ()> {
+        static UNIT: () = ();
         match *self {
-            Some(ref x) => either::Right(x.clone()),
-            None => either::Left(()),
+            Some(ref t) => Ok(t),
+            None => Err(&UNIT),
         }
     }
 }
 
-impl<T> either::IntoEither<(), T> for Option<T> {
+impl<T: fmt::Default> fmt::Default for Option<T> {
     #[inline]
-    fn into_either(self) -> either::Either<(), T> {
-        match self {
-            Some(x) => either::Right(x),
-            None => either::Left(()),
-        }
-    }
-}
-
-impl<T: Default> Option<T> {
-    /// Returns the contained value or default (for this type)
-    #[inline]
-    pub fn unwrap_or_default(self) -> T {
-        match self {
-            Some(x) => x,
-            None => Default::default()
+    fn fmt(s: &Option<T>, f: &mut fmt::Formatter) {
+        match *s {
+            Some(ref t) => write!(f.buf, "Some({})", *t),
+            None        => write!(f.buf, "None")
         }
     }
 }
@@ -440,16 +451,9 @@ impl<T> Default for Option<T> {
     fn default() -> Option<T> { None }
 }
 
-impl<T: Zero> Option<T> {
-    /// Returns the contained value or zero (for this type)
-    #[inline]
-    pub fn unwrap_or_zero(self) -> T {
-        match self {
-            Some(x) => x,
-            None => Zero::zero()
-        }
-    }
-}
+/////////////////////////////////////////////////////////////////////////////
+// The Option Iterator
+/////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that yields either one or zero elements
 #[deriving(Clone, DeepClone)]
@@ -481,14 +485,17 @@ impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
 
 impl<A> ExactSize<A> for OptionIterator<A> {}
 
+/////////////////////////////////////////////////////////////////////////////
+// Tests
+/////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use either::{IntoEither, ToEither};
-    use either;
     use result::{IntoResult, ToResult};
-    use result;
+    use result::{Ok, Err};
+    use str::StrSlice;
     use util;
 
     #[test]
@@ -550,6 +557,7 @@ mod tests {
         assert_eq!(y2, 5);
         assert!(y.is_none());
     }
+
     #[test] #[should_fail]
     fn test_option_too_much_dance() {
         let mut y = Some(util::NonCopyable);
@@ -561,11 +569,11 @@ mod tests {
     fn test_and() {
         let x: Option<int> = Some(1);
         assert_eq!(x.and(Some(2)), Some(2));
-        assert_eq!(x.and(None), None);
+        assert_eq!(x.and(None::<int>), None);
 
         let x: Option<int> = None;
         assert_eq!(x.and(Some(2)), None);
-        assert_eq!(x.and(None), None);
+        assert_eq!(x.and(None::<int>), None);
     }
 
     #[test]
@@ -630,7 +638,7 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_unwrap_fail() {
+    fn test_unwrap_fail2() {
         let x: Option<~str> = None;
         x.unwrap();
     }
@@ -651,14 +659,6 @@ mod tests {
 
         let x: Option<int> = None;
         assert_eq!(x.unwrap_or_else(|| 2), 2);
-    }
-
-    #[test]
-    fn test_unwrap_or_zero() {
-        let some_stuff = Some(42);
-        assert_eq!(some_stuff.unwrap_or_zero(), 42);
-        let no_stuff: Option<int> = None;
-        assert_eq!(no_stuff.unwrap_or_zero(), 0);
     }
 
     #[test]
@@ -765,8 +765,8 @@ mod tests {
         let some: Option<int> = Some(100);
         let none: Option<int> = None;
 
-        assert_eq!(some.to_result(), result::Ok(100));
-        assert_eq!(none.to_result(), result::Err(()));
+        assert_eq!(some.to_result(), Ok(100));
+        assert_eq!(none.to_result(), Err(()));
     }
 
     #[test]
@@ -774,25 +774,7 @@ mod tests {
         let some: Option<int> = Some(100);
         let none: Option<int> = None;
 
-        assert_eq!(some.into_result(), result::Ok(100));
-        assert_eq!(none.into_result(), result::Err(()));
-    }
-
-    #[test]
-    pub fn test_to_either() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.to_either(), either::Right(100));
-        assert_eq!(none.to_either(), either::Left(()));
-    }
-
-    #[test]
-    pub fn test_into_either() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.into_either(), either::Right(100));
-        assert_eq!(none.into_either(), either::Left(()));
+        assert_eq!(some.into_result(), Ok(100));
+        assert_eq!(none.into_result(), Err(()));
     }
 }

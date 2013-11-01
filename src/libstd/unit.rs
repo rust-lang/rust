@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Functions for the unit type.
-
-*/
+//! Functions for the unit type.
 
 #[cfg(not(test))]
 use prelude::*;
