@@ -400,11 +400,6 @@ valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 valopt libdir "${CFG_PREFIX}/lib" "install libraries" 
 
-#Deprecated opts to keep compatibility
-valopt build-triple "" "LLVM build triple"
-valopt host-triples "" "LLVM host triples"
-valopt target-triples "" "LLVM target triples"
-
 # Validate Options
 step_msg "validating $CFG_SELF args"
 validate_opt
@@ -601,19 +596,6 @@ then
 fi
 
 # a little post-processing of various config values
-
-# XXX: Support for deprecated syntax, should be dropped.
-if [ ! -z "$CFG_BUILD_TRIPLE" ]; then
-    CFG_BUILD=${CFG_BUILD_TRIPLE}
-fi
-if [ ! -z "$CFG_HOST_TRIPLES" ]; then
-    CFG_HOST=${CFG_HOST_TRIPLES}
-fi
-if [ ! -z "$CFG_TARGET_TRIPLES" ]; then
-    CFG_TARGET=${CFG_TARGET_TRIPLES}
-fi
-
-
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
