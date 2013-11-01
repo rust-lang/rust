@@ -27,8 +27,10 @@ use rand::{Rng,Rand};
 use clone::Clone;
 
 pub use self::range::Range;
+pub use self::gamma::Gamma;
 
 pub mod range;
+pub mod gamma;
 
 /// Types that can be used to create a random instance of `Support`.
 pub trait Sample<Support> {
