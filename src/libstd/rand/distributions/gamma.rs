@@ -182,12 +182,11 @@ mod bench {
     use super::*;
     use mem::size_of;
     use rand::distributions::IndependentSample;
-    use rand::StdRng;
+    use rand::{StdRng, RAND_BENCH_N};
     use extra::test::BenchHarness;
     use iter::range;
     use option::{Some, None};
 
-    static N: u64 = 100;
 
     #[bench]
     fn bench_gamma_large_shape(bh: &mut BenchHarness) {
@@ -195,11 +194,11 @@ mod bench {
         let mut rng = StdRng::new();
 
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
         }
-        bh.bytes = size_of::<f64>() as u64 * N;
+        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
@@ -208,10 +207,10 @@ mod bench {
         let mut rng = StdRng::new();
 
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
         }
-        bh.bytes = size_of::<f64>() as u64 * N;
+        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }
