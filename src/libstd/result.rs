@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,26 +10,25 @@
 
 //! A type representing either success or failure
 
-#[allow(missing_doc)];
-
+use any::Any;
 use clone::Clone;
 use cmp::Eq;
-use either;
-use iter::Iterator;
-use option::{None, Option, Some, OptionIterator};
-use option;
-use vec;
-use vec::OwnedVector;
-use to_str::ToStr;
-use str::StrSlice;
 use fmt;
+use iter::Iterator;
+use kinds::Send;
+use option::{None, Option, Some, OptionIterator};
+use option::{ToOption, IntoOption, AsOption};
+use str::OwnedStr;
+use to_str::ToStr;
+use vec::OwnedVector;
+use vec;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// In order to provide informative error messages, `E` is required to implement `ToStr`.
 /// It is further recommended for `E` to be a descriptive error type, eg a `enum` for
 /// all possible errors cases.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
 pub enum Result<T, E> {
     /// Contains the successful result value
     Ok(T),
@@ -37,20 +36,14 @@ pub enum Result<T, E> {
     Err(E)
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// Type implementation
+/////////////////////////////////////////////////////////////////////////////
+
 impl<T, E: ToStr> Result<T, E> {
-    /// Get a reference to the value out of a successful result
-    ///
-    /// # Failure
-    ///
-    /// If the result is an error
-    #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a T {
-        match *self {
-            Ok(ref t) => t,
-            Err(ref e) => fail!("called `Result::get_ref()` on `Err` value: {}",
-                                 e.to_str()),
-        }
-    }
+    /////////////////////////////////////////////////////////////////////////
+    // Querying the contained values
+    /////////////////////////////////////////////////////////////////////////
 
     /// Returns true if the result is `Ok`
     #[inline]
@@ -67,12 +60,114 @@ impl<T, E: ToStr> Result<T, E> {
         !self.is_ok()
     }
 
-    /// Call a method based on a previous result
+    /////////////////////////////////////////////////////////////////////////
+    // Adapter for working with references
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Convert from `Result<T, E>` to `Result<&T, &E>`
+    #[inline]
+    pub fn as_ref<'r>(&'r self) -> Result<&'r T, &'r E> {
+        match *self {
+            Ok(ref x) => Ok(x),
+            Err(ref x) => Err(x),
+        }
+    }
+
+    /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
+    #[inline]
+    pub fn as_mut<'r>(&'r mut self) -> Result<&'r mut T, &'r mut E> {
+        match *self {
+            Ok(ref mut x) => Ok(x),
+            Err(ref mut x) => Err(x),
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Getting to contained values
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Fails if the value is a `Err` with a custom failure message provided by `msg`.
+    #[inline]
+    pub fn expect<M: Any + Send>(self, msg: M) -> T {
+        match self {
+            Ok(t) => t,
+            Err(_) => fail!(msg),
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Err`.
+    /// Fails if the value is a `Ok` with a custom failure message provided by `msg`.
+    #[inline]
+    pub fn expect_err<M: Any + Send>(self, msg: M) -> E {
+        match self {
+            Err(e) => e,
+            Ok(_) => fail!(msg),
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Fails if the value is a `Err` with an error message derived
+    /// from `E`'s `ToStr` implementation.
+    #[inline]
+    pub fn unwrap(self) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) => fail!("called `Result::unwrap()` on `Err` value '{}'",
+                             e.to_str()),
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Err`.
+    /// Fails if the value is a `Ok`.
+    #[inline]
+    pub fn unwrap_err(self) -> E {
+        match self {
+            Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
+            Err(e) => e
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Transforming contained values
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Maps an `Result<T, E>` to `Result<U, E>` by applying a function to an
+    /// contained `Ok` value, leaving an `Err` value untouched.
     ///
-    /// If `self` is `Ok` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is returned. if `self` is `Err` then it is
-    /// immediately returned. This function can be used to compose the results
-    /// of two functions.
+    /// This function can be used to compose the results of two functions.
+    ///
+    /// Example:
+    ///
+    ///     let res = do read_file(file).map |buf| {
+    ///         parse_bytes(buf)
+    ///     }
+    #[inline]
+    pub fn map<U>(self, op: &fn(T) -> U) -> Result<U,E> {
+        match self {
+          Ok(t) => Ok(op(t)),
+          Err(e) => Err(e)
+        }
+    }
+
+    /// Maps an `Result<T, E>` to `Result<T, F>` by applying a function to an
+    /// contained `Err` value, leaving an `Ok` value untouched.
+    ///
+    /// This function can be used to pass through a successful result while handling
+    /// an error.
+    #[inline]
+    pub fn map_err<F>(self, op: &fn(E) -> F) -> Result<T,F> {
+        match self {
+          Ok(t) => Ok(t),
+          Err(e) => Err(op(e))
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Iterator constructors
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Returns an `Iterator` over one or zero references to the value of an `Ok`
     ///
     /// Example:
     ///
@@ -87,12 +182,7 @@ impl<T, E: ToStr> Result<T, E> {
         }.move_iter()
     }
 
-    /// Call a method based on a previous result
-    ///
-    /// If `self` is `Err` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is returned. if `self` is `Ok` then it is
-    /// immediately returned.  This function can be used to pass through a
-    /// successful result while handling an error.
+    /// Returns an `Iterator` over one or zero references to the value of an `Err`
     #[inline]
     pub fn iter_err<'r>(&'r self) -> OptionIterator<&'r E> {
         match *self {
@@ -101,103 +191,22 @@ impl<T, E: ToStr> Result<T, E> {
         }.move_iter()
     }
 
-    /// Unwraps a result, yielding the content of an `Ok`.
-    /// Fails if the value is a `Err` with an error message derived
-    /// from `E`'s `ToStr` implementation.
-    #[inline]
-    pub fn unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => fail!("called `Result::unwrap()` on `Err` value: {}",
-                             e.to_str()),
-        }
-    }
+    ////////////////////////////////////////////////////////////////////////
+    // Boolean operations on the values, eager and lazy
+    /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps a result, yielding the content of an `Err`.
-    /// Fails if the value is a `Ok`.
+    /// Returns `res` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     #[inline]
-    pub fn unwrap_err(self) -> E {
-        self.expect_err("called `Result::unwrap_err()` on `Ok` value")
-    }
-
-    /// Unwraps a result, yielding the content of an `Ok`.
-    /// Fails if the value is a `Err` with a custom failure message.
-    #[inline]
-    pub fn expect(self, reason: &str) -> T {
-        match self {
-            Ok(t) => t,
-            Err(_) => fail!("{}", reason.to_owned()),
-        }
-    }
-
-    /// Unwraps a result, yielding the content of an `Err`
-    /// Fails if the value is a `Ok` with a custom failure message.
-    #[inline]
-    pub fn expect_err(self, reason: &str) -> E {
-        match self {
-            Err(e) => e,
-            Ok(_) => fail!("{}", reason.to_owned()),
-        }
-    }
-
-    /// Call a method based on a previous result
-    ///
-    /// If `self` is `Ok` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is wrapped in `Ok` and returned. if `self` is
-    /// `Err` then it is immediately returned.  This function can be used to
-    /// compose the results of two functions.
-    ///
-    /// Example:
-    ///
-    ///     let res = do read_file(file).map_move |buf| {
-    ///         parse_bytes(buf)
-    ///     }
-    #[inline]
-    pub fn map_move<U>(self, op: &fn(T) -> U) -> Result<U,E> {
-        match self {
-          Ok(t) => Ok(op(t)),
-          Err(e) => Err(e)
-        }
-    }
-
-    /// Call a method based on a previous result
-    ///
-    /// If `self` is `Err` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is wrapped in an `Err` and returned. if `self` is
-    /// `Ok` then it is immediately returned.  This function can be used to pass
-    /// through a successful result while handling an error.
-    #[inline]
-    pub fn map_err_move<F>(self, op: &fn(E) -> F) -> Result<T,F> {
-        match self {
-          Ok(t) => Ok(t),
-          Err(e) => Err(op(e))
-        }
-    }
-
-    /// Call a method based on a previous result
-    ///
-    /// If `self` is `Ok`, then `res` it is returned. If `self` is `Err`,
-    /// then `self` is returned.
-    #[inline]
-    pub fn and(self, res: Result<T, E>) -> Result<T, E> {
+    pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
         match self {
             Ok(_) => res,
-            Err(_) => self,
+            Err(e) => Err(e),
         }
     }
 
-    /// Call a method based on a previous result
+    /// Calls `op` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     ///
-    /// If `self` is `Ok` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is returned. If `self` is `Err` then it is
-    /// immediately returned. This function can be used to compose the results
-    /// of two functions.
-    ///
-    /// Example:
-    ///
-    ///     let res = do read_file(file) |buf| {
-    ///         Ok(parse_bytes(buf))
-    ///     };
+    /// This function can be used for control flow based on result values
     #[inline]
     pub fn and_then<U>(self, op: &fn(T) -> Result<U, E>) -> Result<U, E> {
         match self {
@@ -206,10 +215,7 @@ impl<T, E: ToStr> Result<T, E> {
         }
     }
 
-    /// Call a method based on a previous result
-    ///
-    /// If `self` is `Ok`, then `self` is returned. If `self` is `Err`
-    /// then `res` is returned.
+    /// Returns `res` if the result is `Err`, otherwise returns the `Ok` value of `self`.
     #[inline]
     pub fn or(self, res: Result<T, E>) -> Result<T, E> {
         match self {
@@ -218,12 +224,9 @@ impl<T, E: ToStr> Result<T, E> {
         }
     }
 
-    /// Call a function based on a previous result
+    /// Calls `op` if the result is `Err`, otherwise returns the `Ok` value of `self`.
     ///
-    /// If `self` is `Err` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is returned. if `self` is `Ok` then it is
-    /// immediately returned.  This function can be used to pass through a
-    /// successful result while handling an error.
+    /// This function can be used for control flow based on result values
     #[inline]
     pub fn or_else<F>(self, op: &fn(E) -> Result<T, F>) -> Result<T, F> {
         match self {
@@ -231,45 +234,29 @@ impl<T, E: ToStr> Result<T, E> {
             Err(e) => op(e),
         }
     }
-}
 
-impl<T: Clone, E: ToStr> Result<T, E> {
-    /// Call a method based on a previous result
+    /////////////////////////////////////////////////////////////////////////
+    // Common special cases
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Get a reference to the value out of a successful result
     ///
-    /// If `self` is `Err` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is wrapped in an `Err` and returned. if `self` is
-    /// `Ok` then it is immediately returned.  This function can be used to pass
-    /// through a successful result while handling an error.
+    /// # Failure
+    ///
+    /// If the result is an error
     #[inline]
-    pub fn map_err<F: Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
+    pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
-            Ok(ref t) => Ok(t.clone()),
-            Err(ref e) => Err(op(e))
+            Ok(ref t) => t,
+            Err(ref e) => fail!("called `Result::get_ref()` on `Err` value '{}'",
+                                 e.to_str()),
         }
     }
 }
 
-impl<T, E: Clone + ToStr> Result<T, E> {
-    /// Call a method based on a previous result
-    ///
-    /// If `self` is `Ok` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is wrapped in `Ok` and returned. if `self` is
-    /// `Err` then it is immediately returned.  This function can be used to
-    /// compose the results of two functions.
-    ///
-    /// Example:
-    ///
-    ///     let res = do read_file(file).map |buf| {
-    ///         parse_bytes(buf)
-    ///     };
-    #[inline]
-    pub fn map<U>(&self, op: &fn(&T) -> U) -> Result<U,E> {
-        match *self {
-            Ok(ref t) => Ok(op(t)),
-            Err(ref e) => Err(e.clone())
-        }
-    }
-}
+/////////////////////////////////////////////////////////////////////////////
+// Constructor extension trait
+/////////////////////////////////////////////////////////////////////////////
 
 /// A generic trait for converting a value to a `Result`
 pub trait ToResult<T, E> {
@@ -287,36 +274,6 @@ pub trait IntoResult<T, E> {
 pub trait AsResult<T, E> {
     /// Convert to the `result` type
     fn as_result<'a>(&'a self) -> Result<&'a T, &'a E>;
-}
-
-impl<T: Clone, E> option::ToOption<T> for Result<T, E> {
-    #[inline]
-    fn to_option(&self) -> Option<T> {
-        match *self {
-            Ok(ref t) => Some(t.clone()),
-            Err(_) => None,
-        }
-    }
-}
-
-impl<T, E> option::IntoOption<T> for Result<T, E> {
-    #[inline]
-    fn into_option(self) -> Option<T> {
-        match self {
-            Ok(t) => Some(t),
-            Err(_) => None,
-        }
-    }
-}
-
-impl<T, E> option::AsOption<T> for Result<T, E> {
-    #[inline]
-    fn as_option<'a>(&'a self) -> Option<&'a T> {
-        match *self {
-            Ok(ref t) => Some(t),
-            Err(_) => None,
-        }
-    }
 }
 
 impl<T: Clone, E: Clone> ToResult<T, E> for Result<T, E> {
@@ -339,42 +296,36 @@ impl<T, E> AsResult<T, E> for Result<T, E> {
     }
 }
 
-impl<T: Clone, E: Clone> either::ToEither<E, T> for Result<T, E> {
+/////////////////////////////////////////////////////////////////////////////
+// Trait implementations
+/////////////////////////////////////////////////////////////////////////////
+
+impl<T: Clone, E> ToOption<T> for Result<T, E> {
     #[inline]
-    fn to_either(&self) -> either::Either<E, T> {
+    fn to_option(&self) -> Option<T> {
         match *self {
-            Ok(ref t) => either::Right(t.clone()),
-            Err(ref e) => either::Left(e.clone()),
+            Ok(ref t) => Some(t.clone()),
+            Err(_) => None,
         }
     }
 }
 
-impl<T, E> either::IntoEither<E, T> for Result<T, E> {
+impl<T, E> IntoOption<T> for Result<T, E> {
     #[inline]
-    fn into_either(self) -> either::Either<E, T> {
+    fn into_option(self) -> Option<T> {
         match self {
-            Ok(t) => either::Right(t),
-            Err(e) => either::Left(e),
+            Ok(t) => Some(t),
+            Err(_) => None,
         }
     }
 }
 
-impl<T, E> either::AsEither<E, T> for Result<T, E> {
+impl<T, E> AsOption<T> for Result<T, E> {
     #[inline]
-    fn as_either<'a>(&'a self) -> either::Either<&'a E, &'a T> {
+    fn as_option<'a>(&'a self) -> Option<&'a T> {
         match *self {
-            Ok(ref t) => either::Right(t),
-            Err(ref e) => either::Left(e),
-        }
-    }
-}
-
-impl<T: ToStr, E: ToStr> ToStr for Result<T, E> {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        match *self {
-            Ok(ref t) => format!("Ok({:s})", t.to_str()),
-            Err(ref e) => format!("Err({:s})", e.to_str())
+            Ok(ref t) => Some(t),
+            Err(_) => None,
         }
     }
 }
@@ -388,6 +339,10 @@ impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
         }
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////
+// Free functions
+/////////////////////////////////////////////////////////////////////////////
 
 /// Takes each element in the iterator: if it is an error, no further
 /// elements are taken, and the error is returned.
@@ -450,17 +405,17 @@ pub fn fold_<T, E, Iter: Iterator<Result<T, E>>>(
     fold(iterator, (), |_, _| ())
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// Tests
+/////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use either::{IntoEither, ToEither, AsEither};
-    use either;
     use iter::range;
     use option::{IntoOption, ToOption, AsOption};
-    use option;
-    use str::OwnedStr;
+    use option::{Some, None};
     use vec::ImmutableVector;
     use to_str::ToStr;
 
@@ -470,10 +425,10 @@ mod tests {
     #[test]
     pub fn test_and() {
         assert_eq!(op1().and(Ok(667)).unwrap(), 667);
-        assert_eq!(op1().and(Err(~"bad")).unwrap_err(), ~"bad");
+        assert_eq!(op1().and(Err::<(), ~str>(~"bad")).unwrap_err(), ~"bad");
 
         assert_eq!(op2().and(Ok(667)).unwrap_err(), ~"sadface");
-        assert_eq!(op2().and(Err(~"bad")).unwrap_err(), ~"sadface");
+        assert_eq!(op2().and(Err::<(), ~str>(~"bad")).unwrap_err(), ~"sadface");
     }
 
     #[test]
@@ -530,26 +485,14 @@ mod tests {
 
     #[test]
     pub fn test_impl_map() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map(|x| (~"b").append(*x)), Ok(~"ba"));
-        assert_eq!(Err::<~str, ~str>(~"a").map(|x| (~"b").append(*x)), Err(~"a"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map(|x| x + "b"), Ok(~"ab"));
+        assert_eq!(Err::<~str, ~str>(~"a").map(|x| x + "b"), Err(~"a"));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_err(|x| (~"b").append(*x)), Ok(~"a"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_err(|x| (~"b").append(*x)), Err(~"ba"));
-    }
-
-    #[test]
-    pub fn test_impl_map_move() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_move(|x| x + "b"), Ok(~"ab"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_move(|x| x + "b"), Err(~"a"));
-    }
-
-    #[test]
-    pub fn test_impl_map_err_move() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_err_move(|x| x + "b"), Ok(~"a"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_err_move(|x| x + "b"), Err(~"ab"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map_err(|x| x + "b"), Ok(~"a"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_err(|x| x + "b"), Err(~"ab"));
     }
 
     #[test]
@@ -603,8 +546,8 @@ mod tests {
         let ok: Result<int, int> = Ok(100);
         let err: Result<int, int> = Err(404);
 
-        assert_eq!(ok.to_option(), option::Some(100));
-        assert_eq!(err.to_option(), option::None);
+        assert_eq!(ok.to_option(), Some(100));
+        assert_eq!(err.to_option(), None);
     }
 
     #[test]
@@ -612,8 +555,8 @@ mod tests {
         let ok: Result<int, int> = Ok(100);
         let err: Result<int, int> = Err(404);
 
-        assert_eq!(ok.into_option(), option::Some(100));
-        assert_eq!(err.into_option(), option::None);
+        assert_eq!(ok.into_option(), Some(100));
+        assert_eq!(err.into_option(), None);
     }
 
     #[test]
@@ -622,7 +565,7 @@ mod tests {
         let err: Result<int, int> = Err(404);
 
         assert_eq!(ok.as_option().unwrap(), &100);
-        assert_eq!(err.as_option(), option::None);
+        assert_eq!(err.as_option(), None);
     }
 
     #[test]
@@ -653,33 +596,6 @@ mod tests {
 
         let x = 404;
         assert_eq!(err.as_result(), Err(&x));
-    }
-
-    #[test]
-    pub fn test_to_either() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.to_either(), either::Right(100));
-        assert_eq!(err.to_either(), either::Left(404));
-    }
-
-    #[test]
-    pub fn test_into_either() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.into_either(), either::Right(100));
-        assert_eq!(err.into_either(), either::Left(404));
-    }
-
-    #[test]
-    pub fn test_as_either() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.as_either().unwrap_right(), &100);
-        assert_eq!(err.as_either().unwrap_left(), &404);
     }
 
     #[test]

@@ -208,7 +208,7 @@ impl Reader for StdReader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let ret = match self.inner {
             TTY(ref mut tty) => tty.read(buf),
-            File(ref mut file) => file.read(buf).map_move(|i| i as uint),
+            File(ref mut file) => file.read(buf).map(|i| i as uint),
         };
         match ret {
             Ok(amt) => Some(amt as uint),
