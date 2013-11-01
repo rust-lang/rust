@@ -72,7 +72,7 @@ impl<R: Rng, Rsdr: Reseeder<R>> Rng for ReseedingRng<R, Rsdr> {
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         self.reseed_if_necessary();
         self.bytes_generated += dest.len();
-        self.fill_bytes(dest)
+        self.rng.fill_bytes(dest)
     }
 }
 
@@ -200,5 +200,25 @@ mod test {
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
+    }
+
+    static fill_bytes_v_len: uint = 13579;
+    #[test]
+    fn test_rng_fill_bytes() {
+        use rand::task_rng;
+        let mut v = ~[0u8, .. fill_bytes_v_len];
+        task_rng().fill_bytes(v);
+
+        // Sanity test: if we've gotten here, `fill_bytes` has not infinitely
+        // recursed.
+        assert_eq!(v.len(), fill_bytes_v_len);
+
+        // To test that `fill_bytes` actually did something, check that the
+        // average of `v` is not 0.
+        let mut sum = 0.0;
+        for &x in v.iter() {
+            sum += x as f64;
+        }
+        assert!(sum / v.len() as f64 != 0.0);
     }
 }
