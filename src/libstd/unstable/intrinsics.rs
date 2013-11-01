@@ -75,9 +75,6 @@ pub struct TyDesc {
 #[cfg(not(test))]
 pub enum Opaque { }
 
-#[cfg(stage0)]
-pub type Disr = int;
-#[cfg(not(stage0))]
 pub type Disr = u64;
 
 #[lang="ty_visitor"]
