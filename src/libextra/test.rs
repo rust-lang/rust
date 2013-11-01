@@ -869,6 +869,10 @@ pub fn run_test(force_ignore: bool,
         do task::spawn {
             let mut task = task::task();
             task.unlinked();
+            task.name(match desc.name {
+                DynTestName(ref name) => SendStrOwned(name.clone()),
+                StaticTestName(name) => SendStrStatic(name),
+            });
             let result_future = task.future_result();
             task.spawn(testfn_cell.take());
 
