@@ -45,6 +45,7 @@ via `close` and `delete` methods.
 
 #[feature(macro_rules, globs)];
 
+use std::cast;
 use std::str::raw::from_c_str;
 use std::vec;
 use std::ptr;
@@ -117,6 +118,42 @@ pub trait Request { }
 pub trait NativeHandle<T> {
     fn from_native_handle(T) -> Self;
     fn native_handle(&self) -> T;
+}
+
+/// A type that wraps a uv handle
+pub trait UvHandle<T> {
+    fn uv_handle(&self) -> *T;
+
+    // FIXME(#8888) dummy self
+    fn alloc(_: Option<Self>, ty: uvll::uv_handle_type) -> *T {
+        unsafe {
+            let handle = uvll::malloc_handle(ty);
+            assert!(!handle.is_null());
+            handle as *T
+        }
+    }
+
+    unsafe fn from_uv_handle<'a>(h: &'a *T) -> &'a mut Self {
+        cast::transmute(uvll::get_data_for_uv_handle(*h))
+    }
+
+    fn install(~self) -> ~Self {
+        unsafe {
+            let myptr = cast::transmute::<&~Self, *u8>(&self);
+            uvll::set_data_for_uv_handle(self.uv_handle(), myptr);
+        }
+        self
+    }
+
+    fn close_async_(&mut self) {
+        // we used malloc to allocate all handles, so we must always have at
+        // least a callback to free all the handles we allocated.
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            unsafe { uvll::free_handle(handle) }
+        }
+
+        unsafe { uvll::close(self.uv_handle(), close_cb) }
+    }
 }
 
 impl Loop {
@@ -367,7 +404,7 @@ pub fn empty_buf() -> Buf {
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     let data = vec::raw::to_ptr(v);
-    unsafe { uvll::uv_buf_init(data as *c_char, v.len() as c_uint) }
+    uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
 }
 
 // XXX: Do these conversions without copying
@@ -383,7 +420,7 @@ pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
             let data = data as *mut u8;
             ptr::copy_memory(data, b, l)
         }
-        uvll::uv_buf_init(data as *c_char, v.len() as c_uint)
+        uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
     }
 }
 

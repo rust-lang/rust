@@ -80,6 +80,11 @@ pub static STDIO_INHERIT_STREAM: c_int = 0x04;
 pub static STDIO_READABLE_PIPE: c_int = 0x10;
 pub static STDIO_WRITABLE_PIPE: c_int = 0x20;
 
+#[cfg(unix)]
+pub type uv_buf_len_t = libc::size_t;
+#[cfg(windows)]
+pub type uv_buf_len_t = u32;
+
 // see libuv/include/uv-unix.h
 #[cfg(unix)]
 pub struct uv_buf_t {

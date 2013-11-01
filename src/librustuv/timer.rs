@@ -8,58 +8,123 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cell::Cell;
+use std::comm::{oneshot, stream, PortOne, ChanOne};
 use std::libc::c_int;
+use std::rt::BlockedTask;
+use std::rt::local::Local;
+use std::rt::rtio::RtioTimer;
+use std::rt::sched::{Scheduler, SchedHandle};
 
 use uvll;
-use super::{Watcher, Loop, NativeHandle, TimerCallback, status_to_maybe_uv_error};
+use super::{Loop, NativeHandle, UvHandle};
+use uvio::HomingIO;
 
-pub struct TimerWatcher(*uvll::uv_timer_t);
-impl Watcher for TimerWatcher { }
+pub struct TimerWatcher {
+    handle: *uvll::uv_timer_t,
+    home: SchedHandle,
+    action: Option<NextAction>,
+}
+
+pub enum NextAction {
+    WakeTask(BlockedTask),
+    SendOnce(ChanOne<()>),
+    SendMany(Chan<()>),
+}
 
 impl TimerWatcher {
-    pub fn new(loop_: &mut Loop) -> TimerWatcher {
-        unsafe {
-            let handle = uvll::malloc_handle(uvll::UV_TIMER);
-            assert!(handle.is_not_null());
-            assert!(0 == uvll::uv_timer_init(loop_.native_handle(), handle));
-            let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher;
+    pub fn new(loop_: &mut Loop) -> ~TimerWatcher {
+        let handle = UvHandle::alloc(None::<TimerWatcher>, uvll::UV_TIMER);
+        assert_eq!(unsafe {
+            uvll::timer_init(loop_.native_handle(), handle)
+        }, 0);
+        let me = ~TimerWatcher {
+            handle: handle,
+            action: None,
+            home: get_handle_to_current_scheduler!(),
+        };
+        return me.install();
+    }
+
+    fn start(&mut self, msecs: u64, period: u64) {
+        assert_eq!(unsafe {
+            uvll::timer_start(self.handle, timer_cb, msecs, period)
+        }, 0)
+    }
+
+    fn stop(&mut self) {
+        assert_eq!(unsafe { uvll::timer_stop(self.handle) }, 0)
+    }
+}
+
+impl HomingIO for TimerWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl UvHandle<uvll::uv_timer_t> for TimerWatcher {
+    fn uv_handle(&self) -> *uvll::uv_timer_t { self.handle }
+}
+
+impl RtioTimer for TimerWatcher {
+    fn sleep(&mut self, msecs: u64) {
+        do self.home_for_io_with_sched |self_, scheduler| {
+            do scheduler.deschedule_running_task_and_then |_sched, task| {
+                self_.action = Some(WakeTask(task));
+                self_.start(msecs, 0);
+            }
+            self_.stop();
         }
     }
 
-    pub fn start(&mut self, timeout: u64, repeat: u64, cb: TimerCallback) {
-        {
-            let data = self.get_watcher_data();
-            data.timer_cb = Some(cb);
+    fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
+        let (port, chan) = oneshot();
+        let chan = Cell::new(chan);
+
+        do self.home_for_io |self_| {
+            self_.action = Some(SendOnce(chan.take()));
+            self_.start(msecs, 0);
         }
 
-        unsafe {
-            uvll::uv_timer_start(self.native_handle(), timer_cb, timeout, repeat);
-        }
-
-        extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
-            let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
-            let data = watcher.get_watcher_data();
-            let cb = data.timer_cb.get_ref();
-            let status = status_to_maybe_uv_error(status);
-            (*cb)(watcher, status);
-        }
+        return port;
     }
 
-    pub fn stop(&mut self) {
-        unsafe {
-            uvll::uv_timer_stop(self.native_handle());
+    fn period(&mut self, msecs: u64) -> Port<()> {
+        let (port, chan) = stream();
+        let chan = Cell::new(chan);
+
+        do self.home_for_io |self_| {
+            self_.action = Some(SendMany(chan.take()));
+            self_.start(msecs, msecs);
+        }
+
+        return port;
+    }
+}
+
+extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
+    let handle = handle as *uvll::uv_handle_t;
+    let foo: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
+
+    match foo.action.take_unwrap() {
+        WakeTask(task) => {
+            let sched: ~Scheduler = Local::take();
+            sched.resume_blocked_task_immediately(task);
+        }
+        SendOnce(chan) => chan.send(()),
+        SendMany(chan) => {
+            chan.send(());
+            foo.action = Some(SendMany(chan));
         }
     }
 }
 
-impl NativeHandle<*uvll::uv_timer_t> for TimerWatcher {
-    fn from_native_handle(handle: *uvll::uv_timer_t) -> TimerWatcher {
-        TimerWatcher(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_idle_t {
-        match self { &TimerWatcher(ptr) => ptr }
+impl Drop for TimerWatcher {
+    fn drop(&mut self) {
+        do self.home_for_io |self_| {
+            self_.action = None;
+            self_.stop();
+            self_.close_async_();
+        }
     }
 }
 
