@@ -13,7 +13,6 @@
 use any::Any;
 use clone::Clone;
 use cmp::Eq;
-use either;
 use fmt;
 use iter::Iterator;
 use kinds::Send;
@@ -331,36 +330,6 @@ impl<T, E> AsOption<T> for Result<T, E> {
     }
 }
 
-impl<T: Clone, E: Clone> either::ToEither<E, T> for Result<T, E> {
-    #[inline]
-    fn to_either(&self) -> either::Either<E, T> {
-        match *self {
-            Ok(ref t) => either::Right(t.clone()),
-            Err(ref e) => either::Left(e.clone()),
-        }
-    }
-}
-
-impl<T, E> either::IntoEither<E, T> for Result<T, E> {
-    #[inline]
-    fn into_either(self) -> either::Either<E, T> {
-        match self {
-            Ok(t) => either::Right(t),
-            Err(e) => either::Left(e),
-        }
-    }
-}
-
-impl<T, E> either::AsEither<E, T> for Result<T, E> {
-    #[inline]
-    fn as_either<'a>(&'a self) -> either::Either<&'a E, &'a T> {
-        match *self {
-            Ok(ref t) => either::Right(t),
-            Err(ref e) => either::Left(e),
-        }
-    }
-}
-
 impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
     #[inline]
     fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) {
@@ -444,8 +413,6 @@ pub fn fold_<T, E, Iter: Iterator<Result<T, E>>>(
 mod tests {
     use super::*;
 
-    use either::{IntoEither, ToEither, AsEither};
-    use either;
     use iter::range;
     use option::{IntoOption, ToOption, AsOption};
     use option::{Option, Some, None};
@@ -629,33 +596,6 @@ mod tests {
 
         let x = 404;
         assert_eq!(err.as_result(), Err(&x));
-    }
-
-    #[test]
-    pub fn test_to_either() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.to_either(), either::Right(100));
-        assert_eq!(err.to_either(), either::Left(404));
-    }
-
-    #[test]
-    pub fn test_into_either() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.into_either(), either::Right(100));
-        assert_eq!(err.into_either(), either::Left(404));
-    }
-
-    #[test]
-    pub fn test_as_either() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.as_either().unwrap_right(), &100);
-        assert_eq!(err.as_either().unwrap_left(), &404);
     }
 
     #[test]
