@@ -135,11 +135,6 @@ rust_uv_get_stream_handle_from_write_req(uv_write_t* write_req) {
     return write_req->handle;
 }
 
-extern "C" void
-rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
-    *out_buf = uv_buf_init(base, len);
-}
-
 extern "C" uv_loop_t*
 rust_uv_get_loop_for_uv_handle(uv_handle_t* handle) {
     return handle->loop;

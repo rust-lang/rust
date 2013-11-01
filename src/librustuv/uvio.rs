@@ -12,8 +12,8 @@ use std::c_str::CString;
 use std::cast::transmute;
 use std::cast;
 use std::cell::Cell;
-use std::comm::{SendDeferred, SharedChan, Port, PortOne, GenericChan};
-use std::libc;
+use std::clone::Clone;
+use std::comm::{SendDeferred, SharedChan, GenericChan};
 use std::libc::{c_int, c_uint, c_void, pid_t};
 use std::ptr;
 use std::str;
@@ -49,7 +49,7 @@ use addrinfo::{GetAddrInfoRequest, accum_addrinfo};
 
 // XXX we should not be calling uvll functions in here.
 
-trait HomingIO {
+pub trait HomingIO {
 
     fn home<'r>(&'r mut self) -> &'r mut SchedHandle;
 
@@ -134,11 +134,6 @@ impl Drop for HomingMissile {
         }
     }
 }
-
-// get a handle for the current scheduler
-macro_rules! get_handle_to_current_scheduler(
-    () => (do Local::borrow |sched: &mut Scheduler| { sched.make_handle() })
-)
 
 enum SocketNameKind {
     TcpPeer,
@@ -581,9 +576,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError> {
-        let watcher = TimerWatcher::new(self.uv_loop());
-        let home = get_handle_to_current_scheduler!();
-        Ok(~UvTimer::new(watcher, home) as ~RtioTimer)
+        Ok(TimerWatcher::new(self.uv_loop()) as ~RtioTimer)
     }
 
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
@@ -1362,82 +1355,6 @@ impl RtioUdpSocket for UvUdpSocket {
             uvll::uv_udp_set_broadcast(self.watcher.native_handle(),
                                        0 as c_int)
         })
-    }
-}
-
-pub struct UvTimer {
-    priv watcher: timer::TimerWatcher,
-    priv home: SchedHandle,
-}
-
-impl HomingIO for UvTimer {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
-}
-
-impl UvTimer {
-    fn new(w: timer::TimerWatcher, home: SchedHandle) -> UvTimer {
-        UvTimer { watcher: w, home: home }
-    }
-}
-
-impl Drop for UvTimer {
-    fn drop(&mut self) {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        uvdebug!("closing UvTimer");
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            do self.watcher.close {
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-    }
-}
-
-impl RtioTimer for UvTimer {
-    fn sleep(&mut self, msecs: u64) {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        do scheduler.deschedule_running_task_and_then |_sched, task| {
-            uvdebug!("sleep: entered scheduler context");
-            let task_cell = Cell::new(task);
-            do self.watcher.start(msecs, 0) |_, status| {
-                assert!(status.is_none());
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-        self.watcher.stop();
-    }
-
-    fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
-        use std::comm::oneshot;
-
-        let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
-        let _m = self.fire_homing_missile();
-        do self.watcher.start(msecs, 0) |_, status| {
-            assert!(status.is_none());
-            assert!(!chan.is_empty());
-            chan.take().send_deferred(());
-        }
-
-        return port;
-    }
-
-    fn period(&mut self, msecs: u64) -> Port<()> {
-        use std::comm::stream;
-
-        let (port, chan) = stream();
-        let chan = Cell::new(chan);
-        let _m = self.fire_homing_missile();
-        do self.watcher.start(msecs, msecs) |_, status| {
-            assert!(status.is_none());
-            do chan.with_ref |chan| {
-                chan.send_deferred(());
-            }
-        }
-
-        return port;
     }
 }
 
