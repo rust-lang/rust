@@ -338,6 +338,7 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
     let ch = SharedChan::new(ch);
     let ch_capture = ch.clone();
     let mut task_builder = task::task();
+    task_builder.name("rustc");
     task_builder.supervised();
 
     // XXX: Hacks on hacks. If the env is trying to override the stack size
