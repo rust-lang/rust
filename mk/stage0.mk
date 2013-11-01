@@ -42,14 +42,14 @@ $(HLIB0_H_$(CFG_BUILD))/$(CFG_EXTRALIB_$(CFG_BUILD)): \
 		| $(HLIB0_H_$(CFG_BUILD))/
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_LIBRUSTUV_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD_TRIPLE))/
+$(HLIB0_H_$(CFG_BUILD))/$(CFG_LIBRUSTUV_$(CFG_BUILD)): \
+		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
+		| $(HLIB0_H_$(CFG_BUILD))/
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_LIBRUSTC_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD_TRIPLE))/
+$(HLIB0_H_$(CFG_BUILD))/$(CFG_LIBRUSTC_$(CFG_BUILD)): \
+		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
+		| $(HLIB0_H_$(CFG_BUILD))/
 	$(Q)touch $@
 
 $(HLIB0_H_$(CFG_BUILD))/$(CFG_RUSTLLVM_$(CFG_BUILD)): \
@@ -124,5 +124,5 @@ endef
 
 # Use stage1 to build other architectures: then you don't have to wait
 # for stage2, but you get the latest updates to the compiler source.
-$(foreach t,$(NON_BUILD_HOSTS),								\
+$(foreach t,$(NON_BUILD_HOST),								\
  $(eval $(call BOOTSTRAP_STAGE0,$(t),1,$(CFG_BUILD))))
