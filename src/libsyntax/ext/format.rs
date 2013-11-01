@@ -735,8 +735,10 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
         (_, None) => { return MRExpr(ecx.expr_uint(sp, 2)); }
     };
     cx.fmtsp = efmt.span;
-    let (fmt, _fmt_str_style) = expr_to_str(ecx, efmt,
-                                            "format argument must be a string literal.");
+    // Be sure to recursively expand macros just in case the format string uses
+    // a macro to build the format expression.
+    let (fmt, _) = expr_to_str(ecx, ecx.expand_expr(efmt),
+                               "format argument must be a string literal.");
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {
