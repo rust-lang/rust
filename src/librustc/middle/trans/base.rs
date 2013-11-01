@@ -1012,11 +1012,6 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     // The landing pad block is a cleanup
     SetCleanup(pad_bcx, llretval);
 
-    // Because we may have unwound across a stack boundary, we must call into
-    // the runtime to figure out which stack segment we are on and place the
-    // stack limit back into the TLS.
-    Call(pad_bcx, bcx.ccx().upcalls.reset_stack_limit, [], []);
-
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
     match bcx.fcx.personality {
