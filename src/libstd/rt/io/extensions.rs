@@ -138,11 +138,118 @@ pub fn u64_from_be_bytes(data: &[u8],
 
 #[cfg(test)]
 mod test {
-    use option::{Some, None};
-    use cell::Cell;
+    use option::{None, Option, Some};
     use rt::io::mem::{MemReader, MemWriter};
-    use rt::io::mock::MockReader;
-    use rt::io::{io_error, placeholder_error};
+    use rt::io::{Reader, io_error, placeholder_error};
+
+    struct InitialZeroByteReader {
+        count: int,
+    }
+
+    impl Reader for InitialZeroByteReader {
+        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+            if self.count == 0 {
+                self.count = 1;
+                Some(0)
+            } else {
+                buf[0] = 10;
+                Some(1)
+            }
+        }
+        fn eof(&mut self) -> bool {
+            false
+        }
+    }
+
+    struct EofReader;
+
+    impl Reader for EofReader {
+        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
+            None
+        }
+        fn eof(&mut self) -> bool {
+            false
+        }
+    }
+
+    struct ErroringReader;
+
+    impl Reader for ErroringReader {
+        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
+            io_error::cond.raise(placeholder_error());
+            None
+        }
+        fn eof(&mut self) -> bool {
+            false
+        }
+    }
+
+    struct PartialReader {
+        count: int,
+    }
+
+    impl Reader for PartialReader {
+        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+            if self.count == 0 {
+                self.count = 1;
+                buf[0] = 10;
+                buf[1] = 11;
+                Some(2)
+            } else {
+                buf[0] = 12;
+                buf[1] = 13;
+                Some(2)
+            }
+        }
+        fn eof(&mut self) -> bool {
+            false
+        }
+    }
+
+    struct ErroringLaterReader {
+        count: int,
+    }
+
+    impl Reader for ErroringLaterReader {
+        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+            if self.count == 0 {
+                self.count = 1;
+                buf[0] = 10;
+                Some(1)
+            } else {
+                io_error::cond.raise(placeholder_error());
+                None
+            }
+        }
+        fn eof(&mut self) -> bool {
+            false
+        }
+    }
+
+    struct ThreeChunkReader {
+        count: int,
+    }
+
+    impl Reader for ThreeChunkReader {
+        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+            if self.count == 0 {
+                self.count = 1;
+                buf[0] = 10;
+                buf[1] = 11;
+                Some(2)
+            } else if self.count == 1 {
+                self.count = 2;
+                buf[0] = 12;
+                buf[1] = 13;
+                Some(2)
+            } else {
+                None
+            }
+        }
+        fn eof(&mut self) -> bool {
+            false
+        }
+    }
 
     #[test]
     fn read_byte() {
@@ -153,18 +260,8 @@ mod test {
 
     #[test]
     fn read_byte_0_bytes() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    Some(0)
-                } else {
-                    buf[0] = 10;
-                    Some(1)
-                }
-            }
+        let mut reader = InitialZeroByteReader {
+            count: 0,
         };
         let byte = reader.read_byte();
         assert!(byte == Some(10));
@@ -172,19 +269,14 @@ mod test {
 
     #[test]
     fn read_byte_eof() {
-        let mut reader = MockReader::new();
-        reader.read = |_| None;
+        let mut reader = EofReader;
         let byte = reader.read_byte();
         assert!(byte == None);
     }
 
     #[test]
     fn read_byte_error() {
-        let mut reader = MockReader::new();
-        reader.read = |_| {
-            io_error::cond.raise(placeholder_error());
-            None
-        };
+        let mut reader = ErroringReader;
         do io_error::cond.trap(|_| {
         }).inside {
             let byte = reader.read_byte();
@@ -194,18 +286,8 @@ mod test {
 
     #[test]
     fn bytes_0_bytes() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    Some(0)
-                } else {
-                    buf[0] = 10;
-                    Some(1)
-                }
-            }
+        let reader = InitialZeroByteReader {
+            count: 0,
         };
         let byte = reader.bytes().next();
         assert!(byte == Some(10));
@@ -213,26 +295,20 @@ mod test {
 
     #[test]
     fn bytes_eof() {
-        let mut reader = MockReader::new();
-        reader.read = |_| None;
+        let reader = EofReader;
         let byte = reader.bytes().next();
         assert!(byte == None);
     }
 
     #[test]
     fn bytes_error() {
-        let mut reader = MockReader::new();
-        reader.read = |_| {
-            io_error::cond.raise(placeholder_error());
-            None
-        };
+        let reader = ErroringReader;
         let mut it = reader.bytes();
         do io_error::cond.trap(|_| ()).inside {
             let byte = it.next();
             assert!(byte == None);
         }
     }
-
 
     #[test]
     fn read_bytes() {
@@ -243,21 +319,8 @@ mod test {
 
     #[test]
     fn read_bytes_partial() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else {
-                    buf[0] = 12;
-                    buf[1] = 13;
-                    Some(2)
-                }
-            }
+        let mut reader = PartialReader {
+            count: 0,
         };
         let bytes = reader.read_bytes(4);
         assert!(bytes == ~[10, 11, 12, 13]);
@@ -282,21 +345,8 @@ mod test {
 
     #[test]
     fn push_bytes_partial() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else {
-                    buf[0] = 12;
-                    buf[1] = 13;
-                    Some(2)
-                }
-            }
+        let mut reader = PartialReader {
+            count: 0,
         };
         let mut buf = ~[8, 9];
         reader.push_bytes(&mut buf, 4);
@@ -316,19 +366,8 @@ mod test {
 
     #[test]
     fn push_bytes_error() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    Some(1)
-                } else {
-                    io_error::cond.raise(placeholder_error());
-                    None
-                }
-            }
+        let mut reader = ErroringLaterReader {
+            count: 0,
         };
         let mut buf = ~[8, 9];
         do io_error::cond.trap(|_| { } ).inside {
@@ -342,19 +381,8 @@ mod test {
     fn push_bytes_fail_reset_len() {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    Some(1)
-                } else {
-                    io_error::cond.raise(placeholder_error());
-                    None
-                }
-            }
+        let mut reader = ErroringLaterReader {
+            count: 0,
         };
         let buf = @mut ~[8, 9];
         do (|| {
@@ -368,24 +396,8 @@ mod test {
 
     #[test]
     fn read_to_end() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else if *count == 1 {
-                    *count = 2;
-                    buf[0] = 12;
-                    buf[1] = 13;
-                    Some(2)
-                } else {
-                    None
-                }
-            }
+        let mut reader = ThreeChunkReader {
+            count: 0,
         };
         let buf = reader.read_to_end();
         assert!(buf == ~[10, 11, 12, 13]);
@@ -394,20 +406,8 @@ mod test {
     #[test]
     #[should_fail]
     fn read_to_end_error() {
-        let mut reader = MockReader::new();
-        let count = Cell::new(0);
-        reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else {
-                    io_error::cond.raise(placeholder_error());
-                    None
-                }
-            }
+        let mut reader = ThreeChunkReader {
+            count: 0,
         };
         let buf = reader.read_to_end();
         assert!(buf == ~[10, 11]);
