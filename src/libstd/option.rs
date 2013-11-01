@@ -156,7 +156,7 @@ impl<T> Option<T> {
 
     /// Returns `None` if the option is `None`, otherwise returns `optb`.
     #[inline]
-    pub fn and(self, optb: Option<T>) -> Option<T> {
+    pub fn and<U>(self, optb: Option<U>) -> Option<U> {
         match self {
             Some(_) => optb,
             None => None,
