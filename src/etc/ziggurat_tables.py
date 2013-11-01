@@ -19,7 +19,7 @@ from math import exp, sqrt, log, floor
 import random
 
 # The order should match the return value of `tables`
-TABLE_NAMES = ['X', 'F', 'F_DIFF']
+TABLE_NAMES = ['X', 'F']
 
 # The actual length of the table is 1 more, to stop
 # index-out-of-bounds errors. This should match the bitwise operation
@@ -43,13 +43,10 @@ def tables(r, v, f, f_inv):
 
     # cache the f's
     fvec = [0]*(TABLE_LEN+1)
-    fdiff = [0]*(TABLE_LEN+1)
     for i in range(TABLE_LEN+1):
         fvec[i] = f(xvec[i])
-        if i > 0:
-            fdiff[i] = fvec[i] - fvec[i-1]
 
-    return xvec, fvec, fdiff
+    return xvec, fvec
 
 # Distributions
 # N(0, 1)
