@@ -83,7 +83,13 @@ impl<K: TotalOrd, V> Container for TreeMap<K, V> {
 impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
-        self.root = None;
+        let mut iter = TreeMapMoveIterator {
+            cur: replace(&mut self.root, None),
+            remaining: self.length,
+        };
+        for _ in iter {
+            // nothing to do, drop this tree in O(1) stack space
+        }
         self.length = 0
     }
 }
@@ -216,12 +222,8 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Get a lazy iterator that consumes the treemap.
     pub fn move_iter(self) -> TreeMapMoveIterator<K, V> {
         let TreeMap { root: root, length: length } = self;
-        let stk = match root {
-            None => ~[],
-            Some(~tn) => ~[tn]
-        };
         TreeMapMoveIterator {
-            stack: stk,
+            cur: root,
             remaining: length
         }
     }
@@ -342,53 +344,81 @@ fn iter_traverse_complete<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
 
 /// Lazy forward iterator over a map that consumes the map while iterating
 pub struct TreeMapMoveIterator<K, V> {
-    priv stack: ~[TreeNode<K, V>],
+    priv cur: Option<~TreeNode<K, V>>,
     priv remaining: uint
 }
 
 impl<K, V> Iterator<(K, V)> for TreeMapMoveIterator<K,V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
-        while !self.stack.is_empty() {
-            let TreeNode {
-                key: key,
-                value: value,
-                left: left,
-                right: right,
-                level: level
-            } = self.stack.pop();
+        // When implementing a move iterator, we don't need a stack because
+        // we have ownership of the entire tree. The entire tree is rotated to
+        // the right and then nodes are popped off one-by-one. This allows for
+        // O(1) stack/heap to be used when moving out of a tree.
+        match self.cur.take() {
+            None => None,
+            Some(mut cur) => {
+                loop {
+                    match replace(&mut cur.left, None) {
+                        // If there's a left node, then rotate it to the root
+                        // and keep going
+                        Some(mut node) => {
+                            cur.left = replace(&mut node.right, None);
+                            node.right = Some(cur);
+                            cur = node;
+                        }
 
-            match left {
-                Some(~left) => {
-                    let n = TreeNode {
-                        key: key,
-                        value: value,
-                        left: None,
-                        right: right,
-                        level: level
-                    };
-                    self.stack.push(n);
-                    self.stack.push(left);
-                }
-                None => {
-                    match right {
-                        Some(~right) => self.stack.push(right),
-                        None => ()
+                        // No left node? Return it while making the right node
+                        // the root.
+                        None => {
+                            self.cur = replace(&mut cur.right, None);
+                            // left and right fields are both None
+                            let ~TreeNode { key, value, _ } = cur;
+                            self.remaining -= 1;
+                            return Some((key, value));
+                        }
                     }
-                    self.remaining -= 1;
-                    return Some((key, value))
                 }
             }
         }
-        None
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.remaining, Some(self.remaining))
     }
-
 }
+
+impl<K, V> DoubleEndedIterator<(K, V)> for TreeMapMoveIterator<K, V> {
+    // Pretty much the same as the above code, but with left replaced with right
+    // and vice-versa.
+    fn next_back(&mut self) -> Option<(K, V)> {
+        match self.cur.take() {
+            None => None,
+            Some(mut cur) => {
+                loop {
+                    match replace(&mut cur.right, None) {
+                        Some(mut node) => {
+                            cur.right = replace(&mut node.left, None);
+                            node.left = Some(cur);
+                            cur = node;
+                        }
+
+                        None => {
+                            self.cur = replace(&mut cur.left, None);
+                            // left and right fields are both None
+                            let ~TreeNode { key, value, _ } = cur;
+                            self.remaining -= 1;
+                            return Some((key, value));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<K, V> ExactSize<(K, V)> for TreeMapMoveIterator<K, V> {}
 
 impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
@@ -1234,6 +1264,39 @@ mod test_treemap {
         }
     }
 
+    #[test]
+    fn move_iter() {
+        let mut m = TreeMap::new();
+        m.insert(3, 3);
+        m.insert(1, 1);
+        m.insert(2, 2);
+        m.insert(5, 5);
+        m.insert(4, 4);
+
+        let mut last = 1;
+        for (k, v) in m.move_iter() {
+            assert_eq!(k, last);
+            assert_eq!(v, last);
+            last += 1;
+        }
+    }
+
+    #[test]
+    fn rev_move_iter() {
+        let mut m = TreeMap::new();
+        m.insert(3, 3);
+        m.insert(1, 1);
+        m.insert(2, 2);
+        m.insert(5, 5);
+        m.insert(4, 4);
+
+        let mut last = 5;
+        for (k, v) in m.move_iter().invert() {
+            assert_eq!(k, last);
+            assert_eq!(v, last);
+            last -= 1;
+        }
+    }
 }
 
 #[cfg(test)]
