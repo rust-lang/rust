@@ -23,7 +23,6 @@ use std::rt::io::net::ip::{SocketAddr, IpAddr};
 use std::rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur,
                   SeekEnd};
 use std::rt::io::process::ProcessConfig;
-use std::rt::BlockedTask;
 use std::rt::local::Local;
 use std::rt::rtio::*;
 use std::rt::sched::{Scheduler, SchedHandle};
@@ -772,54 +771,12 @@ impl IoFactory for UvIoFactory {
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>
     {
-        // Sadly, we must create the UvProcess before we actually call uv_spawn
-        // so that the exit_cb can close over it and notify it when the process
-        // has exited.
-        let mut ret = ~UvProcess {
-            process: Process::new(),
-            home: None,
-            exit_status: None,
-            term_signal: None,
-            exit_error: None,
-            descheduled: None,
-        };
-        let ret_ptr = unsafe {
-            *cast::transmute::<&~UvProcess, &*mut UvProcess>(&ret)
-        };
-
-        // The purpose of this exit callback is to record the data about the
-        // exit and then wake up the task which may be waiting for the process
-        // to exit. This is all performed in the current io-loop, and the
-        // implementation of UvProcess ensures that reading these fields always
-        // occurs on the current io-loop.
-        let exit_cb: ExitCallback = |_, exit_status, term_signal, error| {
-            unsafe {
-                assert!((*ret_ptr).exit_status.is_none());
-                (*ret_ptr).exit_status = Some(exit_status);
-                (*ret_ptr).term_signal = Some(term_signal);
-                (*ret_ptr).exit_error = error;
-                match (*ret_ptr).descheduled.take() {
-                    Some(task) => {
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task);
-                    }
-                    None => {}
-                }
+        match Process::spawn(self.uv_loop(), config) {
+            Ok((p, io)) => {
+                Ok((p as ~RtioProcess,
+                    io.move_iter().map(|i| i.map(|p| p as ~RtioPipe)).collect()))
             }
-        };
-
-        match ret.process.spawn(self.uv_loop(), config, exit_cb) {
-            Ok(io) => {
-                // Only now do we actually get a handle to this scheduler.
-                ret.home = Some(get_handle_to_current_scheduler!());
-                Ok((ret as ~RtioProcess,
-                    io.move_iter().map(|p| p.map(|p| p as ~RtioPipe)).collect()))
-            }
-            Err(uverr) => {
-                // We still need to close the process handle we created, but
-                // that's taken care for us in the destructor of UvProcess
-                Err(uv_error_to_io_error(uverr))
-            }
+            Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
@@ -1508,85 +1465,6 @@ impl RtioFileStream for UvFileStream {
         do self.nop_req |self_, req, cb| {
             req.truncate(&self_.loop_, self_.fd, offset, cb)
         }
-    }
-}
-
-pub struct UvProcess {
-    priv process: process::Process,
-
-    // Sadly, this structure must be created before we return it, so in that
-    // brief interim the `home` is None.
-    priv home: Option<SchedHandle>,
-
-    // All None until the process exits (exit_error may stay None)
-    priv exit_status: Option<int>,
-    priv term_signal: Option<int>,
-    priv exit_error: Option<UvError>,
-
-    // Used to store which task to wake up from the exit_cb
-    priv descheduled: Option<BlockedTask>,
-}
-
-impl HomingIO for UvProcess {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { self.home.get_mut_ref() }
-}
-
-impl Drop for UvProcess {
-    fn drop(&mut self) {
-        let close = |self_: &mut UvProcess| {
-            let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task = Cell::new(task);
-                do self_.process.close {
-                    let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task.take());
-                }
-            }
-        };
-
-        // If home is none, then this process never actually successfully
-        // spawned, so there's no need to switch event loops
-        if self.home.is_none() {
-            close(self)
-        } else {
-            let _m = self.fire_homing_missile();
-            close(self)
-        }
-    }
-}
-
-impl RtioProcess for UvProcess {
-    fn id(&self) -> pid_t {
-        self.process.pid()
-    }
-
-    fn kill(&mut self, signal: int) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        match self.process.kill(signal) {
-            Ok(()) => Ok(()),
-            Err(uverr) => Err(uv_error_to_io_error(uverr))
-        }
-    }
-
-    fn wait(&mut self) -> int {
-        // Make sure (on the home scheduler) that we have an exit status listed
-        let _m = self.fire_homing_missile();
-        match self.exit_status {
-            Some(*) => {}
-            None => {
-                // If there's no exit code previously listed, then the
-                // process's exit callback has yet to be invoked. We just
-                // need to deschedule ourselves and wait to be reawoken.
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    assert!(self.descheduled.is_none());
-                    self.descheduled = Some(task);
-                }
-                assert!(self.exit_status.is_some());
-            }
-        }
-
-        self.exit_status.unwrap()
     }
 }
 

@@ -103,9 +103,9 @@ impl RtioTimer for TimerWatcher {
 
 extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
     let handle = handle as *uvll::uv_handle_t;
-    let foo: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
+    let timer : &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
 
-    match foo.action.take_unwrap() {
+    match timer.action.take_unwrap() {
         WakeTask(task) => {
             let sched: ~Scheduler = Local::take();
             sched.resume_blocked_task_immediately(task);
@@ -113,7 +113,7 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
         SendOnce(chan) => chan.send(()),
         SendMany(chan) => {
             chan.send(());
-            foo.action = Some(SendMany(chan));
+            timer.action = Some(SendMany(chan));
         }
     }
 }

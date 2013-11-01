@@ -139,8 +139,8 @@ pub trait UvHandle<T> {
 
     fn install(~self) -> ~Self {
         unsafe {
-            let myptr = cast::transmute::<&~Self, *u8>(&self);
-            uvll::set_data_for_uv_handle(self.uv_handle(), myptr);
+            let myptr = cast::transmute::<&~Self, &*u8>(&self);
+            uvll::set_data_for_uv_handle(self.uv_handle(), *myptr);
         }
         self
     }
@@ -188,9 +188,6 @@ pub type NullCallback = ~fn();
 pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
-// first int is exit_status, second is term_signal
-pub type ExitCallback = ~fn(Process, int, int, Option<UvError>);
-pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
@@ -206,11 +203,9 @@ struct WatcherData {
     close_cb: Option<NullCallback>,
     alloc_cb: Option<AllocCallback>,
     idle_cb: Option<IdleCallback>,
-    timer_cb: Option<TimerCallback>,
     async_cb: Option<AsyncCallback>,
     udp_recv_cb: Option<UdpReceiveCallback>,
     udp_send_cb: Option<UdpSendCallback>,
-    exit_cb: Option<ExitCallback>,
     signal_cb: Option<SignalCallback>,
 }
 
@@ -242,11 +237,9 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 close_cb: None,
                 alloc_cb: None,
                 idle_cb: None,
-                timer_cb: None,
                 async_cb: None,
                 udp_recv_cb: None,
                 udp_send_cb: None,
-                exit_cb: None,
                 signal_cb: None,
             };
             let data = transmute::<~WatcherData, *c_void>(data);
