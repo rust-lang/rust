@@ -181,9 +181,6 @@ pub mod os;
 pub mod path;
 pub mod rand;
 pub mod run;
-// NOTE: Remove module after next snapshot
-#[cfg(stage0)]
-pub mod sys;
 pub mod cast;
 pub mod fmt;
 pub mod repr;
@@ -229,9 +226,6 @@ mod std {
     pub use os;
     pub use rt;
     pub use str;
-    // NOTE: Remove import after next snapshot
-    #[cfg(stage0)]
-    pub use sys;
     pub use to_bytes;
     pub use to_str;
     pub use unstable;
