@@ -951,10 +951,9 @@ impl Visitor<()> for MissingDocLintVisitor {
             // trait (which was already linted)
             ast::item_impl(_, Some(*), _, _) => return,
 
-            ast::item_trait(*) if it.vis == ast::public => {
-                self.check_attrs(it.attrs, it.id, it.span,
-                                 ~"missing documentation for a trait");
-            }
+            ast::item_trait(*) if it.vis != ast::public => return,
+            ast::item_trait(*) => self.check_attrs(it.attrs, it.id, it.span,
+                                                   ~"missing documentation for a trait"),
 
             ast::item_fn(*) if it.vis == ast::public => {
                 self.check_attrs(it.attrs, it.id, it.span,
