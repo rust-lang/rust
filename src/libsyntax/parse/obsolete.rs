@@ -39,6 +39,8 @@ pub enum ObsoleteSyntax {
     ObsoleteConstPointer,
     ObsoleteEmptyImpl,
     ObsoleteLoopAsContinue,
+    ObsoleteEnumWildcard,
+    ObsoleteStructWildcard
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -112,6 +114,14 @@ impl ParserObsoleteMethods for Parser {
                 "`loop` instead of `continue`",
                 "`loop` is now only used for loops and `continue` is used for \
                  skipping iterations"
+            ),
+            ObsoleteEnumWildcard => (
+                "enum wildcard",
+                "use `..` instead of `*` for matching all enum fields"
+            ),
+            ObsoleteStructWildcard => (
+                "struct wildcard",
+                "use `..` instead of `_` for matching trailing struct fields"
             ),
         };
 
