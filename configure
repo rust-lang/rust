@@ -463,12 +463,14 @@ then
         # extract the first 2 version fields, ignore everything else
         sed 's/pandoc \([0-9]*\)\.\([0-9]*\).*/\1 \2/')
 
+    MIN_PV_MAJOR="1"
+    MIN_PV_MINOR="9"
     # these patterns are shell globs, *not* regexps
     PV_MAJOR=${PV_MAJOR_MINOR% *}
     PV_MINOR=${PV_MAJOR_MINOR#* }
-    if [ "$PV_MAJOR" -lt "1" ] || [ "$PV_MINOR" -lt "8" ]
+    if [ "$PV_MAJOR" -lt "$MIN_PV_MAJOR" ] || [ "$PV_MINOR" -lt "$MIN_PV_MINOR" ]
     then
-		step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. disabling"
+		step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
 		BAD_PANDOC=1
     fi
 fi
