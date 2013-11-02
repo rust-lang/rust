@@ -26,7 +26,9 @@ fn make_cycle<A:'static>(a: A) {
     let g: @RefCell<RecEnum<A>> = @RefCell::new(RecEnum(Rec {val: a, rec: None}));
     {
         let mut gb = g.borrow_mut();
-        gb.get().rec = Some(g);
+        let gg = gb.get();
+        let RecEnum(ref mut gg) = *gg;
+        gg.rec = Some(g);
     }
 }
 

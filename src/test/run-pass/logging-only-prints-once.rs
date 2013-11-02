@@ -18,6 +18,7 @@ struct Foo(Cell<int>);
 
 impl fmt::Default for Foo {
     fn fmt(f: &Foo, _fmt: &mut fmt::Formatter) {
+        let Foo(ref f) = *f;
         assert!(f.get() == 0);
         f.set(1);
     }
@@ -28,6 +29,7 @@ pub fn main() {
     do spawn {
         let mut f = Foo(Cell::new(0));
         debug!("{}", f);
+        let Foo(ref mut f) = f;
         assert!(f.get() == 1);
         c.send(());
     }

@@ -642,8 +642,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
 
                 // With type_autoderef, make sure we don't
                 // allow pointers to violate privacy
-                let t = ty::type_autoderef(self.tcx,
-                                           ty::expr_ty(self.tcx, base));
+                let t = ty::type_autoderef(ty::expr_ty(self.tcx, base));
                 match ty::get(t).sty {
                     ty::ty_struct(id, _) => {
                         self.check_field(expr.span, id, ident);
@@ -653,8 +652,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             }
             ast::ExprMethodCall(_, base, ident, _, _, _) => {
                 // see above
-                let t = ty::type_autoderef(self.tcx,
-                                           ty::expr_ty(self.tcx, base));
+                let t = ty::type_autoderef(ty::expr_ty(self.tcx, base));
                 match ty::get(t).sty {
                     ty::ty_enum(_, _) | ty::ty_struct(_, _) => {
                         let method_map = self.method_map.borrow();

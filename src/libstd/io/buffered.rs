@@ -243,9 +243,31 @@ impl<W: Writer> Decorator<W> for LineBufferedWriter<W> {
 
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
+impl<W> InternalBufferedWriter<W> {
+    fn get_mut_ref<'a>(&'a mut self) -> &'a mut BufferedWriter<W> {
+        let InternalBufferedWriter(ref mut w) = *self;
+        return w;
+    }
+}
+
+impl<W: Writer> Decorator<W> for InternalBufferedWriter<W> {
+    fn inner(self) -> W {
+        let InternalBufferedWriter(s) = self;
+        s.inner()
+    }
+    fn inner_ref<'a>(&'a self) -> &'a W {
+        let InternalBufferedWriter(ref s) = *self;
+        s.inner_ref()
+    }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W {
+        let InternalBufferedWriter(ref mut s) = *self;
+        s.inner_mut_ref()
+    }
+}
+
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
-    fn eof(&mut self) -> bool { self.inner.eof() }
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.get_mut_ref().inner.read(buf) }
+    fn eof(&mut self) -> bool { self.get_mut_ref().inner.eof() }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
@@ -282,15 +304,15 @@ impl<S: Stream> Reader for BufferedStream<S> {
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
-    fn write(&mut self, buf: &[u8]) { self.inner.inner.write(buf) }
-    fn flush(&mut self) { self.inner.inner.flush() }
+    fn write(&mut self, buf: &[u8]) { self.inner.inner.get_mut_ref().write(buf) }
+    fn flush(&mut self) { self.inner.inner.get_mut_ref().flush() }
 }
 
 impl<S: Stream> Decorator<S> for BufferedStream<S> {
     fn inner(self) -> S { self.inner.inner.inner() }
     fn inner_ref<'a>(&'a self) -> &'a S { self.inner.inner.inner_ref() }
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut S {
-        self.inner.inner.inner_mut_ref()
+        self.inner.inner.get_mut_ref().inner_mut_ref()
     }
 }
 

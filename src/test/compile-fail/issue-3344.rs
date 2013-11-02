@@ -10,7 +10,7 @@
 
 struct thing(uint);
 impl Ord for thing { //~ ERROR not all trait methods implemented, missing: `lt`
-    fn le(&self, other: &thing) -> bool { **self < **other }
-    fn ge(&self, other: &thing) -> bool { **self < **other }
+    fn le(&self, other: &thing) -> bool { true }
+    fn ge(&self, other: &thing) -> bool { true }
 }
 fn main() {}

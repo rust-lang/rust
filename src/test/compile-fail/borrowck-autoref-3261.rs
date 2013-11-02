@@ -14,7 +14,8 @@ struct X(Either<(uint,uint),extern fn()>);
 
 impl X {
     pub fn with(&self, blk: |x: &Either<(uint,uint),extern fn()>|) {
-        blk(&**self)
+        let X(ref e) = *self;
+        blk(e)
     }
 }
 
