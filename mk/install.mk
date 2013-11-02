@@ -50,7 +50,7 @@ define INSTALL_LIB
   MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(LIB_SOURCE_DIR)/$(1)))),\
                         $(wildcard $(LIB_DESTIN_DIR)/$(1)))";              \
   if [ -n "$$MATCHES" ]; then                                              \
-    echo "Warning, one or libraries matching Rust library '$(1)'" &&       \
+    echo "warning: one or libraries matching Rust library '$(1)'" &&       \
     echo "  (other than '$$LIB_NAME' itself) already present"     &&       \
     echo "  at destination $(LIB_DESTIN_DIR):"                    &&       \
     echo $$MATCHES ;                                                       \
