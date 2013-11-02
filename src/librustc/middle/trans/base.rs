@@ -2471,7 +2471,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
     match val {
         Some(v) => v,
         None => {
-            let mut exprt = false;
+            let mut foreign = false;
             let item = ccx.tcx.items.get_copy(&id);
             let val = match item {
                 ast_map::node_item(i, pth) => {
@@ -2584,7 +2584,6 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                          get_item_val()");
                         }
                         ast::provided(m) => {
-                            exprt = true;
                             register_method(ccx, id, pth, m)
                         }
                     }
@@ -2596,7 +2595,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                 ast_map::node_foreign_item(ni, abis, _, pth) => {
                     let ty = ty::node_id_to_type(ccx.tcx, ni.id);
-                    exprt = true;
+                    foreign = true;
 
                     match ni.node {
                         ast::foreign_item_fn(*) => {
@@ -2690,7 +2689,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                 }
             };
 
-            if !exprt && !ccx.reachable.contains(&id) {
+            // foreign items (extern fns and extern statics) don't have internal
+            // linkage b/c that doesn't quite make sense. Otherwise items can
+            // have internal linkage if they're not reachable.
+            if !foreign && !ccx.reachable.contains(&id) {
                 lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
             }
 

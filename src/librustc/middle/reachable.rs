@@ -50,6 +50,7 @@ fn item_might_be_inlined(item: @ast::item) -> bool {
     }
 
     match item.node {
+        ast::item_impl(ref generics, _, _, _) |
         ast::item_fn(_, _, _, ref generics, _) => {
             generics_require_inlining(generics)
         }
@@ -62,6 +63,25 @@ fn item_might_be_inlined(item: @ast::item) -> bool {
 fn ty_method_might_be_inlined(ty_method: &ast::TypeMethod) -> bool {
     attributes_specify_inlining(ty_method.attrs) ||
         generics_require_inlining(&ty_method.generics)
+}
+
+fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::method,
+                           impl_src: ast::DefId) -> bool {
+    if attributes_specify_inlining(method.attrs) ||
+        generics_require_inlining(&method.generics) {
+        return true
+    }
+    if is_local(impl_src) {
+        match tcx.items.find(&impl_src.node) {
+            Some(&ast_map::node_item(item, _)) => item_might_be_inlined(item),
+            Some(*) | None => {
+                tcx.sess.span_bug(method.span, "impl did is not an item")
+            }
+        }
+    } else {
+        tcx.sess.span_bug(method.span, "found a foreign impl as a parent of a \
+                                        local method")
+    }
 }
 
 // Returns true if the given trait method must be inlined because it may be
@@ -100,50 +120,54 @@ impl Visitor<()> for MarkSymbolVisitor {
 
     fn visit_expr(&mut self, expr:@ast::Expr, _:()) {
 
-                match expr.node {
-                    ast::ExprPath(_) => {
-                        let def = match self.tcx.def_map.find(&expr.id) {
-                            Some(&def) => def,
-                            None => {
-                                self.tcx.sess.span_bug(expr.span,
-                                                  "def ID not in def map?!")
-                            }
-                        };
+        match expr.node {
+            ast::ExprPath(_) => {
+                let def = match self.tcx.def_map.find(&expr.id) {
+                    Some(&def) => def,
+                    None => {
+                        self.tcx.sess.span_bug(expr.span,
+                                               "def ID not in def map?!")
+                    }
+                };
 
-                        let def_id = def_id_of_def(def);
+                let def_id = def_id_of_def(def);
+                if ReachableContext::
+                    def_id_represents_local_inlined_item(self.tcx, def_id) {
+                        self.worklist.push(def_id.node)
+                    }
+                self.reachable_symbols.insert(def_id.node);
+            }
+            ast::ExprMethodCall(*) => {
+                match self.method_map.find(&expr.id) {
+                    Some(&typeck::method_map_entry {
+                        origin: typeck::method_static(def_id),
+                        _
+                    }) => {
                         if ReachableContext::
-                                def_id_represents_local_inlined_item(self.tcx,
-                                                                     def_id) {
-                            self.worklist.push(def_id.node)
-                        }
+                            def_id_represents_local_inlined_item(
+                                self.tcx,
+                                def_id) {
+                                self.worklist.push(def_id.node)
+                            }
                         self.reachable_symbols.insert(def_id.node);
                     }
-                    ast::ExprMethodCall(*) => {
-                        match self.method_map.find(&expr.id) {
-                            Some(&typeck::method_map_entry {
-                                origin: typeck::method_static(def_id),
-                                _
-                            }) => {
-                                if ReachableContext::
-                                    def_id_represents_local_inlined_item(
-                                        self.tcx,
-                                        def_id) {
-                                    self.worklist.push(def_id.node)
-                                }
-                                self.reachable_symbols.insert(def_id.node);
-                            }
-                            Some(_) => {}
-                            None => {
-                                self.tcx.sess.span_bug(expr.span,
-                                                  "method call expression \
+                    Some(_) => {}
+                    None => {
+                        self.tcx.sess.span_bug(expr.span,
+                        "method call expression \
                                                    not in method map?!")
-                            }
-                        }
                     }
-                    _ => {}
                 }
+            }
+            _ => {}
+        }
 
-                visit::walk_expr(self, expr, ())
+        visit::walk_expr(self, expr, ())
+    }
+
+    fn visit_item(&mut self, _item: @ast::item, _: ()) {
+        // Do not recurse into items. These items will be added to the worklist
+        // and recursed into manually if necessary.
     }
 }
 
@@ -263,8 +287,11 @@ impl ReachableContext {
                 Some(&ast_map::node_item(item, _)) => {
                     match item.node {
                         ast::item_fn(_, _, _, _, ref search_block) => {
-                            visit::walk_block(&mut visitor, search_block, ())
+                            if item_might_be_inlined(item) {
+                                visit::walk_block(&mut visitor, search_block, ())
+                            }
                         }
+
                         // Our recursion into modules involves looking up their
                         // public reexports and the destinations of those
                         // exports. Privacy will put them in the worklist, but
@@ -331,8 +358,10 @@ impl ReachableContext {
                         }
                     }
                 }
-                Some(&ast_map::node_method(ref method, _, _)) => {
-                    visit::walk_block(&mut visitor, &method.body, ())
+                Some(&ast_map::node_method(method, did, _)) => {
+                    if method_might_be_inlined(self.tcx, method, did) {
+                        visit::walk_block(&mut visitor, &method.body, ())
+                    }
                 }
                 // Nothing to recurse on for these
                 Some(&ast_map::node_foreign_item(*)) |
@@ -378,17 +407,6 @@ pub fn find_reachable(tcx: ty::ctxt,
                       exp_map2: resolve::ExportMap2,
                       exported_items: &privacy::ExportedItems)
                       -> @mut HashSet<ast::NodeId> {
-    // XXX(pcwalton): We only need to mark symbols that are exported. But this
-    // is more complicated than just looking at whether the symbol is `pub`,
-    // because it might be the target of a `pub use` somewhere. For now, I
-    // think we are fine, because you can't `pub use` something that wasn't
-    // exported due to the bug whereby `use` only looks through public
-    // modules even if you're inside the module the `use` appears in. When
-    // this bug is fixed, however, this code will need to be updated. Probably
-    // the easiest way to fix this (although a conservative overapproximation)
-    // is to have the name resolution pass mark all targets of a `pub use` as
-    // "must be reachable".
-
     let reachable_context = ReachableContext::new(tcx, method_map, exp_map2);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
