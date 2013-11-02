@@ -118,9 +118,6 @@ pub mod extra {
     pub use std::clone;
     pub use std::condition;
     pub use std::cmp;
-    // NOTE: Remove import after next snapshot
-    #[cfg(stage0)]
-    pub use std::sys;
     pub use std::unstable;
     pub use std::str;
     pub use std::os;
