@@ -622,6 +622,11 @@ impl DocFolder for Cache {
                         }
                         None
                     }
+                    // Private modules may survive the strip-private pass if
+                    // they contain impls for public types, but those will get
+                    // stripped here
+                    clean::Item { inner: clean::ModuleItem(ref m), _ }
+                            if m.items.len() == 0 => None,
                     i => Some(i),
                 }
             }
