@@ -18,24 +18,24 @@
 # $(2) is the destination directory
 # $(3) is the filename/libname-glob
 ifdef VERBOSE
- INSTALL = install -m755 $(1)/$(3) $(2)/$(3)
+ INSTALL = install -m755 $(1)/$(3) $(DESTDIR)$(2)/$(3)
 else
- INSTALL = $(Q)$(call E, install: $(2)/$(3)) && install -m755 $(1)/$(3) $(2)/$(3)
+ INSTALL = $(Q)$(call E, install: $(DESTDIR)$(2)/$(3)) && install -m755 $(1)/$(3) $(DESTDIR)$(2)/$(3)
 endif
 
 # For MK_INSTALL_DIR
 # $(1) is the directory to create
-MK_INSTALL_DIR = (umask 022 && mkdir -p $(1))
+MK_INSTALL_DIR = (umask 022 && mkdir -p $(DESTDIR)$(1))
 
 # For INSTALL_LIB,
 # Target-specific $(LIB_SOURCE_DIR) is the source directory
 # Target-specific $(LIB_DESTIN_DIR) is the destination directory
 # $(1) is the filename/libname-glob
 ifdef VERBOSE
- DO_INSTALL_LIB = install -m644 `ls -drt1 $(LIB_SOURCE_DIR)/$(1) | tail -1` $(LIB_DESTIN_DIR)/
+ DO_INSTALL_LIB = install -m644 `ls -drt1 $(LIB_SOURCE_DIR)/$(1) | tail -1` $(DESTDIR)$(LIB_DESTIN_DIR)/
 else
- DO_INSTALL_LIB = $(Q)$(call E, install_lib: $(LIB_DESTIN_DIR)/$(1)) &&                    \
-	       install -m644 `ls -drt1 $(LIB_SOURCE_DIR)/$(1) | tail -1` $(LIB_DESTIN_DIR)/
+ DO_INSTALL_LIB = $(Q)$(call E, install_lib: $(DESTDIR)$(LIB_DESTIN_DIR)/$(1)) &&                    \
+	       install -m644 `ls -drt1 $(LIB_SOURCE_DIR)/$(1) | tail -1` $(DESTDIR)$(LIB_DESTIN_DIR)/
 endif
 
 # Target-specific $(LIB_SOURCE_DIR) is the source directory
@@ -152,9 +152,9 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD)))
-	$(Q)$(call INSTALL,$(S)/man, $(CFG_MANDIR)/man1,rustc.1)
-	$(Q)$(call INSTALL,$(S)/man, $(CFG_MANDIR)/man1,rustdoc.1)
-	$(Q)$(call INSTALL,$(S)/man, $(CFG_MANDIR)/man1,rustpkg.1)
+	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustc.1)
+	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustdoc.1)
+	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustpkg.1)
 
 install-targets: $(INSTALL_TARGET_RULES)
 
