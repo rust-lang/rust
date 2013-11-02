@@ -1015,7 +1015,8 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
     debug!("basic_type_metadata: {:?}", ty::get(t));
 
     let (name, encoding) = match ty::get(t).sty {
-        ty::ty_nil | ty::ty_bot => (~"uint", DW_ATE_unsigned),
+        ty::ty_nil => (~"()", DW_ATE_unsigned),
+        ty::ty_bot => (~"!", DW_ATE_unsigned),
         ty::ty_bool => (~"bool", DW_ATE_boolean),
         ty::ty_char => (~"char", DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
