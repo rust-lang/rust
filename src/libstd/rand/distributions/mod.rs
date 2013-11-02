@@ -27,8 +27,10 @@ use rand::{Rng,Rand};
 use clone::Clone;
 
 pub use self::range::Range;
+pub use self::gamma::Gamma;
 
 pub mod range;
+pub mod gamma;
 
 /// Types that can be used to create a random instance of `Support`.
 pub trait Sample<Support> {
@@ -554,13 +556,11 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use rand::*;
+    use rand::{XorShiftRng, RAND_BENCH_N};
     use super::*;
     use iter::range;
     use option::{Some, None};
     use mem::size_of;
-
-    static N: u64 = 100;
 
     #[bench]
     fn rand_normal(bh: &mut BenchHarness) {
@@ -568,11 +568,11 @@ mod bench {
         let mut normal = Normal::new(-2.71828, 3.14159);
 
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 normal.sample(&mut rng);
             }
         }
-        bh.bytes = size_of::<f64>() as u64 * N;
+        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
     #[bench]
     fn rand_exp(bh: &mut BenchHarness) {
@@ -580,10 +580,10 @@ mod bench {
         let mut exp = Exp::new(2.71828 * 3.14159);
 
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 exp.sample(&mut rng);
             }
         }
-        bh.bytes = size_of::<f64>() as u64 * N;
+        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }
