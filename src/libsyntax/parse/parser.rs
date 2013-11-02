@@ -2755,7 +2755,12 @@ impl Parser {
             if first { first = false; }
             else { self.expect(&token::COMMA); }
 
+            etc = *self.token == token::UNDERSCORE || *self.token == token::DOTDOT;
             if *self.token == token::UNDERSCORE {
+                // FIXME #5830 activate after snapshot
+                // self.obsolete(*self.span, ObsoleteStructWildcard);
+            }
+            if etc {
                 self.bump();
                 if *self.token != token::RBRACE {
                     self.fatal(
@@ -3016,9 +3021,19 @@ impl Parser {
                                     _ => false,
                                 }
                             };
-                            if is_star {
+                            let is_dotdot = do self.look_ahead(1) |t| {
+                                match *t {
+                                    token::DOTDOT => true,
+                                    _ => false,
+                                }
+                            };
+                            if is_star | is_dotdot {
                                 // This is a "top constructor only" pat
                                 self.bump();
+                                if is_star {
+                                    // FIXME #5830 activate after snapshot
+                                    // self.obsolete(*self.span, ObsoleteEnumWildcard);
+                                }
                                 self.bump();
                                 self.expect(&token::RPAREN);
                                 pat = PatEnum(enum_path, None);
