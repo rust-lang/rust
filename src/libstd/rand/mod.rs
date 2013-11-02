@@ -833,58 +833,58 @@ mod test {
     }
 }
 
+static RAND_BENCH_N: u64 = 100;
+
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use rand::*;
+    use rand::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
     use mem::size_of;
     use iter::range;
     use option::{Some, None};
-
-    static N: u64 = 100;
 
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
         }
-        bh.bytes = size_of::<uint>() as u64 * N;
+        bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_isaac(bh: &mut BenchHarness) {
         let mut rng = IsaacRng::new();
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
         }
-        bh.bytes = size_of::<uint>() as u64 * N;
+        bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_isaac64(bh: &mut BenchHarness) {
         let mut rng = Isaac64Rng::new();
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
         }
-        bh.bytes = size_of::<uint>() as u64 * N;
+        bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_std(bh: &mut BenchHarness) {
         let mut rng = StdRng::new();
         do bh.iter {
-            for _ in range(0, N) {
+            for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
         }
-        bh.bytes = size_of::<uint>() as u64 * N;
+        bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
