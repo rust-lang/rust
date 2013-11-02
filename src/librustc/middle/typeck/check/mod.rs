@@ -1365,7 +1365,7 @@ pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
         }
 
         // Otherwise, deref if type is derefable:
-        match ty::deref_sty(fcx.ccx.tcx, sty, false) {
+        match ty::deref_sty(sty, false) {
             None => {
                 return (t1, autoderefs);
             }
@@ -2758,18 +2758,13 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 }
                 ast::UnDeref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);
-                    let operand_ty = ty::deref_sty(tcx, sty, true);
+                    let operand_ty = ty::deref_sty(sty, true);
                     match operand_ty {
                         Some(mt) => {
                             oprnd_t = mt.ty
                         }
                         None => {
                             match *sty {
-                                ty::ty_struct(..) => {
-                                    tcx.sess.span_err(
-                                        expr.span,
-                                        "can only dereference structs with one anonymous field");
-                                }
                                 _ => {
                                     fcx.type_error_message(expr.span,
                                         |actual| {

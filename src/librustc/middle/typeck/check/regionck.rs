@@ -628,7 +628,6 @@ fn constrain_derefs(rcx: &mut Rcx,
      * pointer being derefenced, the lifetime of the pointer includes
      * the deref expr.
      */
-    let tcx = rcx.fcx.tcx();
     let r_deref_expr = ty::ReScope(deref_expr.id);
     for i in range(0u, derefs) {
         debug!("constrain_derefs(deref_expr=?, derefd_ty={}, derefs={:?}/{:?}",
@@ -644,7 +643,7 @@ fn constrain_derefs(rcx: &mut Rcx,
             _ => {}
         }
 
-        match ty::deref(tcx, derefd_ty, true) {
+        match ty::deref(derefd_ty, true) {
             Some(mt) => derefd_ty = mt.ty,
             /* if this type can't be dereferenced, then there's already an error
                in the session saying so. Just bail out for now */
@@ -1193,7 +1192,7 @@ pub mod guarantor {
         for _ in range(0u, autoderefs) {
             ct.cat.guarantor = guarantor_of_deref(&ct.cat);
 
-            match ty::deref(tcx, ct.ty, true) {
+            match ty::deref(ct.ty, true) {
                 Some(mt) => {
                     ct.ty = mt.ty;
                     ct.cat.pointer = pointer_categorize(ct.ty);

@@ -46,8 +46,8 @@ impl Rand for StandardNormal {
             let mut y = 0.0f64;
 
             while -2.0 * y < x * x {
-                let x_ = *rng.gen::<Open01<f64>>();
-                let y_ = *rng.gen::<Open01<f64>>();
+                let Open01(x_) = rng.gen::<Open01<f64>>();
+                let Open01(y_) = rng.gen::<Open01<f64>>();
 
                 x = x_.ln() / ziggurat_tables::ZIG_NORM_R;
                 y = y_.ln();
@@ -102,7 +102,8 @@ impl Sample<f64> for Normal {
 }
 impl IndependentSample<f64> for Normal {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        self.mean + self.std_dev * (*rng.gen::<StandardNormal>())
+        let StandardNormal(n) = rng.gen::<StandardNormal>();
+        self.mean + self.std_dev * n
     }
 }
 

@@ -172,7 +172,8 @@ impl Colors {
     }
 
     fn next(&self) -> u8 {
-        let val = **self & HEADS;
+        let Colors(c) = *self;
+        let val = c & HEADS;
         if (0u16 == val) {
             return 0u8;
         } else {
@@ -184,7 +185,7 @@ impl Colors {
 
     fn remove(&mut self, color: u8) {
         if color != 0u8 {
-            let val  = **self;
+            let Colors(val) = *self;
             let mask = !(1u16 << color);
             *self    = Colors(val & mask);
         }

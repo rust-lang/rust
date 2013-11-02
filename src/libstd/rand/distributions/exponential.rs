@@ -83,7 +83,8 @@ impl Sample<f64> for Exp {
 }
 impl IndependentSample<f64> for Exp {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        (*rng.gen::<Exp1>()) * self.lambda_inverse
+        let Exp1(n) = rng.gen::<Exp1>();
+        n * self.lambda_inverse
     }
 }
 

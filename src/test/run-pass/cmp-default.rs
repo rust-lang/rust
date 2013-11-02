@@ -14,7 +14,9 @@ struct Fool(bool);
 
 impl Eq for Fool {
     fn eq(&self, other: &Fool) -> bool {
-        **self != **other
+        let Fool(this) = *self;
+        let Fool(other) = *other;
+        this != other
     }
 }
 
@@ -22,7 +24,9 @@ struct Int(int);
 
 impl Ord for Int {
     fn lt(&self, other: &Int) -> bool {
-        **self < **other
+        let Int(this) = *self;
+        let Int(other) = *other;
+        this < other
     }
 }
 
@@ -30,7 +34,9 @@ struct RevInt(int);
 
 impl Ord for RevInt {
     fn lt(&self, other: &RevInt) -> bool {
-        **self > **other
+        let RevInt(this) = *self;
+        let RevInt(other) = *other;
+        this > other
     }
 }
 

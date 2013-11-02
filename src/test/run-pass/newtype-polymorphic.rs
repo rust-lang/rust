@@ -11,13 +11,20 @@
 #[deriving(Clone)]
 struct myvec<X>(~[X]);
 
-fn myvec_deref<X:Clone>(mv: myvec<X>) -> ~[X] { return (*mv).clone(); }
+fn myvec_deref<X:Clone>(mv: myvec<X>) -> ~[X] {
+    let myvec(v) = mv;
+    return v.clone();
+}
 
-fn myvec_elt<X>(mv: myvec<X>) -> X { return mv[0]; }
+fn myvec_elt<X>(mv: myvec<X>) -> X {
+    let myvec(v) = mv;
+    return v[0];
+}
 
 pub fn main() {
     let mv = myvec(~[1, 2, 3]);
     assert_eq!(myvec_deref(mv.clone())[1], 2);
     assert_eq!(myvec_elt(mv.clone()), 1);
-    assert_eq!(mv[2], 3);
+    let myvec(v) = mv;
+    assert_eq!(v[2], 3);
 }

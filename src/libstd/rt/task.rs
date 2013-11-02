@@ -153,9 +153,13 @@ impl Task {
                 // annihilated invoke TLS. Sadly these two operations seemed to
                 // be intertwined, and miraculously work for now...
                 let mut task = Local::borrow(None::<Task>);
-                let storage = task.get().storage.take();
+                let storage_map = {
+                    let task = task.get();
+                    let LocalStorage(ref mut optmap) = task.storage;
+                    optmap.take()
+                };
                 drop(task);
-                drop(storage);
+                drop(storage_map);
 
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }

@@ -12,10 +12,14 @@ struct mytype(Mytype);
 
 struct Mytype {compute: extern fn(mytype) -> int, val: int}
 
-fn compute(i: mytype) -> int { return i.val + 20; }
+fn compute(i: mytype) -> int {
+    let mytype(m) = i;
+    return m.val + 20;
+}
 
 pub fn main() {
     let myval = mytype(Mytype{compute: compute, val: 30});
     println!("{}", compute(myval));
-    assert_eq!((myval.compute)(myval), 50);
+    let mytype(m) = myval;
+    assert_eq!((m.compute)(myval), 50);
 }

@@ -6,7 +6,8 @@ pub struct Fd(c_int);
 impl Drop for Fd {
     fn drop(&mut self) {
         unsafe {
-            libc::close(**self);
+            let Fd(s) = *self;
+            libc::close(s);
         }
     }
 }
