@@ -224,6 +224,10 @@
       [0-9a-fA-F]
     </define-regex>
 
+    <define-regex id="oct_digit" extended="true">
+      [0-7]
+    </define-regex>
+
     <context id="number" style-ref="number">
       <match extended="true">
         ((?&lt;=\.\.)|(?&lt;![\w\.]))
@@ -231,6 +235,7 @@
         [1-9][0-9_]*\%{num_suffix}?|
         0[0-9_]*\%{num_suffix}?|
         0b[01_]+\%{int_suffix}?|
+        0o(\%{oct_digit}|_)+\%{int_suffix}?|
         0x(\%{hex_digit}|_)+\%{int_suffix}?
         )
         ((?![\w\.].)|(?=\.\.))
