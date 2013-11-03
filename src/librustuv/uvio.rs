@@ -992,11 +992,7 @@ fn accept_simultaneously(stream: StreamWatcher, a: int) -> Result<(), IoError> {
     let r = unsafe {
         uvll::uv_tcp_simultaneous_accepts(stream.native_handle(), a as c_int)
     };
-
-    match status_to_maybe_uv_error(r) {
-        Some(err) => Err(uv_error_to_io_error(err)),
-        None => Ok(())
-    }
+    status_to_io_result(r)
 }
 
 impl RtioTcpAcceptor for UvTcpAcceptor {
@@ -1197,11 +1193,7 @@ impl RtioTcpStream for UvTcpStream {
             let r = unsafe {
                 uvll::uv_tcp_nodelay(self_.watcher.native_handle(), 0 as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
@@ -1210,11 +1202,7 @@ impl RtioTcpStream for UvTcpStream {
             let r = unsafe {
                 uvll::uv_tcp_nodelay(self_.watcher.native_handle(), 1 as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
@@ -1224,11 +1212,7 @@ impl RtioTcpStream for UvTcpStream {
                 uvll::uv_tcp_keepalive(self_.watcher.native_handle(), 1 as c_int,
                                        delay_in_seconds as c_uint)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
@@ -1238,11 +1222,7 @@ impl RtioTcpStream for UvTcpStream {
                 uvll::uv_tcp_keepalive(self_.watcher.native_handle(),
                                        0 as c_int, 0 as c_uint)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 }
@@ -1348,11 +1328,7 @@ impl RtioUdpSocket for UvUdpSocket {
                                                 uvll::UV_JOIN_GROUP)
                 }
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
@@ -1365,100 +1341,66 @@ impl RtioUdpSocket for UvUdpSocket {
                                                 uvll::UV_LEAVE_GROUP)
                 }
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
     fn loop_multicast_locally(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-
             let r = unsafe {
                 uvll::uv_udp_set_multicast_loop(self_.watcher.native_handle(),
                                                 1 as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
     fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-
             let r = unsafe {
                 uvll::uv_udp_set_multicast_loop(self_.watcher.native_handle(),
                                                 0 as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
     fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-
             let r = unsafe {
                 uvll::uv_udp_set_multicast_ttl(self_.watcher.native_handle(),
                                                ttl as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
     fn time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-
             let r = unsafe {
                 uvll::uv_udp_set_ttl(self_.watcher.native_handle(), ttl as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
     fn hear_broadcasts(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-
             let r = unsafe {
                 uvll::uv_udp_set_broadcast(self_.watcher.native_handle(),
                                            1 as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 
     fn ignore_broadcasts(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-
             let r = unsafe {
                 uvll::uv_udp_set_broadcast(self_.watcher.native_handle(),
                                            0 as c_int)
             };
-
-            match status_to_maybe_uv_error(r) {
-                Some(err) => Err(uv_error_to_io_error(err)),
-                None => Ok(())
-            }
+            status_to_io_result(r)
         }
     }
 }
