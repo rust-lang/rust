@@ -74,14 +74,24 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         }
     }
 
-    fn memcpy_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
+    fn copy_intrinsic(bcx: @mut Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-        let size = match sizebits {
-            32 => C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32),
-            64 => C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64),
-            _ => ccx.sess.fatal("Invalid value for sizebits")
+        let size = machine::llsize_of(ccx, lltp_ty);
+        let int_size = machine::llbitsize_of_real(ccx, ccx.int_type);
+        let name = if allow_overlap {
+            if int_size == 32 {
+                "llvm.memmove.p0i8.p0i8.i32"
+            } else {
+                "llvm.memmove.p0i8.p0i8.i64"
+            }
+        } else {
+            if int_size == 32 {
+                "llvm.memcpy.p0i8.p0i8.i32"
+            } else {
+                "llvm.memcpy.p0i8.p0i8.i64"
+            }
         };
 
         let decl = bcx.fcx.llfn;
@@ -95,14 +105,15 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
+    fn memset_intrinsic(bcx: @mut Block, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-        let size = match sizebits {
-            32 => C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32),
-            64 => C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64),
-            _ => ccx.sess.fatal("Invalid value for sizebits")
+        let size = machine::llsize_of(ccx, lltp_ty);
+        let name = if machine::llbitsize_of_real(ccx, ccx.int_type) == 32 {
+            "llvm.memset.p0i8.i32"
+        } else {
+            "llvm.memset.p0i8.i64"
         };
 
         let decl = bcx.fcx.llfn;
@@ -399,12 +410,9 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let lladdr = InBoundsGEP(bcx, ptr, [offset]);
             Ret(bcx, lladdr);
         }
-        "memcpy32" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i32", substs.tys[0], 32),
-        "memcpy64" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i64", substs.tys[0], 64),
-        "memmove32" => memcpy_intrinsic(bcx, "llvm.memmove.p0i8.p0i8.i32", substs.tys[0], 32),
-        "memmove64" => memcpy_intrinsic(bcx, "llvm.memmove.p0i8.p0i8.i64", substs.tys[0], 64),
-        "memset32" => memset_intrinsic(bcx, "llvm.memset.p0i8.i32", substs.tys[0], 32),
-        "memset64" => memset_intrinsic(bcx, "llvm.memset.p0i8.i64", substs.tys[0], 64),
+        "copy_nonoverlapping_memory" => copy_intrinsic(bcx, false, substs.tys[0]),
+        "copy_memory" => copy_intrinsic(bcx, true, substs.tys[0]),
+        "set_memory" => memset_intrinsic(bcx, substs.tys[0]),
         "sqrtf32" => simple_llvm_intrinsic(bcx, "llvm.sqrt.f32", 1),
         "sqrtf64" => simple_llvm_intrinsic(bcx, "llvm.sqrt.f64", 1),
         "powif32" => simple_llvm_intrinsic(bcx, "llvm.powi.f32", 2),
