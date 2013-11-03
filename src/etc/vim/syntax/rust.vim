@@ -160,7 +160,7 @@ syn match     rustNumber      display "\<[0-9][0-9_]*\(i\|i8\|i16\|i32\|i64\)\>"
 
 syn match     rustHexNumber   display "\<0x[a-fA-F0-9_]\+\>"
 syn match     rustHexNumber   display "\<0x[a-fA-F0-9_]\+\(u\|u8\|u16\|u32\|u64\)\>"
-syn match     rustHexNumber   display "\<0x[0-9_]\+\(i8\|i16\|i32\|i64\)\>"
+syn match     rustHexNumber   display "\<0x[a-fA-F0-9_]\+\(i8\|i16\|i32\|i64\)\>"
 syn match     rustOctNumber   display "\<0o[0-7_]\+\>"
 syn match     rustOctNumber   display "\<0o[0-7_]\+\(u\|u8\|u16\|u32\|u64\)\>"
 syn match     rustOctNumber   display "\<0o[0-7_]\+\(i8\|i16\|i32\|i64\)\>"
