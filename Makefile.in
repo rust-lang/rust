@@ -625,10 +625,10 @@ config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 # new definitions), make sure definitions always precede their uses,
 # especially for the dependency lists of recipes.
 
+include $(CFG_SRC_DIR)mk/rt.mk
 include $(CFG_SRC_DIR)mk/target.mk
 include $(CFG_SRC_DIR)mk/host.mk
 include $(CFG_SRC_DIR)mk/stage0.mk
-include $(CFG_SRC_DIR)mk/rt.mk
 include $(CFG_SRC_DIR)mk/rustllvm.mk
 include $(CFG_SRC_DIR)mk/tools.mk
 include $(CFG_SRC_DIR)mk/docs.mk

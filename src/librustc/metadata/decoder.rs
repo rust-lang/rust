@@ -1456,16 +1456,6 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
     }
 }
 
-pub fn get_link_args_for_crate(cdata: Cmd) -> ~[~str] {
-    let link_args = reader::get_doc(reader::Doc(cdata.data), tag_link_args);
-    let mut result = ~[];
-    do reader::tagged_docs(link_args, tag_link_args_arg) |arg_doc| {
-        result.push(arg_doc.as_str());
-        true
-    };
-    result
-}
-
 pub fn each_impl(cdata: Cmd, callback: &fn(ast::DefId)) {
     let impls_doc = reader::get_doc(reader::Doc(cdata.data), tag_impls);
     let _ = do reader::tagged_docs(impls_doc, tag_impls_impl) |impl_doc| {

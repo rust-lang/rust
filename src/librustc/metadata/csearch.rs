@@ -261,13 +261,6 @@ pub fn get_item_visibility(cstore: @mut cstore::CStore,
     decoder::get_item_visibility(cdata, def_id.node)
 }
 
-pub fn get_link_args_for_crate(cstore: @mut cstore::CStore,
-                               crate_num: ast::CrateNum)
-                            -> ~[~str] {
-    let cdata = cstore::get_crate_data(cstore, crate_num);
-    decoder::get_link_args_for_crate(cdata)
-}
-
 pub fn each_impl(cstore: @mut cstore::CStore,
                  crate_num: ast::CrateNum,
                  callback: &fn(ast::DefId)) {
