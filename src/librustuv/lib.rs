@@ -117,7 +117,6 @@ pub trait NativeHandle<T> {
     fn from_native_handle(h: *T) -> Self;
     fn native_handle(&self) -> *T;
 
-    // FIXME(#8888) dummy self
     fn alloc(ty: uvll::uv_handle_type) -> Self {
         unsafe {
             NativeHandle::from_native_handle(uvll::malloc_handle(ty) as *T)
