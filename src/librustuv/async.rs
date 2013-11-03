@@ -26,7 +26,7 @@ impl AsyncWatcher {
             watcher.install_watcher_data();
             let data = watcher.get_watcher_data();
             data.async_cb = Some(cb);
-            assert_eq!(0, uvll::async_init(loop_.native_handle(), handle, async_cb));
+            assert_eq!(0, uvll::uv_async_init(loop_.native_handle(), handle, async_cb));
             return watcher;
         }
 
@@ -42,7 +42,7 @@ impl AsyncWatcher {
     pub fn send(&mut self) {
         unsafe {
             let handle = self.native_handle();
-            uvll::async_send(handle);
+            uvll::uv_async_send(handle);
         }
     }
 }

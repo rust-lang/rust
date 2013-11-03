@@ -49,7 +49,7 @@ use std::str::raw::from_c_str;
 use std::vec;
 use std::ptr;
 use std::str;
-use std::libc::{c_void, c_int, size_t, malloc, free};
+use std::libc::{c_void, c_int, size_t, malloc, free, c_char, c_uint};
 use std::cast::transmute;
 use std::ptr::null;
 use std::unstable::finally::Finally;
@@ -127,11 +127,11 @@ impl Loop {
     }
 
     pub fn run(&mut self) {
-        unsafe { uvll::run(self.native_handle()) };
+        unsafe { uvll::uv_run(self.native_handle(), uvll::RUN_DEFAULT) };
     }
 
     pub fn close(&mut self) {
-        unsafe { uvll::loop_delete(self.native_handle()) };
+        unsafe { uvll::uv_loop_delete(self.native_handle()) };
     }
 }
 
@@ -240,7 +240,9 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
             data.close_cb = Some(cb);
         }
 
-        unsafe { uvll::close(self.native_handle(), close_cb); }
+        unsafe {
+            uvll::uv_close(self.native_handle() as *uvll::uv_handle_t, close_cb);
+        }
 
         extern fn close_cb(handle: *uvll::uv_handle_t) {
             let mut h: Handle = NativeHandle::from_native_handle(handle);
@@ -251,7 +253,9 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
     }
 
     fn close_async(self) {
-        unsafe { uvll::close(self.native_handle(), close_cb); }
+        unsafe {
+            uvll::uv_close(self.native_handle() as *uvll::uv_handle_t, close_cb);
+        }
 
         extern fn close_cb(handle: *uvll::uv_handle_t) {
             let mut h: Handle = NativeHandle::from_native_handle(handle);
@@ -270,7 +274,7 @@ impl UvError {
     pub fn name(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(a) => a };
-            let name_str = uvll::err_name(inner);
+            let name_str = uvll::uv_err_name(inner);
             assert!(name_str.is_not_null());
             from_c_str(name_str)
         }
@@ -279,7 +283,7 @@ impl UvError {
     pub fn desc(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(a) => a };
-            let desc_str = uvll::strerror(inner);
+            let desc_str = uvll::uv_strerror(inner);
             assert!(desc_str.is_not_null());
             from_c_str(desc_str)
         }
@@ -309,7 +313,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
         use std::rt::io::*;
 
         // uv error descriptions are static
-        let c_desc = uvll::strerror(*uverr);
+        let c_desc = uvll::uv_strerror(*uverr);
         let desc = str::raw::c_str_to_static_slice(c_desc);
 
         let kind = match *uverr {
@@ -360,7 +364,7 @@ pub fn empty_buf() -> Buf {
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     let data = vec::raw::to_ptr(v);
-    unsafe { uvll::buf_init(data, v.len()) }
+    unsafe { uvll::uv_buf_init(data as *c_char, v.len() as c_uint) }
 }
 
 // XXX: Do these conversions without copying
@@ -376,7 +380,7 @@ pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
             let data = data as *mut u8;
             ptr::copy_memory(data, b, l)
         }
-        uvll::buf_init(data, v.len())
+        uvll::uv_buf_init(data as *c_char, v.len() as c_uint)
     }
 }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
+use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
 use std::vec;
 use std::str;
 use std::rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
@@ -70,8 +70,10 @@ fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T)
         unsafe {
             let buf_ptr = vec::raw::to_ptr(buf);
             match addr {
-                UvIpv4SocketAddr(addr) => uvll::ip4_name(addr, buf_ptr, ip_size as size_t),
-                UvIpv6SocketAddr(addr) => uvll::ip6_name(addr, buf_ptr, ip_size as size_t),
+                UvIpv4SocketAddr(addr) =>
+                    uvll::uv_ip4_name(addr, buf_ptr as *c_char, ip_size as size_t),
+                UvIpv6SocketAddr(addr) =>
+                    uvll::uv_ip6_name(addr, buf_ptr as *c_char, ip_size as size_t),
             }
         };
         buf
@@ -119,7 +121,7 @@ impl Watcher for StreamWatcher { }
 impl StreamWatcher {
     pub fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
         unsafe {
-            match uvll::read_start(self.native_handle(), alloc_cb, read_cb) {
+            match uvll::uv_read_start(self.native_handle(), alloc_cb, read_cb) {
                 0 => {
                     let data = self.get_watcher_data();
                     data.alloc_cb = Some(alloc);
@@ -152,14 +154,14 @@ impl StreamWatcher {
         // but read_stop may be called from inside one of them and we
         // would end up freeing the in-use environment
         let handle = self.native_handle();
-        unsafe { assert_eq!(uvll::read_stop(handle), 0); }
+        unsafe { assert_eq!(uvll::uv_read_stop(handle), 0); }
     }
 
     pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
         let req = WriteRequest::new();
         return unsafe {
-            match uvll::write(req.native_handle(), self.native_handle(),
-                              [buf], write_cb) {
+            match uvll::uv_write(req.native_handle(), self.native_handle(),
+                                 [buf], write_cb) {
                 0 => {
                     let data = self.get_watcher_data();
                     assert!(data.write_cb.is_none());
@@ -192,7 +194,7 @@ impl StreamWatcher {
 
         return unsafe {
             static BACKLOG: c_int = 128; // XXX should be configurable
-            match uvll::listen(self.native_handle(), BACKLOG, connection_cb) {
+            match uvll::uv_listen(self.native_handle(), BACKLOG, connection_cb) {
                 0 => Ok(()),
                 n => Err(UvError(n))
             }
@@ -210,7 +212,7 @@ impl StreamWatcher {
     pub fn accept(&mut self, stream: StreamWatcher) {
         let self_handle = self.native_handle() as *c_void;
         let stream_handle = stream.native_handle() as *c_void;
-        assert_eq!(0, unsafe { uvll::accept(self_handle, stream_handle) } );
+        assert_eq!(0, unsafe { uvll::uv_accept(self_handle, stream_handle) } );
     }
 }
 
@@ -231,7 +233,7 @@ impl TcpWatcher {
         unsafe {
             let handle = malloc_handle(UV_TCP);
             assert!(handle.is_not_null());
-            assert_eq!(0, uvll::tcp_init(loop_.native_handle(), handle));
+            assert_eq!(0, uvll::uv_tcp_init(loop_.native_handle(), handle));
             let mut watcher: TcpWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
@@ -304,7 +306,7 @@ impl UdpWatcher {
         unsafe {
             let handle = malloc_handle(UV_UDP);
             assert!(handle.is_not_null());
-            assert_eq!(0, uvll::udp_init(loop_.native_handle(), handle));
+            assert_eq!(0, uvll::uv_udp_init(loop_.native_handle(), handle));
             let mut watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
@@ -333,7 +335,7 @@ impl UdpWatcher {
             data.udp_recv_cb = Some(cb);
         }
 
-        unsafe { uvll::udp_recv_start(self.native_handle(), alloc_cb, recv_cb); }
+        unsafe { uvll::uv_udp_recv_start(self.native_handle(), alloc_cb, recv_cb); }
 
         extern fn alloc_cb(handle: *uvll::uv_udp_t, suggested_size: size_t) -> Buf {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
@@ -361,7 +363,7 @@ impl UdpWatcher {
     }
 
     pub fn recv_stop(&mut self) {
-        unsafe { uvll::udp_recv_stop(self.native_handle()); }
+        unsafe { uvll::uv_udp_recv_stop(self.native_handle()); }
     }
 
     pub fn send(&mut self, buf: Buf, address: SocketAddr, cb: UdpSendCallback) {
