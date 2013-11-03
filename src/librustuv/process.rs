@@ -94,7 +94,7 @@ impl Process {
                 };
 
                 match unsafe {
-                    uvll::spawn(loop_.native_handle(), **self, options)
+                    uvll::uv_spawn(loop_.native_handle(), **self, options)
                 } {
                     0 => {
                         (*self).get_watcher_data().exit_cb = Some(exit_cb.take());
@@ -111,7 +111,7 @@ impl Process {
     /// This is a wrapper around `uv_process_kill`
     pub fn kill(&self, signum: int) -> Result<(), UvError> {
         match unsafe {
-            uvll::process_kill(self.native_handle(), signum as libc::c_int)
+            uvll::uv_process_kill(self.native_handle(), signum as libc::c_int)
         } {
             0 => Ok(()),
             err => Err(UvError(err))

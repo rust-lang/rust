@@ -990,7 +990,7 @@ impl RtioSocket for UvTcpAcceptor {
 
 fn accept_simultaneously(stream: StreamWatcher, a: int) -> Result<(), IoError> {
     let r = unsafe {
-        uvll::tcp_simultaneous_accepts(stream.native_handle(), a as c_int)
+        uvll::uv_tcp_simultaneous_accepts(stream.native_handle(), a as c_int)
     };
 
     match status_to_maybe_uv_error(r) {
@@ -1194,7 +1194,9 @@ impl RtioTcpStream for UvTcpStream {
 
     fn control_congestion(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-            let r = unsafe { uvll::tcp_nodelay(self_.watcher.native_handle(), 0 as c_int) };
+            let r = unsafe {
+                uvll::uv_tcp_nodelay(self_.watcher.native_handle(), 0 as c_int)
+            };
 
             match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
@@ -1205,7 +1207,9 @@ impl RtioTcpStream for UvTcpStream {
 
     fn nodelay(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
-            let r = unsafe { uvll::tcp_nodelay(self_.watcher.native_handle(), 1 as c_int) };
+            let r = unsafe {
+                uvll::uv_tcp_nodelay(self_.watcher.native_handle(), 1 as c_int)
+            };
 
             match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
@@ -1217,8 +1221,8 @@ impl RtioTcpStream for UvTcpStream {
     fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError> {
         do self.home_for_io |self_| {
             let r = unsafe {
-                uvll::tcp_keepalive(self_.watcher.native_handle(), 1 as c_int,
-                                    delay_in_seconds as c_uint)
+                uvll::uv_tcp_keepalive(self_.watcher.native_handle(), 1 as c_int,
+                                       delay_in_seconds as c_uint)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1231,7 +1235,8 @@ impl RtioTcpStream for UvTcpStream {
     fn letdie(&mut self) -> Result<(), IoError> {
         do self.home_for_io |self_| {
             let r = unsafe {
-                uvll::tcp_keepalive(self_.watcher.native_handle(), 0 as c_int, 0 as c_uint)
+                uvll::uv_tcp_keepalive(self_.watcher.native_handle(),
+                                       0 as c_int, 0 as c_uint)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1338,8 +1343,9 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
             let r = unsafe {
                 do multi.to_str().with_c_str |m_addr| {
-                    uvll::udp_set_membership(self_.watcher.native_handle(), m_addr,
-                                             ptr::null(), uvll::UV_JOIN_GROUP)
+                    uvll::uv_udp_set_membership(self_.watcher.native_handle(),
+                                                m_addr, ptr::null(),
+                                                uvll::UV_JOIN_GROUP)
                 }
             };
 
@@ -1354,8 +1360,9 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
             let r = unsafe {
                 do multi.to_str().with_c_str |m_addr| {
-                    uvll::udp_set_membership(self_.watcher.native_handle(), m_addr,
-                                             ptr::null(), uvll::UV_LEAVE_GROUP)
+                    uvll::uv_udp_set_membership(self_.watcher.native_handle(),
+                                                m_addr, ptr::null(),
+                                                uvll::UV_LEAVE_GROUP)
                 }
             };
 
@@ -1370,7 +1377,8 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
 
             let r = unsafe {
-                uvll::udp_set_multicast_loop(self_.watcher.native_handle(), 1 as c_int)
+                uvll::uv_udp_set_multicast_loop(self_.watcher.native_handle(),
+                                                1 as c_int)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1384,7 +1392,8 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
 
             let r = unsafe {
-                uvll::udp_set_multicast_loop(self_.watcher.native_handle(), 0 as c_int)
+                uvll::uv_udp_set_multicast_loop(self_.watcher.native_handle(),
+                                                0 as c_int)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1398,7 +1407,8 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
 
             let r = unsafe {
-                uvll::udp_set_multicast_ttl(self_.watcher.native_handle(), ttl as c_int)
+                uvll::uv_udp_set_multicast_ttl(self_.watcher.native_handle(),
+                                               ttl as c_int)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1412,7 +1422,7 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
 
             let r = unsafe {
-                uvll::udp_set_ttl(self_.watcher.native_handle(), ttl as c_int)
+                uvll::uv_udp_set_ttl(self_.watcher.native_handle(), ttl as c_int)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1426,7 +1436,8 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
 
             let r = unsafe {
-                uvll::udp_set_broadcast(self_.watcher.native_handle(), 1 as c_int)
+                uvll::uv_udp_set_broadcast(self_.watcher.native_handle(),
+                                           1 as c_int)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1440,7 +1451,8 @@ impl RtioUdpSocket for UvUdpSocket {
         do self.home_for_io |self_| {
 
             let r = unsafe {
-                uvll::udp_set_broadcast(self_.watcher.native_handle(), 0 as c_int)
+                uvll::uv_udp_set_broadcast(self_.watcher.native_handle(),
+                                           0 as c_int)
             };
 
             match status_to_maybe_uv_error(r) {
@@ -1861,7 +1873,7 @@ impl RtioTTY for UvTTY {
     }
 
     fn isatty(&self) -> bool {
-        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY as c_int }
+        unsafe { uvll::uv_guess_handle(self.fd) == uvll::UV_TTY }
     }
 }
 

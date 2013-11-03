@@ -26,7 +26,7 @@ impl Pipe {
             let handle = uvll::malloc_handle(uvll::UV_NAMED_PIPE);
             assert!(handle.is_not_null());
             let ipc = ipc as libc::c_int;
-            assert_eq!(uvll::pipe_init(loop_.native_handle(), handle, ipc), 0);
+            assert_eq!(uvll::uv_pipe_init(loop_.native_handle(), handle, ipc), 0);
             let mut ret: Pipe =
                     NativeHandle::from_native_handle(handle);
             ret.install_watcher_data();
@@ -40,7 +40,7 @@ impl Pipe {
 
     #[fixed_stack_segment] #[inline(never)]
     pub fn open(&mut self, file: libc::c_int) -> Result<(), UvError> {
-        match unsafe { uvll::pipe_open(self.native_handle(), file) } {
+        match unsafe { uvll::uv_pipe_open(self.native_handle(), file) } {
             0 => Ok(()),
             n => Err(UvError(n))
         }
@@ -49,7 +49,7 @@ impl Pipe {
     #[fixed_stack_segment] #[inline(never)]
     pub fn bind(&mut self, name: &CString) -> Result<(), UvError> {
         do name.with_ref |name| {
-            match unsafe { uvll::pipe_bind(self.native_handle(), name) } {
+            match unsafe { uvll::uv_pipe_bind(self.native_handle(), name) } {
                 0 => Ok(()),
                 n => Err(UvError(n))
             }
@@ -68,7 +68,7 @@ impl Pipe {
         let name = do name.with_ref |p| { p };
 
         unsafe {
-            uvll::pipe_connect(connect.native_handle(),
+            uvll::uv_pipe_connect(connect.native_handle(),
                                self.native_handle(),
                                name,
                                connect_cb)

@@ -21,7 +21,7 @@ impl TimerWatcher {
         unsafe {
             let handle = uvll::malloc_handle(uvll::UV_TIMER);
             assert!(handle.is_not_null());
-            assert!(0 == uvll::timer_init(loop_.native_handle(), handle));
+            assert!(0 == uvll::uv_timer_init(loop_.native_handle(), handle));
             let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
@@ -35,7 +35,7 @@ impl TimerWatcher {
         }
 
         unsafe {
-            uvll::timer_start(self.native_handle(), timer_cb, timeout, repeat);
+            uvll::uv_timer_start(self.native_handle(), timer_cb, timeout, repeat);
         }
 
         extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
@@ -49,7 +49,7 @@ impl TimerWatcher {
 
     pub fn stop(&mut self) {
         unsafe {
-            uvll::timer_stop(self.native_handle());
+            uvll::uv_timer_stop(self.native_handle());
         }
     }
 }
