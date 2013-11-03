@@ -310,7 +310,7 @@ impl FsRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
+impl NativeHandle<uvll::uv_fs_t> for FsRequest {
     fn from_native_handle(handle: *uvll:: uv_fs_t) -> FsRequest {
         FsRequest(handle)
     }

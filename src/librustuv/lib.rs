@@ -97,7 +97,7 @@ pub struct Loop {
 pub struct Handle(*uvll::uv_handle_t);
 
 impl Watcher for Handle {}
-impl NativeHandle<*uvll::uv_handle_t> for Handle {
+impl NativeHandle<uvll::uv_handle_t> for Handle {
     fn from_native_handle(h: *uvll::uv_handle_t) -> Handle { Handle(h) }
     fn native_handle(&self) -> *uvll::uv_handle_t { **self }
 }
@@ -114,8 +114,15 @@ pub trait Request { }
 
 /// A type that wraps a native handle
 pub trait NativeHandle<T> {
-    fn from_native_handle(T) -> Self;
-    fn native_handle(&self) -> T;
+    fn from_native_handle(h: *T) -> Self;
+    fn native_handle(&self) -> *T;
+
+    // FIXME(#8888) dummy self
+    fn alloc(ty: uvll::uv_handle_type) -> Self {
+        unsafe {
+            NativeHandle::from_native_handle(uvll::malloc_handle(ty) as *T)
+        }
+    }
 }
 
 impl Loop {
@@ -134,7 +141,7 @@ impl Loop {
     }
 }
 
-impl NativeHandle<*uvll::uv_loop_t> for Loop {
+impl NativeHandle<uvll::uv_loop_t> for Loop {
     fn from_native_handle(handle: *uvll::uv_loop_t) -> Loop {
         Loop { handle: handle }
     }
@@ -185,7 +192,7 @@ pub trait WatcherInterop {
     fn close_async(self);
 }
 
-impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
+impl<H, W: Watcher + NativeHandle<H>> WatcherInterop for W {
     /// Get the uv event loop from a Watcher
     fn event_loop(&self) -> Loop {
         unsafe {

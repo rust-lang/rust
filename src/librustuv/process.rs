@@ -27,11 +27,9 @@ impl Watcher for Process {}
 impl Process {
     /// Creates a new process, ready to spawn inside an event loop
     pub fn new() -> Process {
-        let handle = unsafe { uvll::malloc_handle(uvll::UV_PROCESS) };
-        assert!(handle.is_not_null());
-        let mut ret: Process = NativeHandle::from_native_handle(handle);
-        ret.install_watcher_data();
-        return ret;
+        let mut watcher: Process = NativeHandle::alloc(uvll::UV_PROCESS);
+        watcher.install_watcher_data();
+        return watcher;
     }
 
     /// Spawn a new process inside the specified event loop.
@@ -192,7 +190,7 @@ fn with_env<T>(env: Option<&[(~str, ~str)]>, f: &fn(**libc::c_char) -> T) -> T {
     c_envp.as_imm_buf(|buf, _| f(buf))
 }
 
-impl NativeHandle<*uvll::uv_process_t> for Process {
+impl NativeHandle<uvll::uv_process_t> for Process {
     fn from_native_handle(handle: *uvll::uv_process_t) -> Process {
         Process(handle)
     }

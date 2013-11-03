@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::libc;
+use std::libc::c_int;
 use std::c_str::CString;
 
 use super::{Loop, UvError, Watcher, NativeHandle, status_to_maybe_uv_error};
@@ -22,16 +23,12 @@ impl Watcher for Pipe {}
 
 impl Pipe {
     pub fn new(loop_: &Loop, ipc: bool) -> Pipe {
-        unsafe {
-            let handle = uvll::malloc_handle(uvll::UV_NAMED_PIPE);
-            assert!(handle.is_not_null());
-            let ipc = ipc as libc::c_int;
-            assert_eq!(uvll::uv_pipe_init(loop_.native_handle(), handle, ipc), 0);
-            let mut ret: Pipe =
-                    NativeHandle::from_native_handle(handle);
-            ret.install_watcher_data();
-            ret
-        }
+        let mut watcher: Pipe = NativeHandle::alloc(uvll::UV_NAMED_PIPE);
+        assert_eq!(unsafe {
+            uvll::uv_pipe_init(loop_.native_handle(), *watcher, ipc as c_int)
+        }, 0);
+        watcher.install_watcher_data();
+        return watcher;
     }
 
     pub fn as_stream(&self) -> net::StreamWatcher {
@@ -88,7 +85,7 @@ impl Pipe {
 
 }
 
-impl NativeHandle<*uvll::uv_pipe_t> for Pipe {
+impl NativeHandle<uvll::uv_pipe_t> for Pipe {
     fn from_native_handle(handle: *uvll::uv_pipe_t) -> Pipe {
         Pipe(handle)
     }

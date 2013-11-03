@@ -216,7 +216,7 @@ impl StreamWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
+impl NativeHandle<uvll::uv_stream_t> for StreamWatcher {
     fn from_native_handle(handle: *uvll::uv_stream_t) -> StreamWatcher {
         StreamWatcher(handle)
     }
@@ -230,14 +230,12 @@ impl Watcher for TcpWatcher { }
 
 impl TcpWatcher {
     pub fn new(loop_: &Loop) -> TcpWatcher {
-        unsafe {
-            let handle = malloc_handle(UV_TCP);
-            assert!(handle.is_not_null());
-            assert_eq!(0, uvll::uv_tcp_init(loop_.native_handle(), handle));
-            let mut watcher: TcpWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher;
-        }
+        let mut watcher: TcpWatcher = NativeHandle::alloc(uvll::UV_TCP);
+        assert_eq!(unsafe {
+            uvll::uv_tcp_init(loop_.native_handle(), *watcher)
+        }, 0);
+        watcher.install_watcher_data();
+        return watcher;
     }
 
     pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
@@ -289,7 +287,7 @@ impl TcpWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
+impl NativeHandle<uvll::uv_tcp_t> for TcpWatcher {
     fn from_native_handle(handle: *uvll::uv_tcp_t) -> TcpWatcher {
         TcpWatcher(handle)
     }
@@ -303,14 +301,12 @@ impl Watcher for UdpWatcher { }
 
 impl UdpWatcher {
     pub fn new(loop_: &Loop) -> UdpWatcher {
-        unsafe {
-            let handle = malloc_handle(UV_UDP);
-            assert!(handle.is_not_null());
-            assert_eq!(0, uvll::uv_udp_init(loop_.native_handle(), handle));
-            let mut watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher;
-        }
+        let mut watcher: UdpWatcher = NativeHandle::alloc(uvll::UV_UDP);
+        assert_eq!(unsafe {
+            uvll::uv_udp_init(loop_.native_handle(), *watcher)
+        }, 0);
+        watcher.install_watcher_data();
+        return watcher;
     }
 
     pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
@@ -397,7 +393,7 @@ impl UdpWatcher {
     }
 }
 
-impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
+impl NativeHandle<uvll::uv_udp_t> for UdpWatcher {
     fn from_native_handle(handle: *uvll::uv_udp_t) -> UdpWatcher {
         UdpWatcher(handle)
     }
@@ -430,7 +426,7 @@ impl ConnectRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_connect_t> for ConnectRequest {
+impl NativeHandle<uvll::uv_connect_t> for ConnectRequest {
     fn from_native_handle(handle: *uvll:: uv_connect_t) -> ConnectRequest {
         ConnectRequest(handle)
     }
@@ -462,7 +458,7 @@ impl WriteRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
+impl NativeHandle<uvll::uv_write_t> for WriteRequest {
     fn from_native_handle(handle: *uvll:: uv_write_t) -> WriteRequest {
         WriteRequest(handle)
     }
@@ -493,7 +489,7 @@ impl UdpSendRequest {
     }
 }
 
-impl NativeHandle<*uvll::uv_udp_send_t> for UdpSendRequest {
+impl NativeHandle<uvll::uv_udp_send_t> for UdpSendRequest {
     fn from_native_handle(handle: *uvll::uv_udp_send_t) -> UdpSendRequest {
         UdpSendRequest(handle)
     }

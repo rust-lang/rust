@@ -235,7 +235,7 @@ pub fn accum_addrinfo(addr: &net::UvAddrInfo) -> ~[ai::Info] {
     }
 }
 
-impl NativeHandle<*uvll::uv_getaddrinfo_t> for GetAddrInfoRequest {
+impl NativeHandle<uvll::uv_getaddrinfo_t> for GetAddrInfoRequest {
     fn from_native_handle(handle: *uvll::uv_getaddrinfo_t) -> GetAddrInfoRequest {
         GetAddrInfoRequest(handle)
     }

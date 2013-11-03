@@ -151,8 +151,8 @@ enum SocketNameKind {
     Udp
 }
 
-fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
-                                                 handle: U) -> Result<SocketAddr, IoError> {
+fn socket_name<T, U: Watcher + NativeHandle<T>>(sk: SocketNameKind,
+                                                handle: U) -> Result<SocketAddr, IoError> {
     let getsockname = match sk {
         TcpPeer => uvll::tcp_getpeername,
         Tcp     => uvll::tcp_getsockname,

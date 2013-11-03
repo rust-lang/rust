@@ -24,21 +24,18 @@ impl TTY {
     pub fn new(loop_: &Loop, fd: libc::c_int, readable: bool) ->
             Result<TTY, UvError>
     {
-        let handle = unsafe { uvll::malloc_handle(uvll::UV_TTY) };
-        assert!(handle.is_not_null());
-
+        let mut watcher: TTY = NativeHandle::alloc(uvll::UV_TTY);
         let ret = unsafe {
-            uvll::uv_tty_init(loop_.native_handle(), handle, fd as libc::c_int,
+            uvll::uv_tty_init(loop_.native_handle(), *watcher, fd as libc::c_int,
                               readable as libc::c_int)
         };
         match ret {
             0 => {
-                let mut ret: TTY = NativeHandle::from_native_handle(handle);
-                ret.install_watcher_data();
-                Ok(ret)
+                watcher.install_watcher_data();
+                Ok(watcher)
             }
             n => {
-                unsafe { uvll::free_handle(handle); }
+                unsafe { uvll::free_handle(*watcher); }
                 Err(UvError(n))
             }
         }
@@ -72,7 +69,7 @@ impl TTY {
     }
 }
 
-impl NativeHandle<*uvll::uv_tty_t> for TTY {
+impl NativeHandle<uvll::uv_tty_t> for TTY {
     fn from_native_handle(handle: *uvll::uv_tty_t) -> TTY {
         TTY(handle)
     }
