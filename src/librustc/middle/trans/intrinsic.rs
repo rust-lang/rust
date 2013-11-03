@@ -221,7 +221,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "abort" => {
             let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.trap"));
             Call(bcx, llfn, [], []);
-            RetVoid(bcx);
+            Unreachable(bcx);
         }
         "size_of" => {
             let tp_ty = substs.tys[0];
