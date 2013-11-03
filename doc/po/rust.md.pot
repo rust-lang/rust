@@ -661,7 +661,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:319
-msgid "An _integer literal_ has one of three forms:"
+msgid "An _integer literal_ has one of four forms:"
 msgstr ""
 
 #. type: Bullet: '  * '
