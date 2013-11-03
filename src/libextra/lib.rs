@@ -98,7 +98,6 @@ pub mod uuid;
 #[cfg(unicode)]
 mod unicode;
 
-#[path="terminfo/terminfo.rs"]
 pub mod terminfo;
 
 // Compiler support modules

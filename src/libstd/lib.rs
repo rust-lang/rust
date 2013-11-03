@@ -122,7 +122,6 @@ pub mod vec;
 pub mod at_vec;
 pub mod str;
 
-#[path = "str/ascii.rs"]
 pub mod ascii;
 pub mod send_str;
 
@@ -143,7 +142,6 @@ pub mod rc;
 /* Common traits */
 
 pub mod from_str;
-#[path = "num/num.rs"]
 pub mod num;
 pub mod iter;
 pub mod to_str;
