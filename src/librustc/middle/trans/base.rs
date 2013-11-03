@@ -523,16 +523,23 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                     substs: &[ty::t])
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
+    let did = if did.crate != ast::LOCAL_CRATE {
+        inline::maybe_instantiate_inline(ccx, did)
+    } else {
+        did
+    };
     if !substs.is_empty() {
-        let did = if did.crate != ast::LOCAL_CRATE {
-            inline::maybe_instantiate_inline(ccx, did)
-        } else {
-            did
-        };
         assert_eq!(did.crate, ast::LOCAL_CRATE);
         let tsubsts = ty::substs {regions: ty::ErasedRegions,
                                   self_ty: None,
                                   tps: /*bad*/ substs.to_owned() };
+
+        // FIXME: #4252: Generic destructors with type bounds are broken.
+        //
+        // Since the vtables aren't passed to `monomorphic_fn` here, generic destructors with type
+        // bounds are broken. Sadly, the `typeck` pass isn't outputting the necessary metadata
+        // because it does so based on method calls present in the AST. Destructor calls are not yet
+        // known about at that stage of compilation, since `trans` handles cleanups.
         let (val, _) = monomorphize::monomorphic_fn(ccx,
                                                     did,
                                                     &tsubsts,
