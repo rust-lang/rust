@@ -24,7 +24,7 @@ impl SignalWatcher {
         unsafe {
             let handle = uvll::malloc_handle(uvll::UV_SIGNAL);
             assert!(handle.is_not_null());
-            assert!(0 == uvll::signal_init(loop_.native_handle(), handle));
+            assert!(0 == uvll::uv_signal_init(loop_.native_handle(), handle));
             let mut watcher: SignalWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
@@ -35,8 +35,8 @@ impl SignalWatcher {
             -> Result<(), UvError>
     {
         return unsafe {
-            match uvll::signal_start(self.native_handle(), signal_cb,
-                                     signum as c_int) {
+            match uvll::uv_signal_start(self.native_handle(), signal_cb,
+                                        signum as c_int) {
                 0 => {
                     let data = self.get_watcher_data();
                     data.signal_cb = Some(callback);
@@ -56,7 +56,7 @@ impl SignalWatcher {
 
     pub fn stop(&mut self) {
         unsafe {
-            uvll::signal_stop(self.native_handle());
+            uvll::uv_signal_stop(self.native_handle());
         }
     }
 }

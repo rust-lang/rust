@@ -110,12 +110,12 @@ impl GetAddrInfoRequest {
         self.get_req_data().getaddrinfo_cb = Some(wrapper_cb);
 
         unsafe {
-            assert!(0 == uvll::getaddrinfo(loop_.native_handle(),
-                                           self.native_handle(),
-                                           getaddrinfo_cb,
-                                           c_node_ptr,
-                                           c_service_ptr,
-                                           hint_ptr));
+            assert!(0 == uvll::uv_getaddrinfo(loop_.native_handle(),
+                                              self.native_handle(),
+                                              getaddrinfo_cb,
+                                              c_node_ptr,
+                                              c_service_ptr,
+                                              hint_ptr));
         }
 
         extern "C" fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
@@ -127,7 +127,7 @@ impl GetAddrInfoRequest {
             let data = req.get_req_data();
             (*data.getaddrinfo_cb.get_ref())(req, &addrinfo, err);
             unsafe {
-                uvll::freeaddrinfo(res);
+                uvll::uv_freeaddrinfo(res);
             }
         }
     }
