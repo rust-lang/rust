@@ -280,7 +280,7 @@ $(foreach target,$(CFG_TARGET),\
 # Standard library variables
 ######################################################################
 
-STDLIB_CRATE := $(S)src/libstd/std.rs
+STDLIB_CRATE := $(S)src/libstd/lib.rs
 STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,        \
                                            *.rs */*.rs */*/*rs */*/*/*rs))
 
@@ -288,7 +288,7 @@ STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,        \
 # Extra library variables
 ######################################################################
 
-EXTRALIB_CRATE := $(S)src/libextra/extra.rs
+EXTRALIB_CRATE := $(S)src/libextra/lib.rs
 EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
                                           *.rs */*.rs))
 
@@ -296,7 +296,7 @@ EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
 # Rust UV library variables
 ######################################################################
 
-LIBRUSTUV_CRATE := $(S)src/librustuv/rustuv.rs
+LIBRUSTUV_CRATE := $(S)src/librustuv/lib.rs
 LIBRUSTUV_INPUTS := $(wildcard $(addprefix $(S)src/librustuv/,          \
                                           *.rs */*.rs))
 
@@ -304,11 +304,11 @@ LIBRUSTUV_INPUTS := $(wildcard $(addprefix $(S)src/librustuv/,          \
 # rustc crate variables
 ######################################################################
 
-COMPILER_CRATE := $(S)src/librustc/rustc.rs
+COMPILER_CRATE := $(S)src/librustc/lib.rs
 COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/librustc/,      \
                            *.rs */*.rs */*/*.rs */*/*/*.rs))
 
-LIBSYNTAX_CRATE := $(S)src/libsyntax/syntax.rs
+LIBSYNTAX_CRATE := $(S)src/libsyntax/lib.rs
 LIBSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/libsyntax/, \
                            *.rs */*.rs */*/*.rs */*/*/*.rs))
 
