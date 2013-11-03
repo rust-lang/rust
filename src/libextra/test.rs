@@ -778,8 +778,7 @@ fn get_concurrency() -> uint {
     use std::rt;
     if running_on_valgrind() {
         1
-    }
-    else{
+    } else{
         match os::getenv("RUST_TEST_TASKS") {
             Some(s) => {
                 let opt_n: Option<uint> = FromStr::from_str(s);
