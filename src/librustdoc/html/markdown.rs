@@ -69,6 +69,7 @@ struct buf {
 }
 
 // sundown FFI
+#[link_args = "-lsundown"]
 extern {
     fn sdhtml_renderer(callbacks: *sd_callbacks,
                        options_ptr: *html_renderopt,

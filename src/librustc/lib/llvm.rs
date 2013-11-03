@@ -304,8 +304,7 @@ pub mod llvm {
     use super::debuginfo::*;
     use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
-    #[link_args = "-Lrustllvm -lrustllvm"]
-    #[link_name = "rustllvm"]
+    #[link_args = "-lrustllvm"]
     extern {
         /* Create and destroy contexts. */
         pub fn LLVMContextCreate() -> ContextRef;
