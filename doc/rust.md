@@ -340,12 +340,14 @@ as they are differentiated by suffixes.
 
 ##### Integer literals
 
-An _integer literal_ has one of three forms:
+An _integer literal_ has one of four forms:
 
   * A _decimal literal_ starts with a *decimal digit* and continues with any
     mixture of *decimal digits* and _underscores_.
   * A _hex literal_ starts with the character sequence `U+0030` `U+0078`
     (`0x`) and continues as any mixture hex digits and underscores.
+  * An _octal literal_ starts with the character sequence `U+0030` `U+006F`
+    (`0o`) and continues as any mixture octal digits and underscores.
   * A _binary literal_ starts with the character sequence `U+0030` `U+0062`
     (`0b`) and continues as any mixture binary digits and underscores.
 
@@ -376,6 +378,7 @@ Examples of integer literals of various forms:
 123u;                              // type uint
 123_u;                             // type uint
 0xff_u8;                           // type u8
+0o70_i16;                          // type i16
 0b1111_1111_1001_0000_i32;         // type i32
 ~~~~
 
