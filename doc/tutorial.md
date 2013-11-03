@@ -759,6 +759,7 @@ different type from `Bar(1, 2)`), and tuple structs' _fields_ do not have
 names.
 
 For example:
+
 ~~~~
 struct MyTup(int, int, f64);
 let mytup: MyTup = MyTup(10, 20, 30.0);
