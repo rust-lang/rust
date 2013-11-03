@@ -341,14 +341,17 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
     }
 }
 
-/// Given a uv handle, convert a callback status to a UvError
-pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError>
-{
+/// Given a uv error code, convert a callback status to a UvError
+pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError> {
     if status >= 0 {
         None
     } else {
         Some(UvError(status))
     }
+}
+
+pub fn status_to_io_result(status: c_int) -> Result<(), IoError> {
+    if status >= 0 {Ok(())} else {Err(uv_error_to_io_error(UvError(status)))}
 }
 
 /// The uv buffer type
