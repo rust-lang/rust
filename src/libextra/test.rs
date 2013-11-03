@@ -36,6 +36,7 @@ use std::task;
 use std::to_str::ToStr;
 use std::f64;
 use std::os;
+use std::unstable::running_on_valgrind;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -775,16 +776,21 @@ fn run_tests(opts: &TestOpts,
 
 fn get_concurrency() -> uint {
     use std::rt;
-    match os::getenv("RUST_TEST_TASKS") {
-        Some(s) => {
-            let opt_n: Option<uint> = FromStr::from_str(s);
-            match opt_n {
-                Some(n) if n > 0 => n,
-                _ => fail!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
+    if running_on_valgrind() {
+        1
+    }
+    else{
+        match os::getenv("RUST_TEST_TASKS") {
+            Some(s) => {
+                let opt_n: Option<uint> = FromStr::from_str(s);
+                match opt_n {
+                    Some(n) if n > 0 => n,
+                    _ => fail!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
+                }
             }
-        }
-        None => {
-            rt::default_sched_threads()
+            None => {
+                rt::default_sched_threads()
+            }
         }
     }
 }
