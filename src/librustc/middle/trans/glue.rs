@@ -395,39 +395,11 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
-        let mut bcx = cx;
-
-        // Find and call the actual destructor
-        let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                     class_did, substs.tps.clone());
-
-        // The second argument is the "self" argument for drop
-        let params = unsafe {
-            let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
-            ty.element_type().func_params()
-        };
-
-        // Class dtors have no explicit args, so the params should
-        // just consist of the environment (self)
-        assert_eq!(params.len(), 1);
-
-        let self_arg = PointerCast(bcx, v0, params[0]);
-        let args = ~[self_arg];
-
-        Call(bcx, dtor_addr, args, []);
-
-        // Drop the fields
-        let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-        for (i, fld) in field_tys.iter().enumerate() {
-            let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
-            bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
-        }
-
-        bcx
+        trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     }
 }
 
-pub fn trans_struct_drop(mut bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
+pub fn trans_struct_drop(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
                          class_did: ast::DefId, substs: &ty::substs) -> @mut Block {
     let repr = adt::represent_type(bcx.ccx(), t);
 
@@ -445,19 +417,24 @@ pub fn trans_struct_drop(mut bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: 
     // just consist of the environment (self)
     assert_eq!(params.len(), 1);
 
-    let self_arg = PointerCast(bcx, v0, params[0]);
-    let args = ~[self_arg];
+    // Be sure to put all of the fields into a scope so we can use an invoke
+    // instruction to call the user destructor but still call the field
+    // destructors if the user destructor fails.
+    do with_scope(bcx, None, "field drops") |bcx| {
+        let self_arg = PointerCast(bcx, v0, params[0]);
+        let args = ~[self_arg];
 
-    Call(bcx, dtor_addr, args, []);
+        // Add all the fields as a value which needs to be cleaned at the end of
+        // this scope.
+        let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
+        for (i, fld) in field_tys.iter().enumerate() {
+            let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
+            add_clean(bcx, llfld_a, fld.mt.ty);
+        }
 
-    // Drop the fields
-    let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-    for (i, fld) in field_tys.iter().enumerate() {
-        let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
-        bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
+        let (_, bcx) = invoke(bcx, dtor_addr, args, []);
+        bcx
     }
-
-    bcx
 }
 
 pub fn make_drop_glue(bcx: @mut Block, v0: ValueRef, t: ty::t) -> @mut Block {
