@@ -87,7 +87,7 @@ pub fn is_not_null<T,P:RawPtr<T>>(ptr: P) -> bool { ptr.is_not_null() }
  * and destination may overlap.
  */
 #[inline]
-#[cfg(target_word_size = "32")]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
     intrinsics::memmove32(dst,
                           cast::transmute_immut_unsafe(src),
@@ -101,7 +101,7 @@ pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
  * and destination may overlap.
  */
 #[inline]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
     intrinsics::memmove64(dst,
                           cast::transmute_immut_unsafe(src),
@@ -112,10 +112,22 @@ pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
  * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
+    intrinsics::copy_memory(dst, cast::transmute_immut_unsafe(src), count)
+}
+
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may *not* overlap.
  */
 #[inline]
-#[cfg(target_word_size = "32")]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
                                                         src: P,
                                                         count: uint) {
@@ -131,7 +143,7 @@ pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
  * and destination may *not* overlap.
  */
 #[inline]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
                                                         src: P,
                                                         count: uint) {
@@ -141,11 +153,25 @@ pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
 }
 
 /**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
+                                                        src: P,
+                                                        count: uint) {
+    intrinsics::copy_nonoverlapping_memory(dst, cast::transmute_immut_unsafe(src), count)
+}
+
+/**
  * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
  * bytes of memory starting at `dst` to `c`.
  */
 #[inline]
-#[cfg(target_word_size = "32")]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     intrinsics::memset32(dst, c, count as u32);
 }
@@ -155,9 +181,19 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
  * bytes of memory starting at `dst` to `c`.
  */
 #[inline]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "64", stage0)]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     intrinsics::memset64(dst, c, count as u64);
+}
+
+/**
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
+ */
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+    intrinsics::set_memory(dst, c, count)
 }
 
 /**
