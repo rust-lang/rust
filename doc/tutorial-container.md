@@ -69,7 +69,7 @@ heapsort.
 ## Iteration protocol
 
 The iteration protocol is defined by the `Iterator` trait in the
-`std::iterator` module. The minimal implementation of the trait is a `next`
+`std::iter` module. The minimal implementation of the trait is a `next`
 method, yielding the next element from an iterator object:
 
 ~~~

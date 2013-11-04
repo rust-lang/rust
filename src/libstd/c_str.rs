@@ -330,7 +330,7 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 
 /// External iterator for a CString's bytes.
 ///
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 pub struct CStringIterator<'self> {
     priv ptr: *libc::c_char,
     priv lifetime: &'self libc::c_char, // FIXME: #5922
