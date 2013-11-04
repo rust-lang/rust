@@ -18,14 +18,12 @@ impl Watcher for IdleWatcher { }
 
 impl IdleWatcher {
     pub fn new(loop_: &mut Loop) -> IdleWatcher {
-        unsafe {
-            let handle = uvll::malloc_handle(uvll::UV_IDLE);
-            assert!(handle.is_not_null());
-            assert_eq!(uvll::idle_init(loop_.native_handle(), handle), 0);
-            let mut watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher
-        }
+        let mut watcher: IdleWatcher = NativeHandle::alloc(uvll::UV_IDLE);
+        assert_eq!(unsafe {
+            uvll::uv_idle_init(loop_.native_handle(), *watcher)
+        }, 0);
+        watcher.install_watcher_data();
+        return watcher;
     }
 
     pub fn start(&mut self, cb: IdleCallback) {
@@ -35,14 +33,14 @@ impl IdleWatcher {
         }
 
         unsafe {
-            assert_eq!(uvll::idle_start(self.native_handle(), idle_cb), 0)
+            assert_eq!(uvll::uv_idle_start(self.native_handle(), idle_cb), 0)
         }
     }
 
     pub fn restart(&mut self) {
         unsafe {
             assert!(self.get_watcher_data().idle_cb.is_some());
-            assert_eq!(uvll::idle_start(self.native_handle(), idle_cb), 0)
+            assert_eq!(uvll::uv_idle_start(self.native_handle(), idle_cb), 0)
         }
     }
 
@@ -52,12 +50,12 @@ impl IdleWatcher {
         // free
 
         unsafe {
-            assert_eq!(uvll::idle_stop(self.native_handle()), 0);
+            assert_eq!(uvll::uv_idle_stop(self.native_handle()), 0);
         }
     }
 }
 
-impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
+impl NativeHandle<uvll::uv_idle_t> for IdleWatcher {
     fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
         IdleWatcher(handle)
     }

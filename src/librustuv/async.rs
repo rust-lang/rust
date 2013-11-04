@@ -19,16 +19,13 @@ impl Watcher for AsyncWatcher { }
 
 impl AsyncWatcher {
     pub fn new(loop_: &mut Loop, cb: AsyncCallback) -> AsyncWatcher {
-        unsafe {
-            let handle = uvll::malloc_handle(uvll::UV_ASYNC);
-            assert!(handle.is_not_null());
-            let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            let data = watcher.get_watcher_data();
-            data.async_cb = Some(cb);
-            assert_eq!(0, uvll::async_init(loop_.native_handle(), handle, async_cb));
-            return watcher;
-        }
+        let mut watcher: AsyncWatcher = NativeHandle::alloc(uvll::UV_ASYNC);
+        assert_eq!(unsafe {
+            uvll::uv_async_init(loop_.native_handle(), *watcher, async_cb)
+        }, 0);
+        watcher.install_watcher_data();
+        watcher.get_watcher_data().async_cb = Some(cb);
+        return watcher;
 
         extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
             let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
@@ -40,14 +37,11 @@ impl AsyncWatcher {
     }
 
     pub fn send(&mut self) {
-        unsafe {
-            let handle = self.native_handle();
-            uvll::async_send(handle);
-        }
+        unsafe { uvll::uv_async_send(self.native_handle()) }
     }
 }
 
-impl NativeHandle<*uvll::uv_async_t> for AsyncWatcher {
+impl NativeHandle<uvll::uv_async_t> for AsyncWatcher {
     fn from_native_handle(handle: *uvll::uv_async_t) -> AsyncWatcher {
         AsyncWatcher(handle)
     }
