@@ -35,7 +35,7 @@ impl AsyncWatcher {
     pub fn new(loop_: &mut Loop, cb: ~Callback) -> AsyncWatcher {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         assert_eq!(unsafe {
-            uvll::async_init(loop_.native_handle(), handle, async_cb)
+            uvll::uv_async_init(loop_.native_handle(), handle, async_cb)
         }, 0);
         let flag = Exclusive::new(false);
         let payload = ~Payload { callback: cb, exit_flag: flag.clone() };
@@ -49,7 +49,7 @@ impl AsyncWatcher {
 
 impl UvHandle<uvll::uv_async_t> for AsyncWatcher {
     fn uv_handle(&self) -> *uvll::uv_async_t { self.handle }
-    unsafe fn from_uv_handle<'a>(h: &'a *T) -> &'a mut AsyncWatcher {
+    unsafe fn from_uv_handle<'a>(_: &'a *uvll::uv_async_t) -> &'a mut AsyncWatcher {
         fail!("async watchers can't be built from their handles");
     }
 }
@@ -89,7 +89,7 @@ extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
     payload.callback.call();
 
     if should_exit {
-        unsafe { uvll::close(handle, close_cb) }
+        unsafe { uvll::uv_close(handle, close_cb) }
     }
 }
 
@@ -104,7 +104,7 @@ extern fn close_cb(handle: *uvll::uv_handle_t) {
 
 impl RemoteCallback for AsyncWatcher {
     fn fire(&mut self) {
-        unsafe { uvll::async_send(self.handle) }
+        unsafe { uvll::uv_async_send(self.handle) }
     }
 }
 
@@ -117,7 +117,7 @@ impl Drop for AsyncWatcher {
                 // signal and see the exit flag, destroying the handle
                 // before the final send.
                 *should_exit = true;
-                uvll::async_send(self.handle)
+                uvll::uv_async_send(self.handle)
             }
         }
     }

@@ -13,7 +13,7 @@ use std::c_str;
 use std::c_str::CString;
 use std::cast::transmute;
 use std::libc;
-use std::libc::{c_int, c_char, c_void};
+use std::libc::{c_int, c_char, c_void, c_uint};
 
 use super::{Request, NativeHandle, Loop, FsCallback, Buf,
             status_to_maybe_uv_error, UvError};
@@ -147,25 +147,12 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-<<<<<<< HEAD
     pub fn close(mut self, loop_: &Loop, fd: c_int, cb: FsCallback) {
         let complete_cb_ptr = self.req_boilerplate(Some(cb));
         assert_eq!(unsafe {
-            uvll::fs_close(loop_.native_handle(), self.native_handle(),
-                           fd, complete_cb_ptr)
-        }, 0);
-=======
-    pub fn close(self, loop_: &Loop, fd: c_int, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = unsafe {
             uvll::uv_fs_close(loop_.native_handle(), self.native_handle(),
                               fd, complete_cb_ptr)
-        };
-        assert_eq!(ret, 0);
->>>>>>> 1850d26... Remove lots of uv/C++ wrappers
+        }, 0);
     }
     pub fn close_sync(mut self, loop_: &Loop,
                       fd: c_int) -> Result<c_int, UvError> {
@@ -177,21 +164,20 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-<<<<<<< HEAD
     pub fn mkdir(mut self, loop_: &Loop, path: &CString, mode: c_int,
                  cb: FsCallback) {
         let complete_cb_ptr = self.req_boilerplate(Some(cb));
         assert_eq!(path.with_ref(|p| unsafe {
-            uvll::fs_mkdir(loop_.native_handle(),
-                           self.native_handle(), p, mode, complete_cb_ptr)
+            uvll::uv_fs_mkdir(loop_.native_handle(),
+                              self.native_handle(), p, mode, complete_cb_ptr)
         }), 0);
     }
 
     pub fn rmdir(mut self, loop_: &Loop, path: &CString, cb: FsCallback) {
         let complete_cb_ptr = self.req_boilerplate(Some(cb));
         assert_eq!(path.with_ref(|p| unsafe {
-            uvll::fs_rmdir(loop_.native_handle(),
-                           self.native_handle(), p, complete_cb_ptr)
+            uvll::uv_fs_rmdir(loop_.native_handle(),
+                              self.native_handle(), p, complete_cb_ptr)
         }), 0);
     }
 
@@ -199,11 +185,11 @@ impl FsRequest {
                   cb: FsCallback) {
         let complete_cb_ptr = self.req_boilerplate(Some(cb));
         assert_eq!(unsafe {
-            uvll::fs_rename(loop_.native_handle(),
-                            self.native_handle(),
-                            path.with_ref(|p| p),
-                            to.with_ref(|p| p),
-                            complete_cb_ptr)
+            uvll::uv_fs_rename(loop_.native_handle(),
+                               self.native_handle(),
+                               path.with_ref(|p| p),
+                               to.with_ref(|p| p),
+                               complete_cb_ptr)
         }, 0);
     }
 
@@ -211,43 +197,17 @@ impl FsRequest {
                  cb: FsCallback) {
         let complete_cb_ptr = self.req_boilerplate(Some(cb));
         assert_eq!(path.with_ref(|p| unsafe {
-            uvll::fs_chmod(loop_.native_handle(), self.native_handle(), p, mode,
-                           complete_cb_ptr)
+            uvll::uv_fs_chmod(loop_.native_handle(), self.native_handle(), p,
+                              mode, complete_cb_ptr)
         }), 0);
-=======
-    pub fn mkdir(self, loop_: &Loop, path: &CString, mode: int, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = path.with_ref(|p| unsafe {
-            uvll::uv_fs_mkdir(loop_.native_handle(),
-                              self.native_handle(), p,
-                              mode as c_int, complete_cb_ptr)
-        });
-        assert_eq!(ret, 0);
-    }
-
-    pub fn rmdir(self, loop_: &Loop, path: &CString, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = path.with_ref(|p| unsafe {
-            uvll::uv_fs_rmdir(loop_.native_handle(),
-                              self.native_handle(), p, complete_cb_ptr)
-        });
-        assert_eq!(ret, 0);
->>>>>>> 1850d26... Remove lots of uv/C++ wrappers
     }
 
     pub fn readdir(mut self, loop_: &Loop, path: &CString,
                    flags: c_int, cb: FsCallback) {
-<<<<<<< HEAD
         let complete_cb_ptr = self.req_boilerplate(Some(cb));
         assert_eq!(path.with_ref(|p| unsafe {
-            uvll::fs_readdir(loop_.native_handle(),
-                             self.native_handle(), p, flags, complete_cb_ptr)
+            uvll::uv_fs_readdir(loop_.native_handle(),
+                                self.native_handle(), p, flags, complete_cb_ptr)
         }), 0);
     }
 
@@ -318,17 +278,6 @@ impl FsRequest {
             uvll::uv_fs_fdatasync(loop_.native_handle(), self.native_handle(), fd,
                                   complete_cb_ptr)
         }, 0);
-=======
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = path.with_ref(|p| unsafe {
-            uvll::uv_fs_readdir(loop_.native_handle(),
-                                self.native_handle(), p, flags, complete_cb_ptr)
-        });
-        assert_eq!(ret, 0);
->>>>>>> 1850d26... Remove lots of uv/C++ wrappers
     }
 
     // accessors/utility funcs

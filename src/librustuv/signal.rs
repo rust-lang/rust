@@ -32,10 +32,10 @@ impl SignalWatcher {
                channel: SharedChan<Signum>) -> Result<~SignalWatcher, UvError> {
         let handle = UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL);
         assert_eq!(unsafe {
-            uvll::signal_init(loop_.native_handle(), handle)
+            uvll::uv_signal_init(loop_.native_handle(), handle)
         }, 0);
 
-        match unsafe { uvll::signal_start(handle, signal_cb, signum as c_int) } {
+        match unsafe { uvll::uv_signal_start(handle, signal_cb, signum as c_int) } {
             0 => {
                 let s = ~SignalWatcher {
                     handle: handle,
@@ -72,8 +72,7 @@ impl RtioSignal for SignalWatcher {}
 
 impl Drop for SignalWatcher {
     fn drop(&mut self) {
-        do self.home_for_io |self_| {
-            self_.close_async_();
-        }
+        let _m = self.fire_missiles();
+        self.close_async_();
     }
 }
