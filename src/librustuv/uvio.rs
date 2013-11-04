@@ -28,9 +28,12 @@ use std::rt::rtio::*;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
 use std::rt::task::Task;
-use std::unstable::sync::Exclusive;
-use std::libc::{lseek, off_t};
-use std::rt::io::{FileMode, FileAccess, FileStat};
+use std::path::{GenericPath, Path};
+use std::libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY,
+                O_WRONLY, S_IRUSR, S_IWUSR, S_IRWXU};
+use std::rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
+                  CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
+                  FileStat};
 use std::rt::io::signal::Signum;
 use std::task;
 use ai = std::rt::io::net::addrinfo;
@@ -199,27 +202,16 @@ impl EventLoop for UvEventLoop {
         self.uvio.uv_loop().run();
     }
 
-    fn callback(&mut self, f: ~fn()) {
-        let mut idle_watcher =  IdleWatcher::new(self.uvio.uv_loop());
-        do idle_watcher.start |mut idle_watcher, status| {
-            assert!(status.is_none());
-            idle_watcher.stop();
-            idle_watcher.close(||());
-            f();
-        }
+    fn callback(&mut self, f: proc()) {
+        IdleWatcher::onetime(self.uvio.uv_loop(), f);
     }
 
     fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback {
-        let idle_watcher = IdleWatcher::new(self.uvio.uv_loop());
-        ~UvPausibleIdleCallback {
-            watcher: idle_watcher,
-            idle_flag: false,
-            closed: false
-        } as ~PausibleIdleCallback
+        IdleWatcher::new(self.uvio.uv_loop()) as ~PausibleIdleCallback
     }
 
-    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback {
-        ~UvRemoteCallback::new(self.uvio.uv_loop(), f) as ~RemoteCallback
+    fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {
+        ~AsyncWatcher::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
     fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory)) {
@@ -233,44 +225,6 @@ pub extern "C" fn new_loop() -> ~EventLoop {
     ~UvEventLoop::new() as ~EventLoop
 }
 
-pub struct UvPausibleIdleCallback {
-    priv watcher: IdleWatcher,
-    priv idle_flag: bool,
-    priv closed: bool
-}
-
-impl PausibleIdleCallback for UvPausibleIdleCallback {
-    #[inline]
-    fn start(&mut self, f: ~fn()) {
-        do self.watcher.start |_idle_watcher, _status| {
-            f();
-        };
-        self.idle_flag = true;
-    }
-    #[inline]
-    fn pause(&mut self) {
-        if self.idle_flag == true {
-            self.watcher.stop();
-            self.idle_flag = false;
-        }
-    }
-    #[inline]
-    fn resume(&mut self) {
-        if self.idle_flag == false {
-            self.watcher.restart();
-            self.idle_flag = true;
-        }
-    }
-    #[inline]
-    fn close(&mut self) {
-        self.pause();
-        if !self.closed {
-            self.closed = true;
-            self.watcher.close(||{});
-        }
-    }
-}
-
 #[test]
 fn test_callback_run_once() {
     do run_in_bare_thread {
@@ -282,119 +236,6 @@ fn test_callback_run_once() {
         }
         event_loop.run();
         assert_eq!(count, 1);
-    }
-}
-
-// The entire point of async is to call into a loop from other threads so it does not need to home.
-pub struct UvRemoteCallback {
-    // The uv async handle for triggering the callback
-    priv async: AsyncWatcher,
-    // A flag to tell the callback to exit, set from the dtor. This is
-    // almost never contested - only in rare races with the dtor.
-    priv exit_flag: Exclusive<bool>
-}
-
-impl UvRemoteCallback {
-    pub fn new(loop_: &mut Loop, f: ~fn()) -> UvRemoteCallback {
-        let exit_flag = Exclusive::new(false);
-        let exit_flag_clone = exit_flag.clone();
-        let async = do AsyncWatcher::new(loop_) |watcher, status| {
-            assert!(status.is_none());
-
-            // The synchronization logic here is subtle. To review,
-            // the uv async handle type promises that, after it is
-            // triggered the remote callback is definitely called at
-            // least once. UvRemoteCallback needs to maintain those
-            // semantics while also shutting down cleanly from the
-            // dtor. In our case that means that, when the
-            // UvRemoteCallback dtor calls `async.send()`, here `f` is
-            // always called later.
-
-            // In the dtor both the exit flag is set and the async
-            // callback fired under a lock.  Here, before calling `f`,
-            // we take the lock and check the flag. Because we are
-            // checking the flag before calling `f`, and the flag is
-            // set under the same lock as the send, then if the flag
-            // is set then we're guaranteed to call `f` after the
-            // final send.
-
-            // If the check was done after `f()` then there would be a
-            // period between that call and the check where the dtor
-            // could be called in the other thread, missing the final
-            // callback while still destroying the handle.
-
-            let should_exit = unsafe {
-                exit_flag_clone.with_imm(|&should_exit| should_exit)
-            };
-
-            f();
-
-            if should_exit {
-                watcher.close(||());
-            }
-
-        };
-        UvRemoteCallback {
-            async: async,
-            exit_flag: exit_flag
-        }
-    }
-}
-
-impl RemoteCallback for UvRemoteCallback {
-    fn fire(&mut self) { self.async.send() }
-}
-
-impl Drop for UvRemoteCallback {
-    fn drop(&mut self) {
-        unsafe {
-            let this: &mut UvRemoteCallback = cast::transmute_mut(self);
-            do this.exit_flag.with |should_exit| {
-                // NB: These two things need to happen atomically. Otherwise
-                // the event handler could wake up due to a *previous*
-                // signal and see the exit flag, destroying the handle
-                // before the final send.
-                *should_exit = true;
-                this.async.send();
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod test_remote {
-    use std::cell::Cell;
-    use std::rt::test::*;
-    use std::rt::thread::Thread;
-    use std::rt::tube::Tube;
-    use std::rt::rtio::EventLoop;
-    use std::rt::local::Local;
-    use std::rt::sched::Scheduler;
-
-    #[test]
-    fn test_uv_remote() {
-        do run_in_mt_newsched_task {
-            let mut tube = Tube::new();
-            let tube_clone = tube.clone();
-            let remote_cell = Cell::new_empty();
-            do Local::borrow |sched: &mut Scheduler| {
-                let tube_clone = tube_clone.clone();
-                let tube_clone_cell = Cell::new(tube_clone);
-                let remote = do sched.event_loop.remote_callback {
-                    // This could be called multiple times
-                    if !tube_clone_cell.is_empty() {
-                        tube_clone_cell.take().send(1);
-                    }
-                };
-                remote_cell.put_back(remote);
-            }
-            let thread = do Thread::start {
-                remote_cell.take().fire();
-            };
-
-            assert!(tube.recv() == 1);
-            thread.join();
-        }
     }
 }
 

@@ -15,7 +15,8 @@
 use prelude::*;
 
 use cast;
-use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback};
+use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback,
+               Callback};
 use unstable::sync::Exclusive;
 use util;
 
@@ -25,9 +26,9 @@ pub fn event_loop() -> ~EventLoop {
 }
 
 struct BasicLoop {
-    work: ~[~fn()],               // pending work
-    idle: Option<*BasicPausible>, // only one is allowed
-    remotes: ~[(uint, ~fn())],
+    work: ~[proc()],                  // pending work
+    idle: Option<*mut BasicPausible>, // only one is allowed
+    remotes: ~[(uint, ~Callback)],
     next_remote: uint,
     messages: Exclusive<~[Message]>
 }
@@ -86,8 +87,8 @@ impl BasicLoop {
     fn message(&mut self, message: Message) {
         match message {
             RunRemote(i) => {
-                match self.remotes.iter().find(|& &(id, _)| id == i) {
-                    Some(&(_, ref f)) => (*f)(),
+                match self.remotes.mut_iter().find(|& &(id, _)| id == i) {
+                    Some(&(_, ref mut f)) => f.call(),
                     None => unreachable!()
                 }
             }
@@ -106,7 +107,7 @@ impl BasicLoop {
             match self.idle {
                 Some(idle) => {
                     if (*idle).active {
-                        (*(*idle).work.get_ref())();
+                        (*idle).work.get_mut_ref().call();
                     }
                 }
                 None => {}
@@ -144,7 +145,7 @@ impl EventLoop for BasicLoop {
         }
     }
 
-    fn callback(&mut self, f: ~fn()) {
+    fn callback(&mut self, f: proc()) {
         self.work.push(f);
     }
 
@@ -153,13 +154,13 @@ impl EventLoop for BasicLoop {
         let callback = ~BasicPausible::new(self);
         rtassert!(self.idle.is_none());
         unsafe {
-            let cb_ptr: &*BasicPausible = cast::transmute(&callback);
+            let cb_ptr: &*mut BasicPausible = cast::transmute(&callback);
             self.idle = Some(*cb_ptr);
         }
         return callback as ~PausibleIdleCallback;
     }
 
-    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback {
+    fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {
         let id = self.next_remote;
         self.next_remote += 1;
         self.remotes.push((id, f));
@@ -203,7 +204,7 @@ impl Drop for BasicRemote {
 
 struct BasicPausible {
     eloop: *mut BasicLoop,
-    work: Option<~fn()>,
+    work: Option<~Callback>,
     active: bool,
 }
 
@@ -218,7 +219,7 @@ impl BasicPausible {
 }
 
 impl PausibleIdleCallback for BasicPausible {
-    fn start(&mut self, f: ~fn()) {
+    fn start(&mut self, f: ~Callback) {
         rtassert!(!self.active && self.work.is_none());
         self.active = true;
         self.work = Some(f);

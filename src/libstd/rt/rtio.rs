@@ -24,11 +24,15 @@ use path::Path;
 use super::io::{SeekStyle};
 use super::io::{FileMode, FileAccess, FileStat, FilePermission};
 
+pub trait Callback {
+    fn call(&mut self);
+}
+
 pub trait EventLoop {
     fn run(&mut self);
-    fn callback(&mut self, ~fn());
+    fn callback(&mut self, proc());
     fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback;
-    fn remote_callback(&mut self, ~fn()) -> ~RemoteCallback;
+    fn remote_callback(&mut self, ~Callback) -> ~RemoteCallback;
 
     /// The asynchronous I/O services. Not all event loops may provide one
     // FIXME(#9382) this is an awful interface
@@ -222,7 +226,7 @@ pub trait RtioTTY {
 }
 
 pub trait PausibleIdleCallback {
-    fn start(&mut self, f: ~fn());
+    fn start(&mut self, f: ~Callback);
     fn pause(&mut self);
     fn resume(&mut self);
     fn close(&mut self);
