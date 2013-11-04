@@ -454,8 +454,7 @@ impl Scheduler {
     // * Task Routing Functions - Make sure tasks send up in the right
     // place.
 
-    fn process_task(mut ~self, mut task: ~Task,
-                    schedule_fn: SchedulingFn) {
+    fn process_task(mut ~self, mut task: ~Task, schedule_fn: SchedulingFn) {
         rtdebug!("processing a task");
 
         let home = task.take_unwrap_home();
@@ -779,7 +778,7 @@ impl Scheduler {
 
 // Supporting types
 
-type SchedulingFn = ~fn(~Scheduler, ~Task);
+type SchedulingFn = extern "Rust" fn (~Scheduler, ~Task);
 
 pub enum SchedMessage {
     Wake,
