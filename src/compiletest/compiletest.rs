@@ -17,6 +17,7 @@ extern mod extra;
 
 use std::os;
 use std::rt;
+use std::rt::io::fs;
 
 use extra::getopts;
 use extra::getopts::groups::{optopt, optflag, reqopt};
@@ -247,7 +248,7 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     debug!("making tests from {}",
            config.src_base.display());
     let mut tests = ~[];
-    let dirs = os::list_dir_path(&config.src_base);
+    let dirs = fs::readdir(&config.src_base);
     for file in dirs.iter() {
         let file = file.clone();
         debug!("inspecting file {}", file.display());

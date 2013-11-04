@@ -12,9 +12,7 @@ extern mod rustpkg;
 extern mod rustc;
 
 use std::os;
-use std::rt::io;
-use std::rt::io::Writer;
-use std::rt::io::file::FileInfo;
+use std::rt::io::File;
 use rustpkg::api;
 use rustpkg::version::NoVersion;
 
@@ -30,7 +28,7 @@ pub fn main() {
 
     let sysroot_arg = args[1].clone();
     let sysroot = Path::new(sysroot_arg);
-    if !os::path_exists(&sysroot) {
+    if !sysroot.exists() {
         debug!("Failing, sysroot");
         fail!("Package script requires a sysroot that exists;{} doesn't", sysroot.display());
     }
@@ -45,7 +43,7 @@ pub fn main() {
     let out_path = os::self_exe_path().expect("Couldn't get self_exe path");
 
     debug!("Writing file");
-    let mut file = out_path.join("generated.rs").open_writer(io::Create);
+    let mut file = File::create(&out_path.join("generated.rs"));
     file.write("pub fn wheeeee() { let xs = [1, 2, 3]; \
                 for _ in xs.iter() { assert!(true); } }".as_bytes());
 

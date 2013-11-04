@@ -532,6 +532,10 @@ extern "C" int
 rust_uv_get_result_from_fs_req(uv_fs_t* req) {
   return req->result;
 }
+extern "C" const char*
+rust_uv_get_path_from_fs_req(uv_fs_t* req) {
+  return req->path;
+}
 extern "C" void*
 rust_uv_get_ptr_from_fs_req(uv_fs_t* req) {
   return req->ptr;
@@ -591,6 +595,15 @@ rust_uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 extern "C" int
 rust_uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb) {
   return uv_fs_readdir(loop, req, path, flags, cb);
+}
+extern "C" int
+rust_uv_fs_rename(uv_loop_t *loop, uv_fs_t* req, const char *path,
+                  const char *to, uv_fs_cb cb) {
+    return uv_fs_rename(loop, req, path, to, cb);
+}
+extern "C" int
+rust_uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb) {
+  return uv_fs_chmod(loop, req, path, mode, cb);
 }
 
 extern "C" int

@@ -9,32 +9,23 @@
 // except according to those terms.
 
 use std::rt::io;
-use std::rt::io::Reader;
-use std::rt::io::file::FileInfo;
+use std::rt::io::File;
 use extra::workcache;
 use sha1::{Digest, Sha1};
 
 /// Hashes the file contents along with the last-modified time
 pub fn digest_file_with_date(path: &Path) -> ~str {
     use conditions::bad_path::cond;
-    use cond1 = conditions::bad_stat::cond;
 
-    let mut err = None;
-    let bytes = do io::io_error::cond.trap(|e| err = Some(e)).inside {
-        path.open_reader(io::Open).read_to_end()
-    };
-    match err {
-        None => {
+    match io::result(|| File::open(path).read_to_end()) {
+        Ok(bytes) => {
             let mut sha = Sha1::new();
             sha.input(bytes);
-            let st = match path.stat() {
-                Some(st) => st,
-                None => cond1.raise((path.clone(), format!("Couldn't get file access time")))
-            };
+            let st = path.stat();
             sha.input_str(st.modified.to_str());
             sha.result_str()
         }
-        Some(e) => {
+        Err(e) => {
             cond.raise((path.clone(), format!("Couldn't read file: {}", e.desc)));
             ~""
         }
@@ -43,13 +34,8 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
 
 /// Hashes only the last-modified time
 pub fn digest_only_date(path: &Path) -> ~str {
-    use cond = conditions::bad_stat::cond;
-
     let mut sha = Sha1::new();
-    let st = match path.stat() {
-                Some(st) => st,
-                None => cond.raise((path.clone(), format!("Couldn't get file access time")))
-    };
+    let st = path.stat();
     sha.input_str(st.modified.to_str());
     sha.result_str()
 }

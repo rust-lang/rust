@@ -10,6 +10,8 @@
 
 use std::libc;
 use std::os;
+use std::rt::io;
+use std::rt::io::fs;
 use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
@@ -32,7 +34,6 @@ use path_util::{default_workspace, built_library_in_workspace};
 pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
 pub use target::{Target, Build, Install};
 use extra::treemap::TreeMap;
-use path_util::U_RWX;
 pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
 use workcache_support::{digest_file_with_date, digest_only_date};
 
@@ -184,7 +185,7 @@ pub fn compile_input(context: &BuildContext,
     let mut out_dir = target_build_dir(workspace);
     out_dir.push(&pkg_id.path);
     // Make the output directory if it doesn't exist already
-    assert!(os::mkdir_recursive(&out_dir, U_RWX));
+    fs::mkdir_recursive(&out_dir, io::UserRWX);
 
     let binary = os::args()[0].to_managed();
 
@@ -256,11 +257,11 @@ pub fn compile_input(context: &BuildContext,
     // Make sure all the library directories actually exist, since the linker will complain
     // otherwise
     for p in addl_lib_search_paths.iter() {
-        if os::path_exists(p) {
-            assert!(os::path_is_dir(p));
+        if p.exists() {
+            assert!(p.is_dir())
         }
         else {
-            assert!(os::mkdir_recursive(p, U_RWX));
+            fs::mkdir_recursive(p, io::UserRWX);
         }
     }
 
@@ -324,7 +325,7 @@ pub fn compile_input(context: &BuildContext,
     };
     for p in discovered_output.iter() {
         debug!("About to discover output {}", p.display());
-        if os::path_exists(p) {
+        if p.exists() {
             debug!("4. discovering output {}", p.display());
             // FIXME (#9639): This needs to handle non-utf8 paths
             exec.discover_output("binary", p.as_str().unwrap(), digest_only_date(p));
@@ -629,10 +630,16 @@ fn debug_flags() -> ~[~str] { ~[] }
 
 /// Returns the last-modified date as an Option
 pub fn datestamp(p: &Path) -> Option<libc::time_t> {
-    debug!("Scrutinizing datestamp for {} - does it exist? {:?}", p.display(), os::path_exists(p));
-    let out = p.stat().map(|stat| stat.modified);
-    debug!("Date = {:?}", out);
-    out.map(|t| { t as libc::time_t })
+    debug!("Scrutinizing datestamp for {} - does it exist? {:?}", p.display(),
+           p.exists());
+    match io::result(|| p.stat()) {
+        Ok(s) => {
+            let out = s.modified;
+            debug!("Date = {:?}", out);
+            Some(out as libc::time_t)
+        }
+        Err(*) => None,
+    }
 }
 
 pub type DepMap = TreeMap<~str, ~[(~str, ~str)]>;

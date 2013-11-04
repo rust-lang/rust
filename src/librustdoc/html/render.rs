@@ -40,10 +40,9 @@ use std::fmt;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::rt::io::buffered::BufferedWriter;
-use std::rt::io::file::{FileInfo, DirectoryInfo};
-use std::rt::io::file;
 use std::rt::io;
-use std::rt::io::Reader;
+use std::rt::io::fs;
+use std::rt::io::File;
 use std::os;
 use std::str;
 use std::task;
@@ -265,8 +264,8 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     // Publish the search index
     {
         dst.push("search-index.js");
-        let mut w = BufferedWriter::new(dst.open_writer(io::CreateOrTruncate));
-        let w = &mut w as &mut io::Writer;
+        let mut w = BufferedWriter::new(File::create(&dst).unwrap());
+        let w = &mut w as &mut Writer;
         write!(w, "var searchIndex = [");
         for (i, item) in cache.search_index.iter().enumerate() {
             if i > 0 { write!(w, ","); }
@@ -315,8 +314,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
 fn write(dst: Path, contents: &str) {
-    let mut w = dst.open_writer(io::CreateOrTruncate);
-    w.write(contents.as_bytes());
+    File::create(&dst).write(contents.as_bytes());
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and
@@ -328,7 +326,7 @@ fn mkdir(path: &Path) {
         fail!()
     }).inside {
         if !path.is_dir() {
-            file::mkdir(path);
+            fs::mkdir(path, io::UserRWX);
         }
     }
 }
@@ -419,16 +417,13 @@ impl<'self> SourceCollector<'self> {
         let mut contents = ~[];
         {
             let mut buf = [0, ..1024];
-            let r = do io::io_error::cond.trap(|_| {}).inside {
-                p.open_reader(io::Open)
-            };
             // If we couldn't open this file, then just returns because it
             // probably means that it's some standard library macro thing and we
             // can't have the source to it anyway.
-            let mut r = match r {
-                Some(r) => r,
+            let mut r = match io::result(|| File::open(&p)) {
+                Ok(r) => r,
                 // eew macro hacks
-                None => return filename == "<std-macros>"
+                Err(*) => return filename == "<std-macros>"
             };
 
             // read everything
@@ -451,8 +446,7 @@ impl<'self> SourceCollector<'self> {
         }
 
         cur.push(p.filename().expect("source has no filename") + bytes!(".html"));
-        let w = cur.open_writer(io::CreateOrTruncate);
-        let mut w = BufferedWriter::new(w);
+        let mut w = BufferedWriter::new(File::create(&cur).unwrap());
 
         let title = cur.filename_display().with_str(|s| format!("{} -- source", s));
         let page = layout::Page {
@@ -460,7 +454,7 @@ impl<'self> SourceCollector<'self> {
             ty: "source",
             root_path: root_path,
         };
-        layout::render(&mut w as &mut io::Writer, &self.cx.layout,
+        layout::render(&mut w as &mut Writer, &self.cx.layout,
                        &page, &(""), &Source(contents.as_slice()));
         w.flush();
         return true;
@@ -774,7 +768,7 @@ impl Context {
     ///
     /// The rendering driver uses this closure to queue up more work.
     fn item(&mut self, item: clean::Item, f: &fn(&mut Context, clean::Item)) {
-        fn render(w: io::file::FileWriter, cx: &mut Context, it: &clean::Item,
+        fn render(w: io::File, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
@@ -796,7 +790,7 @@ impl Context {
             // of the pain by using a buffered writer instead of invoking the
             // write sycall all the time.
             let mut writer = BufferedWriter::new(w);
-            layout::render(&mut writer as &mut io::Writer, &cx.layout, &page,
+            layout::render(&mut writer as &mut Writer, &cx.layout, &page,
                            &Sidebar{ cx: cx, item: it },
                            &Item{ cx: cx, item: it });
             writer.flush();
@@ -811,8 +805,7 @@ impl Context {
                 do self.recurse(name) |this| {
                     let item = item.take();
                     let dst = this.dst.join("index.html");
-                    let writer = dst.open_writer(io::CreateOrTruncate);
-                    render(writer.unwrap(), this, &item, false);
+                    render(File::create(&dst).unwrap(), this, &item, false);
 
                     let m = match item.inner {
                         clean::ModuleItem(m) => m,
@@ -829,8 +822,7 @@ impl Context {
             // pages dedicated to them.
             _ if item.name.is_some() => {
                 let dst = self.dst.join(item_path(&item));
-                let writer = dst.open_writer(io::CreateOrTruncate);
-                render(writer.unwrap(), self, &item, true);
+                render(File::create(&dst).unwrap(), self, &item, true);
             }
 
             _ => {}
@@ -967,7 +959,7 @@ fn shorter<'a>(s: Option<&'a str>) -> &'a str {
     }
 }
 
-fn document(w: &mut io::Writer, item: &clean::Item) {
+fn document(w: &mut Writer, item: &clean::Item) {
     match item.doc_value() {
         Some(s) => {
             write!(w, "<div class='docblock'>{}</div>", Markdown(s));
@@ -976,7 +968,7 @@ fn document(w: &mut io::Writer, item: &clean::Item) {
     }
 }
 
-fn item_module(w: &mut io::Writer, cx: &Context,
+fn item_module(w: &mut Writer, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) {
     document(w, item);
     debug!("{:?}", items);
@@ -1123,7 +1115,7 @@ fn item_module(w: &mut io::Writer, cx: &Context,
     write!(w, "</table>");
 }
 
-fn item_function(w: &mut io::Writer, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Writer, it: &clean::Item, f: &clean::Function) {
     write!(w, "<pre class='fn'>{vis}{purity}fn {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
            purity = PuritySpace(f.purity),
@@ -1133,7 +1125,7 @@ fn item_function(w: &mut io::Writer, it: &clean::Item, f: &clean::Function) {
     document(w, it);
 }
 
-fn item_trait(w: &mut io::Writer, it: &clean::Item, t: &clean::Trait) {
+fn item_trait(w: &mut Writer, it: &clean::Item, t: &clean::Trait) {
     let mut parents = ~"";
     if t.parents.len() > 0 {
         parents.push_str(": ");
@@ -1176,7 +1168,7 @@ fn item_trait(w: &mut io::Writer, it: &clean::Item, t: &clean::Trait) {
     // Trait documentation
     document(w, it);
 
-    fn meth(w: &mut io::Writer, m: &clean::TraitMethod) {
+    fn meth(w: &mut Writer, m: &clean::TraitMethod) {
         write!(w, "<h3 id='{}.{}' class='method'><code>",
                shortty(m.item()),
                *m.item().name.get_ref());
@@ -1234,8 +1226,8 @@ fn item_trait(w: &mut io::Writer, it: &clean::Item, t: &clean::Trait) {
     }
 }
 
-fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
-    fn fun(w: &mut io::Writer, it: &clean::Item, purity: ast::purity,
+fn render_method(w: &mut Writer, meth: &clean::Item, withlink: bool) {
+    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::purity,
            g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
            withlink: bool) {
         write!(w, "{}fn {withlink, select,
@@ -1264,7 +1256,7 @@ fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
     }
 }
 
-fn item_struct(w: &mut io::Writer, it: &clean::Item, s: &clean::Struct) {
+fn item_struct(w: &mut Writer, it: &clean::Item, s: &clean::Struct) {
     write!(w, "<pre class='struct'>");
     render_struct(w, it, Some(&s.generics), s.struct_type, s.fields,
                   s.fields_stripped, "", true);
@@ -1288,7 +1280,7 @@ fn item_struct(w: &mut io::Writer, it: &clean::Item, s: &clean::Struct) {
     render_methods(w, it);
 }
 
-fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
+fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) {
     write!(w, "<pre class='enum'>{}enum {}{}",
            VisSpace(it.visibility),
            it.name.get_ref().as_slice(),
@@ -1365,7 +1357,7 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
     render_methods(w, it);
 }
 
-fn render_struct(w: &mut io::Writer, it: &clean::Item,
+fn render_struct(w: &mut Writer, it: &clean::Item,
                  g: Option<&clean::Generics>,
                  ty: doctree::StructType,
                  fields: &[clean::Item],
@@ -1418,7 +1410,7 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
     }
 }
 
-fn render_methods(w: &mut io::Writer, it: &clean::Item) {
+fn render_methods(w: &mut Writer, it: &clean::Item) {
     do local_data::get(cache_key) |cache| {
         let cache = cache.unwrap();
         do cache.read |c| {
@@ -1453,7 +1445,7 @@ fn render_methods(w: &mut io::Writer, it: &clean::Item) {
     }
 }
 
-fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
+fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
     write!(w, "<h3 class='impl'><code>impl{} ", i.generics);
     let trait_id = match i.trait_ {
         Some(ref ty) => {
@@ -1474,7 +1466,7 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
         None => {}
     }
 
-    fn docmeth(w: &mut io::Writer, item: &clean::Item) -> bool {
+    fn docmeth(w: &mut Writer, item: &clean::Item) -> bool {
         write!(w, "<h4 id='method.{}' class='method'><code>",
                *item.name.get_ref());
         render_method(w, item, false);
@@ -1552,7 +1544,7 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl, dox: &Option<~str>) {
     write!(w, "</div>");
 }
 
-fn item_typedef(w: &mut io::Writer, it: &clean::Item, t: &clean::Typedef) {
+fn item_typedef(w: &mut Writer, it: &clean::Item, t: &clean::Typedef) {
     write!(w, "<pre class='typedef'>type {}{} = {};</pre>",
            it.name.get_ref().as_slice(),
            t.generics,
@@ -1574,7 +1566,7 @@ impl<'self> fmt::Default for Sidebar<'self> {
         }
         write!(fmt.buf, "</p>");
 
-        fn block(w: &mut io::Writer, short: &str, longty: &str,
+        fn block(w: &mut Writer, short: &str, longty: &str,
                  cur: &clean::Item, cx: &Context) {
             let items = match cx.sidebar.find_equiv(&short) {
                 Some(items) => items.as_slice(),

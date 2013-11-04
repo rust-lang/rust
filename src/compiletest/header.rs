@@ -103,11 +103,10 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
 }
 
 fn iter_header(testfile: &Path, it: &fn(&str) -> bool) -> bool {
-    use std::rt::io::Open;
-    use std::rt::io::file::FileInfo;
     use std::rt::io::buffered::BufferedReader;
+    use std::rt::io::File;
 
-    let mut rdr = BufferedReader::new(testfile.open_reader(Open).unwrap());
+    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     loop {
         let ln = match rdr.read_line() {
             Some(ln) => ln, None => break

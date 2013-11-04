@@ -27,12 +27,11 @@ use std::char;
 use std::hash::Streaming;
 use std::hash;
 use std::os::consts::{macos, freebsd, linux, android, win32};
-use std::os;
 use std::ptr;
-use std::rt::io::Writer;
 use std::run;
 use std::str;
 use std::vec;
+use std::rt::io::fs;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
@@ -951,20 +950,17 @@ pub fn link_binary(sess: Session,
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
-        if ! os::remove_file(obj_filename) {
-            sess.warn(format!("failed to delete object file `{}`",
-                           obj_filename.display()));
-        }
+        fs::unlink(obj_filename);
     }
 }
 
 fn is_writeable(p: &Path) -> bool {
-    use std::libc::consts::os::posix88::S_IWUSR;
+    use std::rt::io;
 
-    !os::path_exists(p) ||
-        (match p.get_mode() {
-            None => false,
-            Some(m) => m & S_IWUSR as uint == S_IWUSR as uint
+    !p.exists() ||
+        (match io::result(|| p.stat()) {
+            Err(*) => false,
+            Ok(m) => m.perm & io::UserWrite == io::UserWrite
         })
 }
 

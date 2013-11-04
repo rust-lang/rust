@@ -143,6 +143,7 @@ void posix88_consts() {
   put_const(S_IFBLK, int);
   put_const(S_IFDIR, int);
   put_const(S_IFREG, int);
+  put_const(S_IFLNK, int);
   put_const(S_IFMT, int);
 
   put_const(S_IEXEC, int);

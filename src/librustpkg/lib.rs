@@ -26,6 +26,8 @@ extern mod syntax;
 
 use std::{os, result, run, str, task};
 use std::hashmap::HashSet;
+use std::rt::io;
+use std::rt::io::fs;
 pub use std::path::Path;
 
 use extra::workcache;
@@ -36,7 +38,7 @@ use extra::{getopts};
 use syntax::{ast, diagnostic};
 use messages::{error, warn, note};
 use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
-use path_util::{U_RWX, in_rust_path};
+use path_util::in_rust_path;
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace, dir_has_crate_file};
 use source_control::{CheckedOutSources, is_git_dir, make_read_only};
@@ -513,7 +515,7 @@ impl CtxMethods for BuildContext {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
                     debug!("JustOne: p = {}", p.display());
-                    assert!(os::path_exists(&pkg_src.start_dir.join(p)));
+                    assert!(pkg_src.start_dir.join(p).exists());
                     if is_lib(p) {
                         PkgSrc::push_crate(&mut pkg_src.libs, 0, p);
                     } else if is_main(p) {
@@ -541,8 +543,8 @@ impl CtxMethods for BuildContext {
         let dir = build_pkg_id_in_workspace(id, workspace);
         note(format!("Cleaning package {} (removing directory {})",
                         id.to_str(), dir.display()));
-        if os::path_exists(&dir) {
-            os::remove_dir_recursive(&dir);
+        if dir.exists() {
+            fs::rmdir_recursive(&dir);
             note(format!("Removed directory {}", dir.display()));
         }
 
@@ -600,7 +602,6 @@ impl CtxMethods for BuildContext {
                         build_inputs: &[Path],
                         target_workspace: &Path,
                         id: &PkgId) -> ~[~str] {
-        use conditions::copy_failed::cond;
 
         debug!("install_no_build: assuming {} comes from {} with target {}",
                id.to_str(), build_workspace.display(), target_workspace.display());
@@ -659,10 +660,8 @@ impl CtxMethods for BuildContext {
 
                 for exec in subex.iter() {
                     debug!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
-                    if !(os::mkdir_recursive(&sub_target_ex.dir_path(), U_RWX) &&
-                         os::copy_file(exec, &sub_target_ex)) {
-                        cond.raise(((*exec).clone(), sub_target_ex.clone()));
-                    }
+                    fs::mkdir_recursive(&sub_target_ex.dir_path(), io::UserRWX);
+                    fs::copy(exec, &sub_target_ex);
                     // FIXME (#9639): This needs to handle non-utf8 paths
                     exe_thing.discover_output("binary",
                         sub_target_ex.as_str().unwrap(),
@@ -674,10 +673,8 @@ impl CtxMethods for BuildContext {
                         .clone().expect(format!("I built {} but apparently \
                                              didn't install it!", lib.display()));
                     target_lib.set_filename(lib.filename().expect("weird target lib"));
-                    if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
-                         os::copy_file(lib, &target_lib)) {
-                        cond.raise(((*lib).clone(), target_lib.clone()));
-                    }
+                    fs::mkdir_recursive(&target_lib.dir_path(), io::UserRWX);
+                    fs::copy(lib, &target_lib);
                     debug!("3. discovering output {}", target_lib.display());
                     exe_thing.discover_output("binary",
                                               target_lib.as_str().unwrap(),
@@ -712,10 +709,10 @@ impl CtxMethods for BuildContext {
     }
 
     fn init(&self) {
-        os::mkdir_recursive(&Path::new("src"),   U_RWX);
-        os::mkdir_recursive(&Path::new("lib"),   U_RWX);
-        os::mkdir_recursive(&Path::new("bin"),   U_RWX);
-        os::mkdir_recursive(&Path::new("build"), U_RWX);
+        fs::mkdir_recursive(&Path::new("src"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("bin"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("lib"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("build"), io::UserRWX);
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {

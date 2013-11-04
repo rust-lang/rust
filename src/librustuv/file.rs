@@ -11,10 +11,9 @@
 use std::ptr::null;
 use std::c_str;
 use std::c_str::CString;
-use std::libc::c_void;
 use std::cast::transmute;
 use std::libc;
-use std::libc::{c_int};
+use std::libc::{c_int, c_char, c_void};
 
 use super::{Request, NativeHandle, Loop, FsCallback, Buf,
             status_to_maybe_uv_error, UvError};
@@ -49,12 +48,9 @@ impl FsRequest {
         assert_eq!(ret, 0);
     }
 
-    pub fn open_sync(self, loop_: &Loop, path: &CString,
+    pub fn open_sync(mut self, loop_: &Loop, path: &CString,
                      flags: int, mode: int) -> Result<c_int, UvError> {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(None)
-        };
+        let complete_cb_ptr = self.req_boilerplate(None);
         let result = path.with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                     self.native_handle(), p, flags, mode, complete_cb_ptr)
@@ -62,11 +58,8 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn unlink(self, loop_: &Loop, path: &CString, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
+    pub fn unlink(mut self, loop_: &Loop, path: &CString, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
         let ret = path.with_ref(|p| unsafe {
             uvll::fs_unlink(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
@@ -74,12 +67,9 @@ impl FsRequest {
         assert_eq!(ret, 0);
     }
 
-    pub fn unlink_sync(self, loop_: &Loop, path: &CString)
+    pub fn unlink_sync(mut self, loop_: &Loop, path: &CString)
       -> Result<c_int, UvError> {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(None)
-        };
+        let complete_cb_ptr = self.req_boilerplate(None);
         let result = path.with_ref(|p| unsafe {
             uvll::fs_unlink(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
@@ -87,11 +77,17 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn stat(self, loop_: &Loop, path: &CString, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
+    pub fn lstat(mut self, loop_: &Loop, path: &CString, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let ret = path.with_ref(|p| unsafe {
+            uvll::uv_fs_lstat(loop_.native_handle(),
+                              self.native_handle(), p, complete_cb_ptr)
+        });
+        assert_eq!(ret, 0);
+    }
+
+    pub fn stat(mut self, loop_: &Loop, path: &CString, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
         let ret = path.with_ref(|p| unsafe {
             uvll::fs_stat(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
@@ -99,11 +95,9 @@ impl FsRequest {
         assert_eq!(ret, 0);
     }
 
-    pub fn write(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
+    pub fn write(mut self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64,
+                 cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
         let base_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         let ret = unsafe {
@@ -113,12 +107,9 @@ impl FsRequest {
         };
         assert_eq!(ret, 0);
     }
-    pub fn write_sync(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
+    pub fn write_sync(mut self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
           -> Result<c_int, UvError> {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(None)
-        };
+        let complete_cb_ptr = self.req_boilerplate(None);
         let base_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         let result = unsafe {
@@ -129,11 +120,9 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn read(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
+    pub fn read(mut self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64,
+                cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
         let buf_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         let ret = unsafe {
@@ -143,12 +132,9 @@ impl FsRequest {
         };
         assert_eq!(ret, 0);
     }
-    pub fn read_sync(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
+    pub fn read_sync(mut self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
           -> Result<c_int, UvError> {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(None)
-        };
+        let complete_cb_ptr = self.req_boilerplate(None);
         let buf_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         let result = unsafe {
@@ -159,22 +145,16 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn close(self, loop_: &Loop, fd: c_int, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = unsafe {
+    pub fn close(mut self, loop_: &Loop, fd: c_int, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
             uvll::fs_close(loop_.native_handle(), self.native_handle(),
                            fd, complete_cb_ptr)
-        };
-        assert_eq!(ret, 0);
+        }, 0);
     }
-    pub fn close_sync(self, loop_: &Loop, fd: c_int) -> Result<c_int, UvError> {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(None)
-        };
+    pub fn close_sync(mut self, loop_: &Loop,
+                      fd: c_int) -> Result<c_int, UvError> {
+        let complete_cb_ptr = self.req_boilerplate(None);
         let result = unsafe {
             uvll::fs_close(loop_.native_handle(), self.native_handle(),
                            fd, complete_cb_ptr)
@@ -182,41 +162,120 @@ impl FsRequest {
         self.sync_cleanup(result)
     }
 
-    pub fn mkdir(self, loop_: &Loop, path: &CString, mode: int, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = path.with_ref(|p| unsafe {
+    pub fn mkdir(mut self, loop_: &Loop, path: &CString, mode: c_int,
+                 cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(path.with_ref(|p| unsafe {
             uvll::fs_mkdir(loop_.native_handle(),
                            self.native_handle(), p, mode, complete_cb_ptr)
-        });
-        assert_eq!(ret, 0);
+        }), 0);
     }
 
-    pub fn rmdir(self, loop_: &Loop, path: &CString, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = path.with_ref(|p| unsafe {
+    pub fn rmdir(mut self, loop_: &Loop, path: &CString, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(path.with_ref(|p| unsafe {
             uvll::fs_rmdir(loop_.native_handle(),
                            self.native_handle(), p, complete_cb_ptr)
-        });
-        assert_eq!(ret, 0);
+        }), 0);
     }
 
-    pub fn readdir(self, loop_: &Loop, path: &CString,
+    pub fn rename(mut self, loop_: &Loop, path: &CString, to: &CString,
+                  cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
+            uvll::fs_rename(loop_.native_handle(),
+                            self.native_handle(),
+                            path.with_ref(|p| p),
+                            to.with_ref(|p| p),
+                            complete_cb_ptr)
+        }, 0);
+    }
+
+    pub fn chmod(mut self, loop_: &Loop, path: &CString, mode: c_int,
+                 cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(path.with_ref(|p| unsafe {
+            uvll::fs_chmod(loop_.native_handle(), self.native_handle(), p, mode,
+                           complete_cb_ptr)
+        }), 0);
+    }
+
+    pub fn readdir(mut self, loop_: &Loop, path: &CString,
                    flags: c_int, cb: FsCallback) {
-        let complete_cb_ptr = {
-            let mut me = self;
-            me.req_boilerplate(Some(cb))
-        };
-        let ret = path.with_ref(|p| unsafe {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(path.with_ref(|p| unsafe {
             uvll::fs_readdir(loop_.native_handle(),
                              self.native_handle(), p, flags, complete_cb_ptr)
-        });
-        assert_eq!(ret, 0);
+        }), 0);
+    }
+
+    pub fn readlink(mut self, loop_: &Loop, path: &CString, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(path.with_ref(|p| unsafe {
+            uvll::uv_fs_readlink(loop_.native_handle(),
+                                 self.native_handle(), p, complete_cb_ptr)
+        }), 0);
+    }
+
+    pub fn chown(mut self, loop_: &Loop, path: &CString, uid: int, gid: int,
+                 cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(path.with_ref(|p| unsafe {
+            uvll::uv_fs_chown(loop_.native_handle(),
+                              self.native_handle(), p,
+                              uid as uvll::uv_uid_t,
+                              gid as uvll::uv_gid_t,
+                              complete_cb_ptr)
+        }), 0);
+    }
+
+    pub fn truncate(mut self, loop_: &Loop, file: c_int, offset: i64,
+                    cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
+            uvll::uv_fs_ftruncate(loop_.native_handle(),
+                                  self.native_handle(), file, offset,
+                                  complete_cb_ptr)
+        }, 0);
+    }
+
+    pub fn link(mut self, loop_: &Loop, src: &CString, dst: &CString,
+                cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
+            uvll::uv_fs_link(loop_.native_handle(), self.native_handle(),
+                             src.with_ref(|p| p),
+                             dst.with_ref(|p| p),
+                             complete_cb_ptr)
+        }, 0);
+    }
+
+    pub fn symlink(mut self, loop_: &Loop, src: &CString, dst: &CString,
+                   cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
+            uvll::uv_fs_symlink(loop_.native_handle(), self.native_handle(),
+                                src.with_ref(|p| p),
+                                dst.with_ref(|p| p),
+                                0,
+                                complete_cb_ptr)
+        }, 0);
+    }
+
+    pub fn fsync(mut self, loop_: &Loop, fd: c_int, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
+            uvll::uv_fs_fsync(loop_.native_handle(), self.native_handle(), fd,
+                              complete_cb_ptr)
+        }, 0);
+    }
+
+    pub fn datasync(mut self, loop_: &Loop, fd: c_int, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        assert_eq!(unsafe {
+            uvll::uv_fs_fdatasync(loop_.native_handle(), self.native_handle(), fd,
+                                  complete_cb_ptr)
+        }, 0);
     }
 
     // accessors/utility funcs
@@ -257,10 +316,12 @@ impl FsRequest {
         }
     }
 
-    pub fn get_result(&mut self) -> c_int {
-        unsafe {
-            uvll::get_result_from_fs_req(self.native_handle())
-        }
+    pub fn get_path(&self) -> *c_char {
+        unsafe { uvll::get_path_from_fs_req(self.native_handle()) }
+    }
+
+    pub fn get_result(&self) -> c_int {
+        unsafe { uvll::get_result_from_fs_req(self.native_handle()) }
     }
 
     pub fn get_loop(&self) -> Loop {
@@ -353,7 +414,7 @@ extern fn compl_cb(req: *uv_fs_t) {
 mod test {
     use super::*;
     //use std::rt::test::*;
-    use std::libc::{STDOUT_FILENO};
+    use std::libc::{STDOUT_FILENO, c_int};
     use std::vec;
     use std::str;
     use std::unstable::run_in_bare_thread;
@@ -578,7 +639,7 @@ mod test {
                 S_IRUSR;
             let mkdir_req = FsRequest::new();
             do mkdir_req.mkdir(&loop_, &path.to_c_str(),
-                               mode as int) |req,uverr| {
+                               mode as c_int) |req,uverr| {
                 assert!(uverr.is_none());
                 let loop_ = req.get_loop();
                 let stat_req = FsRequest::new();
@@ -611,12 +672,12 @@ mod test {
             let mode = S_IWUSR |
                 S_IRUSR;
             let mkdir_req = FsRequest::new();
-            do mkdir_req.mkdir(&loop_, &path.to_c_str(), mode as int) |req,uverr| {
+            do mkdir_req.mkdir(&loop_, &path.to_c_str(), mode as c_int) |req,uverr| {
                 assert!(uverr.is_none());
                 let loop_ = req.get_loop();
                 let mkdir_req = FsRequest::new();
                 do mkdir_req.mkdir(&loop_, &path.to_c_str(),
-                                   mode as int) |req,uverr| {
+                                   mode as c_int) |req,uverr| {
                     assert!(uverr.is_some());
                     let loop_ = req.get_loop();
                     let _stat = req.get_stat();

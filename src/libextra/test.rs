@@ -31,7 +31,7 @@ use treemap::TreeMap;
 use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
 use std::rt::io;
-use std::rt::io::file::FileInfo;
+use std::rt::io::File;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -353,10 +353,7 @@ struct ConsoleTestState {
 impl ConsoleTestState {
     pub fn new(opts: &TestOpts) -> ConsoleTestState {
         let log_out = match opts.logfile {
-            Some(ref path) => {
-                let out = path.open_writer(io::CreateOrTruncate);
-                Some(@mut out as @mut io::Writer)
-            },
+            Some(ref path) => Some(@mut File::create(path) as @mut io::Writer),
             None => None
         };
         let out = @mut io::stdio::stdout() as @mut io::Writer;
@@ -938,16 +935,15 @@ impl MetricMap {
 
     /// Load MetricDiff from a file.
     pub fn load(p: &Path) -> MetricMap {
-        assert!(os::path_exists(p));
-        let f = @mut p.open_reader(io::Open) as @mut io::Reader;
+        assert!(p.exists());
+        let f = @mut File::open(p) as @mut io::Reader;
         let mut decoder = json::Decoder(json::from_reader(f).unwrap());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
-        let f = @mut p.open_writer(io::CreateOrTruncate);
-        self.to_json().to_pretty_writer(f as @mut io::Writer);
+        self.to_json().to_pretty_writer(@mut File::create(p) as @mut io::Writer);
     }
 
     /// Compare against another MetricMap. Optionally compare all
@@ -1032,7 +1028,7 @@ impl MetricMap {
     /// `MetricChange`s are `Regression`. Returns the diff as well
     /// as a boolean indicating whether the ratchet succeeded.
     pub fn ratchet(&self, p: &Path, pct: Option<f64>) -> (MetricDiff, bool) {
-        let old = if os::path_exists(p) {
+        let old = if p.exists() {
             MetricMap::load(p)
         } else {
             MetricMap::new()
