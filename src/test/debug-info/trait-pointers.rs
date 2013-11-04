@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+// xfail-android
+
 // compile-flags:-Z extra-debug-info
 // debugger:run
 

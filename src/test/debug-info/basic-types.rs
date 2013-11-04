@@ -14,6 +14,8 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
+// xfail-android
+
 // compile-flags:-Z extra-debug-info
 // debugger:rbreak zzz
 // debugger:run
