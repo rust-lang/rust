@@ -2063,7 +2063,7 @@ The currently implemented features of the compiler are:
 
 * `once_fns` - Onceness guarantees a closure is only executed once. Defining a
                closure as `once` is unlikely to be supported going forward. So
-               they are hidden behind this feature until they are to be removed. 
+               they are hidden behind this feature until they are to be removed.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
@@ -2748,11 +2748,10 @@ do k(3) |j| {
 
 ~~~~ {.ebnf .gram}
 for_expr : "for" pat "in" expr '{' block '}' ;
-~~~~ 
+~~~~
 
-A `for` expression is a syntactic construct for looping
-over elements provided by an implementation of
-`std::iterator::Iterator`.
+A `for` expression is a syntactic construct for looping over elements
+provided by an implementation of `std::iter::Iterator`.
 
 An example of a for loop over the contents of a vector:
 
