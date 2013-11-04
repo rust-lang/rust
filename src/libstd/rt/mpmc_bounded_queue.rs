@@ -34,7 +34,7 @@ use option::*;
 use vec;
 use clone::Clone;
 use kinds::Send;
-use num::{Exponential,Algebraic,Round};
+use uint;
 
 struct Node<T> {
     sequence: AtomicUint,
@@ -62,8 +62,7 @@ impl<T: Send> State<T> {
             if capacity < 2 {
                 2u
             } else {
-                // use next power of 2 as capacity
-                2f64.pow(&((capacity as f64).log2().ceil())) as uint
+                uint::next_power_of_two(capacity)
             }
         } else {
             capacity
@@ -84,12 +83,13 @@ impl<T: Send> State<T> {
     }
 
     fn push(&mut self, value: T) -> bool {
+        let buffer_len = self.buffer.len();
         let mask = self.mask;
         let mut pos = self.enqueue_pos.load(Relaxed);
         loop {
             let node = &mut self.buffer[pos & mask];
             let seq = node.sequence.load(Acquire);
-            let diff: int = seq as int - pos as int;
+            let diff = seq - pos;
 
             if diff == 0 {
                 let enqueue_pos = self.enqueue_pos.compare_and_swap(pos, pos+1, Relaxed);
@@ -100,7 +100,11 @@ impl<T: Send> State<T> {
                 } else {
                     pos = enqueue_pos;
                 }
-            } else if (diff < 0) {
+            } else if diff < 0 {
+                return false
+            } else if pos == 0 && (seq-1) as uint % buffer_len == 0 {
+                // handle the case where enqueue_pos has overflowed
+                // back to 0 but the queue is full
                 return false
             } else {
                 pos = self.enqueue_pos.load(Relaxed);
@@ -115,8 +119,12 @@ impl<T: Send> State<T> {
         loop {
             let node = &mut self.buffer[pos & mask];
             let seq = node.sequence.load(Acquire);
-            let diff: int = seq as int - (pos + 1) as int;
-            if diff == 0 {
+            let diff: i64 = seq as i64 - (pos as i64 + 1i64);
+            if diff == 0 || (seq == 0 && pos == uint::max_value) {
+                // the part after || handles the case where
+                // pos+1 would overflow back to 0 causing
+                // diff to be negative and thus dequeue to fail
+                // when there is infact data in the queue
                 let dequeue_pos = self.dequeue_pos.compare_and_swap(pos, pos+1, Relaxed);
                 if dequeue_pos == pos {
                     let value = node.value.take();
