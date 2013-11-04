@@ -352,7 +352,7 @@ Section: Iterators
 */
 
 /// External iterator for a string's characters.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 #[deriving(Clone)]
 pub struct CharIterator<'self> {
     /// The slice remaining to be iterated
@@ -397,7 +397,7 @@ impl<'self> DoubleEndedIterator<char> for CharIterator<'self> {
 }
 
 /// External iterator for a string's characters and their byte offsets.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 #[deriving(Clone)]
 pub struct CharOffsetIterator<'self> {
     /// The original string to be iterated
@@ -439,20 +439,20 @@ impl<'self> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'self> {
 }
 
 /// External iterator for a string's characters in reverse order.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 pub type CharRevIterator<'self> = Invert<CharIterator<'self>>;
 
 /// External iterator for a string's characters and their byte offsets in reverse order.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 pub type CharOffsetRevIterator<'self> = Invert<CharOffsetIterator<'self>>;
 
 /// External iterator for a string's bytes.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 pub type ByteIterator<'self> =
     Map<'self, &'self u8, u8, vec::VecIterator<'self, u8>>;
 
 /// External iterator for a string's bytes in reverse order.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 pub type ByteRevIterator<'self> = Invert<ByteIterator<'self>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
@@ -682,7 +682,7 @@ enum NormalizationForm {
 }
 
 /// External iterator for a string's normalization's characters.
-/// Use with the `std::iterator` module.
+/// Use with the `std::iter` module.
 #[deriving(Clone)]
 struct NormalizationIterator<'self> {
     priv kind: NormalizationForm,
