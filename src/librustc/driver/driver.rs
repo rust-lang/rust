@@ -441,7 +441,8 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
         };
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
         if stop_after_phase_3(sess) { return; }
-        let outputs = build_output_filenames(input, outdir, output, [], sess);
+        let outputs = build_output_filenames(input, outdir, output,
+                                             expanded_crate.attrs, sess);
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
                                               &analysis, outputs);
         (outputs, trans)
