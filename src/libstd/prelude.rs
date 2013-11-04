@@ -67,6 +67,7 @@ pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Primitive, Int, Float, ToStrRadix, ToPrimitive, FromPrimitive};
 pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 pub use ptr::RawPtr;
+pub use rt::io::{Writer, Reader, Seek};
 pub use send_str::{SendStr, SendStrOwned, SendStrStatic, IntoSendStr};
 pub use str::{Str, StrVector, StrSlice, OwnedStr};
 pub use to_bytes::IterBytes;

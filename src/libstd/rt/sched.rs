@@ -836,7 +836,7 @@ impl ClosureConverter for UnsafeTaskReceiver {
 }
 
 // On unix, we read randomness straight from /dev/urandom, but the
-// default constructor of an XorShiftRng does this via io::file, which
+// default constructor of an XorShiftRng does this via io::fs, which
 // relies on the scheduler existing, so we have to manually load
 // randomness. Windows has its own C API for this, so we don't need to
 // worry there.

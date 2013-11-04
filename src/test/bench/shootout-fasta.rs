@@ -19,6 +19,7 @@ extern mod extra;
 
 use std::int;
 use std::rt::io;
+use std::rt::io::File;
 use std::os;
 use std::rand::Rng;
 use std::rand;
@@ -111,7 +112,6 @@ fn acid(ch: char, prob: u32) -> AminoAcids {
 }
 
 fn main() {
-    use std::rt::io::file::FileInfo;
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
         // alioth tests k-nucleotide with this data at 25,000,000
@@ -123,7 +123,7 @@ fn main() {
     };
 
     let writer = if os::getenv("RUST_BENCH").is_some() {
-        let file = Path::new("./shootout-fasta.data").open_writer(io::CreateOrTruncate);
+        let file = File::create(&Path::new("./shootout-fasta.data"));
         @mut file as @mut io::Writer
     } else {
         @mut io::stdout() as @mut io::Writer

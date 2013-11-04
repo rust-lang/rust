@@ -24,6 +24,8 @@
  */
 
 use std::{os, path};
+use std::rt::io;
+use std::rt::io::fs;
 use std::path::is_sep;
 
 use sort;
@@ -146,9 +148,14 @@ impl Iterator<Path> for GlobIterator {
 }
 
 fn list_dir_sorted(path: &Path) -> ~[Path] {
-    let mut children = os::list_dir_path(path);
-    sort::quick_sort(children, |p1, p2| p2.filename().unwrap() <= p1.filename().unwrap());
-    children
+    match io::result(|| fs::readdir(path)) {
+        Ok(children) => {
+            let mut children = children;
+            sort::quick_sort(children, |p1, p2| p2.filename() <= p1.filename());
+            children
+        }
+        Err(*) => ~[]
+    }
 }
 
 /**

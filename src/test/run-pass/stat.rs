@@ -13,17 +13,14 @@
 extern mod extra;
 
 use extra::tempfile;
-use std::rt::io;
-use std::rt::io::Writer;
-use std::rt::io::file::FileInfo;
-use std::os;
+use std::rt::io::File;
 
 pub fn main() {
     let dir = tempfile::TempDir::new_in(&Path::new("."), "").unwrap();
     let path = dir.path().join("file");
 
     {
-        match path.open_writer(io::CreateOrTruncate) {
+        match File::create(&path) {
             None => unreachable!(),
             Some(f) => {
                 let mut f = f;
@@ -35,5 +32,5 @@ pub fn main() {
     }
 
     assert!(path.exists());
-    assert_eq!(path.get_size(), Some(1000));
+    assert_eq!(path.stat().size, 1000);
 }

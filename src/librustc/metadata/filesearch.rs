@@ -11,6 +11,8 @@
 
 use std::option;
 use std::os;
+use std::rt::io;
+use std::rt::io::fs;
 use std::hashmap::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }
@@ -117,22 +119,26 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 pub fn search(filesearch: @FileSearch, pick: pick) {
     do filesearch.for_each_lib_search_path() |lib_search_path| {
         debug!("searching {}", lib_search_path.display());
-        let r = os::list_dir_path(lib_search_path);
-        let mut rslt = FileDoesntMatch;
-        for path in r.iter() {
-            debug!("testing {}", path.display());
-            let maybe_picked = pick(path);
-            match maybe_picked {
-                FileMatches => {
-                    debug!("picked {}", path.display());
-                    rslt = FileMatches;
+        match io::result(|| fs::readdir(lib_search_path)) {
+            Ok(files) => {
+                let mut rslt = FileDoesntMatch;
+                for path in files.iter() {
+                    debug!("testing {}", path.display());
+                    let maybe_picked = pick(path);
+                    match maybe_picked {
+                        FileMatches => {
+                            debug!("picked {}", path.display());
+                            rslt = FileMatches;
+                        }
+                        FileDoesntMatch => {
+                            debug!("rejected {}", path.display());
+                        }
+                    }
                 }
-                FileDoesntMatch => {
-                    debug!("rejected {}", path.display());
-                }
+                rslt
             }
+            Err(*) => FileDoesntMatch,
         }
-        rslt
     };
 }
 
@@ -210,7 +216,7 @@ pub fn rust_path() -> ~[Path] {
             break
         }
         cwd.set_filename(".rust");
-        if !env_rust_path.contains(&cwd) && os::path_exists(&cwd) {
+        if !env_rust_path.contains(&cwd) && cwd.exists() {
             env_rust_path.push(cwd.clone());
         }
         cwd.pop();
@@ -218,7 +224,7 @@ pub fn rust_path() -> ~[Path] {
     let h = os::homedir();
     for h in h.iter() {
         let p = h.join(".rust");
-        if !env_rust_path.contains(&p) && os::path_exists(&p) {
+        if !env_rust_path.contains(&p) && p.exists() {
             env_rust_path.push(p);
         }
     }

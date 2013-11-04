@@ -517,8 +517,8 @@ CTEST_BUILD_BASE_rpass = run-pass
 CTEST_MODE_rpass = run-pass
 CTEST_RUNTOOL_rpass = $(CTEST_RUNTOOL)
 
-CTEST_SRC_BASE_rpass-full = run-pass-full
-CTEST_BUILD_BASE_rpass-full = run-pass-full
+CTEST_SRC_BASE_rpass-full = run-pass-fulldeps
+CTEST_BUILD_BASE_rpass-full = run-pass-fulldeps
 CTEST_MODE_rpass-full = run-pass
 CTEST_RUNTOOL_rpass-full = $(CTEST_RUNTOOL)
 
@@ -673,7 +673,7 @@ PRETTY_DEPS_pretty-rfail = $(RFAIL_TESTS)
 PRETTY_DEPS_pretty-bench = $(BENCH_TESTS)
 PRETTY_DEPS_pretty-pretty = $(PRETTY_TESTS)
 PRETTY_DIRNAME_pretty-rpass = run-pass
-PRETTY_DIRNAME_pretty-rpass-full = run-pass-full
+PRETTY_DIRNAME_pretty-rpass-full = run-pass-fulldeps
 PRETTY_DIRNAME_pretty-rfail = run-fail
 PRETTY_DIRNAME_pretty-bench = bench
 PRETTY_DIRNAME_pretty-pretty = pretty

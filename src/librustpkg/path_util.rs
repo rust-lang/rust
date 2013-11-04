@@ -18,8 +18,9 @@ use rustc::driver::driver::host_triple;
 
 use std::libc;
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
-use std::os::mkdir_recursive;
 use std::os;
+use std::rt::io;
+use std::rt::io::fs;
 use messages::*;
 
 pub fn default_workspace() -> Path {
@@ -28,8 +29,8 @@ pub fn default_workspace() -> Path {
         fail!("Empty RUST_PATH");
     }
     let result = p[0];
-    if !os::path_is_dir(&result) {
-        os::mkdir_recursive(&result, U_RWX);
+    if !result.is_dir() {
+        fs::mkdir_recursive(&result, io::UserRWX);
     }
     result
 }
@@ -43,9 +44,13 @@ pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 /// Creates a directory that is readable, writeable,
 /// and executable by the user. Returns true iff creation
 /// succeeded.
-pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
+pub fn make_dir_rwx(p: &Path) -> bool {
+    io::result(|| fs::mkdir(p, io::UserRWX)).is_ok()
+}
 
-pub fn make_dir_rwx_recursive(p: &Path) -> bool { os::mkdir_recursive(p, U_RWX) }
+pub fn make_dir_rwx_recursive(p: &Path) -> bool {
+    io::result(|| fs::mkdir_recursive(p, io::UserRWX)).is_ok()
+}
 
 // n.b. The next three functions ignore the package version right
 // now. Should fix that.
@@ -59,16 +64,17 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
 pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
 // Returns the directory it was actually found in
              workspace_to_src_dir: &fn(&Path) -> Path) -> Option<Path> {
-    if !os::path_is_dir(workspace) {
+    if !workspace.is_dir() {
         return None;
     }
 
     let src_dir = workspace_to_src_dir(workspace);
+    if !src_dir.is_dir() { return None }
 
     let mut found = None;
-    do os::walk_dir(&src_dir) |p| {
-        if os::path_is_dir(p) {
-            if *p == src_dir.join(&pkgid.path) || {
+    for p in fs::walk_dir(&src_dir) {
+        if p.is_dir() {
+            if p == src_dir.join(&pkgid.path) || {
                 let pf = p.filename_str();
                 do pf.iter().any |&g| {
                     match split_version_general(g, '-') {
@@ -83,9 +89,8 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
                 found = Some(p.clone());
             }
 
-        };
-        true
-    };
+        }
+    }
 
     if found.is_some() {
         debug!("Found {} in {}", pkgid.to_str(), workspace.display());
@@ -125,7 +130,7 @@ pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<
     result = mk_output_path(Main, Build, pkgid, result);
     debug!("built_executable_in_workspace: checking whether {} exists",
            result.display());
-    if os::path_exists(&result) {
+    if result.exists() {
         Some(result)
     }
     else {
@@ -152,7 +157,7 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
     result = mk_output_path(what, Build, pkgid, result);
     debug!("output_in_workspace: checking whether {} exists",
            result.display());
-    if os::path_exists(&result) {
+    if result.exists() {
         Some(result)
     }
     else {
@@ -210,7 +215,7 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
     debug!("Listing directory {}", dir_to_search.display());
-    let dir_contents = os::list_dir(dir_to_search);
+    let dir_contents = do io::ignore_io_error { fs::readdir(dir_to_search) };
     debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
@@ -294,7 +299,7 @@ pub fn target_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 /// As a side effect, creates the lib-dir if it doesn't exist
 pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
-    if !os::path_is_dir(workspace) {
+    if !workspace.is_dir() {
         cond.raise(((*workspace).clone(),
                     format!("Workspace supplied to target_library_in_workspace \
                              is not a directory! {}", workspace.display())));
@@ -333,7 +338,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
-    if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
+    if io::result(|| fs::mkdir_recursive(&result, io::UserRWX)).is_err() {
         cond.raise((result.clone(), format!("target_file_in_workspace couldn't \
             create the {} dir (pkgid={}, workspace={}, what={:?}, where={:?}",
             subdir, pkgid.to_str(), workspace.display(), what, where)));
@@ -344,18 +349,12 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
 /// Return the directory for <pkgid>'s build artifacts in <workspace>.
 /// Creates it if it doesn't exist.
 pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
-    use conditions::bad_path::cond;
-
     let mut result = target_build_dir(workspace);
     result.push(&pkgid.path);
     debug!("Creating build dir {} for package id {}", result.display(),
            pkgid.to_str());
-    if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
-        result
-    }
-    else {
-        cond.raise((result, format!("Could not create directory for package {}", pkgid.to_str())))
-    }
+    fs::mkdir_recursive(&result, io::UserRWX);
+    return result;
 }
 
 /// Return the output file for a given directory name,
@@ -398,13 +397,13 @@ pub fn mk_output_path(what: OutputType, where: Target,
 pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
     let mut did_something = false;
     let installed_bin = target_executable_in_workspace(pkgid, workspace);
-    if os::path_exists(&installed_bin) {
-        os::remove_file(&installed_bin);
+    if installed_bin.exists() {
+        fs::unlink(&installed_bin);
         did_something = true;
     }
     let installed_lib = target_library_in_workspace(pkgid, workspace);
-    if os::path_exists(&installed_lib) {
-        os::remove_file(&installed_lib);
+    if installed_lib.exists() {
+        fs::unlink(&installed_lib);
         did_something = true;
     }
     if !did_something {
@@ -421,7 +420,7 @@ pub fn dir_has_crate_file(dir: &Path) -> bool {
 
 fn dir_has_file(dir: &Path, file: &str) -> bool {
     assert!(dir.is_absolute());
-    os::path_exists(&dir.join(file))
+    dir.join(file).exists()
 }
 
 pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {

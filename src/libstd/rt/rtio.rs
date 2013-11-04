@@ -22,7 +22,7 @@ use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
 use path::Path;
 use super::io::{SeekStyle};
-use super::io::{FileMode, FileAccess, FileStat};
+use super::io::{FileMode, FileAccess, FileStat, FilePermission};
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -91,28 +91,42 @@ pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
 }
 
 pub trait IoFactory {
+    // networking
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError>;
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError>;
+    fn unix_bind(&mut self, path: &CString) ->
+        Result<~RtioUnixListener, IoError>;
+    fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
-    fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
+
+    // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError>;
     fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError>;
-    fn fs_mkdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_mkdir(&mut self, path: &CString,
+                mode: FilePermission) -> Result<(), IoError>;
+    fn fs_chmod(&mut self, path: &CString,
+                mode: FilePermission) -> Result<(), IoError>;
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError>;
+    fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
         Result<~[Path], IoError>;
+    fn fs_lstat(&mut self, path: &CString) -> Result<FileStat, IoError>;
+    fn fs_chown(&mut self, path: &CString, uid: int, gid: int) ->
+        Result<(), IoError>;
+    fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError>;
+    fn fs_symlink(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
+    fn fs_link(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
+
+    // misc
+    fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
-
     fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
-    fn unix_bind(&mut self, path: &CString) ->
-        Result<~RtioUnixListener, IoError>;
-    fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;
     fn signal(&mut self, signal: Signum, channel: SharedChan<Signum>)
@@ -173,6 +187,9 @@ pub trait RtioFileStream {
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError>;
     fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError>;
     fn tell(&self) -> Result<u64, IoError>;
+    fn fsync(&mut self) -> Result<(), IoError>;
+    fn datasync(&mut self) -> Result<(), IoError>;
+    fn truncate(&mut self, offset: i64) -> Result<(), IoError>;
 }
 
 pub trait RtioProcess {

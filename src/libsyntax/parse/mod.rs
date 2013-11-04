@@ -19,10 +19,8 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
-use std::path::Path;
 use std::rt::io;
-use std::rt::io::Reader;
-use std::rt::io::file::FileInfo;
+use std::rt::io::File;
 use std::str;
 
 pub mod lexer;
@@ -269,16 +267,13 @@ pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<Span>)
             None => sess.span_diagnostic.handler().fatal(msg),
         }
     };
-    let mut error = None;
-    let bytes = do io::io_error::cond.trap(|e| error = Some(e)).inside {
-        path.open_reader(io::Open).read_to_end()
-    };
-    match error {
-        Some(e) => {
+    let bytes = match io::result(|| File::open(path).read_to_end()) {
+        Ok(bytes) => bytes,
+        Err(e) => {
             err(format!("couldn't read {}: {}", path.display(), e.desc));
+            unreachable!()
         }
-        None => {}
-    }
+    };
     match str::from_utf8_owned_opt(bytes) {
         Some(s) => {
             return string_to_filemap(sess, s.to_managed(),

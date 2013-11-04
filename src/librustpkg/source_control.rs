@@ -10,8 +10,9 @@
 
 // Utils for working with version control repositories. Just git right now.
 
-use std::{os, run, str};
+use std::{run, str};
 use std::run::{ProcessOutput, ProcessOptions, Process};
+use std::rt::io::fs;
 use extra::tempfile::TempDir;
 use version::*;
 use path_util::chmod_read_only;
@@ -22,14 +23,14 @@ use path_util::chmod_read_only;
 /// directory (that the callee may use, for example, to check out remote sources into).
 /// Returns `CheckedOutSources` if the clone succeeded.
 pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult {
-    if os::path_exists(source) {
+    if source.exists() {
         debug!("{} exists locally! Cloning it into {}",
                 source.display(), target.display());
         // Ok to use target here; we know it will succeed
-        assert!(os::path_is_dir(source));
+        assert!(source.is_dir());
         assert!(is_git_dir(source));
 
-        if !os::path_exists(target) {
+        if !target.exists() {
             debug!("Running: git clone {} {}", source.display(), target.display());
             // FIXME (#9639): This needs to handle non-utf8 paths
             let outp = run::process_output("git", [~"clone",
@@ -95,12 +96,11 @@ pub enum CloneResult {
 
 pub fn make_read_only(target: &Path) {
     // Now, make all the files in the target dir read-only
-    do os::walk_dir(target) |p| {
-        if !os::path_is_dir(p) {
-            assert!(chmod_read_only(p));
-        };
-        true
-    };
+    for p in fs::walk_dir(target) {
+        if !p.is_dir() {
+            assert!(chmod_read_only(&p));
+        }
+    }
 }
 
 /// Source can be either a URL or a local file path.
@@ -138,5 +138,5 @@ fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput
 }
 
 pub fn is_git_dir(p: &Path) -> bool {
-    os::path_is_dir(&p.join(".git"))
+    p.join(".git").is_dir()
 }

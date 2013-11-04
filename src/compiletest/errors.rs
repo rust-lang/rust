@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rt::io::buffered::BufferedReader;
+use std::rt::io::File;
+
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
 // Load any test directives embedded in the file
 pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
-    use std::rt::io::Open;
-    use std::rt::io::file::FileInfo;
-    use std::rt::io::buffered::BufferedReader;
 
     let mut error_patterns = ~[];
-    let mut rdr = BufferedReader::new(testfile.open_reader(Open).unwrap());
+    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     let mut line_num = 1u;
     loop {
         let ln = match rdr.read_line() {

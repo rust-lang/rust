@@ -792,7 +792,6 @@ mod test {
 
     #[test]
     fn test_serialize_round_trip() {
-        use std;
         use ebml;
         use serialize::{Encodable, Decodable};
 

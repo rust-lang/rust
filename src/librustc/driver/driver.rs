@@ -27,6 +27,7 @@ use util::ppaux;
 
 use std::hashmap::{HashMap,HashSet};
 use std::rt::io;
+use std::rt::io::fs;
 use std::rt::io::mem::MemReader;
 use std::os;
 use std::vec;
@@ -369,7 +370,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 
         // Remove assembly source unless --save-temps was specified
         if !sess.opts.save_temps {
-            os::remove_file(&asm_filename);
+            fs::unlink(&asm_filename);
         }
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|

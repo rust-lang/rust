@@ -231,8 +231,6 @@ Out of scope
 * Trait for things that are both readers and writers, Stream?
 * How to handle newline conversion
 * String conversion
-* File vs. FileStream? File is shorter but could also be used for getting file info
-  - maybe File is for general file querying and *also* has a static `open` method
 * open vs. connect for generic stream opening
 * Do we need `close` at all? dtors might be good enough
 * How does I/O relate to the Iterator trait?
@@ -245,8 +243,10 @@ Out of scope
 use cast;
 use int;
 use path::Path;
-use prelude::*;
 use str::{StrSlice, OwnedStr};
+use option::{Option, Some, None};
+use result::{Ok, Err, Result};
+use iter::Iterator;
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
@@ -259,7 +259,7 @@ pub use self::stdio::stderr;
 pub use self::stdio::print;
 pub use self::stdio::println;
 
-pub use self::file::FileStream;
+pub use self::fs::File;
 pub use self::timer::Timer;
 pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
@@ -268,8 +268,8 @@ pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::Process;
 
-/// Synchronous, non-blocking file I/O.
-pub mod file;
+/// Synchronous, non-blocking filesystem operations.
+pub mod fs;
 
 /// Synchronous, in-memory I/O.
 pub mod pipe;
@@ -418,6 +418,18 @@ pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
     }
 }
 
+/// Helper for catching an I/O error and wrapping it in a Result object. The
+/// return result will be the last I/O error that happened or the result of the
+/// closure if no error occurred.
+pub fn result<T>(cb: &fn() -> T) -> Result<T, IoError> {
+    let mut err = None;
+    let ret = io_error::cond.trap(|e| err = Some(e)).inside(cb);
+    match err {
+        Some(e) => Err(e),
+        None => Ok(ret),
+    }
+}
+
 pub trait Reader {
 
     // Only two methods which need to get implemented for this trait
@@ -450,7 +462,7 @@ pub trait Reader {
     ///
     /// # Example
     ///
-    ///     let reader = FileStream::new()
+    ///     let reader = File::open(&Path::new("foo.txt"))
     ///     while !reader.eof() {
     ///         println(reader.read_line());
     ///     }
@@ -1089,51 +1101,119 @@ pub fn placeholder_error() -> IoError {
     }
 }
 
-/// Instructions on how to open a file and return a `FileStream`.
+/// A mode specifies how a file should be opened or created. These modes are
+/// passed to `File::open_mode` and are used to control where the file is
+/// positioned when it is initially opened.
 pub enum FileMode {
-    /// Opens an existing file. IoError if file does not exist.
+    /// Opens a file positioned at the beginning.
     Open,
-    /// Creates a file. IoError if file exists.
-    Create,
-    /// Opens an existing file or creates a new one.
-    OpenOrCreate,
-    /// Opens an existing file or creates a new one, positioned at EOF.
+    /// Opens a file positioned at EOF.
     Append,
-    /// Opens an existing file, truncating it to 0 bytes.
+    /// Opens a file, truncating it if it already exists.
     Truncate,
-    /// Opens an existing file or creates a new one, truncating it to 0 bytes.
-    CreateOrTruncate,
 }
 
-/// Access permissions with which the file should be opened.
-/// `FileStream`s opened with `Read` will raise an `io_error` condition if written to.
+/// Access permissions with which the file should be opened. `File`s
+/// opened with `Read` will raise an `io_error` condition if written to.
 pub enum FileAccess {
     Read,
     Write,
-    ReadWrite
+    ReadWrite,
+}
+
+/// Different kinds of files which can be identified by a call to stat
+#[deriving(Eq)]
+pub enum FileType {
+    TypeFile,
+    TypeDirectory,
+    TypeNamedPipe,
+    TypeBlockSpecial,
+    TypeSymlink,
+    TypeUnknown,
 }
 
 pub struct FileStat {
-    /// A `Path` object containing information about the `PathInfo`'s location
+    /// The path that this stat structure is describing
     path: Path,
-    /// `true` if the file pointed at by the `PathInfo` is a regular file
-    is_file: bool,
-    /// `true` if the file pointed at by the `PathInfo` is a directory
-    is_dir: bool,
-    /// The file pointed at by the `PathInfo`'s device
-    device: u64,
-    /// The file pointed at by the `PathInfo`'s mode
-    mode: u64,
-    /// The file pointed at by the `PathInfo`'s inode
-    inode: u64,
-    /// The file pointed at by the `PathInfo`'s size in bytes
+    /// The size of the file, in bytes
     size: u64,
-    /// The file pointed at by the `PathInfo`'s creation time
+    /// The kind of file this path points to (directory, file, pipe, etc.)
+    kind: FileType,
+    /// The file permissions currently on the file
+    perm: FilePermission,
+
+    // XXX: These time fields are pretty useless without an actual time
+    //      representation, what are the milliseconds relative to?
+
+    /// The time that the file was created at, in platform-dependent
+    /// milliseconds
     created: u64,
-    /// The file pointed at by the `PathInfo`'s last-modification time in
-    /// platform-dependent msecs
+    /// The time that this file was last modified, in platform-dependent
+    /// milliseconds
     modified: u64,
-    /// The file pointed at by the `PathInfo`'s last-accessd time (e.g. read) in
-    /// platform-dependent msecs
+    /// The time that this file was last accessed, in platform-dependent
+    /// milliseconds
     accessed: u64,
+
+    /// Information returned by stat() which is not guaranteed to be
+    /// platform-independent. This information may be useful on some platforms,
+    /// but it may have different meanings or no meaning at all on other
+    /// platforms.
+    ///
+    /// Usage of this field is discouraged, but if access is desired then the
+    /// fields are located here.
+    #[unstable]
+    unstable: UnstableFileStat,
 }
+
+/// This structure represents all of the possible information which can be
+/// returned from a `stat` syscall which is not contained in the `FileStat`
+/// structure. This information is not necessarily platform independent, and may
+/// have different meanings or no meaning at all on some platforms.
+#[unstable]
+pub struct UnstableFileStat {
+    device: u64,
+    inode: u64,
+    rdev: u64,
+    nlink: u64,
+    uid: u64,
+    gid: u64,
+    blksize: u64,
+    blocks: u64,
+    flags: u64,
+    gen: u64,
+}
+
+/// A set of permissions for a file or directory is represented by a set of
+/// flags which are or'd together.
+pub type FilePermission = u32;
+
+// Each permission bit
+pub static UserRead: FilePermission     = 0x100;
+pub static UserWrite: FilePermission    = 0x080;
+pub static UserExecute: FilePermission  = 0x040;
+pub static GroupRead: FilePermission    = 0x020;
+pub static GroupWrite: FilePermission   = 0x010;
+pub static GroupExecute: FilePermission = 0x008;
+pub static OtherRead: FilePermission    = 0x004;
+pub static OtherWrite: FilePermission   = 0x002;
+pub static OtherExecute: FilePermission = 0x001;
+
+// Common combinations of these bits
+pub static UserRWX: FilePermission  = UserRead | UserWrite | UserExecute;
+pub static GroupRWX: FilePermission = GroupRead | GroupWrite | GroupExecute;
+pub static OtherRWX: FilePermission = OtherRead | OtherWrite | OtherExecute;
+
+/// A set of permissions for user owned files, this is equivalent to 0644 on
+/// unix-like systems.
+pub static UserFile: FilePermission = UserRead | UserWrite | GroupRead | OtherRead;
+/// A set of permissions for user owned directories, this is equivalent to 0755
+/// on unix-like systems.
+pub static UserDir: FilePermission = UserRWX | GroupRead | GroupExecute |
+                                     OtherRead | OtherExecute;
+/// A set of permissions for user owned executables, this is equivalent to 0755
+/// on unix-like systems.
+pub static UserExec: FilePermission = UserDir;
+
+/// A mask for all possible permission bits
+pub static AllPermissions: FilePermission = 0x1ff;
