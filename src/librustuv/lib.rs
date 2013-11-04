@@ -55,7 +55,6 @@ use std::cast::transmute;
 use std::ptr::null;
 use std::unstable::finally::Finally;
 use std::rt::io::net::ip::SocketAddr;
-use std::rt::io::signal::Signum;
 
 use std::rt::io::IoError;
 
@@ -152,7 +151,39 @@ pub trait UvHandle<T> {
             unsafe { uvll::free_handle(handle) }
         }
 
-        unsafe { uvll::close(self.uv_handle(), close_cb) }
+        unsafe {
+            uvll::set_data_for_uv_handle(self.uv_handle(), null::<()>());
+            uvll::close(self.uv_handle(), close_cb)
+        }
+    }
+}
+
+pub trait UvRequest<T> {
+    fn uv_request(&self) -> *T;
+
+    // FIXME(#8888) dummy self
+    fn alloc(_: Option<Self>, ty: uvll::uv_req_type) -> *T {
+        unsafe {
+            let handle = uvll::malloc_req(ty);
+            assert!(!handle.is_null());
+            handle as *T
+        }
+    }
+
+    unsafe fn from_uv_request<'a>(h: &'a *T) -> &'a mut Self {
+        cast::transmute(uvll::get_data_for_req(*h))
+    }
+
+    fn install(~self) -> ~Self {
+        unsafe {
+            let myptr = cast::transmute::<&~Self, &*u8>(&self);
+            uvll::set_data_for_req(self.uv_request(), *myptr);
+        }
+        self
+    }
+
+    fn delete(&mut self) {
+        unsafe { uvll::free_req(self.uv_request() as *c_void) }
     }
 }
 
@@ -185,7 +216,6 @@ impl NativeHandle<*uvll::uv_loop_t> for Loop {
 pub type AllocCallback = ~fn(uint) -> Buf;
 pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
 pub type NullCallback = ~fn();
-pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
@@ -201,7 +231,6 @@ struct WatcherData {
     connect_cb: Option<ConnectionCallback>,
     close_cb: Option<NullCallback>,
     alloc_cb: Option<AllocCallback>,
-    idle_cb: Option<IdleCallback>,
     async_cb: Option<AsyncCallback>,
     udp_recv_cb: Option<UdpReceiveCallback>,
     udp_send_cb: Option<UdpSendCallback>,
@@ -234,11 +263,9 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 connect_cb: None,
                 close_cb: None,
                 alloc_cb: None,
-                idle_cb: None,
                 async_cb: None,
                 udp_recv_cb: None,
                 udp_send_cb: None,
-                signal_cb: None,
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);

@@ -23,7 +23,7 @@ use super::message_queue::MessageQueue;
 use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::{RemoteCallback, PausibleIdleCallback};
+use rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback};
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, Rng, Rand};
@@ -184,7 +184,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        self.idle_callback.get_mut_ref().start(Scheduler::run_sched_once);
+        self.idle_callback.get_mut_ref().start(~SchedRunner as ~Callback);
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -767,7 +767,7 @@ impl Scheduler {
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
-        let remote = self.event_loop.remote_callback(Scheduler::run_sched_once);
+        let remote = self.event_loop.remote_callback(~SchedRunner as ~Callback);
 
         return SchedHandle {
             remote: remote,
@@ -799,6 +799,14 @@ impl SchedHandle {
     pub fn send(&mut self, msg: SchedMessage) {
         self.queue.push(msg);
         self.remote.fire();
+    }
+}
+
+struct SchedRunner;
+
+impl Callback for SchedRunner {
+    fn call(&mut self) {
+        Scheduler::run_sched_once();
     }
 }
 
