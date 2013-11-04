@@ -2098,6 +2098,20 @@ fn test_rustpkg_test_output() {
 }
 
 #[test]
+fn test_rustpkg_test_failure_exit_status() {
+    let foo_id = PkgId::new("foo");
+    let foo_workspace = create_local_package(&foo_id);
+    let foo_workspace = foo_workspace.path();
+    writeFile(&foo_workspace.join_many(["src", "foo-0.1", "test.rs"]),
+              "#[test] fn f() { assert!('a' != 'a'); }");
+    let res = command_line_test_partial([~"test", ~"foo"], foo_workspace);
+    match res {
+        Fail(_) => {},
+        Success(*) => fail!("Expected test failure but got success")
+    }
+}
+
+#[test]
 fn test_rebuild_when_needed() {
     let foo_id = PkgId::new("foo");
     let foo_workspace = create_local_package(&foo_id);
@@ -2118,6 +2132,7 @@ fn test_rebuild_when_needed() {
 }
 
 #[test]
+#[ignore] // FIXME (#10257): This doesn't work as is since a read only file can't execute
 fn test_no_rebuilding() {
     let foo_id = PkgId::new("foo");
     let foo_workspace = create_local_package(&foo_id);
