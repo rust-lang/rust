@@ -21,6 +21,7 @@ use std::rand;
 use std::str;
 use std::util;
 use std::vec;
+use std::rt::io::File;
 
 macro_rules! bench (
     ($argv:expr, $id:ident) => (maybe_run_test($argv, stringify!($id).to_owned(), $id))
@@ -69,15 +70,13 @@ fn shift_push() {
 }
 
 fn read_line() {
-    use std::rt::io::{Reader, Open};
-    use std::rt::io::file::FileInfo;
     use std::rt::io::buffered::BufferedReader;
 
     let mut path = Path::new(env!("CFG_SRC_DIR"));
     path.push("src/test/bench/shootout-k-nucleotide.data");
 
     for _ in range(0, 3) {
-        let mut reader = BufferedReader::new(path.open_reader(Open).unwrap());
+        let mut reader = BufferedReader::new(File::open(&path).unwrap());
         while !reader.eof() {
             reader.read_line();
         }

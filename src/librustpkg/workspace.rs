@@ -52,7 +52,7 @@ pub fn pkg_parent_workspaces(cx: &Context, pkgid: &PkgId) -> ~[Path] {
 }
 
 pub fn is_workspace(p: &Path) -> bool {
-    os::path_is_dir(&p.join("src"))
+    p.join("src").is_dir()
 }
 
 /// Construct a workspace and package-ID name based on the current directory.

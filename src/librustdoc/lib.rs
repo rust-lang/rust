@@ -25,9 +25,8 @@ extern mod extra;
 
 use std::cell::Cell;
 use std::local_data;
-use std::rt::io::Writer;
-use std::rt::io::file::FileInfo;
 use std::rt::io;
+use std::rt::io::File;
 use std::rt::io::mem::MemWriter;
 use std::rt::io::Decorator;
 use std::str;
@@ -260,7 +259,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, ~str> {
-    let input = match Path::new(input).open_reader(io::Open) {
+    let input = match File::open(&Path::new(input)) {
         Some(f) => f,
         None => return Err(format!("couldn't open {} for reading", input)),
     };
@@ -322,7 +321,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     json.insert(~"crate", crate_json);
     json.insert(~"plugins", json::Object(plugins_json));
 
-    let mut file = dst.open_writer(io::Create).unwrap();
+    let mut file = File::create(&dst).unwrap();
     let output = json::Object(json).to_str();
     file.write(output.as_bytes());
 }

@@ -317,8 +317,11 @@ impl Zero for bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use prelude::*;
+    use cmp::{Equal, Greater, Less, Eq, TotalOrd};
+    use ops::{BitAnd, BitXor, BitOr};
+    use from_str::{FromStr, from_str};
+    use option::{Some, None};
+    use super::all_values;
 
     #[test]
     fn test_bool() {

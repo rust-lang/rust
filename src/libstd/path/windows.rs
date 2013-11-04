@@ -23,9 +23,6 @@ use to_bytes::IterBytes;
 use vec::Vector;
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
-#[cfg(target_os = "win32")]
-use rt::io::{FileStat, file, io_error};
-
 /// Iterator that yields successive components of a Path as &str
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
@@ -1054,67 +1051,6 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
 fn prefix_is_sep(p: Option<PathPrefix>, c: u8) -> bool {
     c.is_ascii() && if !prefix_is_verbatim(p) { is_sep(c as char) }
                     else { is_sep_verbatim(c as char) }
-}
-
-// Stat support
-#[cfg(target_os = "win32")]
-impl Path {
-    /// Calls stat() on the represented file and returns the resulting rt::io::FileStat
-    pub fn stat(&self) -> Option<FileStat> {
-        let mut file_stat: Option<FileStat> = None;
-        do io_error::cond.trap(|_| { /* Ignore error, will return None */ }).inside {
-            file_stat = file::stat(self);
-        }
-        file_stat
-    }
-
-    /// Returns whether the represented file exists
-    pub fn exists(&self) -> bool {
-        match self.stat() {
-            None => false,
-            Some(_) => true
-        }
-    }
-
-    /// Returns the filesize of the represented file
-    pub fn get_size(&self) -> Option<u64> {
-        match self.stat() {
-            None => None,
-            Some(st) => Some(st.size)
-        }
-    }
-
-    /// Returns the mode of the represented file
-    pub fn get_mode(&self) -> Option<uint> {
-        match self.stat() {
-            None => None,
-            Some(st) => Some(st.mode as uint)
-        }
-    }
-
-    /// Returns the atime of the represented file, as msecs
-    pub fn get_atime(&self) -> Option<u64> {
-        match self.stat() {
-            None => None,
-            Some(st) => Some(st.accessed)
-        }
-    }
-
-    /// Returns the mtime of the represented file, as msecs
-    pub fn get_mtime(&self) -> Option<u64> {
-        match self.stat() {
-            None => None,
-            Some(st) => Some(st.modified)
-        }
-    }
-
-    /// Returns the ctime of the represented file, as msecs
-    pub fn get_ctime(&self) -> Option<u64> {
-        match self.stat() {
-            None => None,
-            Some(st) => Some(st.created)
-        }
-    }
 }
 
 #[cfg(test)]

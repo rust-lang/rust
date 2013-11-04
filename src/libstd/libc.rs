@@ -142,7 +142,7 @@ pub use libc::consts::os::c95::{SEEK_SET, TMP_MAX};
 pub use libc::consts::os::posix88::{F_OK, O_APPEND, O_CREAT, O_EXCL};
 pub use libc::consts::os::posix88::{O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 pub use libc::consts::os::posix88::{R_OK, S_IEXEC, S_IFBLK, S_IFCHR};
-pub use libc::consts::os::posix88::{S_IFDIR, S_IFIFO, S_IFMT, S_IFREG};
+pub use libc::consts::os::posix88::{S_IFDIR, S_IFIFO, S_IFMT, S_IFREG, S_IFLNK};
 pub use libc::consts::os::posix88::{S_IREAD, S_IRUSR, S_IRWXU, S_IWUSR};
 pub use libc::consts::os::posix88::{STDERR_FILENO, STDIN_FILENO};
 pub use libc::consts::os::posix88::{STDOUT_FILENO, W_OK, X_OK};
@@ -1168,6 +1168,7 @@ pub mod consts {
             pub static S_IFBLK : c_int = 12288;
             pub static S_IFDIR : c_int = 16384;
             pub static S_IFREG : c_int = 32768;
+            pub static S_IFLNK : c_int = 40960;
             pub static S_IFMT : c_int = 61440;
             pub static S_IEXEC : c_int = 64;
             pub static S_IWRITE : c_int = 128;
@@ -1345,6 +1346,7 @@ pub mod consts {
             pub static S_IFBLK : c_int = 24576;
             pub static S_IFDIR : c_int = 16384;
             pub static S_IFREG : c_int = 32768;
+            pub static S_IFLNK : c_int = 40960;
             pub static S_IFMT : c_int = 61440;
             pub static S_IEXEC : c_int = 64;
             pub static S_IWRITE : c_int = 128;
@@ -1555,6 +1557,7 @@ pub mod consts {
             pub static S_IFBLK : c_int = 24576;
             pub static S_IFDIR : c_int = 16384;
             pub static S_IFREG : c_int = 32768;
+            pub static S_IFLNK : c_int = 40960;
             pub static S_IFMT : c_int = 61440;
             pub static S_IEXEC : c_int = 64;
             pub static S_IWRITE : c_int = 128;
@@ -1999,6 +2002,7 @@ pub mod consts {
             pub static S_IFBLK : c_int = 24576;
             pub static S_IFDIR : c_int = 16384;
             pub static S_IFREG : c_int = 32768;
+            pub static S_IFLNK : c_int = 40960;
             pub static S_IFMT : c_int = 61440;
             pub static S_IEXEC : c_int = 64;
             pub static S_IWRITE : c_int = 128;
@@ -2341,6 +2345,7 @@ pub mod consts {
             pub static S_IFBLK : c_int = 24576;
             pub static S_IFDIR : c_int = 16384;
             pub static S_IFREG : c_int = 32768;
+            pub static S_IFLNK : c_int = 40960;
             pub static S_IFMT : c_int = 61440;
             pub static S_IEXEC : c_int = 64;
             pub static S_IWRITE : c_int = 128;

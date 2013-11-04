@@ -14,6 +14,8 @@
 use std::os;
 use std::rand::Rng;
 use std::rand;
+use std::rt::io;
+use std::rt::io::fs;
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-pased deletion.
@@ -36,8 +38,9 @@ impl TempDir {
         let mut r = rand::rng();
         for _ in range(0u, 1000) {
             let p = tmpdir.join(r.gen_ascii_str(16) + suffix);
-            if os::make_dir(&p, 0x1c0) { // 700
-                return Some(TempDir { path: Some(p) });
+            match io::result(|| fs::mkdir(&p, io::UserRWX)) {
+                Err(*) => {}
+                Ok(()) => return Some(TempDir { path: Some(p) })
             }
         }
         None
@@ -69,7 +72,9 @@ impl TempDir {
 impl Drop for TempDir {
     fn drop(&mut self) {
         for path in self.path.iter() {
-            os::remove_dir_recursive(path);
+            if path.exists() {
+                fs::rmdir_recursive(path);
+            }
         }
     }
 }

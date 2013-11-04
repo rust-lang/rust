@@ -20,44 +20,18 @@ use procsrv;
 use util;
 use util::logv;
 
-use std::cell::Cell;
 use std::rt::io;
-use std::rt::io::Writer;
-use std::rt::io::Reader;
-use std::rt::io::file::FileInfo;
+use std::rt::io::fs;
+use std::rt::io::File;
 use std::os;
 use std::str;
-use std::task::{spawn_sched, SingleThreaded};
 use std::vec;
-use std::unstable::running_on_valgrind;
 
 use extra::test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
-    let config = Cell::new(config);
-    let testfile = Cell::new(testfile);
-    // FIXME #6436: Creating another thread to run the test because this
-    // is going to call waitpid. The new scheduler has some strange
-    // interaction between the blocking tasks and 'friend' schedulers
-    // that destroys parallelism if we let normal schedulers block.
-    // It should be possible to remove this spawn once std::run is
-    // rewritten to be non-blocking.
-    //
-    // We do _not_ create another thread if we're running on V because
-    // it serializes all threads anyways.
-    if running_on_valgrind() {
-        let config = config.take();
-        let testfile = testfile.take();
-        let mut _mm = MetricMap::new();
-        run_metrics(config, testfile, &mut _mm);
-    } else {
-        do spawn_sched(SingleThreaded) {
-            let config = config.take();
-            let testfile = testfile.take();
-            let mut _mm = MetricMap::new();
-            run_metrics(config, testfile, &mut _mm);
-        }
-    }
+    let mut _mm = MetricMap::new();
+    run_metrics(config, testfile, &mut _mm);
 }
 
 pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
@@ -173,7 +147,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let src = testfile.open_reader(io::Open).read_to_end();
+    let src = File::open(testfile).read_to_end();
     let src = str::from_utf8_owned(src);
     let mut srcs = ~[src];
 
@@ -195,7 +169,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut expected = match props.pp_exact {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
-            let s = filepath.open_reader(io::Open).read_to_end();
+            let s = File::open(&filepath).read_to_end();
             str::from_utf8_owned(s)
           }
           None => { srcs[srcs.len() - 2u].clone() }
@@ -651,10 +625,8 @@ fn compose_and_run_compiler(
 }
 
 fn ensure_dir(path: &Path) {
-    if os::path_is_dir(path) { return; }
-    if !os::make_dir(path, 0x1c0i32) {
-        fail!("can't make dir {}", path.display());
-    }
+    if path.is_dir() { return; }
+    fs::mkdir(path, io::UserRWX);
 }
 
 fn compose_and_run(config: &config, testfile: &Path,
@@ -768,7 +740,7 @@ fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
 fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    outfile.open_writer(io::CreateOrTruncate).write(out.as_bytes());
+    File::create(&outfile).write(out.as_bytes());
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
@@ -924,7 +896,7 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
-    let dirs = os::list_dir_path(&tdir);
+    let dirs = fs::readdir(&tdir);
     for file in dirs.iter() {
         if file.extension_str() == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1019,7 +991,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = p.with_extension("ll").open_reader(io::Open).read_to_end();
+    let x = File::open(&p.with_extension("ll")).read_to_end();
     let x = str::from_utf8_owned(x);
     x.line_iter().len()
 }

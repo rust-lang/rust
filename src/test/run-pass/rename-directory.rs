@@ -17,6 +17,8 @@ extern mod extra;
 use extra::tempfile::TempDir;
 use std::os;
 use std::libc;
+use std::rt::io;
+use std::rt::io::fs;
 
 fn rename_directory() {
     #[fixed_stack_segment];
@@ -26,7 +28,7 @@ fn rename_directory() {
         let tmpdir = TempDir::new("rename_directory").expect("rename_directory failed");
         let tmpdir = tmpdir.path();
         let old_path = tmpdir.join_many(["foo", "bar", "baz"]);
-        assert!(os::mkdir_recursive(&old_path, U_RWX));
+        fs::mkdir_recursive(&old_path, io::UserRWX);
         let test_file = &old_path.join("temp.txt");
 
         /* Write the temp input file */
@@ -47,10 +49,10 @@ fn rename_directory() {
         assert_eq!(libc::fclose(ostream), (0u as libc::c_int));
 
         let new_path = tmpdir.join_many(["quux", "blat"]);
-        assert!(os::mkdir_recursive(&new_path, U_RWX));
-        assert!(os::rename_file(&old_path, &new_path.join("newdir")));
-        assert!(os::path_is_dir(&new_path.join("newdir")));
-        assert!(os::path_exists(&new_path.join_many(["newdir", "temp.txt"])));
+        fs::mkdir_recursive(&new_path, io::UserRWX);
+        fs::rename(&old_path, &new_path.join("newdir"));
+        assert!(new_path.join("newdir").is_dir());
+        assert!(new_path.join_many(["newdir", "temp.txt"]).exists());
     }
 }
 

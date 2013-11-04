@@ -19,6 +19,7 @@ definitions for a number of signals.
 
 */
 
+use container::{Map, MutableMap};
 use comm::{Port, SharedChan, stream};
 use hashmap;
 use option::{Some, None};
@@ -146,10 +147,10 @@ impl Listener {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use libc;
     use rt::io::timer;
+    use super::{Listener, Interrupt};
+    use comm::{GenericPort, Peekable};
 
     // kill is only available on Unixes
     #[cfg(unix)]
@@ -208,6 +209,7 @@ mod test {
     #[test]
     fn test_io_signal_invalid_signum() {
         use rt::io;
+        use super::User1;
         let mut s = Listener::new();
         let mut called = false;
         do io::io_error::cond.trap(|_| {

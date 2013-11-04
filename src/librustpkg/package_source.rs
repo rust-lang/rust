@@ -12,7 +12,8 @@ extern mod extra;
 
 use target::*;
 use package_id::PkgId;
-use std::path::Path;
+use std::rt::io;
+use std::rt::io::fs;
 use std::os;
 use context::*;
 use crate::Crate;
@@ -117,7 +118,7 @@ impl PkgSrc {
 
         debug!("Checking dirs: {:?}", to_try.map(|p| p.display().to_str()).connect(":"));
 
-        let path = to_try.iter().find(|&d| os::path_exists(d));
+        let path = to_try.iter().find(|&d| d.exists());
 
         // See the comments on the definition of PkgSrc
         let mut build_in_destination = use_rust_path_hack;
@@ -132,7 +133,7 @@ impl PkgSrc {
                     let package_id = PkgId::new(prefix.as_str().unwrap());
                     let path = build_dir.join(&package_id.path);
                     debug!("in loop: checking if {} is a directory", path.display());
-                    if os::path_is_dir(&path) {
+                    if path.is_dir() {
                         let ps = PkgSrc::new(source_workspace,
                                              destination_workspace,
                                              use_rust_path_hack,
@@ -237,7 +238,7 @@ impl PkgSrc {
 
         debug!("For package id {}, returning {}", id.to_str(), dir.display());
 
-        if !os::path_is_dir(&dir) {
+        if !dir.is_dir() {
             cond.raise((id.clone(), ~"supplied path for package dir is a \
                                         non-directory"));
         }
@@ -267,7 +268,7 @@ impl PkgSrc {
         debug!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
                 pkgid.to_str(), pkgid.path.display(),
                 cwd.display(),
-                os::path_exists(&pkgid.path));
+                pkgid.path.exists());
 
         match safe_git_clone(&pkgid.path, &pkgid.version, local) {
             CheckedOutSources => {
@@ -300,7 +301,7 @@ impl PkgSrc {
                 // Move clone_target to local.
                 // First, create all ancestor directories.
                 let moved = make_dir_rwx_recursive(&local.dir_path())
-                    && os::rename_file(&clone_target, local);
+                    && io::result(|| fs::rename(&clone_target, local)).is_ok();
                 if moved { Some(local.clone()) }
                     else { None }
             }
@@ -312,7 +313,7 @@ impl PkgSrc {
     pub fn package_script_option(&self) -> Option<Path> {
         let maybe_path = self.start_dir.join("pkg.rs");
         debug!("package_script_option: checking whether {} exists", maybe_path.display());
-        if os::path_exists(&maybe_path) {
+        if maybe_path.exists() {
             Some(maybe_path)
         } else {
             None
@@ -349,7 +350,7 @@ impl PkgSrc {
 
         let prefix = self.start_dir.component_iter().len();
         debug!("Matching against {}", self.id.short_name);
-        do os::walk_dir(&self.start_dir) |pth| {
+        for pth in fs::walk_dir(&self.start_dir) {
             let maybe_known_crate_set = match pth.filename_str() {
                 Some(filename) if filter(filename) => match filename {
                     "lib.rs" => Some(&mut self.libs),
@@ -362,11 +363,10 @@ impl PkgSrc {
             };
 
             match maybe_known_crate_set {
-                Some(crate_set) => PkgSrc::push_crate(crate_set, prefix, pth),
+                Some(crate_set) => PkgSrc::push_crate(crate_set, prefix, &pth),
                 None => ()
             }
-            true
-        };
+        }
 
         let crate_sets = [&self.libs, &self.mains, &self.tests, &self.benchs];
         if crate_sets.iter().all(|crate_set| crate_set.is_empty()) {

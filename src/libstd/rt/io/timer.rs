@@ -108,6 +108,7 @@ impl Timer {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use super::*;
     use rt::test::*;
     use cell::Cell;
