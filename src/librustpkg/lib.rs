@@ -699,7 +699,9 @@ impl CtxMethods for BuildContext {
                 debug!("test: test_exec = {}", test_exec.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
-                os::set_exit_status(status);
+                if status != 0 {
+                    fail!("Some tests failed");
+                }
             }
             None => {
                 error(format!("Internal error: test executable for package ID {} in workspace {} \
