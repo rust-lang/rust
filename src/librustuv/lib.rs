@@ -50,7 +50,7 @@ use std::str::raw::from_c_str;
 use std::vec;
 use std::ptr;
 use std::str;
-use std::libc::{c_void, c_int, size_t, malloc, free, c_char, c_uint};
+use std::libc::{c_void, c_int, size_t, malloc, free};
 use std::cast::transmute;
 use std::ptr::null;
 use std::unstable::finally::Finally;
@@ -153,7 +153,7 @@ pub trait UvHandle<T> {
 
         unsafe {
             uvll::set_data_for_uv_handle(self.uv_handle(), null::<()>());
-            uvll::close(self.uv_handle(), close_cb)
+            uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb)
         }
     }
 }

@@ -14,6 +14,7 @@ use std::cast;
 use std::cell::Cell;
 use std::clone::Clone;
 use std::comm::{SharedChan, GenericChan};
+use std::libc;
 use std::libc::{c_int, c_uint, c_void};
 use std::ptr;
 use std::str;
@@ -30,9 +31,9 @@ use std::rt::tube::Tube;
 use std::rt::task::Task;
 use std::path::{GenericPath, Path};
 use std::libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY,
-                O_WRONLY, S_IRUSR, S_IWUSR, S_IRWXU};
-use std::rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
-                  CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
+                O_WRONLY, S_IRUSR, S_IWUSR};
+use std::rt::io::{FileMode, FileAccess, Open,
+                  Append, Truncate, Read, Write, ReadWrite,
                   FileStat};
 use std::rt::io::signal::Signum;
 use std::task;
@@ -1224,7 +1225,7 @@ impl UvFileStream {
         do sched.deschedule_running_task_and_then |_, task| {
             let task = Cell::new(task);
             let req = file::FsRequest::new();
-            do f(self_, req) |_, uverr| {
+            do f(self, req) |_, uverr| {
                 let res = match uverr  {
                     None => Ok(()),
                     Some(err) => Err(uv_error_to_io_error(err))

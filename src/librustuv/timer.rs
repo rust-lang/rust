@@ -36,7 +36,7 @@ impl TimerWatcher {
     pub fn new(loop_: &mut Loop) -> ~TimerWatcher {
         let handle = UvHandle::alloc(None::<TimerWatcher>, uvll::UV_TIMER);
         assert_eq!(unsafe {
-            uvll::timer_init(loop_.native_handle(), handle)
+            uvll::uv_timer_init(loop_.native_handle(), handle)
         }, 0);
         let me = ~TimerWatcher {
             handle: handle,
@@ -48,12 +48,12 @@ impl TimerWatcher {
 
     fn start(&mut self, msecs: u64, period: u64) {
         assert_eq!(unsafe {
-            uvll::timer_start(self.handle, timer_cb, msecs, period)
+            uvll::uv_timer_start(self.handle, timer_cb, msecs, period)
         }, 0)
     }
 
     fn stop(&mut self) {
-        assert_eq!(unsafe { uvll::timer_stop(self.handle) }, 0)
+        assert_eq!(unsafe { uvll::uv_timer_stop(self.handle) }, 0)
     }
 }
 
@@ -67,23 +67,21 @@ impl UvHandle<uvll::uv_timer_t> for TimerWatcher {
 
 impl RtioTimer for TimerWatcher {
     fn sleep(&mut self, msecs: u64) {
-        do self.home_for_io_with_sched |self_, scheduler| {
-            do scheduler.deschedule_running_task_and_then |_sched, task| {
-                self_.action = Some(WakeTask(task));
-                self_.start(msecs, 0);
-            }
-            self_.stop();
+        let (_m, sched) = self.fire_missiles_sched();
+        do sched.deschedule_running_task_and_then |_sched, task| {
+            self.action = Some(WakeTask(task));
+            self.start(msecs, 0);
         }
+        self.stop();
     }
 
     fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
         let (port, chan) = oneshot();
         let chan = Cell::new(chan);
 
-        do self.home_for_io |self_| {
-            self_.action = Some(SendOnce(chan.take()));
-            self_.start(msecs, 0);
-        }
+        let _m = self.fire_missiles();
+        self.action = Some(SendOnce(chan.take()));
+        self.start(msecs, 0);
 
         return port;
     }
@@ -92,10 +90,9 @@ impl RtioTimer for TimerWatcher {
         let (port, chan) = stream();
         let chan = Cell::new(chan);
 
-        do self.home_for_io |self_| {
-            self_.action = Some(SendMany(chan.take()));
-            self_.start(msecs, msecs);
-        }
+        let _m = self.fire_missiles();
+        self.action = Some(SendMany(chan.take()));
+        self.start(msecs, msecs);
 
         return port;
     }
@@ -119,11 +116,10 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
 
 impl Drop for TimerWatcher {
     fn drop(&mut self) {
-        do self.home_for_io |self_| {
-            self_.action = None;
-            self_.stop();
-            self_.close_async_();
-        }
+        let _m = self.fire_missiles();
+        self.action = None;
+        self.stop();
+        self.close_async_();
     }
 }
 

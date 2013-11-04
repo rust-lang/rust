@@ -201,32 +201,30 @@ impl RtioProcess for Process {
     }
 
     fn kill(&mut self, signal: int) -> Result<(), IoError> {
-        do self.home_for_io |self_| {
-            match unsafe {
-                uvll::process_kill(self_.handle, signal as libc::c_int)
-            } {
-                0 => Ok(()),
-                err => Err(uv_error_to_io_error(UvError(err)))
-            }
+        let _m = self.fire_missiles();
+        match unsafe {
+            uvll::uv_process_kill(self.handle, signal as libc::c_int)
+        } {
+            0 => Ok(()),
+            err => Err(uv_error_to_io_error(UvError(err)))
         }
     }
 
     fn wait(&mut self) -> int {
         // Make sure (on the home scheduler) that we have an exit status listed
-        do self.home_for_io |self_| {
-            match self_.exit_status {
-                Some(*) => {}
-                None => {
-                    // If there's no exit code previously listed, then the
-                    // process's exit callback has yet to be invoked. We just
-                    // need to deschedule ourselves and wait to be reawoken.
-                    let scheduler: ~Scheduler = Local::take();
-                    do scheduler.deschedule_running_task_and_then |_, task| {
-                        assert!(self_.to_wake.is_none());
-                        self_.to_wake = Some(task);
-                    }
-                    assert!(self_.exit_status.is_some());
+        let _m = self.fire_missiles();
+        match self.exit_status {
+            Some(*) => {}
+            None => {
+                // If there's no exit code previously listed, then the
+                // process's exit callback has yet to be invoked. We just
+                // need to deschedule ourselves and wait to be reawoken.
+                let scheduler: ~Scheduler = Local::take();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    assert!(self.to_wake.is_none());
+                    self.to_wake = Some(task);
                 }
+                assert!(self.exit_status.is_some());
             }
         }
 
@@ -237,9 +235,8 @@ impl RtioProcess for Process {
 
 impl Drop for Process {
     fn drop(&mut self) {
-        do self.home_for_io |self_| {
-            assert!(self_.to_wake.is_none());
-            self_.close_async_();
-        }
+        let _m = self.fire_missiles();
+        assert!(self.to_wake.is_none());
+        self.close_async_();
     }
 }

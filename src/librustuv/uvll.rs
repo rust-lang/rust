@@ -724,6 +724,7 @@ extern {
     fn rust_set_stdio_container_fd(c: *uv_stdio_container_t, fd: c_int);
     fn rust_set_stdio_container_stream(c: *uv_stdio_container_t,
                                        stream: *uv_stream_t);
+    fn rust_uv_process_pid(p: *uv_process_t) -> c_int;
 }
 
 // generic uv functions
@@ -809,21 +810,25 @@ externfn!(fn uv_fs_readdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
                            flags: c_int, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_req_cleanup(req: *uv_fs_t))
 externfn!(fn uv_fs_fsync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
-                         cb: *u8) -> c_int)
+                         cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_fdatasync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
-                             cb: *u8) -> c_int)
+                             cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_ftruncate(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
-                             offset: i64, cb: *u8) -> c_int)
+                             offset: i64, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_readlink(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
-                            cb: *u8) -> c_int)
+                            cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_symlink(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                           dst: *c_char, flags: c_int, cb: *u8) -> c_int)
+                           dst: *c_char, flags: c_int, cb: uv_fs_cb) -> c_int)
+externfn!(fn uv_fs_rename(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                          dst: *c_char, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_link(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                        dst: *c_char, cb: *u8) -> c_int)
+                        dst: *c_char, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_chown(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                         uid: uv_uid_t, gid: uv_gid_t, cb: *u8) -> c_int)
+                         uid: uv_uid_t, gid: uv_gid_t, cb: uv_fs_cb) -> c_int)
+externfn!(fn uv_fs_chmod(handle: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                         mode: c_int, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_lstat(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
-                         cb: *u8) -> c_int)
+                         cb: uv_fs_cb) -> c_int)
 
 // getaddrinfo
 externfn!(fn uv_getaddrinfo(loop_: *uv_loop_t, req: *uv_getaddrinfo_t,
