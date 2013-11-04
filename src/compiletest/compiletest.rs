@@ -220,6 +220,19 @@ pub fn mode_str(mode: mode) -> ~str {
 }
 
 pub fn run_tests(config: &config) {
+    if config.target == ~"arm-linux-androideabi" {
+        match config.mode{
+            mode_debug_info => {
+                println("arm-linux-androideabi debug-info \
+                        test uses tcp 5039 port. please reserve it");
+                //arm-linux-androideabi debug-info test uses remote debugger
+                //so, we test 1 task at once
+                os::setenv("RUST_TEST_TASKS","1");
+            }
+            _ =>{}
+        }
+    }
+
     let opts = test_opts(config);
     let tests = make_tests(config);
     // sadly osx needs some file descriptor limits raised for running tests in

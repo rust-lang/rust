@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-android
+
 // compile-flags:-Z debug-info
 // debugger:run
 
