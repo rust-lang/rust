@@ -158,7 +158,7 @@ impl PipeListener {
                 Ok(p.install())
             }
             n => {
-                unsafe { uvll::free_handle(pipe) }
+                unsafe { uvll::uv_close(pipe, pipe_close_cb) }
                 Err(UvError(n))
             }
         }

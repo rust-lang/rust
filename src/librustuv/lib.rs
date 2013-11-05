@@ -60,7 +60,7 @@ use std::rt::io::IoError;
 
 //#[cfg(test)] use unstable::run_in_bare_thread;
 
-pub use self::file::{FsRequest};
+pub use self::file::{FsRequest, FileWatcher};
 pub use self::net::{StreamWatcher, TcpWatcher, UdpWatcher};
 pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
@@ -219,7 +219,6 @@ pub type AllocCallback = ~fn(uint) -> Buf;
 pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
 pub type NullCallback = ~fn();
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
-pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
 
@@ -263,7 +262,6 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 connect_cb: None,
                 close_cb: None,
                 alloc_cb: None,
-                async_cb: None,
                 udp_recv_cb: None,
                 udp_send_cb: None,
             };

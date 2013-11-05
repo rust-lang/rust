@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cell::Cell;
-use std::comm::{oneshot, stream, PortOne, ChanOne};
+use std::comm::{oneshot, stream, PortOne, ChanOne, SendDeferred};
 use std::libc::c_int;
 use std::rt::BlockedTask;
 use std::rt::local::Local;
@@ -106,9 +106,9 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
             let sched: ~Scheduler = Local::take();
             sched.resume_blocked_task_immediately(task);
         }
-        SendOnce(chan) => chan.send(()),
+        SendOnce(chan) => chan.send_deferred(()),
         SendMany(chan) => {
-            chan.send(());
+            chan.send_deferred(());
             timer.action = Some(SendMany(chan));
         }
     }
