@@ -375,6 +375,7 @@ impl Reflector {
             self.visit("fn_input", extra);
         }
         let extra = ~[self.c_uint(retval),
+                      self.c_bool(sig.variadic),
                       self.c_tydesc(sig.output)];
         self.visit("fn_output", extra);
     }

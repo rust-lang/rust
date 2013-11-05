@@ -382,8 +382,15 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(stage0)]
     fn visit_fn_output(&mut self, retstyle: uint, inner: *TyDesc) -> bool {
         if ! self.inner.visit_fn_output(retstyle, inner) { return false; }
+        true
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_fn_output(&mut self, retstyle: uint, variadic: bool, inner: *TyDesc) -> bool {
+        if ! self.inner.visit_fn_output(retstyle, variadic, inner) { return false; }
         true
     }
 

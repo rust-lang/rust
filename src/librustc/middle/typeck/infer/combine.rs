@@ -414,8 +414,7 @@ pub fn eq_opt_regions<C:Combine>(
     }
 }
 
-pub fn super_fn_sigs<C:Combine>(
-    this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
 
     fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<~[ty::t]> {
         if a_args.len() == b_args.len() {
@@ -426,12 +425,19 @@ pub fn super_fn_sigs<C:Combine>(
         }
     }
 
+    if a.variadic != b.variadic {
+        return Err(ty::terr_variadic_mismatch(expected_found(this, a.variadic, b.variadic)));
+    }
+
     do argvecs(this, a.inputs, b.inputs)
             .and_then |inputs| {
         do this.tys(a.output, b.output).and_then |output| {
-            Ok(FnSig {bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
-                      inputs: inputs.clone(),
-                      output: output})
+            Ok(FnSig {
+                bound_lifetime_names: opt_vec::Empty, // FIXME(#4846)
+                inputs: inputs.clone(),
+                output: output,
+                variadic: a.variadic
+            })
         }
     }
 }

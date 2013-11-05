@@ -605,7 +605,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                                            .bound_lifetime_names
                                            .clone(),
                                 inputs: trait_fn_args,
-                                output: trait_m.fty.sig.output
+                                output: trait_m.fty.sig.output,
+                                variadic: false
                             }
                         });
     let impl_fty =
@@ -620,7 +621,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                                           .bound_lifetime_names
                                           .clone(),
                                     inputs: impl_fn_args,
-                                    output: impl_m.fty.sig.output
+                                    output: impl_m.fty.sig.output,
+                                    variadic: false
                             }
                         });
 
@@ -1291,9 +1293,12 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
         ty::BareFnTy {
             abis: abis,
             purity: ast::unsafe_fn,
-            sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
-                            inputs: input_tys,
-                            output: output_ty}
+            sig: ty::FnSig {
+                bound_lifetime_names: opt_vec::Empty,
+                inputs: input_tys,
+                output: output_ty,
+                variadic: decl.variadic
+            }
         });
     let tpt = ty_param_bounds_and_ty {
         generics: ty_generics,
