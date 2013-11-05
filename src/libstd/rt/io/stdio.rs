@@ -30,7 +30,7 @@ use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::buffered::{LineBufferedWriter, BufferedWriter};
+use rt::io::buffered::LineBufferedWriter;
 use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io,
                CloseAsynchronously};
 use super::{Reader, Writer, io_error, IoError, OtherIoError};
@@ -135,14 +135,7 @@ fn with_task_stdout(f: &fn(&mut Writer)) {
             Some(ref mut handle) => f(*handle),
             None => {
                 let handle = stdout();
-                let mut handle = if handle.isatty() {
-                    ~LineBufferedWriter::new(handle) as ~Writer
-                } else {
-                    // The default capacity is very large, 64k, but this is just
-                    // a stdout stream, and possibly per task, so let's not make
-                    // this too expensive.
-                    ~BufferedWriter::with_capacity(4096, handle) as ~Writer
-                };
+                let mut handle = ~LineBufferedWriter::new(handle) as ~Writer;
                 f(handle);
                 (*task).stdout_handle = Some(handle);
             }
@@ -152,10 +145,9 @@ fn with_task_stdout(f: &fn(&mut Writer)) {
 
 /// Flushes the local task's stdout handle.
 ///
-/// By default, this stream is a buffering stream, flushing may be necessary to
-/// ensure output is on the terminal screen. The buffering used is
-/// line-buffering when stdout is attached to a terminal, and a fixed sized
-/// buffer if it is not attached to a terminal.
+/// By default, this stream is a line-buffering stream, so flushing may be
+/// necessary to ensure that all output is printed to the screen (if there are
+/// no newlines printed).
 ///
 /// Note that logging macros do not use this stream. Using the logging macros
 /// will emit output to stderr, and while they are line buffered the log
