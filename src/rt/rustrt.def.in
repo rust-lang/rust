@@ -42,6 +42,13 @@ rust_signal_little_lock
 rust_wait_little_lock
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
+tdefl_compressor_alloc
+tdefl_compressor_free
+tinfl_decompressor_alloc
+tinfl_decompressor_free
+tdefl_init
+tdefl_compress
+tinfl_decompress
 rust_raw_thread_start
 rust_raw_thread_join
 rust_raw_thread_delete

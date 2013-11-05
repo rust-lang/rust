@@ -91,6 +91,8 @@ pub mod complex;
 pub mod stats;
 pub mod semver;
 pub mod flate;
+pub mod deflate;
+pub mod gzip;
 pub mod hex;
 pub mod uuid;
 
