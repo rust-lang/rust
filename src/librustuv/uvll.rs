@@ -29,7 +29,7 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use std::libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
+use std::libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t, c_double};
 use std::libc::ssize_t;
 use std::libc::{malloc, free};
 use std::libc;
@@ -824,6 +824,9 @@ externfn!(fn uv_fs_symlink(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
                            dst: *c_char, flags: c_int, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_rename(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
                           dst: *c_char, cb: uv_fs_cb) -> c_int)
+externfn!(fn uv_fs_utime(handle: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                         atime: c_double, mtime: c_double,
+                         cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_link(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
                         dst: *c_char, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_chown(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
