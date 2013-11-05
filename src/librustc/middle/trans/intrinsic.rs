@@ -285,6 +285,11 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let td = PointerCast(bcx, static_ti.tydesc, userland_tydesc_ty);
             Ret(bcx, td);
         }
+        "type_id" => {
+            let hash = ty::hash_crate_independent(ccx.tcx, substs.tys[0],
+                                                  ccx.link_meta.extras_hash);
+            Ret(bcx, C_i64(hash as i64))
+        }
         "init" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);

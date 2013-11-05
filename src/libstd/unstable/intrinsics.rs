@@ -49,23 +49,23 @@ pub struct TyDesc {
     align: uint,
 
     // Called on a copy of a value of type `T` *after* memcpy
-    priv take_glue: GlueFn,
+    take_glue: GlueFn,
 
     // Called when a value of type `T` is no longer needed
     drop_glue: GlueFn,
 
     // Called by drop glue when a value of type `T` can be freed
-    priv free_glue: GlueFn,
+    free_glue: GlueFn,
 
     // Called by reflection visitor to visit a value of type `T`
-    priv visit_glue: GlueFn,
+    visit_glue: GlueFn,
 
     // If T represents a box pointer (`@U` or `~U`), then
     // `borrow_offset` is the amount that the pointer must be adjusted
     // to find the payload.  This is always derivable from the type
     // `U`, but in the case of `@Trait` or `~Trait` objects, the type
     // `U` is unknown.
-    priv borrow_offset: uint,
+    borrow_offset: uint,
 
     // Name corresponding to the type
     name: &'static str
@@ -306,6 +306,12 @@ extern "rust-intrinsic" {
 
     /// Get a static pointer to a type descriptor.
     pub fn get_tydesc<T>() -> *TyDesc;
+
+    /// Gets an identifier which is globally unique to the specified type. This
+    /// function will return the same value for a type regardless of whichever
+    /// crate it is invoked in.
+    #[cfg(not(stage0))]
+    pub fn type_id<T: 'static>() -> u64;
 
     /// Create a value initialized to zero.
     ///
