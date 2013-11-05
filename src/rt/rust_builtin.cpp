@@ -11,7 +11,6 @@
 /* Foreign builtins. */
 
 #include "rust_util.h"
-#include "sync/rust_thread.h"
 #include "sync/lock_and_signal.h"
 #include "vg/valgrind.h"
 
@@ -383,42 +382,6 @@ rust_wait_little_lock(lock_and_signal *lock) {
 extern "C" void
 rust_signal_little_lock(lock_and_signal *lock) {
     lock->signal();
-}
-
-typedef void(startfn)(void*, void*);
-
-class raw_thread: public rust_thread {
-public:
-    startfn *raw_start;
-    void *rust_fn;
-    void *rust_env;
-
-    raw_thread(startfn *raw_start, void *rust_fn, void *rust_env)
-        : raw_start(raw_start), rust_fn(rust_fn), rust_env(rust_env) { }
-
-    virtual void run() {
-        raw_start(rust_fn, rust_env);
-    }
-};
-
-extern "C" raw_thread*
-rust_raw_thread_start(startfn *raw_start, void *rust_start, void *rust_env) {
-    assert(raw_start && rust_start);
-    raw_thread *thread = new raw_thread(raw_start, rust_start, rust_env);
-    thread->start();
-    return thread;
-}
-
-extern "C" void
-rust_raw_thread_join(raw_thread *thread) {
-    assert(thread);
-    thread->join();
-}
-
-extern "C" void
-rust_raw_thread_delete(raw_thread *thread) {
-    assert(thread);
-    delete thread;
 }
 
 #ifndef _WIN32
