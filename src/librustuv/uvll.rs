@@ -53,6 +53,7 @@ pub mod errors {
     pub static ENOTCONN: c_int = -4054;
     pub static EPIPE: c_int = -4048;
     pub static ECONNABORTED: c_int = -4080;
+    pub static ECANCELED: c_int = -4082;
 }
 #[cfg(not(windows))]
 pub mod errors {
@@ -65,6 +66,7 @@ pub mod errors {
     pub static ENOTCONN: c_int = -libc::ENOTCONN;
     pub static EPIPE: c_int = -libc::EPIPE;
     pub static ECONNABORTED: c_int = -libc::ECONNABORTED;
+    pub static ECANCELED : c_int = -libc::ECANCELED;
 }
 
 pub static PROCESS_SETUID: c_int = 1 << 0;
@@ -127,6 +129,7 @@ pub struct uv_stdio_container_t {
 }
 
 pub type uv_handle_t = c_void;
+pub type uv_req_t = c_void;
 pub type uv_loop_t = c_void;
 pub type uv_idle_t = c_void;
 pub type uv_tcp_t = c_void;

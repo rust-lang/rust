@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
 use std::libc::c_int;
 use std::libc;
 use std::ptr;
@@ -58,8 +57,7 @@ impl Process {
             }
         }
 
-        let ret_io = Cell::new(ret_io);
-        do with_argv(config.program, config.args) |argv| {
+        let ret = do with_argv(config.program, config.args) |argv| {
             do with_env(config.env) |envp| {
                 let options = uvll::uv_process_options_t {
                     exit_cb: on_exit,
@@ -89,7 +87,7 @@ impl Process {
                             exit_status: None,
                             term_signal: None,
                         };
-                        Ok((process.install(), ret_io.take()))
+                        Ok(process.install())
                     }
                     err => {
                         unsafe { uvll::free_handle(handle) }
@@ -97,6 +95,11 @@ impl Process {
                     }
                 }
             }
+        };
+
+        match ret {
+            Ok(p) => Ok((p, ret_io)),
+            Err(e) => Err(e),
         }
     }
 }

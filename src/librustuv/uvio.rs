@@ -11,22 +11,17 @@
 use std::c_str::CString;
 use std::cast::transmute;
 use std::cast;
-use std::cell::Cell;
-use std::clone::Clone;
 use std::comm::{SharedChan, GenericChan};
 use std::libc;
-use std::libc::{c_int, c_uint, c_void};
-use std::ptr;
+use std::libc::c_int;
 use std::str;
 use std::rt::io;
 use std::rt::io::IoError;
-use std::rt::io::net::ip::{SocketAddr, IpAddr};
-use std::rt::io::{standard_error, OtherIoError};
+use std::rt::io::net::ip::SocketAddr;
 use std::rt::io::process::ProcessConfig;
 use std::rt::local::Local;
 use std::rt::rtio::*;
 use std::rt::sched::{Scheduler, SchedHandle};
-use std::rt::tube::Tube;
 use std::rt::task::Task;
 use std::path::Path;
 use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
@@ -45,9 +40,7 @@ use ai = std::rt::io::net::addrinfo;
 
 use super::*;
 use idle::IdleWatcher;
-use net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use addrinfo::GetAddrInfoRequest;
-use pipe::PipeListener;
 
 // XXX we should not be calling uvll functions in here.
 
@@ -137,47 +130,6 @@ impl Drop for HomingMissile {
     }
 }
 
-enum SocketNameKind {
-    TcpPeer,
-    Tcp,
-    Udp
-}
-
-fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
-                                                 handle: U) -> Result<SocketAddr, IoError> {
-    let getsockname = match sk {
-        TcpPeer => uvll::tcp_getpeername,
-        Tcp     => uvll::tcp_getsockname,
-        Udp     => uvll::udp_getsockname,
-    };
-
-    // Allocate a sockaddr_storage
-    // since we don't know if it's ipv4 or ipv6
-    let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
-
-    let r = unsafe {
-        getsockname(handle.native_handle() as *c_void, r_addr as *uvll::sockaddr_storage)
-    };
-
-    if r != 0 {
-        let status = status_to_maybe_uv_error(r);
-        return Err(uv_error_to_io_error(status.unwrap()));
-    }
-
-    let addr = unsafe {
-        if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-            net::uv_socket_addr_to_socket_addr(UvIpv6SocketAddr(r_addr as *uvll::sockaddr_in6))
-        } else {
-            net::uv_socket_addr_to_socket_addr(UvIpv4SocketAddr(r_addr as *uvll::sockaddr_in))
-        }
-    };
-
-    unsafe { uvll::free_sockaddr_storage(r_addr); }
-
-    Ok(addr)
-
-}
-
 // Obviously an Event Loop is always home.
 pub struct UvEventLoop {
     priv uvio: UvIoFactory
@@ -251,97 +203,26 @@ impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
-    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError> {
-        // Create a cell in the task to hold the result. We will fill
-        // the cell before resuming the task.
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~RtioTcpStream, IoError>> = &result_cell;
-
-        // Block this task and take ownership, switch to scheduler context
-        do task::unkillable { // FIXME(#8674)
-            let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-
-                let mut tcp = TcpWatcher::new(self.uv_loop());
-                let task_cell = Cell::new(task);
-
-                // Wait for a connection
-                do tcp.connect(addr) |stream, status| {
-                    match status {
-                        None => {
-                            let tcp = NativeHandle::from_native_handle(stream.native_handle());
-                            let home = get_handle_to_current_scheduler!();
-                            let res = Ok(~UvTcpStream { watcher: tcp, home: home }
-                                                as ~RtioTcpStream);
-
-                            // Store the stream in the task's stack
-                            unsafe { (*result_cell_ptr).put_back(res); }
-
-                            // Context switch
-                            let scheduler: ~Scheduler = Local::take();
-                            scheduler.resume_blocked_task_immediately(task_cell.take());
-                        }
-                        Some(_) => {
-                            let task_cell = Cell::new(task_cell.take());
-                            do stream.close {
-                                let res = Err(uv_error_to_io_error(status.unwrap()));
-                                unsafe { (*result_cell_ptr).put_back(res); }
-                                let scheduler: ~Scheduler = Local::take();
-                                scheduler.resume_blocked_task_immediately(task_cell.take());
-                            }
-                        }
-                    }
-                }
-            }
+    fn tcp_connect(&mut self, addr: SocketAddr)
+        -> Result<~RtioTcpStream, IoError>
+    {
+        match TcpWatcher::connect(self.uv_loop(), addr) {
+            Ok(t) => Ok(~t as ~RtioTcpStream),
+            Err(e) => Err(uv_error_to_io_error(e)),
         }
-
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
     }
 
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError> {
-        let mut watcher = TcpWatcher::new(self.uv_loop());
-        match watcher.bind(addr) {
-            Ok(_) => {
-                let home = get_handle_to_current_scheduler!();
-                Ok(~UvTcpListener::new(watcher, home) as ~RtioTcpListener)
-            }
-            Err(uverr) => {
-                do task::unkillable { // FIXME(#8674)
-                    let scheduler: ~Scheduler = Local::take();
-                    do scheduler.deschedule_running_task_and_then |_, task| {
-                        let task_cell = Cell::new(task);
-                        do watcher.as_stream().close {
-                            let scheduler: ~Scheduler = Local::take();
-                            scheduler.resume_blocked_task_immediately(task_cell.take());
-                        }
-                    }
-                    Err(uv_error_to_io_error(uverr))
-                }
-            }
+        match TcpListener::bind(self.uv_loop(), addr) {
+            Ok(t) => Ok(t as ~RtioTcpListener),
+            Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError> {
-        let mut watcher = UdpWatcher::new(self.uv_loop());
-        match watcher.bind(addr) {
-            Ok(_) => {
-                let home = get_handle_to_current_scheduler!();
-                Ok(~UvUdpSocket { watcher: watcher, home: home } as ~RtioUdpSocket)
-            }
-            Err(uverr) => {
-                do task::unkillable { // FIXME(#8674)
-                    let scheduler: ~Scheduler = Local::take();
-                    do scheduler.deschedule_running_task_and_then |_, task| {
-                        let task_cell = Cell::new(task);
-                        do watcher.close {
-                            let scheduler: ~Scheduler = Local::take();
-                            scheduler.resume_blocked_task_immediately(task_cell.take());
-                        }
-                    }
-                    Err(uv_error_to_io_error(uverr))
-                }
-            }
+        match UdpWatcher::bind(self.uv_loop(), addr) {
+            Ok(u) => Ok(~u as ~RtioUdpSocket),
+            Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
@@ -484,416 +365,6 @@ impl IoFactory for UvIoFactory {
             Ok(s) => Ok(s as ~RtioSignal),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
-    }
-}
-
-pub struct UvTcpListener {
-    priv watcher : TcpWatcher,
-    priv home: SchedHandle,
-}
-
-impl HomingIO for UvTcpListener {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
-}
-
-impl UvTcpListener {
-    fn new(watcher: TcpWatcher, home: SchedHandle) -> UvTcpListener {
-        UvTcpListener { watcher: watcher, home: home }
-    }
-}
-
-impl Drop for UvTcpListener {
-    fn drop(&mut self) {
-        let (_m, sched) = self.fire_homing_missile_sched();
-        do sched.deschedule_running_task_and_then |_, task| {
-            let task = Cell::new(task);
-            do self.watcher.as_stream().close {
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task.take());
-            }
-        }
-    }
-}
-
-impl RtioSocket for UvTcpListener {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_homing_missile();
-        socket_name(Tcp, self.watcher)
-    }
-}
-
-impl RtioTcpListener for UvTcpListener {
-    fn listen(mut ~self) -> Result<~RtioTcpAcceptor, IoError> {
-        let _m = self.fire_homing_missile();
-        let acceptor = ~UvTcpAcceptor::new(*self);
-        let incoming = Cell::new(acceptor.incoming.clone());
-        let mut stream = acceptor.listener.watcher.as_stream();
-        let res = do stream.listen |mut server, status| {
-            do incoming.with_mut_ref |incoming| {
-                let inc = match status {
-                    Some(_) => Err(standard_error(OtherIoError)),
-                    None => {
-                        let inc = TcpWatcher::new(&server.event_loop());
-                        // first accept call in the callback guarenteed to succeed
-                        server.accept(inc.as_stream());
-                        let home = get_handle_to_current_scheduler!();
-                        Ok(~UvTcpStream { watcher: inc, home: home }
-                                as ~RtioTcpStream)
-                    }
-                };
-                incoming.send(inc);
-            }
-        };
-        match res {
-            Ok(()) => Ok(acceptor as ~RtioTcpAcceptor),
-            Err(e) => Err(uv_error_to_io_error(e)),
-        }
-    }
-}
-
-pub struct UvTcpAcceptor {
-    priv listener: UvTcpListener,
-    priv incoming: Tube<Result<~RtioTcpStream, IoError>>,
-}
-
-impl HomingIO for UvTcpAcceptor {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { self.listener.home() }
-}
-
-impl UvTcpAcceptor {
-    fn new(listener: UvTcpListener) -> UvTcpAcceptor {
-        UvTcpAcceptor { listener: listener, incoming: Tube::new() }
-    }
-}
-
-impl RtioSocket for UvTcpAcceptor {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_homing_missile();
-        socket_name(Tcp, self.listener.watcher)
-    }
-}
-
-fn accept_simultaneously(stream: StreamWatcher, a: int) -> Result<(), IoError> {
-    let r = unsafe {
-        uvll::uv_tcp_simultaneous_accepts(stream.native_handle(), a as c_int)
-    };
-    status_to_io_result(r)
-}
-
-impl RtioTcpAcceptor for UvTcpAcceptor {
-    fn accept(&mut self) -> Result<~RtioTcpStream, IoError> {
-        let _m = self.fire_homing_missile();
-        self.incoming.recv()
-    }
-
-    fn accept_simultaneously(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        accept_simultaneously(self.listener.watcher.as_stream(), 1)
-    }
-
-    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        accept_simultaneously(self.listener.watcher.as_stream(), 0)
-    }
-}
-
-fn read_stream(mut watcher: StreamWatcher,
-               scheduler: ~Scheduler,
-               buf: &mut [u8]) -> Result<uint, IoError> {
-    let result_cell = Cell::new_empty();
-    let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
-
-    let uv_buf = slice_to_uv_buf(buf);
-    do scheduler.deschedule_running_task_and_then |_sched, task| {
-        let task_cell = Cell::new(task);
-        // XXX: We shouldn't reallocate these callbacks every
-        // call to read
-        let alloc: AllocCallback = |_| uv_buf;
-        do watcher.read_start(alloc) |mut watcher, nread, _buf, status| {
-
-            // Stop reading so that no read callbacks are
-            // triggered before the user calls `read` again.
-            // XXX: Is there a performance impact to calling
-            // stop here?
-            watcher.read_stop();
-
-            let result = if status.is_none() {
-                assert!(nread >= 0);
-                Ok(nread as uint)
-            } else {
-                Err(uv_error_to_io_error(status.unwrap()))
-            };
-
-            unsafe { (*result_cell_ptr).put_back(result); }
-
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.resume_blocked_task_immediately(task_cell.take());
-        }
-    }
-
-    assert!(!result_cell.is_empty());
-    result_cell.take()
-}
-
-fn write_stream(mut watcher: StreamWatcher,
-                scheduler: ~Scheduler,
-                buf: &[u8]) -> Result<(), IoError> {
-    let result_cell = Cell::new_empty();
-    let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-    let buf_ptr: *&[u8] = &buf;
-    do scheduler.deschedule_running_task_and_then |_, task| {
-        let task_cell = Cell::new(task);
-        let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-        do watcher.write(buf) |_watcher, status| {
-            let result = if status.is_none() {
-                Ok(())
-            } else {
-                Err(uv_error_to_io_error(status.unwrap()))
-            };
-
-            unsafe { (*result_cell_ptr).put_back(result); }
-
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.resume_blocked_task_immediately(task_cell.take());
-        }
-    }
-
-    assert!(!result_cell.is_empty());
-    result_cell.take()
-}
-
-pub struct UvTcpStream {
-    priv watcher: TcpWatcher,
-    priv home: SchedHandle,
-}
-
-impl HomingIO for UvTcpStream {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
-}
-
-impl Drop for UvTcpStream {
-    fn drop(&mut self) {
-        let (_m, sched) = self.fire_homing_missile_sched();
-        do sched.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            do self.watcher.as_stream().close {
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-    }
-}
-
-impl RtioSocket for UvTcpStream {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_homing_missile();
-        socket_name(Tcp, self.watcher)
-    }
-}
-
-impl RtioTcpStream for UvTcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        read_stream(self.watcher.as_stream(), scheduler, buf)
-    }
-
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        write_stream(self.watcher.as_stream(), scheduler, buf)
-    }
-
-    fn peer_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_homing_missile();
-        socket_name(TcpPeer, self.watcher)
-    }
-
-    fn control_congestion(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_tcp_nodelay(self.watcher.native_handle(), 0 as c_int)
-        })
-    }
-
-    fn nodelay(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_tcp_nodelay(self.watcher.native_handle(), 1 as c_int)
-        })
-    }
-
-    fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_tcp_keepalive(self.watcher.native_handle(), 1 as c_int,
-                                   delay_in_seconds as c_uint)
-        })
-    }
-
-    fn letdie(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_tcp_keepalive(self.watcher.native_handle(),
-                                   0 as c_int, 0 as c_uint)
-        })
-    }
-}
-
-pub struct UvUdpSocket {
-    priv watcher: UdpWatcher,
-    priv home: SchedHandle,
-}
-
-impl HomingIO for UvUdpSocket {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
-}
-
-impl Drop for UvUdpSocket {
-    fn drop(&mut self) {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            do self.watcher.close {
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-    }
-}
-
-impl RtioSocket for UvUdpSocket {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_homing_missile();
-        socket_name(Udp, self.watcher)
-    }
-}
-
-impl RtioUdpSocket for UvUdpSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, SocketAddr), IoError> {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(uint, SocketAddr), IoError>> = &result_cell;
-
-        let buf_ptr: *&mut [u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
-            do self.watcher.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
-                let _ = flags; // /XXX add handling for partials?
-
-                watcher.recv_stop();
-
-                let result = match status {
-                    None => {
-                        assert!(nread >= 0);
-                        Ok((nread as uint, addr))
-                    }
-                    Some(err) => Err(uv_error_to_io_error(err)),
-                };
-
-                unsafe { (*result_cell_ptr).put_back(result); }
-
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-
-        assert!(!result_cell.is_empty());
-        result_cell.take()
-    }
-
-    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError> {
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-        let buf_ptr: *&[u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-            do self.watcher.send(buf, dst) |_watcher, status| {
-
-                let result = match status {
-                    None => Ok(()),
-                    Some(err) => Err(uv_error_to_io_error(err)),
-                };
-
-                unsafe { (*result_cell_ptr).put_back(result); }
-
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-
-        assert!(!result_cell.is_empty());
-        result_cell.take()
-    }
-
-    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            do multi.to_str().with_c_str |m_addr| {
-                uvll::uv_udp_set_membership(self.watcher.native_handle(),
-                                            m_addr, ptr::null(),
-                                            uvll::UV_JOIN_GROUP)
-            }
-        })
-    }
-
-    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            do multi.to_str().with_c_str |m_addr| {
-                uvll::uv_udp_set_membership(self.watcher.native_handle(),
-                                            m_addr, ptr::null(),
-                                            uvll::UV_LEAVE_GROUP)
-            }
-        })
-    }
-
-    fn loop_multicast_locally(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_udp_set_multicast_loop(self.watcher.native_handle(),
-                                            1 as c_int)
-        })
-    }
-
-    fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_udp_set_multicast_loop(self.watcher.native_handle(),
-                                            0 as c_int)
-        })
-    }
-
-    fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_udp_set_multicast_ttl(self.watcher.native_handle(),
-                                           ttl as c_int)
-        })
-    }
-
-    fn time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_udp_set_ttl(self.watcher.native_handle(), ttl as c_int)
-        })
-    }
-
-    fn hear_broadcasts(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_udp_set_broadcast(self.watcher.native_handle(),
-                                       1 as c_int)
-        })
-    }
-
-    fn ignore_broadcasts(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
-        status_to_io_result(unsafe {
-            uvll::uv_udp_set_broadcast(self.watcher.native_handle(),
-                                       0 as c_int)
-        })
     }
 }
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
 use std::comm::{oneshot, stream, PortOne, ChanOne, SendDeferred};
 use std::libc::c_int;
 use std::rt::BlockedTask;
@@ -77,10 +76,9 @@ impl RtioTimer for TimerWatcher {
 
     fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
 
         let _m = self.fire_missiles();
-        self.action = Some(SendOnce(chan.take()));
+        self.action = Some(SendOnce(chan));
         self.start(msecs, 0);
 
         return port;
@@ -88,10 +86,9 @@ impl RtioTimer for TimerWatcher {
 
     fn period(&mut self, msecs: u64) -> Port<()> {
         let (port, chan) = stream();
-        let chan = Cell::new(chan);
 
         let _m = self.fire_missiles();
-        self.action = Some(SendMany(chan.take()));
+        self.action = Some(SendMany(chan));
         self.start(msecs, msecs);
 
         return port;
