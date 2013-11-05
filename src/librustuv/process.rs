@@ -21,8 +21,9 @@ use std::rt::sched::{Scheduler, SchedHandle};
 use std::vec;
 
 use super::{Loop, NativeHandle, UvHandle, UvError, uv_error_to_io_error};
-use uvio::{HomingIO, UvPipeStream, UvUnboundPipe};
+use uvio::HomingIO;
 use uvll;
+use pipe::PipeWatcher;
 
 pub struct Process {
     handle: *uvll::uv_process_t,
@@ -42,7 +43,7 @@ impl Process {
     /// Returns either the corresponding process object or an error which
     /// occurred.
     pub fn spawn(loop_: &Loop, config: ProcessConfig)
-                -> Result<(~Process, ~[Option<~UvPipeStream>]), UvError>
+                -> Result<(~Process, ~[Option<PipeWatcher>]), UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
         let io = config.io;
@@ -121,7 +122,7 @@ extern fn on_exit(handle: *uvll::uv_process_t,
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
                     io: &StdioContainer,
-                    loop_: &Loop) -> Option<~UvPipeStream> {
+                    loop_: &Loop) -> Option<PipeWatcher> {
     match *io {
         Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
@@ -140,11 +141,10 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
-            let pipe = UvUnboundPipe::new(loop_);
-            let handle = pipe.pipe.as_stream().native_handle();
+            let pipe_handle = PipeWatcher::alloc(loop_, false);
             uvll::set_stdio_container_flags(dst, flags);
-            uvll::set_stdio_container_stream(dst, handle);
-            Some(~UvPipeStream::new(pipe))
+            uvll::set_stdio_container_stream(dst, pipe_handle);
+            Some(PipeWatcher::new(pipe_handle))
         }
     }
 }

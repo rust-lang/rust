@@ -213,8 +213,6 @@ pub trait RtioUnixListener {
 
 pub trait RtioUnixAcceptor {
     fn accept(&mut self) -> Result<~RtioPipe, IoError>;
-    fn accept_simultaneously(&mut self) -> Result<(), IoError>;
-    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioTTY {
