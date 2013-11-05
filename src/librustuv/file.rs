@@ -237,6 +237,16 @@ impl FsRequest {
         })
     }
 
+    pub fn utime(loop_: &Loop, path: &CString, atime: u64, mtime: u64)
+        -> Result<(), UvError>
+    {
+        execute_nop(|req, cb| unsafe {
+            uvll::uv_fs_utime(loop_.handle, req, path.with_ref(|p| p),
+                              atime as libc::c_double, mtime as libc::c_double,
+                              cb)
+        })
+    }
+
     pub fn get_result(&self) -> c_int {
         unsafe { uvll::get_result_from_fs_req(self.req) }
     }

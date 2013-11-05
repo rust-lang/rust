@@ -125,6 +125,8 @@ pub trait IoFactory {
     fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError>;
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
     fn fs_link(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
+    fn fs_utime(&mut self, src: &CString, atime: u64, mtime: u64) ->
+        Result<(), IoError>;
 
     // misc
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;

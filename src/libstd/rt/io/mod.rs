@@ -1142,8 +1142,9 @@ pub struct FileStat {
     /// The file permissions currently on the file
     perm: FilePermission,
 
-    // XXX: These time fields are pretty useless without an actual time
-    //      representation, what are the milliseconds relative to?
+    // FIXME(#10301): These time fields are pretty useless without an actual
+    //                time representation, what are the milliseconds relative
+    //                to?
 
     /// The time that the file was created at, in platform-dependent
     /// milliseconds

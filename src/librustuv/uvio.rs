@@ -313,6 +313,12 @@ impl IoFactory for UvIoFactory {
         let r = FsRequest::readlink(self.uv_loop(), path);
         r.map_err(uv_error_to_io_error)
     }
+    fn fs_utime(&mut self, path: &CString, atime: u64, mtime: u64)
+        -> Result<(), IoError>
+    {
+        let r = FsRequest::utime(self.uv_loop(), path, atime, mtime);
+        r.map_err(uv_error_to_io_error)
+    }
 
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>
