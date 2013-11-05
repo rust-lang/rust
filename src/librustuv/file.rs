@@ -256,7 +256,9 @@ impl FsRequest {
         let path = unsafe { Path::new(CString::new(path, false)) };
         let stat = self.get_stat();
         fn to_msec(stat: uvll::uv_timespec_t) -> u64 {
-            (stat.tv_sec * 1000 + stat.tv_nsec / 1000000) as u64
+            // Be sure to cast to u64 first to prevent overflowing if the tv_sec
+            // field is a 32-bit integer.
+            (stat.tv_sec as u64) * 1000 + (stat.tv_nsec as u64) / 1000000
         }
         let kind = match (stat.st_mode as c_int) & libc::S_IFMT {
             libc::S_IFREG => io::TypeFile,
