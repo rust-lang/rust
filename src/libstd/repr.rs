@@ -572,18 +572,6 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_fn_output(&mut self, _retstyle: uint, inner: *TyDesc) -> bool {
-        self.writer.write(")".as_bytes());
-        let name = unsafe { (*inner).name };
-        if name != "()" {
-            self.writer.write(" -> ".as_bytes());
-            self.writer.write(name.as_bytes());
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_fn_output(&mut self, _retstyle: uint, variadic: bool, inner: *TyDesc) -> bool {
         if variadic {
             self.writer.write(", ...".as_bytes());
