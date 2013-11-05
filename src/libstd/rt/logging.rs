@@ -172,20 +172,18 @@ pub trait Logger {
 /// This logger emits output to the stderr of the process, and contains a lazily
 /// initialized event-loop driven handle to the stream.
 pub struct StdErrLogger {
-    priv handle: Option<LineBufferedWriter<StdWriter>>,
+    priv handle: LineBufferedWriter<StdWriter>,
 }
 
 impl StdErrLogger {
-    pub fn new() -> StdErrLogger { StdErrLogger { handle: None } }
+    pub fn new() -> StdErrLogger {
+        StdErrLogger { handle: LineBufferedWriter::new(io::stderr()) }
+    }
 }
 
 impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
-        // First time logging? Get a handle to the stderr of this process.
-        if self.handle.is_none() {
-            self.handle = Some(LineBufferedWriter::new(io::stderr()));
-        }
-        fmt::writeln(self.handle.get_mut_ref() as &mut io::Writer, args);
+        fmt::writeln(&mut self.handle as &mut io::Writer, args);
     }
 }
 

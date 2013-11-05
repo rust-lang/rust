@@ -59,14 +59,14 @@ use std::rt::io::IoError;
 
 //#[cfg(test)] use unstable::run_in_bare_thread;
 
-pub use self::file::{FsRequest, FileWatcher};
-pub use self::net::{TcpWatcher, TcpListener, TcpAcceptor, UdpWatcher};
-pub use self::idle::IdleWatcher;
-pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
-pub use self::process::Process;
+pub use self::file::{FsRequest, FileWatcher};
+pub use self::idle::IdleWatcher;
+pub use self::net::{TcpWatcher, TcpListener, TcpAcceptor, UdpWatcher};
 pub use self::pipe::{PipeWatcher, PipeListener, PipeAcceptor};
+pub use self::process::Process;
 pub use self::signal::SignalWatcher;
+pub use self::timer::TimerWatcher;
 pub use self::tty::TtyWatcher;
 
 mod macros;
@@ -88,19 +88,6 @@ pub mod pipe;
 pub mod tty;
 pub mod signal;
 pub mod stream;
-
-/// XXX: Loop(*handle) is buggy with destructors. Normal structs
-/// with dtors may not be destructured, but tuple structs can,
-/// but the results are not correct.
-pub struct Loop {
-    priv handle: *uvll::uv_loop_t
-}
-
-/// A type that wraps a native handle
-pub trait NativeHandle<T> {
-    fn from_native_handle(T) -> Self;
-    fn native_handle(&self) -> T;
-}
 
 /// A type that wraps a uv handle
 pub trait UvHandle<T> {
@@ -185,28 +172,28 @@ impl Drop for Request {
     }
 }
 
+/// XXX: Loop(*handle) is buggy with destructors. Normal structs
+/// with dtors may not be destructured, but tuple structs can,
+/// but the results are not correct.
+pub struct Loop {
+    priv handle: *uvll::uv_loop_t
+}
+
 impl Loop {
     pub fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
         assert!(handle.is_not_null());
-        NativeHandle::from_native_handle(handle)
+        Loop::wrap(handle)
     }
 
+    pub fn wrap(handle: *uvll::uv_loop_t) -> Loop { Loop { handle: handle } }
+
     pub fn run(&mut self) {
-        unsafe { uvll::uv_run(self.native_handle(), uvll::RUN_DEFAULT) };
+        unsafe { uvll::uv_run(self.handle, uvll::RUN_DEFAULT) };
     }
 
     pub fn close(&mut self) {
-        unsafe { uvll::uv_loop_delete(self.native_handle()) };
-    }
-}
-
-impl NativeHandle<*uvll::uv_loop_t> for Loop {
-    fn from_native_handle(handle: *uvll::uv_loop_t) -> Loop {
-        Loop { handle: handle }
-    }
-    fn native_handle(&self) -> *uvll::uv_loop_t {
-        self.handle
+        unsafe { uvll::uv_loop_delete(self.handle) };
     }
 }
 

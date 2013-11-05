@@ -12,18 +12,18 @@ use std::c_str::CString;
 use std::cast::transmute;
 use std::cast;
 use std::comm::{SharedChan, GenericChan};
-use std::libc;
 use std::libc::c_int;
-use std::str;
-use std::rt::io;
+use std::libc;
+use std::path::Path;
 use std::rt::io::IoError;
 use std::rt::io::net::ip::SocketAddr;
 use std::rt::io::process::ProcessConfig;
+use std::rt::io;
 use std::rt::local::Local;
 use std::rt::rtio::*;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::task::Task;
-use std::path::Path;
+use std::str;
 use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
                 S_IRUSR, S_IWUSR};
 use std::rt::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
@@ -39,10 +39,7 @@ use ai = std::rt::io::net::addrinfo;
 #[cfg(test)] use std::rt::comm::oneshot;
 
 use super::*;
-use idle::IdleWatcher;
 use addrinfo::GetAddrInfoRequest;
-
-// XXX we should not be calling uvll functions in here.
 
 pub trait HomingIO {
 
@@ -238,7 +235,7 @@ impl IoFactory for UvIoFactory {
 
     fn fs_from_raw_fd(&mut self, fd: c_int,
                       close: CloseBehavior) -> ~RtioFileStream {
-        let loop_ = Loop {handle: self.uv_loop().native_handle()};
+        let loop_ = Loop::wrap(self.uv_loop().handle);
         ~FileWatcher::new(loop_, fd, close) as ~RtioFileStream
     }
 

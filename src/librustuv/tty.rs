@@ -33,7 +33,7 @@ impl TtyWatcher {
         let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
 
         match unsafe {
-            uvll::uv_tty_init(loop_.native_handle(), handle, fd as libc::c_int,
+            uvll::uv_tty_init(loop_.handle, handle, fd as libc::c_int,
                               readable as libc::c_int)
         } {
             0 => {

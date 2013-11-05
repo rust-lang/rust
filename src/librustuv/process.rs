@@ -19,7 +19,7 @@ use std::rt::rtio::RtioProcess;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::vec;
 
-use super::{Loop, NativeHandle, UvHandle, UvError, uv_error_to_io_error};
+use super::{Loop, UvHandle, UvError, uv_error_to_io_error};
 use uvio::HomingIO;
 use uvll;
 use pipe::PipeWatcher;
@@ -77,7 +77,7 @@ impl Process {
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
                 match unsafe {
-                    uvll::uv_spawn(loop_.native_handle(), handle, options)
+                    uvll::uv_spawn(loop_.handle, handle, options)
                 } {
                     0 => {
                         let process = ~Process {

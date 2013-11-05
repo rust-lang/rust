@@ -35,7 +35,7 @@ impl AsyncWatcher {
     pub fn new(loop_: &mut Loop, cb: ~Callback) -> AsyncWatcher {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         assert_eq!(unsafe {
-            uvll::uv_async_init(loop_.native_handle(), handle, async_cb)
+            uvll::uv_async_init(loop_.handle, handle, async_cb)
         }, 0);
         let flag = Exclusive::new(false);
         let payload = ~Payload { callback: cb, exit_flag: flag.clone() };

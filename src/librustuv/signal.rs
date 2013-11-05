@@ -32,7 +32,8 @@ impl SignalWatcher {
                channel: SharedChan<Signum>) -> Result<~SignalWatcher, UvError> {
         let handle = UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL);
         assert_eq!(unsafe {
-            uvll::uv_signal_init(loop_.native_handle(), handle)
+            uvll::uv_signal_init(loop_.handle, handle)
+
         }, 0);
 
         match unsafe { uvll::uv_signal_start(handle, signal_cb, signum as c_int) } {
