@@ -119,7 +119,6 @@ impl<S:Encoder> Encodable<S> for Ident {
     }
 }
 
-#[deriving(IterBytes)]
 impl<D:Decoder> Decodable<D> for Ident {
     fn decode(d: &mut D) -> Ident {
         str_to_ident(d.read_str())
@@ -807,7 +806,6 @@ pub enum Onceness {
     Many
 }
 
-#[deriving(IterBytes)]
 impl ToStr for Onceness {
     fn to_str(&self) -> ~str {
         match *self {
@@ -902,7 +900,6 @@ pub enum purity {
     extern_fn, // declared with "extern fn"
 }
 
-#[deriving(IterBytes)]
 impl ToStr for purity {
     fn to_str(&self) -> ~str {
         match *self {
