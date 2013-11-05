@@ -66,8 +66,9 @@ pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
 pub use self::process::Process;
-pub use self::pipe::Pipe;
+pub use self::pipe::PipeWatcher;
 pub use self::signal::SignalWatcher;
+pub use self::tty::TtyWatcher;
 
 mod macros;
 
@@ -87,6 +88,7 @@ pub mod process;
 pub mod pipe;
 pub mod tty;
 pub mod signal;
+pub mod stream;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
@@ -218,7 +220,6 @@ pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
 pub type NullCallback = ~fn();
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
-pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
 
@@ -231,7 +232,6 @@ struct WatcherData {
     connect_cb: Option<ConnectionCallback>,
     close_cb: Option<NullCallback>,
     alloc_cb: Option<AllocCallback>,
-    async_cb: Option<AsyncCallback>,
     udp_recv_cb: Option<UdpReceiveCallback>,
     udp_send_cb: Option<UdpSendCallback>,
 }
