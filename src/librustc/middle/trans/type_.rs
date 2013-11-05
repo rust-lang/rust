@@ -154,6 +154,12 @@ impl Type {
                                    args.len() as c_uint, False))
     }
 
+    pub fn variadic_func(args: &[Type], ret: &Type) -> Type {
+        let vec : &[TypeRef] = unsafe { cast::transmute(args) };
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec::raw::to_ptr(vec),
+                                   args.len() as c_uint, True))
+    }
+
     pub fn func_pair(cx: &CrateContext, fn_ty: &Type) -> Type {
         Type::struct_([fn_ty.ptr_to(), Type::opaque_cbox_ptr(cx)], false)
     }

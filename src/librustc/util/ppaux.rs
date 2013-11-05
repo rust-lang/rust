@@ -410,7 +410,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         s.push_char(bra);
         let strs = sig.inputs.map(|a| fn_input_to_str(cx, *a));
         s.push_str(strs.connect(", "));
+        if sig.variadic {
+            s.push_str(", ...");
+        }
         s.push_char(ket);
+
         if ty::get(sig.output).sty != ty_nil {
             s.push_str(" -> ");
             if ty::type_is_bot(sig.output) {

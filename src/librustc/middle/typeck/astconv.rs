@@ -396,6 +396,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
         ty::mk_tup(tcx, flds)
       }
       ast::ty_bare_fn(ref bf) => {
+          if bf.decl.variadic && !bf.abis.is_c() {
+            tcx.sess.span_err(ast_ty.span, "variadic function must have C calling convention");
+          }
           ty::mk_bare_fn(tcx, ty_of_bare_fn(this, rscope, bf.purity,
                                             bf.abis, &bf.lifetimes, &bf.decl))
       }
@@ -660,9 +663,12 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
             ty::BareFnTy {
                 purity: purity,
                 abis: abi,
-                sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
-                                inputs: input_tys,
-                                output: output_ty}
+                sig: ty::FnSig {
+                    bound_lifetime_names: bound_lifetime_names,
+                    inputs: input_tys,
+                    output: output_ty,
+                    variadic: decl.variadic
+                }
             });
 
     fn transform_self_ty<AC:AstConv,RS:RegionScope + Clone + 'static>(
@@ -770,9 +776,12 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
         onceness: onceness,
         region: bound_region,
         bounds: bounds,
-        sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
-                        inputs: input_tys,
-                        output: output_ty}
+        sig: ty::FnSig {
+            bound_lifetime_names: bound_lifetime_names,
+            inputs: input_tys,
+            output: output_ty,
+            variadic: decl.variadic
+        }
     }
 }
 

@@ -892,6 +892,7 @@ pub struct fn_decl {
     inputs: ~[arg],
     output: Ty,
     cf: ret_style,
+    variadic: bool
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
