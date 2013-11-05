@@ -60,8 +60,6 @@ use comm::{stream, Chan, GenericChan, GenericPort, Port, Peekable};
 use result::{Result, Ok, Err};
 use rt::in_green_task_context;
 use rt::local::Local;
-use rt::task::{UnwindMessageAny, UnwindMessageLinked};
-use rt::task::{UnwindMessageStrStatic, UnwindMessageStrOwned};
 use rt::task::{UnwindResult, Success, Failure};
 use send_str::{SendStr, IntoSendStr};
 use unstable::finally::Finally;
@@ -90,30 +88,25 @@ pub type TaskResult = Result<(), ~Any>;
 
 pub struct LinkedFailure;
 
-#[inline]
-fn wrap_as_any(res: UnwindResult) -> TaskResult {
-    match res {
-        Success => Ok(()),
-        Failure(UnwindMessageAny(a)) => Err(a),
-        Failure(UnwindMessageLinked) => Err(~LinkedFailure as ~Any),
-        Failure(UnwindMessageStrOwned(s))  => Err(~s as ~Any),
-        Failure(UnwindMessageStrStatic(s)) => Err(~s as ~Any),
-    }
-}
-
 pub struct TaskResultPort {
     priv port: Port<UnwindResult>
+}
+
+fn to_task_result(res: UnwindResult) -> TaskResult {
+    match res {
+        Success => Ok(()), Failure(a) => Err(a),
+    }
 }
 
 impl GenericPort<TaskResult> for TaskResultPort {
     #[inline]
     fn recv(&self) -> TaskResult {
-        wrap_as_any(self.port.recv())
+        to_task_result(self.port.recv())
     }
 
     #[inline]
     fn try_recv(&self) -> Option<TaskResult> {
-        self.port.try_recv().map(wrap_as_any)
+        self.port.try_recv().map(to_task_result)
     }
 }
 

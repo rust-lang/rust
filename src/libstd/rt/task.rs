@@ -36,6 +36,7 @@ use rt::logging::StdErrLogger;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use send_str::SendStr;
+use task::LinkedFailure;
 use task::spawn::Taskgroup;
 use unstable::finally::Finally;
 
@@ -95,8 +96,8 @@ pub enum UnwindResult {
     /// The task is ending successfully
     Success,
 
-    /// The Task is failing with reason `UnwindMessage`
-    Failure(UnwindMessage),
+    /// The Task is failing with reason `~Any`
+    Failure(~Any),
 }
 
 impl UnwindResult {
@@ -119,27 +120,9 @@ impl UnwindResult {
     }
 }
 
-/// Represents the cause of a task failure
-#[deriving(ToStr)]
-pub enum UnwindMessage {
-    // FIXME: #9913 - This variant is not neccessary once Any works properly
-    /// Failed with a static string message
-    UnwindMessageStrStatic(&'static str),
-
-    // FIXME: #9913 - This variant is not neccessary once Any works properly
-    /// Failed with a owned string message
-    UnwindMessageStrOwned(~str),
-
-    /// Failed with an `~Any`
-    UnwindMessageAny(~Any),
-
-    /// Failed because of linked failure
-    UnwindMessageLinked
-}
-
 pub struct Unwinder {
     unwinding: bool,
-    cause: Option<UnwindMessage>
+    cause: Option<~Any>
 }
 
 impl Unwinder {
@@ -532,7 +515,7 @@ impl Unwinder {
         }
     }
 
-    pub fn begin_unwind(&mut self, cause: UnwindMessage) -> ! {
+    pub fn begin_unwind(&mut self, cause: ~Any) -> ! {
         #[fixed_stack_segment]; #[inline(never)];
 
         self.unwinding = true;
@@ -648,46 +631,34 @@ pub fn begin_unwind_raw(msg: *c_char, file: *c_char, line: size_t) -> ! {
 
 /// This is the entry point of unwinding for fail!() and assert!().
 pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
-    // Wrap the fail message in a `Any` box for uniform representation.
-    let any = ~msg as ~Any;
-
-    // FIXME: #9913 - This can be changed to be internal to begin_unwind_internal
-    // once Any works properly.
-    // As a workaround, string types need to be special cased right now
-    // because `Any` does not support dynamically querying whether the
-    // type implements a trait yet, so without requiring that every `Any`
-    // also implements `ToStr` there is no way to get a failure message
-    // out of it again during unwinding.
-    let msg = if any.is::<&'static str>() {
-        UnwindMessageStrStatic(*any.move::<&'static str>().unwrap())
-    } else if any.is::<~str>() {
-        UnwindMessageStrOwned(*any.move::<~str>().unwrap())
-    } else {
-        UnwindMessageAny(any)
-    };
-
-    begin_unwind_internal(msg, file, line)
-}
-
-fn begin_unwind_internal(msg: UnwindMessage, file: &'static str, line: uint) -> ! {
+    use any::AnyRefExt;
     use rt::in_green_task_context;
-    use rt::task::Task;
     use rt::local::Local;
+    use rt::task::Task;
     use str::Str;
     use unstable::intrinsics;
 
     unsafe {
-        // Be careful not to allocate in this block, if we're failing we may
-        // have been failing due to a lack of memory in the first place...
-
         let task: *mut Task;
+        // Note that this should be the only allocation performed in this block.
+        // Currently this means that fail!() on OOM will invoke this code path,
+        // but then again we're not really ready for failing on OOM anyway. If
+        // we do start doing this, then we should propagate this allocation to
+        // be performed in the parent of this task instead of the task that's
+        // failing.
+        let msg = ~msg as ~Any;
 
         {
-            let msg_s = match msg {
-                UnwindMessageAny(_) => "~Any",
-                UnwindMessageLinked => "linked failure",
-                UnwindMessageStrOwned(ref s)  => s.as_slice(),
-                UnwindMessageStrStatic(ref s) => s.as_slice(),
+            //let msg: &Any = msg;
+            let msg_s = match msg.as_ref::<&'static str>() {
+                Some(s) => *s,
+                None => match msg.as_ref::<~str>() {
+                    Some(s) => s.as_slice(),
+                    None => match msg.as_ref::<LinkedFailure>() {
+                        Some(*) => "linked failure",
+                        None => "~Any",
+                    }
+                }
             };
 
             if !in_green_task_context() {

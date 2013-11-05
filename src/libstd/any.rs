@@ -15,24 +15,38 @@ use cast::transmute;
 use cmp::Eq;
 use option::{Option, Some, None};
 use to_str::ToStr;
-use unstable::intrinsics::{TyDesc, get_tydesc, forget};
+use unstable::intrinsics;
 use util::Void;
 
 ///////////////////////////////////////////////////////////////////////////////
 // TypeId
-// FIXME: #9913 - Needs proper intrinsic support to work reliably cross crate
 ///////////////////////////////////////////////////////////////////////////////
 
 /// `TypeId` represents a globally unique identifier for a type
+#[cfg(stage0)]
 pub struct TypeId {
-    priv t: *TyDesc
+    priv t: *intrinsics::TyDesc,
+}
+
+/// `TypeId` represents a globally unique identifier for a type
+#[cfg(not(stage0))]
+pub struct TypeId {
+    priv t: u64,
 }
 
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with
     #[inline]
-    pub fn of<T>() -> TypeId {
-        TypeId{ t: unsafe { get_tydesc::<T>() } }
+    #[cfg(stage0)]
+    pub fn of<T: 'static>() -> TypeId {
+        TypeId{ t: unsafe { intrinsics::get_tydesc::<T>() } }
+    }
+
+    /// Returns the `TypeId` of the type this generic function has been instantiated with
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn of<T: 'static>() -> TypeId {
+        TypeId{ t: unsafe { intrinsics::type_id::<T>() } }
     }
 }
 
@@ -51,21 +65,31 @@ impl Eq for TypeId {
 /// for dynamic typing
 pub trait Any {
     /// Get the `TypeId` of `self`
+    fn get_type_id(&self) -> TypeId;
+
+    /// Get a void pointer to `self`
+    fn as_void_ptr(&self) -> *Void;
+
+    /// Get a mutable void pointer to `self`
+    fn as_mut_void_ptr(&mut self) -> *mut Void;
+}
+
+impl<T: 'static> Any for T {
+    /// Get the `TypeId` of `self`
     fn get_type_id(&self) -> TypeId {
-        TypeId::of::<Self>()
+        TypeId::of::<T>()
     }
 
     /// Get a void pointer to `self`
     fn as_void_ptr(&self) -> *Void {
-        self as *Self as *Void
+        self as *T as *Void
     }
 
     /// Get a mutable void pointer to `self`
     fn as_mut_void_ptr(&mut self) -> *mut Void {
-        self as *mut Self as *mut Void
+        self as *mut T as *mut Void
     }
 }
-impl<T> Any for T {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Extension methods for Any trait objects.
@@ -75,16 +99,16 @@ impl<T> Any for T {}
 /// Extension methods for a referenced `Any` trait object
 pub trait AnyRefExt<'self> {
     /// Returns true if the boxed type is the same as `T`
-    fn is<T>(self) -> bool;
+    fn is<T: 'static>(self) -> bool;
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_ref<T>(self) -> Option<&'self T>;
+    fn as_ref<T: 'static>(self) -> Option<&'self T>;
 }
 
 impl<'self> AnyRefExt<'self> for &'self Any {
     #[inline]
-    fn is<T>(self) -> bool {
+    fn is<T: 'static>(self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
 
@@ -96,7 +120,7 @@ impl<'self> AnyRefExt<'self> for &'self Any {
     }
 
     #[inline]
-    fn as_ref<T>(self) -> Option<&'self T> {
+    fn as_ref<T: 'static>(self) -> Option<&'self T> {
         if self.is::<T>() {
             Some(unsafe { transmute(self.as_void_ptr()) })
         } else {
@@ -109,12 +133,12 @@ impl<'self> AnyRefExt<'self> for &'self Any {
 pub trait AnyMutRefExt<'self> {
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_mut<T>(self) -> Option<&'self mut T>;
+    fn as_mut<T: 'static>(self) -> Option<&'self mut T>;
 }
 
 impl<'self> AnyMutRefExt<'self> for &'self mut Any {
     #[inline]
-    fn as_mut<T>(self) -> Option<&'self mut T> {
+    fn as_mut<T: 'static>(self) -> Option<&'self mut T> {
         if self.is::<T>() {
             Some(unsafe { transmute(self.as_mut_void_ptr()) })
         } else {
@@ -127,19 +151,19 @@ impl<'self> AnyMutRefExt<'self> for &'self mut Any {
 pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn move<T>(self) -> Option<~T>;
+    fn move<T: 'static>(self) -> Option<~T>;
 }
 
 impl AnyOwnExt for ~Any {
     #[inline]
-    fn move<T>(self) -> Option<~T> {
+    fn move<T: 'static>(self) -> Option<~T> {
         if self.is::<T>() {
             unsafe {
                 // Extract the pointer to the boxed value, temporary alias with self
                 let ptr: ~T = transmute(self.as_void_ptr());
 
                 // Prevent destructor on self being run
-                forget(self);
+                intrinsics::forget(self);
 
                 Some(ptr)
             }
@@ -174,8 +198,10 @@ mod tests {
 
     #[test]
     fn type_id() {
-        let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&str>(), TypeId::of::<Test>());
-        let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&str>(), TypeId::of::<Test>());
+        let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+                         TypeId::of::<Test>());
+        let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+                         TypeId::of::<Test>());
 
         assert!(a != b);
         assert!(a != c);

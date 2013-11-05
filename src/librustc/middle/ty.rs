@@ -4724,3 +4724,154 @@ pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
 
     result
 }
+
+/// Creates a hash of the type `t` which will be the same no matter what crate
+/// context it's calculated within. This is used by the `type_id` intrinsic.
+pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
+    use std::hash::{SipState, Streaming};
+    use metadata::cstore;
+
+    let mut hash = SipState::new(0, 0);
+    let region = |_hash: &mut SipState, r: Region| {
+        match r {
+            re_static => {}
+
+            re_empty | re_bound(*) | re_free(*) | re_scope(*) | re_infer(*) =>
+                tcx.sess.bug("non-static region found when hashing a type")
+        }
+    };
+    let vstore = |hash: &mut SipState, v: vstore| {
+        match v {
+            vstore_fixed(_) => hash.input([0]),
+            vstore_uniq => hash.input([1]),
+            vstore_box => hash.input([2]),
+            vstore_slice(r) => {
+                hash.input([3]);
+                region(hash, r);
+            }
+        }
+    };
+    let did = |hash: &mut SipState, did: DefId| {
+        let h = if ast_util::is_local(did) {
+            local_hash
+        } else {
+            cstore::get_crate_hash(tcx.sess.cstore, did.crate)
+        };
+        hash.input(h.as_bytes());
+        iter(hash, &did.node);
+    };
+    let mt = |hash: &mut SipState, mt: mt| {
+        iter(hash, &mt.mutbl);
+    };
+    fn iter<T: IterBytes>(hash: &mut SipState, t: &T) {
+        do t.iter_bytes(true) |bytes| { hash.input(bytes); true };
+    }
+    do ty::walk_ty(t) |t| {
+        match ty::get(t).sty {
+            ty_nil => hash.input([0]),
+            ty_bot => hash.input([1]),
+            ty_bool => hash.input([2]),
+            ty_char => hash.input([3]),
+            ty_int(i) => {
+                hash.input([4]);
+                iter(&mut hash, &i);
+            }
+            ty_uint(u) => {
+                hash.input([5]);
+                iter(&mut hash, &u);
+            }
+            ty_float(f) => {
+                hash.input([6]);
+                iter(&mut hash, &f);
+            }
+            ty_estr(v) => {
+                hash.input([7]);
+                vstore(&mut hash, v);
+            }
+            ty_enum(d, _) => {
+                hash.input([8]);
+                did(&mut hash, d);
+            }
+            ty_box(m) => {
+                hash.input([9]);
+                mt(&mut hash, m);
+            }
+            ty_uniq(m) => {
+                hash.input([10]);
+                mt(&mut hash, m);
+            }
+            ty_evec(m, v) => {
+                hash.input([11]);
+                mt(&mut hash, m);
+                vstore(&mut hash, v);
+            }
+            ty_ptr(m) => {
+                hash.input([12]);
+                mt(&mut hash, m);
+            }
+            ty_rptr(r, m) => {
+                hash.input([13]);
+                region(&mut hash, r);
+                mt(&mut hash, m);
+            }
+            ty_bare_fn(ref b) => {
+                hash.input([14]);
+                iter(&mut hash, &b.purity);
+                iter(&mut hash, &b.abis);
+            }
+            ty_closure(ref c) => {
+                hash.input([15]);
+                iter(&mut hash, &c.purity);
+                iter(&mut hash, &c.sigil);
+                iter(&mut hash, &c.onceness);
+                iter(&mut hash, &c.bounds);
+                region(&mut hash, c.region);
+            }
+            ty_trait(d, _, store, m, bounds) => {
+                hash.input([17]);
+                did(&mut hash, d);
+                match store {
+                    BoxTraitStore => hash.input([0]),
+                    UniqTraitStore => hash.input([1]),
+                    RegionTraitStore(r) => {
+                        hash.input([2]);
+                        region(&mut hash, r);
+                    }
+                }
+                iter(&mut hash, &m);
+                iter(&mut hash, &bounds);
+            }
+            ty_struct(d, _) => {
+                hash.input([18]);
+                did(&mut hash, d);
+            }
+            ty_tup(ref inner) => {
+                hash.input([19]);
+                iter(&mut hash, &inner.len());
+            }
+            ty_param(p) => {
+                hash.input([20]);
+                iter(&mut hash, &p.idx);
+                did(&mut hash, p.def_id);
+            }
+            ty_self(d) => {
+                hash.input([21]);
+                did(&mut hash, d);
+            }
+            ty_infer(_) => unreachable!(),
+            ty_err => hash.input([23]),
+            ty_type => hash.input([24]),
+            ty_opaque_box => hash.input([25]),
+            ty_opaque_closure_ptr(s) => {
+                hash.input([26]);
+                iter(&mut hash, &s);
+            }
+            ty_unboxed_vec(m) => {
+                hash.input([27]);
+                mt(&mut hash, m);
+            }
+        }
+    }
+
+    hash.result_u64()
+}
