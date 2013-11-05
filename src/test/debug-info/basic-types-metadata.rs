@@ -44,7 +44,7 @@
 // check:type = f64
 // debugger:info functions _yyy
 // check:[...]
-// check:! basic-types-metadata::_yyy()();
+// check:![...]_yyy()();
 // debugger:detach
 // debugger:quit
 
