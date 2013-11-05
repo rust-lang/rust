@@ -21,20 +21,18 @@ use std::str;
 use std::rt::io;
 use std::rt::io::IoError;
 use std::rt::io::net::ip::{SocketAddr, IpAddr};
-use std::rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur,
-                  SeekEnd};
+use std::rt::io::{standard_error, OtherIoError};
 use std::rt::io::process::ProcessConfig;
 use std::rt::local::Local;
 use std::rt::rtio::*;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
 use std::rt::task::Task;
-use std::path::{GenericPath, Path};
-use std::libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY,
-                O_WRONLY, S_IRUSR, S_IWUSR};
-use std::rt::io::{FileMode, FileAccess, Open,
-                  Append, Truncate, Read, Write, ReadWrite,
-                  FileStat};
+use std::path::Path;
+use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
+                S_IRUSR, S_IWUSR};
+use std::rt::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
+                  ReadWrite, FileStat};
 use std::rt::io::signal::Signum;
 use std::task;
 use ai = std::rt::io::net::addrinfo;
@@ -249,76 +247,6 @@ impl UvIoFactory {
     }
 }
 
-/// Helper for a variety of simple uv_fs_* functions that have no ret val. This
-/// function takes the loop that it will act on, and then invokes the specified
-/// callback in a situation where the task wil be immediately blocked
-/// afterwards. The `FsCallback` yielded must be invoked to reschedule the task
-/// (once the result of the operation is known).
-fn uv_fs_helper<T:Send>(loop_: &mut Loop,
-                        retfn: extern "Rust" fn(&mut FsRequest) -> T,
-                        cb: &fn(&mut FsRequest, &mut Loop, FsCallback))
-                        -> Result<T, IoError> {
-    let result_cell = Cell::new_empty();
-    let result_cell_ptr: *Cell<Result<T, IoError>> = &result_cell;
-    do task::unkillable { // FIXME(#8674)
-        let scheduler: ~Scheduler = Local::take();
-        let mut new_req = FsRequest::new();
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            do cb(&mut new_req, loop_) |req, err| {
-                let res = match err {
-                    None => Ok(retfn(req)),
-                    Some(err) => Err(uv_error_to_io_error(err))
-                };
-                unsafe { (*result_cell_ptr).put_back(res); }
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            };
-        }
-    }
-    assert!(!result_cell.is_empty());
-    return result_cell.take();
-}
-
-fn unit(_: &mut FsRequest) {}
-
-fn fs_mkstat(f: &mut FsRequest) -> FileStat {
-    let path = unsafe { Path::new(CString::new(f.get_path(), false)) };
-    let stat = f.get_stat();
-    fn to_msec(stat: uvll::uv_timespec_t) -> u64 {
-        (stat.tv_sec * 1000 + stat.tv_nsec / 1000000) as u64
-    }
-    let kind = match (stat.st_mode as c_int) & libc::S_IFMT {
-        libc::S_IFREG => io::TypeFile,
-        libc::S_IFDIR => io::TypeDirectory,
-        libc::S_IFIFO => io::TypeNamedPipe,
-        libc::S_IFBLK => io::TypeBlockSpecial,
-        libc::S_IFLNK => io::TypeSymlink,
-        _ => io::TypeUnknown,
-    };
-    FileStat {
-        path: path,
-        size: stat.st_size as u64,
-        kind: kind,
-        perm: (stat.st_mode as io::FilePermission) & io::AllPermissions,
-        created: to_msec(stat.st_birthtim),
-        modified: to_msec(stat.st_mtim),
-        accessed: to_msec(stat.st_atim),
-        unstable: io::UnstableFileStat {
-            device: stat.st_dev as u64,
-            inode: stat.st_ino as u64,
-            rdev: stat.st_rdev as u64,
-            nlink: stat.st_nlink as u64,
-            uid: stat.st_uid as u64,
-            gid: stat.st_gid as u64,
-            blksize: stat.st_blksize as u64,
-            blocks: stat.st_blocks as u64,
-            flags: stat.st_flags as u64,
-            gen: stat.st_gen as u64,
-        }
-    }
-}
-
 impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
@@ -456,10 +384,10 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream {
+    fn fs_from_raw_fd(&mut self, fd: c_int,
+                      close: CloseBehavior) -> ~RtioFileStream {
         let loop_ = Loop {handle: self.uv_loop().native_handle()};
-        let home = get_handle_to_current_scheduler!();
-        ~UvFileStream::new(loop_, fd, close, home) as ~RtioFileStream
+        ~FileWatcher::new(loop_, fd, close) as ~RtioFileStream
     }
 
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
@@ -477,138 +405,64 @@ impl IoFactory for UvIoFactory {
             io::ReadWrite => (flags | libc::O_RDWR | libc::O_CREAT,
                               libc::S_IRUSR | libc::S_IWUSR),
         };
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~RtioFileStream,
-                                           IoError>> = &result_cell;
-        do task::unkillable { // FIXME(#8674)
-            let scheduler: ~Scheduler = Local::take();
-            let open_req = file::FsRequest::new();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                do open_req.open(self.uv_loop(), path, flags as int, mode as int)
-                      |req,err| {
-                    if err.is_none() {
-                        let loop_ = Loop {handle: req.get_loop().native_handle()};
-                        let home = get_handle_to_current_scheduler!();
-                        let fd = req.get_result() as c_int;
-                        let fs = ~UvFileStream::new(
-                            loop_, fd, CloseSynchronously, home) as ~RtioFileStream;
-                        let res = Ok(fs);
-                        unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    } else {
-                        let res = Err(uv_error_to_io_error(err.unwrap()));
-                        unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    }
-                };
-            };
-        };
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+
+        match FsRequest::open(self.uv_loop(), path, flags as int, mode as int) {
+            Ok(fs) => Ok(~fs as ~RtioFileStream),
+            Err(e) => Err(uv_error_to_io_error(e))
+        }
     }
 
     fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.unlink(l, path, cb)
-        }
+        let r = FsRequest::unlink(self.uv_loop(), path);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_lstat(&mut self, path: &CString) -> Result<FileStat, IoError> {
-        do uv_fs_helper(self.uv_loop(), fs_mkstat) |req, l, cb| {
-            req.lstat(l, path, cb)
-        }
+        let r = FsRequest::lstat(self.uv_loop(), path);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError> {
-        do uv_fs_helper(self.uv_loop(), fs_mkstat) |req, l, cb| {
-            req.stat(l, path, cb)
-        }
+        let r = FsRequest::stat(self.uv_loop(), path);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_mkdir(&mut self, path: &CString,
                 perm: io::FilePermission) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.mkdir(l, path, perm as c_int, cb)
-        }
+        let r = FsRequest::mkdir(self.uv_loop(), path, perm as c_int);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.rmdir(l, path, cb)
-        }
+        let r = FsRequest::rmdir(self.uv_loop(), path);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.rename(l, path, to, cb)
-        }
+        let r = FsRequest::rename(self.uv_loop(), path, to);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_chmod(&mut self, path: &CString,
                 perm: io::FilePermission) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.chmod(l, path, perm as c_int, cb)
-        }
+        let r = FsRequest::chmod(self.uv_loop(), path, perm as c_int);
+        r.map_err(uv_error_to_io_error)
     }
-    fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
-        Result<~[Path], IoError> {
-        use str::StrSlice;
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~[Path],
-                                           IoError>> = &result_cell;
-        let path_cell = Cell::new(path);
-        do task::unkillable { // FIXME(#8674)
-            let scheduler: ~Scheduler = Local::take();
-            let stat_req = file::FsRequest::new();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let path = path_cell.take();
-                // Don't pick up the null byte
-                let slice = path.as_bytes().slice(0, path.len());
-                let path_parent = Cell::new(Path::new(slice));
-                do stat_req.readdir(self.uv_loop(), path, flags) |req,err| {
-                    let parent = path_parent.take();
-                    let res = match err {
-                        None => {
-                            let mut paths = ~[];
-                            do req.each_path |rel_path| {
-                                let p = rel_path.as_bytes();
-                                paths.push(parent.join(p.slice_to(rel_path.len())));
-                            }
-                            Ok(paths)
-                        },
-                        Some(e) => {
-                            Err(uv_error_to_io_error(e))
-                        }
-                    };
-                    unsafe { (*result_cell_ptr).put_back(res); }
-                    let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
-                };
-            };
-        };
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+    fn fs_readdir(&mut self, path: &CString, flags: c_int)
+        -> Result<~[Path], IoError>
+    {
+        let r = FsRequest::readdir(self.uv_loop(), path, flags);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_link(&mut self, src: &CString, dst: &CString) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.link(l, src, dst, cb)
-        }
+        let r = FsRequest::link(self.uv_loop(), src, dst);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.symlink(l, src, dst, cb)
-        }
+        let r = FsRequest::symlink(self.uv_loop(), src, dst);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) -> Result<(), IoError> {
-        do uv_fs_helper(self.uv_loop(), unit) |req, l, cb| {
-            req.chown(l, path, uid, gid, cb)
-        }
+        let r = FsRequest::chown(self.uv_loop(), path, uid, gid);
+        r.map_err(uv_error_to_io_error)
     }
     fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError> {
-        fn getlink(f: &mut FsRequest) -> Path {
-            Path::new(unsafe { CString::new(f.get_ptr() as *libc::c_char, false) })
-        }
-        do uv_fs_helper(self.uv_loop(), getlink) |req, l, cb| {
-            req.readlink(l, path, cb)
-        }
+        let r = FsRequest::readlink(self.uv_loop(), path);
+        r.map_err(uv_error_to_io_error)
     }
 
     fn spawn(&mut self, config: ProcessConfig)
@@ -1069,159 +923,6 @@ impl RtioUdpSocket for UvUdpSocket {
             uvll::uv_udp_set_broadcast(self.watcher.native_handle(),
                                        0 as c_int)
         })
-    }
-}
-
-pub struct UvFileStream {
-    priv loop_: Loop,
-    priv fd: c_int,
-    priv close: CloseBehavior,
-    priv home: SchedHandle,
-}
-
-impl HomingIO for UvFileStream {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
-}
-
-impl UvFileStream {
-    fn new(loop_: Loop, fd: c_int, close: CloseBehavior,
-           home: SchedHandle) -> UvFileStream {
-        UvFileStream {
-            loop_: loop_,
-            fd: fd,
-            close: close,
-            home: home,
-        }
-    }
-    fn base_read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<int, IoError>> = &result_cell;
-        let buf_ptr: *&mut [u8] = &buf;
-        let (_m, scheduler) = self.fire_homing_missile_sched();
-        do scheduler.deschedule_running_task_and_then |_, task| {
-            let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-            let task_cell = Cell::new(task);
-            let read_req = file::FsRequest::new();
-            do read_req.read(&self.loop_, self.fd, buf, offset) |req, uverr| {
-                let res = match uverr  {
-                    None => Ok(req.get_result() as int),
-                    Some(err) => Err(uv_error_to_io_error(err))
-                };
-                unsafe { (*result_cell_ptr).put_back(res); }
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
-            }
-        }
-        result_cell.take()
-    }
-    fn base_write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError> {
-        do self.nop_req |self_, req, cb| {
-            req.write(&self_.loop_, self_.fd, slice_to_uv_buf(buf), offset, cb)
-        }
-    }
-    fn seek_common(&mut self, pos: i64, whence: c_int) ->
-        Result<u64, IoError>{
-        #[fixed_stack_segment]; #[inline(never)];
-        unsafe {
-            match lseek(self.fd, pos as off_t, whence) {
-                -1 => {
-                    Err(IoError {
-                        kind: OtherIoError,
-                        desc: "Failed to lseek.",
-                        detail: None
-                    })
-                },
-                n => Ok(n as u64)
-            }
-        }
-    }
-    fn nop_req(&mut self, f: &fn(&mut UvFileStream, file::FsRequest, FsCallback))
-            -> Result<(), IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-        let (_m, sched) = self.fire_homing_missile_sched();
-        do sched.deschedule_running_task_and_then |_, task| {
-            let task = Cell::new(task);
-            let req = file::FsRequest::new();
-            do f(self, req) |_, uverr| {
-                let res = match uverr  {
-                    None => Ok(()),
-                    Some(err) => Err(uv_error_to_io_error(err))
-                };
-                unsafe { (*result_cell_ptr).put_back(res); }
-                let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task.take());
-            }
-        }
-        result_cell.take()
-    }
-}
-
-impl Drop for UvFileStream {
-    fn drop(&mut self) {
-        match self.close {
-            DontClose => {}
-            CloseAsynchronously => {
-                let close_req = file::FsRequest::new();
-                do close_req.close(&self.loop_, self.fd) |_,_| {}
-            }
-            CloseSynchronously => {
-                let (_m, scheduler) = self.fire_homing_missile_sched();
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    let task_cell = Cell::new(task);
-                    let close_req = file::FsRequest::new();
-                    do close_req.close(&self.loop_, self.fd) |_,_| {
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl RtioFileStream for UvFileStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError> {
-        self.base_read(buf, -1)
-    }
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        self.base_write(buf, -1)
-    }
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
-        self.base_read(buf, offset as i64)
-    }
-    fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
-        self.base_write(buf, offset as i64)
-    }
-    fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError> {
-        use std::libc::{SEEK_SET, SEEK_CUR, SEEK_END};
-        let whence = match whence {
-            SeekSet => SEEK_SET,
-            SeekCur => SEEK_CUR,
-            SeekEnd => SEEK_END
-        };
-        self.seek_common(pos, whence)
-    }
-    fn tell(&self) -> Result<u64, IoError> {
-        use std::libc::SEEK_CUR;
-        // this is temporary
-        let self_ = unsafe { cast::transmute_mut(self) };
-        self_.seek_common(0, SEEK_CUR)
-    }
-    fn fsync(&mut self) -> Result<(), IoError> {
-        do self.nop_req |self_, req, cb| {
-            req.fsync(&self_.loop_, self_.fd, cb)
-        }
-    }
-    fn datasync(&mut self) -> Result<(), IoError> {
-        do self.nop_req |self_, req, cb| {
-            req.datasync(&self_.loop_, self_.fd, cb)
-        }
-    }
-    fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
-        do self.nop_req |self_, req, cb| {
-            req.truncate(&self_.loop_, self_.fd, offset, cb)
-        }
     }
 }
 
