@@ -26,7 +26,7 @@ impl IdleWatcher {
     pub fn new(loop_: &mut Loop) -> ~IdleWatcher {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         assert_eq!(unsafe {
-            uvll::uv_idle_init(loop_.native_handle(), handle)
+            uvll::uv_idle_init(loop_.handle, handle)
         }, 0);
         let me = ~IdleWatcher {
             handle: handle,
@@ -40,7 +40,7 @@ impl IdleWatcher {
     pub fn onetime(loop_: &mut Loop, f: proc()) {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         unsafe {
-            assert_eq!(uvll::uv_idle_init(loop_.native_handle(), handle), 0);
+            assert_eq!(uvll::uv_idle_init(loop_.handle, handle), 0);
             let data: *c_void = cast::transmute(~f);
             uvll::set_data_for_uv_handle(handle, data);
             assert_eq!(uvll::uv_idle_start(handle, onetime_cb), 0)

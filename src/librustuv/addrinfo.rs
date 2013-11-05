@@ -17,7 +17,7 @@ use std::rt::local::Local;
 use std::rt::sched::Scheduler;
 
 use net;
-use super::{Loop, UvError, NativeHandle, Request};
+use super::{Loop, UvError, Request};
 use uvll;
 
 struct Addrinfo {
@@ -79,7 +79,7 @@ impl GetAddrInfoRequest {
         let req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {
-            uvll::uv_getaddrinfo(loop_.native_handle(), req.handle,
+            uvll::uv_getaddrinfo(loop_.handle, req.handle,
                                  getaddrinfo_cb, c_node_ptr, c_service_ptr,
                                  hint_ptr)
         } {

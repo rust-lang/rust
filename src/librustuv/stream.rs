@@ -201,8 +201,8 @@ extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
     let req = Request::wrap(req);
     let wcx: &mut WriteContext = unsafe { cast::transmute(req.get_data()) };
     wcx.result = status;
+    req.defuse();
 
     let sched: ~Scheduler = Local::take();
     sched.resume_blocked_task_immediately(wcx.task.take_unwrap());
-    req.defuse();
 }

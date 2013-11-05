@@ -50,7 +50,7 @@ pub struct Task {
     heap: LocalHeap,
     priv gc: GarbageCollector,
     storage: LocalStorage,
-    logger: StdErrLogger,
+    logger: Option<StdErrLogger>,
     unwinder: Unwinder,
     taskgroup: Option<Taskgroup>,
     death: Death,
@@ -180,7 +180,7 @@ impl Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: StdErrLogger::new(),
+            logger: None,
             unwinder: Unwinder { unwinding: false, cause: None },
             taskgroup: None,
             death: Death::new(),
@@ -215,7 +215,7 @@ impl Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: StdErrLogger::new(),
+            logger: None,
             unwinder: Unwinder { unwinding: false, cause: None },
             taskgroup: None,
             death: Death::new(),
@@ -238,7 +238,7 @@ impl Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: StdErrLogger::new(),
+            logger: None,
             unwinder: Unwinder { unwinding: false, cause: None },
             taskgroup: None,
             // FIXME(#7544) make watching optional
@@ -320,6 +320,7 @@ impl Task {
                     }
                     None => {}
                 }
+                self.logger.take();
             }
         }
 

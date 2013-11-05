@@ -19,7 +19,7 @@ use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
 
 use stream::StreamWatcher;
-use super::{Loop, UvError, NativeHandle, uv_error_to_io_error, UvHandle, Request};
+use super::{Loop, UvError, UvHandle, Request, uv_error_to_io_error};
 use uvio::HomingIO;
 use uvll;
 
@@ -55,7 +55,7 @@ impl PipeWatcher {
             let handle = uvll::malloc_handle(uvll::UV_NAMED_PIPE);
             assert!(!handle.is_null());
             let ipc = ipc as libc::c_int;
-            assert_eq!(uvll::uv_pipe_init(loop_.native_handle(), handle, ipc), 0);
+            assert_eq!(uvll::uv_pipe_init(loop_.handle, handle, ipc), 0);
             handle
         }
     }
@@ -196,7 +196,7 @@ impl UvHandle<uvll::uv_pipe_t> for PipeListener {
 extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
     let msg = match status {
         0 => {
-            let loop_ = NativeHandle::from_native_handle(unsafe {
+            let loop_ = Loop::wrap(unsafe {
                 uvll::get_loop_for_uv_handle(server)
             });
             let client = PipeWatcher::alloc(&loop_, false);

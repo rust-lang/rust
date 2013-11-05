@@ -16,7 +16,7 @@ use std::rt::rtio::RtioTimer;
 use std::rt::sched::{Scheduler, SchedHandle};
 
 use uvll;
-use super::{Loop, NativeHandle, UvHandle};
+use super::{Loop, UvHandle};
 use uvio::HomingIO;
 
 pub struct TimerWatcher {
@@ -35,7 +35,7 @@ impl TimerWatcher {
     pub fn new(loop_: &mut Loop) -> ~TimerWatcher {
         let handle = UvHandle::alloc(None::<TimerWatcher>, uvll::UV_TIMER);
         assert_eq!(unsafe {
-            uvll::uv_timer_init(loop_.native_handle(), handle)
+            uvll::uv_timer_init(loop_.handle, handle)
         }, 0);
         let me = ~TimerWatcher {
             handle: handle,
