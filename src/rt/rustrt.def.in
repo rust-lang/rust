@@ -42,9 +42,6 @@ rust_signal_little_lock
 rust_wait_little_lock
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
-rust_raw_thread_start
-rust_raw_thread_join
-rust_raw_thread_delete
 swap_registers
 rust_readdir
 rust_opendir
