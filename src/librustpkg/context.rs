@@ -252,8 +252,8 @@ pub fn flags_forbidden_for_cmd(flags: &RustcFlags,
         return true;
     }
 
-    if !cfgs.is_empty() && cmd != "build" && cmd != "install" {
-        println("The --cfg option can only be used with the build or install commands.");
+    if !cfgs.is_empty() && cmd != "build" && cmd != "install" && cmd != "test" {
+        println("The --cfg option can only be used with the build, test, or install commands.");
         return true;
     }
 
