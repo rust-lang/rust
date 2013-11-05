@@ -603,7 +603,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
 
     let has_header = match ty::get(t).sty {
         ty::ty_box(*) => true,
-        ty::ty_uniq(*) => ty::type_contents(ccx.tcx, t).contains_managed(),
+        ty::ty_uniq(*) => ty::type_contents(ccx.tcx, t).owns_managed(),
         _ => false
     };
 

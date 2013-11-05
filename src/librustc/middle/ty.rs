@@ -1954,7 +1954,7 @@ impl TypeContents {
         !self.intersects(TC::Nonsendable)
     }
 
-    pub fn contains_managed(&self) -> bool {
+    pub fn owns_managed(&self) -> bool {
         self.intersects(TC::OwnsManaged)
     }
 
