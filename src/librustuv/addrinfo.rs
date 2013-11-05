@@ -8,41 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast::transmute;
-use std::cell::Cell;
-use std::libc::{c_int, c_void};
-use std::ptr::null;
 use ai = std::rt::io::net::addrinfo;
+use std::cast;
+use std::libc::c_int;
+use std::ptr::null;
+use std::rt::BlockedTask;
+use std::rt::local::Local;
+use std::rt::sched::Scheduler;
 
-use uvll;
-use uvll::UV_GETADDRINFO;
-use super::{Loop, UvError, NativeHandle, status_to_maybe_uv_error};
 use net;
+use super::{Loop, UvError, NativeHandle};
+use uvll::UV_GETADDRINFO;
+use uvll;
 
-type GetAddrInfoCallback = ~fn(GetAddrInfoRequest, &net::UvAddrInfo, Option<UvError>);
+struct GetAddrInfoRequest {
+    handle: *uvll::uv_getaddrinfo_t,
+}
 
-pub struct GetAddrInfoRequest(*uvll::uv_getaddrinfo_t);
+struct Addrinfo {
+    handle: *uvll::addrinfo,
+}
 
-pub struct RequestData {
-    priv getaddrinfo_cb: Option<GetAddrInfoCallback>,
+struct Ctx {
+    slot: Option<BlockedTask>,
+    status: c_int,
+    addrinfo: Option<Addrinfo>,
 }
 
 impl GetAddrInfoRequest {
     pub fn new() -> GetAddrInfoRequest {
-        let req = unsafe { uvll::malloc_req(UV_GETADDRINFO) };
-        assert!(req.is_not_null());
-        let mut req: GetAddrInfoRequest = NativeHandle::from_native_handle(req);
-        req.install_req_data();
-        return req;
+        GetAddrInfoRequest {
+            handle: unsafe { uvll::malloc_req(uvll::UV_GETADDRINFO) },
+        }
     }
 
-    pub fn getaddrinfo(&mut self, loop_: &Loop, node: Option<&str>,
-                       service: Option<&str>, hints: Option<ai::Hint>,
-                       cb: GetAddrInfoCallback) {
-
+    pub fn run(loop_: &Loop, node: Option<&str>, service: Option<&str>,
+               hints: Option<ai::Hint>) -> Result<~[ai::Info], UvError> {
         assert!(node.is_some() || service.is_some());
-
-        let (c_node, c_node_ptr) = match node {
+        let (_c_node, c_node_ptr) = match node {
             Some(n) => {
                 let c_node = n.to_c_str();
                 let c_node_ptr = c_node.with_ref(|r| r);
@@ -51,24 +54,13 @@ impl GetAddrInfoRequest {
             None => (None, null())
         };
 
-        let (c_service, c_service_ptr) = match service {
+        let (_c_service, c_service_ptr) = match service {
             Some(s) => {
                 let c_service = s.to_c_str();
                 let c_service_ptr = c_service.with_ref(|r| r);
                 (Some(c_service), c_service_ptr)
             }
             None => (None, null())
-        };
-
-        let cb = Cell::new(cb);
-        let wrapper_cb: GetAddrInfoCallback = |req, addrinfo, err| {
-            // Capture some heap values that need to stay alive for the
-            // getaddrinfo call
-            let _ = &c_node;
-            let _ = &c_service;
-
-            let cb = cb.take();
-            cb(req, addrinfo, err)
         };
 
         let hint = hints.map(|hint| {
@@ -78,19 +70,6 @@ impl GetAddrInfoRequest {
                     flags |= cval as i32;
                 }
             }
-            /* XXX: do we really want to support these?
-            let socktype = match hint.socktype {
-                Some(ai::Stream) => uvll::rust_SOCK_STREAM(),
-                Some(ai::Datagram) => uvll::rust_SOCK_DGRAM(),
-                Some(ai::Raw) => uvll::rust_SOCK_RAW(),
-                None => 0,
-            };
-            let protocol = match hint.protocol {
-                Some(ai::UDP) => uvll::rust_IPPROTO_UDP(),
-                Some(ai::TCP) => uvll::rust_IPPROTO_TCP(),
-                _ => 0,
-            };
-            */
             let socktype = 0;
             let protocol = 0;
 
@@ -106,66 +85,54 @@ impl GetAddrInfoRequest {
             }
         });
         let hint_ptr = hint.as_ref().map_default(null(), |x| x as *uvll::addrinfo);
+        let req = GetAddrInfoRequest::new();
 
-        self.get_req_data().getaddrinfo_cb = Some(wrapper_cb);
+        return match unsafe {
+            uvll::uv_getaddrinfo(loop_.native_handle(), req.handle,
+                                 getaddrinfo_cb, c_node_ptr, c_service_ptr,
+                                 hint_ptr)
+        } {
+            0 => {
+                let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
+                unsafe { uvll::set_data_for_req(req.handle, &cx) }
+                let scheduler: ~Scheduler = Local::take();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    cx.slot = Some(task);
+                }
 
-        unsafe {
-            assert!(0 == uvll::uv_getaddrinfo(loop_.native_handle(),
-                                              self.native_handle(),
-                                              getaddrinfo_cb,
-                                              c_node_ptr,
-                                              c_service_ptr,
-                                              hint_ptr));
-        }
-
-        extern "C" fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
-                                     status: c_int,
-                                     res: *uvll::addrinfo) {
-            let mut req: GetAddrInfoRequest = NativeHandle::from_native_handle(req);
-            let err = status_to_maybe_uv_error(status);
-            let addrinfo = net::UvAddrInfo(res);
-            let data = req.get_req_data();
-            (*data.getaddrinfo_cb.get_ref())(req, &addrinfo, err);
-            unsafe {
-                uvll::uv_freeaddrinfo(res);
+                match cx.status {
+                    0 => Ok(accum_addrinfo(cx.addrinfo.get_ref())),
+                    n => Err(UvError(n))
+                }
             }
-        }
-    }
-
-    fn get_loop(&self) -> Loop {
-        unsafe {
-            Loop {
-                handle: uvll::get_loop_from_fs_req(self.native_handle())
-            }
-        }
-    }
-
-    fn install_req_data(&mut self) {
-        let req = self.native_handle() as *uvll::uv_getaddrinfo_t;
-        let data = ~RequestData {
-            getaddrinfo_cb: None
+            n => Err(UvError(n))
         };
-        unsafe {
-            let data = transmute::<~RequestData, *c_void>(data);
-            uvll::set_data_for_req(req, data);
+
+
+        extern fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
+                                 status: c_int,
+                                 res: *uvll::addrinfo) {
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_req(req))
+            };
+            cx.status = status;
+            cx.addrinfo = Some(Addrinfo { handle: res });
+
+            let sched: ~Scheduler = Local::take();
+            sched.resume_blocked_task_immediately(cx.slot.take_unwrap());
         }
     }
+}
 
-    fn get_req_data<'r>(&'r mut self) -> &'r mut RequestData {
-        unsafe {
-            let data = uvll::get_data_for_req(self.native_handle());
-            let data = transmute::<&*c_void, &mut ~RequestData>(&data);
-            return &mut **data;
-        }
+impl Drop for GetAddrInfoRequest {
+    fn drop(&mut self) {
+        unsafe { uvll::free_req(self.handle) }
     }
+}
 
-    fn delete(self) {
-        unsafe {
-            let data = uvll::get_data_for_req(self.native_handle());
-            let _data = transmute::<*c_void, ~RequestData>(data);
-            uvll::set_data_for_req(self.native_handle(), null::<()>());
-            uvll::free_req(self.native_handle());
-        }
+impl Drop for Addrinfo {
+    fn drop(&mut self) {
+        unsafe { uvll::uv_freeaddrinfo(self.handle) }
     }
 }
 
@@ -184,10 +151,9 @@ fn each_ai_flag(_f: &fn(c_int, ai::Flag)) {
 }
 
 // Traverse the addrinfo linked list, producing a vector of Rust socket addresses
-pub fn accum_addrinfo(addr: &net::UvAddrInfo) -> ~[ai::Info] {
+pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
     unsafe {
-        let &net::UvAddrInfo(addr) = addr;
-        let mut addr = addr;
+        let mut addr = addr.handle;
 
         let mut addrs = ~[];
         loop {
@@ -232,15 +198,6 @@ pub fn accum_addrinfo(addr: &net::UvAddrInfo) -> ~[ai::Info] {
         }
 
         return addrs;
-    }
-}
-
-impl NativeHandle<*uvll::uv_getaddrinfo_t> for GetAddrInfoRequest {
-    fn from_native_handle(handle: *uvll::uv_getaddrinfo_t) -> GetAddrInfoRequest {
-        GetAddrInfoRequest(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_getaddrinfo_t {
-        match self { &GetAddrInfoRequest(ptr) => ptr }
     }
 }
 

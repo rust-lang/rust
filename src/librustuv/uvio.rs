@@ -46,7 +46,7 @@ use ai = std::rt::io::net::addrinfo;
 use super::*;
 use idle::IdleWatcher;
 use net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
-use addrinfo::{GetAddrInfoRequest, accum_addrinfo};
+use addrinfo::GetAddrInfoRequest;
 use pipe::PipeListener;
 
 // XXX we should not be calling uvll functions in here.
@@ -351,37 +351,8 @@ impl IoFactory for UvIoFactory {
 
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~[ai::Info], IoError>> = &result_cell;
-        let host_ptr: *Option<&str> = &host;
-        let servname_ptr: *Option<&str> = &servname;
-        let hint_ptr: *Option<ai::Hint> = &hint;
-        let addrinfo_req = GetAddrInfoRequest::new();
-        let addrinfo_req_cell = Cell::new(addrinfo_req);
-
-        do task::unkillable { // FIXME(#8674)
-            let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let mut addrinfo_req = addrinfo_req_cell.take();
-                unsafe {
-                    do addrinfo_req.getaddrinfo(self.uv_loop(),
-                                                *host_ptr, *servname_ptr,
-                                                *hint_ptr) |_, addrinfo, err| {
-                        let res = match err {
-                            None => Ok(accum_addrinfo(addrinfo)),
-                            Some(err) => Err(uv_error_to_io_error(err))
-                        };
-                        (*result_cell_ptr).put_back(res);
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    }
-                }
-            }
-        }
-        addrinfo_req.delete();
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        let r = GetAddrInfoRequest::run(self.uv_loop(), host, servname, hint);
+        r.map_err(uv_error_to_io_error)
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int,
