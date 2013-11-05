@@ -118,7 +118,7 @@ pub fn get_rpath_relative_to_output(os: session::Os,
     let prefix = match os {
         session::OsAndroid | session::OsLinux | session::OsFreebsd
                           => "$ORIGIN",
-        session::OsMacos => "@executable_path",
+        session::OsMacos => "@loader_path",
         session::OsWin32 => unreachable!()
     };
 
@@ -241,7 +241,7 @@ mod test {
         let res = get_rpath_relative_to_output(o,
                                                &Path::new("bin/rustc"),
                                                &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "@executable_path/../lib");
+        assert_eq!(res.as_slice(), "@loader_path/../lib");
     }
 
     #[test]
