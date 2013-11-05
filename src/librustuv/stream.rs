@@ -15,7 +15,7 @@ use std::rt::BlockedTask;
 use std::rt::local::Local;
 use std::rt::sched::Scheduler;
 
-use super::{UvError, Buf, slice_to_uv_buf};
+use super::{UvError, Buf, slice_to_uv_buf, Request};
 use uvll;
 
 // This is a helper structure which is intended to get embedded into other
@@ -29,17 +29,17 @@ pub struct StreamWatcher {
     // every call to uv_write(). Ideally this would be a stack-allocated
     // structure, but currently we don't have mappings for all the structures
     // defined in libuv, so we're foced to malloc this.
-    priv last_write_req: Option<*uvll::uv_write_t>,
+    priv last_write_req: Option<Request>,
 }
 
 struct ReadContext {
     buf: Option<Buf>,
-    result: Option<Result<uint, UvError>>,
+    result: ssize_t,
     task: Option<BlockedTask>,
 }
 
 struct WriteContext {
-    result: Option<Result<(), UvError>>,
+    result: c_int,
     task: Option<BlockedTask>,
 }
 
@@ -72,7 +72,7 @@ impl StreamWatcher {
             0 => {
                 let mut rcx = ReadContext {
                     buf: Some(slice_to_uv_buf(buf)),
-                    result: None,
+                    result: 0,
                     task: None,
                 };
                 unsafe {
@@ -82,7 +82,10 @@ impl StreamWatcher {
                 do scheduler.deschedule_running_task_and_then |_sched, task| {
                     rcx.task = Some(task);
                 }
-                rcx.result.take().expect("no result in read stream?")
+                match rcx.result {
+                    n if n < 0 => Err(UvError(n as c_int)),
+                    n => Ok(n as uint),
+                }
             }
             n => Err(UvError(n))
         }
@@ -91,27 +94,29 @@ impl StreamWatcher {
     pub fn write(&mut self, buf: &[u8]) -> Result<(), UvError> {
         // Prepare the write request, either using a cached one or allocating a
         // new one
-        let req = match self.last_write_req {
-            Some(req) => req,
-            None => unsafe { uvll::malloc_req(uvll::UV_WRITE) },
-        };
-        self.last_write_req = Some(req);
-        let mut wcx = WriteContext { result: None, task: None, };
-        unsafe { uvll::set_data_for_req(req, &wcx as *WriteContext) }
+        if self.last_write_req.is_none() {
+            self.last_write_req = Some(Request::new(uvll::UV_WRITE));
+        }
+        let req = self.last_write_req.get_ref();
 
         // Send off the request, but be careful to not block until we're sure
         // that the write reqeust is queued. If the reqeust couldn't be queued,
         // then we should return immediately with an error.
         match unsafe {
-            uvll::uv_write(req, self.handle, [slice_to_uv_buf(buf)], write_cb)
+            uvll::uv_write(req.handle, self.handle, [slice_to_uv_buf(buf)],
+                           write_cb)
         } {
             0 => {
+                let mut wcx = WriteContext { result: 0, task: None, };
+                req.set_data(&wcx);
                 let scheduler: ~Scheduler = Local::take();
                 do scheduler.deschedule_running_task_and_then |_sched, task| {
                     wcx.task = Some(task);
                 }
-                assert!(wcx.task.is_none());
-                wcx.result.take().expect("no result in write stream?")
+                match wcx.result {
+                    0 => Ok(()),
+                    n => Err(UvError(n)),
+                }
             }
             n => Err(UvError(n)),
         }
@@ -124,12 +129,6 @@ impl StreamWatcher {
     // synchronously (the task is blocked) or asynchronously (the task is not
     // block, but the handle is still deallocated).
     pub fn close(&mut self, synchronous: bool) {
-        // clean up the cached write request if we have one
-        match self.last_write_req {
-            Some(req) => unsafe { uvll::free_req(req) },
-            None => {}
-        }
-
         if synchronous {
             let mut closing_task = None;
             unsafe {
@@ -186,31 +185,24 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: Buf) {
     // XXX: Is there a performance impact to calling
     // stop here?
     unsafe { assert_eq!(uvll::uv_read_stop(handle), 0); }
+    rcx.result = nread;
 
-    assert!(rcx.result.is_none());
-    rcx.result = Some(match nread {
-        n if n < 0 => Err(UvError(n as c_int)),
-        n => Ok(n as uint),
-    });
-
-    let task = rcx.task.take().expect("read_cb needs a task");
     let scheduler: ~Scheduler = Local::take();
-    scheduler.resume_blocked_task_immediately(task);
+    scheduler.resume_blocked_task_immediately(rcx.task.take_unwrap());
 }
 
 // Unlike reading, the WriteContext is stored in the uv_write_t request. Like
 // reading, however, all this does is wake up the blocked task after squirreling
 // away the error code as a result.
 extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
+    if status == uvll::ECANCELED { return }
     // Remember to not free the request because it is re-used between writes on
     // the same stream.
-    unsafe {
-        let wcx: &mut WriteContext = cast::transmute(uvll::get_data_for_req(req));
-        wcx.result = Some(match status {
-            0 => Ok(()),
-            n => Err(UvError(n)),
-        });
-        let sched: ~Scheduler = Local::take();
-        sched.resume_blocked_task_immediately(wcx.task.take_unwrap());
-    }
+    let req = Request::wrap(req);
+    let wcx: &mut WriteContext = unsafe { cast::transmute(req.get_data()) };
+    wcx.result = status;
+
+    let sched: ~Scheduler = Local::take();
+    sched.resume_blocked_task_immediately(wcx.task.take_unwrap());
+    req.defuse();
 }

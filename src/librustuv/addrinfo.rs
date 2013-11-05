@@ -17,13 +17,8 @@ use std::rt::local::Local;
 use std::rt::sched::Scheduler;
 
 use net;
-use super::{Loop, UvError, NativeHandle};
-use uvll::UV_GETADDRINFO;
+use super::{Loop, UvError, NativeHandle, Request};
 use uvll;
-
-struct GetAddrInfoRequest {
-    handle: *uvll::uv_getaddrinfo_t,
-}
 
 struct Addrinfo {
     handle: *uvll::addrinfo,
@@ -35,13 +30,9 @@ struct Ctx {
     addrinfo: Option<Addrinfo>,
 }
 
-impl GetAddrInfoRequest {
-    pub fn new() -> GetAddrInfoRequest {
-        GetAddrInfoRequest {
-            handle: unsafe { uvll::malloc_req(uvll::UV_GETADDRINFO) },
-        }
-    }
+pub struct GetAddrInfoRequest;
 
+impl GetAddrInfoRequest {
     pub fn run(loop_: &Loop, node: Option<&str>, service: Option<&str>,
                hints: Option<ai::Hint>) -> Result<~[ai::Info], UvError> {
         assert!(node.is_some() || service.is_some());
@@ -85,7 +76,7 @@ impl GetAddrInfoRequest {
             }
         });
         let hint_ptr = hint.as_ref().map_default(null(), |x| x as *uvll::addrinfo);
-        let req = GetAddrInfoRequest::new();
+        let req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {
             uvll::uv_getaddrinfo(loop_.native_handle(), req.handle,
@@ -94,7 +85,8 @@ impl GetAddrInfoRequest {
         } {
             0 => {
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
-                unsafe { uvll::set_data_for_req(req.handle, &cx) }
+                req.set_data(&cx);
+                req.defuse();
                 let scheduler: ~Scheduler = Local::take();
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     cx.slot = Some(task);
@@ -112,21 +104,15 @@ impl GetAddrInfoRequest {
         extern fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
                                  status: c_int,
                                  res: *uvll::addrinfo) {
-            let cx: &mut Ctx = unsafe {
-                cast::transmute(uvll::get_data_for_req(req))
-            };
+            let req = Request::wrap(req);
+            if status == uvll::ECANCELED { return }
+            let cx: &mut Ctx = unsafe { cast::transmute(req.get_data()) };
             cx.status = status;
             cx.addrinfo = Some(Addrinfo { handle: res });
 
             let sched: ~Scheduler = Local::take();
             sched.resume_blocked_task_immediately(cx.slot.take_unwrap());
         }
-    }
-}
-
-impl Drop for GetAddrInfoRequest {
-    fn drop(&mut self) {
-        unsafe { uvll::free_req(self.handle) }
     }
 }
 

@@ -8,18 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cast;
 use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
-use std::vec;
+use std::ptr;
+use std::rt::BlockedTask;
+use std::rt::io::IoError;
+use std::rt::io::net::ip::{Ipv4Addr, Ipv6Addr};
+use std::rt::local::Local;
+use std::rt::io::net::ip::{SocketAddr, IpAddr};
+use std::rt::rtio;
+use std::rt::sched::{Scheduler, SchedHandle};
+use std::rt::tube::Tube;
 use std::str;
-use std::rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use std::vec;
 
 use uvll;
 use uvll::*;
-use super::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback,
-            UdpSendCallback, Loop, Watcher, Request, UvError, Buf, NativeHandle,
-            status_to_maybe_uv_error, empty_buf};
+use super::{
+            Loop, Request, UvError, Buf, NativeHandle,
+            status_to_io_result,
+            uv_error_to_io_error, UvHandle, slice_to_uv_buf};
+use uvio::HomingIO;
+use stream::StreamWatcher;
 
-pub struct UvAddrInfo(*uvll::addrinfo);
+////////////////////////////////////////////////////////////////////////////////
+/// Generic functions related to dealing with sockaddr things
+////////////////////////////////////////////////////////////////////////////////
 
 pub enum UvSocketAddr {
     UvIpv4SocketAddr(*sockaddr_in),
@@ -113,394 +127,584 @@ fn test_ip6_conversion() {
     assert_eq!(ip6, socket_addr_as_uv_socket_addr(ip6, uv_socket_addr_to_socket_addr));
 }
 
-// uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
-// and uv_file_t
-pub struct StreamWatcher(*uvll::uv_stream_t);
-impl Watcher for StreamWatcher { }
+enum SocketNameKind {
+    TcpPeer,
+    Tcp,
+    Udp
+}
 
-impl StreamWatcher {
-    pub fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
-        unsafe {
-            match uvll::uv_read_start(self.native_handle(), alloc_cb, read_cb) {
+fn socket_name(sk: SocketNameKind, handle: *c_void) -> Result<SocketAddr, IoError> {
+    let getsockname = match sk {
+        TcpPeer => uvll::tcp_getpeername,
+        Tcp     => uvll::tcp_getsockname,
+        Udp     => uvll::udp_getsockname,
+    };
+
+    // Allocate a sockaddr_storage
+    // since we don't know if it's ipv4 or ipv6
+    let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
+
+    let r = unsafe {
+        getsockname(handle, r_addr as *uvll::sockaddr_storage)
+    };
+
+    if r != 0 {
+        return Err(uv_error_to_io_error(UvError(r)));
+    }
+
+    let addr = unsafe {
+        if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
+            uv_socket_addr_to_socket_addr(UvIpv6SocketAddr(r_addr as *uvll::sockaddr_in6))
+        } else {
+            uv_socket_addr_to_socket_addr(UvIpv4SocketAddr(r_addr as *uvll::sockaddr_in))
+        }
+    };
+
+    unsafe { uvll::free_sockaddr_storage(r_addr); }
+
+    Ok(addr)
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// TCP implementation
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct TcpWatcher {
+    handle: *uvll::uv_tcp_t,
+    stream: StreamWatcher,
+    home: SchedHandle,
+}
+
+pub struct TcpListener {
+    home: SchedHandle,
+    handle: *uvll::uv_pipe_t,
+    priv closing_task: Option<BlockedTask>,
+    priv outgoing: Tube<Result<~rtio::RtioTcpStream, IoError>>,
+}
+
+pub struct TcpAcceptor {
+    listener: ~TcpListener,
+    priv incoming: Tube<Result<~rtio::RtioTcpStream, IoError>>,
+}
+
+// TCP watchers (clients/streams)
+
+impl TcpWatcher {
+    pub fn new(loop_: &Loop) -> TcpWatcher {
+        let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
+        assert_eq!(unsafe {
+            uvll::uv_tcp_init(loop_.native_handle(), handle)
+        }, 0);
+        TcpWatcher {
+            home: get_handle_to_current_scheduler!(),
+            handle: handle,
+            stream: StreamWatcher::new(handle),
+        }
+    }
+
+    pub fn connect(loop_: &mut Loop, address: SocketAddr)
+        -> Result<TcpWatcher, UvError>
+    {
+        struct Ctx { status: c_int, task: Option<BlockedTask> }
+
+        let tcp = TcpWatcher::new(loop_);
+        let ret = do socket_addr_as_uv_socket_addr(address) |addr| {
+            let req = Request::new(uvll::UV_CONNECT);
+            let result = match addr {
+                UvIpv4SocketAddr(addr) => unsafe {
+                    uvll::tcp_connect(req.handle, tcp.handle, addr,
+                                      connect_cb)
+                },
+                UvIpv6SocketAddr(addr) => unsafe {
+                    uvll::tcp_connect6(req.handle, tcp.handle, addr,
+                                       connect_cb)
+                },
+            };
+            match result {
                 0 => {
-                    let data = self.get_watcher_data();
-                    data.alloc_cb = Some(alloc);
-                    data.read_cb = Some(cb);
+                    req.defuse();
+                    let mut cx = Ctx { status: 0, task: None };
+                    let scheduler: ~Scheduler = Local::take();
+                    do scheduler.deschedule_running_task_and_then |_, task| {
+                        cx.task = Some(task);
+                    }
+                    match cx.status {
+                        0 => Ok(()),
+                        n => Err(UvError(n)),
+                    }
                 }
-                n => {
-                    cb(*self, 0, empty_buf(), Some(UvError(n)))
-                }
-            }
-        }
-
-        extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
-            let alloc_cb = stream_watcher.get_watcher_data().alloc_cb.get_ref();
-            return (*alloc_cb)(suggested_size as uint);
-        }
-
-        extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, buf: Buf) {
-            uvdebug!("buf addr: {}", buf.base);
-            uvdebug!("buf len: {}", buf.len);
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
-            let cb = stream_watcher.get_watcher_data().read_cb.get_ref();
-            let status = status_to_maybe_uv_error(nread as c_int);
-            (*cb)(stream_watcher, nread as int, buf, status);
-        }
-    }
-
-    pub fn read_stop(&mut self) {
-        // It would be nice to drop the alloc and read callbacks here,
-        // but read_stop may be called from inside one of them and we
-        // would end up freeing the in-use environment
-        let handle = self.native_handle();
-        unsafe { assert_eq!(uvll::uv_read_stop(handle), 0); }
-    }
-
-    pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
-        let req = WriteRequest::new();
-        return unsafe {
-            match uvll::uv_write(req.native_handle(), self.native_handle(),
-                                 [buf], write_cb) {
-                0 => {
-                    let data = self.get_watcher_data();
-                    assert!(data.write_cb.is_none());
-                    data.write_cb = Some(cb);
-                }
-                n => {
-                    req.delete();
-                    cb(*self, Some(UvError(n)))
-                }
-            }
-        };
-
-        extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
-            let write_request: WriteRequest = NativeHandle::from_native_handle(req);
-            let mut stream_watcher = write_request.stream();
-            write_request.delete();
-            let cb = stream_watcher.get_watcher_data().write_cb.take_unwrap();
-            let status = status_to_maybe_uv_error(status);
-            cb(stream_watcher, status);
-        }
-    }
-
-
-    pub fn listen(&mut self, cb: ConnectionCallback) -> Result<(), UvError> {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.connect_cb.is_none());
-            data.connect_cb = Some(cb);
-        }
-
-        return unsafe {
-            static BACKLOG: c_int = 128; // XXX should be configurable
-            match uvll::uv_listen(self.native_handle(), BACKLOG, connection_cb) {
-                0 => Ok(()),
                 n => Err(UvError(n))
             }
         };
 
-        extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {
-            uvdebug!("connection_cb");
-            let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
-            let status = status_to_maybe_uv_error(status);
-            (*cb)(stream_watcher, status);
-        }
-    }
+        return match ret {
+            Ok(()) => Ok(tcp),
+            Err(e) => Err(e),
+        };
 
-    pub fn accept(&mut self, stream: StreamWatcher) {
-        let self_handle = self.native_handle() as *c_void;
-        let stream_handle = stream.native_handle() as *c_void;
-        assert_eq!(0, unsafe { uvll::uv_accept(self_handle, stream_handle) } );
-    }
-}
-
-impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
-    fn from_native_handle(handle: *uvll::uv_stream_t) -> StreamWatcher {
-        StreamWatcher(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_stream_t {
-        match self { &StreamWatcher(ptr) => ptr }
-    }
-}
-
-pub struct TcpWatcher(*uvll::uv_tcp_t);
-impl Watcher for TcpWatcher { }
-
-impl TcpWatcher {
-    pub fn new(loop_: &Loop) -> TcpWatcher {
-        unsafe {
-            let handle = malloc_handle(UV_TCP);
-            assert!(handle.is_not_null());
-            assert_eq!(0, uvll::uv_tcp_init(loop_.native_handle(), handle));
-            let mut watcher: TcpWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher;
-        }
-    }
-
-    pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
-        do socket_addr_as_uv_socket_addr(address) |addr| {
-            let result = unsafe {
-                match addr {
-                    UvIpv4SocketAddr(addr) => uvll::tcp_bind(self.native_handle(), addr),
-                    UvIpv6SocketAddr(addr) => uvll::tcp_bind6(self.native_handle(), addr),
-                }
+        extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
+            let _req = Request::wrap(req);
+            if status == uvll::ECANCELED { return }
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_req(req))
             };
-            match result {
-                0 => Ok(()),
-                _ => Err(UvError(result)),
-            }
+            cx.status = status;
+            let scheduler: ~Scheduler = Local::take();
+            scheduler.resume_blocked_task_immediately(cx.task.take_unwrap());
         }
-    }
-
-    pub fn connect(&mut self, address: SocketAddr, cb: ConnectionCallback) {
-        unsafe {
-            assert!(self.get_watcher_data().connect_cb.is_none());
-            self.get_watcher_data().connect_cb = Some(cb);
-
-            let connect_handle = ConnectRequest::new().native_handle();
-            uvdebug!("connect_t: {}", connect_handle);
-            do socket_addr_as_uv_socket_addr(address) |addr| {
-                let result = match addr {
-                    UvIpv4SocketAddr(addr) => uvll::tcp_connect(connect_handle,
-                                                      self.native_handle(), addr, connect_cb),
-                    UvIpv6SocketAddr(addr) => uvll::tcp_connect6(connect_handle,
-                                                       self.native_handle(), addr, connect_cb),
-                };
-                assert_eq!(0, result);
-            }
-
-            extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
-                uvdebug!("connect_t: {}", req);
-                let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
-                let mut stream_watcher = connect_request.stream();
-                connect_request.delete();
-                let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
-                let status = status_to_maybe_uv_error(status);
-                cb(stream_watcher, status);
-            }
-        }
-    }
-
-    pub fn as_stream(&self) -> StreamWatcher {
-        NativeHandle::from_native_handle(self.native_handle() as *uvll::uv_stream_t)
     }
 }
 
-impl NativeHandle<*uvll::uv_tcp_t> for TcpWatcher {
-    fn from_native_handle(handle: *uvll::uv_tcp_t) -> TcpWatcher {
-        TcpWatcher(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_tcp_t {
-        match self { &TcpWatcher(ptr) => ptr }
+impl HomingIO for TcpWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl rtio::RtioSocket for TcpWatcher {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+        let _m = self.fire_missiles();
+        socket_name(Tcp, self.handle)
     }
 }
 
-pub struct UdpWatcher(*uvll::uv_udp_t);
-impl Watcher for UdpWatcher { }
+impl rtio::RtioTcpStream for TcpWatcher {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+        let _m = self.fire_missiles();
+        self.stream.read(buf).map_err(uv_error_to_io_error)
+    }
+
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        self.stream.write(buf).map_err(uv_error_to_io_error)
+    }
+
+    fn peer_name(&mut self) -> Result<SocketAddr, IoError> {
+        let _m = self.fire_missiles();
+        socket_name(TcpPeer, self.handle)
+    }
+
+    fn control_congestion(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_tcp_nodelay(self.handle, 0 as c_int)
+        })
+    }
+
+    fn nodelay(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_tcp_nodelay(self.handle, 1 as c_int)
+        })
+    }
+
+    fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_tcp_keepalive(self.handle, 1 as c_int,
+                                   delay_in_seconds as c_uint)
+        })
+    }
+
+    fn letdie(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_tcp_keepalive(self.handle, 0 as c_int, 0 as c_uint)
+        })
+    }
+}
+
+impl Drop for TcpWatcher {
+    fn drop(&mut self) {
+        let _m = self.fire_missiles();
+        self.stream.close(true);
+    }
+}
+
+// TCP listeners (unbound servers)
+
+impl TcpListener {
+    pub fn bind(loop_: &mut Loop, address: SocketAddr)
+        -> Result<~TcpListener, UvError>
+    {
+        let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
+        assert_eq!(unsafe {
+            uvll::uv_tcp_init(loop_.native_handle(), handle)
+        }, 0);
+        let l = ~TcpListener {
+            home: get_handle_to_current_scheduler!(),
+            handle: handle,
+            closing_task: None,
+            outgoing: Tube::new(),
+        };
+        let res = socket_addr_as_uv_socket_addr(address, |addr| unsafe {
+            match addr {
+                UvIpv4SocketAddr(addr) => uvll::tcp_bind(l.handle, addr),
+                UvIpv6SocketAddr(addr) => uvll::tcp_bind6(l.handle, addr),
+            }
+        });
+        match res {
+            0 => Ok(l.install()),
+            n => Err(UvError(n))
+        }
+    }
+}
+
+impl HomingIO for TcpListener {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl UvHandle<uvll::uv_tcp_t> for TcpListener {
+    fn uv_handle(&self) -> *uvll::uv_tcp_t { self.handle }
+}
+
+impl rtio::RtioSocket for TcpListener {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+        let _m = self.fire_missiles();
+        socket_name(Tcp, self.handle)
+    }
+}
+
+impl rtio::RtioTcpListener for TcpListener {
+    fn listen(mut ~self) -> Result<~rtio::RtioTcpAcceptor, IoError> {
+        // create the acceptor object from ourselves
+        let incoming = self.outgoing.clone();
+        let mut acceptor = ~TcpAcceptor {
+            listener: self,
+            incoming: incoming,
+        };
+
+        let _m = acceptor.fire_missiles();
+        // XXX: the 128 backlog should be configurable
+        match unsafe { uvll::uv_listen(acceptor.listener.handle, 128, listen_cb) } {
+            0 => Ok(acceptor as ~rtio::RtioTcpAcceptor),
+            n => Err(uv_error_to_io_error(UvError(n))),
+        }
+    }
+}
+
+extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
+    let msg = match status {
+        0 => {
+            let loop_ = NativeHandle::from_native_handle(unsafe {
+                uvll::get_loop_for_uv_handle(server)
+            });
+            let client = TcpWatcher::new(&loop_);
+            assert_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
+            Ok(~client as ~rtio::RtioTcpStream)
+        }
+        uvll::ECANCELED => return,
+        n => Err(uv_error_to_io_error(UvError(n)))
+    };
+
+    let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&server) };
+    tcp.outgoing.send(msg);
+}
+
+impl Drop for TcpListener {
+    fn drop(&mut self) {
+        let (_m, sched) = self.fire_missiles_sched();
+
+        do sched.deschedule_running_task_and_then |_, task| {
+            self.closing_task = Some(task);
+            unsafe { uvll::uv_close(self.handle, listener_close_cb) }
+        }
+    }
+}
+
+extern fn listener_close_cb(handle: *uvll::uv_handle_t) {
+    let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&handle) };
+    unsafe { uvll::free_handle(handle) }
+
+    let sched: ~Scheduler = Local::take();
+    sched.resume_blocked_task_immediately(tcp.closing_task.take_unwrap());
+}
+
+// TCP acceptors (bound servers)
+
+impl HomingIO for TcpAcceptor {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { self.listener.home() }
+}
+
+impl rtio::RtioSocket for TcpAcceptor {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+        let _m = self.fire_missiles();
+        socket_name(Tcp, self.listener.handle)
+    }
+}
+
+impl rtio::RtioTcpAcceptor for TcpAcceptor {
+    fn accept(&mut self) -> Result<~rtio::RtioTcpStream, IoError> {
+        let _m = self.fire_missiles();
+        self.incoming.recv()
+    }
+
+    fn accept_simultaneously(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 1)
+        })
+    }
+
+    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 0)
+        })
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// UDP implementation
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct UdpWatcher {
+    handle: *uvll::uv_udp_t,
+    home: SchedHandle,
+}
 
 impl UdpWatcher {
-    pub fn new(loop_: &Loop) -> UdpWatcher {
-        unsafe {
-            let handle = malloc_handle(UV_UDP);
-            assert!(handle.is_not_null());
-            assert_eq!(0, uvll::uv_udp_init(loop_.native_handle(), handle));
-            let mut watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher;
-        }
-    }
-
-    pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
-        do socket_addr_as_uv_socket_addr(address) |addr| {
-            let result = unsafe {
-                match addr {
-                    UvIpv4SocketAddr(addr) => uvll::udp_bind(self.native_handle(), addr, 0u32),
-                    UvIpv6SocketAddr(addr) => uvll::udp_bind6(self.native_handle(), addr, 0u32),
-                }
-            };
-            match result {
-                0 => Ok(()),
-                _ => Err(UvError(result)),
+    pub fn bind(loop_: &Loop, address: SocketAddr)
+        -> Result<UdpWatcher, UvError>
+    {
+        let udp = UdpWatcher {
+            handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
+            home: get_handle_to_current_scheduler!(),
+        };
+        assert_eq!(unsafe {
+            uvll::uv_udp_init(loop_.native_handle(), udp.handle)
+        }, 0);
+        let result = socket_addr_as_uv_socket_addr(address, |addr| unsafe {
+            match addr {
+                UvIpv4SocketAddr(addr) => uvll::udp_bind(udp.handle, addr, 0u32),
+                UvIpv6SocketAddr(addr) => uvll::udp_bind6(udp.handle, addr, 0u32),
             }
+        });
+        match result {
+            0 => Ok(udp),
+            n => Err(UvError(n)),
         }
     }
+}
 
-    pub fn recv_start(&mut self, alloc: AllocCallback, cb: UdpReceiveCallback) {
-        {
-            let data = self.get_watcher_data();
-            data.alloc_cb = Some(alloc);
-            data.udp_recv_cb = Some(cb);
+impl HomingIO for UdpWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl rtio::RtioSocket for UdpWatcher {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+        let _m = self.fire_missiles();
+        socket_name(Udp, self.handle)
+    }
+}
+
+impl rtio::RtioUdpSocket for UdpWatcher {
+    fn recvfrom(&mut self, buf: &mut [u8])
+        -> Result<(uint, SocketAddr), IoError>
+    {
+        struct Ctx {
+            task: Option<BlockedTask>,
+            buf: Option<Buf>,
+            result: Option<(ssize_t, SocketAddr)>,
+        }
+        let _m = self.fire_missiles();
+
+        return match unsafe {
+            uvll::uv_udp_recv_start(self.handle, alloc_cb, recv_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: Some(slice_to_uv_buf(buf)),
+                    result: None,
+                };
+                unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
+                let scheduler: ~Scheduler = Local::take();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    cx.task = Some(task);
+                }
+                match cx.result.take_unwrap() {
+                    (n, _) if n < 0 =>
+                        Err(uv_error_to_io_error(UvError(n as c_int))),
+                    (n, addr) => Ok((n as uint, addr))
+                }
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+
+        extern fn alloc_cb(handle: *uvll::uv_udp_t,
+                           _suggested_size: size_t) -> Buf {
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+            cx.buf.take().expect("alloc_cb called more than once")
         }
 
-        unsafe { uvll::uv_udp_recv_start(self.native_handle(), alloc_cb, recv_cb); }
+        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, _buf: Buf,
+                          addr: *uvll::sockaddr, _flags: c_uint) {
 
-        extern fn alloc_cb(handle: *uvll::uv_udp_t, suggested_size: size_t) -> Buf {
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            let alloc_cb = udp_watcher.get_watcher_data().alloc_cb.get_ref();
-            return (*alloc_cb)(suggested_size as uint);
-        }
-
-        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
-                          addr: *uvll::sockaddr, flags: c_uint) {
             // When there's no data to read the recv callback can be a no-op.
             // This can happen if read returns EAGAIN/EWOULDBLOCK. By ignoring
             // this we just drop back to kqueue and wait for the next callback.
-            if nread == 0 {
-                return;
+            if nread == 0 { return }
+            if nread == uvll::ECANCELED as ssize_t { return }
+
+            unsafe {
+                assert_eq!(uvll::uv_udp_recv_stop(handle), 0)
             }
 
-            uvdebug!("buf addr: {}", buf.base);
-            uvdebug!("buf len: {}", buf.len);
-            let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
-            let status = status_to_maybe_uv_error(nread as c_int);
-            let addr = uv_socket_addr_to_socket_addr(sockaddr_to_UvSocketAddr(addr));
-            (*cb)(udp_watcher, nread as int, buf, addr, flags as uint, status);
-        }
-    }
-
-    pub fn recv_stop(&mut self) {
-        unsafe { uvll::uv_udp_recv_stop(self.native_handle()); }
-    }
-
-    pub fn send(&mut self, buf: Buf, address: SocketAddr, cb: UdpSendCallback) {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.udp_send_cb.is_none());
-            data.udp_send_cb = Some(cb);
-        }
-
-        let req = UdpSendRequest::new();
-        do socket_addr_as_uv_socket_addr(address) |addr| {
-            let result = unsafe {
-                match addr {
-                    UvIpv4SocketAddr(addr) => uvll::udp_send(req.native_handle(),
-                                                   self.native_handle(), [buf], addr, send_cb),
-                    UvIpv6SocketAddr(addr) => uvll::udp_send6(req.native_handle(),
-                                                    self.native_handle(), [buf], addr, send_cb),
-                }
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
             };
-            assert_eq!(0, result);
+            let addr = sockaddr_to_UvSocketAddr(addr);
+            let addr = uv_socket_addr_to_socket_addr(addr);
+            cx.result = Some((nread, addr));
+
+            let sched: ~Scheduler = Local::take();
+            sched.resume_blocked_task_immediately(cx.task.take_unwrap());
         }
+    }
+
+    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError> {
+        struct Ctx { task: Option<BlockedTask>, result: c_int }
+
+        let _m = self.fire_missiles();
+
+        let req = Request::new(uvll::UV_UDP_SEND);
+        let buf = slice_to_uv_buf(buf);
+        let result = socket_addr_as_uv_socket_addr(dst, |dst| unsafe {
+            match dst {
+                UvIpv4SocketAddr(dst) =>
+                    uvll::udp_send(req.handle, self.handle, [buf], dst, send_cb),
+                UvIpv6SocketAddr(dst) =>
+                    uvll::udp_send6(req.handle, self.handle, [buf], dst, send_cb),
+            }
+        });
+
+        return match result {
+            0 => {
+                let mut cx = Ctx { task: None, result: 0 };
+                req.set_data(&cx);
+                req.defuse();
+
+                let sched: ~Scheduler = Local::take();
+                do sched.deschedule_running_task_and_then |_, task| {
+                    cx.task = Some(task);
+                }
+
+                match cx.result {
+                    0 => Ok(()),
+                    n => Err(uv_error_to_io_error(UvError(n)))
+                }
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
 
         extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
-            let send_request: UdpSendRequest = NativeHandle::from_native_handle(req);
-            let mut udp_watcher = send_request.handle();
-            send_request.delete();
-            let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
-            let status = status_to_maybe_uv_error(status);
-            cb(udp_watcher, status);
+            let req = Request::wrap(req);
+            let cx: &mut Ctx = unsafe { cast::transmute(req.get_data()) };
+            cx.result = status;
+
+            let sched: ~Scheduler = Local::take();
+            sched.resume_blocked_task_immediately(cx.task.take_unwrap());
         }
     }
+
+    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            do multi.to_str().with_c_str |m_addr| {
+                uvll::uv_udp_set_membership(self.handle,
+                                            m_addr, ptr::null(),
+                                            uvll::UV_JOIN_GROUP)
+            }
+        })
+    }
+
+    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            do multi.to_str().with_c_str |m_addr| {
+                uvll::uv_udp_set_membership(self.handle,
+                                            m_addr, ptr::null(),
+                                            uvll::UV_LEAVE_GROUP)
+            }
+        })
+    }
+
+    fn loop_multicast_locally(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_udp_set_multicast_loop(self.handle,
+                                            1 as c_int)
+        })
+    }
+
+    fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_udp_set_multicast_loop(self.handle,
+                                            0 as c_int)
+        })
+    }
+
+    fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_udp_set_multicast_ttl(self.handle,
+                                           ttl as c_int)
+        })
+    }
+
+    fn time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_udp_set_ttl(self.handle, ttl as c_int)
+        })
+    }
+
+    fn hear_broadcasts(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_udp_set_broadcast(self.handle,
+                                       1 as c_int)
+        })
+    }
+
+    fn ignore_broadcasts(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_missiles();
+        status_to_io_result(unsafe {
+            uvll::uv_udp_set_broadcast(self.handle,
+                                       0 as c_int)
+        })
+    }
 }
 
-impl NativeHandle<*uvll::uv_udp_t> for UdpWatcher {
-    fn from_native_handle(handle: *uvll::uv_udp_t) -> UdpWatcher {
-        UdpWatcher(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_udp_t {
-        match self { &UdpWatcher(ptr) => ptr }
-    }
-}
-
-// uv_connect_t is a subclass of uv_req_t
-pub struct ConnectRequest(*uvll::uv_connect_t);
-impl Request for ConnectRequest { }
-
-impl ConnectRequest {
-
-    pub fn new() -> ConnectRequest {
-        let connect_handle = unsafe { malloc_req(UV_CONNECT) };
-        assert!(connect_handle.is_not_null());
-        ConnectRequest(connect_handle as *uvll::uv_connect_t)
-    }
-
-    fn stream(&self) -> StreamWatcher {
+impl Drop for UdpWatcher {
+    fn drop(&mut self) {
+        // Send ourselves home to close this handle (blocking while doing so).
+        let (_m, sched) = self.fire_missiles_sched();
+        let mut slot = None;
         unsafe {
-            let stream_handle = uvll::get_stream_handle_from_connect_req(self.native_handle());
-            NativeHandle::from_native_handle(stream_handle)
+            uvll::set_data_for_uv_handle(self.handle, &slot);
+            uvll::uv_close(self.handle, close_cb);
+        }
+        do sched.deschedule_running_task_and_then |_, task| {
+            slot = Some(task);
+        }
+
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            let slot: &mut Option<BlockedTask> = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+            let sched: ~Scheduler = Local::take();
+            sched.resume_blocked_task_immediately(slot.take_unwrap());
         }
     }
-
-    fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
-    }
 }
 
-impl NativeHandle<*uvll::uv_connect_t> for ConnectRequest {
-    fn from_native_handle(handle: *uvll:: uv_connect_t) -> ConnectRequest {
-        ConnectRequest(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_connect_t {
-        match self { &ConnectRequest(ptr) => ptr }
-    }
-}
-
-pub struct WriteRequest(*uvll::uv_write_t);
-
-impl Request for WriteRequest { }
-
-impl WriteRequest {
-    pub fn new() -> WriteRequest {
-        let write_handle = unsafe { malloc_req(UV_WRITE) };
-        assert!(write_handle.is_not_null());
-        WriteRequest(write_handle as *uvll::uv_write_t)
-    }
-
-    pub fn stream(&self) -> StreamWatcher {
-        unsafe {
-            let stream_handle = uvll::get_stream_handle_from_write_req(self.native_handle());
-            NativeHandle::from_native_handle(stream_handle)
-        }
-    }
-
-    pub fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
-    }
-}
-
-impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
-    fn from_native_handle(handle: *uvll:: uv_write_t) -> WriteRequest {
-        WriteRequest(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_write_t {
-        match self { &WriteRequest(ptr) => ptr }
-    }
-}
-
-pub struct UdpSendRequest(*uvll::uv_udp_send_t);
-impl Request for UdpSendRequest { }
-
-impl UdpSendRequest {
-    pub fn new() -> UdpSendRequest {
-        let send_handle = unsafe { malloc_req(UV_UDP_SEND) };
-        assert!(send_handle.is_not_null());
-        UdpSendRequest(send_handle as *uvll::uv_udp_send_t)
-    }
-
-    pub fn handle(&self) -> UdpWatcher {
-        let send_request_handle = unsafe {
-            uvll::get_udp_handle_from_send_req(self.native_handle())
-        };
-        NativeHandle::from_native_handle(send_request_handle)
-    }
-
-    pub fn delete(self) {
-        unsafe { free_req(self.native_handle() as *c_void) }
-    }
-}
-
-impl NativeHandle<*uvll::uv_udp_send_t> for UdpSendRequest {
-    fn from_native_handle(handle: *uvll::uv_udp_send_t) -> UdpSendRequest {
-        UdpSendRequest(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_udp_send_t {
-        match self { &UdpSendRequest(ptr) => ptr }
-    }
-}
+////////////////////////////////////////////////////////////////////////////////
+/// UV request support
+////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod test {

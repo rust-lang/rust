@@ -19,7 +19,7 @@ use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
 
 use stream::StreamWatcher;
-use super::{Loop, UvError, NativeHandle, uv_error_to_io_error, UvHandle};
+use super::{Loop, UvError, NativeHandle, uv_error_to_io_error, UvHandle, Request};
 use uvio::HomingIO;
 use uvll;
 
@@ -79,23 +79,26 @@ impl PipeWatcher {
             result: Option<Result<PipeWatcher, UvError>>,
         }
         let mut cx = Ctx { task: None, result: None };
-        let req = unsafe { uvll::malloc_req(uvll::UV_CONNECT) };
-        unsafe { uvll::set_data_for_req(req, &cx as *Ctx) }
+        let req = Request::new(uvll::UV_CONNECT);
+        unsafe {
+            uvll::set_data_for_req(req.handle, &cx as *Ctx);
+            uvll::uv_pipe_connect(req.handle,
+                                  PipeWatcher::alloc(loop_, false),
+                                  name.with_ref(|p| p),
+                                  connect_cb)
+        }
+        req.defuse();
 
         let sched: ~Scheduler = Local::take();
         do sched.deschedule_running_task_and_then |_, task| {
             cx.task = Some(task);
-            unsafe {
-                uvll::uv_pipe_connect(req,
-                                      PipeWatcher::alloc(loop_, false),
-                                      name.with_ref(|p| p),
-                                      connect_cb)
-            }
         }
         assert!(cx.task.is_none());
         return cx.result.take().expect("pipe connect needs a result");
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {
+            let _req = Request::wrap(req);
+            if status == uvll::ECANCELED { return }
             unsafe {
                 let cx: &mut Ctx = cast::transmute(uvll::get_data_for_req(req));
                 let stream = uvll::get_stream_handle_from_connect_req(req);
@@ -106,7 +109,6 @@ impl PipeWatcher {
                         Err(UvError(n))
                     }
                 });
-                uvll::free_req(req);
 
                 let sched: ~Scheduler = Local::take();
                 sched.resume_blocked_task_immediately(cx.task.take_unwrap());
@@ -201,6 +203,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             assert_eq!(unsafe { uvll::uv_accept(server, client) }, 0);
             Ok(~PipeWatcher::new(client) as ~RtioPipe)
         }
+        uvll::ECANCELED => return,
         n => Err(uv_error_to_io_error(UvError(n)))
     };
 

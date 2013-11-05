@@ -54,19 +54,18 @@ use std::libc::{c_void, c_int, size_t, malloc, free};
 use std::cast::transmute;
 use std::ptr::null;
 use std::unstable::finally::Finally;
-use std::rt::io::net::ip::SocketAddr;
 
 use std::rt::io::IoError;
 
 //#[cfg(test)] use unstable::run_in_bare_thread;
 
 pub use self::file::{FsRequest, FileWatcher};
-pub use self::net::{StreamWatcher, TcpWatcher, UdpWatcher};
+pub use self::net::{TcpWatcher, TcpListener, TcpAcceptor, UdpWatcher};
 pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
 pub use self::process::Process;
-pub use self::pipe::PipeWatcher;
+pub use self::pipe::{PipeWatcher, PipeListener, PipeAcceptor};
 pub use self::signal::SignalWatcher;
 pub use self::tty::TtyWatcher;
 
@@ -96,24 +95,6 @@ pub mod stream;
 pub struct Loop {
     priv handle: *uvll::uv_loop_t
 }
-
-pub struct Handle(*uvll::uv_handle_t);
-
-impl Watcher for Handle {}
-impl NativeHandle<*uvll::uv_handle_t> for Handle {
-    fn from_native_handle(h: *uvll::uv_handle_t) -> Handle { Handle(h) }
-    fn native_handle(&self) -> *uvll::uv_handle_t { **self }
-}
-
-/// The trait implemented by uv 'watchers' (handles). Watchers are
-/// non-owning wrappers around the uv handles and are not completely
-/// safe - there may be multiple instances for a single underlying
-/// handle.  Watchers are generally created, then `start`ed, `stop`ed
-/// and `close`ed, but due to their complex life cycle may not be
-/// entirely memory safe if used in unanticipated patterns.
-pub trait Watcher { }
-
-pub trait Request { }
 
 /// A type that wraps a native handle
 pub trait NativeHandle<T> {
@@ -160,32 +141,47 @@ pub trait UvHandle<T> {
     }
 }
 
-pub trait UvRequest<T> {
-    fn uv_request(&self) -> *T;
+pub struct Request {
+    handle: *uvll::uv_req_t,
+}
 
-    // FIXME(#8888) dummy self
-    fn alloc(_: Option<Self>, ty: uvll::uv_req_type) -> *T {
+impl Request {
+    pub fn new(ty: uvll::uv_req_type) -> Request {
+        Request::wrap(unsafe { uvll::malloc_req(ty) })
+    }
+
+    pub fn wrap(handle: *uvll::uv_req_t) -> Request {
+        Request { handle: handle }
+    }
+
+    pub fn set_data<T>(&self, t: *T) {
+        unsafe { uvll::set_data_for_req(self.handle, t) }
+    }
+
+    pub fn get_data(&self) -> *c_void {
+        unsafe { uvll::get_data_for_req(self.handle) }
+    }
+
+    // This function should be used when the request handle has been given to an
+    // underlying uv function, and the uv function has succeeded. This means
+    // that uv will at some point invoke the callback, and in the meantime we
+    // can't deallocate the handle because libuv could be using it.
+    //
+    // This is still a problem in blocking situations due to linked failure. In
+    // the connection callback the handle should be re-wrapped with the `wrap`
+    // function to ensure its destruction.
+    pub fn defuse(mut self) {
+        self.handle = ptr::null();
+    }
+}
+
+impl Drop for Request {
+    fn drop(&mut self) {
         unsafe {
-            let handle = uvll::malloc_req(ty);
-            assert!(!handle.is_null());
-            handle as *T
+            if self.handle != ptr::null() {
+                uvll::free_req(self.handle)
+            }
         }
-    }
-
-    unsafe fn from_uv_request<'a>(h: &'a *T) -> &'a mut Self {
-        cast::transmute(uvll::get_data_for_req(*h))
-    }
-
-    fn install(~self) -> ~Self {
-        unsafe {
-            let myptr = cast::transmute::<&~Self, &*u8>(&self);
-            uvll::set_data_for_req(self.uv_request(), *myptr);
-        }
-        self
-    }
-
-    fn delete(&mut self) {
-        unsafe { uvll::free_req(self.uv_request() as *c_void) }
     }
 }
 
@@ -211,110 +207,6 @@ impl NativeHandle<*uvll::uv_loop_t> for Loop {
     }
     fn native_handle(&self) -> *uvll::uv_loop_t {
         self.handle
-    }
-}
-
-// XXX: The uv alloc callback also has a *uv_handle_t arg
-pub type AllocCallback = ~fn(uint) -> Buf;
-pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
-pub type NullCallback = ~fn();
-pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
-pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
-pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
-
-
-/// Callbacks used by StreamWatchers, set as custom data on the foreign handle.
-/// XXX: Would be better not to have all watchers allocate room for all callback types.
-struct WatcherData {
-    read_cb: Option<ReadCallback>,
-    write_cb: Option<ConnectionCallback>,
-    connect_cb: Option<ConnectionCallback>,
-    close_cb: Option<NullCallback>,
-    alloc_cb: Option<AllocCallback>,
-    udp_recv_cb: Option<UdpReceiveCallback>,
-    udp_send_cb: Option<UdpSendCallback>,
-}
-
-pub trait WatcherInterop {
-    fn event_loop(&self) -> Loop;
-    fn install_watcher_data(&mut self);
-    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
-    fn drop_watcher_data(&mut self);
-    fn close(self, cb: NullCallback);
-    fn close_async(self);
-}
-
-impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
-    /// Get the uv event loop from a Watcher
-    fn event_loop(&self) -> Loop {
-        unsafe {
-            let handle = self.native_handle();
-            let loop_ = uvll::get_loop_for_uv_handle(handle);
-            NativeHandle::from_native_handle(loop_)
-        }
-    }
-
-    fn install_watcher_data(&mut self) {
-        unsafe {
-            let data = ~WatcherData {
-                read_cb: None,
-                write_cb: None,
-                connect_cb: None,
-                close_cb: None,
-                alloc_cb: None,
-                udp_recv_cb: None,
-                udp_send_cb: None,
-            };
-            let data = transmute::<~WatcherData, *c_void>(data);
-            uvll::set_data_for_uv_handle(self.native_handle(), data);
-        }
-    }
-
-    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
-        unsafe {
-            let data = uvll::get_data_for_uv_handle(self.native_handle());
-            let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
-            return &mut **data;
-        }
-    }
-
-    fn drop_watcher_data(&mut self) {
-        unsafe {
-            let data = uvll::get_data_for_uv_handle(self.native_handle());
-            let _data = transmute::<*c_void, ~WatcherData>(data);
-            uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
-        }
-    }
-
-    fn close(mut self, cb: NullCallback) {
-        {
-            let data = self.get_watcher_data();
-            assert!(data.close_cb.is_none());
-            data.close_cb = Some(cb);
-        }
-
-        unsafe {
-            uvll::uv_close(self.native_handle() as *uvll::uv_handle_t, close_cb);
-        }
-
-        extern fn close_cb(handle: *uvll::uv_handle_t) {
-            let mut h: Handle = NativeHandle::from_native_handle(handle);
-            h.get_watcher_data().close_cb.take_unwrap()();
-            h.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *c_void) }
-        }
-    }
-
-    fn close_async(self) {
-        unsafe {
-            uvll::uv_close(self.native_handle() as *uvll::uv_handle_t, close_cb);
-        }
-
-        extern fn close_cb(handle: *uvll::uv_handle_t) {
-            let mut h: Handle = NativeHandle::from_native_handle(handle);
-            h.drop_watcher_data();
-            unsafe { uvll::free_handle(handle as *c_void) }
-        }
     }
 }
 
