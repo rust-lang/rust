@@ -29,6 +29,7 @@ pub static False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 
+#[deriving(Eq)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,

@@ -371,6 +371,9 @@ fn enc_fn_sig(w: @mut MemWriter, cx: @ctxt, fsig: &ty::FnSig) {
         enc_ty(w, cx, *ty);
     }
     mywrite!(w, "]");
+    if fsig.variadic {
+        mywrite!(w, "A");
+    }
     enc_ty(w, cx, fsig.output);
 }
 

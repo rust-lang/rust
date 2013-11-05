@@ -433,12 +433,15 @@ pub struct ClosureTy {
  *
  * - `lifetimes` is the list of region names bound in this fn.
  * - `inputs` is the list of arguments and their modes.
- * - `output` is the return type. */
+ * - `output` is the return type.
+ * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
+ */
 #[deriving(Clone, Eq, IterBytes)]
 pub struct FnSig {
     bound_lifetime_names: OptVec<ast::Ident>,
     inputs: ~[t],
-    output: t
+    output: t,
+    variadic: bool
 }
 
 #[deriving(Clone, Eq, IterBytes)]
@@ -705,6 +708,7 @@ pub enum type_err {
     terr_float_mismatch(expected_found<ast::float_ty>),
     terr_traits(expected_found<ast::DefId>),
     terr_builtin_bounds(expected_found<BuiltinBounds>),
+    terr_variadic_mismatch(expected_found<bool>)
 }
 
 #[deriving(Eq, IterBytes)]
@@ -1251,7 +1255,8 @@ pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
                    sig: FnSig {
                     bound_lifetime_names: opt_vec::Empty,
                     inputs: input_args,
-                    output: output
+                    output: output,
+                    variadic: false
                    }
                 })
 }
@@ -1338,7 +1343,8 @@ pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
     FnSig {
         bound_lifetime_names: sig.bound_lifetime_names.clone(),
         inputs: args,
-        output: fldop(sig.output)
+        output: fldop(sig.output),
+        variadic: sig.variadic
     }
 }
 
@@ -2816,6 +2822,16 @@ fn node_id_has_type_params(cx: ctxt, id: ast::NodeId) -> bool {
     cx.node_type_substs.contains_key(&id)
 }
 
+pub fn fn_is_variadic(fty: t) -> bool {
+    match get(fty).sty {
+        ty_bare_fn(ref f) => f.sig.variadic,
+        ty_closure(ref f) => f.sig.variadic,
+        ref s => {
+            fail!("fn_is_variadic() called on non-fn type: {:?}", s)
+        }
+    }
+}
+
 pub fn ty_fn_sig(fty: t) -> FnSig {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.sig.clone(),
@@ -3578,6 +3594,11 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
             format!("expected {} but found {}",
                  values.expected.to_str(),
                  values.found.to_str())
+        }
+        terr_variadic_mismatch(ref values) => {
+            format!("expected {} fn but found {} function",
+                    if values.expected { "variadic" } else { "non-variadic" },
+                    if values.found { "variadic" } else { "non-variadic" })
         }
     }
 }

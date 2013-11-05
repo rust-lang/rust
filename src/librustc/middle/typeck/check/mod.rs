@@ -643,9 +643,17 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
             for item in m.items.iter() {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
                 if tpt.generics.has_type_params() {
-                    ccx.tcx.sess.span_err(
-                        item.span,
-                        format!("foreign items may not have type parameters"));
+                    ccx.tcx.sess.span_err(item.span, "foreign items may not have type parameters");
+                }
+
+                match item.node {
+                    ast::foreign_item_fn(ref fn_decl, _) => {
+                        if fn_decl.variadic && !m.abis.is_c() {
+                            ccx.tcx.sess.span_err(
+                                item.span, "variadic function must have C calling convention");
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -1321,13 +1329,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         if ty::type_is_error(method_fn_ty) {
             let err_inputs = err_args(args.len());
             check_argument_types(fcx, sp, err_inputs, callee_expr,
-                                 args, sugar, deref_args);
+                                 args, sugar, deref_args, false);
             method_fn_ty
         } else {
             match ty::get(method_fn_ty).sty {
                 ty::ty_bare_fn(ref fty) => {
                     check_argument_types(fcx, sp, fty.sig.inputs, callee_expr,
-                                         args, sugar, deref_args);
+                                         args, sugar, deref_args, fty.sig.variadic);
                     fty.sig.output
                 }
                 _ => {
@@ -1339,15 +1347,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
     }
 
-    fn check_argument_types(
-        fcx: @mut FnCtxt,
-        sp: Span,
-        fn_inputs: &[ty::t],
-        callee_expr: @ast::Expr,
-        args: &[@ast::Expr],
-        sugar: ast::CallSugar,
-        deref_args: DerefArgs)
-    {
+    fn check_argument_types(fcx: @mut FnCtxt,
+                            sp: Span,
+                            fn_inputs: &[ty::t],
+                            callee_expr: @ast::Expr,
+                            args: &[@ast::Expr],
+                            sugar: ast::CallSugar,
+                            deref_args: DerefArgs,
+                            variadic: bool) {
         /*!
          *
          * Generic function that factors out common logic from
@@ -1362,6 +1369,19 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let expected_arg_count = fn_inputs.len();
         let formal_tys = if expected_arg_count == supplied_arg_count {
             fn_inputs.map(|a| *a)
+        } else if variadic {
+            if supplied_arg_count >= expected_arg_count {
+                fn_inputs.map(|a| *a)
+            } else {
+                let msg = format!(
+                    "this function takes at least {0, plural, =1{# parameter} \
+                    other{# parameters}} but {1, plural, =1{# parameter was} \
+                    other{# parameters were}} supplied", expected_arg_count, supplied_arg_count);
+
+                tcx.sess.span_err(sp, msg);
+
+                err_args(supplied_arg_count)
+            }
         } else {
             let suffix = match sugar {
                 ast::NoSugar => "",
@@ -1370,19 +1390,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 ast::ForSugar => " (including the closure passed by \
                                   the `for` keyword)"
             };
-            let msg = format!("this function takes {} parameter{} but \
-                            {} parameter{} supplied{}",
-                           expected_arg_count,
-                           if expected_arg_count == 1 {""}
-                           else {"s"},
-                           supplied_arg_count,
-                           if supplied_arg_count == 1 {" was"}
-                           else {"s were"},
-                           suffix);
+            let msg = format!(
+                "this function takes {0, plural, =1{# parameter} \
+                other{# parameters}} but {1, plural, =1{# parameter was} \
+                other{# parameters were}} supplied{2}",
+                expected_arg_count, supplied_arg_count, suffix);
 
             tcx.sess.span_err(sp, msg);
 
-            vec::from_elem(supplied_arg_count, ty::mk_err())
+            err_args(supplied_arg_count)
         };
 
         debug!("check_argument_types: formal_tys={:?}",
@@ -1406,7 +1422,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 vtable::early_resolve_expr(callee_expr, fcx, true);
             }
 
-            for (i, arg) in args.iter().enumerate() {
+            // For variadic functions, we don't have a declared type for all of
+            // the arguments hence we only do our usual type checking with
+            // the arguments who's types we do know.
+            let t = if variadic {
+                expected_arg_count
+            } else {
+                supplied_arg_count
+            };
+            for (i, arg) in args.iter().take(t).enumerate() {
                 let is_block = match arg.node {
                     ast::ExprFnBlock(*) |
                     ast::ExprProc(*) |
@@ -1431,9 +1455,38 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         DontDerefArgs => {}
                     }
 
-                    check_expr_coercable_to_type(
-                        fcx, *arg, formal_ty);
+                    check_expr_coercable_to_type(fcx, *arg, formal_ty);
 
+                }
+            }
+        }
+
+        // We also need to make sure we at least write the ty of the other
+        // arguments which we skipped above.
+        if variadic {
+            for arg in args.iter().skip(expected_arg_count) {
+                check_expr(fcx, *arg);
+
+                // There are a few types which get autopromoted when passed via varargs
+                // in C but we just error out instead and require explicit casts.
+                let arg_ty = structurally_resolved_type(fcx, arg.span, fcx.expr_ty(*arg));
+                match ty::get(arg_ty).sty {
+                    ty::ty_float(ast::ty_f32) => {
+                        fcx.type_error_message(arg.span,
+                                |t| format!("can't pass an {} to variadic function, \
+                                             cast to c_double", t), arg_ty, None);
+                    }
+                    ty::ty_int(ast::ty_i8) | ty::ty_int(ast::ty_i16) | ty::ty_bool => {
+                        fcx.type_error_message(arg.span,
+                                |t| format!("can't pass {} to variadic function, cast to c_int",
+                                            t), arg_ty, None);
+                    }
+                    ty::ty_uint(ast::ty_u8) | ty::ty_uint(ast::ty_u16) => {
+                        fcx.type_error_message(arg.span,
+                                |t| format!("can't pass {} to variadic function, cast to c_uint",
+                                            t), arg_ty, None);
+                    }
+                    _ => {}
                 }
             }
         }
@@ -1505,7 +1558,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let error_fn_sig = FnSig {
             bound_lifetime_names: opt_vec::Empty,
             inputs: err_args(args.len()),
-            output: ty::mk_err()
+            output: ty::mk_err(),
+            variadic: false
         };
 
         let fn_sig = match *fn_sty {
@@ -1532,7 +1586,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Call the generic checker.
         check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
-                             args, sugar, DontDerefArgs);
+                             args, sugar, DontDerefArgs, fn_sig.variadic);
 
         write_call(fcx, call_expr, fn_sig.output, sugar);
     }
@@ -1914,7 +1968,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fty_sig = FnSig {
                 bound_lifetime_names: opt_vec::Empty,
                 inputs: fn_ty.sig.inputs.map(|_| ty::mk_err()),
-                output: ty::mk_err()
+                output: ty::mk_err(),
+                variadic: false
             };
             ty::mk_err()
         } else {
@@ -3898,9 +3953,12 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::unsafe_fn,
         abis: AbiSet::Intrinsic(),
-        sig: FnSig {bound_lifetime_names: opt_vec::Empty,
-                    inputs: inputs,
-                    output: output}
+        sig: FnSig {
+            bound_lifetime_names: opt_vec::Empty,
+            inputs: inputs,
+            output: output,
+            variadic: false
+        }
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = i_ty.generics.type_param_defs.len();
