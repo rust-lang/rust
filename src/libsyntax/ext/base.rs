@@ -143,7 +143,7 @@ pub enum MacResult {
 }
 
 pub enum SyntaxExtension {
-    // #[auto_encode] and such
+    // #[deriving] and such
     ItemDecorator(ItemDecorator),
 
     // Token-tree expanders
@@ -229,12 +229,6 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"format_args"),
                             builtin_normal_tt_no_ctxt(
                                 ext::format::expand_args));
-    syntax_expanders.insert(
-        intern(&"auto_encode"),
-        @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
-    syntax_expanders.insert(
-        intern(&"auto_decode"),
-        @SE(ItemDecorator(ext::auto_encode::expand_auto_decode)));
     syntax_expanders.insert(intern(&"env"),
                             builtin_normal_tt_no_ctxt(
                                     ext::env::expand_env));
