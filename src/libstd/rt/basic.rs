@@ -107,7 +107,7 @@ impl BasicLoop {
             match self.idle {
                 Some(idle) => {
                     if (*idle).active {
-                        (*idle).work.get_mut_ref().call();
+                        (*idle).work.call();
                     }
                 }
                 None => {}
@@ -150,8 +150,8 @@ impl EventLoop for BasicLoop {
     }
 
     // XXX: Seems like a really weird requirement to have an event loop provide.
-    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback {
-        let callback = ~BasicPausible::new(self);
+    fn pausible_idle_callback(&mut self, cb: ~Callback) -> ~PausibleIdleCallback {
+        let callback = ~BasicPausible::new(self, cb);
         rtassert!(self.idle.is_none());
         unsafe {
             let cb_ptr: &*mut BasicPausible = cast::transmute(&callback);
@@ -204,35 +204,26 @@ impl Drop for BasicRemote {
 
 struct BasicPausible {
     eloop: *mut BasicLoop,
-    work: Option<~Callback>,
+    work: ~Callback,
     active: bool,
 }
 
 impl BasicPausible {
-    fn new(eloop: &mut BasicLoop) -> BasicPausible {
+    fn new(eloop: &mut BasicLoop, cb: ~Callback) -> BasicPausible {
         BasicPausible {
             active: false,
-            work: None,
+            work: cb,
             eloop: eloop,
         }
     }
 }
 
 impl PausibleIdleCallback for BasicPausible {
-    fn start(&mut self, f: ~Callback) {
-        rtassert!(!self.active && self.work.is_none());
-        self.active = true;
-        self.work = Some(f);
-    }
     fn pause(&mut self) {
         self.active = false;
     }
     fn resume(&mut self) {
         self.active = true;
-    }
-    fn close(&mut self) {
-        self.active = false;
-        self.work = None;
     }
 }
 

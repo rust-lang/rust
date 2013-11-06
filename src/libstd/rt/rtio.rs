@@ -31,7 +31,7 @@ pub trait Callback {
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, proc());
-    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback;
+    fn pausible_idle_callback(&mut self, ~Callback) -> ~PausibleIdleCallback;
     fn remote_callback(&mut self, ~Callback) -> ~RemoteCallback;
 
     /// The asynchronous I/O services. Not all event loops may provide one
@@ -226,10 +226,8 @@ pub trait RtioTTY {
 }
 
 pub trait PausibleIdleCallback {
-    fn start(&mut self, f: ~Callback);
     fn pause(&mut self);
     fn resume(&mut self);
-    fn close(&mut self);
 }
 
 pub trait RtioSignal {}
