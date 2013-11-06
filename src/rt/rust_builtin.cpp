@@ -17,8 +17,14 @@
 #include <time.h>
 
 #ifdef __APPLE__
-#include <crt_externs.h>
-#include <mach/mach_time.h>
+    #include <TargetConditionals.h>
+    #include <mach/mach_time.h>
+
+    #if (TARGET_OS_IPHONE)
+        extern char **environ;
+    #else
+        #include <crt_externs.h>
+    #endif
 #endif
 
 #if !defined(__WIN32__)
@@ -57,7 +63,7 @@ rust_env_pairs() {
 #else
 extern "C" CDECL char**
 rust_env_pairs() {
-#ifdef __APPLE__
+#if defined(__APPLE__) && !(TARGET_OS_IPHONE)
     char **environ = *_NSGetEnviron();
 #endif
     return environ;

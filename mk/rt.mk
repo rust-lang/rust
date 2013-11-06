@@ -28,6 +28,13 @@ LIBUV_FLAGS_i386 = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
 ifeq ($(OSTYPE_$(1)), linux-androideabi)
 LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
+else ifeq ($(OSTYPE_$(1)), apple-darwin)
+  ifeq ($(HOST_$(1)), arm)
+    IOS_SDK := $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
+    LIBUV_FLAGS_arm := -fPIC -std=gnu99 -I$(IOS_SDK)/usr/include -I$(IOS_SDK)/usr/include/c++/4.2.1
+  else
+    LIBUV_FLAGS_arm := -fPIC -std=gnu99
+  endif
 else
 LIBUV_FLAGS_arm = -fPIC -std=gnu99
 endif
