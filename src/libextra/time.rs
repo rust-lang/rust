@@ -965,8 +965,35 @@ mod tests {
     use super::*;
 
     use std::f64;
-    use std::os;
     use std::result::{Err, Ok};
+    use std::libc;
+
+    #[cfg(windows)]
+    #[fixed_stack_segment]
+    fn set_time_zone() {
+        // Windows crt doesn't see any environment variable set by
+        // `SetEnvironmentVariable`, which `os::setenv` internally uses.
+        // It is why we use `putenv` here.
+        extern {
+            fn _putenv(envstring: *libc::c_char) -> libc::c_int;
+        }
+
+        unsafe {
+            // Windows does not understand "America/Los_Angeles".
+            // PST+08 may look wrong, but not! "PST" indicates
+            // the name of timezone. "+08" means UTC = local + 08.
+            do "TZ=PST+08".with_c_str |env| {
+                _putenv(env);
+            }
+        }
+        tzset();
+    }
+    #[cfg(not(windows))]
+    fn set_time_zone() {
+        use std::os;
+        os::setenv("TZ", "America/Los_Angeles");
+        tzset();
+    }
 
     fn test_get_time() {
         static SOME_RECENT_DATE: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
@@ -1007,57 +1034,54 @@ mod tests {
     }
 
     fn test_at_utc() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
-        assert!(utc.tm_sec == 30_i32);
-        assert!(utc.tm_min == 31_i32);
-        assert!(utc.tm_hour == 23_i32);
-        assert!(utc.tm_mday == 13_i32);
-        assert!(utc.tm_mon == 1_i32);
-        assert!(utc.tm_year == 109_i32);
-        assert!(utc.tm_wday == 5_i32);
-        assert!(utc.tm_yday == 43_i32);
-        assert!(utc.tm_isdst == 0_i32);
-        assert!(utc.tm_gmtoff == 0_i32);
-        assert!(utc.tm_zone == ~"UTC");
-        assert!(utc.tm_nsec == 54321_i32);
+        assert_eq!(utc.tm_sec, 30_i32);
+        assert_eq!(utc.tm_min, 31_i32);
+        assert_eq!(utc.tm_hour, 23_i32);
+        assert_eq!(utc.tm_mday, 13_i32);
+        assert_eq!(utc.tm_mon, 1_i32);
+        assert_eq!(utc.tm_year, 109_i32);
+        assert_eq!(utc.tm_wday, 5_i32);
+        assert_eq!(utc.tm_yday, 43_i32);
+        assert_eq!(utc.tm_isdst, 0_i32);
+        assert_eq!(utc.tm_gmtoff, 0_i32);
+        assert_eq!(utc.tm_zone, ~"UTC");
+        assert_eq!(utc.tm_nsec, 54321_i32);
     }
 
     fn test_at() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         let time = Timespec::new(1234567890, 54321);
         let local = at(time);
 
         error!("time_at: {:?}", local);
 
-        assert!(local.tm_sec == 30_i32);
-        assert!(local.tm_min == 31_i32);
-        assert!(local.tm_hour == 15_i32);
-        assert!(local.tm_mday == 13_i32);
-        assert!(local.tm_mon == 1_i32);
-        assert!(local.tm_year == 109_i32);
-        assert!(local.tm_wday == 5_i32);
-        assert!(local.tm_yday == 43_i32);
-        assert!(local.tm_isdst == 0_i32);
-        assert!(local.tm_gmtoff == -28800_i32);
+        assert_eq!(local.tm_sec, 30_i32);
+        assert_eq!(local.tm_min, 31_i32);
+        assert_eq!(local.tm_hour, 15_i32);
+        assert_eq!(local.tm_mday, 13_i32);
+        assert_eq!(local.tm_mon, 1_i32);
+        assert_eq!(local.tm_year, 109_i32);
+        assert_eq!(local.tm_wday, 5_i32);
+        assert_eq!(local.tm_yday, 43_i32);
+        assert_eq!(local.tm_isdst, 0_i32);
+        assert_eq!(local.tm_gmtoff, -28800_i32);
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let zone = &local.tm_zone;
         assert!(*zone == ~"PST" || *zone == ~"Pacific Standard Time");
 
-        assert!(local.tm_nsec == 54321_i32);
+        assert_eq!(local.tm_nsec, 54321_i32);
     }
 
     fn test_to_timespec() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
@@ -1067,8 +1091,7 @@ mod tests {
     }
 
     fn test_conversions() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
@@ -1083,8 +1106,7 @@ mod tests {
     }
 
     fn test_strptime() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         match strptime("", "") {
           Ok(ref tm) => {
@@ -1248,8 +1270,7 @@ mod tests {
     }
 
     fn test_ctime() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         let time = Timespec::new(1234567890, 54321);
         let utc   = at_utc(time);
@@ -1262,8 +1283,7 @@ mod tests {
     }
 
     fn test_strftime() {
-        os::setenv("TZ", "America/Los_Angeles");
-        tzset();
+        set_time_zone();
 
         let time = Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
@@ -1323,8 +1343,7 @@ mod tests {
         // abbreviation.
         let rfc822 = local.rfc822();
         let prefix = ~"Fri, 13 Feb 2009 15:31:30 ";
-        assert!(rfc822 == prefix + "PST" ||
-                     rfc822 == prefix + "Pacific Standard Time");
+        assert!(rfc822 == prefix + "PST" || rfc822 == prefix + "Pacific Standard Time");
 
         assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");
         assert_eq!(local.rfc822z(), ~"Fri, 13 Feb 2009 15:31:30 -0800");
