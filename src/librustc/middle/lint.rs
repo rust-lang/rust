@@ -803,6 +803,11 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
 // also make error on obsolete attributes for less confusion.
 fn check_item_attribute_usage(cx: &Context, it: &ast::item) {
     let crate_attrs = ["crate_type", "link", "feature", "no_uv", "no_main", "no_std"];
+    let obsolete_attrs = [
+        ("abi", "extern \"abi\" fn"),
+        ("auto_encode", "#[deriving(Encodable)]"),
+        ("auto_decode", "#[deriving(Decodable)]"),
+    ];
 
     for attr in it.attrs.iter() {
         let name = attr.node.value.name();
@@ -814,6 +819,13 @@ fn check_item_attribute_usage(cx: &Context, it: &ast::item) {
                     ast::AttrInner => "crate-level attribute should be in the root module",
                 };
                 cx.span_lint(attribute_usage, attr.span, msg);
+            }
+        }
+
+        for &(obs_attr, obs_alter) in obsolete_attrs.iter() {
+            if name.equiv(&obs_attr) {
+                cx.span_lint(attribute_usage, attr.span,
+                             format!("obsolete attribute: use `{:s}` instead", obs_alter));
             }
         }
     }

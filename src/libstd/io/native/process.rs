@@ -365,7 +365,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use libc::funcs::bsd44::getdtablesize;
 
     mod rustrt {
-        #[abi = "cdecl"]
         extern {
             pub fn rust_unset_sigprocmask();
         }
