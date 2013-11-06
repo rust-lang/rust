@@ -67,3 +67,26 @@ pub fn run(lib_path: &str,
         err: str::from_utf8(output.error)
     }
 }
+
+pub fn run_background(lib_path: &str,
+           prog: &str,
+           args: &[~str],
+           env: ~[(~str, ~str)],
+           input: Option<~str>) -> run::Process {
+
+    let env = env + target_env(lib_path, prog);
+    let mut process = run::Process::new(prog, args, run::ProcessOptions {
+        env: Some(env),
+        dir: None,
+        in_fd: None,
+        out_fd: None,
+        err_fd: None
+    });
+
+    for input in input.iter() {
+        process.input().write(input.as_bytes());
+    }
+
+    return process;
+}
+
