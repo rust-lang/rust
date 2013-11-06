@@ -334,3 +334,8 @@ extern "C" int
 rust_uv_process_pid(uv_process_t* p) {
   return p->pid;
 }
+
+extern "C" int
+rust_uv_guess_handle(int fd) {
+  return uv_guess_handle(fd);
+}

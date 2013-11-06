@@ -88,7 +88,7 @@ impl RtioTTY for TtyWatcher {
     }
 
     fn isatty(&self) -> bool {
-        unsafe { uvll::uv_guess_handle(self.fd) == uvll::UV_TTY }
+        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY as libc::c_int }
     }
 }
 
