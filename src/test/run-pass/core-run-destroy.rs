@@ -10,6 +10,7 @@
 
 // xfail-fast
 // compile-flags:--test
+// xfail-android
 
 // NB: These tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here

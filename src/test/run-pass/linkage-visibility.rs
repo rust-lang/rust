@@ -10,6 +10,7 @@
 
 // aux-build:linkage-visibility.rs
 // xfail-fast windows doesn't like aux-build
+// xfail-android
 
 extern mod foo(name = "linkage-visibility");
 
