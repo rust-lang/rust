@@ -297,7 +297,7 @@ pub mod types {
             }
             #[cfg(target_arch = "x86")]
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_char, c_short, c_long, time_t};
+                use libc::types::os::arch::c95::{c_short, c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -330,12 +330,12 @@ pub mod types {
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [c_char, ..36]
+                    __size: [u32, ..9]
                 }
             }
             #[cfg(target_arch = "arm")]
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_char, c_uchar, c_uint, c_ulong, time_t};
+                use libc::types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
                 use libc::types::os::arch::c99::{c_longlong, c_ulonglong};
                 use libc::types::os::arch::posix88::{uid_t, gid_t, ino_t};
 
@@ -366,12 +366,12 @@ pub mod types {
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [c_char, ..36]
+                    __size: [u32, ..9]
                 }
             }
             #[cfg(target_arch = "mips")]
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_char, c_long, c_ulong, time_t};
+                use libc::types::os::arch::c95::{c_long, c_ulong, time_t};
                 use libc::types::os::arch::posix88::{gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -404,7 +404,7 @@ pub mod types {
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [c_char, ..36]
+                    __size: [u32, ..9]
                 }
             }
             pub mod posix08 {}
@@ -450,7 +450,7 @@ pub mod types {
                 pub type ssize_t = i64;
             }
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_char, c_int, c_long, time_t};
+                use libc::types::os::arch::c95::{c_int, c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -480,7 +480,7 @@ pub mod types {
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [c_char, ..56]
+                    __size: [u64, ..7]
                 }
             }
             pub mod posix08 {
