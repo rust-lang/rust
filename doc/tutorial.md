@@ -2568,6 +2568,7 @@ pub fn foo() { bar(); }
 ~~~
 // c.rs
 pub fn bar() { println("Baz!"); }
+# fn main() {}
 ~~~
 
 There also exist two short forms for importing multiple names at once:
@@ -2743,7 +2744,7 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 #[link(name = "farm", vers = "2.5")];
 
 // ...
-# pub fn farm() {}
+# fn farm() {}
 ~~~~
 
 You can also in turn require in a `extern mod` statement that certain link metadata items match some criteria.
@@ -2769,7 +2770,7 @@ or setting the crate type (library or executable) explicitly:
 
 // Turn on a warning
 #[warn(non_camel_case_types)]
-# pub fn farm() {}
+# fn farm() {}
 ~~~~
 
 If you're compiling your crate with `rustpkg`,
@@ -2790,7 +2791,9 @@ We define two crates, and use one of them as a library in the other.
 ~~~~
 // world.rs
 #[link(name = "world", vers = "0.42")];
+# extern mod extra;
 pub fn explore() -> &'static str { "world" }
+# fn main() {}
 ~~~~
 
 ~~~~ {.xfail-test}
