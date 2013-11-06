@@ -2704,7 +2704,7 @@ mod tests {
         assert_eq!(a.init(), &[11]);
     }
 
-    #[init]
+    #[test]
     #[should_fail]
     fn test_init_empty() {
         let a: ~[int] = ~[];
@@ -2719,7 +2719,7 @@ mod tests {
         assert_eq!(a.initn(2), &[11]);
     }
 
-    #[init]
+    #[test]
     #[should_fail]
     fn test_initn_empty() {
         let a: ~[int] = ~[];
