@@ -148,8 +148,8 @@ impl EventLoop for UvEventLoop {
         IdleWatcher::onetime(self.uvio.uv_loop(), f);
     }
 
-    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback {
-        IdleWatcher::new(self.uvio.uv_loop()) as ~PausibleIdleCallback
+    fn pausible_idle_callback(&mut self, cb: ~Callback) -> ~PausibleIdleCallback {
+        IdleWatcher::new(self.uvio.uv_loop(), cb) as ~PausibleIdleCallback
     }
 
     fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {

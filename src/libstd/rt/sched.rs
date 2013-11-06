@@ -169,7 +169,8 @@ impl Scheduler {
     pub fn bootstrap(mut ~self, task: ~Task) {
 
         // Build an Idle callback.
-        self.idle_callback = Some(self.event_loop.pausible_idle_callback());
+        let cb = ~SchedRunner as ~Callback;
+        self.idle_callback = Some(self.event_loop.pausible_idle_callback(cb));
 
         // Initialize the TLS key.
         local_ptr::init_tls_key();
@@ -184,7 +185,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        self.idle_callback.get_mut_ref().start(~SchedRunner as ~Callback);
+        self.idle_callback.get_mut_ref().resume();
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -202,7 +203,7 @@ impl Scheduler {
 
         // Close the idle callback.
         let mut sched: ~Scheduler = Local::take();
-        sched.idle_callback.get_mut_ref().close();
+        sched.idle_callback.take();
         // Make one go through the loop to run the close callback.
         sched.run();
 
