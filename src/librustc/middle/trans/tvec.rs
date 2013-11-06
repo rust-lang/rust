@@ -65,7 +65,7 @@ pub fn get_alloc(bcx: @mut Block, vptr: ValueRef) -> ValueRef {
 }
 
 pub fn get_bodyptr(bcx: @mut Block, vptr: ValueRef, t: ty::t) -> ValueRef {
-    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+    if ty::type_contents(bcx.tcx(), t).owns_managed() {
         GEPi(bcx, vptr, [0u, abi::box_field_body])
     } else {
         vptr

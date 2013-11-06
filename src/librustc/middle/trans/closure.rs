@@ -156,7 +156,7 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
 }
 
 fn heap_for_unique_closure(bcx: @mut Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+    if ty::type_contents(bcx.tcx(), t).owns_managed() {
         heap_managed_unique
     } else {
         heap_exchange_closure
