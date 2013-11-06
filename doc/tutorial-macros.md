@@ -216,7 +216,7 @@ Now consider code like the following:
 
 ~~~~
 # enum t1 { good_1(t2, uint), bad_1 };
-# pub struct t2 { body: t3 }
+# struct t2 { body: t3 }
 # enum t3 { good_2(uint), bad_2};
 # fn f(x: t1) -> uint {
 match x {
@@ -262,7 +262,7 @@ macro_rules! biased_match (
 )
 
 # enum t1 { good_1(t2, uint), bad_1 };
-# pub struct t2 { body: t3 }
+# struct t2 { body: t3 }
 # enum t3 { good_2(uint), bad_2};
 # fn f(x: t1) -> uint {
 biased_match!((x)       ~ (good_1(g1, val)) else { return 0 };
@@ -364,7 +364,7 @@ macro_rules! biased_match (
 
 
 # enum t1 { good_1(t2, uint), bad_1 };
-# pub struct t2 { body: t3 }
+# struct t2 { body: t3 }
 # enum t3 { good_2(uint), bad_2};
 # fn f(x: t1) -> uint {
 biased_match!(

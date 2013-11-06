@@ -846,7 +846,7 @@ mod tests {
 
     fn check_sort(v1: &[int], v2: &[int]) {
         let len = v1.len();
-        pub fn le(a: &int, b: &int) -> bool { *a <= *b }
+        fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
         let v3 = merge_sort::<int>(v1, f);
         let mut i = 0u;
@@ -876,7 +876,7 @@ mod tests {
 
     #[test]
     fn test_merge_sort_mutable() {
-        pub fn le(a: &int, b: &int) -> bool { *a <= *b }
+        fn le(a: &int, b: &int) -> bool { *a <= *b }
         let v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
         assert_eq!(v2, ~[1, 2, 3]);
