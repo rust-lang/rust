@@ -1854,8 +1854,75 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
  * a type than to think about what is *not* contained within a type.
  */
 pub struct TypeContents {
-    bits: u32
+    bits: u64
 }
+
+macro_rules! def_type_content_sets(
+    (mod $mname:ident { $($name:ident = $bits:expr),+ }) => {
+        mod $mname {
+            use middle::ty::TypeContents;
+            $(pub static $name: TypeContents = TypeContents { bits: $bits };)+
+        }
+    }
+)
+
+def_type_content_sets!(
+    mod TC {
+        None                                = 0b0000__00000000__0000,
+
+        // Things that are interior to the value (first nibble):
+        InteriorUnsized                     = 0b0000__00000000__0001,
+        InteriorAll                         = 0b0000__00000000__1111,
+
+        // Things that are owned by the value (second and third nibbles):
+        OwnsOwned                           = 0b0000__00000001__0000,
+        OwnsDtor                            = 0b0000__00000010__0000,
+        OwnsManaged /* see [1] below */     = 0b0000__00000100__0000,
+        OwnsAffine                          = 0b0000__00001000__0000,
+        OwnsAll                             = 0b0000__11111111__0000,
+
+        // Things that are reachable by the value in any way (fourth nibble):
+        ReachesNonsendAnnot                 = 0b0001__00000000__0000,
+        ReachesBorrowed                     = 0b0010__00000000__0000,
+        ReachesManaged /* see [1] below */  = 0b0100__00000000__0000,
+        ReachesMutable                      = 0b1000__00000000__0000,
+        ReachesAll                          = 0b1111__00000000__0000,
+
+        // Things that cause values to *move* rather than *copy*
+        Moves                               = 0b0000__00001011__0000,
+
+        // Things that mean drop glue is necessary
+        NeedsDrop                           = 0b0000__00000111__0000,
+
+        // Things that prevent values from being sent
+        //
+        // Note: For checking whether something is sendable, it'd
+        //       be sufficient to have ReachesManaged. However, we include
+        //       both ReachesManaged and OwnsManaged so that when
+        //       a parameter has a bound T:Send, we are able to deduce
+        //       that it neither reaches nor owns a managed pointer.
+        Nonsendable                         = 0b0111__00000100__0000,
+
+        // Things that prevent values from being considered freezable
+        Nonfreezable                        = 0b1000__00000000__0000,
+
+        // Things that prevent values from being considered 'static
+        Nonstatic                           = 0b0010__00000000__0000,
+
+        // Things that prevent values from being considered sized
+        Nonsized                            = 0b0000__00000000__0001,
+
+        // Bits to set when a managed value is encountered
+        //
+        // [1] Do not set the bits TC::OwnsManaged or
+        //     TC::ReachesManaged directly, instead reference
+        //     TC::Managed to set them both at once.
+        Managed                             = 0b0100__00000100__0000,
+
+        // All bits
+        All                                 = 0b1111__11111111__1111
+    }
+)
 
 impl TypeContents {
     pub fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
@@ -1871,81 +1938,78 @@ impl TypeContents {
         }
     }
 
+    pub fn when(&self, cond: bool) -> TypeContents {
+        if cond {*self} else {TC::None}
+    }
+
     pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
     }
 
-    pub fn noncopyable(_cx: ctxt) -> TypeContents {
-        TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_NONCOPY_TRAIT +
-            TC_EMPTY_ENUM
+    pub fn is_static(&self, _: ctxt) -> bool {
+        !self.intersects(TC::Nonstatic)
     }
 
-    pub fn is_static(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nonstatic(cx))
+    pub fn is_sendable(&self, _: ctxt) -> bool {
+        !self.intersects(TC::Nonsendable)
     }
 
-    pub fn nonstatic(_cx: ctxt) -> TypeContents {
-        TC_BORROWED_POINTER
+    pub fn owns_managed(&self) -> bool {
+        self.intersects(TC::OwnsManaged)
     }
 
-    pub fn is_sendable(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nonsendable(cx))
+    pub fn is_freezable(&self, _: ctxt) -> bool {
+        !self.intersects(TC::Nonfreezable)
     }
 
-    pub fn nonsendable(_cx: ctxt) -> TypeContents {
-        TC_MANAGED + TC_BORROWED_POINTER + TC_NON_SENDABLE
+    pub fn is_sized(&self, _: ctxt) -> bool {
+        !self.intersects(TC::Nonsized)
     }
 
-    pub fn contains_managed(&self) -> bool {
-        self.intersects(TC_MANAGED)
+    pub fn moves_by_default(&self, _: ctxt) -> bool {
+        self.intersects(TC::Moves)
     }
 
-    pub fn is_freezable(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nonfreezable(cx))
+    pub fn needs_drop(&self, _: ctxt) -> bool {
+        self.intersects(TC::NeedsDrop)
     }
 
-    pub fn nonfreezable(_cx: ctxt) -> TypeContents {
-        TC_MUTABLE
+    pub fn owned_pointer(&self) -> TypeContents {
+        /*!
+         * Includes only those bits that still apply
+         * when indirected through a `~` pointer
+         */
+        TC::OwnsOwned | (
+            *self & (TC::OwnsAll | TC::ReachesAll))
     }
 
-    pub fn is_sized(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::dynamically_sized(cx))
+    pub fn other_pointer(&self, bits: TypeContents) -> TypeContents {
+        /*!
+         * Includes only those bits that still apply
+         * when indirected through a non-owning pointer (`&`, `@`)
+         */
+        bits | (
+            *self & TC::ReachesAll)
     }
 
-    pub fn dynamically_sized(_cx: ctxt) -> TypeContents {
-        TC_DYNAMIC_SIZE
+    pub fn union<T>(v: &[T], f: &fn(&T) -> TypeContents) -> TypeContents {
+        v.iter().fold(TC::None, |tc, t| tc | f(t))
     }
 
-    pub fn moves_by_default(&self, cx: ctxt) -> bool {
-        self.intersects(TypeContents::nonimplicitly_copyable(cx))
-    }
-
-    pub fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
-        TypeContents::noncopyable(cx) + TC_OWNED_POINTER + TC_OWNED_VEC
-    }
-
-    pub fn needs_drop(&self, cx: ctxt) -> bool {
-        if self.intersects(TC_NONCOPY_TRAIT) {
-            // Currently all noncopyable existentials are 2nd-class types
-            // behind owned pointers. With dynamically-sized types, remove
-            // this assertion.
-            assert!(self.intersects(TC_OWNED_POINTER) ||
-                    // (...or stack closures without a copy bound.)
-                    self.intersects(TC_BORROWED_POINTER));
-        }
-        let tc = TC_MANAGED + TC_DTOR + TypeContents::sendable(cx);
-        self.intersects(tc)
-    }
-
-    pub fn sendable(_cx: ctxt) -> TypeContents {
-        //! Any kind of sendable contents.
-        TC_OWNED_POINTER + TC_OWNED_VEC
+    pub fn inverse(&self) -> TypeContents {
+        TypeContents { bits: !self.bits }
     }
 }
 
-impl ops::Add<TypeContents,TypeContents> for TypeContents {
-    fn add(&self, other: &TypeContents) -> TypeContents {
+impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
+    fn bitor(&self, other: &TypeContents) -> TypeContents {
         TypeContents {bits: self.bits | other.bits}
+    }
+}
+
+impl ops::BitAnd<TypeContents,TypeContents> for TypeContents {
+    fn bitand(&self, other: &TypeContents) -> TypeContents {
+        TypeContents {bits: self.bits & other.bits}
     }
 }
 
@@ -1960,48 +2024,6 @@ impl ToStr for TypeContents {
         format!("TypeContents({})", self.bits.to_str_radix(2))
     }
 }
-
-/// Constant for a type containing nothing of interest.
-static TC_NONE: TypeContents =             TypeContents{bits: 0b0000_0000_0000};
-
-/// Contains a borrowed value with a lifetime other than static
-static TC_BORROWED_POINTER: TypeContents = TypeContents{bits: 0b0000_0000_0001};
-
-/// Contains an owned pointer (~T) but not slice of some kind
-static TC_OWNED_POINTER: TypeContents =    TypeContents{bits: 0b0000_0000_0010};
-
-/// Contains an owned vector ~[] or owned string ~str
-static TC_OWNED_VEC: TypeContents =        TypeContents{bits: 0b0000_0000_0100};
-
-/// Contains a non-copyable ~fn() or a ~Trait (NOT a ~fn:Copy() or ~Trait:Copy).
-static TC_NONCOPY_TRAIT: TypeContents =    TypeContents{bits: 0b0000_0000_1000};
-
-/// Type with a destructor
-static TC_DTOR: TypeContents =             TypeContents{bits: 0b0000_0001_0000};
-
-/// Contains a managed value
-static TC_MANAGED: TypeContents =          TypeContents{bits: 0b0000_0010_0000};
-
-/// &mut with any region
-static TC_BORROWED_MUT: TypeContents =     TypeContents{bits: 0b0000_0100_0000};
-
-/// Mutable content, whether owned or by ref
-static TC_MUTABLE: TypeContents =          TypeContents{bits: 0b0000_1000_0000};
-
-/// One-shot closure
-static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits: 0b0001_0000_0000};
-
-/// An enum with no variants.
-static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits: 0b0010_0000_0000};
-
-/// Contains a type marked with `#[no_send]`
-static TC_NON_SENDABLE: TypeContents =     TypeContents{bits: 0b0100_0000_0000};
-
-/// Is a bare vector, str, function, trait, etc (only relevant at top level).
-static TC_DYNAMIC_SIZE: TypeContents =     TypeContents{bits: 0b1000_0000_0000};
-
-/// All possible contents.
-static TC_ALL: TypeContents =              TypeContents{bits: 0b1111_1111_1111};
 
 pub fn type_is_static(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_static(cx)
@@ -2039,19 +2061,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         //
         // When computing the type contents of such a type, we wind up deeply
         // recursing as we go.  So when we encounter the recursive reference
-        // to List, we temporarily use TC_NONE as its contents.  Later we'll
+        // to List, we temporarily use TC::None as its contents.  Later we'll
         // patch up the cache with the correct value, once we've computed it
         // (this is basically a co-inductive process, if that helps).  So in
-        // the end we'll compute TC_OWNED_POINTER, in this case.
+        // the end we'll compute TC::OwnsOwned, in this case.
         //
         // The problem is, as we are doing the computation, we will also
         // compute an *intermediate* contents for, e.g., Option<List> of
-        // TC_NONE.  This is ok during the computation of List itself, but if
+        // TC::None.  This is ok during the computation of List itself, but if
         // we stored this intermediate value into cx.tc_cache, then later
-        // requests for the contents of Option<List> would also yield TC_NONE
+        // requests for the contents of Option<List> would also yield TC::None
         // which is incorrect.  This value was computed based on the crutch
         // value for the type contents of list.  The correct value is
-        // TC_OWNED_POINTER.  This manifested as issue #4821.
+        // TC::OwnsOwned.  This manifested as issue #4821.
         let ty_id = type_id(ty);
         match cache.find(&ty_id) {
             Some(tc) => { return *tc; }
@@ -2061,108 +2083,96 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             Some(tc) => { return *tc; }
             None => {}
         }
-        cache.insert(ty_id, TC_NONE);
-
-        let _i = indenter();
+        cache.insert(ty_id, TC::None);
 
         let result = match get(ty).sty {
             // Scalar and unique types are sendable, freezable, and durable
-            ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_bare_fn(_) | ty_ptr(_) => {
-                TC_NONE
+            ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+            ty_bare_fn(_) | ty::ty_char => {
+                TC::None
             }
 
             ty_estr(vstore_uniq) => {
-                TC_OWNED_VEC
+                TC::OwnsOwned
             }
 
             ty_closure(ref c) => {
-                closure_contents(c)
+                closure_contents(cx, c)
             }
 
             ty_box(mt) => {
-                TC_MANAGED +
-                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
+                tc_mt(cx, mt, cache).other_pointer(TC::Managed)
             }
 
             ty_trait(_, _, store, mutbl, bounds) => {
-                trait_contents(store, mutbl, bounds)
+                object_contents(cx, store, mutbl, bounds)
             }
 
-            ty_rptr(r, mt) => {
-                borrowed_contents(r, mt.mutbl) +
-                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
+            ty_ptr(ref mt) => {
+                tc_ty(cx, mt.ty, cache).other_pointer(TC::None)
+            }
+
+            ty_rptr(r, ref mt) => {
+                tc_ty(cx, mt.ty, cache).other_pointer(
+                    borrowed_contents(r, mt.mutbl))
             }
 
             ty_uniq(mt) => {
-                TC_OWNED_POINTER + statically_sized(tc_mt(cx, mt, cache))
+                tc_mt(cx, mt, cache).owned_pointer()
             }
 
             ty_evec(mt, vstore_uniq) => {
-                TC_OWNED_VEC + statically_sized(tc_mt(cx, mt, cache))
+                tc_mt(cx, mt, cache).owned_pointer()
             }
 
             ty_evec(mt, vstore_box) => {
-                TC_MANAGED +
-                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
+                tc_mt(cx, mt, cache).other_pointer(TC::Managed)
             }
 
-            ty_evec(mt, vstore_slice(r)) => {
-                borrowed_contents(r, mt.mutbl) +
-                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
+            ty_evec(ref mt, vstore_slice(r)) => {
+                tc_ty(cx, mt.ty, cache).other_pointer(
+                    borrowed_contents(r, mt.mutbl))
             }
 
             ty_evec(mt, vstore_fixed(_)) => {
-                let contents = tc_mt(cx, mt, cache);
-                // FIXME(#6308) Uncomment this when construction of such
-                // vectors is prevented earlier in compilation.
-                // if !contents.is_sized(cx) {
-                //     cx.sess.bug("Fixed-length vector of unsized type \
-                //                  should be impossible");
-                // }
-                contents
+                tc_mt(cx, mt, cache)
             }
 
             ty_estr(vstore_box) => {
-                TC_MANAGED
+                TC::Managed
             }
 
             ty_estr(vstore_slice(r)) => {
-                borrowed_contents(r, MutImmutable)
+                borrowed_contents(r, ast::MutImmutable)
             }
 
             ty_estr(vstore_fixed(_)) => {
-                TC_NONE
+                TC::None
             }
 
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
-                let mut res = flds.iter().fold(
-                    TC_NONE,
-                    |tc, f| tc + tc_mt(cx, f.mt, cache));
+                let mut res =
+                    TypeContents::union(flds, |f| tc_mt(cx, f.mt, cache));
                 if ty::has_dtor(cx, did) {
-                    res = res + TC_DTOR;
+                    res = res | TC::OwnsDtor;
                 }
-                apply_tc_attr(cx, did, res)
+                apply_attributes(cx, did, res)
             }
 
             ty_tup(ref tys) => {
-                tys.iter().fold(TC_NONE, |tc, ty| tc + tc_ty(cx, *ty, cache))
+                TypeContents::union(*tys, |ty| tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
-                let res = if variants.is_empty() {
-                    // we somewhat arbitrary declare that empty enums
-                    // are non-copyable
-                    TC_EMPTY_ENUM
-                } else {
-                    variants.iter().fold(TC_NONE, |tc, variant| {
-                        variant.args.iter().fold(tc,
-                            |tc, arg_ty| tc + tc_ty(cx, *arg_ty, cache))
-                    })
-                };
-                apply_tc_attr(cx, did, res)
+                let res =
+                    TypeContents::union(variants, |variant| {
+                        TypeContents::union(variant.args, |arg_ty| {
+                            tc_ty(cx, *arg_ty, cache)
+                        })
+                    });
+                apply_attributes(cx, did, res)
             }
 
             ty_param(p) => {
@@ -2175,7 +2185,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
 
                 let tp_def = cx.ty_param_defs.get(&p.def_id.node);
-                kind_bounds_to_contents(cx, &tp_def.bounds.builtin_bounds,
+                kind_bounds_to_contents(cx,
+                                        tp_def.bounds.builtin_bounds,
                                         tp_def.bounds.trait_bounds)
             }
 
@@ -2186,31 +2197,29 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // for supertraits. If so we can use those bounds.
                 let trait_def = lookup_trait_def(cx, def_id);
                 let traits = [trait_def.trait_ref];
-                kind_bounds_to_contents(cx, &trait_def.bounds, traits)
+                kind_bounds_to_contents(cx, trait_def.bounds, traits)
             }
 
             ty_infer(_) => {
                 // This occurs during coherence, but shouldn't occur at other
                 // times.
-                TC_ALL
+                TC::All
             }
 
-            ty_opaque_box => TC_MANAGED,
-            ty_unboxed_vec(mt) => TC_DYNAMIC_SIZE + tc_mt(cx, mt, cache),
+            ty_opaque_box => TC::Managed,
+            ty_unboxed_vec(mt) => TC::InteriorUnsized | tc_mt(cx, mt, cache),
             ty_opaque_closure_ptr(sigil) => {
                 match sigil {
-                    ast::BorrowedSigil => TC_BORROWED_POINTER,
-                    ast::ManagedSigil => TC_MANAGED,
-                    // FIXME(#3569): Looks like noncopyability should depend
-                    // on the bounds, but I don't think this case ever comes up.
-                    ast::OwnedSigil => TC_NONCOPY_TRAIT + TC_OWNED_POINTER,
+                    ast::BorrowedSigil => TC::ReachesBorrowed,
+                    ast::ManagedSigil => TC::Managed,
+                    ast::OwnedSigil => TC::OwnsOwned,
                 }
             }
 
-            ty_type => TC_NONE,
+            ty_type => TC::None,
 
             ty_err => {
-                cx.sess.bug("Asked to compute contents of fictitious type");
+                cx.sess.bug("Asked to compute contents of error type");
             }
         };
 
@@ -2222,132 +2231,105 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
              mt: mt,
              cache: &mut HashMap<uint, TypeContents>) -> TypeContents
     {
-        let mc = if mt.mutbl == MutMutable {TC_MUTABLE} else {TC_NONE};
-        mc + tc_ty(cx, mt.ty, cache)
+        let mc = TC::ReachesMutable.when(mt.mutbl == MutMutable);
+        mc | tc_ty(cx, mt.ty, cache)
     }
 
-    fn apply_tc_attr(cx: ctxt, did: DefId, mut tc: TypeContents) -> TypeContents {
-        if has_attr(cx, did, "no_freeze") {
-            tc = tc + TC_MUTABLE;
-        }
-        if has_attr(cx, did, "no_send") {
-            tc = tc + TC_NON_SENDABLE;
-        }
-        tc
+    fn apply_attributes(cx: ctxt,
+                        did: ast::DefId,
+                        tc: TypeContents)
+                        -> TypeContents {
+        tc |
+            TC::ReachesMutable.when(has_attr(cx, did, "no_freeze")) |
+            TC::ReachesNonsendAnnot.when(has_attr(cx, did, "no_send"))
     }
 
     fn borrowed_contents(region: ty::Region,
-                         mutbl: ast::Mutability) -> TypeContents
-    {
-        let mc = if mutbl == MutMutable {
-            TC_MUTABLE + TC_BORROWED_MUT
-        } else {
-            TC_NONE
-        };
-        let rc = if region != ty::re_static {
-            TC_BORROWED_POINTER
-        } else {
-            TC_NONE
-        };
-        mc + rc
-    }
-
-    fn nonsendable(pointee: TypeContents) -> TypeContents {
+                         mutbl: ast::Mutability)
+                         -> TypeContents {
         /*!
-         *
-         * Given a non-owning pointer to some type `T` with
-         * contents `pointee` (like `@T` or
-         * `&T`), returns the relevant bits that
-         * apply to the owner of the pointer.
+         * Type contents due to containing a borrowed pointer
+         * with the region `region` and borrow kind `bk`
          */
 
-        let mask = TC_MUTABLE.bits | TC_BORROWED_POINTER.bits;
-        TypeContents {bits: pointee.bits & mask}
+        let b = match mutbl {
+            ast::MutMutable => TC::ReachesMutable | TC::OwnsAffine,
+            ast::MutImmutable => TC::None,
+        };
+        b | (TC::ReachesBorrowed).when(region != ty::re_static)
     }
 
-    fn statically_sized(pointee: TypeContents) -> TypeContents {
-        /*!
-         * If a dynamically-sized type is found behind a pointer, we should
-         * restore the 'Sized' kind to the pointer and things that contain it.
-         */
-        TypeContents {bits: pointee.bits & !TC_DYNAMIC_SIZE.bits}
-    }
-
-    fn closure_contents(cty: &ClosureTy) -> TypeContents {
+    fn closure_contents(cx: ctxt, cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
         let st = match cty.sigil {
             ast::BorrowedSigil =>
-                trait_contents(RegionTraitStore(cty.region), MutImmutable, cty.bounds)
-                    + TC_BORROWED_POINTER, // might be an env packet even if static
+                object_contents(cx, RegionTraitStore(cty.region), MutMutable, cty.bounds),
             ast::ManagedSigil =>
-                trait_contents(BoxTraitStore, MutImmutable, cty.bounds),
+                object_contents(cx, BoxTraitStore, MutImmutable, cty.bounds),
             ast::OwnedSigil =>
-                trait_contents(UniqTraitStore, MutImmutable, cty.bounds),
+                object_contents(cx, UniqTraitStore, MutImmutable, cty.bounds),
         };
+
         // FIXME(#3569): This borrowed_contents call should be taken care of in
-        // trait_contents, after ~Traits and @Traits can have region bounds too.
+        // object_contents, after ~Traits and @Traits can have region bounds too.
         // This one here is redundant for &fns but important for ~fns and @fns.
-        let rt = borrowed_contents(cty.region, MutImmutable);
+        let rt = borrowed_contents(cty.region, ast::MutImmutable);
+
         // This also prohibits "@once fn" from being copied, which allows it to
         // be called. Neither way really makes much sense.
         let ot = match cty.onceness {
-            ast::Once => TC_ONCE_CLOSURE,
-            ast::Many => TC_NONE
+            ast::Once => TC::OwnsAffine,
+            ast::Many => TC::None,
         };
-        // Prevent noncopyable types captured in the environment from being copied.
-        st + rt + ot + TC_NONCOPY_TRAIT
+
+        st | rt | ot
     }
 
-    fn trait_contents(store: TraitStore, mutbl: ast::Mutability,
-                      bounds: BuiltinBounds) -> TypeContents {
-        let st = match store {
-            UniqTraitStore      => TC_OWNED_POINTER,
-            BoxTraitStore       => TC_MANAGED,
-            RegionTraitStore(r) => borrowed_contents(r, mutbl),
-        };
-        let mt = match mutbl { ast::MutMutable => TC_MUTABLE, _ => TC_NONE };
-        // We get additional "special type contents" for each bound that *isn't*
-        // on the trait. So iterate over the inverse of the bounds that are set.
-        // This is like with typarams below, but less "pessimistic" and also
-        // dependent on the trait store.
-        let mut bt = TC_NONE;
-        for bound in (AllBuiltinBounds() - bounds).iter() {
-            bt = bt + match bound {
-                BoundStatic if bounds.contains_elem(BoundSend)
-                            => TC_NONE, // Send bound implies static bound.
-                BoundStatic => TC_BORROWED_POINTER, // Useful for "@Trait:'static"
-                BoundSend   => TC_NON_SENDABLE,
-                BoundFreeze => TC_MUTABLE,
-                BoundSized  => TC_NONE, // don't care if interior is sized
-            };
+    fn object_contents(cx: ctxt,
+                       store: TraitStore,
+                       mutbl: ast::Mutability,
+                       bounds: BuiltinBounds)
+                       -> TypeContents {
+        // These are the type contents of the (opaque) interior
+        let contents = (TC::ReachesMutable.when(mutbl == ast::MutMutable) |
+                        kind_bounds_to_contents(cx, bounds, []));
+
+        match store {
+            UniqTraitStore => {
+                contents.owned_pointer()
+            }
+            BoxTraitStore => {
+                contents.other_pointer(TC::Managed)
+            }
+            RegionTraitStore(r) => {
+                contents.other_pointer(borrowed_contents(r, mutbl))
+            }
         }
-        st + mt + bt
     }
 
-    fn kind_bounds_to_contents(cx: ctxt, bounds: &BuiltinBounds, traits: &[@TraitRef])
-            -> TypeContents {
+    fn kind_bounds_to_contents(cx: ctxt,
+                               bounds: BuiltinBounds,
+                               traits: &[@TraitRef])
+                               -> TypeContents {
         let _i = indenter();
-
-        let mut tc = TC_ALL;
+        let mut tc = TC::All;
         do each_inherited_builtin_bound(cx, bounds, traits) |bound| {
-            debug!("tc = {}, bound = {:?}", tc.to_str(), bound);
             tc = tc - match bound {
-                BoundStatic => TypeContents::nonstatic(cx),
-                BoundSend => TypeContents::nonsendable(cx),
-                BoundFreeze => TypeContents::nonfreezable(cx),
-                // The dynamic-size bit can be removed at pointer-level, etc.
-                BoundSized => TypeContents::dynamically_sized(cx),
+                BoundStatic => TC::Nonstatic,
+                BoundSend => TC::Nonsendable,
+                BoundFreeze => TC::Nonfreezable,
+                BoundSized => TC::Nonsized,
             };
         }
-
-        debug!("result = {}", tc.to_str());
         return tc;
 
         // Iterates over all builtin bounds on the type parameter def, including
         // those inherited from traits with builtin-kind-supertraits.
-        fn each_inherited_builtin_bound(cx: ctxt, bounds: &BuiltinBounds,
-                                        traits: &[@TraitRef], f: &fn(BuiltinBound)) {
+        fn each_inherited_builtin_bound(cx: ctxt,
+                                        bounds: BuiltinBounds,
+                                        traits: &[@TraitRef],
+                                        f: &fn(BuiltinBound)) {
             for bound in bounds.iter() {
                 f(bound);
             }

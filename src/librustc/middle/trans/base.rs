@@ -409,7 +409,7 @@ pub fn malloc_general(bcx: @mut Block, t: ty::t, heap: heap) -> MallocResult {
 }
 
 pub fn heap_for_unique(bcx: @mut Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).contains_managed() {
+    if ty::type_contents(bcx.tcx(), t).owns_managed() {
         heap_managed_unique
     } else {
         heap_exchange
