@@ -136,7 +136,7 @@ impl HomingIO for PipeWatcher {
 impl Drop for PipeWatcher {
     fn drop(&mut self) {
         let _m = self.fire_missiles();
-        self.stream.close(true); // close synchronously
+        self.stream.close();
     }
 }
 

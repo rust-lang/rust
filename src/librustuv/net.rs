@@ -313,7 +313,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
 impl Drop for TcpWatcher {
     fn drop(&mut self) {
         let _m = self.fire_missiles();
-        self.stream.close(true);
+        self.stream.close();
     }
 }
 

@@ -10,7 +10,6 @@
 
 use std::cast;
 use std::libc::{c_int, size_t, ssize_t, c_void};
-use std::ptr;
 use std::rt::BlockedTask;
 use std::rt::local::Local;
 use std::rt::sched::Scheduler;
@@ -124,35 +123,23 @@ impl StreamWatcher {
 
     // This will deallocate an internally used memory, along with closing the
     // handle (and freeing it).
-    //
-    // The `synchronous` flag dictates whether this handle is closed
-    // synchronously (the task is blocked) or asynchronously (the task is not
-    // block, but the handle is still deallocated).
-    pub fn close(&mut self, synchronous: bool) {
-        if synchronous {
-            let mut closing_task = None;
-            unsafe {
-                uvll::set_data_for_uv_handle(self.handle, &closing_task);
-            }
+    pub fn close(&mut self) {
+        let mut closing_task = None;
+        unsafe {
+            uvll::set_data_for_uv_handle(self.handle, &closing_task);
+        }
 
-            // Wait for this stream to close because it possibly represents a remote
-            // connection which may have consequences if we close asynchronously.
-            let sched: ~Scheduler = Local::take();
-            do sched.deschedule_running_task_and_then |_, task| {
-                closing_task = Some(task);
-                unsafe { uvll::uv_close(self.handle, close_cb) }
-            }
-        } else {
-            unsafe {
-                uvll::set_data_for_uv_handle(self.handle, ptr::null::<u8>());
-                uvll::uv_close(self.handle, close_cb)
-            }
+        // Wait for this stream to close because it possibly represents a remote
+        // connection which may have consequences if we close asynchronously.
+        let sched: ~Scheduler = Local::take();
+        do sched.deschedule_running_task_and_then |_, task| {
+            closing_task = Some(task);
+            unsafe { uvll::uv_close(self.handle, close_cb) }
         }
 
         extern fn close_cb(handle: *uvll::uv_handle_t) {
             let data: *c_void = unsafe { uvll::get_data_for_uv_handle(handle) };
             unsafe { uvll::free_handle(handle) }
-            if data.is_null() { return }
 
             let closing_task: &mut Option<BlockedTask> = unsafe {
                 cast::transmute(data)

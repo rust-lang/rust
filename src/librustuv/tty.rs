@@ -101,13 +101,8 @@ impl HomingIO for TtyWatcher {
 }
 
 impl Drop for TtyWatcher {
-    // TTY handles are used for the logger in a task, so this destructor is run
-    // when a task is destroyed. When a task is being destroyed, a local
-    // scheduler isn't available, so we can't do the normal "take the scheduler
-    // and resume once close is done". Instead close operations on a TTY are
-    // asynchronous.
     fn drop(&mut self) {
         let _m = self.fire_missiles();
-        self.stream.close(false);
+        self.stream.close();
     }
 }
