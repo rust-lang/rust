@@ -1749,6 +1749,12 @@ pub fn SetUnnamedAddr(Global: ValueRef, Unnamed: bool) {
     }
 }
 
+pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
+    unsafe {
+        llvm::LLVMSetThreadLocal(global, is_thread_local as Bool);
+    }
+}
+
 pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
     unsafe {
         llvm::LLVMConstICmp(Pred as c_ushort, V1, V2)

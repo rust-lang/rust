@@ -1754,6 +1754,8 @@ names are effectively reserved. Some significant attributes include:
 * The `deriving` attribute, for automatically generating
   implementations of certain traits.
 * The `static_assert` attribute, for asserting that a static bool is true at compiletime
+* The `thread_local` attribute, for defining a `static mut` as a thread-local. Note that this is
+  only a low-level building block, and is not local to a *task*, nor does it provide safety.
 
 Other attributes may be added or removed during development of the language.
 
