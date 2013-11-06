@@ -95,27 +95,6 @@ impl FsRequest {
         }
     }
 
-    pub fn close(loop_: &Loop, fd: c_int, sync: bool) -> Result<(), UvError> {
-        if sync {
-            execute_nop(|req, cb| unsafe {
-                uvll::uv_fs_close(loop_.handle, req, fd, cb)
-            })
-        } else {
-            unsafe {
-                let req = uvll::malloc_req(uvll::UV_FS);
-                uvll::uv_fs_close(loop_.handle, req, fd, close_cb);
-                return Ok(());
-            }
-
-            extern fn close_cb(req: *uvll::uv_fs_t) {
-                unsafe {
-                    uvll::uv_fs_req_cleanup(req);
-                    uvll::free_req(req);
-                }
-            }
-        }
-    }
-
     pub fn mkdir(loop_: &Loop, path: &CString, mode: c_int)
         -> Result<(), UvError>
     {
@@ -240,10 +219,12 @@ impl FsRequest {
     pub fn utime(loop_: &Loop, path: &CString, atime: u64, mtime: u64)
         -> Result<(), UvError>
     {
+        // libuv takes seconds
+        let atime = atime as libc::c_double / 1000.0;
+        let mtime = mtime as libc::c_double / 1000.0;
         execute_nop(|req, cb| unsafe {
             uvll::uv_fs_utime(loop_.handle, req, path.with_ref(|p| p),
-                              atime as libc::c_double, mtime as libc::c_double,
-                              cb)
+                              atime, mtime, cb)
         })
     }
 
@@ -368,12 +349,12 @@ impl FileWatcher {
     }
 
     fn base_read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         let r = FsRequest::read(&self.loop_, self.fd, buf, offset);
         r.map_err(uv_error_to_io_error)
     }
     fn base_write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         let r = FsRequest::write(&self.loop_, self.fd, buf, offset);
         r.map_err(uv_error_to_io_error)
     }
@@ -397,14 +378,26 @@ impl FileWatcher {
 
 impl Drop for FileWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         match self.close {
             rtio::DontClose => {}
             rtio::CloseAsynchronously => {
-                FsRequest::close(&self.loop_, self.fd, false);
+                unsafe {
+                    let req = uvll::malloc_req(uvll::UV_FS);
+                    uvll::uv_fs_close(self.loop_.handle, req, self.fd, close_cb);
+                }
+
+                extern fn close_cb(req: *uvll::uv_fs_t) {
+                    unsafe {
+                        uvll::uv_fs_req_cleanup(req);
+                        uvll::free_req(req);
+                    }
+                }
             }
             rtio::CloseSynchronously => {
-                FsRequest::close(&self.loop_, self.fd, true);
+                execute_nop(|req, cb| unsafe {
+                    uvll::uv_fs_close(self.loop_.handle, req, self.fd, cb)
+                });
             }
         }
     }
@@ -439,15 +432,15 @@ impl rtio::RtioFileStream for FileWatcher {
         self_.seek_common(0, SEEK_CUR)
     }
     fn fsync(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         FsRequest::fsync(&self.loop_, self.fd).map_err(uv_error_to_io_error)
     }
     fn datasync(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         FsRequest::datasync(&self.loop_, self.fd).map_err(uv_error_to_io_error)
     }
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         let r = FsRequest::truncate(&self.loop_, self.fd, offset);
         r.map_err(uv_error_to_io_error)
     }
@@ -482,10 +475,6 @@ mod test {
                 // write
                 let result = FsRequest::write(l, fd, "hello".as_bytes(), -1);
                 assert!(result.is_ok());
-
-                // close
-                let result = FsRequest::close(l, fd, true);
-                assert!(result.is_ok());
             }
 
             {
@@ -505,15 +494,10 @@ mod test {
                 assert!(nread > 0);
                 let read_str = str::from_utf8(read_mem.slice(0, nread as uint));
                 assert_eq!(read_str, ~"hello");
-
-                // close
-                let result = FsRequest::close(l, fd, true);
-                assert!(result.is_ok());
-
-                // unlink
-                let result = FsRequest::unlink(l, &path_str.to_c_str());
-                assert!(result.is_ok());
             }
+            // unlink
+            let result = FsRequest::unlink(l, &path_str.to_c_str());
+            assert!(result.is_ok());
         }
     }
 
@@ -570,12 +554,14 @@ mod test {
             let path = &"./tmp/double_create_dir".to_c_str();
             let mode = S_IWUSR | S_IRUSR;
 
+            let result = FsRequest::stat(l, path);
+            assert!(result.is_err(), "{:?}", result);
             let result = FsRequest::mkdir(l, path, mode as c_int);
-            assert!(result.is_ok());
+            assert!(result.is_ok(), "{:?}", result);
             let result = FsRequest::mkdir(l, path, mode as c_int);
-            assert!(result.is_err());
+            assert!(result.is_err(), "{:?}", result);
             let result = FsRequest::rmdir(l, path);
-            assert!(result.is_ok());
+            assert!(result.is_ok(), "{:?}", result);
         }
     }
 

@@ -589,7 +589,8 @@ pub fn rmdir_recursive(path: &Path) {
 
 /// Changes the timestamps for a file's last modification and access time.
 /// The file at the path specified will have its last access time set to
-/// `atime` and its modification time set to `mtime`.
+/// `atime` and its modification time set to `mtime`. The times specified should
+/// be in milliseconds.
 ///
 /// # Errors
 ///
@@ -1266,9 +1267,9 @@ mod test {
         let path = tmpdir.join("a");
         File::create(&path);
 
-        change_file_times(&path, 100, 200);
-        assert_eq!(path.stat().accessed, 100);
-        assert_eq!(path.stat().modified, 200);
+        change_file_times(&path, 1000, 2000);
+        assert_eq!(path.stat().accessed, 1000);
+        assert_eq!(path.stat().modified, 2000);
 
         rmdir_recursive(&tmpdir);
     }
