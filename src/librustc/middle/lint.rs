@@ -816,6 +816,7 @@ static obsolete_attrs: &'static [(&'static str, &'static str)] = &[
 static other_attrs: &'static [&'static str] = &[
     // item-level
     "address_insignificant", // can be crate-level too
+    "thread_local", // for statics
     "allow", "deny", "forbid", "warn", // lint options
     "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
     "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
