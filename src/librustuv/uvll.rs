@@ -671,6 +671,11 @@ pub unsafe fn populate_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t) {
 
     rust_uv_populate_uv_stat(req_in, stat_out)
 }
+pub unsafe fn guess_handle(handle: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_guess_handle(handle)
+}
 
 
 // uv_support is the result of compiling rust_uv.cpp
@@ -728,6 +733,7 @@ extern {
     fn rust_set_stdio_container_stream(c: *uv_stdio_container_t,
                                        stream: *uv_stream_t);
     fn rust_uv_process_pid(p: *uv_process_t) -> c_int;
+    fn rust_uv_guess_handle(fd: c_int) -> c_int;
 }
 
 // generic uv functions
@@ -861,7 +867,6 @@ externfn!(fn uv_tty_init(l: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
 externfn!(fn uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int)
 externfn!(fn uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
                                 height: *c_int) -> c_int)
-externfn!(fn uv_guess_handle(fd: c_int) -> uv_handle_type)
 
 // signals
 externfn!(fn uv_signal_init(loop_: *uv_loop_t, handle: *uv_signal_t) -> c_int)
