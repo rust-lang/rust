@@ -259,43 +259,43 @@ impl HomingIO for TcpWatcher {
 
 impl rtio::RtioSocket for TcpWatcher {
     fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         socket_name(Tcp, self.handle)
     }
 }
 
 impl rtio::RtioTcpStream for TcpWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 
     fn peer_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         socket_name(TcpPeer, self.handle)
     }
 
     fn control_congestion(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_tcp_nodelay(self.handle, 0 as c_int)
         })
     }
 
     fn nodelay(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_tcp_nodelay(self.handle, 1 as c_int)
         })
     }
 
     fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_tcp_keepalive(self.handle, 1 as c_int,
                                    delay_in_seconds as c_uint)
@@ -303,7 +303,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
     }
 
     fn letdie(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_tcp_keepalive(self.handle, 0 as c_int, 0 as c_uint)
         })
@@ -312,7 +312,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
 
 impl Drop for TcpWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.close();
     }
 }
@@ -356,7 +356,7 @@ impl UvHandle<uvll::uv_tcp_t> for TcpListener {
 
 impl rtio::RtioSocket for TcpListener {
     fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         socket_name(Tcp, self.handle)
     }
 }
@@ -370,7 +370,7 @@ impl rtio::RtioTcpListener for TcpListener {
             incoming: incoming,
         };
 
-        let _m = acceptor.fire_missiles();
+        let _m = acceptor.fire_homing_missile();
         // XXX: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.handle, 128, listen_cb) } {
             0 => Ok(acceptor as ~rtio::RtioTcpAcceptor),
@@ -399,7 +399,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
 
 impl Drop for TcpListener {
     fn drop(&mut self) {
-        let (_m, sched) = self.fire_missiles_sched();
+        let (_m, sched) = self.fire_homing_missile_sched();
 
         do sched.deschedule_running_task_and_then |_, task| {
             self.closing_task = Some(task);
@@ -424,26 +424,26 @@ impl HomingIO for TcpAcceptor {
 
 impl rtio::RtioSocket for TcpAcceptor {
     fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         socket_name(Tcp, self.listener.handle)
     }
 }
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn accept(&mut self) -> Result<~rtio::RtioTcpStream, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.incoming.recv()
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 1)
         })
     }
 
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 0)
         })
@@ -489,7 +489,7 @@ impl HomingIO for UdpWatcher {
 
 impl rtio::RtioSocket for UdpWatcher {
     fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         socket_name(Udp, self.handle)
     }
 }
@@ -503,7 +503,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             buf: Option<Buf>,
             result: Option<(ssize_t, SocketAddr)>,
         }
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
 
         return match unsafe {
             uvll::uv_udp_recv_start(self.handle, alloc_cb, recv_cb)
@@ -564,7 +564,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError> {
         struct Ctx { task: Option<BlockedTask>, result: c_int }
 
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
 
         let req = Request::new(uvll::UV_UDP_SEND);
         let buf = slice_to_uv_buf(buf);
@@ -607,7 +607,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             do multi.to_str().with_c_str |m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
@@ -618,7 +618,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             do multi.to_str().with_c_str |m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
@@ -629,7 +629,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn loop_multicast_locally(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_udp_set_multicast_loop(self.handle,
                                             1 as c_int)
@@ -637,7 +637,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_udp_set_multicast_loop(self.handle,
                                             0 as c_int)
@@ -645,7 +645,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_udp_set_multicast_ttl(self.handle,
                                            ttl as c_int)
@@ -653,14 +653,14 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn time_to_live(&mut self, ttl: int) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_udp_set_ttl(self.handle, ttl as c_int)
         })
     }
 
     fn hear_broadcasts(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_udp_set_broadcast(self.handle,
                                        1 as c_int)
@@ -668,7 +668,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn ignore_broadcasts(&mut self) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             uvll::uv_udp_set_broadcast(self.handle,
                                        0 as c_int)
@@ -679,7 +679,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 impl Drop for UdpWatcher {
     fn drop(&mut self) {
         // Send ourselves home to close this handle (blocking while doing so).
-        let (_m, sched) = self.fire_missiles_sched();
+        let (_m, sched) = self.fire_homing_missile_sched();
         let mut slot = None;
         unsafe {
             uvll::set_data_for_uv_handle(self.handle, &slot);
@@ -693,6 +693,7 @@ impl Drop for UdpWatcher {
             let slot: &mut Option<BlockedTask> = unsafe {
                 cast::transmute(uvll::get_data_for_uv_handle(handle))
             };
+            unsafe { uvll::free_handle(handle) }
             let sched: ~Scheduler = Local::take();
             sched.resume_blocked_task_immediately(slot.take_unwrap());
         }

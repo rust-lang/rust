@@ -54,18 +54,18 @@ impl TtyWatcher {
 
 impl RtioTTY for TtyWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 
     fn set_raw(&mut self, raw: bool) -> Result<(), IoError> {
         let raw = raw as libc::c_int;
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         match unsafe { uvll::uv_tty_set_mode(self.tty, raw) } {
             0 => Ok(()),
             n => Err(uv_error_to_io_error(UvError(n)))
@@ -79,7 +79,7 @@ impl RtioTTY for TtyWatcher {
         let widthptr: *libc::c_int = &width;
         let heightptr: *libc::c_int = &width;
 
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         match unsafe { uvll::uv_tty_get_winsize(self.tty,
                                                 widthptr, heightptr) } {
             0 => Ok((width as int, height as int)),
@@ -102,7 +102,7 @@ impl HomingIO for TtyWatcher {
 
 impl Drop for TtyWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.close();
     }
 }

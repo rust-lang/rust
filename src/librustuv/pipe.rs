@@ -26,6 +26,7 @@ use uvll;
 pub struct PipeWatcher {
     stream: StreamWatcher,
     home: SchedHandle,
+    priv defused: bool,
 }
 
 pub struct PipeListener {
@@ -43,47 +44,43 @@ pub struct PipeAcceptor {
 // PipeWatcher implementation and traits
 
 impl PipeWatcher {
-    pub fn new(pipe: *uvll::uv_pipe_t) -> PipeWatcher {
-        PipeWatcher {
-            stream: StreamWatcher::new(pipe),
-            home: get_handle_to_current_scheduler!(),
-        }
-    }
-
-    pub fn alloc(loop_: &Loop, ipc: bool) -> *uvll::uv_pipe_t {
-        unsafe {
+    // Creates an uninitialized pipe watcher. The underlying uv pipe is ready to
+    // get bound to some other source (this is normally a helper method paired
+    // with another call).
+    pub fn new(loop_: &Loop, ipc: bool) -> PipeWatcher {
+        let handle = unsafe {
             let handle = uvll::malloc_handle(uvll::UV_NAMED_PIPE);
             assert!(!handle.is_null());
             let ipc = ipc as libc::c_int;
             assert_eq!(uvll::uv_pipe_init(loop_.handle, handle, ipc), 0);
             handle
+        };
+        PipeWatcher {
+            stream: StreamWatcher::new(handle),
+            home: get_handle_to_current_scheduler!(),
+            defused: false,
         }
     }
 
     pub fn open(loop_: &Loop, file: libc::c_int) -> Result<PipeWatcher, UvError>
     {
-        let handle = PipeWatcher::alloc(loop_, false);
-        match unsafe { uvll::uv_pipe_open(handle, file) } {
-            0 => Ok(PipeWatcher::new(handle)),
-            n => {
-                unsafe { uvll::uv_close(handle, pipe_close_cb) }
-                Err(UvError(n))
-            }
+        let pipe = PipeWatcher::new(loop_, false);
+        match unsafe { uvll::uv_pipe_open(pipe.handle(), file) } {
+            0 => Ok(pipe),
+            n => Err(UvError(n))
         }
     }
 
     pub fn connect(loop_: &Loop, name: &CString) -> Result<PipeWatcher, UvError>
     {
-        struct Ctx {
-            task: Option<BlockedTask>,
-            result: Option<Result<PipeWatcher, UvError>>,
-        }
-        let mut cx = Ctx { task: None, result: None };
+        struct Ctx { task: Option<BlockedTask>, result: libc::c_int, }
+        let mut cx = Ctx { task: None, result: 0 };
         let req = Request::new(uvll::UV_CONNECT);
+        let pipe = PipeWatcher::new(loop_, false);
         unsafe {
             uvll::set_data_for_req(req.handle, &cx as *Ctx);
             uvll::uv_pipe_connect(req.handle,
-                                  PipeWatcher::alloc(loop_, false),
+                                  pipe.handle(),
                                   name.with_ref(|p| p),
                                   connect_cb)
         }
@@ -93,38 +90,41 @@ impl PipeWatcher {
         do sched.deschedule_running_task_and_then |_, task| {
             cx.task = Some(task);
         }
-        assert!(cx.task.is_none());
-        return cx.result.take().expect("pipe connect needs a result");
+        return match cx.result {
+            0 => Ok(pipe),
+            n => Err(UvError(n))
+        };
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {
             let _req = Request::wrap(req);
             if status == uvll::ECANCELED { return }
             unsafe {
                 let cx: &mut Ctx = cast::transmute(uvll::get_data_for_req(req));
-                let stream = uvll::get_stream_handle_from_connect_req(req);
-                cx.result = Some(match status {
-                    0 => Ok(PipeWatcher::new(stream)),
-                    n => {
-                        uvll::free_handle(stream);
-                        Err(UvError(n))
-                    }
-                });
-
+                cx.result = status;
                 let sched: ~Scheduler = Local::take();
                 sched.resume_blocked_task_immediately(cx.task.take_unwrap());
             }
         }
     }
+
+    pub fn handle(&self) -> *uvll::uv_pipe_t { self.stream.handle }
+
+    // Unwraps the underlying uv pipe. This cancels destruction of the pipe and
+    // allows the pipe to get moved elsewhere
+    fn unwrap(mut self) -> *uvll::uv_pipe_t {
+        self.defused = true;
+        return self.stream.handle;
+    }
 }
 
 impl RtioPipe for PipeWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 }
@@ -135,8 +135,10 @@ impl HomingIO for PipeWatcher {
 
 impl Drop for PipeWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_missiles();
-        self.stream.close();
+        if !self.defused {
+            let _m = self.fire_homing_missile();
+            self.stream.close();
+        }
     }
 }
 
@@ -148,21 +150,21 @@ extern fn pipe_close_cb(handle: *uvll::uv_handle_t) {
 
 impl PipeListener {
     pub fn bind(loop_: &Loop, name: &CString) -> Result<~PipeListener, UvError> {
-        let pipe = PipeWatcher::alloc(loop_, false);
-        match unsafe { uvll::uv_pipe_bind(pipe, name.with_ref(|p| p)) } {
+        let pipe = PipeWatcher::new(loop_, false);
+        match unsafe { uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p)) } {
             0 => {
+                // If successful, unwrap the PipeWatcher because we control how
+                // we close the pipe differently. We can't rely on
+                // StreamWatcher's default close method.
                 let p = ~PipeListener {
                     home: get_handle_to_current_scheduler!(),
-                    pipe: pipe,
+                    pipe: pipe.unwrap(),
                     closing_task: None,
                     outgoing: Tube::new(),
                 };
                 Ok(p.install())
             }
-            n => {
-                unsafe { uvll::uv_close(pipe, pipe_close_cb) }
-                Err(UvError(n))
-            }
+            n => Err(UvError(n))
         }
     }
 }
@@ -176,7 +178,7 @@ impl RtioUnixListener for PipeListener {
             incoming: incoming,
         };
 
-        let _m = acceptor.fire_missiles();
+        let _m = acceptor.fire_homing_missile();
         // XXX: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
             0 => Ok(acceptor as ~RtioUnixAcceptor),
@@ -199,9 +201,9 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             let loop_ = Loop::wrap(unsafe {
                 uvll::get_loop_for_uv_handle(server)
             });
-            let client = PipeWatcher::alloc(&loop_, false);
-            assert_eq!(unsafe { uvll::uv_accept(server, client) }, 0);
-            Ok(~PipeWatcher::new(client) as ~RtioPipe)
+            let client = PipeWatcher::new(&loop_, false);
+            assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
+            Ok(~client as ~RtioPipe)
         }
         uvll::ECANCELED => return,
         n => Err(uv_error_to_io_error(UvError(n)))
@@ -213,7 +215,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
 
 impl Drop for PipeListener {
     fn drop(&mut self) {
-        let (_m, sched) = self.fire_missiles_sched();
+        let (_m, sched) = self.fire_homing_missile_sched();
 
         do sched.deschedule_running_task_and_then |_, task| {
             self.closing_task = Some(task);
@@ -234,7 +236,7 @@ extern fn listener_close_cb(handle: *uvll::uv_handle_t) {
 
 impl RtioUnixAcceptor for PipeAcceptor {
     fn accept(&mut self) -> Result<~RtioPipe, IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.incoming.recv()
     }
 }

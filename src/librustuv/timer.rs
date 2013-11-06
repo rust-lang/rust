@@ -66,7 +66,7 @@ impl UvHandle<uvll::uv_timer_t> for TimerWatcher {
 
 impl RtioTimer for TimerWatcher {
     fn sleep(&mut self, msecs: u64) {
-        let (_m, sched) = self.fire_missiles_sched();
+        let (_m, sched) = self.fire_homing_missile_sched();
         do sched.deschedule_running_task_and_then |_sched, task| {
             self.action = Some(WakeTask(task));
             self.start(msecs, 0);
@@ -77,7 +77,7 @@ impl RtioTimer for TimerWatcher {
     fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
         let (port, chan) = oneshot();
 
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.action = Some(SendOnce(chan));
         self.start(msecs, 0);
 
@@ -87,7 +87,7 @@ impl RtioTimer for TimerWatcher {
     fn period(&mut self, msecs: u64) -> Port<()> {
         let (port, chan) = stream();
 
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.action = Some(SendMany(chan));
         self.start(msecs, msecs);
 
@@ -113,7 +113,7 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, _status: c_int) {
 
 impl Drop for TimerWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         self.action = None;
         self.stop();
         self.close_async_();

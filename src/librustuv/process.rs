@@ -144,10 +144,10 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
-            let pipe_handle = PipeWatcher::alloc(loop_, false);
+            let pipe = PipeWatcher::new(loop_, false);
             uvll::set_stdio_container_flags(dst, flags);
-            uvll::set_stdio_container_stream(dst, pipe_handle);
-            Some(PipeWatcher::new(pipe_handle))
+            uvll::set_stdio_container_stream(dst, pipe.handle());
+            Some(pipe)
         }
     }
 }
@@ -204,7 +204,7 @@ impl RtioProcess for Process {
     }
 
     fn kill(&mut self, signal: int) -> Result<(), IoError> {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         match unsafe {
             uvll::uv_process_kill(self.handle, signal as libc::c_int)
         } {
@@ -215,7 +215,7 @@ impl RtioProcess for Process {
 
     fn wait(&mut self) -> int {
         // Make sure (on the home scheduler) that we have an exit status listed
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         match self.exit_status {
             Some(*) => {}
             None => {
@@ -238,7 +238,7 @@ impl RtioProcess for Process {
 
 impl Drop for Process {
     fn drop(&mut self) {
-        let _m = self.fire_missiles();
+        let _m = self.fire_homing_missile();
         assert!(self.to_wake.is_none());
         self.close_async_();
     }
