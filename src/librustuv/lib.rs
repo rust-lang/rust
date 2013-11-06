@@ -50,14 +50,12 @@ use std::str::raw::from_c_str;
 use std::vec;
 use std::ptr;
 use std::str;
-use std::libc::{c_void, c_int, size_t, malloc, free};
+use std::libc::{c_void, c_int, malloc, free};
 use std::cast::transmute;
 use std::ptr::null;
 use std::unstable::finally::Finally;
 
 use std::rt::io::IoError;
-
-//#[cfg(test)] use unstable::run_in_bare_thread;
 
 pub use self::async::AsyncWatcher;
 pub use self::file::{FsRequest, FileWatcher};
@@ -302,62 +300,58 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
 }
 
-// XXX: Do these conversions without copying
+fn run_uv_loop(f: proc(&mut Loop)) {
+    use std::rt::local::Local;
+    use std::rt::test::run_in_uv_task;
+    use std::rt::sched::Scheduler;
+    use std::cell::Cell;
 
-/// Transmute an owned vector to a Buf
-pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        let data = malloc(v.len() as size_t) as *u8;
-        assert!(data.is_not_null());
-        do v.as_imm_buf |b, l| {
-            let data = data as *mut u8;
-            ptr::copy_memory(data, b, l)
+    let f = Cell::new(f);
+    do run_in_uv_task {
+        let mut io = None;
+        do Local::borrow |sched: &mut Scheduler| {
+            sched.event_loop.io(|i| unsafe {
+                let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
+                    cast::transmute(i);
+                io = Some(uvio);
+            });
         }
-        uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
+        f.take()(io.unwrap().uv_loop());
     }
 }
 
-/// Transmute a Buf that was once a ~[u8] back to ~[u8]
-pub fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
-    #[fixed_stack_segment]; #[inline(never)];
+#[cfg(test)]
+mod test {
+    use std::cast::transmute;
+    use std::ptr;
+    use std::unstable::run_in_bare_thread;
 
-    if !(buf.len == 0 && buf.base.is_null()) {
-        let v = unsafe { vec::from_buf(buf.base, buf.len as uint) };
-        unsafe { free(buf.base as *c_void) };
-        return Some(v);
-    } else {
-        // No buffer
-        uvdebug!("No buffer!");
-        return None;
-    }
-}
-/*
-#[test]
-fn test_slice_to_uv_buf() {
-    let slice = [0, .. 20];
-    let buf = slice_to_uv_buf(slice);
+    use super::{slice_to_uv_buf, Loop};
 
-    assert!(buf.len == 20);
+    #[test]
+    fn test_slice_to_uv_buf() {
+        let slice = [0, .. 20];
+        let buf = slice_to_uv_buf(slice);
 
-    unsafe {
-        let base = transmute::<*u8, *mut u8>(buf.base);
-        (*base) = 1;
-        (*ptr::mut_offset(base, 1)) = 2;
+        assert_eq!(buf.len, 20);
+
+        unsafe {
+            let base = transmute::<*u8, *mut u8>(buf.base);
+            (*base) = 1;
+            (*ptr::mut_offset(base, 1)) = 2;
+        }
+
+        assert!(slice[0] == 1);
+        assert!(slice[1] == 2);
     }
 
-    assert!(slice[0] == 1);
-    assert!(slice[1] == 2);
-}
 
-
-#[test]
-fn loop_smoke_test() {
-    do run_in_bare_thread {
-        let mut loop_ = Loop::new();
-        loop_.run();
-        loop_.close();
+    #[test]
+    fn loop_smoke_test() {
+        do run_in_bare_thread {
+            let mut loop_ = Loop::new();
+            loop_.run();
+            loop_.close();
+        }
     }
 }
-*/

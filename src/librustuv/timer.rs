@@ -123,92 +123,52 @@ impl Drop for TimerWatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use Loop;
-    use std::unstable::run_in_bare_thread;
+    use std::rt::rtio::RtioTimer;
+    use super::super::run_uv_loop;
 
     #[test]
-    fn smoke_test() {
-        do run_in_bare_thread {
-            let mut count = 0;
-            let count_ptr: *mut int = &mut count;
-            let mut loop_ = Loop::new();
-            let mut timer = TimerWatcher::new(&mut loop_);
-            do timer.start(10, 0) |timer, status| {
-                assert!(status.is_none());
-                unsafe { *count_ptr += 1 };
-                timer.close(||());
-            }
-            loop_.run();
-            loop_.close();
-            assert!(count == 1);
+    fn oneshot() {
+        do run_uv_loop |l| {
+            let mut timer = TimerWatcher::new(l);
+            let port = timer.oneshot(1);
+            port.recv();
+            let port = timer.oneshot(1);
+            port.recv();
         }
     }
 
     #[test]
-    fn start_twice() {
-        do run_in_bare_thread {
-            let mut count = 0;
-            let count_ptr: *mut int = &mut count;
-            let mut loop_ = Loop::new();
-            let mut timer = TimerWatcher::new(&mut loop_);
-            do timer.start(10, 0) |timer, status| {
-                let mut timer = timer;
-                assert!(status.is_none());
-                unsafe { *count_ptr += 1 };
-                do timer.start(10, 0) |timer, status| {
-                    assert!(status.is_none());
-                    unsafe { *count_ptr += 1 };
-                    timer.close(||());
-                }
-            }
-            loop_.run();
-            loop_.close();
-            assert!(count == 2);
+    fn override() {
+        do run_uv_loop |l| {
+            let mut timer = TimerWatcher::new(l);
+            let oport = timer.oneshot(1);
+            let pport = timer.period(1);
+            timer.sleep(1);
+            assert_eq!(oport.try_recv(), None);
+            assert_eq!(pport.try_recv(), None);
+            timer.oneshot(1).recv();
         }
     }
 
     #[test]
-    fn repeat_stop() {
-        do run_in_bare_thread {
-            let mut count = 0;
-            let count_ptr: *mut int = &mut count;
-            let mut loop_ = Loop::new();
-            let mut timer = TimerWatcher::new(&mut loop_);
-            do timer.start(1, 2) |timer, status| {
-                assert!(status.is_none());
-                unsafe {
-                    *count_ptr += 1;
-
-                    if *count_ptr == 10 {
-
-                        // Stop the timer and do something else
-                        let mut timer = timer;
-                        timer.stop();
-                        // Freeze timer so it can be captured
-                        let timer = timer;
-
-                        let mut loop_ = timer.event_loop();
-                        let mut timer2 = TimerWatcher::new(&mut loop_);
-                        do timer2.start(10, 0) |timer2, _| {
-
-                            *count_ptr += 1;
-
-                            timer2.close(||());
-
-                            // Restart the original timer
-                            let mut timer = timer;
-                            do timer.start(1, 0) |timer, _| {
-                                *count_ptr += 1;
-                                timer.close(||());
-                            }
-                        }
-                    }
-                };
-            }
-            loop_.run();
-            loop_.close();
-            assert!(count == 12);
+    fn period() {
+        do run_uv_loop |l| {
+            let mut timer = TimerWatcher::new(l);
+            let port = timer.period(1);
+            port.recv();
+            port.recv();
+            let port = timer.period(1);
+            port.recv();
+            port.recv();
         }
     }
 
+    #[test]
+    fn sleep() {
+        do run_uv_loop |l| {
+            let mut timer = TimerWatcher::new(l);
+            timer.sleep(1);
+            timer.sleep(1);
+        }
+    }
 }
