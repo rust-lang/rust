@@ -189,28 +189,27 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 
 #[cfg(test)]
 mod test {
-    use Loop;
     use std::rt::io::net::ip::{SocketAddr, Ipv4Addr};
     use super::*;
+    use super::super::run_uv_loop;
 
     #[test]
     fn getaddrinfo_test() {
-        let mut loop_ = Loop::new();
-        let mut req = GetAddrInfoRequest::new();
-        do req.getaddrinfo(&loop_, Some("localhost"), None, None) |_, addrinfo, _| {
-            let sockaddrs = accum_addrinfo(addrinfo);
-            let mut found_local = false;
-            let local_addr = &SocketAddr {
-                ip: Ipv4Addr(127, 0, 0, 1),
-                port: 0
-            };
-            for addr in sockaddrs.iter() {
-                found_local = found_local || addr.address == *local_addr;
+        do run_uv_loop |l| {
+            match GetAddrInfoRequest::run(l, Some("localhost"), None, None) {
+                Ok(infos) => {
+                    let mut found_local = false;
+                    let local_addr = &SocketAddr {
+                        ip: Ipv4Addr(127, 0, 0, 1),
+                        port: 0
+                    };
+                    for addr in infos.iter() {
+                        found_local = found_local || addr.address == *local_addr;
+                    }
+                    assert!(found_local);
+                }
+                Err(e) => fail!("{:?}", e),
             }
-            assert!(found_local);
         }
-        loop_.run();
-        loop_.close();
-        req.delete();
     }
 }

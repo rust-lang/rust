@@ -126,62 +126,56 @@ impl Drop for AsyncWatcher {
 #[cfg(test)]
 mod test_remote {
     use std::cell::Cell;
-    use std::rt::test::*;
+    use std::rt::rtio::Callback;
     use std::rt::thread::Thread;
     use std::rt::tube::Tube;
-    use std::rt::rtio::EventLoop;
-    use std::rt::local::Local;
-    use std::rt::sched::Scheduler;
 
+    use super::*;
+    use super::super::run_uv_loop;
+
+    // Make sure that we can fire watchers in remote threads
     #[test]
     fn test_uv_remote() {
-        do run_in_mt_newsched_task {
-            let mut tube = Tube::new();
-            let tube_clone = tube.clone();
-            let remote_cell = Cell::new_empty();
-            do Local::borrow |sched: &mut Scheduler| {
-                let tube_clone = tube_clone.clone();
-                let tube_clone_cell = Cell::new(tube_clone);
-                let remote = do sched.event_loop.remote_callback {
-                    // This could be called multiple times
-                    if !tube_clone_cell.is_empty() {
-                        tube_clone_cell.take().send(1);
-                    }
-                };
-                remote_cell.put_back(remote);
+        struct MyCallback(Option<Tube<int>>);
+        impl Callback for MyCallback {
+            fn call(&mut self) {
+                // this can get called more than once, but we only want to send
+                // once
+                if self.is_some() {
+                    self.take_unwrap().send(1);
+                }
             }
+        }
+
+        do run_uv_loop |l| {
+            let mut tube = Tube::new();
+            let cb = ~MyCallback(Some(tube.clone()));
+            let watcher = Cell::new(AsyncWatcher::new(l, cb as ~Callback));
+
             let thread = do Thread::start {
-                remote_cell.take().fire();
+                watcher.take().fire();
             };
 
-            assert!(tube.recv() == 1);
+            assert_eq!(tube.recv(), 1);
             thread.join();
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-
-    use super::*;
-    use Loop;
-    use std::unstable::run_in_bare_thread;
-    use std::rt::thread::Thread;
-    use std::cell::Cell;
 
     #[test]
     fn smoke_test() {
-        do run_in_bare_thread {
-            let mut loop_ = Loop::new();
-            let watcher = AsyncWatcher::new(&mut loop_, |w, _| w.close(||()) );
-            let watcher_cell = Cell::new(watcher);
-            let thread = do Thread::start {
-                let mut watcher = watcher_cell.take();
-                watcher.send();
-            };
-            loop_.run();
-            loop_.close();
-            thread.join();
+        static mut hits: uint = 0;
+
+        struct MyCallback;
+        impl Callback for MyCallback {
+            fn call(&mut self) {
+                unsafe { hits += 1; }
+            }
         }
+
+        do run_uv_loop |l| {
+            let mut watcher = AsyncWatcher::new(l, ~MyCallback as ~Callback);
+            watcher.fire();
+        }
+        assert!(unsafe { hits > 0 });
     }
 }

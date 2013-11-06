@@ -705,350 +705,559 @@ impl Drop for UdpWatcher {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use std::util::ignore;
     use std::cell::Cell;
-    use std::vec;
-    use std::unstable::run_in_bare_thread;
-    use std::rt::thread::Thread;
+    use std::comm::oneshot;
     use std::rt::test::*;
-    use super::super::{Loop, AllocCallback};
-    use super::super::{vec_from_uv_buf, vec_to_uv_buf, slice_to_uv_buf};
+    use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioTcpAcceptor,
+                        RtioUdpSocket};
+    use std::task;
+
+    use super::*;
+    use super::super::{Loop, run_uv_loop};
 
     #[test]
     fn connect_close_ip4() {
-        do run_in_bare_thread() {
-            let mut loop_ = Loop::new();
-            let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-            // Connect to a port where nobody is listening
-            let addr = next_test_ip4();
-            do tcp_watcher.connect(addr) |stream_watcher, status| {
-                uvdebug!("tcp_watcher.connect!");
-                assert!(status.is_some());
-                assert_eq!(status.unwrap().name(), ~"ECONNREFUSED");
-                stream_watcher.close(||());
+        do run_uv_loop |l| {
+            match TcpWatcher::connect(l, next_test_ip4()) {
+                Ok(*) => fail!(),
+                Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
             }
-            loop_.run();
-            loop_.close();
         }
     }
 
     #[test]
     fn connect_close_ip6() {
-        do run_in_bare_thread() {
-            let mut loop_ = Loop::new();
-            let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-            // Connect to a port where nobody is listening
-            let addr = next_test_ip6();
-            do tcp_watcher.connect(addr) |stream_watcher, status| {
-                uvdebug!("tcp_watcher.connect!");
-                assert!(status.is_some());
-                assert_eq!(status.unwrap().name(), ~"ECONNREFUSED");
-                stream_watcher.close(||());
+        do run_uv_loop |l| {
+            match TcpWatcher::connect(l, next_test_ip6()) {
+                Ok(*) => fail!(),
+                Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
             }
-            loop_.run();
-            loop_.close();
         }
     }
 
     #[test]
     fn udp_bind_close_ip4() {
-        do run_in_bare_thread() {
-            let mut loop_ = Loop::new();
-            let mut udp_watcher = { UdpWatcher::new(&mut loop_) };
-            let addr = next_test_ip4();
-            udp_watcher.bind(addr);
-            udp_watcher.close(||());
-            loop_.run();
-            loop_.close();
+        do run_uv_loop |l| {
+            match UdpWatcher::bind(l, next_test_ip4()) {
+                Ok(*) => {}
+                Err(*) => fail!()
+            }
         }
     }
 
     #[test]
     fn udp_bind_close_ip6() {
-        do run_in_bare_thread() {
-            let mut loop_ = Loop::new();
-            let mut udp_watcher = { UdpWatcher::new(&mut loop_) };
-            let addr = next_test_ip6();
-            udp_watcher.bind(addr);
-            udp_watcher.close(||());
-            loop_.run();
-            loop_.close();
+        do run_uv_loop |l| {
+            match UdpWatcher::bind(l, next_test_ip6()) {
+                Ok(*) => {}
+                Err(*) => fail!()
+            }
         }
     }
 
     #[test]
     fn listen_ip4() {
-        do run_in_bare_thread() {
-            static MAX: int = 10;
-            let mut loop_ = Loop::new();
-            let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
+        do run_uv_loop |l| {
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
             let addr = next_test_ip4();
-            server_tcp_watcher.bind(addr);
-            let loop_ = loop_;
-            uvdebug!("listening");
-            let mut stream = server_tcp_watcher.as_stream();
-            let res = do stream.listen |mut server_stream_watcher, status| {
-                uvdebug!("listened!");
-                assert!(status.is_none());
-                let mut loop_ = loop_;
-                let client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                let mut client_tcp_watcher = client_tcp_watcher.as_stream();
-                server_stream_watcher.accept(client_tcp_watcher);
-                let count_cell = Cell::new(0);
-                let server_stream_watcher = server_stream_watcher;
-                uvdebug!("starting read");
-                let alloc: AllocCallback = |size| {
-                    vec_to_uv_buf(vec::from_elem(size, 0u8))
+
+            let handle = l.handle;
+            do spawn {
+                let w = match TcpListener::bind(&mut Loop::wrap(handle), addr) {
+                    Ok(w) => w, Err(e) => fail!("{:?}", e)
                 };
-                do client_tcp_watcher.read_start(alloc) |stream_watcher, nread, buf, status| {
-
-                    uvdebug!("i'm reading!");
-                    let buf = vec_from_uv_buf(buf);
-                    let mut count = count_cell.take();
-                    if status.is_none() {
-                        uvdebug!("got {} bytes", nread);
-                        let buf = buf.unwrap();
-                        for byte in buf.slice(0, nread as uint).iter() {
-                            assert!(*byte == count as u8);
-                            uvdebug!("{}", *byte as uint);
-                            count += 1;
+                let mut w = match w.listen() {
+                    Ok(w) => w, Err(e) => fail!("{:?}", e),
+                };
+                chan.take().send(());
+                match w.accept() {
+                    Ok(mut stream) => {
+                        let mut buf = [0u8, ..10];
+                        match stream.read(buf) {
+                            Ok(10) => {} e => fail!("{:?}", e),
                         }
-                    } else {
-                        assert_eq!(count, MAX);
-                        do stream_watcher.close {
-                            server_stream_watcher.close(||());
+                        for i in range(0, 10u8) {
+                            assert_eq!(buf[i], i + 1);
                         }
                     }
-                    count_cell.put_back(count);
+                    Err(e) => fail!("{:?}", e)
                 }
+            }
+
+            port.recv();
+            let mut w = match TcpWatcher::connect(&mut Loop::wrap(handle), addr) {
+                Ok(w) => w, Err(e) => fail!("{:?}", e)
             };
-
-            assert!(res.is_ok());
-
-            let client_thread = do Thread::start {
-                uvdebug!("starting client thread");
-                let mut loop_ = Loop::new();
-                let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-                do tcp_watcher.connect(addr) |mut stream_watcher, status| {
-                    uvdebug!("connecting");
-                    assert!(status.is_none());
-                    let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
-                    let buf = slice_to_uv_buf(msg);
-                    let msg_cell = Cell::new(msg);
-                    do stream_watcher.write(buf) |stream_watcher, status| {
-                        uvdebug!("writing");
-                        assert!(status.is_none());
-                        let msg_cell = Cell::new(msg_cell.take());
-                        stream_watcher.close(||ignore(msg_cell.take()));
-                    }
-                }
-                loop_.run();
-                loop_.close();
-            };
-
-            let mut loop_ = loop_;
-            loop_.run();
-            loop_.close();
-            client_thread.join();
-        };
+            match w.write([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+                Ok(()) => {}, Err(e) => fail!("{:?}", e)
+            }
+        }
     }
 
     #[test]
     fn listen_ip6() {
-        do run_in_bare_thread() {
-            static MAX: int = 10;
-            let mut loop_ = Loop::new();
-            let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
+        do run_uv_loop |l| {
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
             let addr = next_test_ip6();
-            server_tcp_watcher.bind(addr);
-            let loop_ = loop_;
-            uvdebug!("listening");
-            let mut stream = server_tcp_watcher.as_stream();
-            let res = do stream.listen |mut server_stream_watcher, status| {
-                uvdebug!("listened!");
-                assert!(status.is_none());
-                let mut loop_ = loop_;
-                let client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                let mut client_tcp_watcher = client_tcp_watcher.as_stream();
-                server_stream_watcher.accept(client_tcp_watcher);
-                let count_cell = Cell::new(0);
-                let server_stream_watcher = server_stream_watcher;
-                uvdebug!("starting read");
-                let alloc: AllocCallback = |size| {
-                    vec_to_uv_buf(vec::from_elem(size, 0u8))
+
+            let handle = l.handle;
+            do spawn {
+                let w = match TcpListener::bind(&mut Loop::wrap(handle), addr) {
+                    Ok(w) => w, Err(e) => fail!("{:?}", e)
                 };
-                do client_tcp_watcher.read_start(alloc)
-                    |stream_watcher, nread, buf, status| {
-
-                    uvdebug!("i'm reading!");
-                    let buf = vec_from_uv_buf(buf);
-                    let mut count = count_cell.take();
-                    if status.is_none() {
-                        uvdebug!("got {} bytes", nread);
-                        let buf = buf.unwrap();
-                        let r = buf.slice(0, nread as uint);
-                        for byte in r.iter() {
-                            assert!(*byte == count as u8);
-                            uvdebug!("{}", *byte as uint);
-                            count += 1;
+                let mut w = match w.listen() {
+                    Ok(w) => w, Err(e) => fail!("{:?}", e),
+                };
+                chan.take().send(());
+                match w.accept() {
+                    Ok(mut stream) => {
+                        let mut buf = [0u8, ..10];
+                        match stream.read(buf) {
+                            Ok(10) => {} e => fail!("{:?}", e),
                         }
-                    } else {
-                        assert_eq!(count, MAX);
-                        do stream_watcher.close {
-                            server_stream_watcher.close(||());
+                        for i in range(0, 10u8) {
+                            assert_eq!(buf[i], i + 1);
                         }
                     }
-                    count_cell.put_back(count);
+                    Err(e) => fail!("{:?}", e)
                 }
-            };
-            assert!(res.is_ok());
+            }
 
-            let client_thread = do Thread::start {
-                uvdebug!("starting client thread");
-                let mut loop_ = Loop::new();
-                let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-                do tcp_watcher.connect(addr) |mut stream_watcher, status| {
-                    uvdebug!("connecting");
-                    assert!(status.is_none());
-                    let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
-                    let buf = slice_to_uv_buf(msg);
-                    let msg_cell = Cell::new(msg);
-                    do stream_watcher.write(buf) |stream_watcher, status| {
-                        uvdebug!("writing");
-                        assert!(status.is_none());
-                        let msg_cell = Cell::new(msg_cell.take());
-                        stream_watcher.close(||ignore(msg_cell.take()));
-                    }
-                }
-                loop_.run();
-                loop_.close();
+            port.recv();
+            let mut w = match TcpWatcher::connect(&mut Loop::wrap(handle), addr) {
+                Ok(w) => w, Err(e) => fail!("{:?}", e)
             };
-
-            let mut loop_ = loop_;
-            loop_.run();
-            loop_.close();
-            client_thread.join();
+            match w.write([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+                Ok(()) => {}, Err(e) => fail!("{:?}", e)
+            }
         }
     }
 
     #[test]
     fn udp_recv_ip4() {
-        do run_in_bare_thread() {
-            static MAX: int = 10;
-            let mut loop_ = Loop::new();
-            let server_addr = next_test_ip4();
-            let client_addr = next_test_ip4();
+        do run_uv_loop |l| {
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
+            let client = next_test_ip4();
+            let server = next_test_ip4();
 
-            let mut server = UdpWatcher::new(&loop_);
-            assert!(server.bind(server_addr).is_ok());
-
-            uvdebug!("starting read");
-            let alloc: AllocCallback = |size| {
-                vec_to_uv_buf(vec::from_elem(size, 0u8))
-            };
-
-            do server.recv_start(alloc) |mut server, nread, buf, src, flags, status| {
-                server.recv_stop();
-                uvdebug!("i'm reading!");
-                assert!(status.is_none());
-                assert_eq!(flags, 0);
-                assert_eq!(src, client_addr);
-
-                let buf = vec_from_uv_buf(buf);
-                let mut count = 0;
-                uvdebug!("got {} bytes", nread);
-
-                let buf = buf.unwrap();
-                for &byte in buf.slice(0, nread as uint).iter() {
-                    assert!(byte == count as u8);
-                    uvdebug!("{}", byte as uint);
-                    count += 1;
+            let handle = l.handle;
+            do spawn {
+                match UdpWatcher::bind(&mut Loop::wrap(handle), server) {
+                    Ok(mut w) => {
+                        chan.take().send(());
+                        let mut buf = [0u8, ..10];
+                        match w.recvfrom(buf) {
+                            Ok((10, addr)) => assert_eq!(addr, client),
+                            e => fail!("{:?}", e),
+                        }
+                        for i in range(0, 10u8) {
+                            assert_eq!(buf[i], i + 1);
+                        }
+                    }
+                    Err(e) => fail!("{:?}", e)
                 }
-                assert_eq!(count, MAX);
-
-                server.close(||{});
             }
 
-            let thread = do Thread::start {
-                let mut loop_ = Loop::new();
-                let mut client = UdpWatcher::new(&loop_);
-                assert!(client.bind(client_addr).is_ok());
-                let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-                let buf = slice_to_uv_buf(msg);
-                do client.send(buf, server_addr) |client, status| {
-                    uvdebug!("writing");
-                    assert!(status.is_none());
-                    client.close(||{});
-                }
-
-                loop_.run();
-                loop_.close();
+            port.recv();
+            let mut w = match UdpWatcher::bind(&mut Loop::wrap(handle), client) {
+                Ok(w) => w, Err(e) => fail!("{:?}", e)
             };
-
-            loop_.run();
-            loop_.close();
-            thread.join();
+            match w.sendto([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], server) {
+                Ok(()) => {}, Err(e) => fail!("{:?}", e)
+            }
         }
     }
 
     #[test]
     fn udp_recv_ip6() {
-        do run_in_bare_thread() {
-            static MAX: int = 10;
-            let mut loop_ = Loop::new();
-            let server_addr = next_test_ip6();
-            let client_addr = next_test_ip6();
+        do run_uv_loop |l| {
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
+            let client = next_test_ip6();
+            let server = next_test_ip6();
 
-            let mut server = UdpWatcher::new(&loop_);
-            assert!(server.bind(server_addr).is_ok());
-
-            uvdebug!("starting read");
-            let alloc: AllocCallback = |size| {
-                vec_to_uv_buf(vec::from_elem(size, 0u8))
-            };
-
-            do server.recv_start(alloc) |mut server, nread, buf, src, flags, status| {
-                server.recv_stop();
-                uvdebug!("i'm reading!");
-                assert!(status.is_none());
-                assert_eq!(flags, 0);
-                assert_eq!(src, client_addr);
-
-                let buf = vec_from_uv_buf(buf);
-                let mut count = 0;
-                uvdebug!("got {} bytes", nread);
-
-                let buf = buf.unwrap();
-                for &byte in buf.slice(0, nread as uint).iter() {
-                    assert!(byte == count as u8);
-                    uvdebug!("{}", byte as uint);
-                    count += 1;
+            let handle = l.handle;
+            do spawn {
+                match UdpWatcher::bind(&mut Loop::wrap(handle), server) {
+                    Ok(mut w) => {
+                        chan.take().send(());
+                        let mut buf = [0u8, ..10];
+                        match w.recvfrom(buf) {
+                            Ok((10, addr)) => assert_eq!(addr, client),
+                            e => fail!("{:?}", e),
+                        }
+                        for i in range(0, 10u8) {
+                            assert_eq!(buf[i], i + 1);
+                        }
+                    }
+                    Err(e) => fail!("{:?}", e)
                 }
-                assert_eq!(count, MAX);
-
-                server.close(||{});
             }
 
-            let thread = do Thread::start {
-                let mut loop_ = Loop::new();
-                let mut client = UdpWatcher::new(&loop_);
-                assert!(client.bind(client_addr).is_ok());
-                let msg = ~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-                let buf = slice_to_uv_buf(msg);
-                do client.send(buf, server_addr) |client, status| {
-                    uvdebug!("writing");
-                    assert!(status.is_none());
-                    client.close(||{});
-                }
-
-                loop_.run();
-                loop_.close();
+            port.recv();
+            let mut w = match UdpWatcher::bind(&mut Loop::wrap(handle), client) {
+                Ok(w) => w, Err(e) => fail!("{:?}", e)
             };
-
-            loop_.run();
-            loop_.close();
-            thread.join();
+            match w.sendto([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], server) {
+                Ok(()) => {}, Err(e) => fail!("{:?}", e)
+            }
         }
     }
+
+    #[test]
+    fn test_read_read_read() {
+        do run_uv_loop |l| {
+            let addr = next_test_ip4();
+            static MAX: uint = 500000;
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
+
+            let handle = l.handle;
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let listener = TcpListener::bind(l, addr).unwrap();
+                let mut acceptor = listener.listen().unwrap();
+                chan.take().send(());
+                let mut stream = acceptor.accept().unwrap();
+                let buf = [1, .. 2048];
+                let mut total_bytes_written = 0;
+                while total_bytes_written < MAX {
+                    stream.write(buf);
+                    total_bytes_written += buf.len();
+                }
+            }
+
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                port.take().recv();
+                let mut stream = TcpWatcher::connect(l, addr).unwrap();
+                let mut buf = [0, .. 2048];
+                let mut total_bytes_read = 0;
+                while total_bytes_read < MAX {
+                    let nread = stream.read(buf).unwrap();
+                    uvdebug!("read {} bytes", nread);
+                    total_bytes_read += nread;
+                    for i in range(0u, nread) {
+                        assert_eq!(buf[i], 1);
+                    }
+                }
+                uvdebug!("read {} bytes total", total_bytes_read);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore(cfg(windows))] // FIXME(#10102) the server never sees the second send
+    fn test_udp_twice() {
+        do run_uv_loop |l| {
+            let server_addr = next_test_ip4();
+            let client_addr = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
+
+            let handle = l.handle;
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let mut client = UdpWatcher::bind(l, client_addr).unwrap();
+                port.take().recv();
+                assert!(client.sendto([1], server_addr).is_ok());
+                assert!(client.sendto([2], server_addr).is_ok());
+            }
+
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let mut server = UdpWatcher::bind(l, server_addr).unwrap();
+                chan.take().send(());
+                let mut buf1 = [0];
+                let mut buf2 = [0];
+                let (nread1, src1) = server.recvfrom(buf1).unwrap();
+                let (nread2, src2) = server.recvfrom(buf2).unwrap();
+                assert_eq!(nread1, 1);
+                assert_eq!(nread2, 1);
+                assert_eq!(src1, client_addr);
+                assert_eq!(src2, client_addr);
+                assert_eq!(buf1[0], 1);
+                assert_eq!(buf2[0], 2);
+            }
+        }
+    }
+
+    #[test]
+    fn test_udp_many_read() {
+        do run_uv_loop |l| {
+            let server_out_addr = next_test_ip4();
+            let server_in_addr = next_test_ip4();
+            let client_out_addr = next_test_ip4();
+            let client_in_addr = next_test_ip4();
+            static MAX: uint = 500_000;
+
+            let (p1, c1) = oneshot();
+            let (p2, c2) = oneshot();
+
+            let first = Cell::new((p1, c2));
+            let second = Cell::new((p2, c1));
+
+            let handle = l.handle;
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let mut server_out = UdpWatcher::bind(l, server_out_addr).unwrap();
+                let mut server_in = UdpWatcher::bind(l, server_in_addr).unwrap();
+                let (port, chan) = first.take();
+                chan.send(());
+                port.recv();
+                let msg = [1, .. 2048];
+                let mut total_bytes_sent = 0;
+                let mut buf = [1];
+                while buf[0] == 1 {
+                    // send more data
+                    assert!(server_out.sendto(msg, client_in_addr).is_ok());
+                    total_bytes_sent += msg.len();
+                    // check if the client has received enough
+                    let res = server_in.recvfrom(buf);
+                    assert!(res.is_ok());
+                    let (nread, src) = res.unwrap();
+                    assert_eq!(nread, 1);
+                    assert_eq!(src, client_out_addr);
+                }
+                assert!(total_bytes_sent >= MAX);
+            }
+
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let mut client_out = UdpWatcher::bind(l, client_out_addr).unwrap();
+                let mut client_in = UdpWatcher::bind(l, client_in_addr).unwrap();
+                let (port, chan) = second.take();
+                port.recv();
+                chan.send(());
+                let mut total_bytes_recv = 0;
+                let mut buf = [0, .. 2048];
+                while total_bytes_recv < MAX {
+                    // ask for more
+                    assert!(client_out.sendto([1], server_in_addr).is_ok());
+                    // wait for data
+                    let res = client_in.recvfrom(buf);
+                    assert!(res.is_ok());
+                    let (nread, src) = res.unwrap();
+                    assert_eq!(src, server_out_addr);
+                    total_bytes_recv += nread;
+                    for i in range(0u, nread) {
+                        assert_eq!(buf[i], 1);
+                    }
+                }
+                // tell the server we're done
+                assert!(client_out.sendto([0], server_in_addr).is_ok());
+            }
+        }
+    }
+
+    #[test]
+    fn test_read_and_block() {
+        do run_uv_loop |l| {
+            let addr = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
+
+            let handle = l.handle;
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let listener = TcpListener::bind(l, addr).unwrap();
+                let mut acceptor = listener.listen().unwrap();
+                let (port2, chan2) = stream();
+                chan.take().send(port2);
+                let mut stream = acceptor.accept().unwrap();
+                let mut buf = [0, .. 2048];
+
+                let expected = 32;
+                let mut current = 0;
+                let mut reads = 0;
+
+                while current < expected {
+                    let nread = stream.read(buf).unwrap();
+                    for i in range(0u, nread) {
+                        let val = buf[i] as uint;
+                        assert_eq!(val, current % 8);
+                        current += 1;
+                    }
+                    reads += 1;
+
+                    chan2.send(());
+                }
+
+                // Make sure we had multiple reads
+                assert!(reads > 1);
+            }
+
+            do spawntask {
+                let l = &mut Loop::wrap(handle);
+                let port2 = port.take().recv();
+                let mut stream = TcpWatcher::connect(l, addr).unwrap();
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                port2.recv();
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                port2.recv();
+            }
+        }
+    }
+
+    #[test]
+    fn test_simple_tcp_server_and_client_on_diff_threads() {
+        let addr = next_test_ip4();
+
+        do task::spawn_sched(task::SingleThreaded) {
+            do run_uv_loop |l| {
+                let listener = TcpListener::bind(l, addr).unwrap();
+                let mut acceptor = listener.listen().unwrap();
+                let mut stream = acceptor.accept().unwrap();
+                let mut buf = [0, .. 2048];
+                let nread = stream.read(buf).unwrap();
+                assert_eq!(nread, 8);
+                for i in range(0u, nread) {
+                    assert_eq!(buf[i], i as u8);
+                }
+            }
+        }
+
+        do task::spawn_sched(task::SingleThreaded) {
+            do run_uv_loop |l| {
+                let mut stream = TcpWatcher::connect(l, addr);
+                while stream.is_err() {
+                    stream = TcpWatcher::connect(l, addr);
+                }
+                stream.unwrap().write([0, 1, 2, 3, 4, 5, 6, 7]);
+            }
+        }
+    }
+
+    // On one thread, create a udp socket. Then send that socket to another
+    // thread and destroy the socket on the remote thread. This should make sure
+    // that homing kicks in for the socket to go back home to the original
+    // thread, close itself, and then come back to the last thread.
+    #[test]
+    fn test_homing_closes_correctly() {
+        let (port, chan) = oneshot();
+        let port = Cell::new(port);
+        let chan = Cell::new(chan);
+
+        do task::spawn_sched(task::SingleThreaded) {
+            let chan = Cell::new(chan.take());
+            do run_uv_loop |l| {
+                let listener = UdpWatcher::bind(l, next_test_ip4()).unwrap();
+                chan.take().send(listener);
+            }
+        }
+
+        do task::spawn_sched(task::SingleThreaded) {
+            let port = Cell::new(port.take());
+            do run_uv_loop |_l| {
+                port.take().recv();
+            }
+        }
+    }
+
+    // This is a bit of a crufty old test, but it has its uses.
+    #[test]
+    fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
+        use std::cast;
+        use std::rt::local::Local;
+        use std::rt::rtio::{EventLoop, IoFactory};
+        use std::rt::sched::Scheduler;
+        use std::rt::sched::{Shutdown, TaskFromFriend};
+        use std::rt::sleeper_list::SleeperList;
+        use std::rt::task::Task;
+        use std::rt::task::UnwindResult;
+        use std::rt::thread::Thread;
+        use std::rt::work_queue::WorkQueue;
+        use std::unstable::run_in_bare_thread;
+        use uvio::UvEventLoop;
+
+        do run_in_bare_thread {
+            let sleepers = SleeperList::new();
+            let work_queue1 = WorkQueue::new();
+            let work_queue2 = WorkQueue::new();
+            let queues = ~[work_queue1.clone(), work_queue2.clone()];
+
+            let loop1 = ~UvEventLoop::new() as ~EventLoop;
+            let mut sched1 = ~Scheduler::new(loop1, work_queue1, queues.clone(),
+                                             sleepers.clone());
+            let loop2 = ~UvEventLoop::new() as ~EventLoop;
+            let mut sched2 = ~Scheduler::new(loop2, work_queue2, queues.clone(),
+                                             sleepers.clone());
+
+            let handle1 = Cell::new(sched1.make_handle());
+            let handle2 = Cell::new(sched2.make_handle());
+            let tasksFriendHandle = Cell::new(sched2.make_handle());
+
+            let on_exit: ~fn(UnwindResult) = |exit_status| {
+                handle1.take().send(Shutdown);
+                handle2.take().send(Shutdown);
+                assert!(exit_status.is_success());
+            };
+
+            unsafe fn local_io() -> &'static mut IoFactory {
+                do Local::borrow |sched: &mut Scheduler| {
+                    let mut io = None;
+                    sched.event_loop.io(|i| io = Some(i));
+                    cast::transmute(io.unwrap())
+                }
+            }
+
+            let test_function: ~fn() = || {
+                let io = unsafe { local_io() };
+                let addr = next_test_ip4();
+                let maybe_socket = io.udp_bind(addr);
+                // this socket is bound to this event loop
+                assert!(maybe_socket.is_ok());
+
+                // block self on sched1
+                do task::unkillable { // FIXME(#8674)
+                    let scheduler: ~Scheduler = Local::take();
+                    do scheduler.deschedule_running_task_and_then |_, task| {
+                        // unblock task
+                        do task.wake().map |task| {
+                            // send self to sched2
+                            tasksFriendHandle.take().send(TaskFromFriend(task));
+                        };
+                        // sched1 should now sleep since it has nothing else to do
+                    }
+                }
+                // sched2 will wake up and get the task as we do nothing else,
+                // the function ends and the socket goes out of scope sched2
+                // will start to run the destructor the destructor will first
+                // block the task, set it's home as sched1, then enqueue it
+                // sched2 will dequeue the task, see that it has a home, and
+                // send it to sched1 sched1 will wake up, exec the close
+                // function on the correct loop, and then we're done
+            };
+
+            let mut main_task = ~Task::new_root(&mut sched1.stack_pool, None,
+                                                test_function);
+            main_task.death.on_exit = Some(on_exit);
+            let main_task = Cell::new(main_task);
+
+            let null_task = Cell::new(~do Task::new_root(&mut sched2.stack_pool,
+                                                         None) || {});
+
+            let sched1 = Cell::new(sched1);
+            let sched2 = Cell::new(sched2);
+
+            let thread1 = do Thread::start {
+                sched1.take().bootstrap(main_task.take());
+            };
+            let thread2 = do Thread::start {
+                sched2.take().bootstrap(null_task.take());
+            };
+
+            thread1.join();
+            thread2.join();
+        }
+    }
+
 }
