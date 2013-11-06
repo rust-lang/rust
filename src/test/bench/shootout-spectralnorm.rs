@@ -52,7 +52,6 @@ fn mult_AtAv(v: &mut [f64], out: &mut [f64], tmp: &mut [f64]) {
     mult_Atv(tmp, out);
 }
 
-#[fixed_stack_segment]
 fn main() {
     let n: uint = FromStr::from_str(os::args()[1]).unwrap();
     let mut u = vec::from_elem(n, 1f64);

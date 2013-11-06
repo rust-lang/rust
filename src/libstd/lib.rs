@@ -64,6 +64,8 @@
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
+#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
+#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::rt::io tests have an I/O interface to run on top

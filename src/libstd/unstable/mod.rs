@@ -72,7 +72,6 @@ fn test_run_in_bare_thread_exchange() {
 /// can't run correctly un-altered. Valgrind is there to help
 /// you notice weirdness in normal, un-doctored code paths!
 pub fn running_on_valgrind() -> bool {
-    #[fixed_stack_segment]; #[inline(never)];
     unsafe { rust_running_on_valgrind() != 0 }
 }
 

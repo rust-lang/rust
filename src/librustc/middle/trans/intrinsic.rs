@@ -25,7 +25,6 @@ use middle::trans::glue;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::attr;
 use util::ppaux::ty_to_str;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
@@ -35,7 +34,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        item: &ast::foreign_item,
                        path: ast_map::path,
                        substs: @param_substs,
-                       attributes: &[ast::Attribute],
+                       _attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
@@ -148,11 +147,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                                Some(item.span));
 
     set_always_inline(fcx.llfn);
-
-    // Set the fixed stack segment flag if necessary.
-    if attr::contains_name(attributes, "fixed_stack_segment") {
-        set_fixed_stack_segment(fcx.llfn);
-    }
 
     let mut bcx = fcx.entry_bcx.unwrap();
     let first_real_arg = fcx.arg_pos(0u);

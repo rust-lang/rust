@@ -119,7 +119,6 @@ impl Context {
 }
 
 extern {
-    #[rust_stack]
     fn swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
 
@@ -376,7 +375,6 @@ pub unsafe fn record_sp_limit(limit: uint) {
     unsafe fn target_record_sp_limit(limit: uint) {
         return record_sp_limit(limit as *c_void);
         extern {
-            #[rust_stack]
             fn record_sp_limit(limit: *c_void);
         }
     }
@@ -450,7 +448,6 @@ pub unsafe fn get_sp_limit() -> uint {
     unsafe fn target_get_sp_limit() -> uint {
         return get_sp_limit() as uint;
         extern {
-            #[rust_stack]
             fn get_sp_limit() -> *c_void;
         }
     }

@@ -69,7 +69,6 @@ enum StdSource {
     File(~RtioFileStream),
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn src<T>(fd: libc::c_int, readable: bool, f: &fn(StdSource) -> T) -> T {
     do with_local_io |io| {
         let fd = unsafe { libc::dup(fd) };
@@ -91,7 +90,6 @@ fn src<T>(fd: libc::c_int, readable: bool, f: &fn(StdSource) -> T) -> T {
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
 /// See `stdout()` for notes about this function.
-#[fixed_stack_segment] #[inline(never)]
 pub fn stdin() -> StdReader {
     do src(libc::STDIN_FILENO, true) |src| { StdReader { inner: src } }
 }

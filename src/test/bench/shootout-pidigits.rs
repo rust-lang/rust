@@ -161,7 +161,6 @@ fn pidigits(n: u32) {
     }
 }
 
-#[fixed_stack_segment]
 fn main() {
     let n: u32 = FromStr::from_str(os::args()[1]).get();
     pidigits(n);

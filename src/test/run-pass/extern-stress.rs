@@ -33,7 +33,6 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn count(n: uint) -> uint {
     unsafe {
         rustrt::rust_dbg_call(cb, n)

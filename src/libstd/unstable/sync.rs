@@ -475,12 +475,14 @@ impl<T:Send> Exclusive<T> {
     }
 }
 
-externfn!(fn rust_create_little_lock() -> rust_little_lock)
-externfn!(fn rust_destroy_little_lock(lock: rust_little_lock))
-externfn!(fn rust_lock_little_lock(lock: rust_little_lock))
-externfn!(fn rust_unlock_little_lock(lock: rust_little_lock))
-externfn!(fn rust_signal_little_lock(lock: rust_little_lock))
-externfn!(fn rust_wait_little_lock(lock: rust_little_lock))
+extern {
+    fn rust_create_little_lock() -> rust_little_lock;
+    fn rust_destroy_little_lock(lock: rust_little_lock);
+    fn rust_lock_little_lock(lock: rust_little_lock);
+    fn rust_unlock_little_lock(lock: rust_little_lock);
+    fn rust_signal_little_lock(lock: rust_little_lock);
+    fn rust_wait_little_lock(lock: rust_little_lock);
+}
 
 #[cfg(test)]
 mod tests {

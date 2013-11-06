@@ -135,7 +135,6 @@ fn update_entry(dirs: &[LogDirective], entry: &ModEntry) -> u32 {
     if longest_match >= 0 { return 1; } else { return 0; }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 /// Set log level for every entry in crate_map according to the sepecification
 /// in settings
 fn update_log_settings(crate_map: &CrateMap, settings: ~str) {

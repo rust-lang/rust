@@ -364,8 +364,6 @@ pub enum uv_membership {
 }
 
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
     let size = uv_handle_size(handle);
     let p = malloc(size);
@@ -374,14 +372,10 @@ pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
 }
 
 pub unsafe fn free_handle(v: *c_void) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     free(v)
 }
 
 pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
     let size = uv_req_size(req);
     let p = malloc(size);
@@ -390,14 +384,11 @@ pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
 }
 
 pub unsafe fn free_req(v: *c_void) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     free(v)
 }
 
 #[test]
 fn handle_sanity_check() {
-    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         assert_eq!(UV_HANDLE_TYPE_MAX as uint, rust_uv_handle_type_max());
     }
@@ -405,7 +396,6 @@ fn handle_sanity_check() {
 
 #[test]
 fn request_sanity_check() {
-    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         assert_eq!(UV_REQ_TYPE_MAX as uint, rust_uv_req_type_max());
     }
@@ -413,132 +403,113 @@ fn request_sanity_check() {
 
 // XXX Event loops ignore SIGPIPE by default.
 pub unsafe fn loop_new() -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_loop_new();
-}
-
-pub unsafe fn get_udp_handle_from_send_req(send_req: *uv_udp_send_t) -> *uv_udp_t {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_get_udp_handle_from_send_req(send_req);
 }
 
 pub unsafe fn uv_write(req: *uv_write_t,
                        stream: *uv_stream_t,
                        buf_in: &[uv_buf_t],
                        cb: uv_write_cb) -> c_int {
-    externfn!(fn uv_write(req: *uv_write_t, stream: *uv_stream_t,
-                          buf_in: *uv_buf_t, buf_cnt: c_int,
-                          cb: uv_write_cb) -> c_int)
+    extern {
+        fn uv_write(req: *uv_write_t, stream: *uv_stream_t,
+                    buf_in: *uv_buf_t, buf_cnt: c_int,
+                    cb: uv_write_cb) -> c_int;
+    }
 
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
     return uv_write(req, stream, buf_ptr, buf_cnt, cb);
 }
 
+pub unsafe fn uv_udp_send(req: *uv_udp_send_t,
+                          handle: *uv_udp_t,
+                          buf_in: &[uv_buf_t],
+                          addr: *sockaddr,
+                          cb: uv_udp_send_cb) -> c_int {
+    extern {
+        fn uv_udp_send(req: *uv_write_t, stream: *uv_stream_t,
+                       buf_in: *uv_buf_t, buf_cnt: c_int, addr: *sockaddr,
+                       cb: uv_udp_send_cb) -> c_int;
+    }
+
+    let buf_ptr = vec::raw::to_ptr(buf_in);
+    let buf_cnt = buf_in.len() as i32;
+    return uv_udp_send(req, handle, buf_ptr, buf_cnt, addr, cb);
+}
+
+pub unsafe fn get_udp_handle_from_send_req(send_req: *uv_udp_send_t) -> *uv_udp_t {
+    return rust_uv_get_udp_handle_from_send_req(send_req);
+}
+
 pub unsafe fn process_pid(p: *uv_process_t) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
+
     return rust_uv_process_pid(p);
 }
 
 pub unsafe fn set_stdio_container_flags(c: *uv_stdio_container_t,
                                         flags: libc::c_int) {
-    #[fixed_stack_segment]; #[inline(never)];
+
     rust_set_stdio_container_flags(c, flags);
 }
 
 pub unsafe fn set_stdio_container_fd(c: *uv_stdio_container_t,
                                      fd: libc::c_int) {
-    #[fixed_stack_segment]; #[inline(never)];
+
     rust_set_stdio_container_fd(c, fd);
 }
 
 pub unsafe fn set_stdio_container_stream(c: *uv_stdio_container_t,
                                          stream: *uv_stream_t) {
-    #[fixed_stack_segment]; #[inline(never)];
     rust_set_stdio_container_stream(c, stream);
 }
 
 // data access helpers
 pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_get_result_from_fs_req(req)
 }
 pub unsafe fn get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_get_ptr_from_fs_req(req)
 }
 pub unsafe fn get_path_from_fs_req(req: *uv_fs_t) -> *c_char {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_get_path_from_fs_req(req)
 }
 pub unsafe fn get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_get_loop_from_fs_req(req)
 }
 pub unsafe fn get_loop_from_getaddrinfo_req(req: *uv_getaddrinfo_t) -> *uv_loop_t {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_get_loop_from_getaddrinfo_req(req)
 }
 pub unsafe fn get_loop_for_uv_handle<T>(handle: *T) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_get_loop_for_uv_handle(handle as *c_void);
 }
 pub unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t) -> *uv_stream_t {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_get_stream_handle_from_connect_req(connect);
 }
 pub unsafe fn get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_get_stream_handle_from_write_req(write_req);
 }
 pub unsafe fn get_data_for_uv_loop(loop_ptr: *c_void) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_get_data_for_uv_loop(loop_ptr)
 }
 pub unsafe fn set_data_for_uv_loop(loop_ptr: *c_void, data: *c_void) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_set_data_for_uv_loop(loop_ptr, data);
 }
 pub unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_get_data_for_uv_handle(handle as *c_void);
 }
 pub unsafe fn set_data_for_uv_handle<T, U>(handle: *T, data: *U) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_set_data_for_uv_handle(handle as *c_void, data as *c_void);
 }
 pub unsafe fn get_data_for_req<T>(req: *T) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_get_data_for_req(req as *c_void);
 }
 pub unsafe fn set_data_for_req<T, U>(req: *T, data: *U) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_set_data_for_req(req as *c_void, data as *c_void);
 }
 pub unsafe fn populate_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_populate_uv_stat(req_in, stat_out)
 }
 pub unsafe fn guess_handle(handle: c_int) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
     rust_uv_guess_handle(handle)
 }
 
@@ -594,171 +565,157 @@ extern {
                                        stream: *uv_stream_t);
     fn rust_uv_process_pid(p: *uv_process_t) -> c_int;
     fn rust_uv_guess_handle(fd: c_int) -> c_int;
+
+    // generic uv functions
+    pub fn uv_loop_delete(l: *uv_loop_t);
+    pub fn uv_handle_size(ty: uv_handle_type) -> size_t;
+    pub fn uv_req_size(ty: uv_req_type) -> size_t;
+    pub fn uv_run(l: *uv_loop_t, mode: uv_run_mode) -> c_int;
+    pub fn uv_close(h: *uv_handle_t, cb: uv_close_cb);
+    pub fn uv_walk(l: *uv_loop_t, cb: uv_walk_cb, arg: *c_void);
+    pub fn uv_buf_init(base: *c_char, len: c_uint) -> uv_buf_t;
+    pub fn uv_strerror(err: c_int) -> *c_char;
+    pub fn uv_err_name(err: c_int) -> *c_char;
+    pub fn uv_listen(s: *uv_stream_t, backlog: c_int,
+                     cb: uv_connection_cb) -> c_int;
+    pub fn uv_accept(server: *uv_stream_t, client: *uv_stream_t) -> c_int;
+    pub fn uv_read_start(stream: *uv_stream_t,
+                         on_alloc: uv_alloc_cb,
+                         on_read: uv_read_cb) -> c_int;
+    pub fn uv_read_stop(stream: *uv_stream_t) -> c_int;
+
+    // idle bindings
+    pub fn uv_idle_init(l: *uv_loop_t, i: *uv_idle_t) -> c_int;
+    pub fn uv_idle_start(i: *uv_idle_t, cb: uv_idle_cb) -> c_int;
+    pub fn uv_idle_stop(i: *uv_idle_t) -> c_int;
+
+    // async bindings
+    pub fn uv_async_init(l: *uv_loop_t, a: *uv_async_t,
+                         cb: uv_async_cb) -> c_int;
+    pub fn uv_async_send(a: *uv_async_t);
+
+    // tcp bindings
+    pub fn uv_tcp_init(l: *uv_loop_t, h: *uv_tcp_t) -> c_int;
+    pub fn uv_tcp_connect(c: *uv_connect_t, h: *uv_tcp_t,
+                          addr: *sockaddr, cb: uv_connect_cb) -> c_int;
+    pub fn uv_tcp_bind(t: *uv_tcp_t, addr: *sockaddr) -> c_int;
+    pub fn uv_ip4_name(src: *sockaddr, dst: *c_char,
+                       size: size_t) -> c_int;
+    pub fn uv_ip6_name(src: *sockaddr, dst: *c_char,
+                       size: size_t) -> c_int;
+    pub fn uv_tcp_nodelay(h: *uv_tcp_t, enable: c_int) -> c_int;
+    pub fn uv_tcp_keepalive(h: *uv_tcp_t, enable: c_int,
+                            delay: c_uint) -> c_int;
+    pub fn uv_tcp_simultaneous_accepts(h: *uv_tcp_t, enable: c_int) -> c_int;
+    pub fn uv_tcp_getsockname(h: *uv_tcp_t, name: *sockaddr,
+                              len: *mut c_int) -> c_int;
+    pub fn uv_tcp_getpeername(h: *uv_tcp_t, name: *sockaddr,
+                              len: *mut c_int) -> c_int;
+    pub fn uv_ip4_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int;
+    pub fn uv_ip6_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int;
+
+    // udp bindings
+    pub fn uv_udp_init(l: *uv_loop_t, h: *uv_udp_t) -> c_int;
+    pub fn uv_udp_bind(h: *uv_udp_t, addr: *sockaddr, flags: c_uint) -> c_int;
+    pub fn uv_udp_recv_start(server: *uv_udp_t,
+                             on_alloc: uv_alloc_cb,
+                             on_recv: uv_udp_recv_cb) -> c_int;
+    pub fn uv_udp_set_membership(handle: *uv_udp_t, multicast_addr: *c_char,
+                                 interface_addr: *c_char,
+                                 membership: uv_membership) -> c_int;
+    pub fn uv_udp_recv_stop(server: *uv_udp_t) -> c_int;
+    pub fn uv_udp_set_multicast_loop(handle: *uv_udp_t, on: c_int) -> c_int;
+    pub fn uv_udp_set_multicast_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int;
+    pub fn uv_udp_set_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int;
+    pub fn uv_udp_set_broadcast(handle: *uv_udp_t, on: c_int) -> c_int;
+    pub fn uv_udp_getsockname(h: *uv_udp_t, name: *sockaddr,
+                              len: *mut c_int) -> c_int;
+
+    // timer bindings
+    pub fn uv_timer_init(l: *uv_loop_t, t: *uv_timer_t) -> c_int;
+    pub fn uv_timer_start(t: *uv_timer_t, cb: uv_timer_cb,
+                          timeout: libc::uint64_t,
+                          repeat: libc::uint64_t) -> c_int;
+    pub fn uv_timer_stop(handle: *uv_timer_t) -> c_int;
+
+    // fs operations
+    pub fn uv_fs_open(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                      flags: c_int, mode: c_int, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_unlink(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                        cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_write(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
+                       len: size_t, offset: i64, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_read(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
+                      len: size_t, offset: i64, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_close(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
+                       cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_stat(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                      cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_fstat(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
+                       cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_mkdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                       mode: c_int, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_rmdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                       cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_readdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                         flags: c_int, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_req_cleanup(req: *uv_fs_t);
+    pub fn uv_fs_fsync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
+                       cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_fdatasync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
+                           cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_ftruncate(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
+                           offset: i64, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_readlink(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
+                          cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_symlink(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                         dst: *c_char, flags: c_int, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_rename(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                        dst: *c_char, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_utime(handle: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                       atime: c_double, mtime: c_double,
+                       cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_link(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                      dst: *c_char, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_chown(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
+                       uid: uv_uid_t, gid: uv_gid_t, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_chmod(handle: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                       mode: c_int, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_lstat(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
+                       cb: uv_fs_cb) -> c_int;
+
+    // getaddrinfo
+    pub fn uv_getaddrinfo(loop_: *uv_loop_t, req: *uv_getaddrinfo_t,
+                          getaddrinfo_cb: uv_getaddrinfo_cb,
+                          node: *c_char, service: *c_char,
+                          hints: *addrinfo) -> c_int;
+    pub fn uv_freeaddrinfo(ai: *addrinfo);
+
+    // process spawning
+    pub fn uv_spawn(loop_ptr: *uv_loop_t, outptr: *uv_process_t,
+                    options: *uv_process_options_t) -> c_int;
+    pub fn uv_process_kill(p: *uv_process_t, signum: c_int) -> c_int;
+
+    // pipes
+    pub fn uv_pipe_init(l: *uv_loop_t, p: *uv_pipe_t, ipc: c_int) -> c_int;
+    pub fn uv_pipe_open(pipe: *uv_pipe_t, file: c_int) -> c_int;
+    pub fn uv_pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int;
+    pub fn uv_pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
+                           name: *c_char, cb: uv_connect_cb);
+
+    // tty
+    pub fn uv_tty_init(l: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
+                       readable: c_int) -> c_int;
+    pub fn uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int;
+    pub fn uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
+                              height: *c_int) -> c_int;
+
+    // signals
+    pub fn uv_signal_init(loop_: *uv_loop_t, handle: *uv_signal_t) -> c_int;
+    pub fn uv_signal_start(h: *uv_signal_t, cb: uv_signal_cb,
+                           signum: c_int) -> c_int;
+    pub fn uv_signal_stop(handle: *uv_signal_t) -> c_int;
 }
-
-// generic uv functions
-externfn!(fn uv_loop_delete(l: *uv_loop_t))
-externfn!(fn uv_handle_size(ty: uv_handle_type) -> size_t)
-externfn!(fn uv_req_size(ty: uv_req_type) -> size_t)
-externfn!(fn uv_run(l: *uv_loop_t, mode: uv_run_mode) -> c_int)
-externfn!(fn uv_close(h: *uv_handle_t, cb: uv_close_cb))
-externfn!(fn uv_walk(l: *uv_loop_t, cb: uv_walk_cb, arg: *c_void))
-externfn!(fn uv_buf_init(base: *c_char, len: c_uint) -> uv_buf_t)
-externfn!(fn uv_strerror(err: c_int) -> *c_char)
-externfn!(fn uv_err_name(err: c_int) -> *c_char)
-externfn!(fn uv_listen(s: *uv_stream_t, backlog: c_int,
-                       cb: uv_connection_cb) -> c_int)
-externfn!(fn uv_accept(server: *uv_stream_t, client: *uv_stream_t) -> c_int)
-externfn!(fn uv_read_start(stream: *uv_stream_t,
-                           on_alloc: uv_alloc_cb,
-                           on_read: uv_read_cb) -> c_int)
-externfn!(fn uv_read_stop(stream: *uv_stream_t) -> c_int)
-
-// idle bindings
-externfn!(fn uv_idle_init(l: *uv_loop_t, i: *uv_idle_t) -> c_int)
-externfn!(fn uv_idle_start(i: *uv_idle_t, cb: uv_idle_cb) -> c_int)
-externfn!(fn uv_idle_stop(i: *uv_idle_t) -> c_int)
-
-// async bindings
-externfn!(fn uv_async_init(l: *uv_loop_t, a: *uv_async_t,
-                           cb: uv_async_cb) -> c_int)
-externfn!(fn uv_async_send(a: *uv_async_t))
-
-// tcp bindings
-externfn!(fn uv_tcp_init(l: *uv_loop_t, h: *uv_tcp_t) -> c_int)
-externfn!(fn uv_tcp_connect(c: *uv_connect_t, h: *uv_tcp_t,
-                            addr: *sockaddr, cb: uv_connect_cb) -> c_int)
-externfn!(fn uv_tcp_bind(t: *uv_tcp_t, addr: *sockaddr) -> c_int)
-externfn!(fn uv_ip4_name(src: *sockaddr, dst: *c_char,
-                         size: size_t) -> c_int)
-externfn!(fn uv_ip6_name(src: *sockaddr, dst: *c_char,
-                         size: size_t) -> c_int)
-externfn!(fn uv_tcp_nodelay(h: *uv_tcp_t, enable: c_int) -> c_int)
-externfn!(fn uv_tcp_keepalive(h: *uv_tcp_t, enable: c_int,
-                              delay: c_uint) -> c_int)
-externfn!(fn uv_tcp_simultaneous_accepts(h: *uv_tcp_t, enable: c_int) -> c_int)
-externfn!(fn uv_tcp_getsockname(h: *uv_tcp_t, name: *sockaddr,
-                                len: *mut c_int) -> c_int)
-externfn!(fn uv_tcp_getpeername(h: *uv_tcp_t, name: *sockaddr,
-                                len: *mut c_int) -> c_int)
-externfn!(fn uv_ip4_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int)
-externfn!(fn uv_ip6_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int)
-
-// udp bindings
-externfn!(fn uv_udp_init(l: *uv_loop_t, h: *uv_udp_t) -> c_int)
-externfn!(fn uv_udp_bind(h: *uv_udp_t, addr: *sockaddr, flags: c_uint) -> c_int)
-externfn!(fn uv_udp_recv_start(server: *uv_udp_t,
-                               on_alloc: uv_alloc_cb,
-                               on_recv: uv_udp_recv_cb) -> c_int)
-externfn!(fn uv_udp_set_membership(handle: *uv_udp_t, multicast_addr: *c_char,
-                                   interface_addr: *c_char,
-                                   membership: uv_membership) -> c_int)
-externfn!(fn uv_udp_recv_stop(server: *uv_udp_t) -> c_int)
-externfn!(fn uv_udp_set_multicast_loop(handle: *uv_udp_t, on: c_int) -> c_int)
-externfn!(fn uv_udp_set_multicast_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int)
-externfn!(fn uv_udp_set_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int)
-externfn!(fn uv_udp_set_broadcast(handle: *uv_udp_t, on: c_int) -> c_int)
-externfn!(fn uv_udp_getsockname(h: *uv_udp_t, name: *sockaddr,
-                                len: *mut c_int) -> c_int)
-
-pub unsafe fn uv_udp_send(req: *uv_udp_send_t,
-                          handle: *uv_udp_t,
-                          buf_in: &[uv_buf_t],
-                          addr: *sockaddr,
-                          cb: uv_udp_send_cb) -> c_int {
-    externfn!(fn uv_udp_send(req: *uv_write_t, stream: *uv_stream_t,
-                             buf_in: *uv_buf_t, buf_cnt: c_int, addr: *sockaddr,
-                             cb: uv_udp_send_cb) -> c_int)
-
-    let buf_ptr = vec::raw::to_ptr(buf_in);
-    let buf_cnt = buf_in.len() as i32;
-    return uv_udp_send(req, handle, buf_ptr, buf_cnt, addr, cb);
-}
-
-// timer bindings
-externfn!(fn uv_timer_init(l: *uv_loop_t, t: *uv_timer_t) -> c_int)
-externfn!(fn uv_timer_start(t: *uv_timer_t, cb: uv_timer_cb,
-                            timeout: libc::uint64_t,
-                            repeat: libc::uint64_t) -> c_int)
-externfn!(fn uv_timer_stop(handle: *uv_timer_t) -> c_int)
-
-// fs operations
-externfn!(fn uv_fs_open(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                        flags: c_int, mode: c_int, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_unlink(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                          cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_write(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
-                         len: size_t, offset: i64, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_read(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
-                        len: size_t, offset: i64, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_close(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
-                         cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_stat(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                        cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_fstat(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
-                         cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_mkdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                         mode: c_int, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_rmdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                         cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_readdir(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                           flags: c_int, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_req_cleanup(req: *uv_fs_t))
-externfn!(fn uv_fs_fsync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
-                         cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_fdatasync(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
-                             cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_ftruncate(handle: *uv_loop_t, req: *uv_fs_t, file: c_int,
-                             offset: i64, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_readlink(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
-                            cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_symlink(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                           dst: *c_char, flags: c_int, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_rename(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                          dst: *c_char, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_utime(handle: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                         atime: c_double, mtime: c_double,
-                         cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_link(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                        dst: *c_char, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_chown(handle: *uv_loop_t, req: *uv_fs_t, src: *c_char,
-                         uid: uv_uid_t, gid: uv_gid_t, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_chmod(handle: *uv_loop_t, req: *uv_fs_t, path: *c_char,
-                         mode: c_int, cb: uv_fs_cb) -> c_int)
-externfn!(fn uv_fs_lstat(handle: *uv_loop_t, req: *uv_fs_t, file: *c_char,
-                         cb: uv_fs_cb) -> c_int)
-
-// getaddrinfo
-externfn!(fn uv_getaddrinfo(loop_: *uv_loop_t, req: *uv_getaddrinfo_t,
-                            getaddrinfo_cb: uv_getaddrinfo_cb,
-                            node: *c_char, service: *c_char,
-                            hints: *addrinfo) -> c_int)
-externfn!(fn uv_freeaddrinfo(ai: *addrinfo))
-
-// process spawning
-externfn!(fn uv_spawn(loop_ptr: *uv_loop_t, outptr: *uv_process_t,
-                      options: *uv_process_options_t) -> c_int)
-externfn!(fn uv_process_kill(p: *uv_process_t, signum: c_int) -> c_int)
-
-// pipes
-externfn!(fn uv_pipe_init(l: *uv_loop_t, p: *uv_pipe_t, ipc: c_int) -> c_int)
-externfn!(fn uv_pipe_open(pipe: *uv_pipe_t, file: c_int) -> c_int)
-externfn!(fn uv_pipe_bind(pipe: *uv_pipe_t, name: *c_char) -> c_int)
-externfn!(fn uv_pipe_connect(req: *uv_connect_t, handle: *uv_pipe_t,
-                             name: *c_char, cb: uv_connect_cb))
-
-// tty
-externfn!(fn uv_tty_init(l: *uv_loop_t, tty: *uv_tty_t, fd: c_int,
-                         readable: c_int) -> c_int)
-externfn!(fn uv_tty_set_mode(tty: *uv_tty_t, mode: c_int) -> c_int)
-externfn!(fn uv_tty_get_winsize(tty: *uv_tty_t, width: *c_int,
-                                height: *c_int) -> c_int)
-
-// signals
-externfn!(fn uv_signal_init(loop_: *uv_loop_t, handle: *uv_signal_t) -> c_int)
-externfn!(fn uv_signal_start(h: *uv_signal_t, cb: uv_signal_cb,
-                             signum: c_int) -> c_int)
-externfn!(fn uv_signal_stop(handle: *uv_signal_t) -> c_int)
 
 // libuv requires various system libraries to successfully link on some
 // platforms
