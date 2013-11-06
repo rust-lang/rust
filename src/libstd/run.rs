@@ -296,7 +296,6 @@ impl Process {
  *
  * The process's exit code
  */
-#[fixed_stack_segment] #[inline(never)]
 pub fn process_status(prog: &str, args: &[~str]) -> int {
     let mut prog = Process::new(prog, args, ProcessOptions {
         env: None,

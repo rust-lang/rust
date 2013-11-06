@@ -495,12 +495,6 @@ pub fn set_always_inline(f: ValueRef) {
     lib::llvm::SetFunctionAttribute(f, lib::llvm::AlwaysInlineAttribute)
 }
 
-pub fn set_fixed_stack_segment(f: ValueRef) {
-    do "fixed-stack-segment".with_c_str |buf| {
-        unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
-    }
-}
-
 pub fn set_no_split_stack(f: ValueRef) {
     do "no-split-stack".with_c_str |buf| {
         unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
@@ -1889,7 +1883,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
                      id: ast::NodeId,
-                     attributes: &[ast::Attribute],
+                     _attributes: &[ast::Attribute],
                      output_type: ty::t,
                      maybe_load_env: &fn(@mut FunctionContext)) {
     ccx.stats.n_closures += 1;
@@ -1918,12 +1912,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // Set up arguments to the function.
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
-
-    // Set the fixed stack segment flag if necessary.
-    if attr::contains_name(attributes, "fixed_stack_segment") {
-        set_no_inline(fcx.llfn);
-        set_fixed_stack_segment(fcx.llfn);
-    }
 
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 

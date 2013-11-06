@@ -154,7 +154,6 @@ mod test {
 
     // kill is only available on Unixes
     #[cfg(unix)]
-    #[fixed_stack_segment]
     fn sigint() {
         unsafe {
             libc::funcs::posix88::signal::kill(libc::getpid(), libc::SIGINT);

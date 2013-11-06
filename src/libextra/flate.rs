@@ -47,8 +47,6 @@ static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adle
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
 fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    #[fixed_stack_segment]; #[inline(never)];
-
     do bytes.as_imm_buf |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
@@ -75,8 +73,6 @@ pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 }
 
 fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    #[fixed_stack_segment]; #[inline(never)];
-
     do bytes.as_imm_buf |b, len| {
         unsafe {
             let mut outsz : size_t = 0;

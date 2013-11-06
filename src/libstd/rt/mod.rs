@@ -463,8 +463,6 @@ pub fn in_green_task_context() -> bool {
 }
 
 pub fn new_event_loop() -> ~rtio::EventLoop {
-    #[fixed_stack_segment]; #[allow(cstack)];
-
     match crate_map::get_crate_map() {
         None => {}
         Some(map) => {

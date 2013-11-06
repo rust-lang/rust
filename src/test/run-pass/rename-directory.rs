@@ -21,7 +21,6 @@ use std::rt::io;
 use std::rt::io::fs;
 
 fn rename_directory() {
-    #[fixed_stack_segment];
     unsafe {
         static U_RWX: i32 = (libc::S_IRUSR | libc::S_IWUSR | libc::S_IXUSR) as i32;
 

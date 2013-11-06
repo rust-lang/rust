@@ -144,21 +144,16 @@ pub mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
-        #[fixed_stack_segment]; #[inline(never)];
         do filename.with_c_str |raw_name| {
             dlopen(raw_name, Lazy as libc::c_int)
         }
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
-        #[fixed_stack_segment]; #[inline(never)];
-
         dlopen(ptr::null(), Lazy as libc::c_int)
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
-        #[fixed_stack_segment]; #[inline(never)];
-
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence. `atomically` asserts that we don't do anything that
@@ -184,13 +179,9 @@ pub mod dl {
     }
 
     pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
-        #[fixed_stack_segment]; #[inline(never)];
-
         dlsym(handle, symbol)
     }
     pub unsafe fn close(handle: *libc::c_void) {
-        #[fixed_stack_segment]; #[inline(never)];
-
         dlclose(handle); ()
     }
 
@@ -225,21 +216,18 @@ pub mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
-        #[fixed_stack_segment]; #[inline(never)];
         do os::win32::as_utf16_p(filename.as_str().unwrap()) |raw_name| {
             LoadLibraryW(raw_name)
         }
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
-        #[fixed_stack_segment]; #[inline(never)];
         let handle = ptr::null();
         GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &handle as **libc::c_void);
         handle
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do atomically {
                 SetLastError(0);
@@ -257,11 +245,9 @@ pub mod dl {
     }
 
     pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
-        #[fixed_stack_segment]; #[inline(never)];
         GetProcAddress(handle, symbol)
     }
     pub unsafe fn close(handle: *libc::c_void) {
-        #[fixed_stack_segment]; #[inline(never)];
         FreeLibrary(handle); ()
     }
 

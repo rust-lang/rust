@@ -509,7 +509,6 @@ impl Unwinder {
         }
 
         extern {
-            #[rust_stack]
             fn rust_try(f: extern "C" fn(*c_void, *c_void),
                         code: *c_void,
                         data: *c_void) -> uintptr_t;
@@ -517,8 +516,6 @@ impl Unwinder {
     }
 
     pub fn begin_unwind(&mut self, cause: ~Any) -> ! {
-        #[fixed_stack_segment]; #[inline(never)];
-
         self.unwinding = true;
         self.cause = Some(cause);
         unsafe {
@@ -537,9 +534,8 @@ impl Unwinder {
 /// truly consider it to be stack overflow rather than allocating a new stack.
 #[no_mangle]      // - this is called from C code
 #[no_split_stack] // - it would be sad for this function to trigger __morestack
-#[doc(hidden)] // XXX: this function shouldn't have to be `pub` to get exported
-               //      so it can be linked against, we should have a better way
-               //      of specifying that.
+#[doc(hidden)]    // - Function must be `pub` to get exported, but it's
+                  //   irrelevant for documentation purposes.
 pub extern "C" fn rust_stack_exhausted() {
     use rt::in_green_task_context;
     use rt::task::Task;

@@ -16,7 +16,6 @@ extern {
     pub fn rust_dbg_extern_return_TwoU8s() -> TwoU8s;
 }
 
-#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         let y = rust_dbg_extern_return_TwoU8s();

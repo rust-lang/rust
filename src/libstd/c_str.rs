@@ -40,7 +40,9 @@ An example of creating and using a C string would be:
 
 ```rust
 use std::libc;
-externfn!(fn puts(s: *libc::c_char))
+extern {
+    fn puts(s: *libc::c_char);
+}
 
 let my_string = "Hello, world!";
 
@@ -179,7 +181,6 @@ impl CString {
 
 impl Drop for CString {
     fn drop(&mut self) {
-        #[fixed_stack_segment]; #[inline(never)];
         if self.owns_buffer_ {
             unsafe {
                 libc::free(self.buf as *libc::c_void)
@@ -260,7 +261,6 @@ static BUF_LEN: uint = 128;
 
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
-        #[fixed_stack_segment]; #[inline(never)];
         let mut cs = unsafe { self.to_c_str_unchecked() };
         do cs.with_mut_ref |buf| {
             check_for_null(*self, buf);
@@ -269,7 +269,6 @@ impl<'self> ToCStr for &'self [u8] {
     }
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
-        #[fixed_stack_segment]; #[inline(never)];
         do self.as_imm_buf |self_buf, self_len| {
             let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
             if buf.is_null() {
@@ -460,16 +459,12 @@ mod tests {
 
     #[test]
     fn test_unwrap() {
-        #[fixed_stack_segment]; #[inline(never)];
-
         let c_str = "hello".to_c_str();
         unsafe { libc::free(c_str.unwrap() as *libc::c_void) }
     }
 
     #[test]
     fn test_with_ref() {
-        #[fixed_stack_segment]; #[inline(never)];
-
         let c_str = "hello".to_c_str();
         let len = unsafe { c_str.with_ref(|buf| libc::strlen(buf)) };
         assert!(!c_str.is_null());
