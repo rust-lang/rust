@@ -48,12 +48,21 @@ impl<T: Freeze> Rc<T> {
     }
 }
 
+impl<T: Send> Rc<T> {
+    /// Construct a new reference-counted box from a `Send` value
+    #[inline]
+    pub fn from_send(value: T) -> Rc<T> {
+        unsafe {
+            Rc::new_unchecked(value)
+        }
+    }
+}
+
 impl<T> Rc<T> {
     /// Unsafety construct a new reference-counted box from any value.
     ///
-    /// If the type is not `Freeze`, the `Rc` box will incorrectly still be considered as a `Freeze`
-    /// type. It is also possible to create cycles, which will leak, and may interact poorly with
-    /// managed pointers.
+    /// It is possible to create cycles, which will leak, and may interact
+    /// poorly with managed pointers.
     #[inline]
     pub unsafe fn new_unchecked(value: T) -> Rc<T> {
         Rc{ptr: transmute(~RcBox{value: value, count: 1})}
@@ -104,26 +113,22 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        unsafe {
-            let x = Rc::new_unchecked(Cell::new(5));
-            let y = x.clone();
-            do x.borrow().with_mut_ref |inner| {
-                *inner = 20;
-            }
-            assert_eq!(y.borrow().take(), 20);
+        let x = Rc::from_send(Cell::new(5));
+        let y = x.clone();
+        do x.borrow().with_mut_ref |inner| {
+            *inner = 20;
         }
+        assert_eq!(y.borrow().take(), 20);
     }
 
     #[test]
     fn test_deep_clone() {
-        unsafe {
-            let x = Rc::new_unchecked(Cell::new(5));
-            let y = x.deep_clone();
-            do x.borrow().with_mut_ref |inner| {
-                *inner = 20;
-            }
-            assert_eq!(y.borrow().take(), 5);
+        let x = Rc::from_send(Cell::new(5));
+        let y = x.deep_clone();
+        do x.borrow().with_mut_ref |inner| {
+            *inner = 20;
         }
+        assert_eq!(y.borrow().take(), 5);
     }
 
     #[test]
@@ -142,10 +147,8 @@ mod test_rc {
 
     #[test]
     fn test_destructor() {
-        unsafe {
-            let x = Rc::new_unchecked(~5);
-            assert_eq!(**x.borrow(), 5);
-        }
+        let x = Rc::from_send(~5);
+        assert_eq!(**x.borrow(), 5);
     }
 }
 
