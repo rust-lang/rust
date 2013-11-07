@@ -285,6 +285,11 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let td = PointerCast(bcx, static_ti.tydesc, userland_tydesc_ty);
             Ret(bcx, td);
         }
+        "type_id" => {
+            let hash = ty::hash_crate_independent(ccx.tcx, substs.tys[0],
+                                                  ccx.link_meta.extras_hash);
+            Ret(bcx, C_i64(hash as i64))
+        }
         "init" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -382,9 +387,9 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let tp_ty = substs.tys[0];
             Ret(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)));
         }
-        "contains_managed" => {
+        "owns_managed" => {
             let tp_ty = substs.tys[0];
-            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).contains_managed()));
+            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).owns_managed()));
         }
         "visit_tydesc" => {
             let td = get_param(decl, first_real_arg);

@@ -2099,6 +2099,19 @@ fn test_rustpkg_test_failure_exit_status() {
 }
 
 #[test]
+fn test_rustpkg_test_cfg() {
+    let foo_id = PkgId::new("foo");
+    let foo_workspace = create_local_package(&foo_id);
+    let foo_workspace = foo_workspace.path();
+    writeFile(&foo_workspace.join_many(["src", "foo-0.1", "test.rs"]),
+              "#[test] #[cfg(not(foobar))] fn f() { assert!('a' != 'a'); }");
+    let output = command_line_test([~"test", ~"--cfg", ~"foobar", ~"foo"],
+                                   foo_workspace);
+    let output_str = str::from_utf8(output.output);
+    assert!(output_str.contains("0 passed; 0 failed; 0 ignored; 0 measured"));
+}
+
+#[test]
 fn test_rebuild_when_needed() {
     let foo_id = PkgId::new("foo");
     let foo_workspace = create_local_package(&foo_id);

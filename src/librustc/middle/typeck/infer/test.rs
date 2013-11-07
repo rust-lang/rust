@@ -190,8 +190,11 @@ impl Env {
                           onceness: ast::Many,
                           region: ty::re_static,
                           bounds: @~[]},
-            sig: FnSig {inputs: inputs,
-                        output: output_ty}
+            sig: FnSig {
+                inputs: inputs,
+                output: output_ty,
+                variadic: false
+            }
         })
     }
 

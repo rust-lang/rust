@@ -195,8 +195,8 @@ CFG_RUN_TARG_i686-unknown-linux-gnu=$(call CFG_RUN_i686-unknown-linux-gnu,,$(2))
 
 # arm-apple-darwin configuration
 ifeq ($(CFG_OSTYPE),apple-darwin)
-CFG_IOS_SDK = $(shell xcrun --show-sdk-path -sdk iphoneos)
-CFG_IOS_FLAGS = -target arm-apple-darwin -isysroot $(CFG_IOS_SDK) -I $(CFG_IOS_SDK)/usr/include -I $(CFG_IOS_SDK)/usr/include/c++/4.2.1 -I /usr/include
+CFG_IOS_SDK = $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
+CFG_IOS_FLAGS = -target arm-apple-darwin -isysroot $(CFG_IOS_SDK) -I$(CFG_IOS_SDK)/usr/include -I$(CFG_IOS_SDK)/usr/include/c++/4.2.1
 CC_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos clang)
 CXX_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos clang++)
 CPP_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos clang++)

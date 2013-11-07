@@ -6,8 +6,11 @@
 .text
 .code 32
 .arm
+#if defined(__APPLE__)
+.align 2
+#else
 .align
-
+#endif
 
 .globl swap_registers
 swap_registers:

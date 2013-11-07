@@ -572,7 +572,10 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_fn_output(&mut self, _retstyle: uint, inner: *TyDesc) -> bool {
+    fn visit_fn_output(&mut self, _retstyle: uint, variadic: bool, inner: *TyDesc) -> bool {
+        if variadic {
+            self.writer.write(", ...".as_bytes());
+        }
         self.writer.write(")".as_bytes());
         let name = unsafe { (*inner).name };
         if name != "()" {

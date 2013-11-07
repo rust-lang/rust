@@ -121,7 +121,7 @@ use mem::size_of;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
-use unstable::intrinsics::{get_tydesc, contains_managed};
+use unstable::intrinsics::{get_tydesc, owns_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
 use vec;
 use util;
@@ -180,7 +180,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
 #[inline]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     unsafe {
-        if contains_managed::<T>() {
+        if owns_managed::<T>() {
             let mut vec = ~[];
             vec.reserve(capacity);
             vec
@@ -1401,7 +1401,7 @@ impl<T> OwnedVector<T> for ~[T] {
         if self.capacity() < n {
             unsafe {
                 let td = get_tydesc::<T>();
-                if contains_managed::<T>() {
+                if owns_managed::<T>() {
                     let ptr: *mut *mut Box<Vec<()>> = cast::transmute(self);
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
@@ -1437,7 +1437,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn capacity(&self) -> uint {
         unsafe {
-            if contains_managed::<T>() {
+            if owns_managed::<T>() {
                 let repr: **Box<Vec<()>> = cast::transmute(self);
                 (**repr).data.alloc / mem::nonzero_size_of::<T>()
             } else {
@@ -1460,7 +1460,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn push(&mut self, t: T) {
         unsafe {
-            if contains_managed::<T>() {
+            if owns_managed::<T>() {
                 let repr: **Box<Vec<()>> = cast::transmute(&mut *self);
                 let fill = (**repr).data.fill;
                 if (**repr).data.alloc <= fill {
@@ -1482,7 +1482,7 @@ impl<T> OwnedVector<T> for ~[T] {
         // This doesn't bother to make sure we have space.
         #[inline] // really pretty please
         unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
-            if contains_managed::<T>() {
+            if owns_managed::<T>() {
                 let repr: **mut Box<Vec<u8>> = cast::transmute(this);
                 let fill = (**repr).data.fill;
                 (**repr).data.fill += mem::nonzero_size_of::<T>();
@@ -2057,8 +2057,8 @@ pub mod raw {
     use mem;
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
-    use unstable::intrinsics::contains_managed;
     use unstable::raw::{Box, Vec, Slice};
+    use unstable::intrinsics::owns_managed;
 
     /**
      * Sets the length of a vector
@@ -2069,7 +2069,7 @@ pub mod raw {
      */
     #[inline]
     pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        if contains_managed::<T>() {
+        if owns_managed::<T>() {
             let repr: **mut Box<Vec<()>> = cast::transmute(v);
             (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
         } else {

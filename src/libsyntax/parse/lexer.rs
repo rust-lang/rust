@@ -664,12 +664,18 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       ';' => { bump(rdr); return token::SEMI; }
       ',' => { bump(rdr); return token::COMMA; }
       '.' => {
-        bump(rdr);
-        if rdr.curr == '.' && nextch(rdr) != '.' {
-            bump(rdr);
-            return token::DOTDOT;
-        }
-        return token::DOT;
+          bump(rdr);
+          return if rdr.curr == '.' {
+              bump(rdr);
+              if rdr.curr == '.' {
+                  bump(rdr);
+                  token::DOTDOTDOT
+              } else {
+                  token::DOTDOT
+              }
+          } else {
+              token::DOT
+          };
       }
       '(' => { bump(rdr); return token::LPAREN; }
       ')' => { bump(rdr); return token::RPAREN; }

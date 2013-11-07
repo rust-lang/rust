@@ -15,6 +15,7 @@ fn foo(x: int) { info!("{}", x); }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
+#[cfg(target_arch = "arm")]
 pub fn main() {
     let x: int;
     unsafe {
@@ -23,5 +24,5 @@ pub fn main() {
     foo(x);
 }
 
-#[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
+#[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"), not(target_arch = "arm"))]
 pub fn main() {}
