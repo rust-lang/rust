@@ -15,8 +15,6 @@ use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 
-use std::vec;
-
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
@@ -59,7 +57,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         cx.ident_of("Rand"),
         cx.ident_of("rand")
     ];
-    let rand_call = || {
+    let rand_call = |span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
                             ~[ rng[0] ])
@@ -112,7 +110,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
                     (ident, ref summary) => {
                         cx.arm(span,
                                ~[ pat ],
-                               rand_thing(cx, span, ident, summary, || rand_call()))
+                               rand_thing(cx, span, ident, summary, |sp| rand_call(sp)))
                     }
                 }
             }.collect::<~[ast::Arm]>();
@@ -130,20 +128,20 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
 
     fn rand_thing(cx: @ExtCtxt, span: Span,
                   ctor_ident: Ident,
-                  summary: &Either<uint, ~[Ident]>,
-                  rand_call: &fn() -> @Expr) -> @Expr {
+                  summary: &StaticFields,
+                  rand_call: &fn(Span) -> @Expr) -> @Expr {
         match *summary {
-            Left(count) => {
-                if count == 0 {
+            Unnamed(ref fields) => {
+                if fields.is_empty() {
                     cx.expr_ident(span, ctor_ident)
                 } else {
-                    let exprs = vec::from_fn(count, |_| rand_call());
+                    let exprs = fields.map(|span| rand_call(*span));
                     cx.expr_call_ident(span, ctor_ident, exprs)
                 }
             }
-            Right(ref fields) => {
-                let rand_fields = do fields.map |ident| {
-                    cx.field_imm(span, *ident, rand_call())
+            Named(ref fields) => {
+                let rand_fields = do fields.map |&(ident, span)| {
+                    cx.field_imm(span, ident, rand_call(span))
                 };
                 cx.expr_struct_ident(span, ctor_ident, rand_fields)
             }

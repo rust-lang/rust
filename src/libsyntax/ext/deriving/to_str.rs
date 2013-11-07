@@ -49,7 +49,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
     let to_str = cx.ident_of("to_str");
 
     let doit = |start: &str, end: @str, name: ast::Ident,
-                fields: &[(Option<ast::Ident>, @Expr, ~[@Expr])]| {
+                fields: &[FieldInfo]| {
         if fields.len() == 0 {
             cx.expr_str_uniq(span, cx.str_of(name))
         } else {
@@ -65,7 +65,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
                 stmts.push(cx.stmt_expr(call));
             };
 
-            for (i, &(name, e, _)) in fields.iter().enumerate() {
+            for (i, &FieldInfo {name, span, self_, _}) in fields.iter().enumerate() {
                 if i > 0 {
                     push(cx.expr_str(span, @", "));
                 }
@@ -76,7 +76,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
                         push(cx.expr_str(span, name.to_managed()));
                     }
                 }
-                push(cx.expr_method_call(span, e, to_str, ~[]));
+                push(cx.expr_method_call(span, self_, to_str, ~[]));
             }
             push(cx.expr_str(span, end));
 
@@ -86,7 +86,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
 
     return match *substr.fields {
         Struct(ref fields) => {
-            if fields.len() == 0 || fields[0].n0_ref().is_none() {
+            if fields.len() == 0 || fields[0].name.is_none() {
                 doit("(", @")", substr.type_ident, *fields)
             } else {
                 doit("{", @"}", substr.type_ident, *fields)
