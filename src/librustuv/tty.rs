@@ -30,8 +30,22 @@ impl TtyWatcher {
     pub fn new(loop_: &Loop, fd: libc::c_int, readable: bool)
         -> Result<TtyWatcher, UvError>
     {
-        let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
+        // libuv may succeed in giving us a handle (via uv_tty_init), but if the
+        // handle isn't actually connected to a terminal there are frequently
+        // many problems in using it with libuv. To get around this, always
+        // return a failure if the specified file descriptor isn't actually a
+        // TTY.
+        //
+        // Related:
+        // - https://github.com/joyent/libuv/issues/982
+        // - https://github.com/joyent/libuv/issues/988
+        if unsafe { uvll::guess_handle(fd) != uvll::UV_TTY as libc::c_int } {
+            return Err(UvError(uvll::EBADF));
+        }
 
+        // If this file descriptor is indeed guessed to be a tty, then go ahead
+        // with attempting to open it as a tty.
+        let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
         match unsafe {
             uvll::uv_tty_init(loop_.handle, handle, fd as libc::c_int,
                               readable as libc::c_int)
@@ -85,10 +99,6 @@ impl RtioTTY for TtyWatcher {
             0 => Ok((width as int, height as int)),
             n => Err(uv_error_to_io_error(UvError(n)))
         }
-    }
-
-    fn isatty(&self) -> bool {
-        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY as libc::c_int }
     }
 }
 

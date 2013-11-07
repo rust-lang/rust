@@ -54,6 +54,7 @@ pub mod errors {
     pub static EPIPE: c_int = -4048;
     pub static ECONNABORTED: c_int = -4080;
     pub static ECANCELED: c_int = -4082;
+    pub static EBADF: c_int = -4084;
 }
 #[cfg(not(windows))]
 pub mod errors {
@@ -67,6 +68,7 @@ pub mod errors {
     pub static EPIPE: c_int = -libc::EPIPE;
     pub static ECONNABORTED: c_int = -libc::ECONNABORTED;
     pub static ECANCELED : c_int = -libc::ECANCELED;
+    pub static EBADF : c_int = -libc::EBADF;
 }
 
 pub static PROCESS_SETUID: c_int = 1 << 0;
