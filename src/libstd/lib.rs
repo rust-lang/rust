@@ -21,7 +21,7 @@
 //! boxes (`owned`), and unsafe and borrowed pointers (`ptr`, `borrowed`).
 //! Additionally, `std` provides pervasive types (`option` and `result`),
 //! task creation and communication primitives (`task`, `comm`), platform
-//! abstractions (`os` and `path`), basic I/O abstractions (`io`), common
+//! abstractions (`os` and `path`), basic I/O abstractions (`rt::io`), common
 //! traits (`kinds`, `ops`, `cmp`, `num`, `to_str`), and complete bindings
 //! to the C standard library (`libc`).
 //!
