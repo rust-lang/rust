@@ -72,10 +72,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
        let (k,v) = (*kv).clone();
        unsafe {
            let b = str::raw::from_utf8(k);
-           // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-           // to_ascii_move and to_str_move to not do a unnecessary copy.
            buffer.push_str(format!("{} {:0.3f}\n",
-                                   b.to_ascii().to_upper().to_str_ascii(), v));
+                                   b.into_ascii().to_upper().into_str(), v));
        }
    }
 
@@ -84,9 +82,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
-   // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-   // to_ascii_move and to_str_move to not do a unnecessary copy.
-   let key = key.to_ascii().to_lower().to_str_ascii();
+   let key = key.into_ascii().to_lower().into_str();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
