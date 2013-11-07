@@ -23,13 +23,6 @@ use util::Void;
 ///////////////////////////////////////////////////////////////////////////////
 
 /// `TypeId` represents a globally unique identifier for a type
-#[cfg(stage0)]
-pub struct TypeId {
-    priv t: *intrinsics::TyDesc,
-}
-
-/// `TypeId` represents a globally unique identifier for a type
-#[cfg(not(stage0))]
 pub struct TypeId {
     priv t: u64,
 }
@@ -37,14 +30,6 @@ pub struct TypeId {
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with
     #[inline]
-    #[cfg(stage0)]
-    pub fn of<T: 'static>() -> TypeId {
-        TypeId{ t: unsafe { intrinsics::get_tydesc::<T>() } }
-    }
-
-    /// Returns the `TypeId` of the type this generic function has been instantiated with
-    #[inline]
-    #[cfg(not(stage0))]
     pub fn of<T: 'static>() -> TypeId {
         TypeId{ t: unsafe { intrinsics::type_id::<T>() } }
     }
