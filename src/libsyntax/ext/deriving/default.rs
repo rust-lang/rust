@@ -14,8 +14,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-use std::vec;
-
 pub fn expand_deriving_default(cx: @ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
@@ -47,22 +45,22 @@ fn default_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Exp
         cx.ident_of("Default"),
         cx.ident_of("default")
     ];
-    let default_call = cx.expr_call_global(span, default_ident.clone(), ~[]);
+    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), ~[]);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
             match *summary {
-                Left(count) => {
-                    if count == 0 {
+                Unnamed(ref fields) => {
+                    if fields.is_empty() {
                         cx.expr_ident(span, substr.type_ident)
                     } else {
-                        let exprs = vec::from_elem(count, default_call);
+                        let exprs = fields.map(|sp| default_call(*sp));
                         cx.expr_call_ident(span, substr.type_ident, exprs)
                     }
                 }
-                Right(ref fields) => {
-                    let default_fields = do fields.map |ident| {
-                        cx.field_imm(span, *ident, default_call)
+                Named(ref fields) => {
+                    let default_fields = do fields.map |&(ident, span)| {
+                        cx.field_imm(span, ident, default_call(span))
                     };
                     cx.expr_struct_ident(span, substr.type_ident, default_fields)
                 }
