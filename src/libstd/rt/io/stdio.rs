@@ -277,12 +277,10 @@ impl StdWriter {
         }
     }
 
-    /// Returns whether this tream is attached to a TTY instance or not.
-    ///
-    /// This is similar to libc's isatty() function
+    /// Returns whether this stream is attached to a TTY instance or not.
     pub fn isatty(&self) -> bool {
         match self.inner {
-            TTY(ref tty) => tty.isatty(),
+            TTY(*) => true,
             File(*) => false,
         }
     }
