@@ -15,14 +15,14 @@ use std::cast;
 use std::libc::{c_int, c_char, c_void, c_uint};
 use std::libc;
 use std::rt::BlockedTask;
-use std::rt::io;
 use std::rt::io::{FileStat, IoError};
-use std::rt::rtio;
+use std::rt::io;
 use std::rt::local::Local;
+use std::rt::rtio;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::vec;
 
-use super::{Loop, UvError, uv_error_to_io_error};
+use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after};
 use uvio::HomingIO;
 use uvll;
 
@@ -305,10 +305,8 @@ fn execute(f: &fn(*uvll::uv_fs_t, uvll::uv_fs_cb) -> c_int)
         0 => {
             req.fired = true;
             let mut slot = None;
-            unsafe { uvll::set_data_for_req(req.req, &slot) }
-            let sched: ~Scheduler = Local::take();
-            do sched.deschedule_running_task_and_then |_, task| {
-                slot = Some(task);
+            do wait_until_woken_after(&mut slot) {
+                unsafe { uvll::set_data_for_req(req.req, &slot) }
             }
             match req.get_result() {
                 n if n < 0 => Err(UvError(n)),
@@ -454,123 +452,113 @@ mod test {
     use std::str;
     use std::vec;
     use super::*;
-    use super::super::{run_uv_loop};
+    use l = super::super::local_loop;
 
     #[test]
     fn file_test_full_simple_sync() {
-        do run_uv_loop |l| {
-            let create_flags = O_RDWR | O_CREAT;
-            let read_flags = O_RDONLY;
-            let mode = S_IWUSR | S_IRUSR;
-            let path_str = "./tmp/file_full_simple_sync.txt";
+        let create_flags = O_RDWR | O_CREAT;
+        let read_flags = O_RDONLY;
+        let mode = S_IWUSR | S_IRUSR;
+        let path_str = "./tmp/file_full_simple_sync.txt";
 
-            {
-                // open/create
-                let result = FsRequest::open(l, &path_str.to_c_str(),
-                                             create_flags as int, mode as int);
-                assert!(result.is_ok());
-                let result = result.unwrap();
-                let fd = result.fd;
+        {
+            // open/create
+            let result = FsRequest::open(l(), &path_str.to_c_str(),
+                                         create_flags as int, mode as int);
+            assert!(result.is_ok());
+            let result = result.unwrap();
+            let fd = result.fd;
 
-                // write
-                let result = FsRequest::write(l, fd, "hello".as_bytes(), -1);
-                assert!(result.is_ok());
-            }
-
-            {
-                // re-open
-                let result = FsRequest::open(l, &path_str.to_c_str(),
-                                             read_flags as int, 0);
-                assert!(result.is_ok());
-                let result = result.unwrap();
-                let fd = result.fd;
-
-                // read
-                let mut read_mem = vec::from_elem(1000, 0u8);
-                let result = FsRequest::read(l, fd, read_mem, 0);
-                assert!(result.is_ok());
-
-                let nread = result.unwrap();
-                assert!(nread > 0);
-                let read_str = str::from_utf8(read_mem.slice(0, nread as uint));
-                assert_eq!(read_str, ~"hello");
-            }
-            // unlink
-            let result = FsRequest::unlink(l, &path_str.to_c_str());
+            // write
+            let result = FsRequest::write(l(), fd, "hello".as_bytes(), -1);
             assert!(result.is_ok());
         }
+
+        {
+            // re-open
+            let result = FsRequest::open(l(), &path_str.to_c_str(),
+                                         read_flags as int, 0);
+            assert!(result.is_ok());
+            let result = result.unwrap();
+            let fd = result.fd;
+
+            // read
+            let mut read_mem = vec::from_elem(1000, 0u8);
+            let result = FsRequest::read(l(), fd, read_mem, 0);
+            assert!(result.is_ok());
+
+            let nread = result.unwrap();
+            assert!(nread > 0);
+            let read_str = str::from_utf8(read_mem.slice(0, nread as uint));
+            assert_eq!(read_str, ~"hello");
+        }
+        // unlink
+        let result = FsRequest::unlink(l(), &path_str.to_c_str());
+        assert!(result.is_ok());
     }
 
     #[test]
     fn file_test_stat() {
-        do run_uv_loop |l| {
-            let path = &"./tmp/file_test_stat_simple".to_c_str();
-            let create_flags = (O_RDWR | O_CREAT) as int;
-            let mode = (S_IWUSR | S_IRUSR) as int;
+        let path = &"./tmp/file_test_stat_simple".to_c_str();
+        let create_flags = (O_RDWR | O_CREAT) as int;
+        let mode = (S_IWUSR | S_IRUSR) as int;
 
-            let result = FsRequest::open(l, path, create_flags, mode);
-            assert!(result.is_ok());
-            let file = result.unwrap();
+        let result = FsRequest::open(l(), path, create_flags, mode);
+        assert!(result.is_ok());
+        let file = result.unwrap();
 
-            let result = FsRequest::write(l, file.fd, "hello".as_bytes(), 0);
-            assert!(result.is_ok());
+        let result = FsRequest::write(l(), file.fd, "hello".as_bytes(), 0);
+        assert!(result.is_ok());
 
-            let result = FsRequest::stat(l, path);
-            assert!(result.is_ok());
-            assert_eq!(result.unwrap().size, 5);
+        let result = FsRequest::stat(l(), path);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().size, 5);
 
-            fn free<T>(_: T) {}
-            free(file);
+        fn free<T>(_: T) {}
+        free(file);
 
-            let result = FsRequest::unlink(l, path);
-            assert!(result.is_ok());
-        }
+        let result = FsRequest::unlink(l(), path);
+        assert!(result.is_ok());
     }
 
     #[test]
     fn file_test_mk_rm_dir() {
-        do run_uv_loop |l| {
-            let path = &"./tmp/mk_rm_dir".to_c_str();
-            let mode = S_IWUSR | S_IRUSR;
+        let path = &"./tmp/mk_rm_dir".to_c_str();
+        let mode = S_IWUSR | S_IRUSR;
 
-            let result = FsRequest::mkdir(l, path, mode);
-            assert!(result.is_ok());
+        let result = FsRequest::mkdir(l(), path, mode);
+        assert!(result.is_ok());
 
-            let result = FsRequest::stat(l, path);
-            assert!(result.is_ok());
-            assert!(result.unwrap().kind == io::TypeDirectory);
+        let result = FsRequest::stat(l(), path);
+        assert!(result.is_ok());
+        assert!(result.unwrap().kind == io::TypeDirectory);
 
-            let result = FsRequest::rmdir(l, path);
-            assert!(result.is_ok());
+        let result = FsRequest::rmdir(l(), path);
+        assert!(result.is_ok());
 
-            let result = FsRequest::stat(l, path);
-            assert!(result.is_err());
-        }
+        let result = FsRequest::stat(l(), path);
+        assert!(result.is_err());
     }
 
     #[test]
     fn file_test_mkdir_chokes_on_double_create() {
-        do run_uv_loop |l| {
-            let path = &"./tmp/double_create_dir".to_c_str();
-            let mode = S_IWUSR | S_IRUSR;
+        let path = &"./tmp/double_create_dir".to_c_str();
+        let mode = S_IWUSR | S_IRUSR;
 
-            let result = FsRequest::stat(l, path);
-            assert!(result.is_err(), "{:?}", result);
-            let result = FsRequest::mkdir(l, path, mode as c_int);
-            assert!(result.is_ok(), "{:?}", result);
-            let result = FsRequest::mkdir(l, path, mode as c_int);
-            assert!(result.is_err(), "{:?}", result);
-            let result = FsRequest::rmdir(l, path);
-            assert!(result.is_ok(), "{:?}", result);
-        }
+        let result = FsRequest::stat(l(), path);
+        assert!(result.is_err(), "{:?}", result);
+        let result = FsRequest::mkdir(l(), path, mode as c_int);
+        assert!(result.is_ok(), "{:?}", result);
+        let result = FsRequest::mkdir(l(), path, mode as c_int);
+        assert!(result.is_err(), "{:?}", result);
+        let result = FsRequest::rmdir(l(), path);
+        assert!(result.is_ok(), "{:?}", result);
     }
 
     #[test]
     fn file_test_rmdir_chokes_on_nonexistant_path() {
-        do run_uv_loop |l| {
-            let path = &"./tmp/never_existed_dir".to_c_str();
-            let result = FsRequest::rmdir(l, path);
-            assert!(result.is_err());
-        }
+        let path = &"./tmp/never_existed_dir".to_c_str();
+        let result = FsRequest::rmdir(l(), path);
+        assert!(result.is_err());
     }
 }

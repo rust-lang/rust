@@ -103,6 +103,6 @@ impl HomingIO for TtyWatcher {
 impl Drop for TtyWatcher {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
-        self.stream.close();
+        self.close();
     }
 }

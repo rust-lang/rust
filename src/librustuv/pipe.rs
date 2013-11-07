@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::c_str::CString;
-use std::cast;
 use std::libc;
 use std::rt::BlockedTask;
 use std::rt::io::IoError;
@@ -17,9 +16,11 @@ use std::rt::local::Local;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
+use std::task;
 
 use stream::StreamWatcher;
-use super::{Loop, UvError, UvHandle, Request, uv_error_to_io_error};
+use super::{Loop, UvError, UvHandle, Request, uv_error_to_io_error,
+            wait_until_woken_after};
 use uvio::HomingIO;
 use uvll;
 
@@ -32,7 +33,6 @@ pub struct PipeWatcher {
 pub struct PipeListener {
     home: SchedHandle,
     pipe: *uvll::uv_pipe_t,
-    priv closing_task: Option<BlockedTask>,
     priv outgoing: Tube<Result<~RtioPipe, IoError>>,
 }
 
@@ -74,36 +74,35 @@ impl PipeWatcher {
     pub fn connect(loop_: &Loop, name: &CString) -> Result<PipeWatcher, UvError>
     {
         struct Ctx { task: Option<BlockedTask>, result: libc::c_int, }
-        let mut cx = Ctx { task: None, result: 0 };
-        let req = Request::new(uvll::UV_CONNECT);
-        let pipe = PipeWatcher::new(loop_, false);
-        unsafe {
-            uvll::set_data_for_req(req.handle, &cx as *Ctx);
-            uvll::uv_pipe_connect(req.handle,
-                                  pipe.handle(),
-                                  name.with_ref(|p| p),
-                                  connect_cb)
-        }
-        req.defuse();
+        return do task::unkillable {
+            let mut cx = Ctx { task: None, result: 0 };
+            let mut req = Request::new(uvll::UV_CONNECT);
+            let pipe = PipeWatcher::new(loop_, false);
 
-        let sched: ~Scheduler = Local::take();
-        do sched.deschedule_running_task_and_then |_, task| {
-            cx.task = Some(task);
-        }
-        return match cx.result {
-            0 => Ok(pipe),
-            n => Err(UvError(n))
+            do wait_until_woken_after(&mut cx.task) {
+                unsafe {
+                    uvll::uv_pipe_connect(req.handle,
+                                          pipe.handle(),
+                                          name.with_ref(|p| p),
+                                          connect_cb)
+                }
+                req.set_data(&cx);
+                req.defuse(); // uv callback now owns this request
+            }
+            match cx.result {
+                0 => Ok(pipe),
+                n => Err(UvError(n))
+            }
+
         };
 
-        extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {
-            let _req = Request::wrap(req);
-            if status == uvll::ECANCELED { return }
-            unsafe {
-                let cx: &mut Ctx = cast::transmute(uvll::get_data_for_req(req));
-                cx.result = status;
-                let sched: ~Scheduler = Local::take();
-                sched.resume_blocked_task_immediately(cx.task.take_unwrap());
-            }
+        extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {;
+            let req = Request::wrap(req);
+            assert!(status != uvll::ECANCELED);
+            let cx: &mut Ctx = unsafe { req.get_data() };
+            cx.result = status;
+            let sched: ~Scheduler = Local::take();
+            sched.resume_blocked_task_immediately(cx.task.take_unwrap());
         }
     }
 
@@ -133,11 +132,15 @@ impl HomingIO for PipeWatcher {
     fn home<'a>(&'a mut self) -> &'a mut SchedHandle { &mut self.home }
 }
 
+impl UvHandle<uvll::uv_pipe_t> for PipeWatcher {
+    fn uv_handle(&self) -> *uvll::uv_pipe_t { self.stream.handle }
+}
+
 impl Drop for PipeWatcher {
     fn drop(&mut self) {
         if !self.defused {
             let _m = self.fire_homing_missile();
-            self.stream.close();
+            self.close();
         }
     }
 }
@@ -150,21 +153,24 @@ extern fn pipe_close_cb(handle: *uvll::uv_handle_t) {
 
 impl PipeListener {
     pub fn bind(loop_: &Loop, name: &CString) -> Result<~PipeListener, UvError> {
-        let pipe = PipeWatcher::new(loop_, false);
-        match unsafe { uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p)) } {
-            0 => {
-                // If successful, unwrap the PipeWatcher because we control how
-                // we close the pipe differently. We can't rely on
-                // StreamWatcher's default close method.
-                let p = ~PipeListener {
-                    home: get_handle_to_current_scheduler!(),
-                    pipe: pipe.unwrap(),
-                    closing_task: None,
-                    outgoing: Tube::new(),
-                };
-                Ok(p.install())
+        do task::unkillable {
+            let pipe = PipeWatcher::new(loop_, false);
+            match unsafe {
+                uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p))
+            } {
+                0 => {
+                    // If successful, unwrap the PipeWatcher because we control how
+                    // we close the pipe differently. We can't rely on
+                    // StreamWatcher's default close method.
+                    let p = ~PipeListener {
+                        home: get_handle_to_current_scheduler!(),
+                        pipe: pipe.unwrap(),
+                        outgoing: Tube::new(),
+                    };
+                    Ok(p.install())
+                }
+                n => Err(UvError(n))
             }
-            n => Err(UvError(n))
         }
     }
 }
@@ -196,6 +202,7 @@ impl UvHandle<uvll::uv_pipe_t> for PipeListener {
 }
 
 extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
+    assert!(status != uvll::ECANCELED);
     let msg = match status {
         0 => {
             let loop_ = Loop::wrap(unsafe {
@@ -205,7 +212,6 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
             Ok(~client as ~RtioPipe)
         }
-        uvll::ECANCELED => return,
         n => Err(uv_error_to_io_error(UvError(n)))
     };
 
@@ -215,21 +221,9 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
 
 impl Drop for PipeListener {
     fn drop(&mut self) {
-        let (_m, sched) = self.fire_homing_missile_sched();
-
-        do sched.deschedule_running_task_and_then |_, task| {
-            self.closing_task = Some(task);
-            unsafe { uvll::uv_close(self.pipe, listener_close_cb) }
-        }
+        let _m = self.fire_homing_missile();
+        self.close();
     }
-}
-
-extern fn listener_close_cb(handle: *uvll::uv_handle_t) {
-    let pipe: &mut PipeListener = unsafe { UvHandle::from_uv_handle(&handle) };
-    unsafe { uvll::free_handle(handle) }
-
-    let sched: ~Scheduler = Local::take();
-    sched.resume_blocked_task_immediately(pipe.closing_task.take_unwrap());
 }
 
 // PipeAcceptor implementation and traits

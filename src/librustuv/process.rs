@@ -19,7 +19,8 @@ use std::rt::rtio::RtioProcess;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::vec;
 
-use super::{Loop, UvHandle, UvError, uv_error_to_io_error};
+use super::{Loop, UvHandle, UvError, uv_error_to_io_error,
+            wait_until_woken_after};
 use uvio::HomingIO;
 use uvll;
 use pipe::PipeWatcher;
@@ -222,11 +223,7 @@ impl RtioProcess for Process {
                 // If there's no exit code previously listed, then the
                 // process's exit callback has yet to be invoked. We just
                 // need to deschedule ourselves and wait to be reawoken.
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    assert!(self.to_wake.is_none());
-                    self.to_wake = Some(task);
-                }
+                wait_until_woken_after(&mut self.to_wake, || {});
                 assert!(self.exit_status.is_some());
             }
         }

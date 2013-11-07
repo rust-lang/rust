@@ -9,12 +9,14 @@
 // except according to those terms.
 
 use std::cast;
-use std::libc::{c_int, size_t, ssize_t, c_void};
+use std::libc::{c_int, size_t, ssize_t};
+use std::ptr;
 use std::rt::BlockedTask;
 use std::rt::local::Local;
 use std::rt::sched::Scheduler;
 
-use super::{UvError, Buf, slice_to_uv_buf, Request};
+use super::{UvError, Buf, slice_to_uv_buf, Request, wait_until_woken_after,
+            ForbidUnwind};
 use uvll;
 
 // This is a helper structure which is intended to get embedded into other
@@ -63,6 +65,10 @@ impl StreamWatcher {
     }
 
     pub fn read(&mut self, buf: &mut [u8]) -> Result<uint, UvError> {
+        // This read operation needs to get canceled on an unwind via libuv's
+        // uv_read_stop function
+        let _f = ForbidUnwind::new("stream read");
+
         // Send off the read request, but don't block until we're sure that the
         // read request is queued.
         match unsafe {
@@ -74,12 +80,10 @@ impl StreamWatcher {
                     result: 0,
                     task: None,
                 };
-                unsafe {
-                    uvll::set_data_for_uv_handle(self.handle, &rcx)
-                }
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_sched, task| {
-                    rcx.task = Some(task);
+                do wait_until_woken_after(&mut rcx.task) {
+                    unsafe {
+                        uvll::set_data_for_uv_handle(self.handle, &rcx)
+                    }
                 }
                 match rcx.result {
                     n if n < 0 => Err(UvError(n as c_int)),
@@ -91,12 +95,17 @@ impl StreamWatcher {
     }
 
     pub fn write(&mut self, buf: &[u8]) -> Result<(), UvError> {
+        // The ownership of the write request is dubious if this function
+        // unwinds. I believe that if the write_cb fails to re-schedule the task
+        // then the write request will be leaked.
+        let _f = ForbidUnwind::new("stream write");
+
         // Prepare the write request, either using a cached one or allocating a
         // new one
-        if self.last_write_req.is_none() {
-            self.last_write_req = Some(Request::new(uvll::UV_WRITE));
-        }
-        let req = self.last_write_req.get_ref();
+        let mut req = match self.last_write_req.take() {
+            Some(req) => req, None => Request::new(uvll::UV_WRITE),
+        };
+        req.set_data(ptr::null::<()>());
 
         // Send off the request, but be careful to not block until we're sure
         // that the write reqeust is queued. If the reqeust couldn't be queued,
@@ -107,11 +116,12 @@ impl StreamWatcher {
         } {
             0 => {
                 let mut wcx = WriteContext { result: 0, task: None, };
-                req.set_data(&wcx);
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_sched, task| {
-                    wcx.task = Some(task);
+                req.defuse(); // uv callback now owns this request
+
+                do wait_until_woken_after(&mut wcx.task) {
+                    req.set_data(&wcx);
                 }
+                self.last_write_req = Some(Request::wrap(req.handle));
                 match wcx.result {
                     0 => Ok(()),
                     n => Err(UvError(n)),
@@ -120,50 +130,24 @@ impl StreamWatcher {
             n => Err(UvError(n)),
         }
     }
-
-    // This will deallocate an internally used memory, along with closing the
-    // handle (and freeing it).
-    pub fn close(&mut self) {
-        let mut closing_task = None;
-        unsafe {
-            uvll::set_data_for_uv_handle(self.handle, &closing_task);
-        }
-
-        // Wait for this stream to close because it possibly represents a remote
-        // connection which may have consequences if we close asynchronously.
-        let sched: ~Scheduler = Local::take();
-        do sched.deschedule_running_task_and_then |_, task| {
-            closing_task = Some(task);
-            unsafe { uvll::uv_close(self.handle, close_cb) }
-        }
-
-        extern fn close_cb(handle: *uvll::uv_handle_t) {
-            let data: *c_void = unsafe { uvll::get_data_for_uv_handle(handle) };
-            unsafe { uvll::free_handle(handle) }
-
-            let closing_task: &mut Option<BlockedTask> = unsafe {
-                cast::transmute(data)
-            };
-            let task = closing_task.take_unwrap();
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.resume_blocked_task_immediately(task);
-        }
-    }
 }
 
 // This allocation callback expects to be invoked once and only once. It will
 // unwrap the buffer in the ReadContext stored in the stream and return it. This
 // will fail if it is called more than once.
 extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t) -> Buf {
+    uvdebug!("alloc_cb");
     let rcx: &mut ReadContext = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(stream))
     };
-    rcx.buf.take().expect("alloc_cb called more than once")
+    rcx.buf.take().expect("stream alloc_cb called more than once")
 }
 
 // When a stream has read some data, we will always forcibly stop reading and
 // return all the data read (even if it didn't fill the whole buffer).
 extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: Buf) {
+    uvdebug!("read_cb {}", nread);
+    assert!(nread != uvll::ECANCELED as ssize_t);
     let rcx: &mut ReadContext = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
@@ -182,11 +166,11 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: Buf) {
 // reading, however, all this does is wake up the blocked task after squirreling
 // away the error code as a result.
 extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
-    if status == uvll::ECANCELED { return }
+    let mut req = Request::wrap(req);
+    assert!(status != uvll::ECANCELED);
     // Remember to not free the request because it is re-used between writes on
     // the same stream.
-    let req = Request::wrap(req);
-    let wcx: &mut WriteContext = unsafe { cast::transmute(req.get_data()) };
+    let wcx: &mut WriteContext = unsafe { req.get_data() };
     wcx.result = status;
     req.defuse();
 
