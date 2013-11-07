@@ -160,9 +160,6 @@ pub trait TyVisitor {
     fn visit_enter_fn(&mut self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
     fn visit_fn_input(&mut self, i: uint, mode: uint, inner: *TyDesc) -> bool;
-    #[cfg(stage0)]
-    fn visit_fn_output(&mut self, retstyle: uint, inner: *TyDesc) -> bool;
-    #[cfg(not(stage0))]
     fn visit_fn_output(&mut self, retstyle: uint, variadic: bool, inner: *TyDesc) -> bool;
     fn visit_leave_fn(&mut self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
@@ -313,7 +310,6 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
-    #[cfg(not(stage0))]
     pub fn type_id<T: 'static>() -> u64;
 
     /// Create a value initialized to zero.
@@ -337,11 +333,6 @@ extern "rust-intrinsic" {
     pub fn needs_drop<T>() -> bool;
 
     /// Returns `true` if a type is managed (will be allocated on the local heap)
-    #[cfg(stage0)]
-    pub fn contains_managed<T>() -> bool;
-
-    /// Returns `true` if a type is managed (will be allocated on the local heap)
-    #[cfg(not(stage0))]
     pub fn owns_managed<T>() -> bool;
 
     pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
@@ -357,40 +348,19 @@ extern "rust-intrinsic" {
     /// integer, since the conversion would throw away aliasing information.
     pub fn offset<T>(dst: *T, offset: int) -> *T;
 
-    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
-    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    #[cfg(stage0)]
-    pub fn memcpy32<T>(dst: *mut T, src: *T, count: u32);
-    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic, with a size of
-    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    #[cfg(stage0)]
-    pub fn memcpy64<T>(dst: *mut T, src: *T, count: u64);
-
-    /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic, with a size of
-    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    #[cfg(stage0)]
-    pub fn memmove32<T>(dst: *mut T, src: *T, count: u32);
-    /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic, with a size of
-    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    #[cfg(stage0)]
-    pub fn memmove64<T>(dst: *mut T, src: *T, count: u64);
-
-    /// Equivalent to the `llvm.memset.p0i8.i32` intrinsic, with a size of
-    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    #[cfg(stage0)]
-    pub fn memset32<T>(dst: *mut T, val: u8, count: u32);
-    /// Equivalent to the `llvm.memset.p0i8.i64` intrinsic, with a size of
-    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
-    #[cfg(stage0)]
-    pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
-
-    #[cfg(not(stage0))]
+    /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
+    /// a size of `count` * `size_of::<T>()` and an alignment of
+    /// `min_align_of::<T>()`
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *T, count: uint);
 
-    #[cfg(not(stage0))]
+    /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
+    /// a size of `count` * `size_of::<T>()` and an alignment of
+    /// `min_align_of::<T>()`
     pub fn copy_memory<T>(dst: *mut T, src: *T, count: uint);
 
-    #[cfg(not(stage0))]
+    /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
+    /// size of `count` * `size_of::<T>()` and an alignment of
+    /// `min_align_of::<T>()`
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 
     pub fn sqrtf32(x: f32) -> f32;

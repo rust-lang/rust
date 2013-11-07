@@ -121,18 +121,10 @@ use mem::size_of;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
-use unstable::intrinsics::{get_tydesc};
+use unstable::intrinsics::{get_tydesc, owns_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
 use vec;
 use util;
-
-#[cfg(not(stage0))]
-use unstable::intrinsics::owns_managed;
-
-#[cfg(stage0)]
-unsafe fn owns_managed<T>() -> bool {
-    intrinsics::contains_managed::<T>()
-}
 
 /**
  * Creates and initializes an owned vector.
@@ -2066,12 +2058,7 @@ pub mod raw {
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
     use unstable::raw::{Box, Vec, Slice};
-
-    #[cfg(not(stage0))]
     use unstable::intrinsics::owns_managed;
-
-    #[cfg(stage0)]
-    use vec::owns_managed;
 
     /**
      * Sets the length of a vector
