@@ -461,6 +461,7 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
 }
 
 #[cfg(target_os = "win32")]
+#[fixed_stack_segment]
 pub fn chmod_read_only(p: &Path) -> bool {
     unsafe {
         do p.with_c_str |src_buf| {
@@ -470,6 +471,7 @@ pub fn chmod_read_only(p: &Path) -> bool {
 }
 
 #[cfg(not(target_os = "win32"))]
+#[fixed_stack_segment]
 pub fn chmod_read_only(p: &Path) -> bool {
     unsafe {
         do p.with_c_str |src_buf| {
