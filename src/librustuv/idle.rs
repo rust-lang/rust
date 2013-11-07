@@ -83,7 +83,6 @@ impl UvHandle<uvll::uv_idle_t> for IdleWatcher {
 }
 
 extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-    if status == uvll::ECANCELED { return }
     assert_eq!(status, 0);
     let idle: &mut IdleWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
     idle.callback.call();
@@ -101,7 +100,7 @@ mod test {
     use super::*;
     use std::rt::tube::Tube;
     use std::rt::rtio::{Callback, PausibleIdleCallback};
-    use super::super::run_uv_loop;
+    use super::super::local_loop;
 
     struct MyCallback(Tube<int>, int);
     impl Callback for MyCallback {
@@ -114,55 +113,47 @@ mod test {
 
     #[test]
     fn not_used() {
-        do run_uv_loop |l| {
-            let cb = ~MyCallback(Tube::new(), 1);
-            let _idle = IdleWatcher::new(l, cb as ~Callback);
-        }
+        let cb = ~MyCallback(Tube::new(), 1);
+        let _idle = IdleWatcher::new(local_loop(), cb as ~Callback);
     }
 
     #[test]
     fn smoke_test() {
-        do run_uv_loop |l| {
-            let mut tube = Tube::new();
-            let cb = ~MyCallback(tube.clone(), 1);
-            let mut idle = IdleWatcher::new(l, cb as ~Callback);
-            idle.resume();
-            tube.recv();
-        }
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle.resume();
+        tube.recv();
     }
 
     #[test]
     fn fun_combinations_of_methods() {
-        do run_uv_loop |l| {
-            let mut tube = Tube::new();
-            let cb = ~MyCallback(tube.clone(), 1);
-            let mut idle = IdleWatcher::new(l, cb as ~Callback);
-            idle.resume();
-            tube.recv();
-            idle.pause();
-            idle.resume();
-            idle.resume();
-            tube.recv();
-            idle.pause();
-            idle.pause();
-            idle.resume();
-            tube.recv();
-        }
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle.resume();
+        tube.recv();
+        idle.pause();
+        idle.resume();
+        idle.resume();
+        tube.recv();
+        idle.pause();
+        idle.pause();
+        idle.resume();
+        tube.recv();
     }
 
     #[test]
     fn pause_pauses() {
-        do run_uv_loop |l| {
-            let mut tube = Tube::new();
-            let cb = ~MyCallback(tube.clone(), 1);
-            let mut idle1 = IdleWatcher::new(l, cb as ~Callback);
-            let cb = ~MyCallback(tube.clone(), 2);
-            let mut idle2 = IdleWatcher::new(l, cb as ~Callback);
-            idle2.resume();
-            assert_eq!(tube.recv(), 2);
-            idle2.pause();
-            idle1.resume();
-            assert_eq!(tube.recv(), 1);
-        }
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle1 = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let cb = ~MyCallback(tube.clone(), 2);
+        let mut idle2 = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle2.resume();
+        assert_eq!(tube.recv(), 2);
+        idle2.pause();
+        idle1.resume();
+        assert_eq!(tube.recv(), 1);
     }
 }

@@ -16,7 +16,7 @@ use std::rt::rtio::RtioTimer;
 use std::rt::sched::{Scheduler, SchedHandle};
 
 use uvll;
-use super::{Loop, UvHandle};
+use super::{Loop, UvHandle, ForbidUnwind};
 use uvio::HomingIO;
 
 pub struct TimerWatcher {
@@ -67,6 +67,11 @@ impl UvHandle<uvll::uv_timer_t> for TimerWatcher {
 impl RtioTimer for TimerWatcher {
     fn sleep(&mut self, msecs: u64) {
         let (_m, sched) = self.fire_homing_missile_sched();
+
+        // If the descheduling operation unwinds after the timer has been
+        // started, then we need to call stop on the timer.
+        let _f = ForbidUnwind::new("timer");
+
         do sched.deschedule_running_task_and_then |_sched, task| {
             self.action = Some(WakeTask(task));
             self.start(msecs, 0);
@@ -124,51 +129,43 @@ impl Drop for TimerWatcher {
 mod test {
     use super::*;
     use std::rt::rtio::RtioTimer;
-    use super::super::run_uv_loop;
+    use super::super::local_loop;
 
     #[test]
     fn oneshot() {
-        do run_uv_loop |l| {
-            let mut timer = TimerWatcher::new(l);
-            let port = timer.oneshot(1);
-            port.recv();
-            let port = timer.oneshot(1);
-            port.recv();
-        }
+        let mut timer = TimerWatcher::new(local_loop());
+        let port = timer.oneshot(1);
+        port.recv();
+        let port = timer.oneshot(1);
+        port.recv();
     }
 
     #[test]
     fn override() {
-        do run_uv_loop |l| {
-            let mut timer = TimerWatcher::new(l);
-            let oport = timer.oneshot(1);
-            let pport = timer.period(1);
-            timer.sleep(1);
-            assert_eq!(oport.try_recv(), None);
-            assert_eq!(pport.try_recv(), None);
-            timer.oneshot(1).recv();
-        }
+        let mut timer = TimerWatcher::new(local_loop());
+        let oport = timer.oneshot(1);
+        let pport = timer.period(1);
+        timer.sleep(1);
+        assert_eq!(oport.try_recv(), None);
+        assert_eq!(pport.try_recv(), None);
+        timer.oneshot(1).recv();
     }
 
     #[test]
     fn period() {
-        do run_uv_loop |l| {
-            let mut timer = TimerWatcher::new(l);
-            let port = timer.period(1);
-            port.recv();
-            port.recv();
-            let port = timer.period(1);
-            port.recv();
-            port.recv();
-        }
+        let mut timer = TimerWatcher::new(local_loop());
+        let port = timer.period(1);
+        port.recv();
+        port.recv();
+        let port = timer.period(1);
+        port.recv();
+        port.recv();
     }
 
     #[test]
     fn sleep() {
-        do run_uv_loop |l| {
-            let mut timer = TimerWatcher::new(l);
-            timer.sleep(1);
-            timer.sleep(1);
-        }
+        let mut timer = TimerWatcher::new(local_loop());
+        timer.sleep(1);
+        timer.sleep(1);
     }
 }

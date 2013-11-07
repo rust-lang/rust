@@ -131,11 +131,12 @@ mod test_remote {
     use std::rt::tube::Tube;
 
     use super::*;
-    use super::super::run_uv_loop;
+    use super::super::local_loop;
 
-    // Make sure that we can fire watchers in remote threads
+    // Make sure that we can fire watchers in remote threads and that they
+    // actually trigger what they say they will.
     #[test]
-    fn test_uv_remote() {
+    fn smoke_test() {
         struct MyCallback(Option<Tube<int>>);
         impl Callback for MyCallback {
             fn call(&mut self) {
@@ -147,35 +148,15 @@ mod test_remote {
             }
         }
 
-        do run_uv_loop |l| {
-            let mut tube = Tube::new();
-            let cb = ~MyCallback(Some(tube.clone()));
-            let watcher = Cell::new(AsyncWatcher::new(l, cb as ~Callback));
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(Some(tube.clone()));
+        let watcher = Cell::new(AsyncWatcher::new(local_loop(), cb as ~Callback));
 
-            let thread = do Thread::start {
-                watcher.take().fire();
-            };
+        let thread = do Thread::start {
+            watcher.take().fire();
+        };
 
-            assert_eq!(tube.recv(), 1);
-            thread.join();
-        }
-    }
-
-    #[test]
-    fn smoke_test() {
-        static mut hits: uint = 0;
-
-        struct MyCallback;
-        impl Callback for MyCallback {
-            fn call(&mut self) {
-                unsafe { hits += 1; }
-            }
-        }
-
-        do run_uv_loop |l| {
-            let mut watcher = AsyncWatcher::new(l, ~MyCallback as ~Callback);
-            watcher.fire();
-        }
-        assert!(unsafe { hits > 0 });
+        assert_eq!(tube.recv(), 1);
+        thread.join();
     }
 }

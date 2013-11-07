@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::c_str::CString;
-use std::comm::{SharedChan, GenericChan};
+use std::comm::SharedChan;
 use std::libc::c_int;
 use std::libc;
 use std::path::Path;
@@ -26,7 +26,7 @@ use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
 use std::rt::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
                   ReadWrite, FileStat};
 use std::rt::io::signal::Signum;
-use std::task;
+use std::util;
 use ai = std::rt::io::net::addrinfo;
 
 #[cfg(test)] use std::unstable::run_in_bare_thread;
@@ -44,6 +44,13 @@ pub trait HomingIO {
     fn go_to_IO_home(&mut self) -> uint {
         use std::rt::sched::RunOnce;
 
+        unsafe {
+            let task: *mut Task = Local::unsafe_borrow();
+            (*task).death.inhibit_kill((*task).unwinder.unwinding);
+        }
+
+        let _f = ForbidUnwind::new("going home");
+
         let current_sched_id = do Local::borrow |sched: &mut Scheduler| {
             sched.sched_id()
         };
@@ -51,22 +58,17 @@ pub trait HomingIO {
         // Only need to invoke a context switch if we're not on the right
         // scheduler.
         if current_sched_id != self.home().sched_id {
-            do task::unkillable { // FIXME(#8674)
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    /* FIXME(#8674) if the task was already killed then wake
-                     * will return None. In that case, the home pointer will
-                     * never be set.
-                     *
-                     * RESOLUTION IDEA: Since the task is dead, we should
-                     * just abort the IO action.
-                     */
-                    do task.wake().map |task| {
-                        self.home().send(RunOnce(task));
-                    };
-                }
+            let scheduler: ~Scheduler = Local::take();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                do task.wake().map |task| {
+                    self.home().send(RunOnce(task));
+                };
             }
         }
+        let current_sched_id = do Local::borrow |sched: &mut Scheduler| {
+            sched.sched_id()
+        };
+        assert!(current_sched_id == self.home().sched_id);
 
         self.home().sched_id
     }
@@ -98,24 +100,37 @@ struct HomingMissile {
     priv io_home: uint,
 }
 
+impl HomingMissile {
+    pub fn check(&self, msg: &'static str) {
+        let local_id = Local::borrow(|sched: &mut Scheduler| sched.sched_id());
+        assert!(local_id == self.io_home, "{}", msg);
+    }
+}
+
 impl Drop for HomingMissile {
     fn drop(&mut self) {
+        let f = ForbidUnwind::new("leaving home");
+
         // It would truly be a sad day if we had moved off the home I/O
         // scheduler while we were doing I/O.
-        assert_eq!(Local::borrow(|sched: &mut Scheduler| sched.sched_id()),
-                   self.io_home);
+        self.check("task moved away from the home scheduler");
 
         // If we were a homed task, then we must send ourselves back to the
         // original scheduler. Otherwise, we can just return and keep running
         if !Task::on_appropriate_sched() {
-            do task::unkillable { // FIXME(#8674)
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    do task.wake().map |task| {
-                        Scheduler::run_task(task);
-                    };
-                }
+            let scheduler: ~Scheduler = Local::take();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                do task.wake().map |task| {
+                    Scheduler::run_task(task);
+                };
             }
+        }
+
+        util::ignore(f);
+
+        unsafe {
+            let task: *mut Task = Local::unsafe_borrow();
+            (*task).death.allow_kill((*task).unwinder.unwinding);
         }
     }
 }

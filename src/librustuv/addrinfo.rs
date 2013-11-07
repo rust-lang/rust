@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use ai = std::rt::io::net::addrinfo;
-use std::cast;
 use std::libc::c_int;
 use std::ptr::null;
 use std::rt::BlockedTask;
@@ -17,7 +16,7 @@ use std::rt::local::Local;
 use std::rt::sched::Scheduler;
 
 use net;
-use super::{Loop, UvError, Request};
+use super::{Loop, UvError, Request, wait_until_woken_after};
 use uvll;
 
 struct Addrinfo {
@@ -76,7 +75,7 @@ impl GetAddrInfoRequest {
             }
         });
         let hint_ptr = hint.as_ref().map_default(null(), |x| x as *uvll::addrinfo);
-        let req = Request::new(uvll::UV_GETADDRINFO);
+        let mut req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {
             uvll::uv_getaddrinfo(loop_.handle, req.handle,
@@ -84,12 +83,11 @@ impl GetAddrInfoRequest {
                                  hint_ptr)
         } {
             0 => {
+                req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
-                req.set_data(&cx);
-                req.defuse();
-                let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_, task| {
-                    cx.slot = Some(task);
+
+                do wait_until_woken_after(&mut cx.slot) {
+                    req.set_data(&cx);
                 }
 
                 match cx.status {
@@ -105,8 +103,8 @@ impl GetAddrInfoRequest {
                                  status: c_int,
                                  res: *uvll::addrinfo) {
             let req = Request::wrap(req);
-            if status == uvll::ECANCELED { return }
-            let cx: &mut Ctx = unsafe { cast::transmute(req.get_data()) };
+            assert!(status != uvll::ECANCELED);
+            let cx: &mut Ctx = unsafe { req.get_data() };
             cx.status = status;
             cx.addrinfo = Some(Addrinfo { handle: res });
 
@@ -191,25 +189,23 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 mod test {
     use std::rt::io::net::ip::{SocketAddr, Ipv4Addr};
     use super::*;
-    use super::super::run_uv_loop;
+    use super::super::local_loop;
 
     #[test]
     fn getaddrinfo_test() {
-        do run_uv_loop |l| {
-            match GetAddrInfoRequest::run(l, Some("localhost"), None, None) {
-                Ok(infos) => {
-                    let mut found_local = false;
-                    let local_addr = &SocketAddr {
-                        ip: Ipv4Addr(127, 0, 0, 1),
-                        port: 0
-                    };
-                    for addr in infos.iter() {
-                        found_local = found_local || addr.address == *local_addr;
-                    }
-                    assert!(found_local);
+        match GetAddrInfoRequest::run(local_loop(), Some("localhost"), None, None) {
+            Ok(infos) => {
+                let mut found_local = false;
+                let local_addr = &SocketAddr {
+                    ip: Ipv4Addr(127, 0, 0, 1),
+                    port: 0
+                };
+                for addr in infos.iter() {
+                    found_local = found_local || addr.address == *local_addr;
                 }
-                Err(e) => fail!("{:?}", e),
+                assert!(found_local);
             }
+            Err(e) => fail!("{:?}", e),
         }
     }
 }

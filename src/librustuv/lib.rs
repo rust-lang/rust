@@ -45,15 +45,19 @@ via `close` and `delete` methods.
 
 #[feature(macro_rules, globs)];
 
-use std::cast;
-use std::str::raw::from_c_str;
-use std::vec;
-use std::ptr;
-use std::str;
-use std::libc::{c_void, c_int, malloc, free};
 use std::cast::transmute;
+use std::cast;
+use std::libc::{c_int, malloc, free};
 use std::ptr::null;
+use std::ptr;
+use std::rt::BlockedTask;
+use std::rt::local::Local;
+use std::rt::sched::Scheduler;
+use std::str::raw::from_c_str;
+use std::str;
+use std::task;
 use std::unstable::finally::Finally;
+use std::vec;
 
 use std::rt::io::IoError;
 
@@ -124,27 +128,90 @@ pub trait UvHandle<T> {
             uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb)
         }
     }
+
+    fn close(&mut self) {
+        let mut slot = None;
+
+        unsafe {
+            uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb);
+            uvll::set_data_for_uv_handle(self.uv_handle(), ptr::null::<()>());
+
+            do wait_until_woken_after(&mut slot) {
+                uvll::set_data_for_uv_handle(self.uv_handle(), &slot);
+            }
+        }
+
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            unsafe {
+                let data = uvll::get_data_for_uv_handle(handle);
+                uvll::free_handle(handle);
+                if data == ptr::null() { return }
+                let slot: &mut Option<BlockedTask> = cast::transmute(data);
+                let sched: ~Scheduler = Local::take();
+                sched.resume_blocked_task_immediately(slot.take_unwrap());
+            }
+        }
+    }
+}
+
+pub struct ForbidUnwind {
+    msg: &'static str,
+    failing_before: bool,
+}
+
+impl ForbidUnwind {
+    fn new(s: &'static str) -> ForbidUnwind {
+        ForbidUnwind {
+            msg: s, failing_before: task::failing(),
+        }
+    }
+}
+
+impl Drop for ForbidUnwind {
+    fn drop(&mut self) {
+        assert!(self.failing_before == task::failing(),
+                "failing sadface {}", self.msg);
+    }
+}
+
+fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: &fn()) {
+    let _f = ForbidUnwind::new("wait_until_woken_after");
+    unsafe {
+        assert!((*slot).is_none());
+        let sched: ~Scheduler = Local::take();
+        do sched.deschedule_running_task_and_then |_, task| {
+            f();
+            *slot = Some(task);
+        }
+    }
 }
 
 pub struct Request {
     handle: *uvll::uv_req_t,
+    priv defused: bool,
 }
 
 impl Request {
     pub fn new(ty: uvll::uv_req_type) -> Request {
-        Request::wrap(unsafe { uvll::malloc_req(ty) })
+        unsafe {
+            let handle = uvll::malloc_req(ty);
+            uvll::set_data_for_req(handle, null::<()>());
+            Request::wrap(handle)
+        }
     }
 
     pub fn wrap(handle: *uvll::uv_req_t) -> Request {
-        Request { handle: handle }
+        Request { handle: handle, defused: false }
     }
 
     pub fn set_data<T>(&self, t: *T) {
         unsafe { uvll::set_data_for_req(self.handle, t) }
     }
 
-    pub fn get_data(&self) -> *c_void {
-        unsafe { uvll::get_data_for_req(self.handle) }
+    pub unsafe fn get_data<T>(&self) -> &'static mut T {
+        let data = uvll::get_data_for_req(self.handle);
+        assert!(data != null());
+        cast::transmute(data)
     }
 
     // This function should be used when the request handle has been given to an
@@ -155,17 +222,15 @@ impl Request {
     // This is still a problem in blocking situations due to linked failure. In
     // the connection callback the handle should be re-wrapped with the `wrap`
     // function to ensure its destruction.
-    pub fn defuse(mut self) {
-        self.handle = ptr::null();
+    pub fn defuse(&mut self) {
+        self.defused = true;
     }
 }
 
 impl Drop for Request {
     fn drop(&mut self) {
-        unsafe {
-            if self.handle != ptr::null() {
-                uvll::free_req(self.handle)
-            }
+        if !self.defused {
+            unsafe { uvll::free_req(self.handle) }
         }
     }
 }
@@ -300,23 +365,18 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
 }
 
-fn run_uv_loop(f: proc(&mut Loop)) {
-    use std::rt::local::Local;
-    use std::rt::test::run_in_uv_task;
-    use std::rt::sched::Scheduler;
-    use std::cell::Cell;
-
-    let f = Cell::new(f);
-    do run_in_uv_task {
-        let mut io = None;
-        do Local::borrow |sched: &mut Scheduler| {
-            sched.event_loop.io(|i| unsafe {
+#[cfg(test)]
+fn local_loop() -> &'static mut Loop {
+    unsafe {
+        cast::transmute(do Local::borrow |sched: &mut Scheduler| {
+            let mut io = None;
+            do sched.event_loop.io |i| {
                 let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
                     cast::transmute(i);
                 io = Some(uvio);
-            });
-        }
-        f.take()(io.unwrap().uv_loop());
+            }
+            io.unwrap()
+        }.uv_loop())
     }
 }
 
