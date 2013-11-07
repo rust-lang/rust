@@ -37,8 +37,11 @@ fn test_destroy_twice() {
 
 fn test_destroy_actually_kills(force: bool) {
 
-    #[cfg(unix)]
+    #[cfg(unix,not(target_os="android"))]
     static BLOCK_COMMAND: &'static str = "cat";
+
+    #[cfg(unix,target_os="android")]
+    static BLOCK_COMMAND: &'static str = "/system/bin/cat";
 
     #[cfg(windows)]
     static BLOCK_COMMAND: &'static str = "cmd";
