@@ -141,8 +141,7 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 
         let mut addrs = ~[];
         loop {
-            let uvaddr = net::sockaddr_to_UvSocketAddr((*addr).ai_addr);
-            let rustaddr = net::uv_socket_addr_to_socket_addr(uvaddr);
+            let rustaddr = net::sockaddr_to_socket_addr((*addr).ai_addr);
 
             let mut flags = 0;
             do each_ai_flag |cval, aival| {

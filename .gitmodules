@@ -4,7 +4,7 @@
 	branch = master
 [submodule "src/libuv"]
 	path = src/libuv
-	url = https://github.com/alexcrichton/libuv.git
+	url = https://github.com/joyent/libuv.git
 	branch = master
 [submodule "src/gyp"]
 	path = src/gyp

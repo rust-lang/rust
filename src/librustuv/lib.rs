@@ -47,7 +47,7 @@ via `close` and `delete` methods.
 
 use std::cast::transmute;
 use std::cast;
-use std::libc::{c_int, malloc, free};
+use std::libc::{c_int, malloc};
 use std::ptr::null;
 use std::ptr;
 use std::rt::BlockedTask;

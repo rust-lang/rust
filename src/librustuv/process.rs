@@ -78,7 +78,7 @@ impl Process {
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
                 match unsafe {
-                    uvll::uv_spawn(loop_.handle, handle, options)
+                    uvll::uv_spawn(loop_.handle, handle, &options)
                 } {
                     0 => {
                         let process = ~Process {
@@ -106,7 +106,7 @@ impl Process {
 }
 
 extern fn on_exit(handle: *uvll::uv_process_t,
-                  exit_status: libc::c_int,
+                  exit_status: i64,
                   term_signal: libc::c_int) {
     let p: &mut Process = unsafe { UvHandle::from_uv_handle(&handle) };
 
