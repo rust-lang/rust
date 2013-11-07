@@ -135,17 +135,18 @@ impl StreamWatcher {
 // This allocation callback expects to be invoked once and only once. It will
 // unwrap the buffer in the ReadContext stored in the stream and return it. This
 // will fail if it is called more than once.
-extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t) -> Buf {
+extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t, buf: *mut Buf) {
     uvdebug!("alloc_cb");
-    let rcx: &mut ReadContext = unsafe {
-        cast::transmute(uvll::get_data_for_uv_handle(stream))
-    };
-    rcx.buf.take().expect("stream alloc_cb called more than once")
+    unsafe {
+        let rcx: &mut ReadContext =
+            cast::transmute(uvll::get_data_for_uv_handle(stream));
+        *buf = rcx.buf.take().expect("stream alloc_cb called more than once");
+    }
 }
 
 // When a stream has read some data, we will always forcibly stop reading and
 // return all the data read (even if it didn't fill the whole buffer).
-extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: Buf) {
+extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
     uvdebug!("read_cb {}", nread);
     assert!(nread != uvll::ECANCELED as ssize_t);
     let rcx: &mut ReadContext = unsafe {

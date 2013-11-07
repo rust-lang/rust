@@ -206,15 +206,16 @@ impl uv_stat_t {
 pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t,
                                     status: c_int);
 pub type uv_alloc_cb = extern "C" fn(stream: *uv_stream_t,
-                                     suggested_size: size_t) -> uv_buf_t;
+                                     suggested_size: size_t,
+                                     buf: *mut uv_buf_t);
 pub type uv_read_cb = extern "C" fn(stream: *uv_stream_t,
                                     nread: ssize_t,
-                                    buf: uv_buf_t);
+                                    buf: *uv_buf_t);
 pub type uv_udp_send_cb = extern "C" fn(req: *uv_udp_send_t,
                                         status: c_int);
 pub type uv_udp_recv_cb = extern "C" fn(handle: *uv_udp_t,
                                         nread: ssize_t,
-                                        buf: uv_buf_t,
+                                        buf: *uv_buf_t,
                                         addr: *sockaddr,
                                         flags: c_uint);
 pub type uv_close_cb = extern "C" fn(handle: *uv_handle_t);
@@ -234,16 +235,13 @@ pub type uv_getaddrinfo_cb = extern "C" fn(req: *uv_getaddrinfo_t,
                                            status: c_int,
                                            res: *addrinfo);
 pub type uv_exit_cb = extern "C" fn(handle: *uv_process_t,
-                                    exit_status: c_int,
+                                    exit_status: i64,
                                     term_signal: c_int);
 pub type uv_signal_cb = extern "C" fn(handle: *uv_signal_t,
                                       signum: c_int);
 pub type uv_fs_cb = extern "C" fn(req: *uv_fs_t);
 
 pub type sockaddr = c_void;
-pub type sockaddr_in = c_void;
-pub type sockaddr_in6 = c_void;
-pub type sockaddr_storage = c_void;
 
 #[cfg(unix)]
 pub type socklen_t = c_int;
@@ -420,84 +418,10 @@ pub unsafe fn loop_new() -> *c_void {
     return rust_uv_loop_new();
 }
 
-pub unsafe fn udp_bind(server: *uv_udp_t, addr: *sockaddr_in, flags: c_uint) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_udp_bind(server, addr, flags);
-}
-
-pub unsafe fn udp_bind6(server: *uv_udp_t, addr: *sockaddr_in6, flags: c_uint) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_udp_bind6(server, addr, flags);
-}
-
-pub unsafe fn udp_send<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
-                          addr: *sockaddr_in, cb: uv_udp_send_cb) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    let buf_ptr = vec::raw::to_ptr(buf_in);
-    let buf_cnt = buf_in.len() as i32;
-    return rust_uv_udp_send(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
-}
-
-pub unsafe fn udp_send6<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
-                          addr: *sockaddr_in6, cb: uv_udp_send_cb) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    let buf_ptr = vec::raw::to_ptr(buf_in);
-    let buf_cnt = buf_in.len() as i32;
-    return rust_uv_udp_send6(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
-}
-
 pub unsafe fn get_udp_handle_from_send_req(send_req: *uv_udp_send_t) -> *uv_udp_t {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_get_udp_handle_from_send_req(send_req);
-}
-
-pub unsafe fn udp_getsockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_udp_getsockname(handle, name);
-}
-
-pub unsafe fn tcp_connect(connect_ptr: *uv_connect_t, tcp_handle_ptr: *uv_tcp_t,
-                          addr_ptr: *sockaddr_in, after_connect_cb: uv_connect_cb) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr, after_connect_cb, addr_ptr);
-}
-
-pub unsafe fn tcp_connect6(connect_ptr: *uv_connect_t, tcp_handle_ptr: *uv_tcp_t,
-                           addr_ptr: *sockaddr_in6, after_connect_cb: uv_connect_cb) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr, after_connect_cb, addr_ptr);
-}
-
-pub unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t, addr_ptr: *sockaddr_in) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_tcp_bind(tcp_server_ptr, addr_ptr);
-}
-
-pub unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t, addr_ptr: *sockaddr_in6) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_tcp_bind6(tcp_server_ptr, addr_ptr);
-}
-
-pub unsafe fn tcp_getpeername(tcp_handle_ptr: *uv_tcp_t, name: *sockaddr_storage) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_tcp_getpeername(tcp_handle_ptr, name);
-}
-
-pub unsafe fn tcp_getsockname(handle: *uv_tcp_t, name: *sockaddr_storage) -> c_int {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_tcp_getsockname(handle, name);
 }
 
 pub unsafe fn uv_write(req: *uv_write_t,
@@ -511,67 +435,6 @@ pub unsafe fn uv_write(req: *uv_write_t,
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
     return uv_write(req, stream, buf_ptr, buf_cnt, cb);
-}
-
-pub unsafe fn is_ip4_addr(addr: *sockaddr) -> bool {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    match rust_uv_is_ipv4_sockaddr(addr) { 0 => false, _ => true }
-}
-
-pub unsafe fn is_ip6_addr(addr: *sockaddr) -> bool {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    match rust_uv_is_ipv6_sockaddr(addr) { 0 => false, _ => true }
-}
-
-pub unsafe fn malloc_ip4_addr(ip: &str, port: int) -> *sockaddr_in {
-    #[fixed_stack_segment]; #[inline(never)];
-    do ip.with_c_str |ip_buf| {
-        rust_uv_ip4_addrp(ip_buf as *u8, port as libc::c_int)
-    }
-}
-pub unsafe fn malloc_ip6_addr(ip: &str, port: int) -> *sockaddr_in6 {
-    #[fixed_stack_segment]; #[inline(never)];
-    do ip.with_c_str |ip_buf| {
-        rust_uv_ip6_addrp(ip_buf as *u8, port as libc::c_int)
-    }
-}
-
-pub unsafe fn malloc_sockaddr_storage() -> *sockaddr_storage {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    rust_uv_malloc_sockaddr_storage()
-}
-
-pub unsafe fn free_sockaddr_storage(ss: *sockaddr_storage) {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    rust_uv_free_sockaddr_storage(ss);
-}
-
-pub unsafe fn free_ip4_addr(addr: *sockaddr_in) {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    rust_uv_free_ip4_addr(addr);
-}
-
-pub unsafe fn free_ip6_addr(addr: *sockaddr_in6) {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    rust_uv_free_ip6_addr(addr);
-}
-
-pub unsafe fn ip4_port(addr: *sockaddr_in) -> c_uint {
-    #[fixed_stack_segment]; #[inline(never)];
-
-   return rust_uv_ip4_port(addr);
-}
-
-pub unsafe fn ip6_port(addr: *sockaddr_in6) -> c_uint {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_ip6_port(addr);
 }
 
 pub unsafe fn process_pid(p: *uv_process_t) -> c_int {
@@ -685,36 +548,19 @@ pub unsafe fn guess_handle(handle: c_int) -> c_int {
 extern {
     fn rust_uv_loop_new() -> *c_void;
 
+    // dealing with sockaddr things
+    pub fn rust_sockaddr_size() -> c_int;
+    pub fn rust_malloc_ip4_addr(s: *c_char, port: c_int) -> *sockaddr;
+    pub fn rust_malloc_ip6_addr(s: *c_char, port: c_int) -> *sockaddr;
+    pub fn rust_ip4_port(src: *sockaddr) -> c_uint;
+    pub fn rust_ip6_port(src: *sockaddr) -> c_uint;
+    pub fn rust_is_ipv4_sockaddr(addr: *sockaddr) -> c_int;
+    pub fn rust_is_ipv6_sockaddr(addr: *sockaddr) -> c_int;
+
     fn rust_uv_handle_type_max() -> uintptr_t;
     fn rust_uv_req_type_max() -> uintptr_t;
-    fn rust_uv_ip4_addrp(ip: *u8, port: c_int) -> *sockaddr_in;
-    fn rust_uv_ip6_addrp(ip: *u8, port: c_int) -> *sockaddr_in6;
-    fn rust_uv_free_ip4_addr(addr: *sockaddr_in);
-    fn rust_uv_free_ip6_addr(addr: *sockaddr_in6);
-    fn rust_uv_ip4_port(src: *sockaddr_in) -> c_uint;
-    fn rust_uv_ip6_port(src: *sockaddr_in6) -> c_uint;
-    fn rust_uv_tcp_connect(req: *uv_connect_t, handle: *uv_tcp_t,
-                           cb: uv_connect_cb,
-                           addr: *sockaddr_in) -> c_int;
-    fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t, addr: *sockaddr_in) -> c_int;
-    fn rust_uv_tcp_connect6(req: *uv_connect_t, handle: *uv_tcp_t,
-                            cb: uv_connect_cb,
-                            addr: *sockaddr_in6) -> c_int;
-    fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t, addr: *sockaddr_in6) -> c_int;
-    fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t, name: *sockaddr_storage) -> c_int;
-    fn rust_uv_tcp_getsockname(handle: *uv_tcp_t, name: *sockaddr_storage) -> c_int;
-    fn rust_uv_udp_bind(server: *uv_udp_t, addr: *sockaddr_in, flags: c_uint) -> c_int;
-    fn rust_uv_udp_bind6(server: *uv_udp_t, addr: *sockaddr_in6, flags: c_uint) -> c_int;
-    fn rust_uv_udp_send(req: *uv_udp_send_t, handle: *uv_udp_t, buf_in: *uv_buf_t,
-                        buf_cnt: c_int, addr: *sockaddr_in, cb: uv_udp_send_cb) -> c_int;
-    fn rust_uv_udp_send6(req: *uv_udp_send_t, handle: *uv_udp_t, buf_in: *uv_buf_t,
-                         buf_cnt: c_int, addr: *sockaddr_in6, cb: uv_udp_send_cb) -> c_int;
     fn rust_uv_get_udp_handle_from_send_req(req: *uv_udp_send_t) -> *uv_udp_t;
-    fn rust_uv_udp_getsockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_int;
-    fn rust_uv_is_ipv4_sockaddr(addr: *sockaddr) -> c_int;
-    fn rust_uv_is_ipv6_sockaddr(addr: *sockaddr) -> c_int;
-    fn rust_uv_malloc_sockaddr_storage() -> *sockaddr_storage;
-    fn rust_uv_free_sockaddr_storage(ss: *sockaddr_storage);
+
     fn rust_uv_populate_uv_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t);
     fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
     fn rust_uv_get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void;
@@ -768,17 +614,27 @@ externfn!(fn uv_async_send(a: *uv_async_t))
 
 // tcp bindings
 externfn!(fn uv_tcp_init(l: *uv_loop_t, h: *uv_tcp_t) -> c_int)
-externfn!(fn uv_ip4_name(src: *sockaddr_in, dst: *c_char,
+externfn!(fn uv_tcp_connect(c: *uv_connect_t, h: *uv_tcp_t,
+                            addr: *sockaddr, cb: uv_connect_cb) -> c_int)
+externfn!(fn uv_tcp_bind(t: *uv_tcp_t, addr: *sockaddr) -> c_int)
+externfn!(fn uv_ip4_name(src: *sockaddr, dst: *c_char,
                          size: size_t) -> c_int)
-externfn!(fn uv_ip6_name(src: *sockaddr_in6, dst: *c_char,
+externfn!(fn uv_ip6_name(src: *sockaddr, dst: *c_char,
                          size: size_t) -> c_int)
 externfn!(fn uv_tcp_nodelay(h: *uv_tcp_t, enable: c_int) -> c_int)
 externfn!(fn uv_tcp_keepalive(h: *uv_tcp_t, enable: c_int,
                               delay: c_uint) -> c_int)
 externfn!(fn uv_tcp_simultaneous_accepts(h: *uv_tcp_t, enable: c_int) -> c_int)
+externfn!(fn uv_tcp_getsockname(h: *uv_tcp_t, name: *sockaddr,
+                                len: *mut c_int) -> c_int)
+externfn!(fn uv_tcp_getpeername(h: *uv_tcp_t, name: *sockaddr,
+                                len: *mut c_int) -> c_int)
+externfn!(fn uv_ip4_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int)
+externfn!(fn uv_ip6_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int)
 
 // udp bindings
 externfn!(fn uv_udp_init(l: *uv_loop_t, h: *uv_udp_t) -> c_int)
+externfn!(fn uv_udp_bind(h: *uv_udp_t, addr: *sockaddr, flags: c_uint) -> c_int)
 externfn!(fn uv_udp_recv_start(server: *uv_udp_t,
                                on_alloc: uv_alloc_cb,
                                on_recv: uv_udp_recv_cb) -> c_int)
@@ -790,6 +646,22 @@ externfn!(fn uv_udp_set_multicast_loop(handle: *uv_udp_t, on: c_int) -> c_int)
 externfn!(fn uv_udp_set_multicast_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int)
 externfn!(fn uv_udp_set_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int)
 externfn!(fn uv_udp_set_broadcast(handle: *uv_udp_t, on: c_int) -> c_int)
+externfn!(fn uv_udp_getsockname(h: *uv_udp_t, name: *sockaddr,
+                                len: *mut c_int) -> c_int)
+
+pub unsafe fn uv_udp_send(req: *uv_udp_send_t,
+                          handle: *uv_udp_t,
+                          buf_in: &[uv_buf_t],
+                          addr: *sockaddr,
+                          cb: uv_udp_send_cb) -> c_int {
+    externfn!(fn uv_udp_send(req: *uv_write_t, stream: *uv_stream_t,
+                             buf_in: *uv_buf_t, buf_cnt: c_int, addr: *sockaddr,
+                             cb: uv_udp_send_cb) -> c_int)
+
+    let buf_ptr = vec::raw::to_ptr(buf_in);
+    let buf_cnt = buf_in.len() as i32;
+    return uv_udp_send(req, handle, buf_ptr, buf_cnt, addr, cb);
+}
 
 // timer bindings
 externfn!(fn uv_timer_init(l: *uv_loop_t, t: *uv_timer_t) -> c_int)
@@ -853,7 +725,7 @@ externfn!(fn uv_freeaddrinfo(ai: *addrinfo))
 
 // process spawning
 externfn!(fn uv_spawn(loop_ptr: *uv_loop_t, outptr: *uv_process_t,
-                      options: uv_process_options_t) -> c_int)
+                      options: *uv_process_options_t) -> c_int)
 externfn!(fn uv_process_kill(p: *uv_process_t, signum: c_int) -> c_int)
 
 // pipes

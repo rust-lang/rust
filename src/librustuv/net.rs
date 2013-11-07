@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cast;
+use std::libc;
 use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
 use std::ptr;
 use std::rt::BlockedTask;
@@ -28,87 +29,61 @@ use super::{Loop, Request, UvError, Buf, status_to_io_result,
             wait_until_woken_after};
 use uvio::HomingIO;
 use uvll;
+use uvll::sockaddr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
 
-pub enum UvSocketAddr {
-    UvIpv4SocketAddr(*uvll::sockaddr_in),
-    UvIpv6SocketAddr(*uvll::sockaddr_in6),
-}
-
-pub fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
-    unsafe {
-        assert!((uvll::is_ip4_addr(addr) || uvll::is_ip6_addr(addr)));
-        assert!(!(uvll::is_ip4_addr(addr) && uvll::is_ip6_addr(addr)));
-        match addr {
-            _ if uvll::is_ip4_addr(addr) =>
-                UvIpv4SocketAddr(addr as *uvll::sockaddr_in),
-            _ if uvll::is_ip6_addr(addr) =>
-                UvIpv6SocketAddr(addr as *uvll::sockaddr_in6),
-            _ => fail!(),
-        }
-    }
-}
-
-fn socket_addr_as_uv_socket_addr<T>(addr: SocketAddr, f: &fn(UvSocketAddr) -> T) -> T {
+#[fixed_stack_segment]
+fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: &fn(*sockaddr) -> T) -> T {
     let malloc = match addr.ip {
-        Ipv4Addr(*) => uvll::malloc_ip4_addr,
-        Ipv6Addr(*) => uvll::malloc_ip6_addr,
-    };
-    let wrap = match addr.ip {
-        Ipv4Addr(*) => UvIpv4SocketAddr,
-        Ipv6Addr(*) => UvIpv6SocketAddr,
-    };
-    let free = match addr.ip {
-        Ipv4Addr(*) => uvll::free_ip4_addr,
-        Ipv6Addr(*) => uvll::free_ip6_addr,
+        Ipv4Addr(*) => uvll::rust_malloc_ip4_addr,
+        Ipv6Addr(*) => uvll::rust_malloc_ip6_addr,
     };
 
-    let addr = unsafe { malloc(addr.ip.to_str(), addr.port as int) };
+    let ip = addr.ip.to_str();
+    let addr = ip.with_c_str(|p| unsafe { malloc(p, addr.port as c_int) });
     do (|| {
-        f(wrap(addr))
+        f(addr)
     }).finally {
-        unsafe { free(addr) };
+        unsafe { libc::free(addr) };
     }
 }
 
-fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T) -> T {
-    let ip_size = match addr {
-        UvIpv4SocketAddr(*) => 4/*groups of*/ * 3/*digits separated by*/ + 3/*periods*/,
-        UvIpv6SocketAddr(*) => 8/*groups of*/ * 4/*hex digits separated by*/ + 7 /*colons*/,
-    };
-    let ip_name = {
-        let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
-        unsafe {
+#[fixed_stack_segment]
+pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
+    unsafe {
+        let ip_size = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
+            4/*groups of*/ * 3/*digits separated by*/ + 3/*periods*/
+        } else if uvll::rust_is_ipv6_sockaddr(addr) == 1 {
+            8/*groups of*/ * 4/*hex digits separated by*/ + 7 /*colons*/
+        } else {
+            fail!("unknown address?");
+        };
+        let ip_name = {
+            let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
             let buf_ptr = vec::raw::to_ptr(buf);
-            match addr {
-                UvIpv4SocketAddr(addr) =>
-                    uvll::uv_ip4_name(addr, buf_ptr as *c_char, ip_size as size_t),
-                UvIpv6SocketAddr(addr) =>
-                    uvll::uv_ip6_name(addr, buf_ptr as *c_char, ip_size as size_t),
+            if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
+                uvll::uv_ip4_name(addr, buf_ptr as *c_char, ip_size as size_t);
+            } else {
+                uvll::uv_ip6_name(addr, buf_ptr as *c_char, ip_size as size_t);
             }
+            buf
         };
-        buf
-    };
-    let ip_port = unsafe {
-        let port = match addr {
-            UvIpv4SocketAddr(addr) => uvll::ip4_port(addr),
-            UvIpv6SocketAddr(addr) => uvll::ip6_port(addr),
+        let ip_port = {
+            let port = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
+                uvll::rust_ip4_port(addr)
+            } else {
+                uvll::rust_ip6_port(addr)
+            };
+            port as u16
         };
-        port as u16
-    };
-    let ip_str = str::from_utf8_slice(ip_name).trim_right_chars(&'\x00');
-    let ip_addr = FromStr::from_str(ip_str).unwrap();
+        let ip_str = str::from_utf8_slice(ip_name).trim_right_chars(&'\x00');
+        let ip_addr = FromStr::from_str(ip_str).unwrap();
 
-    // finally run the closure
-    f(SocketAddr { ip: ip_addr, port: ip_port })
-}
-
-pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {
-    use std::util;
-    uv_socket_addr_as_socket_addr(addr, util::id)
+        SocketAddr { ip: ip_addr, port: ip_port }
+    }
 }
 
 #[cfg(test)]
@@ -116,7 +91,9 @@ pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {
 fn test_ip4_conversion() {
     use std::rt;
     let ip4 = rt::test::next_test_ip4();
-    assert_eq!(ip4, socket_addr_as_uv_socket_addr(ip4, uv_socket_addr_to_socket_addr));
+    do socket_addr_as_sockaddr(ip4) |addr| {
+        assert_eq!(ip4, sockaddr_to_socket_addr(addr));
+    }
 }
 
 #[cfg(test)]
@@ -124,7 +101,9 @@ fn test_ip4_conversion() {
 fn test_ip6_conversion() {
     use std::rt;
     let ip6 = rt::test::next_test_ip6();
-    assert_eq!(ip6, socket_addr_as_uv_socket_addr(ip6, uv_socket_addr_to_socket_addr));
+    do socket_addr_as_sockaddr(ip6) |addr| {
+        assert_eq!(ip6, sockaddr_to_socket_addr(addr));
+    }
 }
 
 enum SocketNameKind {
@@ -133,37 +112,29 @@ enum SocketNameKind {
     Udp
 }
 
+#[fixed_stack_segment]
 fn socket_name(sk: SocketNameKind, handle: *c_void) -> Result<SocketAddr, IoError> {
-    let getsockname = match sk {
-        TcpPeer => uvll::tcp_getpeername,
-        Tcp     => uvll::tcp_getsockname,
-        Udp     => uvll::udp_getsockname,
-    };
+    unsafe {
+        let getsockname = match sk {
+            TcpPeer => uvll::uv_tcp_getpeername,
+            Tcp     => uvll::uv_tcp_getsockname,
+            Udp     => uvll::uv_udp_getsockname,
+        };
 
-    // Allocate a sockaddr_storage
-    // since we don't know if it's ipv4 or ipv6
-    let r_addr = unsafe { uvll::malloc_sockaddr_storage() };
+        // Allocate a sockaddr_storage
+        // since we don't know if it's ipv4 or ipv6
+        let size = uvll::rust_sockaddr_size();
+        let name = libc::malloc(size as size_t);
+        assert!(!name.is_null());
+        let mut namelen = size;
 
-    let r = unsafe {
-        getsockname(handle, r_addr as *uvll::sockaddr_storage)
-    };
-
-    if r != 0 {
-        return Err(uv_error_to_io_error(UvError(r)));
+        let ret = match getsockname(handle, name, &mut namelen) {
+            0 => Ok(sockaddr_to_socket_addr(name)),
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        libc::free(name);
+        ret
     }
-
-    let addr = unsafe {
-        if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-            uv_socket_addr_to_socket_addr(UvIpv6SocketAddr(r_addr as *uvll::sockaddr_in6))
-        } else {
-            uv_socket_addr_to_socket_addr(UvIpv4SocketAddr(r_addr as *uvll::sockaddr_in))
-        }
-    };
-
-    unsafe { uvll::free_sockaddr_storage(r_addr); }
-
-    Ok(addr)
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -210,17 +181,11 @@ impl TcpWatcher {
 
         return do task::unkillable {
             let tcp = TcpWatcher::new(loop_);
-            let ret = do socket_addr_as_uv_socket_addr(address) |addr| {
+            let ret = do socket_addr_as_sockaddr(address) |addr| {
                 let mut req = Request::new(uvll::UV_CONNECT);
-                let result = match addr {
-                    UvIpv4SocketAddr(addr) => unsafe {
-                        uvll::tcp_connect(req.handle, tcp.handle, addr,
-                                          connect_cb)
-                    },
-                    UvIpv6SocketAddr(addr) => unsafe {
-                        uvll::tcp_connect6(req.handle, tcp.handle, addr,
-                                           connect_cb)
-                    },
+                let result = unsafe {
+                    uvll::uv_tcp_connect(req.handle, tcp.handle, addr,
+                                         connect_cb)
                 };
                 match result {
                     0 => {
@@ -340,11 +305,8 @@ impl TcpListener {
                 closing_task: None,
                 outgoing: Tube::new(),
             };
-            let res = socket_addr_as_uv_socket_addr(address, |addr| unsafe {
-                match addr {
-                    UvIpv4SocketAddr(addr) => uvll::tcp_bind(l.handle, addr),
-                    UvIpv6SocketAddr(addr) => uvll::tcp_bind6(l.handle, addr),
-                }
+            let res = socket_addr_as_sockaddr(address, |addr| unsafe {
+                uvll::uv_tcp_bind(l.handle, addr)
             });
             match res {
                 0 => Ok(l.install()),
@@ -475,13 +437,8 @@ impl UdpWatcher {
             assert_eq!(unsafe {
                 uvll::uv_udp_init(loop_.handle, udp.handle)
             }, 0);
-            let result = socket_addr_as_uv_socket_addr(address, |addr| unsafe {
-                match addr {
-                    UvIpv4SocketAddr(addr) =>
-                        uvll::udp_bind(udp.handle, addr, 0u32),
-                    UvIpv6SocketAddr(addr) =>
-                        uvll::udp_bind6(udp.handle, addr, 0u32),
-                }
+            let result = socket_addr_as_sockaddr(address, |addr| unsafe {
+                uvll::uv_udp_bind(udp.handle, addr, 0u32)
             });
             match result {
                 0 => Ok(udp),
@@ -513,7 +470,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         struct Ctx {
             task: Option<BlockedTask>,
             buf: Option<Buf>,
-            result: Option<(ssize_t, SocketAddr)>,
+            result: Option<(ssize_t, Option<SocketAddr>)>,
         }
         let _m = self.fire_homing_missile();
 
@@ -532,7 +489,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>
                         Err(uv_error_to_io_error(UvError(n as c_int))),
-                    (n, addr) => Ok((n as uint, addr))
+                    (n, addr) => Ok((n as uint, addr.unwrap()))
                 }
             }
             n => Err(uv_error_to_io_error(UvError(n)))
@@ -540,14 +497,16 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         return a;
 
         extern fn alloc_cb(handle: *uvll::uv_udp_t,
-                           _suggested_size: size_t) -> Buf {
-            let cx: &mut Ctx = unsafe {
-                cast::transmute(uvll::get_data_for_uv_handle(handle))
-            };
-            cx.buf.take().expect("recv alloc_cb called more than once")
+                           _suggested_size: size_t,
+                           buf: *mut Buf) {
+            unsafe {
+                let cx: &mut Ctx =
+                    cast::transmute(uvll::get_data_for_uv_handle(handle));
+                *buf = cx.buf.take().expect("recv alloc_cb called more than once")
+            }
         }
 
-        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: Buf,
+        extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: *Buf,
                           addr: *uvll::sockaddr, _flags: c_uint) {
             assert!(nread != uvll::ECANCELED as ssize_t);
             let cx: &mut Ctx = unsafe {
@@ -558,7 +517,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             // This can happen if read returns EAGAIN/EWOULDBLOCK. By ignoring
             // this we just drop back to kqueue and wait for the next callback.
             if nread == 0 {
-                cx.buf = Some(buf);
+                cx.buf = Some(unsafe { *buf });
                 return
             }
 
@@ -569,8 +528,11 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             let cx: &mut Ctx = unsafe {
                 cast::transmute(uvll::get_data_for_uv_handle(handle))
             };
-            let addr = sockaddr_to_UvSocketAddr(addr);
-            let addr = uv_socket_addr_to_socket_addr(addr);
+            let addr = if addr == ptr::null() {
+                None
+            } else {
+                Some(sockaddr_to_socket_addr(addr))
+            };
             cx.result = Some((nread, addr));
 
             let sched: ~Scheduler = Local::take();
@@ -585,13 +547,8 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 
         let mut req = Request::new(uvll::UV_UDP_SEND);
         let buf = slice_to_uv_buf(buf);
-        let result = socket_addr_as_uv_socket_addr(dst, |dst| unsafe {
-            match dst {
-                UvIpv4SocketAddr(dst) =>
-                    uvll::udp_send(req.handle, self.handle, [buf], dst, send_cb),
-                UvIpv6SocketAddr(dst) =>
-                    uvll::udp_send6(req.handle, self.handle, [buf], dst, send_cb),
-            }
+        let result = socket_addr_as_sockaddr(dst, |dst| unsafe {
+            uvll::uv_udp_send(req.handle, self.handle, [buf], dst, send_cb)
         });
 
         return match result {

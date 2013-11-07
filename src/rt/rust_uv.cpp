@@ -36,94 +36,9 @@ rust_uv_loop_set_data(uv_loop_t* loop, void* data) {
     loop->data = data;
 }
 
-extern "C" int
-rust_uv_tcp_connect(uv_connect_t* connect_ptr,
-        uv_tcp_t* tcp_ptr,
-        uv_connect_cb cb,
-        sockaddr_in* addr_ptr) {
-    // FIXME ref #2064
-    sockaddr_in addr = *addr_ptr;
-    int result = uv_tcp_connect(connect_ptr, tcp_ptr, addr, cb);
-    return result;
-}
-
-extern "C" int
-rust_uv_tcp_bind(uv_tcp_t* tcp_server, sockaddr_in* addr_ptr) {
-    // FIXME ref #2064
-    sockaddr_in addr = *addr_ptr;
-    return uv_tcp_bind(tcp_server, addr);
-}
-extern "C" int
-rust_uv_tcp_connect6(uv_connect_t* connect_ptr,
-        uv_tcp_t* tcp_ptr,
-        uv_connect_cb cb,
-        sockaddr_in6* addr_ptr) {
-    // FIXME ref #2064
-    sockaddr_in6 addr = *addr_ptr;
-    int result = uv_tcp_connect6(connect_ptr, tcp_ptr, addr, cb);
-    return result;
-}
-
-extern "C" int
-rust_uv_tcp_bind6
-(uv_tcp_t* tcp_server, sockaddr_in6* addr_ptr) {
-    // FIXME ref #2064
-    sockaddr_in6 addr = *addr_ptr;
-    return uv_tcp_bind6(tcp_server, addr);
-}
-
-extern "C" int
-rust_uv_tcp_getpeername
-(uv_tcp_t* handle, sockaddr_storage* name) {
-    // sockaddr_storage is big enough to hold either
-    // sockaddr_in or sockaddr_in6
-    int namelen = sizeof(sockaddr_in);
-    return uv_tcp_getpeername(handle, (sockaddr*)name, &namelen);
-}
-
-extern "C" int
-rust_uv_tcp_getsockname
-(uv_tcp_t* handle, sockaddr_storage* name) {
-    // sockaddr_storage is big enough to hold either
-    // sockaddr_in or sockaddr_in6
-    int namelen = sizeof(sockaddr_storage);
-    return uv_tcp_getsockname(handle, (sockaddr*)name, &namelen);
-}
-
-extern "C" int
-rust_uv_udp_bind(uv_udp_t* server, sockaddr_in* addr_ptr, unsigned flags) {
-    return uv_udp_bind(server, *addr_ptr, flags);
-}
-
-extern "C" int
-rust_uv_udp_bind6(uv_udp_t* server, sockaddr_in6* addr_ptr, unsigned flags) {
-    return uv_udp_bind6(server, *addr_ptr, flags);
-}
-
-extern "C" int
-rust_uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in,
-                 int buf_cnt, sockaddr_in* addr_ptr, uv_udp_send_cb cb) {
-    return uv_udp_send(req, handle, buf_in, buf_cnt, *addr_ptr, cb);
-}
-
-extern "C" int
-rust_uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in,
-                  int buf_cnt, sockaddr_in6* addr_ptr, uv_udp_send_cb cb) {
-    return uv_udp_send6(req, handle, buf_in, buf_cnt, *addr_ptr, cb);
-}
-
 extern "C" uv_udp_t*
 rust_uv_get_udp_handle_from_send_req(uv_udp_send_t* send_req) {
     return send_req->handle;
-}
-
-extern "C" int
-rust_uv_udp_getsockname
-(uv_udp_t* handle, sockaddr_storage* name) {
-    // sockaddr_storage is big enough to hold either
-    // sockaddr_in or sockaddr_in6
-    int namelen = sizeof(sockaddr_storage);
-    return uv_udp_getsockname(handle, (sockaddr*)name, &namelen);
 }
 
 extern "C" uv_stream_t*
@@ -171,92 +86,50 @@ rust_uv_set_data_for_req(uv_req_t* req, void* data) {
     req->data = data;
 }
 
-extern "C" struct sockaddr_in
-rust_uv_ip4_addr(const char* ip, int port) {
-    struct sockaddr_in addr = uv_ip4_addr(ip, port);
-    return addr;
-}
-extern "C" struct sockaddr_in6
-rust_uv_ip6_addr(const char* ip, int port) {
-    return uv_ip6_addr(ip, port);
+extern "C" int
+rust_sockaddr_size() {
+    return sizeof(struct sockaddr_storage);
 }
 
-extern "C" struct sockaddr_in*
-rust_uv_ip4_addrp(const char* ip, int port) {
-  struct sockaddr_in addr = uv_ip4_addr(ip, port);
-  struct sockaddr_in *addrp = (sockaddr_in*)malloc(sizeof(struct sockaddr_in));
-  assert(addrp);
-  memcpy(addrp, &addr, sizeof(struct sockaddr_in));
-  return addrp;
-}
-extern "C" struct sockaddr_in6*
-rust_uv_ip6_addrp(const char* ip, int port) {
-  struct sockaddr_in6 addr = uv_ip6_addr(ip, port);
-  struct sockaddr_in6 *addrp = (sockaddr_in6*)malloc(sizeof(struct sockaddr_in6));
-  assert(addrp);
-  memcpy(addrp, &addr, sizeof(struct sockaddr_in6));
-  return addrp;
+extern "C" struct sockaddr*
+rust_malloc_ip4_addr(char *name, int port) {
+    struct sockaddr_in *addr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
+    memset(addr, 0, sizeof(struct sockaddr_in));
+    assert(addr != NULL);
+    addr->sin_port = htons(port);
+    assert(uv_inet_pton(AF_INET, name, &addr->sin_addr) == 0);
+    addr->sin_family = AF_INET;
+    return (struct sockaddr*) addr;
 }
 
-extern "C" struct sockaddr_storage *
-rust_uv_malloc_sockaddr_storage() {
-    struct sockaddr_storage *ss = (sockaddr_storage *)malloc(sizeof(struct sockaddr_storage));
-    return ss;
+extern "C" struct sockaddr*
+rust_malloc_ip6_addr(char *name, int port) {
+    struct sockaddr_in6 *addr = (struct sockaddr_in6*) malloc(sizeof(struct sockaddr_in6));
+    memset(addr, 0, sizeof(struct sockaddr));
+    assert(addr != NULL);
+    addr->sin6_port = htons(port);
+    assert(uv_inet_pton(AF_INET6, name, &addr->sin6_addr) == 0);
+    addr->sin6_family = AF_INET6;
+    return (struct sockaddr*) addr;
 }
 
-extern "C" void
-rust_uv_free_sockaddr_storage(struct sockaddr_storage *ss) {
-    free(ss);
-}
-
-extern "C" void
-rust_uv_free_ip4_addr(sockaddr_in *addrp) {
-  free(addrp);
-}
-
-extern "C" void
-rust_uv_free_ip6_addr(sockaddr_in6 *addrp) {
-  free(addrp);
-}
 extern "C" unsigned int
-rust_uv_ip4_port(struct sockaddr_in* src) {
+rust_ip4_port(struct sockaddr_in* src) {
     return ntohs(src->sin_port);
 }
 extern "C" unsigned int
-rust_uv_ip6_port(struct sockaddr_in6* src) {
+rust_ip6_port(struct sockaddr_in6* src) {
     return ntohs(src->sin6_port);
 }
 
 extern "C" int
-rust_uv_is_ipv4_sockaddr(sockaddr* addr) {
+rust_is_ipv4_sockaddr(sockaddr* addr) {
     return addr->sa_family == AF_INET;
 }
 
 extern "C" int
-rust_uv_is_ipv6_sockaddr(sockaddr* addr) {
+rust_is_ipv6_sockaddr(sockaddr* addr) {
     return addr->sa_family == AF_INET6;
-}
-
-extern "C" bool
-rust_uv_is_ipv4_addrinfo(addrinfo* input) {
-    return input->ai_family == AF_INET;
-}
-
-extern "C" bool
-rust_uv_is_ipv6_addrinfo(addrinfo* input) {
-    return input->ai_family == AF_INET6;
-}
-extern "C" addrinfo*
-rust_uv_get_next_addrinfo(addrinfo* input) {
-    return input->ai_next;
-}
-extern "C" sockaddr_in*
-rust_uv_addrinfo_as_sockaddr_in(addrinfo* input) {
-    return (sockaddr_in*)input->ai_addr;
-}
-extern "C" sockaddr_in6*
-rust_uv_addrinfo_as_sockaddr_in6(addrinfo* input) {
-    return (sockaddr_in6*)input->ai_addr;
 }
 
 extern "C" uintptr_t
