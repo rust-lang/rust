@@ -14,8 +14,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-use std::vec;
-
 pub fn expand_deriving_zero(cx: @ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
@@ -62,22 +60,22 @@ fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         cx.ident_of("Zero"),
         cx.ident_of("zero")
     ];
-    let zero_call = cx.expr_call_global(span, zero_ident.clone(), ~[]);
+    let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), ~[]);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
             match *summary {
-                Left(count) => {
-                    if count == 0 {
+                Unnamed(ref fields) => {
+                    if fields.is_empty() {
                         cx.expr_ident(span, substr.type_ident)
                     } else {
-                        let exprs = vec::from_elem(count, zero_call);
+                        let exprs = fields.map(|sp| zero_call(*sp));
                         cx.expr_call_ident(span, substr.type_ident, exprs)
                     }
                 }
-                Right(ref fields) => {
-                    let zero_fields = do fields.map |ident| {
-                        cx.field_imm(span, *ident, zero_call)
+                Named(ref fields) => {
+                    let zero_fields = do fields.map |&(ident, span)| {
+                        cx.field_imm(span, ident, zero_call(span))
                     };
                     cx.expr_struct_ident(span, substr.type_ident, zero_fields)
                 }

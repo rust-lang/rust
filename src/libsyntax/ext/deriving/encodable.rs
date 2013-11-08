@@ -123,11 +123,11 @@ fn encodable_substructure(cx: @ExtCtxt, span: Span,
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = ~[];
             for (i, f) in fields.iter().enumerate() {
-                let (name, val) = match *f {
-                    (Some(id), e, _) => (cx.str_of(id), e),
-                    (None, e, _) => (format!("_field{}", i).to_managed(), e)
+                let name = match f.name {
+                    Some(id) => cx.str_of(id),
+                    None => format!("_field{}", i).to_managed()
                 };
-                let enc = cx.expr_method_call(span, val, encode, ~[blkencoder]);
+                let enc = cx.expr_method_call(span, f.self_, encode, ~[blkencoder]);
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
                 let call = cx.expr_method_call(span, blkencoder,
                                                emit_struct_field,
@@ -154,8 +154,7 @@ fn encodable_substructure(cx: @ExtCtxt, span: Span,
             let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
             let mut stmts = ~[];
             for (i, f) in fields.iter().enumerate() {
-                let val = match *f { (_, e, _) => e };
-                let enc = cx.expr_method_call(span, val, encode, ~[blkencoder]);
+                let enc = cx.expr_method_call(span, f.self_, encode, ~[blkencoder]);
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
                 let call = cx.expr_method_call(span, blkencoder,
                                                emit_variant_arg,
