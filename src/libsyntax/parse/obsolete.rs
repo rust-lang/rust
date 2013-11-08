@@ -40,7 +40,8 @@ pub enum ObsoleteSyntax {
     ObsoleteEmptyImpl,
     ObsoleteLoopAsContinue,
     ObsoleteEnumWildcard,
-    ObsoleteStructWildcard
+    ObsoleteStructWildcard,
+    ObsoleteVecDotDotWildcard
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -122,6 +123,10 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteStructWildcard => (
                 "struct wildcard",
                 "use `..` instead of `_` for matching trailing struct fields"
+            ),
+            ObsoleteVecDotDotWildcard => (
+                "vec slice wildcard",
+                "use `..` instead of `.._` for matching slices"
             ),
         };
 

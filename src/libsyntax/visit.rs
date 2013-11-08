@@ -375,7 +375,7 @@ pub fn walk_pat<E:Clone, V:Visitor<E>>(visitor: &mut V, pattern: &Pat, env: E) {
             visitor.visit_expr(lower_bound, env.clone());
             visitor.visit_expr(upper_bound, env)
         }
-        PatWild => (),
+        PatWild | PatWildMulti => (),
         PatVec(ref prepattern, ref slice_pattern, ref postpatterns) => {
             for prepattern in prepattern.iter() {
                 visitor.visit_pat(*prepattern, env.clone())
