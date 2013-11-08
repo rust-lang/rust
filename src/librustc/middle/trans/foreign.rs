@@ -32,7 +32,7 @@ use syntax::codemap::Span;
 use syntax::{ast};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;
-use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
+use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System,
                   Cdecl, Aapcs, C, AbiSet};
 use util::ppaux::{Repr, UserString};
 use middle::trans::type_::Type;
@@ -75,8 +75,9 @@ struct LlvmSignature {
 
 pub fn llvm_calling_convention(ccx: &mut CrateContext,
                                abis: AbiSet) -> Option<CallConv> {
+    let os = ccx.sess.targ_cfg.os;
     let arch = ccx.sess.targ_cfg.arch;
-    abis.for_arch(arch).map(|abi| {
+    abis.for_target(os, arch).map(|abi| {
         match abi {
             RustIntrinsic => {
                 // Intrinsics are emitted by monomorphic fn
@@ -88,6 +89,9 @@ pub fn llvm_calling_convention(ccx: &mut CrateContext,
                 ccx.sess.unimpl(
                     format!("Foreign functions with Rust ABI"));
             }
+
+            // It's the ABI's job to select this, not us.
+            System => ccx.sess.bug("System abi should be selected elsewhere"),
 
             Stdcall => lib::llvm::X86StdcallCallConv,
             Fastcall => lib::llvm::X86FastcallCallConv,

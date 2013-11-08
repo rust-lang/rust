@@ -11,6 +11,9 @@
 use std::to_bytes;
 
 #[deriving(Eq)]
+pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
+
+#[deriving(Eq)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -24,6 +27,7 @@ pub enum Abi {
     // Multiplatform ABIs second
     Rust,
     C,
+    System,
     RustIntrinsic,
 }
 
@@ -76,6 +80,7 @@ static AbiDatas: &'static [AbiData] = &[
     // adjusting the indices below.
     AbiData {abi: Rust, name: "Rust", abi_arch: RustArch},
     AbiData {abi: C, name: "C", abi_arch: AllArch},
+    AbiData {abi: System, name: "system", abi_arch: AllArch},
     AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
 ];
 
@@ -124,6 +129,14 @@ impl Abi {
 
     pub fn name(&self) -> &'static str {
         self.data().name
+    }
+
+    pub fn for_target(&self, os: Os, arch: Architecture) -> Abi {
+        match (*self, os, arch) {
+            (System, OsWin32, X86) => Stdcall,
+            (System, _, _) => C,
+            (me, _, _) => me,
+        }
     }
 }
 
@@ -196,7 +209,7 @@ impl AbiSet {
         self.bits == 0
     }
 
-    pub fn for_arch(&self, arch: Architecture) -> Option<Abi> {
+    pub fn for_target(&self, os: Os, arch: Architecture) -> Option<Abi> {
         // NB---Single platform ABIs come first
 
         let mut res = None;
@@ -210,7 +223,7 @@ impl AbiSet {
             }
         };
 
-        res
+        res.map(|r| r.for_target(os, arch))
     }
 
     pub fn check_valid(&self) -> Option<(Abi, Abi)> {
@@ -345,6 +358,11 @@ fn cannot_combine_rust_intrinsic_and_cdecl() {
 }
 
 #[test]
+fn can_combine_system_and_cdecl() {
+    can_combine(System, Cdecl);
+}
+
+#[test]
 fn can_combine_c_and_stdcall() {
     can_combine(C, Stdcall);
 }
@@ -382,36 +400,41 @@ fn abi_to_str_rust() {
 #[test]
 fn indices_are_correct() {
     for (i, abi_data) in AbiDatas.iter().enumerate() {
-        assert!(i == abi_data.abi.index());
+        assert_eq!(i, abi_data.abi.index());
     }
 
     let bits = 1 << (X86 as u32);
     let bits = bits | 1 << (X86_64 as u32);
-    assert!(IntelBits == bits);
+    assert_eq!(IntelBits, bits);
 
     let bits = 1 << (Arm as u32);
-    assert!(ArmBits == bits);
+    assert_eq!(ArmBits, bits);
 }
 
 #[cfg(test)]
-fn check_arch(abis: &[Abi], arch: Architecture, expect: Option<Abi>) {
+fn get_arch(abis: &[Abi], os: Os, arch: Architecture) -> Option<Abi> {
     let mut set = AbiSet::empty();
     for &abi in abis.iter() {
         set.add(abi);
     }
-    let r = set.for_arch(arch);
-    assert!(r == expect);
+    set.for_target(os, arch)
 }
 
 #[test]
 fn pick_multiplatform() {
-    check_arch([C, Cdecl], X86, Some(Cdecl));
-    check_arch([C, Cdecl], X86_64, Some(Cdecl));
-    check_arch([C, Cdecl], Arm, Some(C));
+    assert_eq!(get_arch([C, Cdecl], OsLinux, X86), Some(Cdecl));
+    assert_eq!(get_arch([C, Cdecl], OsLinux, X86_64), Some(Cdecl));
+    assert_eq!(get_arch([C, Cdecl], OsLinux, Arm), Some(C));
 }
 
 #[test]
 fn pick_uniplatform() {
-    check_arch([Stdcall], X86, Some(Stdcall));
-    check_arch([Stdcall], Arm, None);
+    assert_eq!(get_arch([Stdcall], OsLinux, X86), Some(Stdcall));
+    assert_eq!(get_arch([Stdcall], OsLinux, Arm), None);
+    assert_eq!(get_arch([System], OsLinux, X86), Some(C));
+    assert_eq!(get_arch([System], OsWin32, X86), Some(Stdcall));
+    assert_eq!(get_arch([System], OsWin32, X86_64), Some(C));
+    assert_eq!(get_arch([System], OsWin32, Arm), Some(C));
+    assert_eq!(get_arch([Stdcall], OsWin32, X86), Some(Stdcall));
+    assert_eq!(get_arch([Stdcall], OsWin32, X86_64), Some(Stdcall));
 }

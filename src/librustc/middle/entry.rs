@@ -11,6 +11,7 @@
 
 use driver::session;
 use driver::session::Session;
+use syntax::abi;
 use syntax::ast::{Crate, NodeId, item, item_fn};
 use syntax::ast_map;
 use syntax::attr;
@@ -48,7 +49,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
 
     // FIXME #4404 android JNI hacks
     if *session.building_library &&
-        session.targ_cfg.os != session::OsAndroid {
+        session.targ_cfg.os != abi::OsAndroid {
         // No need to find a main function
         return;
     }
@@ -151,7 +152,7 @@ fn configure_main(this: &mut EntryContext) {
         } else {
             // If we *are* building a library, then we're on android where we still might
             // optionally want to translate main $4404
-            assert_eq!(this.session.targ_cfg.os, session::OsAndroid);
+            assert_eq!(this.session.targ_cfg.os, abi::OsAndroid);
         }
     }
 }
