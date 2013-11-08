@@ -800,7 +800,6 @@ fn check_impl_methods_against_trait(ccx: @mut CrateCtxt,
  * - impl_m_body_id: id of the method body
  * - trait_m: the method in the trait
  * - trait_substs: the substitutions used on the type of the trait
- * - self_ty: the self type of the impl
  */
 pub fn compare_impl_method(tcx: ty::ctxt,
                            impl_generics: &ty::Generics,
@@ -1062,8 +1061,8 @@ impl FnCtxt {
 impl RegionScope for @mut infer::InferCtxt {
     fn anon_regions(&self,
                     span: Span,
-                    count: uint) -> Option<~[ty::Region]> {
-        Some(vec::from_fn(
+                    count: uint) -> Result<~[ty::Region], ()> {
+        Ok(vec::from_fn(
                 count,
                 |_| self.next_region_var(infer::MiscVariable(span))))
     }

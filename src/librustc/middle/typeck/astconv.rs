@@ -116,7 +116,7 @@ pub fn ast_region_to_region(
     r
 }
 
-pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
+fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     default_span: Span,
@@ -129,14 +129,14 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
 
         None => {
             match rscope.anon_regions(default_span, 1) {
-                None => {
+                Err(()) => {
                     debug!("optional region in illegal location");
                     this.tcx().sess.span_err(
                         default_span, "missing lifetime specifier");
                     ty::ReStatic
                 }
 
-                Some(rs) => {
+                Ok(rs) => {
                     rs[0]
                 }
             }
@@ -178,7 +178,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         let anon_regions =
             rscope.anon_regions(path.span, expected_num_region_params);
 
-        if supplied_num_region_params != 0 || anon_regions.is_none() {
+        if supplied_num_region_params != 0 || anon_regions.is_err() {
             tcx.sess.span_err(
                 path.span,
                 format!("wrong number of lifetime parameters: \
@@ -188,9 +188,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Some(v) => opt_vec::from(v),
-            None => opt_vec::from(vec::from_fn(expected_num_region_params,
-                                               |_| ty::ReStatic)) // hokey
+            Ok(v) => opt_vec::from(v),
+            Err(()) => opt_vec::from(vec::from_fn(expected_num_region_params,
+                                                  |_| ty::ReStatic)) // hokey
         }
     };
 
@@ -277,8 +277,7 @@ pub static NO_REGIONS: uint = 1;
 pub static NO_TPS: uint = 2;
 
 // Parses the programmer's textual representation of a type into our
-// internal notion of a type. `getter` is a function that returns the type
-// corresponding to a definition ID:
+// internal notion of a type.
 pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 

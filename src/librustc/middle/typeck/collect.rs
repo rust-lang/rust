@@ -517,17 +517,17 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
     let tcx = ccx.tcx;
     debug!("convert: item {} with id {}", tcx.sess.str_of(it.ident), it.id);
     match it.node {
-        // These don't define types.
-        ast::item_foreign_mod(_) | ast::item_mod(_) => {}
-        ast::item_enum(ref enum_definition, ref generics) => {
-            ensure_no_ty_param_bounds(ccx, it.span, generics, "enumeration");
-            let tpt = ty_of_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, tpt.ty);
-            get_enum_variant_types(ccx,
-                                   tpt.ty,
-                                   enum_definition.variants,
-                                   generics);
-        }
+      // These don't define types.
+      ast::item_foreign_mod(_) | ast::item_mod(_) => {}
+      ast::item_enum(ref enum_definition, ref generics) => {
+          ensure_no_ty_param_bounds(ccx, it.span, generics, "enumeration");
+          let tpt = ty_of_item(ccx, it);
+          write_ty_to_tcx(tcx, it.id, tpt.ty);
+          get_enum_variant_types(ccx,
+                                 tpt.ty,
+                                 enum_definition.variants,
+                                 generics);
+      }
       ast::item_impl(ref generics, ref opt_trait_ref, ref selfty, ref ms) => {
         let i_ty_generics = ty_generics(ccx, generics, 0);
         let selfty = ccx.to_ty(&ExplicitRscope, selfty);

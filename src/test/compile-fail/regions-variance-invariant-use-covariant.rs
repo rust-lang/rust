@@ -18,9 +18,12 @@ struct Invariant<'a> {
     f: &'static mut &'a int
 }
 
-fn use_<'a>(c: Invariant<'a>) {
-    // For this assignment to be legal, Invariant<'a> <: Invariant<'static>,
-    // which (if Invariant were covariant) would require 'a <= 'static.
+fn use_<'b>(c: Invariant<'b>) {
+
+    // For this assignment to be legal, Invariant<'b> <: Invariant<'static>.
+    // Since 'b <= 'static, this would be true if Invariant were covariant
+    // with respect to its parameter 'a.
+
     let _: Invariant<'static> = c; //~ ERROR mismatched types
 }
 

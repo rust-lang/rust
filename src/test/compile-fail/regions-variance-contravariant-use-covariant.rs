@@ -8,26 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that an invariant region parameter used in a contravariant way
-// yields an error.
+// Test that a type which is covariant with respect to its region
+// parameter yields an error when used in a contravariant way.
 //
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-struct Invariant<'a> {
-    f: &'static mut &'a int
+// This is covariant with respect to 'a, meaning that
+// Covariant<'foo> <: Covariant<'static> because
+// 'foo <= 'static
+struct Contravariant<'a> {
+    f: &'a int
 }
 
-fn use_<'short,'long>(c: Invariant<'long>,
+fn use_<'short,'long>(c: Contravariant<'short>,
                       s: &'short int,
                       l: &'long int,
                       _where:Option<&'short &'long ()>) {
 
-    // Test whether Invariant<'long> <: Invariant<'short>.  Since
-    // 'short <= 'long, this would be true if the Invariant type were
-    // contravariant with respect to its parameter 'a.
+    // Test whether Contravariant<'short> <: Contravariant<'long>.  Since
+    // 'short <= 'long, this would be true if the Contravariant type were
+    // covariant with respect to its parameter 'a.
 
-    let _: Invariant<'short> = c; //~ ERROR lifetime mistach
+    let _: Contravariant<'long> = c; //~ ERROR mismatched types
+    //~^ ERROR  cannot infer an appropriate lifetime
 }
 
-fn main() { }
+fn main() {}
