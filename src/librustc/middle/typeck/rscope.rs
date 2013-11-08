@@ -16,11 +16,21 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 
+/// Defines strategies for handling regions that are omitted.  For
+/// example, if one writes the type `&Foo`, then the lifetime of of
+/// this borrowed pointer has been omitted. When converting this
+/// type, the generic functions in astconv will invoke `anon_regions`
+/// on the provided region-scope to decide how to translate this
+/// omitted region.
+///
+/// It is not always legal to omit regions, therefore `anon_regions`
+/// can return `Err(())` to indicate that this is not a scope in which
+/// regions can legally be omitted.
 pub trait RegionScope {
     fn anon_regions(&self,
                     span: Span,
                     count: uint)
-                    -> Option<~[ty::Region]>;
+                    -> Result<~[ty::Region], ()>;
 }
 
 // A scope in which all regions must be explicitly named
@@ -30,11 +40,13 @@ impl RegionScope for ExplicitRscope {
     fn anon_regions(&self,
                     _span: Span,
                     _count: uint)
-                    -> Option<~[ty::Region]> {
-        None
+                    -> Result<~[ty::Region], ()> {
+        Err(())
     }
 }
 
+/// A scope in which we generate anonymous, late-bound regions for
+/// omitted regions. This occurs in function signatures.
 pub struct BindingRscope {
     binder_id: ast::NodeId,
     anon_bindings: @mut uint
@@ -53,11 +65,11 @@ impl RegionScope for BindingRscope {
     fn anon_regions(&self,
                     _: Span,
                     count: uint)
-                    -> Option<~[ty::Region]> {
+                    -> Result<~[ty::Region], ()> {
         let idx = *self.anon_bindings;
         *self.anon_bindings += count;
-        Some(vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
-                                                     ty::BrAnon(idx + i))))
+        Ok(vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
+                                                   ty::BrAnon(idx + i))))
     }
 }
 

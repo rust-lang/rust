@@ -218,10 +218,10 @@ pub struct ItemVariances {
 
 #[deriving(Clone, Eq, Decodable, Encodable)]
 pub enum Variance {
-    Covariant,
-    Invariant,
-    Contravariant,
-    Bivariant,
+    Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
+    Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
+    Contravariant,  // T<A> <: T<B> iff B <: A -- e.g., function param type
+    Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
 #[deriving(Decodable, Encodable)]

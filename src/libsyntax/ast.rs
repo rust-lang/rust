@@ -259,12 +259,6 @@ pub enum DefRegion {
     DefFreeRegion(/* block scope */ NodeId, /* lifetime decl */ NodeId),
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
-pub struct DefNamedRegion {
-    node_id: NodeId,
-    depth: uint,
-}
-
 // The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
 pub type CrateConfig = ~[@MetaItem];

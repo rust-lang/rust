@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a type which is contravariant with respect to its region
-// parameter yields an error when used in a covariant way.
+// Test that a type which is covariant with respect to its region
+// parameter yields an error when used in a contravariant way.
 //
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
@@ -21,18 +21,17 @@ struct Covariant<'a> {
     f: extern "Rust" fn(&'a int)
 }
 
-fn use_<'a>(c: Covariant<'a>) {
-    let x = 3;
+fn use_<'short,'long>(c: Covariant<'long>,
+                      s: &'short int,
+                      l: &'long int,
+                      _where:Option<&'short &'long ()>) {
 
-    // 'b winds up being inferred to 'a because
-    // Covariant<'a> <: Covariant<'b> => 'a <= 'b
-    //
-    // Borrow checker then reports an error because `x` does not
-    // have the lifetime 'a.
-    collapse(&x, c); //~ ERROR borrowed value does not live long enough
+    // Test whether Covariant<'long> <: Covariant<'short>.  Since
+    // 'short <= 'long, this would be true if the Covariant type were
+    // contravariant with respect to its parameter 'a.
 
-
-    fn collapse<'b>(x: &'b int, c: Covariant<'b>) { }
+    let _: Covariant<'short> = c; //~ ERROR mismatched types
+    //~^ ERROR  cannot infer an appropriate lifetime
 }
 
 fn main() {}

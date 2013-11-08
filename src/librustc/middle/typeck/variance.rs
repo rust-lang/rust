@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,13 +15,137 @@ algorithm is taken from Section 4 of the paper "Taming the Wildcards:
 Combining Definition- and Use-Site Variance" published in PLDI'11 and
 written by Altidor et al., and hereafter referred to as The Paper.
 
+This inference is explicitly designed *not* to consider the uses of
+types within code. To determine the variance of type parameters
+defined on type `X`, we only consider the definition of the type `X`
+and the definitions of any types it references.
+
+We only infer variance for type parameters found on *types*: structs,
+enums, and traits. We do not infer variance for type parameters found
+on fns or impls. This is because those things are not type definitions
+and variance doesn't really make sense in that context.
+
+It is worth covering what variance means in each case. For structs and
+enums, I think it is fairly straightforward. The variance of the type
+or lifetime parameters defines whether `T<A>` is a subtype of `T<B>`
+(resp. `T<'a>` and `T<'b>`) based on the relationship of `A` and `B`
+(resp. `'a` and `'b`). (FIXME #3598 -- we do not currently make use of
+the variances we compute for type parameters.)
+
+### Variance on traits
+
+The meaning of variance for trait parameters is more subtle and worth
+expanding upon. There are in fact two uses of the variance values we
+compute.
+
+#### Trait variance and object types
+
+The first is for object types. Just as with structs and enums, we can
+decide the subtyping relationship between two object types `&Trait<A>`
+and `&Trait<B>` based on the relationship of `A` and `B`. Note that
+for object types we ignore the `Self` type parameter -- it is unknown,
+and the nature of dynamic dispatch ensures that we will always call a
+function that is expected the appropriate `Self` type. However, we
+must be careful with the other type parameters, or else we could end
+up calling a function that is expecting one type but provided another.
+
+To see what I mean, consider a trait like so:
+
+    trait ConvertTo<A> {
+        fn convertTo(&self) -> A;
+    }
+
+Intuitively, If we had one object `O=&ConvertTo<Object>` and another
+`S=&ConvertTo<String>`, then `S <: O` because `String <: Object`
+(presuming Java-like "string" and "object" types, my go to examples
+for subtyping). The actual algorithm would be to compare the
+(explicit) type parameters pairwise respecting their variance: here,
+the type parameter A is covariant (it appears only in a return
+position), and hence we require that `String <: Object`.
+
+You'll note though that we did not consider the binding for the
+(implicit) `Self` type parameter: in fact, it is unknown, so that's
+good. The reason we can ignore that parameter is precisely because we
+don't need to know its value until a call occurs, and at that time (as
+you said) the dynamic nature of virtual dispatch means the code we run
+will be correct for whatever value `Self` happens to be bound to for
+the particular object whose method we called. `Self` is thus different
+from `A`, because the caller requires that `A` be known in order to
+know the return type of the method `convertTo()`. (As an aside, we
+have rules preventing methods where `Self` appears outside of the
+receiver position from being called via an object.)
+
+#### Trait variance and vtable resolution
+
+But traits aren't only used with objects. They're also used when
+deciding whether a given impl satisfies a given trait bound (or should
+be -- FIXME #5781). To set the scene here, imagine I had a function:
+
+    fn convertAll<A,T:ConvertTo<A>>(v: &[T]) {
+        ...
+    }
+
+Now imagine that I have an implementation of `ConvertTo` for `Object`:
+
+    impl ConvertTo<int> for Object { ... }
+
+And I want to call `convertAll` on an array of strings. Suppose
+further that for whatever reason I specifically supply the value of
+`String` for the type parameter `T`:
+
+    let mut vector = ~["string", ...];
+    convertAll::<int, String>(v);
+
+Is this legal? To put another way, can we apply the `impl` for
+`Object` to the type `String`? The answer is yes, but to see why
+we have to expand out what will happen:
+
+- `convertAll` will create a pointer to one of the entries in the
+  vector, which will have type `&String`
+- It will then call the impl of `convertTo()` that is intended
+  for use with objects. This has the type:
+
+      fn(self: &Object) -> int
+
+  It is ok to provide a value for `self` of type `&String` because
+  `&String <: &Object`.
+
+OK, so intuitively we want this to be legal, so let's bring this back
+to variance and see whether we are computing the correct result. We
+must first figure out how to phrase the question "is an impl for
+`Object,int` usable where an impl for `String,int` is expected?"
+
+Maybe it's helpful to think of a dictionary-passing implementation of
+type classes. In that case, `convertAll()` takes an implicit parameter
+representing the impl. In short, we *have* an impl of type:
+
+    V_O = ConvertTo<int> for Object
+
+and the function prototype expects an impl of type:
+
+    V_S = ConvertTo<int> for String
+
+As with any argument, this is legal if the type of the value given
+(`V_O`) is a subtype of the type expected (`V_S`). So is `V_O <: V_S`?
+The answer will depend on the variance of the various parameters. In
+this case, because the `Self` parameter is contravariant and `A` is
+covariant, it means that:
+
+    V_O <: V_S iff
+        int <: int
+        String <: Object
+
+These conditions are satisfied and so we are happy.
+
+### The algorithm
+
 The basic idea is quite straightforward. We iterate over the types
 defined and, for each use of a type parameter X, accumulate a
 constraint indicating that the variance of X must be valid for the
 variance of that use site. We then iteratively refine the variance of
 X until all constraints are met. There is *always* a sol'n, because at
 the limit we can declare all type parameters to be invariant and all
-constriants will be satisfied.
+constraints will be satisfied.
 
 As a simple example, consider:
 
@@ -46,8 +170,8 @@ results are based on a variance lattice defined as follows:
       o      Bottom (invariant)
 
 Based on this lattice, the solution V(A)=+, V(B)=-, V(C)=o is the
-minimal solution (which is what we are looking for; the maximal
-solution is just that all variables are invariant. Not so exciting.).
+optimal solution. Note that there is always a naive solution which
+just declares all variables to be invariant.
 
 You may be wondering why fixed-point iteration is required. The reason
 is that the variance of a use site may itself be a function of the
@@ -59,9 +183,12 @@ take the form:
 
 Here the notation V(X) indicates the variance of a type/region
 parameter `X` with respect to its defining class. `Term x Term`
-represents the "variance transform" as defined in the paper -- `V1 x
-V2` is the resulting variance when a use site with variance V2 appears
-inside a use site with variance V1.
+represents the "variance transform" as defined in the paper:
+
+  If the variance of a type variable `X` in type expression `E` is `V2`
+  and the definition-site variance of the [corresponding] type parameter
+  of a class `C` is `V1`, then the variance of `X` in the type expression
+  `C<E>` is `V3 = V1.xform(V2)`.
 
 */
 
@@ -128,9 +255,13 @@ struct TermsContext<'self> {
     tcx: ty::ctxt,
     arena: &'self Arena,
 
+    empty_variances: @ty::ItemVariances,
+
     // Maps from the node id of a type/generic parameter to the
     // corresponding inferred index.
     inferred_map: HashMap<ast::NodeId, InferredIndex>,
+
+    // Maps from an InferredIndex to the info for that variable.
     inferred_infos: ~[InferredInfo<'self>],
 }
 
@@ -153,6 +284,12 @@ fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
         arena: arena,
         inferred_map: HashMap::new(),
         inferred_infos: ~[],
+
+        // cache and share the variance struct used for items with
+        // no type/region parameters
+        empty_variances: @ty::ItemVariances { self_param: None,
+                                              type_params: opt_vec::Empty,
+                                              region_params: opt_vec::Empty }
     };
 
     visit::walk_crate(&mut terms_cx, crate, ());
@@ -228,11 +365,7 @@ impl<'self> Visitor<()> for TermsContext<'self> {
                 if self.num_inferred() == inferreds_on_entry {
                     let newly_added = self.tcx.item_variance_map.insert(
                         ast_util::local_def(item.id),
-                        @ty::ItemVariances {
-                            self_param: None,
-                            type_params: opt_vec::Empty,
-                            region_params: opt_vec::Empty
-                        });
+                        self.empty_variances);
                     assert!(newly_added);
                 }
 
@@ -262,6 +395,7 @@ impl<'self> Visitor<()> for TermsContext<'self> {
 struct ConstraintContext<'self> {
     terms_cx: TermsContext<'self>,
 
+    // These are pointers to common `ConstantTerm` instances
     covariant: VarianceTermPtr<'self>,
     contravariant: VarianceTermPtr<'self>,
     invariant: VarianceTermPtr<'self>,
@@ -309,7 +443,7 @@ impl<'self> Visitor<()> for ConstraintContext<'self> {
                 // annoyingly takes it upon itself to run off and
                 // evaluate the discriminants eagerly (*grumpy* that's
                 // not the typical pattern). This results in double
-                // error messagees because typeck goes off and does
+                // error messages because typeck goes off and does
                 // this at a later time. All we really care about is
                 // the types of the variant arguments, so we just call
                 // `ty::VariantInfo::from_ast_variant()` ourselves
@@ -340,8 +474,14 @@ impl<'self> Visitor<()> for ConstraintContext<'self> {
                 for method in methods.iter() {
                     match method.transformed_self_ty {
                         Some(self_ty) => {
-                            // The self type is a parameter, so its type
-                            // should be considered contravariant:
+                            // The implicit self parameter is basically
+                            // equivalent to a normal parameter declared
+                            // like:
+                            //
+                            //     self : self_ty
+                            //
+                            // where self_ty is `&Self` or `&mut Self`
+                            // or whatever.
                             self.add_constraints_from_ty(
                                 self_ty, self.contravariant);
                         }
@@ -465,6 +605,8 @@ impl<'self> ConstraintContext<'self> {
         }
     }
 
+    /// Adds constraints appropriate for an instance of `ty` appearing
+    /// in a context with ambient variance `variance`
     fn add_constraints_from_ty(&mut self,
                                ty: ty::t,
                                variance: VarianceTermPtr<'self>) {
@@ -558,6 +700,8 @@ impl<'self> ConstraintContext<'self> {
         }
     }
 
+    /// Adds constraints appropriate for a vector with vstore `vstore`
+    /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_vstore(&mut self,
                                    vstore: ty::vstore,
                                    variance: VarianceTermPtr<'self>) {
@@ -572,6 +716,8 @@ impl<'self> ConstraintContext<'self> {
         }
     }
 
+    /// Adds constraints appropriate for a nominal type (enum, struct,
+    /// object, etc) appearing in a context with ambient variance `variance`
     fn add_constraints_from_substs(&mut self,
                                    def_id: ast::DefId,
                                    generics: &ty::Generics,
@@ -599,6 +745,8 @@ impl<'self> ConstraintContext<'self> {
         }
     }
 
+    /// Adds constraints appropriate for a function with signature
+    /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
                                 sig: &ty::FnSig,
                                 variance: VarianceTermPtr<'self>) {
@@ -609,6 +757,8 @@ impl<'self> ConstraintContext<'self> {
         self.add_constraints_from_ty(sig.output, variance);
     }
 
+    /// Adds constraints appropriate for a region appearing in a
+    /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
                                    region: ty::Region,
                                    variance: VarianceTermPtr<'self>) {
@@ -636,6 +786,8 @@ impl<'self> ConstraintContext<'self> {
         }
     }
 
+    /// Adds constraints appropriate for a mutability-type pair
+    /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_mt(&mut self,
                                mt: &ty::mt,
                                variance: VarianceTermPtr<'self>) {
@@ -657,13 +809,15 @@ impl<'self> ConstraintContext<'self> {
  *
  * The final phase iterates over the constraints, refining the variance
  * for each inferred until a fixed point is reached. This will be the
- * maximal solution to the constraints. The final variance for each
+ * optimal solution to the constraints. The final variance for each
  * inferred is then written into the `variance_map` in the tcx.
  */
 
 struct SolveContext<'self> {
     terms_cx: TermsContext<'self>,
     constraints: ~[Constraint<'self>],
+
+    // Maps from an InferredIndex to the inferred value for that variable.
     solutions: ~[ty::Variance]
 }
 
@@ -715,7 +869,12 @@ impl<'self> SolveContext<'self> {
         // Collect all the variances for a particular item and stick
         // them into the variance map. We rely on the fact that we
         // generate all the inferreds for a particular item
-        // consecutively.
+        // consecutively (that is, we collect solutions for an item
+        // until we see a new item id, and we assume (1) the solutions
+        // are in the same order as the type parameters were declared
+        // and (2) all solutions or a given item appear before a new
+        // item id).
+
         let tcx = self.terms_cx.tcx;
         let item_variance_map = tcx.item_variance_map;
         let solutions = &self.solutions;
