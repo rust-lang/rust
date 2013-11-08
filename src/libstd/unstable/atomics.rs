@@ -23,40 +23,46 @@ use cast;
 use option::{Option,Some,None};
 use libc::c_void;
 use ops::Drop;
+use util::NonCopyable;
 
 /**
  * A simple atomic flag, that can be set and cleared. The most basic atomic type.
  */
 pub struct AtomicFlag {
-    priv v: int
+    priv v: int,
+    priv nocopy: NonCopyable
 }
 
 /**
  * An atomic boolean type.
  */
 pub struct AtomicBool {
-    priv v: uint
+    priv v: uint,
+    priv nocopy: NonCopyable
 }
 
 /**
  * A signed atomic integer type, supporting basic atomic arithmetic operations
  */
 pub struct AtomicInt {
-    priv v: int
+    priv v: int,
+    priv nocopy: NonCopyable
 }
 
 /**
  * An unsigned atomic integer type, supporting basic atomic arithmetic operations
  */
 pub struct AtomicUint {
-    priv v: uint
+    priv v: uint,
+    priv nocopy: NonCopyable
 }
 
 /**
  * An unsafe atomic pointer. Only supports basic atomic operations
  */
 pub struct AtomicPtr<T> {
-    priv p: *mut T
+    priv p: *mut T,
+    priv nocopy: NonCopyable
 }
 
 /**
@@ -75,15 +81,15 @@ pub enum Ordering {
     SeqCst
 }
 
-pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0 };
-pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0 };
-pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0 };
-pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0 };
+pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0, nocopy: NonCopyable };
+pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nocopy: NonCopyable };
+pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nocopy: NonCopyable };
+pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nocopy: NonCopyable };
 
 impl AtomicFlag {
 
     pub fn new() -> AtomicFlag {
-        AtomicFlag { v: 0 }
+        AtomicFlag { v: 0, nocopy: NonCopyable }
     }
 
     /**
@@ -106,7 +112,7 @@ impl AtomicFlag {
 
 impl AtomicBool {
     pub fn new(v: bool) -> AtomicBool {
-        AtomicBool { v: if v { 1 } else { 0 } }
+        AtomicBool { v: if v { 1 } else { 0 }, nocopy: NonCopyable }
     }
 
     #[inline]
@@ -171,7 +177,7 @@ impl AtomicBool {
 
 impl AtomicInt {
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt { v:v }
+        AtomicInt { v:v, nocopy: NonCopyable }
     }
 
     #[inline]
@@ -209,7 +215,7 @@ impl AtomicInt {
 
 impl AtomicUint {
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v:v }
+        AtomicUint { v:v, nocopy: NonCopyable }
     }
 
     #[inline]
@@ -247,7 +253,7 @@ impl AtomicUint {
 
 impl<T> AtomicPtr<T> {
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p:p }
+        AtomicPtr { p:p, nocopy: NonCopyable }
     }
 
     #[inline]
