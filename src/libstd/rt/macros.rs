@@ -42,8 +42,7 @@ macro_rules! rtassert (
 
 
 macro_rules! rtabort (
-    ($msg:expr $($arg:tt)*) => ( {
-        ::rt::util::abort(format!(concat!(file!(), ":", line!(), " ", $msg)
-                                  $($arg)*));
+    ($($arg:tt)*) => ( {
+        ::rt::util::abort(format!($($arg)*));
     } )
 )

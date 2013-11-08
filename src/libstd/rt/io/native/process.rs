@@ -105,9 +105,9 @@ impl Process {
         Process {
             pid: res.pid,
             handle: res.handle,
-            input: in_pipe.map(|pipe| file::FileDesc::new(pipe.out)),
-            output: out_pipe.map(|pipe| file::FileDesc::new(pipe.input)),
-            error: err_pipe.map(|pipe| file::FileDesc::new(pipe.input)),
+            input: in_pipe.map(|pipe| file::FileDesc::new(pipe.out, true)),
+            output: out_pipe.map(|pipe| file::FileDesc::new(pipe.input, true)),
+            error: err_pipe.map(|pipe| file::FileDesc::new(pipe.input, true)),
             exit_code: None,
         }
     }

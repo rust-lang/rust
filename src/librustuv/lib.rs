@@ -154,6 +154,26 @@ pub trait UvHandle<T> {
     }
 }
 
+pub struct ForbidSwitch {
+    msg: &'static str,
+    sched: uint,
+}
+
+impl ForbidSwitch {
+    fn new(s: &'static str) -> ForbidSwitch {
+        ForbidSwitch {
+            msg: s, sched: Local::borrow(|s: &mut Scheduler| s.sched_id())
+        }
+    }
+}
+
+impl Drop for ForbidSwitch {
+    fn drop(&mut self) {
+        assert!(self.sched == Local::borrow(|s: &mut Scheduler| s.sched_id()),
+                "didnt want a scheduler switch: {}", self.msg);
+    }
+}
+
 pub struct ForbidUnwind {
     msg: &'static str,
     failing_before: bool,
@@ -170,7 +190,7 @@ impl ForbidUnwind {
 impl Drop for ForbidUnwind {
     fn drop(&mut self) {
         assert!(self.failing_before == task::failing(),
-                "failing sadface {}", self.msg);
+                "didnt want an unwind during: {}", self.msg);
     }
 }
 

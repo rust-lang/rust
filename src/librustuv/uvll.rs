@@ -676,9 +676,9 @@ externfn!(fn uv_fs_open(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
 externfn!(fn uv_fs_unlink(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
                           cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_write(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
-                         len: c_uint, offset: i64, cb: uv_fs_cb) -> c_int)
+                         len: size_t, offset: i64, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_read(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
-                        len: c_uint, offset: i64, cb: uv_fs_cb) -> c_int)
+                        len: size_t, offset: i64, cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_close(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
                          cb: uv_fs_cb) -> c_int)
 externfn!(fn uv_fs_stat(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,

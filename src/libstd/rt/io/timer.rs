@@ -160,11 +160,7 @@ mod test {
             let port = timer.oneshot(100000000000);
             timer.sleep(1); // this should invalidate the port
 
-            let port = Cell::new(port);
-            let ret = do task::try {
-                port.take().recv();
-            };
-            assert!(ret.is_err());
+            assert_eq!(port.try_recv(), None);
         }
     }
 
