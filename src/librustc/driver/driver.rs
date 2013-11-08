@@ -69,11 +69,11 @@ pub fn source_name(input: &input) -> @str {
 pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        session::OsWin32 =>   @"win32",
-        session::OsMacos =>   @"macos",
-        session::OsLinux =>   @"linux",
-        session::OsAndroid => @"android",
-        session::OsFreebsd => @"freebsd"
+        abi::OsWin32 =>   @"win32",
+        abi::OsMacos =>   @"macos",
+        abi::OsLinux =>   @"linux",
+        abi::OsAndroid => @"android",
+        abi::OsFreebsd => @"freebsd"
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -353,7 +353,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
     // segmented stacks are enabled.  However, unwind info directives in assembly
     // output are OK, so we generate assembly first and then run it through
     // an external assembler.
-    if sess.targ_cfg.os == session::OsWin32 &&
+    if sess.targ_cfg.os == abi::OsWin32 &&
         (sess.opts.output_type == link::output_type_object ||
          sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
@@ -567,19 +567,19 @@ pub fn pretty_print_input(sess: Session,
                         is_expanded);
 }
 
-pub fn get_os(triple: &str) -> Option<session::Os> {
+pub fn get_os(triple: &str) -> Option<abi::Os> {
     for &(name, os) in os_names.iter() {
         if triple.contains(name) { return Some(os) }
     }
     None
 }
-static os_names : &'static [(&'static str, session::Os)] = &'static [
-    ("mingw32", session::OsWin32),
-    ("win32",   session::OsWin32),
-    ("darwin",  session::OsMacos),
-    ("android", session::OsAndroid),
-    ("linux",   session::OsLinux),
-    ("freebsd", session::OsFreebsd)];
+static os_names : &'static [(&'static str, abi::Os)] = &'static [
+    ("mingw32", abi::OsWin32),
+    ("win32",   abi::OsWin32),
+    ("darwin",  abi::OsMacos),
+    ("android", abi::OsAndroid),
+    ("linux",   abi::OsLinux),
+    ("freebsd", abi::OsFreebsd)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {

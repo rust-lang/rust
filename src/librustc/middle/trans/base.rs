@@ -85,7 +85,7 @@ use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -853,7 +853,8 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
+            match fn_ty.abis.for_target(ccx.sess.targ_cfg.os,
+                                        ccx.sess.targ_cfg.arch) {
                 Some(Rust) | Some(RustIntrinsic) => {
                     get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name, did)
                 }
@@ -2312,7 +2313,7 @@ fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast:
     // FIXME #4404 android JNI hacks
     let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == session::OsAndroid));
+                       ccx.sess.targ_cfg.os == OsAndroid));
     if is_entry {
         create_entry_wrapper(ccx, sp, llfn);
     }
@@ -2981,7 +2982,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     // On windows we'd like to export the toplevel cratemap
     // such that we can find it from libstd.
-    if targ_cfg.os == session::OsWin32 && "toplevel" == mapname {
+    if targ_cfg.os == OsWin32 && "toplevel" == mapname {
         lib::llvm::SetLinkage(map, lib::llvm::DLLExportLinkage);
     } else {
         lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
@@ -3157,7 +3158,7 @@ pub fn trans_crate(sess: session::Session,
     // __rust_crate_map_toplevel symbol (extra underscore) which it will
     // subsequently fail to find. So to mitigate that we just introduce
     // an alias from the symbol it expects to the one that actually exists.
-    if ccx.sess.targ_cfg.os == session::OsWin32 &&
+    if ccx.sess.targ_cfg.os == OsWin32 &&
        !*ccx.sess.building_library {
 
         let maptype = val_ty(ccx.crate_map).to_ref();

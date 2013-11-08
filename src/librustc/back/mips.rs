@@ -9,18 +9,18 @@
 // except according to those terms.
 
 use back::target_strs;
-use driver::session;
 use driver::session::sess_os_to_meta_os;
 use metadata::loader::meta_section_name;
+use syntax::abi;
 
-pub fn get_target_strs(target_triple: ~str, target_os: session::Os) -> target_strs::t {
+pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::t {
     return target_strs::t {
         module_asm: ~"",
 
         meta_sect_name: meta_section_name(sess_os_to_meta_os(target_os)).to_owned(),
 
         data_layout: match target_os {
-          session::OsMacos => {
+          abi::OsMacos => {
             ~"e-p:32:32:32" +
                 "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
                 "-f32:32:32-f64:64:64" +
@@ -28,7 +28,7 @@ pub fn get_target_strs(target_triple: ~str, target_os: session::Os) -> target_st
                 "-a0:0:64-n32"
           }
 
-          session::OsWin32 => {
+          abi::OsWin32 => {
             ~"e-p:32:32:32" +
                 "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
                 "-f32:32:32-f64:64:64" +
@@ -36,7 +36,7 @@ pub fn get_target_strs(target_triple: ~str, target_os: session::Os) -> target_st
                 "-a0:0:64-n32"
           }
 
-          session::OsLinux => {
+          abi::OsLinux => {
             ~"e-p:32:32:32" +
                 "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
                 "-f32:32:32-f64:64:64" +
@@ -44,7 +44,7 @@ pub fn get_target_strs(target_triple: ~str, target_os: session::Os) -> target_st
                 "-a0:0:64-n32"
           }
 
-          session::OsAndroid => {
+          abi::OsAndroid => {
             ~"e-p:32:32:32" +
                 "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
                 "-f32:32:32-f64:64:64" +
@@ -52,7 +52,7 @@ pub fn get_target_strs(target_triple: ~str, target_os: session::Os) -> target_st
                 "-a0:0:64-n32"
           }
 
-          session::OsFreebsd => {
+          abi::OsFreebsd => {
             ~"e-p:32:32:32" +
                 "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
                 "-f32:32:32-f64:64:64" +
