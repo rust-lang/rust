@@ -661,7 +661,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:319
-msgid "An _integer literal_ has one of three forms:"
+msgid "An _integer literal_ has one of four forms:"
 msgstr ""
 
 #. type: Bullet: '  * '
@@ -676,6 +676,13 @@ msgstr ""
 msgid ""
 "A _hex literal_ starts with the character sequence `U+0030` `U+0078` (`0x`) "
 "and continues as any mixture hex digits and underscores."
+msgstr ""
+
+#. type: Bullet: '  * '
+#: doc/rust.md:326
+msgid ""
+"An _octal literal_ starts with the character sequence `U+0030` `U+006F` (`0o`) "
+"and continues as any mixture octal digits and underscores."
 msgstr ""
 
 #. type: Bullet: '  * '
@@ -740,6 +747,7 @@ msgid ""
 "123u;                              // type uint\n"
 "123_u;                             // type uint\n"
 "0xff_u8;                           // type u8\n"
+"0o70_i16;                          // type i16\n"
 "0b1111_1111_1001_0000_i32;         // type i32\n"
 "~~~~\n"
 msgstr ""
