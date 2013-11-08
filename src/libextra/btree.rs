@@ -10,8 +10,9 @@
 //
 // btree.rs
 //
-// starting implementation of a btree for rust
-// inspired by github user davidhalperin's gist
+
+//! Starting implementation of a btree for rust.
+//! Structure inspired by github user davidhalperin's gist.
 
 
 use std::util::replace;
