@@ -14,23 +14,25 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-// This is contravariant with respect to 'a, meaning that
-// Contravariant<'foo> <: Contravariant<'static> because
-// 'foo <= 'static
-struct Contravariant<'a> {
-    f: &'a int
+// `S` is contravariant with respect to both parameters.
+struct S<'a, 'b> {
+    f: &'a int,
+    g: &'b int,
 }
 
-fn use_<'short,'long>(c: Contravariant<'short>,
+fn use_<'short,'long>(c: S<'long, 'short>,
                       s: &'short int,
                       l: &'long int,
                       _where:Option<&'short &'long ()>) {
 
-    // Test whether Contravariant<'short> <: Contravariant<'long>.  Since
+    let _: S<'long, 'short> = c; // OK
+    let _: S<'short, 'short> = c; // OK
+
+    // Test whether S<_,'short> <: S<_,'long>.  Since
     // 'short <= 'long, this would be true if the Contravariant type were
     // covariant with respect to its parameter 'a.
 
-    let _: Contravariant<'long> = c; //~ ERROR mismatched types
+    let _: S<'long, 'long> = c; //~ ERROR mismatched types
     //~^ ERROR  cannot infer an appropriate lifetime
 }
 
