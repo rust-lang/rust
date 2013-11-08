@@ -17,7 +17,7 @@ use str::OwnedStr;
 use container::Container;
 use cast;
 use iter::Iterator;
-use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec::{ImmutableVector, MutableVector};
 use to_bytes::IterBytes;
 use option::{Some, None};
 
@@ -154,10 +154,10 @@ impl AsciiCast<Ascii> for char {
 
 /// Trait for copyless casting to an ascii vector.
 pub trait OwnedAsciiCast {
-    /// Take ownership and cast to an ascii vector without trailing zero element.
+    /// Take ownership and cast to an ascii vector.
     fn into_ascii(self) -> ~[Ascii];
 
-    /// Take ownership and cast to an ascii vector without trailing zero element.
+    /// Take ownership and cast to an ascii vector.
     /// Does not perform validation checks.
     unsafe fn into_ascii_nocheck(self) -> ~[Ascii];
 }
@@ -188,10 +188,11 @@ impl OwnedAsciiCast for ~str {
     }
 }
 
-/// Trait for converting an ascii type to a string. Needed to convert `&[Ascii]` to `~str`
+/// Trait for converting an ascii type to a string. Needed to convert
+/// `&[Ascii]` to `&str`.
 pub trait AsciiStr {
     /// Convert to a string.
-    fn to_str_ascii(&self) -> ~str;
+    fn as_str_ascii<'a>(&'a self) -> &'a str;
 
     /// Convert to vector representing a lower cased ascii string.
     fn to_lower(&self) -> ~[Ascii];
@@ -199,15 +200,14 @@ pub trait AsciiStr {
     /// Convert to vector representing a upper cased ascii string.
     fn to_upper(&self) -> ~[Ascii];
 
-    /// Compares two Ascii strings ignoring case
+    /// Compares two Ascii strings ignoring case.
     fn eq_ignore_case(self, other: &[Ascii]) -> bool;
 }
 
 impl<'self> AsciiStr for &'self [Ascii] {
     #[inline]
-    fn to_str_ascii(&self) -> ~str {
-        let cpy = self.to_owned();
-        unsafe { cast::transmute(cpy) }
+    fn as_str_ascii<'a>(&'a self) -> &'a str {
+        unsafe { cast::transmute(*self) }
     }
 
     #[inline]
@@ -443,12 +443,12 @@ mod tests {
         let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
         let v = ~"( ;";              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().to_str_ascii(), ~"abcdef&?#");
-        assert_eq!("abCDef&?#".to_ascii().to_upper().to_str_ascii(), ~"ABCDEF&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), ~"abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), ~"ABCDEF&?#");
 
-        assert_eq!("".to_ascii().to_lower().to_str_ascii(), ~"");
-        assert_eq!("YMCA".to_ascii().to_lower().to_str_ascii(), ~"ymca");
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().to_str_ascii(), ~"ABCDEFXYZ:.;");
+        assert_eq!("".to_ascii().to_lower().into_str(), ~"");
+        assert_eq!("YMCA".to_ascii().to_lower().into_str(), ~"ymca");
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), ~"ABCDEFXYZ:.;");
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -465,7 +465,10 @@ mod tests {
     }
 
     #[test]
-    fn test_ascii_to_str() { assert_eq!(v2ascii!([40, 32, 59]).to_str_ascii(), ~"( ;"); }
+    fn test_ascii_as_str() {
+        let v = v2ascii!([40, 32, 59]);
+        assert_eq!(v.as_str_ascii(), "( ;");
+    }
 
     #[test]
     fn test_ascii_into_str() {
