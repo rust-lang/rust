@@ -330,11 +330,16 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     const char* zone = NULL;
 #if defined(__WIN32__)
     int32_t gmtoff = -timezone;
-    wchar_t wbuffer[64];
-    char buffer[256];
+    wchar_t wbuffer[64] = {0};
+    char buffer[256] = {0};
     // strftime("%Z") can contain non-UTF-8 characters on non-English locale (issue #9418),
-    // so time zone should be converted from UTF-16 string set by wcsftime.
-    if (wcsftime(wbuffer, sizeof(wbuffer) / sizeof(wchar_t), L"%Z", &tm) > 0) {
+    // so time zone should be converted from UTF-16 string.
+    // Since wcsftime depends on setlocale() result,
+    // instead we convert it using MultiByteToWideChar.
+    if (strftime(buffer, sizeof(buffer) / sizeof(char), "%Z", &tm) > 0) {
+        // ANSI -> UTF-16
+        MultiByteToWideChar(CP_ACP, 0, buffer, -1, wbuffer, sizeof(wbuffer) / sizeof(wchar_t));
+        // UTF-16 -> UTF-8
         WideCharToMultiByte(CP_UTF8, 0, wbuffer, -1, buffer, sizeof(buffer), NULL, NULL);
         zone = buffer;
     }
