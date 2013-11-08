@@ -174,6 +174,7 @@ pub trait ast_fold {
     fn fold_pat(&self, p: @Pat) -> @Pat {
         let node = match p.node {
             PatWild => PatWild,
+            PatWildMulti => PatWildMulti,
             PatIdent(binding_mode, ref pth, ref sub) => {
                 PatIdent(binding_mode,
                          self.fold_path(pth),

@@ -545,7 +545,7 @@ fn enter_default<'r>(bcx: @mut Block,
     // Collect all of the matches that can match against anything.
     let matches = do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-          ast::PatWild | ast::PatTup(_) => Some(~[]),
+          ast::PatWild | ast::PatWildMulti | ast::PatTup(_) => Some(~[]),
           ast::PatIdent(_, _, None) if pat_is_binding(dm, p) => Some(~[]),
           _ => None
         }
@@ -2234,7 +2234,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
                 pat.span,
                 format!("vector patterns are never irrefutable!"));
         }
-        ast::PatWild | ast::PatLit(_) | ast::PatRange(_, _) => ()
+        ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) => ()
     }
     return bcx;
 }
