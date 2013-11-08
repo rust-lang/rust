@@ -305,7 +305,7 @@ fn is_four(x: int) -> bool {
 
 There are general signed and unsigned integer types, `int` and `uint`,
 as well as 8-, 16-, 32-, and 64-bit variants, `i8`, `u16`, etc.
-Integers can be written in decimal (`144`), hexadecimal (`0x90`), or
+Integers can be written in decimal (`144`), hexadecimal (`0x90`), octal (`0o70`), or
 binary (`0b10010000`) base. Each integral type has a corresponding literal
 suffix that can be used to indicate the type of a literal: `i` for `int`,
 `u` for `uint`, `i8` for the `i8` type.
