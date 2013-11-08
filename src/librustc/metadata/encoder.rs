@@ -1510,7 +1510,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
                                                               pkg_id),
                 // uses package_id equal to name;
                 // this should never happen here but package_id is an Option
-                // FIX: change package_id in LinkMeta to @str instead of Option<@str>
+                // FIXME (#10370): change package_id in LinkMeta to @str instead of Option<@str>
                 _ => attr::mk_name_value_item_str(@"package_id",
                                                   ecx.link_meta.name)
         };
