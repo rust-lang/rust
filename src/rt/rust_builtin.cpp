@@ -43,12 +43,15 @@ timegm(struct tm *tm)
     char *tz;
 
     tz = getenv("TZ");
+    if (tz)
+        tz = strdup(tz);
     setenv("TZ", "", 1);
     tzset();
     ret = mktime(tm);
-    if (tz)
+    if (tz) {
         setenv("TZ", tz, 1);
-    else
+        free(tz);
+    } else
         unsetenv("TZ");
     tzset();
     return ret;
