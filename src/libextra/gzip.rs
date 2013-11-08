@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -26,17 +26,17 @@
 
 The gzip module supports reading and writing gzip data streams.
 There are two sets of API: the Reader/Writer API for operating data in batches,
-and the stream-style API for compressing and decompressing the whole streams.
+and the stream-style API for compressing and decompressing the whole stream.
 
 The GZipReader and GZipWriter are the API supporting reading and writing
 to the standard Reader and Writer traits.  These are caller-driven functions
-where the caller is responsible to call them in a loop to process all the batches
+where the caller is responsible to call them repeatedly to process all batches
 of data.
 
 The GZip::compress_stream and GZip::decompress_stream are the stream-style API
 that take in a source reader and a destination writer to compress/decompress all
 the data from the source to the destination streams automatically.  It is
-callee-driven with an internal loop running until all data have been processed.
+callee-driven with an internal loop running until all the data have been processed.
 It's more efficient with less buffer copying.
 
 */
@@ -58,13 +58,15 @@ use super::deflate::{DeflateStatusOkay, DeflateStatusDone, InflateStatusDone};
 
 
 /// The buf_size_factor for internal IO buffers.
-pub static MIN_SIZE_FACTOR : uint = 5;      // minimum size factor: 2^5 * 1K = 32K
-pub static DEFAULT_SIZE_FACTOR : uint = 8;  // default size factor: 2^8 * 1K = 256K
+pub static MIN_SIZE_FACTOR : uint = deflate::MIN_SIZE_FACTOR;           // minimum size factor: 2^5 * 1K = 32K
+pub static DEFAULT_SIZE_FACTOR : uint = deflate::DEFAULT_SIZE_FACTOR;   // default size factor: 2^8 * 1K = 256K
 
 /// The number of dictionary probes to use at each compression level (0-9). 0=implies fastest/minimal possible probing, 9=best compression but slowest
-pub static MAX_COMPRESS_LEVEL : uint = 9;
+pub static MAX_COMPRESS_LEVEL : uint = deflate::MAX_COMPRESS_LEVEL;
 pub static DEFAULT_COMPRESS_LEVEL : uint = 6;
 
+
+// GZip format defines
 static HEADER_FIXED_LEN: uint = 10;
 static MAGIC1: u8 = 0x1f;
 static MAGIC2: u8 = 0x8b;
@@ -122,7 +124,7 @@ pub struct GZip {
 
     /// The CRC32 on the original data
     crc32:              u32,
-    /// The original file length mod 2^32
+    /// The original file length mod 2^32, i.e. the lower 4 bytes of a file size value.
     original_size:      u32,
 
     // Misc
@@ -132,7 +134,24 @@ pub struct GZip {
 
 impl GZip {
 
-    /// Initialize a new GZip structure for decompression.  Read in the gzip header.
+    /// Initialize a new GZip structure for compression.
+    /// Write the gzip header to the writer.  The same writer should be passed to subsequent API calls.
+    /// Return the new GZip structure.
+    pub fn compress_init<W: Writer>(writer: &mut W, file_name: &str, mtime: u32, file_size: u32) -> Result<GZip, ~str> {
+        let mut gzip = GZip::new();
+        gzip.mtime = mtime;
+        gzip.filename = if file_name.len() > 0 { Some(file_name.to_owned()) } else { None };
+        // Only handles filename for now.  If other fields like comment or extra fields are needed, add their flags here.
+        gzip.flags |= if gzip.filename.is_some() { FNAME } else { 0 };
+        gzip.original_size = file_size;
+        match gzip.writeHeader(writer).and_then( |_| gzip.writeHeaderExtra(writer) ) {
+            Ok(_)   => Ok(gzip),
+            Err(s)  => Err(s)
+        }
+    }
+
+    /// Initialize a new GZip structure for decompression.
+    /// Read the gzip header from reader.  The same reader should be passed to subsequent API calls.
     /// Return the new GZip structure.
     pub fn decompress_init<R: Reader>(reader: &mut R) -> Result<GZip, ~str> {
         let mut gzip = GZip::new();
@@ -142,21 +161,9 @@ impl GZip {
         }
     }
 
-    /// Initialize a new GZip structure for compression.  Write out the gzip header.
-    /// Return the new GZip structure.
-    pub fn compress_init<W: Writer>(writer: &mut W, file_name: &str, mtime: u32, file_size: u32) -> Result<GZip, ~str> {
-        let mut gzip = GZip::new();
-        gzip.mtime = mtime;
-        gzip.filename = if file_name.len() > 0 { Some(file_name.to_owned()) } else { None };
-        gzip.flags = if gzip.filename.is_some() { FNAME } else { 0 };
-        gzip.original_size = file_size;
-        match gzip.writeHeader(writer).and_then(|_| gzip.writeHeaderExtra(writer)) {
-            Ok(_)   => Ok(gzip),
-            Err(s)  => Err(s)
-        }
-    }
-
     /// Read info on the gzip file without uncompressing the data.
+    /// Read the headers and the end section only.
+    /// This only works on file; does not work on streaming data since it's doing a seek.
     pub fn read_info(file_reader: &mut File) -> Result<GZip, ~str> {
         let mut gzip = GZip::new();
         match gzip.readHeader(file_reader).and_then( |_| gzip.readHeaderExtra(file_reader) ) {
@@ -194,141 +201,21 @@ impl GZip {
     }
 
 
-    /// Decompress the data read from the reader and pipe the output to writer directly.
-    /// Read the compressed data from reader, decompress them, and output them to writer, in an internal loop.
-    /// Runs until reading EOF from reader.  This is more efficient than GZipReader.
-    /// Requires decompress_init() to be called first.
-    /// buf_size_factor is used for internal IO buffers, with MIN_SIZE_FACTOR.  It is the power in 2.
-    pub fn decompress_stream<R: Reader, W: Writer>(&mut self, reader: &mut R, writer: &mut W, buf_size_factor: uint) -> Result<~[u8], ~str> {
-        let mut extra_buf = ~[];
-        let mut end_buf = [0u8, ..END_LENGTH];
-        let mut end_len = 0u;
-        let mut inflator = Inflator::with_size_factor(buf_size_factor);
-        let status = inflator.decompress_stream(
-            // upcall function to read input data for decompression
-            |in_buf| {
-                let read_len = if reader.eof() {
-                    0                           // EOF
-                } else {
-                    match reader.read(in_buf) {
-                        Some(nread) => nread,   // read number of bytes read, including 0 for EOF;
-                        None => 0               // EOF
-                    }
-                };
-                read_len
-            },
-            // upcall function to write the decompressed data
-            |out_buf, is_eof| {
-                self.cmp_crc32 = update_crc(self.cmp_crc32, out_buf, 0, out_buf.len());     // compute the CRC on the decompressed data
-                writer.write(out_buf);
-                if is_eof {
-                    writer.flush();
-                }
-                false                           // don't abort
-            },
-            // upcall function to handle the remaining input data that are not part of the compressed data.
-            |rest_buf| {
-                // Move the rest of the bytes into end_buf, and read more into end_buf if not enough bytes for it.
-                end_len = rest_buf.len();
-                let copy_len = num::min(END_LENGTH, end_len);
-                vec::bytes::copy_memory(end_buf, rest_buf, copy_len);
-                extra_buf.push_all(rest_buf.slice_from(copy_len));  // Move anything beyond the gzip end section into extra_buf.
-                if end_len < END_LENGTH {                           // Read in the rest of end section if not enough data in rest_buf
-                    end_len += read_buf_upto(reader, end_buf, end_len, END_LENGTH - end_len);
-                }
-            } );
-        inflator.free();
-
-        match status {
-            InflateStatusDone => {
-                match self.readEndSection(end_buf, end_len)
-                    .and_then( |_| self.checkCrc() ) {
-                    Ok(_)   => Ok(extra_buf),                       // Return the extra bytes beyond the end of gzip data.
-                    Err(s)  => Err(s)
-                }
-            },
-            _ => 
-                Err(format!("Failed to decompress data.  Status: {:?}", status))
-        }
-    }
-
-    fn readHeader<R: Reader>(&mut self, reader: &mut R) -> Result<uint, ~str> {
-
-        let mut buf = [0, ..HEADER_FIXED_LEN];
-        if read_buf_upto(reader, buf, 0, HEADER_FIXED_LEN) != HEADER_FIXED_LEN {
-            return Err(~"Too few data to be a valid gzip format.");
-        }
-
-        self.id1 = buf[0];
-        self.id2 = buf[1];
-        self.compression = buf[2];
-        self.flags = buf[3];
-        self.mtime = unpack_u32_le(buf, 4);
-        self.xflags = buf[8];
-        self.os = buf[9];
-
-        if self.id1 != MAGIC1 || self.id2 != MAGIC2 {
-            return Err(~"Invalid gzip signature");
-        }
-        if self.compression != METHOD_DEFLATE {
-            return Err(~"Unsupported compression method");
-        }
-
-        Ok(0)
-    }
-
-    fn readHeaderExtra<R: Reader>(&mut self, reader: &mut R) -> Result<uint, ~str> {
-
-        if (self.flags & FEXTRA) == FEXTRA {
-            self.xfield_len = Some(reader.read_le_u16());
-            let xf_len = self.xfield_len.unwrap() as uint;
-            let mut buf = vec::from_elem(xf_len, 0u8);
-            read_buf_upto(reader, buf, 0, xf_len);
-            self.xfield = Some(buf);
-        }
-
-        if (self.flags & FNAME) == FNAME {
-            self.filename = Some(read_strz(reader));
-        }
-
-        if (self.flags & FCOMMENT) == FCOMMENT {
-            self.comment = Some(read_strz(reader));
-        }
-
-        if (self.flags & FHCRC) == FHCRC {
-            self.header_crc = Some(reader.read_le_u16());
-        }
-
-        Ok(0)
-    }
-
-    fn readEndSection(&mut self, end_buf: &[u8], end_len: uint) -> Result<uint, ~str> {
-        if end_len < END_LENGTH {
-            return Err(format!("Not enough data in gzip end section.  Bytes missing: {:u}", (END_LENGTH - end_len)));
-        }
-        self.crc32 = unpack_u32_le(end_buf, 0);
-        self.original_size = unpack_u32_le(end_buf, 4);
-        Ok(0)
-    }
-
-    fn checkCrc(&mut self) -> Result<uint, ~str> {
-        if self.crc32 != self.cmp_crc32 {
-            return Err(~"The computed CRC of the decompressed data does not match the stored CRC in the file.")
-        }
-        Ok(0)
-    }
-
-
-    /// Compress the data read from the reader and pipe the output to writer directly.
-    /// Read the plain data from reader, compress them, and output them to writer, in an internal loop.
-    /// Runs until reading EOF from reader.  This is more efficient than GZipWriter.
+    /// Compresses all the data read from the reader and writes the compressed output to writer.
+    /// Runs until reading EOF from reader.  More efficient than GZipWriter, with less buffer copying.
     /// Requires compress_init() to be called first.
+    ///
     /// compress_level is 0-9 for faster but lower compression ratio to slower but higher compression ratio.
     /// Control the internal IO buffer size with buf_size_factor.  See calc_buf_size() for the actual bytes computed.
     /// buf_size_factor is used for internal IO buffers, with MIN_SIZE_FACTOR.  It is the power in 2.
     pub fn compress_stream<R: Reader, W: Writer>(&mut self, reader: &mut R, writer: &mut W, compress_level: uint, buf_size_factor: uint) -> Result<uint, ~str> {
         let mut deflator = Deflator::with_size_factor(buf_size_factor);
-        deflator.init(compress_level, false, false);
+        let status = deflator.init(compress_level, false, false);
+        match status {
+            DeflateStatusOkay => (),
+            _ => return Err(format!("Failed to Initialize deflator.  Status: {:?}", status))
+        }
+
         let status = deflator.compress_stream(
             // upcall function to read input data for compression
             |in_buf| {
@@ -353,7 +240,7 @@ impl GZip {
                 false                           // don't abort
             });
         deflator.free();
-    
+
         match status {
             DeflateStatusDone => {
                 self.crc32 = self.cmp_crc32;
@@ -366,7 +253,6 @@ impl GZip {
     }
 
     fn writeHeader<W: Writer>(&self, writer: &mut W) -> Result<uint, ~str> {
-
         let mut buf = [0, ..HEADER_FIXED_LEN];
 
         buf[0] = self.id1;
@@ -414,16 +300,149 @@ impl GZip {
         writer.flush();
     }
 
+
+    /// Decompresses all the data read from the reader and writes the decompressed output to writer.
+    /// Runs until reading EOF from reader.  More efficient than GZipReader, with less buffer copying.
+    /// Requires decompress_init() to be called first.
+    ///
+    /// Since the total length of the compressed data is sometime unknown (in streaming situation),
+    /// this will read as much data as possible from reader to attempt to decompress.  Any extra 
+    /// unprocessed data that are read in after the compressed data will be returned to the caller.
+    ///
+    /// buf_size_factor is used for internal IO buffers, with MIN_SIZE_FACTOR.  It is the power in 2.
+    pub fn decompress_stream<R: Reader, W: Writer>(&mut self, reader: &mut R, writer: &mut W, buf_size_factor: uint) -> Result<~[u8], ~str> {
+        let mut extra_buf = ~[];
+        let mut end_buf = [0u8, ..END_LENGTH];
+        let mut end_len = 0u;
+        let mut inflator = Inflator::with_size_factor(buf_size_factor);
+
+        let status = inflator.decompress_stream(
+            // upcall function to read input data for decompression
+            |in_buf| {
+                let read_len = if reader.eof() {
+                    0                           // EOF
+                } else {
+                    match reader.read(in_buf) { // read as much data as possible; extra unprocessed data will be returned to caller.
+                        Some(nread) => nread,   // read number of bytes read, including 0 for EOF;
+                        None => 0               // EOF
+                    }
+                };
+                read_len
+            },
+            // upcall function to write the decompressed data
+            |out_buf, is_eof| {
+                self.cmp_crc32 = update_crc(self.cmp_crc32, out_buf, 0, out_buf.len());     // compute the CRC on the decompressed data
+                writer.write(out_buf);
+                if is_eof {
+                    writer.flush();
+                }
+                false                           // don't abort
+            },
+            // upcall function to handle the remaining input data that are not part of the compressed data.
+            |rest_buf| {
+                // Move the rest of the bytes into end_buf for gzip's end section.
+                // Read more from reader if not enough bytes for it.
+                end_len = rest_buf.len();
+                let copy_len = num::min(END_LENGTH, end_len);
+                vec::bytes::copy_memory(end_buf, rest_buf, copy_len);
+                extra_buf.push_all(rest_buf.slice_from(copy_len));  // Move anything beyond the gzip end section into extra_buf.
+                if end_len < END_LENGTH {                           // Read in the rest of end section if not enough data in rest_buf
+                    end_len += read_buf_upto(reader, end_buf, end_len, END_LENGTH - end_len);
+                }
+            } );
+        inflator.free();
+
+        match status {
+            InflateStatusDone => {
+                match self.readEndSection(end_buf, end_len)
+                    .and_then( |_| self.checkCrc() ) {
+                    Ok(_)   => Ok(extra_buf),                       // Return the extra bytes beyond the end of gzip data.
+                    Err(s)  => Err(s)
+                }
+            },
+            _ => 
+                Err(format!("Failed to decompress data.  Status: {:?}", status))
+        }
+    }
+
+    fn readHeader<R: Reader>(&mut self, reader: &mut R) -> Result<uint, ~str> {
+        let mut buf = [0, ..HEADER_FIXED_LEN];
+        if read_buf_upto(reader, buf, 0, HEADER_FIXED_LEN) != HEADER_FIXED_LEN {
+            return Err(~"Too few data to be a valid gzip format.");
+        }
+
+        self.id1 = buf[0];
+        self.id2 = buf[1];
+        self.compression = buf[2];
+        self.flags = buf[3];
+        self.mtime = unpack_u32_le(buf, 4);
+        self.xflags = buf[8];
+        self.os = buf[9];
+
+        if self.id1 != MAGIC1 || self.id2 != MAGIC2 {
+            return Err(~"Invalid gzip signature.");
+        }
+        if self.compression != METHOD_DEFLATE {
+            return Err(~"Only the DEFLATE compression method is supported.");
+        }
+
+        Ok(0)
+    }
+
+    fn readHeaderExtra<R: Reader>(&mut self, reader: &mut R) -> Result<uint, ~str> {
+
+        if (self.flags & FEXTRA) == FEXTRA {
+            self.xfield_len = Some(reader.read_le_u16());
+            let xf_len = self.xfield_len.unwrap() as uint;
+            let mut buf = vec::from_elem(xf_len, 0u8);
+            read_buf_upto(reader, buf, 0, xf_len);
+            self.xfield = Some(buf);
+        }
+
+        if (self.flags & FNAME) == FNAME {
+            self.filename = Some(read_strz(reader));
+        }
+
+        if (self.flags & FCOMMENT) == FCOMMENT {
+            self.comment = Some(read_strz(reader));
+        }
+
+        if (self.flags & FHCRC) == FHCRC {
+            self.header_crc = Some(reader.read_le_u16());
+        }
+
+        Ok(0)
+    }
+
+    fn readEndSection(&mut self, end_buf: &[u8], end_len: uint) -> Result<uint, ~str> {
+        if end_len < END_LENGTH {
+            return Err(format!("Not enough data in gzip end section.  Bytes missing: {:u}", (END_LENGTH - end_len)));
+        }
+        self.crc32 = unpack_u32_le(end_buf, 0);
+        self.original_size = unpack_u32_le(end_buf, 4);
+        Ok(0)
+    }
+
+    fn checkCrc(&mut self) -> Result<uint, ~str> {
+        if self.crc32 != self.cmp_crc32 {
+            return Err(~"The computed CRC of the decompressed data does not match the stored CRC in the file.")
+        }
+        Ok(0)
+    }
+
 }
 
 
-/// A gzip reader stream to read decompressed data.
+/// A gzip reader to read decompressed data automatically from an inner reader.
 /// Usage:
 ///     let greader = GZipReader(input_reader);
-///     greader.read(plain_data_buf);
+///     greader.read(output_data_buf);
+///     ...
+///     read until got None
+///
 /// GZipReader.read() returns None at EOF.
 pub struct GZipReader<R> {
-    /// The GZip object for the gzip file informatioin 
+    /// The GZip object for the gzip file information
     gzip:               GZip,
     priv inner_reader:  R,
     priv inflator:      Inflator,
@@ -454,7 +473,7 @@ impl<R: Reader> GZipReader<R> {
 
     /// Create a GZipReader to decompress data from the inner_reader automatically when reading.
     /// Control the internal IO buffer size with buf_size_factor.  See calc_buf_size() for the actual bytes computed.
-    /// buf_size_factor is used for internal IO buffers, with MIN_SIZE_FACTOR.  It is the power in 2.
+    /// buf_size_factor is used for internal IO buffers.  It is the power of 2.
     pub fn with_size_factor(mut inner_reader: R, buf_size_factor: uint) -> Result<GZipReader<R>, ~str> {
         match GZip::decompress_init(&mut inner_reader) {
             Ok(gzip) => {
@@ -472,7 +491,7 @@ impl<R: Reader> GZipReader<R> {
 }
 
 impl<R: Reader> Reader for GZipReader<R> {
-    /// Read the decompressed data from the inner_reader automatically.
+    /// Read the decompressed data from the inner_reader.
     fn read(&mut self, output_buf: &mut [u8]) -> Option<uint> {
         let mut end_buf = [0u8, ..END_LENGTH];
         let mut end_len;
@@ -499,6 +518,7 @@ impl<R: Reader> Reader for GZipReader<R> {
                 if end_len < END_LENGTH {
                     end_len += read_buf_upto(&mut self.inner_reader, end_buf, end_len, END_LENGTH - end_len);
                 }
+                self.inflator.free();
                 match self.gzip.readEndSection(end_buf, end_len)
                     .and_then( |_| self.gzip.checkCrc() ) {
                     Ok(_)   => return None,
@@ -517,6 +537,9 @@ impl<R: Reader> Reader for GZipReader<R> {
                 return Some(output_len);
             },
             _ => {
+                // Clean up states before raising error.
+                self.is_eof = true;
+                self.inflator.free();
                 io_error::cond.raise(IoError {
                         kind: OtherIoError,
                         desc: "Read failure in decompression",
@@ -533,12 +556,14 @@ impl<R: Reader> Reader for GZipReader<R> {
 }
 
 
-/// A gzip writer stream to compress any data written to it.
+/// A gzip writer to compress any data written to it.
 /// Usage:
 ///     let gwriter = GZipWriter(output_writer);
 ///     gwriter.write(plain_data_buf);
+///     write repeatedly to compress more data in the stream.
 ///     ...
-///     gwriter.finalize();
+///     gwriter.finalize();     // must call finalize() to finish compression.
+///
 /// The output_writer will receive the compressed data.
 pub struct GZipWriter<W> {
     /// The GZip object for the gzip file informatioin 
@@ -550,12 +575,12 @@ pub struct GZipWriter<W> {
 
 impl<W: Writer> GZipWriter<W> {
 
-    /// Create a GZipWriter to compress data automatically when writing, with bare minimal info.
+    /// Create a GZipWriter to compress data automatically when writing, with minimal info.
     pub fn new(inner_writer: W) -> Result<GZipWriter<W>, ~str> {
         GZipWriter::with_size_factor(inner_writer, "", 0u32, 0u32, DEFAULT_COMPRESS_LEVEL, DEFAULT_SIZE_FACTOR)
     }
 
-    /// Create a GZipWriter to compress data automatically when writing.
+    /// Create a GZipWriter to compress data automatically when writing, with more info.
     /// file_name is the original filename to store in the gzip file.
     /// mtime is the original modified time to store in the gzip file.
     /// file_size is the original file size to store in the gzip file.
@@ -566,7 +591,7 @@ impl<W: Writer> GZipWriter<W> {
     /// Create a GZipWriter to compress data automatically when writing.
     /// The compress_level (0-9) is a trade off in compression ratio vs compression speed.
     /// Control the internal IO buffer size with buf_size_factor.  See calc_buf_size() for the actual bytes computed.
-    /// buf_size_factor is used for internal IO buffers, with MIN_SIZE_FACTOR.  It is the power in 2.
+    /// buf_size_factor is used for internal IO buffers.  It is the power of 2.
     pub fn with_size_factor(mut inner_writer: W, file_name: &str, mtime: u32, file_size: u32, compress_level: uint, buf_size_factor: uint) -> Result<GZipWriter<W>, ~str> {
         match GZip::compress_init(&mut inner_writer, file_name, mtime, file_size) {
             Ok(gzip) => {
@@ -585,7 +610,7 @@ impl<W: Writer> GZipWriter<W> {
     }
 
     /// Finalize the compression stream and flush out any pending compressed data.
-    /// The caller must call this at the end of writing data into this writer to compress.
+    /// The caller must call this at the end of writing data into this writer.
     /// After this is called, this writer cannot be written again.
     pub fn finalize(&mut self) {
         if self.finalized {
@@ -617,11 +642,15 @@ impl<W: Writer> GZipWriter<W> {
             DeflateStatusOkay => {
             },
             DeflateStatusDone => {
+                self.finalized = true;
+                self.deflator.free();
                 self.gzip.crc32 = self.gzip.cmp_crc32;
                 self.gzip.writeEndSection(&mut self.inner_writer);
-                self.finalized = true;
             },
             _ => {
+                // Clean up states before raising error.
+                self.finalized = true;
+                self.deflator.free();
                 io_error::cond.raise(IoError {
                         kind: OtherIoError,
                         desc: "Write failure in compression",
@@ -677,6 +706,7 @@ fn unpack_u32_le(buf: &[u8], offset: uint) -> u32 {
     ( ((buf[offset + 3] as u32) & 0xFF) << 24 )
 }
 
+/// Pack a string into a zero-terminated buffer.
 fn to_strz(str_value: &str) -> ~[u8] {
     let str_bytes = str_value.as_bytes();
     let mut buf = vec::from_elem(str_bytes.len() + 1, 0u8);
@@ -685,7 +715,7 @@ fn to_strz(str_value: &str) -> ~[u8] {
     return buf;
 }
 
-// Read a zero-terminated str.  Read until encountering the terminating 0.
+/// Read a zero-terminated str.  Read until encountering the terminating 0.
 fn read_strz<R: Reader>(reader: &mut R) -> ~str {
     let mut buf = ~[];
     loop {
@@ -698,6 +728,7 @@ fn read_strz<R: Reader>(reader: &mut R) -> ~str {
     return str::from_utf8(buf);
 }
 
+/// Read data upto the len_to_read, unless encounters EOF.
 fn read_buf_upto<R: Reader>(reader: &mut R, buf: &mut [u8], offset: uint, len_to_read: uint) -> uint {
     let mut total_read = 0u;
     while total_read < len_to_read {
@@ -714,11 +745,13 @@ fn read_buf_upto<R: Reader>(reader: &mut R, buf: &mut [u8], offset: uint, len_to
 }
 
 
+// Compute a new CRC on all the data of the buffer
 fn compute_crc(buf: &[u8], from: uint, to: uint) -> u32 {
     // Seed CRC with 0
     return update_crc(0u32, buf, from, to);
 }
 
+// Update an existing CRC with the data of the buffer
 fn update_crc(mut crc: u32, buf: &[u8], from: uint, to: uint) -> u32 {
     crc = crc ^ 0xFFFFFFFF;     // Pre one's complement;
     for n in range(from, to) {
@@ -728,7 +761,7 @@ fn update_crc(mut crc: u32, buf: &[u8], from: uint, to: uint) -> u32 {
 }
 
 
-// Make CRC table according to gzip spec.
+// Make CRC table according to the gzip spec.
 fn make_crc_table() -> [u32, ..256] {
     let mut table = [0u32, ..256];
     let mut c : u32;
@@ -803,26 +836,67 @@ mod tests {
 
     use std::rt::io::Reader;
     use std::rt::io::mem::MemReader;
-    use std::rand;
-    use std::rand::Rng;
+    use std::rt::io::mem::MemWriter;
+    use super::GZipReader;
+    use super::GZipWriter;
+
 
     #[test]
     fn test_generate_crc_table() {
         // Uncomment to generate the crc table text.
-        //generate_crc_table();
+        // super::generate_crc_table();
     }
 
     #[test]
     fn test_gzip_reader() {
 
+        let original_data = bytes!("ABCDEFGH\r\n");
         let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
-        //let mut mem_writer = MemWriter::new();
-        let gzip_reader_res = GZipReader::new(comp_reader);
-        let mut gzip_reader = gzip_reader_res.unwrap();
-        let mut out_buf = [0u8, ..64];
-        let out_len = gzip_reader.read(out_buf);
-        let decomp_buf = out_buf.slice(0, out_len.unwrap());
-        println(format!("gzip_reader.read(): %?", decomp_buf));
+        match GZipReader::new(comp_reader) {
+            Ok(gzip_reader) => {
+                let mut gzip_reader = gzip_reader;
+                let mut out_buf = [0u8, ..64];
+                let out_len = gzip_reader.read(out_buf);
+                let decomp_buf = out_buf.slice(0, out_len.unwrap());
+                // println(format!("original_data:  {:?}", original_data.clone()));
+                // println(format!("decomp_buf:     {:?}", decomp_buf));
+                assert!(( decomp_buf.eq(&original_data) ));
+            },
+            Err(e) => fail!(e)
+        }
+    }
+
+    #[test]
+    fn test_gzip_writer() {
+
+        // Compress the data
+        let original_data = bytes!("ABCDEFGH");
+        let mut comp_data;
+        match (GZipWriter::new(MemWriter::new())) {
+            Ok(gzip_writer) => {
+                let mut gzip_writer = gzip_writer;
+                gzip_writer.write(original_data);
+                gzip_writer.finalize();
+                comp_data = gzip_writer.inner().inner();
+                //println(format!("comp_data: {:?}", comp_data));
+            },
+            Err(e) => fail!(e)
+        }
+
+        // Decompress the compressed data to compare to the original.
+        match GZipReader::new(MemReader::new(comp_data)) {
+            Ok(gzip_reader) => {
+                let mut gzip_reader = gzip_reader;
+                let mut out_buf = [0u8, ..64];
+                let out_len = gzip_reader.read(out_buf);
+                let decomp_buf = out_buf.slice(0, out_len.unwrap());
+                // println(format!("original_data:  {:?}", original_data.clone()));
+                // println(format!("decomp_buf:     {:?}", decomp_buf));
+                assert!(( decomp_buf.eq(&original_data) ));
+            },
+            Err(e) => fail!(e)
+        }
+
     }
 
 }

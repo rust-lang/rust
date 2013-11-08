@@ -27,7 +27,7 @@ use std::rt::io::mem::MemWriter;
 use std::str;
 use std::vec;
 
-use extra::flate;
+use extra::deflate;
 use extra::serialize::Encodable;
 use extra;
 
@@ -1833,7 +1833,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let writer_bytes: &mut ~[u8] = wr.inner_mut_ref();
 
     metadata_encoding_version.to_owned() +
-        flate::deflate_bytes(*writer_bytes)
+        deflate::deflate_bytes(*writer_bytes)
 }
 
 // Get the encoded string for a type
