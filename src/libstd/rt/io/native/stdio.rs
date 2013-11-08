@@ -36,10 +36,8 @@ pub struct StdIn {
 
 impl StdIn {
     /// Duplicates the stdin file descriptor, returning an io::Reader
-    #[fixed_stack_segment] #[inline(never)]
     pub fn new() -> StdIn {
-        let fd = unsafe { libc::dup(libc::STDIN_FILENO) };
-        StdIn { fd: file::FileDesc::new(fd) }
+        StdIn { fd: file::FileDesc::new(libc::STDIN_FILENO, false) }
     }
 }
 
@@ -54,10 +52,8 @@ pub struct StdOut {
 
 impl StdOut {
     /// Duplicates the specified file descriptor, returning an io::Writer
-    #[fixed_stack_segment] #[inline(never)]
     pub fn new(fd: file::fd_t) -> StdOut {
-        let fd = unsafe { libc::dup(fd) };
-        StdOut { fd: file::FileDesc::new(fd) }
+        StdOut { fd: file::FileDesc::new(fd, false) }
     }
 }
 

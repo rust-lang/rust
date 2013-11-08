@@ -1168,6 +1168,56 @@ mod test {
         }
     }
 
+    #[should_fail] #[test]
+    fn tcp_listener_fail_cleanup() {
+        let addr = next_test_ip4();
+        let w = TcpListener::bind(local_loop(), addr).unwrap();
+        let _w = w.listen().unwrap();
+        fail!();
+    }
+
+    #[should_fail] #[test]
+    fn tcp_stream_fail_cleanup() {
+        let (port, chan) = oneshot();
+        let chan = Cell::new(chan);
+        let addr = next_test_ip4();
+
+        do task::spawn_unlinked { // please no linked failure
+            let w = TcpListener::bind(local_loop(), addr).unwrap();
+            let mut w = w.listen().unwrap();
+            chan.take().send(());
+            w.accept();
+        }
+        port.recv();
+        let _w = TcpWatcher::connect(local_loop(), addr).unwrap();
+        fail!();
+    }
+
+    #[should_fail] #[test]
+    fn udp_listener_fail_cleanup() {
+        let addr = next_test_ip4();
+        let _w = UdpWatcher::bind(local_loop(), addr).unwrap();
+        fail!();
+    }
+
+    #[should_fail] #[test]
+    fn udp_fail_other_task() {
+        let addr = next_test_ip4();
+        let (port, chan) = oneshot();
+        let chan = Cell::new(chan);
+
+        // force the handle to be created on a different scheduler, failure in
+        // the original task will force a homing operation back to this
+        // scheduler.
+        do task::spawn_sched(task::SingleThreaded) {
+            let w = UdpWatcher::bind(local_loop(), addr).unwrap();
+            chan.take().send(w);
+        }
+
+        let _w = port.recv();
+        fail!();
+    }
+
     #[should_fail]
     #[test]
     #[ignore(reason = "linked failure")]

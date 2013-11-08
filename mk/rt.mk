@@ -218,7 +218,7 @@ $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		CC="$$(CC) $$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@

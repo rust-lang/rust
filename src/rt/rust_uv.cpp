@@ -93,8 +93,7 @@ rust_sockaddr_size() {
 
 extern "C" struct sockaddr*
 rust_malloc_ip4_addr(char *name, int port) {
-    struct sockaddr_in *addr = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
-    memset(addr, 0, sizeof(struct sockaddr_in));
+    struct sockaddr_in *addr = (struct sockaddr_in*) calloc(1, rust_sockaddr_size());
     assert(addr != NULL);
     addr->sin_port = htons(port);
     assert(uv_inet_pton(AF_INET, name, &addr->sin_addr) == 0);
@@ -104,8 +103,7 @@ rust_malloc_ip4_addr(char *name, int port) {
 
 extern "C" struct sockaddr*
 rust_malloc_ip6_addr(char *name, int port) {
-    struct sockaddr_in6 *addr = (struct sockaddr_in6*) malloc(sizeof(struct sockaddr_in6));
-    memset(addr, 0, sizeof(struct sockaddr));
+    struct sockaddr_in6 *addr = (struct sockaddr_in6*) calloc(1, rust_sockaddr_size());
     assert(addr != NULL);
     addr->sin6_port = htons(port);
     assert(uv_inet_pton(AF_INET6, name, &addr->sin6_addr) == 0);

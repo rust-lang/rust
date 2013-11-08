@@ -126,6 +126,15 @@ mod test {
         tube.recv();
     }
 
+    #[test] #[should_fail]
+    fn smoke_fail() {
+        let tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle.resume();
+        fail!();
+    }
+
     #[test]
     fn fun_combinations_of_methods() {
         let mut tube = Tube::new();

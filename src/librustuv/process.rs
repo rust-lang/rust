@@ -77,23 +77,18 @@ impl Process {
                 };
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
+                let process = ~Process {
+                    handle: handle,
+                    home: get_handle_to_current_scheduler!(),
+                    to_wake: None,
+                    exit_status: None,
+                    term_signal: None,
+                };
                 match unsafe {
                     uvll::uv_spawn(loop_.handle, handle, &options)
                 } {
-                    0 => {
-                        let process = ~Process {
-                            handle: handle,
-                            home: get_handle_to_current_scheduler!(),
-                            to_wake: None,
-                            exit_status: None,
-                            term_signal: None,
-                        };
-                        Ok(process.install())
-                    }
-                    err => {
-                        unsafe { uvll::free_handle(handle) }
-                        Err(UvError(err))
-                    }
+                    0 => Ok(process.install()),
+                    err => Err(UvError(err)),
                 }
             }
         };

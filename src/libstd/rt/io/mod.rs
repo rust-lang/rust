@@ -423,7 +423,11 @@ pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
 /// closure if no error occurred.
 pub fn result<T>(cb: &fn() -> T) -> Result<T, IoError> {
     let mut err = None;
-    let ret = io_error::cond.trap(|e| err = Some(e)).inside(cb);
+    let ret = io_error::cond.trap(|e| {
+        if err.is_none() {
+            err = Some(e);
+        }
+    }).inside(cb);
     match err {
         Some(e) => Err(e),
         None => Ok(ret),
