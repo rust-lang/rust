@@ -199,6 +199,7 @@
 			<Detect2Chars char="/" char1="/" attribute="Comment" context="Commentar 1"/>
 			<Detect2Chars char="/" char1="*" attribute="Comment" context="Commentar 2" beginRegion="Comment"/>
 			<RegExpr String="0x[0-9a-fA-F_]+&rustIntSuf;" attribute="Number" context="#stay"/>
+			<RegExpr String="0o[0-7_]+&rustIntSuf;" attribute="Number" context="#stay"/>
 			<RegExpr String="0b[0-1_]+&rustIntSuf;" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9_]+)?(f32|f64|f)?" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*&rustIntSuf;" attribute="Number" context="#stay"/>
