@@ -60,10 +60,6 @@ extern "C" void atof()
 {
 }
 
-extern "C" void tgammaf()
-{
-}
-
 extern "C" int glob(const char *pattern,
                     int flags,
                     int (*errfunc) (const char *epath, int eerrno),

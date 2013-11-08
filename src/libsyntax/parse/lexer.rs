@@ -276,6 +276,11 @@ fn hex_digit_val(c: char) -> int {
     fail!();
 }
 
+fn oct_digit_val(c: char) -> int {
+    if in_range(c, '0', '7') { return (c as int) - ('0' as int); }
+    fail!();
+}
+
 fn bin_digit_value(c: char) -> int { if c == '0' { return 0; } return 1; }
 
 pub fn is_whitespace(c: char) -> bool {
@@ -292,6 +297,8 @@ fn is_hex_digit(c: char) -> bool {
     return in_range(c, '0', '9') || in_range(c, 'a', 'f') ||
             in_range(c, 'A', 'F');
 }
+
+fn is_oct_digit(c: char) -> bool { return in_range(c, '0', '7'); }
 
 fn is_bin_digit(c: char) -> bool { return c == '0' || c == '1'; }
 
@@ -464,6 +471,10 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         bump(rdr);
         bump(rdr);
         base = 16u;
+    } else if c == '0' && n == 'o' {
+        bump(rdr);
+        bump(rdr);
+        base = 8u;
     } else if c == '0' && n == 'b' {
         bump(rdr);
         bump(rdr);
@@ -529,6 +540,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         match base {
           16u => fatal_span(rdr, start_bpos, rdr.last_pos,
                             ~"hexadecimal float literal is not supported"),
+          8u => fatal_span(rdr, start_bpos, rdr.last_pos,
+                           ~"octal float literal is not supported"),
           2u => fatal_span(rdr, start_bpos, rdr.last_pos,
                            ~"binary float literal is not supported"),
           _ => ()

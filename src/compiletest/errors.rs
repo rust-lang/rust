@@ -52,10 +52,8 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
     let start_kind = idx;
     while idx < len && line[idx] != (' ' as u8) { idx += 1u; }
 
-    // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-    // to_ascii_consume and to_str_consume to not do a unnecessary copy.
     let kind = line.slice(start_kind, idx);
-    let kind = kind.to_ascii().to_lower().to_str_ascii();
+    let kind = kind.to_ascii().to_lower().into_str();
 
     // Extract msg:
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
