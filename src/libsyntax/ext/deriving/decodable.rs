@@ -13,9 +13,7 @@ The compiler code necessary for #[deriving(Decodable)]. See
 encodable.rs for more.
 */
 
-use std::vec;
-
-use ast::{MetaItem, item, Expr, MutMutable};
+use ast::{MetaItem, item, Expr, MutMutable, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -66,37 +64,18 @@ fn decodable_substructure(cx: @ExtCtxt, span: Span,
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
             let nfields = match *summary {
-                Left(n) => n, Right(ref fields) => fields.len()
+                Unnamed(ref fields) => fields.len(),
+                Named(ref fields) => fields.len()
             };
             let read_struct_field = cx.ident_of("read_struct_field");
 
-            let getarg = |name: @str, field: uint| {
+            let result = do decode_static_fields(cx, span, substr.type_ident,
+                                                 summary) |span, name, field| {
                 cx.expr_method_call(span, blkdecoder, read_struct_field,
                                     ~[cx.expr_str(span, name),
                                       cx.expr_uint(span, field),
                                       lambdadecode])
             };
-
-            let result = match *summary {
-                Left(n) => {
-                    if n == 0 {
-                        cx.expr_ident(span, substr.type_ident)
-                    } else {
-                        let mut fields = vec::with_capacity(n);
-                        for i in range(0, n) {
-                            fields.push(getarg(format!("_field{}", i).to_managed(), i));
-                        }
-                        cx.expr_call_ident(span, substr.type_ident, fields)
-                    }
-                }
-                Right(ref fields) => {
-                    let fields = do fields.iter().enumerate().map |(i, f)| {
-                        cx.field_imm(span, *f, getarg(cx.str_of(*f), i))
-                    }.collect();
-                    cx.expr_struct_ident(span, substr.type_ident, fields)
-                }
-            };
-
             cx.expr_method_call(span, decoder, cx.ident_of("read_struct"),
                                 ~[cx.expr_str(span, cx.str_of(substr.type_ident)),
                                   cx.expr_uint(span, nfields),
@@ -113,31 +92,13 @@ fn decodable_substructure(cx: @ExtCtxt, span: Span,
                 let (name, parts) = match *f { (i, ref p) => (i, p) };
                 variants.push(cx.expr_str(span, cx.str_of(name)));
 
-                let getarg = |field: uint| {
+                let decoded = do decode_static_fields(cx, span, name,
+                                                      parts) |span, _, field| {
                     cx.expr_method_call(span, blkdecoder, rvariant_arg,
                                         ~[cx.expr_uint(span, field),
                                           lambdadecode])
                 };
 
-                let decoded = match *parts {
-                    Left(n) => {
-                        if n == 0 {
-                            cx.expr_ident(span, name)
-                        } else {
-                            let mut fields = vec::with_capacity(n);
-                            for i in range(0u, n) {
-                                fields.push(getarg(i));
-                            }
-                            cx.expr_call_ident(span, name, fields)
-                        }
-                    }
-                    Right(ref fields) => {
-                        let fields = do fields.iter().enumerate().map |(i, f)| {
-                            cx.field_imm(span, *f, getarg(i))
-                        }.collect();
-                        cx.expr_struct_ident(span, name, fields)
-                    }
-                };
                 arms.push(cx.arm(span,
                                  ~[cx.pat_lit(span, cx.expr_uint(span, i))],
                                  decoded));
@@ -157,4 +118,32 @@ fn decodable_substructure(cx: @ExtCtxt, span: Span,
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in deriving(Decodable)")
     };
+}
+
+/// Create a decoder for a single enum variant/struct:
+/// - `outer_pat_ident` is the name of this enum variant/struct
+/// - `getarg` should retrieve the `uint`-th field with name `@str`.
+fn decode_static_fields(cx: @ExtCtxt, outer_span: Span, outer_pat_ident: Ident,
+                        fields: &StaticFields,
+                        getarg: &fn(Span, @str, uint) -> @Expr) -> @Expr {
+    match *fields {
+        Unnamed(ref fields) => {
+            if fields.is_empty() {
+                cx.expr_ident(outer_span, outer_pat_ident)
+            } else {
+                let fields = do fields.iter().enumerate().map |(i, &span)| {
+                    getarg(span, format!("_field{}", i).to_managed(), i)
+                }.collect();
+
+                cx.expr_call_ident(outer_span, outer_pat_ident, fields)
+            }
+        }
+        Named(ref fields) => {
+            // use the field's span to get nicer error messages.
+            let fields = do fields.iter().enumerate().map |(i, &(name, span))| {
+                cx.field_imm(span, name, getarg(span, cx.str_of(name), i))
+            }.collect();
+            cx.expr_struct_ident(outer_span, outer_pat_ident, fields)
+        }
+    }
 }
