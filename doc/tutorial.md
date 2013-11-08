@@ -1240,58 +1240,80 @@ The indexing operator (`[]`) also auto-dereferences.
 
 # Vectors and strings
 
-A vector is a contiguous section of memory containing zero or more
-values of the same type. Like other types in Rust, vectors can be
-stored on the stack, the local heap, or the exchange heap. Borrowed
-pointers to vectors are also called 'slices'.
+A vector is a contiguous block of memory containing zero or more values of the
+same type. Rust also supports vector reference types, called slices, which are
+a view into a block of memory represented as a pointer and a length.
+
+Strings are represented as vectors of `u8`, with the guarantee of containing a
+valid UTF-8 sequence.
+
+Fixed-size vectors are an unboxed block of memory, with the element length as
+part of the type. A fixed-size vector owns the elements it contains, so the
+elements are mutable if the vector is mutable. Fixed-size strings do not exist.
 
 ~~~
-# enum Crayon {
-#     Almond, AntiqueBrass, Apricot,
-#     Aquamarine, Asparagus, AtomicTangerine,
-#     BananaMania, Beaver, Bittersweet,
-#     Black, BlizzardBlue, Blue
-# }
-// A fixed-size stack vector
-let stack_crayons: [Crayon, ..3] = [Almond, AntiqueBrass, Apricot];
+// A fixed-size vector
+let numbers = [1, 2, 3];
+let more_numbers = numbers;
 
-// A borrowed pointer to stack-allocated vector
-let stack_crayons: &[Crayon] = &[Aquamarine, Asparagus, AtomicTangerine];
-
-// A local heap (managed) vector of crayons
-let local_crayons: @[Crayon] = @[BananaMania, Beaver, Bittersweet];
-
-// An exchange heap (owned) vector of crayons
-let exchange_crayons: ~[Crayon] = ~[Black, BlizzardBlue, Blue];
+// The type of a fixed-size vector is written as `[Type, ..length]`
+let five_zeroes: [int, ..5] = [0, ..5];
 ~~~
 
-The `+` operator means concatenation when applied to vector types.
+A unique vector is dynamically sized, and has a destructor to clean up
+allocated memory on the heap. A unique vector owns the elements it contains, so
+the elements are mutable if the vector is mutable.
 
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-# impl Clone for Crayon {
-#     fn clone(&self) -> Crayon {
-#         *self
-#     }
-# }
+~~~
+// A dynamically sized vector (unique vector)
+let mut numbers = ~[1, 2, 3];
+numbers.push(4);
+numbers.push(5);
 
-let my_crayons = ~[Almond, AntiqueBrass, Apricot];
-let your_crayons = ~[BananaMania, Beaver, Bittersweet];
+// The type of a unique vector is written as ~[int]
+let more_numbers: ~[int] = numbers;
 
-// Add two vectors to create a new one
-let our_crayons = my_crayons + your_crayons;
+// The original `numbers` value can no longer be used, due to move semantics.
 
-// .push_all() will append to a vector, provided it lives in a mutable slot
-let mut my_crayons = my_crayons;
-my_crayons.push_all(your_crayons);
-~~~~
+let mut string = ~"fo";
+string.push_char('o');
+~~~
 
-> ***Note:*** The above examples of vector addition use owned
-> vectors. Some operations on slices and stack vectors are
-> not yet well-supported. Owned vectors are often the most
-> usable.
+Slices are similar to fixed-size vectors, but the length is not part of the
+type. They simply point into a block of memory and do not have ownership over
+the elements.
+
+~~~
+// A slice
+let xs = &[1, 2, 3];
+
+// Slices have their type written as &[int]
+let ys: &[int] = xs;
+
+// Other vector types coerce to slices
+let three = [1, 2, 3];
+let zs: &[int] = three;
+
+// An unadorned string literal is an immutable string slice
+let string = "foobar";
+
+// A string slice type is written as &str
+let view: &str = string.slice(0, 3);
+~~~
+
+Mutable slices also exist, just as there are mutable references. However, there
+are no mutable string slices. Strings are a multi-byte encoding (UTF-8) of
+Unicode code points, so they cannot be freely mutated without the ability to
+alter the length.
+
+~~~
+let mut xs = [1, 2, 3];
+let view = xs.mut_slice(0, 2);
+view[0] = 5;
+
+// The type of a mutable slice is written as &mut [T]
+let ys: &mut [int] = &mut [1, 2, 3];
+~~~
 
 Square brackets denote indexing into a vector:
 
@@ -1319,102 +1341,11 @@ let score = match numbers {
 };
 ~~~~
 
-The elements of a vector _inherit the mutability of the vector_,
-and as such, individual elements may not be reassigned when the
-vector lives in an immutable slot.
-
-~~~ {.xfail-test}
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
-
-crayons[0] = Apricot; // ERROR: Can't assign to immutable vector
-~~~
-
-Moving it into a mutable slot makes the elements assignable.
-
-~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
-
-// Put the vector into a mutable slot
-let mut mutable_crayons = crayons;
-
-// Now it's mutable to the bone
-mutable_crayons[0] = Apricot;
-~~~
-
-This is a simple example of Rust's _dual-mode data structures_, also
-referred to as _freezing and thawing_.
-
-Strings are implemented with vectors of `u8`, though they have a
-distinct type. They support most of the same allocation options as
-vectors, though the string literal without a storage sigil (for
-example, `"foo"`) is treated differently than a comparable vector
-(`[foo]`).  Whereas plain vectors are stack-allocated fixed-length
-vectors, plain strings are borrowed pointers to read-only (static)
-memory. All strings are immutable.
-
-~~~
-// A plain string is a slice to read-only (static) memory
-let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
-
-// The same thing, but with the `&`
-let stack_crayons: &str = &"Aquamarine, Asparagus, AtomicTangerine";
-
-// A local heap (managed) string
-let local_crayons: @str = @"BananaMania, Beaver, Bittersweet";
-
-// An exchange heap (owned) string
-let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
-~~~
-
-Both vectors and strings support a number of useful
-[methods](#methods), defined in [`std::vec`]
-and [`std::str`]. Here are some examples.
+Both vectors and strings support a number of useful [methods](#methods),
+defined in [`std::vec`] and [`std::str`].
 
 [`std::vec`]: std/vec/index.html
 [`std::str`]: std/str/index.html
-
-~~~
-# enum Crayon {
-#     Almond, AntiqueBrass, Apricot,
-#     Aquamarine, Asparagus, AtomicTangerine,
-#     BananaMania, Beaver, Bittersweet
-# }
-# fn unwrap_crayon(c: Crayon) -> int { 0 }
-# fn eat_crayon_wax(i: int) { }
-# fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
-# fn crayon_to_str(c: Crayon) -> &str { "" }
-
-let crayons = [Almond, AntiqueBrass, Apricot];
-
-// Check the length of the vector
-assert!(crayons.len() == 3);
-assert!(!crayons.is_empty());
-
-// Iterate over a vector, obtaining a pointer to each element
-// (`for` is explained in the container/iterator tutorial)
-for crayon in crayons.iter() {
-    let delicious_crayon_wax = unwrap_crayon(*crayon);
-    eat_crayon_wax(delicious_crayon_wax);
-}
-
-// Map vector elements
-let crayon_names = crayons.map(|v| crayon_to_str(*v));
-let favorite_crayon_name = crayon_names[0];
-
-// Remove whitespace from before and after the string
-let new_favorite_crayon_name = favorite_crayon_name.trim();
-
-if favorite_crayon_name.len() > 5 {
-   // Create a substring
-   println(favorite_crayon_name.slice_chars(0, 5));
-}
-~~~
 
 # Closures
 
