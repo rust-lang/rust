@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -581,7 +581,7 @@ fn get_path(rawurl: &str, authority: bool) ->
         match c {
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
-          | '_' | '-' => {
+          | '_' | '-' | '~' => {
             continue;
           }
           '?' | '#' => {
@@ -824,7 +824,7 @@ mod tests {
 
     #[test]
     fn test_url_parse() {
-        let url = ~"http://user:pass@rust-lang.org:8080/doc?s=v#something";
+        let url = ~"http://user:pass@rust-lang.org:8080/doc/~u?s=v#something";
 
         let up = from_str(url);
         let u = up.unwrap();
@@ -832,7 +832,7 @@ mod tests {
         assert_eq!(&u.user, &Some(UserInfo::new(~"user", Some(~"pass"))));
         assert_eq!(&u.host, &~"rust-lang.org");
         assert_eq!(&u.port, &Some(~"8080"));
-        assert_eq!(&u.path, &~"/doc");
+        assert_eq!(&u.path, &~"/doc/~u");
         assert_eq!(&u.query, &~[(~"s", ~"v")]);
         assert_eq!(&u.fragment, &Some(~"something"));
     }
