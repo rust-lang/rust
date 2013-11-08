@@ -1097,6 +1097,24 @@ fn no_rebuilding() {
 }
 
 #[test]
+fn no_recopying() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    let workspace = workspace.path();
+    command_line_test([~"install", ~"foo"], workspace);
+    let foo_lib = installed_library_in_workspace(&p_id.path, workspace);
+    assert!(foo_lib.is_some());
+    // Now make `foo` read-only so that subsequent attempts to copy to it will fail
+    assert!(chmod_read_only(&foo_lib.unwrap()));
+
+    match command_line_test_partial([~"install", ~"foo"], workspace) {
+        Success(*) => (), // ok
+        Fail(65) => fail!("no_recopying failed: it tried to re-copy foo"),
+        Fail(_) => fail!("no_copying failed for some other reason")
+    }
+}
+
+#[test]
 fn no_rebuilding_dep() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
