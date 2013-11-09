@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use driver::session::{OsWin32, OsMacos};
+use syntax::abi::{OsWin32, OsMacos};
 use lib::llvm::*;
 use super::cabi::*;
 use super::common::*;
