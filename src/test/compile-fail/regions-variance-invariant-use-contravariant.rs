@@ -27,7 +27,7 @@ fn use_<'short,'long>(c: Invariant<'long>,
     // 'short <= 'long, this would be true if the Invariant type were
     // contravariant with respect to its parameter 'a.
 
-    let _: Invariant<'short> = c; //~ ERROR lifetime mistach
+    let _: Invariant<'short> = c; //~ ERROR mismatched types
 }
 
 fn main() { }
