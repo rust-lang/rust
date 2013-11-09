@@ -2029,7 +2029,7 @@ impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
     #[inline]
     fn copy_from(self, src: &[T]) -> uint {
         for (a, b) in self.mut_iter().zip(src.iter()) {
-            *a = b.clone();
+            a.clone_from(b);
         }
         cmp::min(self.len(), src.len())
     }
@@ -2282,12 +2282,34 @@ impl<A: Clone> Clone for ~[A] {
     fn clone(&self) -> ~[A] {
         self.iter().map(|item| item.clone()).collect()
     }
+
+    fn clone_from(&mut self, source: &~[A]) {
+        if self.len() < source.len() {
+            *self = source.clone()
+        } else {
+            self.truncate(source.len());
+            for (x, y) in self.mut_iter().zip(source.iter()) {
+                x.clone_from(y);
+            }
+        }
+    }
 }
 
 impl<A: DeepClone> DeepClone for ~[A] {
     #[inline]
     fn deep_clone(&self) -> ~[A] {
         self.iter().map(|item| item.deep_clone()).collect()
+    }
+
+    fn deep_clone_from(&mut self, source: &~[A]) {
+        if self.len() < source.len() {
+            *self = source.deep_clone()
+        } else {
+            self.truncate(source.len());
+            for (x, y) in self.mut_iter().zip(source.iter()) {
+                x.deep_clone_from(y);
+            }
+        }
     }
 }
 
