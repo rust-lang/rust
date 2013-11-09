@@ -509,10 +509,11 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         tcx.sess.span_err(
             cm.span,
             format!("method `{}` has {} parameter{} \
-                  but the trait has {}",
+                  but the trait method `{}` has {}",
                  tcx.sess.str_of(trait_m.ident),
                  impl_m.fty.sig.inputs.len(),
                  if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
+                 ty::item_path_str(tcx, trait_m.def_id),
                  trait_m.fty.sig.inputs.len()));
         return;
     }
