@@ -344,7 +344,7 @@ pub trait Primitive: Clone
                    + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
-    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
+    // FIXME (#8888): `ForType` should be a language feature. See also: #6894
     fn bits(_: ForType<Self>) -> uint;
     fn bytes(_: ForType<Self>) -> uint;
     fn is_signed(_: ForType<Self>) -> bool;
@@ -388,7 +388,7 @@ pub trait Float: Real
     fn is_normal(&self) -> bool;
     fn classify(&self) -> FPCategory;
 
-    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
+    // FIXME (#8888): `ForType` should be a language feature. See also: #6894
     fn mantissa_digits(_: ForType<Self>) -> uint;
     fn digits(_: ForType<Self>) -> uint;
     fn epsilon() -> Self;

@@ -96,6 +96,7 @@ impl Void {
 ///
 /// assert_eq!(A::a(ForType::<int>), 6);
 /// ~~~
+// FIXME (#8888): This should really be part of the language. See also: #6894
 pub struct ForType<T>;
 
 #[cfg(test)]
@@ -176,7 +177,7 @@ mod tests {
         }
 
         impl A for int {
-            fn a(_: ForType<int>) -> uint { 6 }
+            fn a(_: ForType<int33>) -> uint { 6 }
         }
 
         assert_eq!(A::a(ForType::<int>), 6);
