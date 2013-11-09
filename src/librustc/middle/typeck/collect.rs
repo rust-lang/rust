@@ -268,7 +268,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         //        fn foo<D,E,F>(...) -> Self;
         //     }
         //
-        // and we will create a function like
+        // then we will create a function like
         //
         //     fn foo<A',B',C',D',E',F',G'>(...) -> D' {}
         //
@@ -312,7 +312,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         //     Self => D'
         //     D,E,F => E',F',G'
         let substs = substs {
-            regions: ty::NonerasedRegions(opt_vec::Empty),
+            regions: ty::NonerasedRegions(opt_vec::with(ty::re_bound(ty::br_self))),
             self_ty: Some(self_param),
             tps: non_shifted_trait_tps + shifted_method_tps
         };
@@ -357,7 +357,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                           ty_param_bounds_and_ty {
                               generics: ty::Generics {
                                   type_param_defs: @new_type_param_defs,
-                                  region_param: trait_ty_generics.region_param
+                                  region_param: None
                               },
                               ty: ty
                           });

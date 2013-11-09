@@ -115,6 +115,7 @@ use std::result;
 use std::util::replace;
 use std::vec;
 use extra::list::Nil;
+use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
 use syntax::ast;
@@ -3469,19 +3470,30 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         }
     };
 
-    // Special case: If there is a self parameter, omit it from the list of
-    // type parameters.
-    //
-    // Here we calculate the "user type parameter count", which is the number
-    // of type parameters actually manifest in the AST. This will differ from
-    // the internal type parameter count when there are self types involved.
-    let (user_type_parameter_count, self_parameter_index) = match def {
+    // Special case for static trait methods: omit the self parameter
+    // from the list of type parameters and constrain the 'self
+    // lifetime to be equal to the enclosing 'self lifetime.
+    let (user_type_parameter_count, self_parameter_index, regions) = match def {
         ast::DefStaticMethod(_, provenance @ ast::FromTrait(_), _) => {
             let generics = generics_of_static_method_container(fcx.ccx.tcx,
                                                                provenance);
-            (ty_param_count - 1, Some(generics.type_param_defs.len()))
+
+            // If 'self is in scope, then use the free region it is already
+            // associated with. If 'self is not in scope then
+            // `regions` won't be used anyway.
+            let constrained_regions =
+                match list::find(fcx.in_scope_regions,
+                                 |&(br, _)| br == ty::br_self) {
+                    Some((_, r)) => opt_vec::with(r),
+                    None => regions
+            };
+
+            (ty_param_count - 1,
+             Some(generics.type_param_defs.len()),
+             constrained_regions)
         }
-        _ => (ty_param_count, None),
+        _ => {
+            (ty_param_count, None, regions)}
     };
 
     // determine values for type parameters, using the values given by
