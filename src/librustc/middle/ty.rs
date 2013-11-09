@@ -4245,7 +4245,8 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
             // are erased at trans time.
             ty::FnSig { binder_id: ast::DUMMY_NODE_ID,
                         inputs: ty_fold::fold_ty_vec(self, sig.inputs),
-                        output: self.fold_ty(sig.output) }
+                        output: self.fold_ty(sig.output),
+                        variadic: sig.variadic }
         }
     }
 }
@@ -4572,7 +4573,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
             ReEarlyBound(*) |
             ReLateBound(*) |
             ReFree(*) |
-            ReStatic(*) |
+            ReScope(*) |
             ReInfer(*) => {
                 tcx.sess.bug("non-static region found when hashing a type")
             }
