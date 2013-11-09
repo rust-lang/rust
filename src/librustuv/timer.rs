@@ -67,12 +67,27 @@ impl UvHandle<uvll::uv_timer_t> for TimerWatcher {
 
 impl RtioTimer for TimerWatcher {
     fn sleep(&mut self, msecs: u64) {
-        let (_m, sched) = self.fire_homing_missile_sched();
+        // As with all of the below functions, we must be extra careful when
+        // destroying the previous action. If the previous action was a channel,
+        // destroying it could invoke a context switch. For these situtations,
+        // we must temporarily un-home ourselves, then destroy the action, and
+        // then re-home again.
+        let missile = self.fire_homing_missile();
+        self.stop();
+        let _missile = match util::replace(&mut self.action, None) {
+            None => missile, // no need to do a homing dance
+            Some(action) => {
+                util::ignore(missile);      // un-home ourself
+                util::ignore(action);       // destroy the previous action
+                self.fire_homing_missile()  // re-home ourself
+            }
+        };
 
         // If the descheduling operation unwinds after the timer has been
         // started, then we need to call stop on the timer.
         let _f = ForbidUnwind::new("timer");
 
+        let sched: ~Scheduler = Local::take();
         do sched.deschedule_running_task_and_then |_sched, task| {
             self.action = Some(WakeTask(task));
             self.start(msecs, 0);
@@ -87,6 +102,7 @@ impl RtioTimer for TimerWatcher {
         // of the homing missile
         let _prev_action = {
             let _m = self.fire_homing_missile();
+            self.stop();
             self.start(msecs, 0);
             util::replace(&mut self.action, Some(SendOnce(chan)))
         };
@@ -97,12 +113,11 @@ impl RtioTimer for TimerWatcher {
     fn period(&mut self, msecs: u64) -> Port<()> {
         let (port, chan) = stream();
 
-        let _m = self.fire_homing_missile();
-
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {
             let _m = self.fire_homing_missile();
+            self.stop();
             self.start(msecs, msecs);
             util::replace(&mut self.action, Some(SendMany(chan)))
         };
@@ -235,6 +250,18 @@ mod test {
         }
 
         timer.oneshot(1);
+    }
+    #[test]
+    fn reset_doesnt_switch_tasks2() {
+        // similar test to the one above.
+        let mut timer = TimerWatcher::new(local_loop());
+        let timer_port = Cell::new(timer.period(1000));
+
+        do spawn {
+            timer_port.take().try_recv();
+        }
+
+        timer.sleep(1);
     }
 
     #[test]

@@ -47,14 +47,14 @@ pub static UNKNOWN: c_int = -4094;
 pub mod errors {
     use std::libc::c_int;
 
-    pub static EACCES: c_int = -4093;
-    pub static ECONNREFUSED: c_int = -4079;
-    pub static ECONNRESET: c_int = -4078;
-    pub static ENOTCONN: c_int = -4054;
-    pub static EPIPE: c_int = -4048;
-    pub static ECONNABORTED: c_int = -4080;
-    pub static ECANCELED: c_int = -4082;
-    pub static EBADF: c_int = -4084;
+    pub static EACCES: c_int = -4092;
+    pub static ECONNREFUSED: c_int = -4078;
+    pub static ECONNRESET: c_int = -4077;
+    pub static ENOTCONN: c_int = -4053;
+    pub static EPIPE: c_int = -4047;
+    pub static ECONNABORTED: c_int = -4079;
+    pub static ECANCELED: c_int = -4081;
+    pub static EBADF: c_int = -4083;
 }
 #[cfg(not(windows))]
 pub mod errors {
@@ -87,19 +87,19 @@ pub static STDIO_WRITABLE_PIPE: c_int = 0x20;
 #[cfg(unix)]
 pub type uv_buf_len_t = libc::size_t;
 #[cfg(windows)]
-pub type uv_buf_len_t = u32;
+pub type uv_buf_len_t = libc::c_ulong;
 
 // see libuv/include/uv-unix.h
 #[cfg(unix)]
 pub struct uv_buf_t {
     base: *u8,
-    len: libc::size_t,
+    len: uv_buf_len_t,
 }
 
 // see libuv/include/uv-win.h
 #[cfg(windows)]
 pub struct uv_buf_t {
-    len: u32,
+    len: uv_buf_len_t,
     base: *u8,
 }
 
@@ -544,7 +544,19 @@ pub unsafe fn guess_handle(handle: c_int) -> c_int {
 
 
 // uv_support is the result of compiling rust_uv.cpp
+//
+// Note that this is in a cfg'd block so it doesn't get linked during testing.
+// There's a bit of a conundrum when testing in that we're actually assuming
+// that the tests are running in a uv loop, but they were created from the
+// statically linked uv to the original rustuv crate. When we create the test
+// executable, on some platforms if we re-link against uv, it actually creates
+// second copies of everything. We obviously don't want this, so instead of
+// dying horribly during testing, we allow all of the test rustuv's references
+// to get resolved to the original rustuv crate.
 #[link_args = "-luv_support -luv"]
+#[cfg(not(test))]
+extern {}
+
 extern {
     fn rust_uv_loop_new() -> *c_void;
 

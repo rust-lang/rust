@@ -142,14 +142,10 @@ mod test {
     fn oneshot_twice() {
         do run_in_mt_newsched_task {
             let mut timer = Timer::new().unwrap();
-            let port1 = timer.oneshot(100000000000);
+            let port1 = timer.oneshot(10000);
             let port = timer.oneshot(1);
             port.recv();
-            let port1 = Cell::new(port1);
-            let ret = do task::try {
-                port1.take().recv();
-            };
-            assert!(ret.is_err());
+            assert_eq!(port1.try_recv(), None);
         }
     }
 

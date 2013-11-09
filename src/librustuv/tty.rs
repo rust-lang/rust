@@ -113,6 +113,6 @@ impl HomingIO for TtyWatcher {
 impl Drop for TtyWatcher {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
-        self.close();
+        self.close_async_();
     }
 }
