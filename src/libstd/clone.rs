@@ -133,7 +133,7 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 
 /// A trait distinct from `Clone` which represents "deep copies" of things like
 /// managed boxes which would otherwise not be copied.
-pub trait DeepClone {
+pub trait DeepClone: Clone {
     /// Return a deep copy of the value. Unlike `Clone`, the contents of shared pointer types
     /// *are* copied.
     fn deep_clone(&self) -> Self;
