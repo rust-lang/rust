@@ -11,312 +11,71 @@
 
 use middle::ty;
 
-use std::result;
+use std::vec;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
-use syntax::parse::token::special_idents;
 
-#[deriving(ToStr)]
-pub struct RegionError {
-    msg: ~str,
-    replacement: ty::Region
-}
-
+/// Defines strategies for handling regions that are omitted.  For
+/// example, if one writes the type `&Foo`, then the lifetime of of
+/// this borrowed pointer has been omitted. When converting this
+/// type, the generic functions in astconv will invoke `anon_regions`
+/// on the provided region-scope to decide how to translate this
+/// omitted region.
+///
+/// It is not always legal to omit regions, therefore `anon_regions`
+/// can return `Err(())` to indicate that this is not a scope in which
+/// regions can legally be omitted.
 pub trait RegionScope {
-    fn anon_region(&self, span: Span) -> Result<ty::Region, RegionError>;
-    fn self_region(&self, span: Span) -> Result<ty::Region, RegionError>;
-    fn named_region(&self, span: Span, id: ast::Ident)
-                      -> Result<ty::Region, RegionError>;
+    fn anon_regions(&self,
+                    span: Span,
+                    count: uint)
+                    -> Result<~[ty::Region], ()>;
 }
 
-#[deriving(Clone)]
-pub struct EmptyRscope;
-impl RegionScope for EmptyRscope {
-    fn anon_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
-        result::Err(RegionError {
-            msg: ~"only 'static is allowed here",
-            replacement: ty::re_static
-        })
-    }
-    fn self_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
-        self.anon_region(_span)
-    }
-    fn named_region(&self, _span: Span, _id: ast::Ident)
-        -> Result<ty::Region, RegionError>
-    {
-        self.anon_region(_span)
+// A scope in which all regions must be explicitly named
+pub struct ExplicitRscope;
+
+impl RegionScope for ExplicitRscope {
+    fn anon_regions(&self,
+                    _span: Span,
+                    _count: uint)
+                    -> Result<~[ty::Region], ()> {
+        Err(())
     }
 }
 
-#[deriving(Clone)]
-pub struct RegionParamNames(OptVec<ast::Ident>);
-
-impl RegionParamNames {
-    fn has_self(&self) -> bool {
-        self.has_ident(special_idents::self_)
-    }
-
-    fn has_ident(&self, ident: ast::Ident) -> bool {
-        for region_param_name in self.iter() {
-            if *region_param_name == ident {
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn add_generics(&mut self, generics: &ast::Generics) {
-        match generics.lifetimes {
-            opt_vec::Empty => {}
-            opt_vec::Vec(ref new_lifetimes) => {
-                match **self {
-                    opt_vec::Empty => {
-                        *self = RegionParamNames(
-                            opt_vec::Vec(new_lifetimes.map(|lt| lt.ident)));
-                    }
-                    opt_vec::Vec(ref mut existing_lifetimes) => {
-                        for new_lifetime in new_lifetimes.iter() {
-                            existing_lifetimes.push(new_lifetime.ident);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Convenience function to produce the error for an unresolved name. The
-    // optional argument specifies a custom replacement.
-    pub fn undeclared_name(custom_replacement: Option<ty::Region>)
-                        -> Result<ty::Region, RegionError> {
-        let replacement = match custom_replacement {
-            None => ty::re_bound(ty::br_self),
-            Some(custom_replacement) => custom_replacement
-        };
-        Err(RegionError {
-            msg: ~"this lifetime must be declared",
-            replacement: replacement
-        })
-    }
-
-    pub fn from_generics(generics: &ast::Generics) -> RegionParamNames {
-        match generics.lifetimes {
-            opt_vec::Empty => RegionParamNames(opt_vec::Empty),
-            opt_vec::Vec(ref lifetimes) => {
-                RegionParamNames(opt_vec::Vec(lifetimes.map(|lt| lt.ident)))
-            }
-        }
-    }
-
-    pub fn from_lifetimes(lifetimes: &opt_vec::OptVec<ast::Lifetime>)
-                       -> RegionParamNames {
-        match *lifetimes {
-            opt_vec::Empty => RegionParamNames::new(),
-            opt_vec::Vec(ref v) => {
-                RegionParamNames(opt_vec::Vec(v.map(|lt| lt.ident)))
-            }
-        }
-    }
-
-    fn new() -> RegionParamNames {
-        RegionParamNames(opt_vec::Empty)
-    }
-}
-
-#[deriving(Clone)]
-struct RegionParameterization {
-    variance: ty::region_variance,
-    region_param_names: RegionParamNames,
-}
-
-impl RegionParameterization {
-    pub fn from_variance_and_generics(variance: Option<ty::region_variance>,
-                                      generics: &ast::Generics)
-                                   -> Option<RegionParameterization> {
-        match variance {
-            None => None,
-            Some(variance) => {
-                Some(RegionParameterization {
-                    variance: variance,
-                    region_param_names:
-                        RegionParamNames::from_generics(generics),
-                })
-            }
-        }
-    }
-}
-
-#[deriving(Clone)]
-pub struct MethodRscope {
-    explicit_self: ast::explicit_self_,
-    variance: Option<ty::region_variance>,
-    region_param_names: RegionParamNames,
-}
-
-impl MethodRscope {
-    // `generics` here refers to the generics of the outer item (impl or
-    // trait).
-    pub fn new(explicit_self: ast::explicit_self_,
-               variance: Option<ty::region_variance>,
-               rcvr_generics: &ast::Generics)
-            -> MethodRscope {
-        let region_param_names =
-            RegionParamNames::from_generics(rcvr_generics);
-        MethodRscope {
-            explicit_self: explicit_self,
-            variance: variance,
-            region_param_names: region_param_names
-        }
-    }
-
-    pub fn region_param_names(&self) -> RegionParamNames {
-        self.region_param_names.clone()
-    }
-}
-
-impl RegionScope for MethodRscope {
-    fn anon_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
-        result::Err(RegionError {
-            msg: ~"anonymous lifetimes are not permitted here",
-            replacement: ty::re_bound(ty::br_self)
-        })
-    }
-    fn self_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
-        assert!(self.variance.is_some());
-        match self.variance {
-            None => {}  // must be borrowed self, so this is OK
-            Some(_) => {
-                if !self.region_param_names.has_self() {
-                    return Err(RegionError {
-                        msg: ~"the `self` lifetime must be declared",
-                        replacement: ty::re_bound(ty::br_self)
-                    })
-                }
-            }
-        }
-        result::Ok(ty::re_bound(ty::br_self))
-    }
-    fn named_region(&self, span: Span, id: ast::Ident)
-                      -> Result<ty::Region, RegionError> {
-        if !self.region_param_names.has_ident(id) {
-            return RegionParamNames::undeclared_name(None);
-        }
-        do EmptyRscope.named_region(span, id).or_else |_e| {
-            result::Err(RegionError {
-                msg: ~"lifetime is not in scope",
-                replacement: ty::re_bound(ty::br_self)
-            })
-        }
-    }
-}
-
-#[deriving(Clone)]
-pub struct TypeRscope(Option<RegionParameterization>);
-
-impl TypeRscope {
-    fn replacement(&self) -> ty::Region {
-        if self.is_some() {
-            ty::re_bound(ty::br_self)
-        } else {
-            ty::re_static
-        }
-    }
-}
-impl RegionScope for TypeRscope {
-    fn anon_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
-        result::Err(RegionError {
-            msg: ~"anonymous lifetimes are not permitted here",
-            replacement: self.replacement()
-        })
-    }
-    fn self_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
-        match **self {
-            None => {
-                // if the self region is used, region parameterization should
-                // have inferred that this type is RP
-                fail!("region parameterization should have inferred that \
-                        this type is RP");
-            }
-            Some(ref region_parameterization) => {
-                if !region_parameterization.region_param_names.has_self() {
-                    return Err(RegionError {
-                        msg: ~"the `self` lifetime must be declared",
-                        replacement: ty::re_bound(ty::br_self)
-                    })
-                }
-            }
-        }
-        result::Ok(ty::re_bound(ty::br_self))
-    }
-    fn named_region(&self, span: Span, id: ast::Ident)
-                      -> Result<ty::Region, RegionError> {
-        do EmptyRscope.named_region(span, id).or_else |_e| {
-            result::Err(RegionError {
-                msg: ~"only 'self is allowed as part of a type declaration",
-                replacement: self.replacement()
-            })
-        }
-    }
-}
-
-pub fn bound_self_region(rp: Option<ty::region_variance>)
-                      -> OptVec<ty::Region> {
-    match rp {
-      Some(_) => opt_vec::with(ty::re_bound(ty::br_self)),
-      None => opt_vec::Empty
-    }
-}
-
+/// A scope in which we generate anonymous, late-bound regions for
+/// omitted regions. This occurs in function signatures.
 pub struct BindingRscope {
-    base: @RegionScope,
-    anon_bindings: @mut uint,
-    region_param_names: RegionParamNames,
+    binder_id: ast::NodeId,
+    anon_bindings: @mut uint
 }
 
-impl Clone for BindingRscope {
-    fn clone(&self) -> BindingRscope {
+impl BindingRscope {
+    pub fn new(binder_id: ast::NodeId) -> BindingRscope {
         BindingRscope {
-            base: self.base,
-            anon_bindings: self.anon_bindings,
-            region_param_names: self.region_param_names.clone(),
+            binder_id: binder_id,
+            anon_bindings: @mut 0
         }
-    }
-}
-
-pub fn in_binding_rscope<RS:RegionScope + Clone + 'static>(
-        this: &RS,
-        region_param_names: RegionParamNames)
-     -> BindingRscope {
-    let base = @(*this).clone();
-    let base = base as @RegionScope;
-    BindingRscope {
-        base: base,
-        anon_bindings: @mut 0,
-        region_param_names: region_param_names,
     }
 }
 
 impl RegionScope for BindingRscope {
-    fn anon_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
+    fn anon_regions(&self,
+                    _: Span,
+                    count: uint)
+                    -> Result<~[ty::Region], ()> {
         let idx = *self.anon_bindings;
-        *self.anon_bindings += 1;
-        result::Ok(ty::re_bound(ty::br_anon(idx)))
+        *self.anon_bindings += count;
+        Ok(vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
+                                                   ty::BrAnon(idx + i))))
     }
-    fn self_region(&self, span: Span) -> Result<ty::Region, RegionError> {
-        self.base.self_region(span)
-    }
-    fn named_region(&self,
-                    span: Span,
-                    id: ast::Ident) -> Result<ty::Region, RegionError>
-    {
-        do self.base.named_region(span, id).or_else |_e| {
-            let result = ty::re_bound(ty::br_named(id));
-            if self.region_param_names.has_ident(id) {
-                result::Ok(result)
-            } else {
-                RegionParamNames::undeclared_name(Some(result))
-            }
-        }
-    }
+}
+
+pub fn bound_type_regions(defs: &[ty::RegionParameterDef])
+                          -> OptVec<ty::Region> {
+    assert!(defs.iter().all(|def| def.def_id.crate == ast::LOCAL_CRATE));
+    defs.iter().enumerate().map(
+        |(i, def)| ty::ReEarlyBound(def.def_id.node, i, def.ident)).collect()
 }

@@ -8,17 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that lifetimes must be declared for use on enums.
+// See also regions-undeclared.rs
+
 enum yes0<'lt> {
-    // This will eventually be legal (and in fact the only way):
-    X3(&'lt uint) //~ ERROR Illegal lifetime 'lt: only 'self is allowed
+    X3(&'lt uint)
 }
 
 enum yes1<'self> {
     X4(&'self uint)
 }
 
-enum yes2 {
-    X5(&'foo uint) //~ ERROR Illegal lifetime 'foo: only 'self is allowed
+enum no0 {
+    X5(&'foo uint) //~ ERROR use of undeclared lifetime name `'foo`
+}
+
+enum no1 {
+    X6(&'self uint) //~ ERROR use of undeclared lifetime name `'self`
 }
 
 fn main() {}

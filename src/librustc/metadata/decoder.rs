@@ -25,7 +25,7 @@ use middle::ty;
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
-
+use std::at_vec;
 use std::u64;
 use std::rt::io;
 use std::rt::io::extensions::u64_from_be_bytes;
@@ -252,9 +252,11 @@ fn item_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: Cmd) -> ty::TraitRef {
     doc_trait_ref(tp, tcx, cdata)
 }
 
-fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: Cmd,
+fn item_ty_param_defs(item: ebml::Doc,
+                      tcx: ty::ctxt,
+                      cdata: Cmd,
                       tag: uint)
-    -> @~[ty::TypeParameterDef] {
+                      -> @~[ty::TypeParameterDef] {
     let mut bounds = ~[];
     do reader::tagged_docs(item, tag) |p| {
         let bd = parse_type_param_def_data(
@@ -266,10 +268,23 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: Cmd,
     @bounds
 }
 
-fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
-    do reader::maybe_get_doc(item, tag_region_param).map |doc| {
-        let mut decoder = reader::Decoder(doc);
-        Decodable::decode(&mut decoder)
+fn item_region_param_defs(item_doc: ebml::Doc,
+                          tcx: ty::ctxt,
+                          cdata: Cmd)
+                          -> @[ty::RegionParameterDef] {
+    do at_vec::build(None) |push| {
+        do reader::tagged_docs(item_doc, tag_region_param_def) |rp_doc| {
+            let ident_str_doc = reader::get_doc(rp_doc,
+                                                tag_region_param_def_ident);
+            let ident = item_name(tcx.sess.intr(), ident_str_doc);
+            let def_id_doc = reader::get_doc(rp_doc,
+                                             tag_region_param_def_def_id);
+            let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
+            let def_id = translate_def_id(cdata, def_id);
+            push(ty::RegionParameterDef { ident: ident,
+                                          def_id: def_id });
+            true
+        };
     }
 }
 
@@ -393,7 +408,7 @@ pub fn get_trait_def(cdata: Cmd,
     let item_doc = lookup_item(item_id, cdata.data);
     let tp_defs = item_ty_param_defs(item_doc, tcx, cdata,
                                      tag_items_data_item_ty_param_bounds);
-    let rp = item_ty_region_param(item_doc);
+    let rp_defs = item_region_param_defs(item_doc, tcx, cdata);
     let mut bounds = ty::EmptyBuiltinBounds();
     // Collect the builtin bounds from the encoded supertraits.
     // FIXME(#8559): They should be encoded directly.
@@ -407,7 +422,7 @@ pub fn get_trait_def(cdata: Cmd,
     };
     ty::TraitDef {
         generics: ty::Generics {type_param_defs: tp_defs,
-                                region_param: rp},
+                                region_param_defs: rp_defs},
         bounds: bounds,
         trait_ref: @item_trait_ref(item_doc, tcx, cdata)
     }
@@ -417,24 +432,18 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
 
     let item = lookup_item(id, cdata.data);
+
     let t = item_type(ast::DefId { crate: cdata.cnum, node: id }, item, tcx,
                       cdata);
-    let tp_defs = if family_has_type_params(item_family(item)) {
-        item_ty_param_defs(item, tcx, cdata, tag_items_data_item_ty_param_bounds)
-    } else { @~[] };
-    let rp = item_ty_region_param(item);
+
+    let tp_defs = item_ty_param_defs(item, tcx, cdata, tag_items_data_item_ty_param_bounds);
+    let rp_defs = item_region_param_defs(item, tcx, cdata);
+
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: tp_defs,
-                                region_param: rp},
+                                region_param_defs: rp_defs},
         ty: t
     }
-}
-
-pub fn get_region_param(cdata: Cmd, id: ast::NodeId)
-    -> Option<ty::region_variance> {
-
-    let item = lookup_item(id, cdata.data);
-    return item_ty_region_param(item);
 }
 
 pub fn get_type_param_count(data: @~[u8], id: ast::NodeId) -> uint {
@@ -442,8 +451,8 @@ pub fn get_type_param_count(data: @~[u8], id: ast::NodeId) -> uint {
 }
 
 pub fn get_impl_trait(cdata: Cmd,
-                       id: ast::NodeId,
-                       tcx: ty::ctxt) -> Option<@ty::TraitRef>
+                      id: ast::NodeId,
+                      tcx: ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data);
     do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map |tp| {
@@ -1044,6 +1053,7 @@ pub fn get_method(intr: @ident_interner, cdata: Cmd, id: ast::NodeId,
     let name = item_name(intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
+    let rp_defs = item_region_param_defs(method_doc, tcx, cdata);
     let transformed_self_ty = doc_transformed_self_ty(method_doc, tcx, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
@@ -1054,7 +1064,7 @@ pub fn get_method(intr: @ident_interner, cdata: Cmd, id: ast::NodeId,
         name,
         ty::Generics {
             type_param_defs: type_param_defs,
-            region_param: None
+            region_param_defs: rp_defs,
         },
         transformed_self_ty,
         fty,
@@ -1076,6 +1086,14 @@ pub fn get_trait_method_def_ids(cdata: Cmd,
         true
     };
     result
+}
+
+pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
+    let data = cdata.data;
+    let item_doc = lookup_item(id, data);
+    let variance_doc = reader::get_doc(item_doc, tag_item_variances);
+    let mut decoder = reader::Decoder(variance_doc);
+    Decodable::decode(&mut decoder)
 }
 
 pub fn get_provided_trait_methods(intr: @ident_interner, cdata: Cmd,

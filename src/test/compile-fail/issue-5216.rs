@@ -9,12 +9,12 @@
 // except according to those terms.
 
 fn f() { }
-struct S(&fn()); //~ ERROR Illegal anonymous lifetime
-pub static C: S = S(f); //~ ERROR Illegal anonymous lifetime
+struct S(&fn()); //~ ERROR missing lifetime specifier
+pub static C: S = S(f);
 
 
 fn g() { }
-type T = &fn(); //~ ERROR Illegal anonymous lifetime
-pub static D: T = g; //~ ERROR Illegal anonymous lifetime
+type T = &fn();  //~ ERROR missing lifetime specifier
+pub static D: T = g;
 
 fn main() {}

@@ -19,6 +19,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use opt_vec;
+use opt_vec::OptVec;
 
 /// The types of pointers
 pub enum PtrTy<'self> {
@@ -71,7 +72,7 @@ impl<'self> Path<'self> {
                    self_generics: &Generics)
                    -> ast::Path {
         let idents = self.path.map(|s| cx.ident_of(*s) );
-        let lt = mk_lifetime(cx, span, &self.lifetime);
+        let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.map(|t| t.to_ty(cx, span, self_ty, self_generics));
 
         cx.path_all(span, self.global, idents, lt, tys)
@@ -113,6 +114,13 @@ fn mk_lifetime(cx: @ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifet
     match *lt {
         Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s))),
         None => None
+    }
+}
+
+fn mk_lifetimes(cx: @ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Lifetime> {
+    match *lt {
+        Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s))),
+        None => opt_vec::Empty
     }
 }
 
@@ -166,13 +174,9 @@ impl<'self> Ty<'self> {
                 let self_params = do self_generics.ty_params.map |ty_param| {
                     cx.ty_ident(span, ty_param.ident)
                 };
-                let lifetime = if self_generics.lifetimes.is_empty() {
-                    None
-                } else {
-                    Some(*self_generics.lifetimes.get(0))
-                };
+                let lifetimes = self_generics.lifetimes.clone();
 
-                cx.path_all(span, false, ~[self_ty], lifetime,
+                cx.path_all(span, false, ~[self_ty], lifetimes,
                             opt_vec::take_vec(self_params))
             }
             Literal(ref p) => {

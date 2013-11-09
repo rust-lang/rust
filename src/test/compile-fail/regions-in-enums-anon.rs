@@ -8,21 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct contravariant<'self> {
-    f: &'self int
+// Test that anonymous lifetimes are not permitted in enum declarations
+
+enum Foo {
+    Bar(&int) //~ ERROR missing lifetime specifier
 }
 
-fn to_same_lifetime<'r>(bi: contravariant<'r>) {
-    let bj: contravariant<'r> = bi;
-}
-
-fn to_shorter_lifetime<'r>(bi: contravariant<'r>) {
-    let bj: contravariant<'blk> = bi;
-}
-
-fn to_longer_lifetime<'r>(bi: contravariant<'r>) -> contravariant<'static> {
-    bi //~ ERROR mismatched types
-}
-
-fn main() {
-}
+fn main() {}

@@ -8,23 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+static c_x: &'blk int = &22; //~ ERROR use of undeclared lifetime name `'blk`
 
-struct invariant<'self> {
-    f: @mut &'self int
+enum EnumDecl {
+    Foo(&'a int), //~ ERROR use of undeclared lifetime name `'a`
+    Bar(&'self int), //~ ERROR use of undeclared lifetime name `'self`
 }
 
-fn to_same_lifetime<'r>(bi: invariant<'r>) {
-    let bj: invariant<'r> = bi;
-}
-
-fn to_shorter_lifetime<'r>(bi: invariant<'r>) {
-    let bj: invariant<'blk> = bi; //~ ERROR mismatched types
-}
-
-fn to_longer_lifetime<'r>(bi: invariant<'r>) -> invariant<'static> {
-    bi //~ ERROR mismatched types
-}
+fn fnDecl(x: &'a int, //~ ERROR use of undeclared lifetime name `'a`
+          y: &'self int) //~ ERROR use of undeclared lifetime name `'self`
+{}
 
 fn main() {
 }

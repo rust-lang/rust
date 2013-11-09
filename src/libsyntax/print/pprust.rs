@@ -1566,23 +1566,30 @@ fn print_path_(s: @ps,
             }
         }
 
-        if segment.lifetime.is_some() || !segment.types.is_empty() {
+        if !segment.lifetimes.is_empty() || !segment.types.is_empty() {
             if colons_before_params {
                 word(s.s, "::")
             }
             word(s.s, "<");
 
-            for lifetime in segment.lifetime.iter() {
-                print_lifetime(s, lifetime);
-                if !segment.types.is_empty() {
+            let mut comma = false;
+            for lifetime in segment.lifetimes.iter() {
+                if comma {
                     word_space(s, ",")
                 }
+                print_lifetime(s, lifetime);
+                comma = true;
             }
 
-            commasep(s,
-                     inconsistent,
-                     segment.types.map_to_vec(|t| (*t).clone()),
-                     print_type);
+            if !segment.types.is_empty() {
+                if comma {
+                    word_space(s, ",")
+                }
+                commasep(s,
+                         inconsistent,
+                         segment.types.map_to_vec(|t| (*t).clone()),
+                         print_type);
+            }
 
             word(s.s, ">")
         }
@@ -1905,7 +1912,8 @@ pub fn print_meta_item(s: @ps, item: &ast::MetaItem) {
 pub fn print_view_path(s: @ps, vp: &ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, ref path, _) => {
-        if path.segments.last().identifier != ident {
+        // FIXME(#6993) can't compare identifiers directly here
+        if path.segments.last().identifier.name != ident.name {
             print_ident(s, ident);
             space(s.s);
             word_space(s, "=");

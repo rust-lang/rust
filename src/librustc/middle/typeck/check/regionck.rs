@@ -29,7 +29,7 @@ this point a bit better.
 
 
 use middle::freevars::get_freevars;
-use middle::ty::{re_scope};
+use middle::ty::{ReScope};
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip::relate_nested_regions;
@@ -64,7 +64,7 @@ fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::Def) -> ty::Region {
         DefUpvar(_, subdef, closure_id, body_id) => {
             match ty::ty_closure_sigil(fcx.node_ty(closure_id)) {
                 BorrowedSigil => encl_region_of_def(fcx, *subdef),
-                ManagedSigil | OwnedSigil => re_scope(body_id)
+                ManagedSigil | OwnedSigil => ReScope(body_id)
             }
         }
         _ => {
@@ -317,7 +317,7 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
                         //
                         // FIXME(#6268) remove to support nested method calls
                         constrain_regions_in_type_of_node(
-                            rcx, expr.id, ty::re_scope(expr.id),
+                            rcx, expr.id, ty::ReScope(expr.id),
                             infer::AutoBorrow(expr.span));
                     }
                 }
@@ -416,7 +416,7 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
             //
             // FIXME(#6268) nested method calls requires that this rule change
             let ty0 = rcx.resolve_node_type(expr.id);
-            constrain_regions_in_type(rcx, ty::re_scope(expr.id),
+            constrain_regions_in_type(rcx, ty::ReScope(expr.id),
                                       infer::AddrOf(expr.span), ty0);
             visit::walk_expr(rcx, expr, ());
         }
@@ -474,7 +474,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                         // (since otherwise that would require
                         // infinite stack).
                         constrain_free_variables(rcx, region, expr);
-                        let repeating_scope = ty::re_scope(rcx.repeating_scope);
+                        let repeating_scope = ty::ReScope(rcx.repeating_scope);
                         rcx.fcx.mk_subr(true, infer::InfStackClosure(expr.span),
                                         region, repeating_scope);
                     }
@@ -500,7 +500,7 @@ fn constrain_callee(rcx: &mut Rcx,
                     call_expr: @ast::Expr,
                     callee_expr: @ast::Expr)
 {
-    let call_region = ty::re_scope(call_expr.id);
+    let call_region = ty::ReScope(call_expr.id);
 
     let callee_ty = rcx.resolve_node_type(callee_id);
     match ty::get(callee_ty).sty {
@@ -535,8 +535,14 @@ fn constrain_call(rcx: &mut Rcx,
     //! appear in the arguments appropriately.
 
     let tcx = rcx.fcx.tcx();
-    debug!("constrain_call(call_expr={}, implicitly_ref_args={:?})",
-           call_expr.repr(tcx), implicitly_ref_args);
+    debug!("constrain_call(call_expr={}, \
+            receiver={}, \
+            arg_exprs={}, \
+            implicitly_ref_args={:?})",
+            call_expr.repr(tcx),
+            receiver.repr(tcx),
+            arg_exprs.repr(tcx),
+            implicitly_ref_args);
     let callee_ty = rcx.resolve_node_type(callee_id);
     if ty::type_is_error(callee_ty) {
         // Bail, as function type is unknown
@@ -549,9 +555,11 @@ fn constrain_call(rcx: &mut Rcx,
     //
     // FIXME(#6268) to support nested method calls, should be callee_id
     let callee_scope = call_expr.id;
-    let callee_region = ty::re_scope(callee_scope);
+    let callee_region = ty::ReScope(callee_scope);
 
     for &arg_expr in arg_exprs.iter() {
+        debug!("Argument");
+
         // ensure that any regions appearing in the argument type are
         // valid for at least the lifetime of the function:
         constrain_regions_in_type_of_node(
@@ -569,6 +577,7 @@ fn constrain_call(rcx: &mut Rcx,
 
     // as loop above, but for receiver
     for &r in receiver.iter() {
+        debug!("Receiver");
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, infer::CallRcvr(r.span));
         if implicitly_ref_args {
@@ -595,7 +604,7 @@ fn constrain_derefs(rcx: &mut Rcx,
      * the deref expr.
      */
     let tcx = rcx.fcx.tcx();
-    let r_deref_expr = ty::re_scope(deref_expr.id);
+    let r_deref_expr = ty::ReScope(deref_expr.id);
     for i in range(0u, derefs) {
         debug!("constrain_derefs(deref_expr=?, derefd_ty={}, derefs={:?}/{:?}",
                rcx.fcx.infcx().ty_to_str(derefd_ty),
@@ -641,7 +650,7 @@ fn constrain_index(rcx: &mut Rcx,
     debug!("constrain_index(index_expr=?, indexed_ty={}",
            rcx.fcx.infcx().ty_to_str(indexed_ty));
 
-    let r_index_expr = ty::re_scope(index_expr.id);
+    let r_index_expr = ty::ReScope(index_expr.id);
     match ty::get(indexed_ty).sty {
         ty::ty_estr(ty::vstore_slice(r_ptr)) |
         ty::ty_evec(_, ty::vstore_slice(r_ptr)) => {
@@ -727,9 +736,9 @@ fn constrain_regions_in_type(
            ty_to_str(tcx, ty));
 
     do relate_nested_regions(tcx, Some(minimum_lifetime), ty) |r_sub, r_sup| {
-        debug!("relate(r_sub={}, r_sup={})",
-               region_to_str(tcx, "", false, r_sub),
-               region_to_str(tcx, "", false, r_sup));
+        debug!("relate_nested_regions(r_sub={}, r_sup={})",
+                r_sub.repr(tcx),
+                r_sup.repr(tcx));
 
         if r_sup.is_bound() || r_sub.is_bound() {
             // a bound region is one which appears inside an fn type.
@@ -903,7 +912,7 @@ pub mod guarantor {
         let expr_cat = categorize(rcx, expr);
         debug!("guarantor::for_by_ref(expr={:?}, callee_scope={:?}) category={:?}",
                expr.id, callee_scope, expr_cat);
-        let minimum_lifetime = ty::re_scope(callee_scope);
+        let minimum_lifetime = ty::ReScope(callee_scope);
         for guarantor in expr_cat.guarantor.iter() {
             mk_subregion_due_to_derefence(rcx, expr.span,
                                           minimum_lifetime, *guarantor);

@@ -271,7 +271,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         // real one, but it will have the same runtime representation
         let slice_ty = ty::mk_evec(tcx,
                                    ty::mt { ty: unit_ty, mutbl: ast::MutImmutable },
-                                   ty::vstore_slice(ty::re_static));
+                                   ty::vstore_slice(ty::ReStatic));
 
         let scratch = scratch_datum(bcx, slice_ty, "__adjust", false);
 

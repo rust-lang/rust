@@ -89,7 +89,7 @@ pub static tag_path_elt_name: uint = 0x43u;
 pub static tag_item_field: uint = 0x44u;
 pub static tag_struct_mut: uint = 0x45u;
 
-pub static tag_region_param: uint = 0x46u;
+pub static tag_item_variances: uint = 0x46;
 pub static tag_mod_impl_trait: uint = 0x47u;
 /*
   trait items contain tag_item_trait_method elements,
@@ -192,6 +192,11 @@ pub static tag_items_data_item_extension_impl: uint = 0x86;
 pub static tag_path_elt_pretty_name: uint = 0x87;
 pub static tag_path_elt_pretty_name_ident: uint = 0x88;
 pub static tag_path_elt_pretty_name_extra: uint = 0x89;
+
+pub static tag_region_param_def: uint = 0x100;
+pub static tag_region_param_def_ident: uint = 0x101;
+pub static tag_region_param_def_def_id: uint = 0x102;
+
 
 pub struct LinkMeta {
     name: @str,

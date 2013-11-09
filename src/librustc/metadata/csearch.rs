@@ -14,7 +14,6 @@
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
-use metadata;
 use middle::ty;
 use middle::typeck;
 
@@ -144,6 +143,12 @@ pub fn get_trait_method_def_ids(cstore: @mut cstore::CStore,
     decoder::get_trait_method_def_ids(cdata, def.node)
 }
 
+pub fn get_item_variances(cstore: @mut cstore::CStore,
+                          def: ast::DefId) -> ty::ItemVariances {
+    let cdata = cstore::get_crate_data(cstore, def.crate);
+    decoder::get_item_variances(cdata, def.node)
+}
+
 pub fn get_provided_trait_methods(tcx: ty::ctxt,
                                   def: ast::DefId)
                                -> ~[@ty::Method] {
@@ -199,12 +204,6 @@ pub fn get_trait_def(tcx: ty::ctxt, def: ast::DefId) -> ty::TraitDef {
     decoder::get_trait_def(cdata, def.node, tcx)
 }
 
-pub fn get_region_param(cstore: @mut metadata::cstore::CStore,
-                        def: ast::DefId) -> Option<ty::region_variance> {
-    let cdata = cstore::get_crate_data(cstore, def.crate);
-    return decoder::get_region_param(cdata, def.node);
-}
-
 pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
                       def: ast::DefId) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.cstore;
@@ -224,7 +223,7 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: @~[],
-                                region_param: None},
+                                region_param_defs: @[]},
         ty: ty
     }
 }
