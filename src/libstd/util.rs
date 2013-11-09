@@ -80,6 +80,23 @@ impl Void {
     }
 }
 
+/// A zero-sized type hint useful for accessing static methods that don't
+/// mention `Self`.
+///
+/// # Example
+///
+/// ~~~rust
+/// trait A {
+///     fn a(_: ForType<Self>) -> uint;
+/// }
+///
+/// impl A for int {
+///     fn a(_: ForType<Self>) -> uint { 6 }
+/// }
+///
+/// assert_eq!(A::a(ForType::<int>), 6);
+/// ~~~
+pub struct ForType<T>;
 
 #[cfg(test)]
 mod tests {
@@ -150,6 +167,19 @@ mod tests {
         }
 
         unsafe { assert_eq!(did_run, true); }
+    }
+
+    #[test]
+    fn type_hint() {
+        trait A {
+            fn a(_: ForType<Self>) -> uint;
+        }
+
+        impl A for int {
+            fn a(_: ForType<Self>) -> uint { 6 }
+        }
+
+        assert_eq!(A::a(ForType::<int>), 6);
     }
 }
 
