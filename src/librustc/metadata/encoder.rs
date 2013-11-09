@@ -1487,8 +1487,8 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
 
 // So there's a special crate attribute called 'link' which defines the
 // metadata that Rust cares about for linking crates. This attribute requires
-// 'name' and 'vers' items, so if the user didn't provide them we will throw
-// them in anyway with default values.
+// 'name', 'vers' and 'package_id' items, so if the user didn't provide them we
+// will throw them in anyway with default values.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
                           crate: &Crate) -> ~[Attribute] {
 
@@ -1505,9 +1505,20 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
             attr::mk_name_value_item_str(@"vers",
                                          ecx.link_meta.vers);
 
-        let mut meta_items = ~[name_item, vers_item];
+        let pkgid_item = match ecx.link_meta.package_id {
+                Some(pkg_id) =>  attr::mk_name_value_item_str(@"package_id",
+                                                              pkg_id),
+                // uses package_id equal to name;
+                // this should never happen here but package_id is an Option
+                // FIXME (#10370): change package_id in LinkMeta to @str instead of Option<@str>
+                _ => attr::mk_name_value_item_str(@"package_id",
+                                                  ecx.link_meta.name)
+        };
 
-        for &mi in items.iter().filter(|mi| "name" != mi.name() && "vers" != mi.name()) {
+        let mut meta_items = ~[name_item, vers_item, pkgid_item];
+
+        for &mi in items.iter().filter(|mi| "name" != mi.name() && "vers" != mi.name() &&
+                                            "package_id" != mi.name()) {
             meta_items.push(mi);
         }
         let link_item = attr::mk_list_item(@"link", meta_items);
