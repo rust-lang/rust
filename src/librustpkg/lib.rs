@@ -763,7 +763,7 @@ pub fn main_args(args: &[~str]) -> int {
                    matches.opt_present("help");
     let no_link = matches.opt_present("no-link");
     let no_trans = matches.opt_present("no-trans");
-    let supplied_sysroot = matches.opt_val("sysroot");
+    let supplied_sysroot = matches.opt_str("sysroot");
     let generate_asm = matches.opt_present("S") ||
         matches.opt_present("assembly");
     let parse_only = matches.opt_present("parse-only");
@@ -895,7 +895,7 @@ pub fn main_args(args: &[~str]) -> int {
     let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
     remaining_args.shift();
     let sroot = match supplied_sysroot {
-        Some(getopts::Val(s)) => Path::new(s),
+        Some(s) => Path::new(s),
         _ => filesearch::get_or_default_sysroot()
     };
 

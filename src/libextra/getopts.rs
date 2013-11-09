@@ -185,18 +185,14 @@ impl Name {
 }
 
 impl Matches {
-    /// FIXME: #9311 This used to be private, but rustpkg somehow managed to depend on it.
-    /// No idea what this does.
-    pub fn opt_vals(&self, nm: &str) -> ~[Optval] {
+    fn opt_vals(&self, nm: &str) -> ~[Optval] {
         match find_opt(self.opts, Name::from_str(nm)) {
             Some(id) => self.vals[id].clone(),
             None => fail!("No option '{}' defined", nm)
         }
     }
 
-    /// FIXME: #9311 This used to be private, but rustpkg somehow managed to depend on it.
-    /// No idea what this does.
-    pub fn opt_val(&self, nm: &str) -> Option<Optval> {
+    fn opt_val(&self, nm: &str) -> Option<Optval> {
         let vals = self.opt_vals(nm);
         if (vals.is_empty()) {
             None
