@@ -26,7 +26,7 @@ fn ordering2<'a, 'b>(x: &'a &'b uint, y: &'a uint) -> &'b uint {
 fn ordering3<'a, 'b>(x: &'a uint, y: &'b uint) -> &'a &'b uint {
     // Do not infer an ordering from the return value.
     let z: &'b uint = &*x;
-    //~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements
+    //~^ ERROR cannot infer an appropriate lifetime
     fail!();
 }
 

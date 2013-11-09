@@ -13,7 +13,7 @@
 // contains region pointers
 struct foo(~fn(x: &int));
 
-fn take_foo(x: foo<'static>) {} //~ ERROR no region bound is allowed on `foo`
+fn take_foo(x: foo<'static>) {} //~ ERROR wrong number of lifetime parameters
 
 fn main() {
 }

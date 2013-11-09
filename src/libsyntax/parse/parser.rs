@@ -1490,7 +1490,7 @@ impl Parser {
                 segments.push(PathSegmentAndBoundSet {
                     segment: ast::PathSegment {
                         identifier: identifier,
-                        lifetime: None,
+                        lifetimes: opt_vec::Empty,
                         types: opt_vec::Empty,
                     },
                     bound_set: bound_set
@@ -1499,46 +1499,21 @@ impl Parser {
             }
 
             // Parse the `<` before the lifetime and types, if applicable.
-            let (any_lifetime_or_types, optional_lifetime, types) =
-                    if mode != NoTypesAllowed && self.eat(&token::LT) {
-                // Parse an optional lifetime.
-                let optional_lifetime = match *self.token {
-                    token::LIFETIME(*) => Some(self.parse_lifetime()),
-                    _ => None,
-                };
-
-                // Parse type parameters.
-                let mut types = opt_vec::Empty;
-                let mut need_comma = optional_lifetime.is_some();
-                loop {
-                    // We're done if we see a `>`.
-                    match *self.token {
-                        token::GT | token::BINOP(token::SHR) => {
-                            self.expect_gt();
-                            break
-                        }
-                        _ => {} // Go on.
-                    }
-
-                    if need_comma {
-                        self.expect(&token::COMMA)
-                    } else {
-                        need_comma = true
-                    }
-
-                    types.push(self.parse_ty(false))
+            let (any_lifetime_or_types, lifetimes, types) = {
+                if mode != NoTypesAllowed && self.eat(&token::LT) {
+                    let (lifetimes, types) =
+                        self.parse_generic_values_after_lt();
+                    (true, lifetimes, opt_vec::from(types))
+                } else {
+                    (false, opt_vec::Empty, opt_vec::Empty)
                 }
-
-                (true, optional_lifetime, types)
-            } else {
-                (false, None, opt_vec::Empty)
             };
 
             // Assemble and push the result.
             segments.push(PathSegmentAndBoundSet {
                 segment: ast::PathSegment {
                     identifier: identifier,
-                    lifetime: optional_lifetime,
+                    lifetimes: lifetimes,
                     types: types,
                 },
                 bound_set: bound_set
@@ -1609,11 +1584,11 @@ impl Parser {
     pub fn parse_lifetime(&self) -> ast::Lifetime {
         match *self.token {
             token::LIFETIME(i) => {
-                let span = self.span;
+                let span = *self.span;
                 self.bump();
                 return ast::Lifetime {
                     id: ast::DUMMY_NODE_ID,
-                    span: *span,
+                    span: span,
                     ident: i
                 };
             }
@@ -4856,7 +4831,7 @@ impl Parser {
                 segments: path.move_iter().map(|identifier| {
                     ast::PathSegment {
                         identifier: identifier,
-                        lifetime: None,
+                        lifetimes: opt_vec::Empty,
                         types: opt_vec::Empty,
                     }
                 }).collect()
@@ -4892,7 +4867,7 @@ impl Parser {
                         segments: path.move_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
-                                lifetime: None,
+                                lifetimes: opt_vec::Empty,
                                 types: opt_vec::Empty,
                             }
                         }).collect()
@@ -4910,7 +4885,7 @@ impl Parser {
                         segments: path.move_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
-                                lifetime: None,
+                                lifetimes: opt_vec::Empty,
                                 types: opt_vec::Empty,
                             }
                         }).collect()
@@ -4932,7 +4907,7 @@ impl Parser {
             segments: path.move_iter().map(|identifier| {
                 ast::PathSegment {
                     identifier: identifier,
-                    lifetime: None,
+                    lifetimes: opt_vec::Empty,
                     types: opt_vec::Empty,
                 }
             }).collect()

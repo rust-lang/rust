@@ -35,7 +35,6 @@
 
 use middle::ty::{RegionVid, TyVar, Vid};
 use middle::ty;
-use middle::typeck::isr_alist;
 use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;
@@ -43,9 +42,8 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::unify::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
+use std::hashmap::HashMap;
 use util::common::indenter;
-
-use extra::list;
 
 pub trait LatticeValue {
     fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;
@@ -366,14 +364,13 @@ impl TyLatticeDir for Glb {
     }
 }
 
-pub fn super_lattice_tys<L:LatticeDir + TyLatticeDir + Combine>(
-    this: &L,
-    a: ty::t,
-    b: ty::t) -> cres<ty::t> {
+pub fn super_lattice_tys<L:LatticeDir+TyLatticeDir+Combine>(this: &L,
+                                                            a: ty::t,
+                                                            b: ty::t)
+                                                            -> cres<ty::t> {
     debug!("{}.lattice_tys({}, {})", this.tag(),
            a.inf_str(this.infcx()),
            b.inf_str(this.infcx()));
-    let _r = indenter();
 
     if a == b {
         return Ok(a);
@@ -524,25 +521,22 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
 // Random utility functions used by LUB/GLB when computing LUB/GLB of
 // fn types
 
-pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
-    let mut result = ~[];
-    do list::each(isr) |pair| {
-        match pair.second() {
-            ty::re_infer(ty::ReVar(r)) => { result.push(r); }
+pub fn var_ids<T:Combine>(this: &T,
+                          map: &HashMap<ty::BoundRegion, ty::Region>)
+                          -> ~[RegionVid] {
+    map.iter().map(|(_, r)| match *r {
+            ty::ReInfer(ty::ReVar(r)) => { r }
             r => {
                 this.infcx().tcx.sess.span_bug(
                     this.trace().origin.span(),
                     format!("Found non-region-vid: {:?}", r));
             }
-        }
-        true
-    };
-    result
+        }).collect()
 }
 
 pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
     match r {
-        ty::re_infer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
+        ty::ReInfer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
         _ => false
     }
 }

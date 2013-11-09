@@ -4182,7 +4182,7 @@ impl Resolver {
 
                             if path.segments
                                    .iter()
-                                   .any(|s| s.lifetime.is_some()) {
+                                   .any(|s| !s.lifetimes.is_empty()) {
                                 self.session.span_err(path.span,
                                                       "lifetime parameters \
                                                        are not allowed on \

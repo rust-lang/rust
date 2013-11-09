@@ -10,10 +10,11 @@
 
 // Type substitutions.
 
-
 use middle::ty;
+use middle::ty_fold;
+use middle::ty_fold::TypeFolder;
 use syntax::opt_vec::OptVec;
-use util::ppaux::Repr;
+use std::at_vec;
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -33,39 +34,43 @@ pub trait Subst {
 // to all subst methods but ran into trouble due to the limitations of
 // our current method/trait matching algorithm. - Niko
 
-trait EffectfulSubst {
-    fn effectfulSubst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self;
-}
-
 impl Subst for ty::t {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
         if ty::substs_is_noop(substs) {
-            return *self;
+            *self
         } else {
-            return self.effectfulSubst(tcx, substs);
+            let mut folder = SubstFolder {tcx: tcx, substs: substs};
+            folder.fold_ty(*self)
         }
     }
 }
 
-impl EffectfulSubst for ty::t {
-    fn effectfulSubst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
-        if !ty::type_needs_subst(*self) {
-            return *self;
+struct SubstFolder<'self> {
+    tcx: ty::ctxt,
+    substs: &'self ty::substs
+}
+
+impl<'self> TypeFolder for SubstFolder<'self> {
+    fn tcx(&self) -> ty::ctxt { self.tcx }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        r.subst(self.tcx, self.substs)
+    }
+
+    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+        if !ty::type_needs_subst(t) {
+            return t;
         }
 
-        match ty::get(*self).sty {
+        match ty::get(t).sty {
             ty::ty_param(p) => {
-                substs.tps[p.idx]
+                self.substs.tps[p.idx]
             }
             ty::ty_self(_) => {
-                substs.self_ty.expect("ty_self not found in substs")
+                self.substs.self_ty.expect("ty_self not found in substs")
             }
             _ => {
-                ty::fold_regions_and_ty(
-                    tcx, *self,
-                    |r| r.subst(tcx, substs),
-                    |t| t.effectfulSubst(tcx, substs),
-                    |t| t.effectfulSubst(tcx, substs))
+                ty_fold::super_fold_ty(self, t)
             }
         }
     }
@@ -77,6 +82,12 @@ impl EffectfulSubst for ty::t {
 impl<T:Subst> Subst for ~[T] {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ~[T] {
         self.map(|t| t.subst(tcx, substs))
+    }
+}
+
+impl<T:Subst> Subst for @[T] {
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @[T] {
+        at_vec::map(*self, |t| t.subst(tcx, substs))
     }
 }
 
@@ -134,7 +145,8 @@ impl Subst for ty::RegionSubsts {
 
 impl Subst for ty::BareFnTy {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::BareFnTy {
-        ty::fold_bare_fn_ty(self, |t| t.subst(tcx, substs))
+        let mut folder = SubstFolder {tcx: tcx, substs: substs};
+        folder.fold_bare_fn_ty(self)
     }
 }
 
@@ -161,35 +173,30 @@ impl Subst for ty::Generics {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::Generics {
         ty::Generics {
             type_param_defs: self.type_param_defs.subst(tcx, substs),
-            region_param: self.region_param
+            region_param_defs: self.region_param_defs.subst(tcx, substs),
         }
     }
 }
 
+impl Subst for ty::RegionParameterDef {
+    fn subst(&self, _: ty::ctxt, _: &ty::substs) -> ty::RegionParameterDef {
+        *self
+    }
+}
+
 impl Subst for ty::Region {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::Region {
-        // Note: This routine only handles the self region, because it
-        // is only concerned with substitutions of regions that appear
-        // in types. Region substitution of the bound regions that
-        // appear in a function signature is done using the
-        // specialized routine
+    fn subst(&self, _tcx: ty::ctxt, substs: &ty::substs) -> ty::Region {
+        // Note: This routine only handles regions that are bound on
+        // type declarationss and other outer declarations, not those
+        // bound in *fn types*. Region substitution of the bound
+        // regions that appear in a function signature is done using
+        // the specialized routine
         // `middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig()`.
-        // As we transition to the new region syntax this distinction
-        // will most likely disappear.
         match self {
-            &ty::re_bound(ty::br_self) => {
+            &ty::ReEarlyBound(_, i, _) => {
                 match substs.regions {
-                    ty::ErasedRegions => ty::re_static,
-                    ty::NonerasedRegions(ref regions) => {
-                        if regions.len() != 1 {
-                            tcx.sess.bug(
-                                format!("ty::Region\\#subst(): \
-                                      Reference to self region when \
-                                      given substs with no self region: {}",
-                                     substs.repr(tcx)));
-                        }
-                        *regions.get(0)
-                    }
+                    ty::ErasedRegions => ty::ReStatic,
+                    ty::NonerasedRegions(ref regions) => *regions.get(i),
                 }
             }
             _ => *self

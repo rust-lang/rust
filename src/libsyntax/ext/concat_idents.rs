@@ -43,7 +43,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                  segments: ~[
                     ast::PathSegment {
                         identifier: res,
-                        lifetime: None,
+                        lifetimes: opt_vec::Empty,
                         types: opt_vec::Empty,
                     }
                 ]

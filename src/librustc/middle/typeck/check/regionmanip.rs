@@ -10,155 +10,41 @@
 
 // #[warn(deprecated_mode)];
 
-
 use middle::ty;
-
-use middle::typeck::isr_alist;
-use util::common::indenter;
-use util::ppaux::region_to_str;
+use middle::ty_fold;
+use middle::ty_fold::TypeFolder;
+use std::hashmap::HashMap;
+use util::ppaux::Repr;
 use util::ppaux;
-
-use extra::list::Cons;
 
 // Helper functions related to manipulating region types.
 
 pub fn replace_bound_regions_in_fn_sig(
     tcx: ty::ctxt,
-    isr: isr_alist,
     opt_self_ty: Option<ty::t>,
     fn_sig: &ty::FnSig,
-    mapf: &fn(ty::bound_region) -> ty::Region)
-    -> (isr_alist, Option<ty::t>, ty::FnSig)
+    mapf: &fn(ty::BoundRegion) -> ty::Region)
+    -> (HashMap<ty::BoundRegion,ty::Region>, Option<ty::t>, ty::FnSig)
 {
-    let mut all_tys = ty::tys_in_fn_sig(fn_sig);
+    debug!("replace_bound_regions_in_fn_sig(self_ty={}, fn_sig={})",
+            opt_self_ty.repr(tcx),
+            fn_sig.repr(tcx));
 
-    for &t in opt_self_ty.iter() { all_tys.push(t) }
-
-    debug!("replace_bound_regions_in_fn_sig(self_ty={:?}, fn_sig={}, \
-            all_tys={:?})",
-           opt_self_ty.map(|t| ppaux::ty_to_str(tcx, t)),
-           ppaux::fn_sig_to_str(tcx, fn_sig),
-           all_tys.map(|t| ppaux::ty_to_str(tcx, *t)));
-    let _i = indenter();
-
-    let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
-        debug!("br={:?}", br);
-        mapf(br)
+    let mut map = HashMap::new();
+    let (fn_sig, opt_self_ty) = {
+        let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
+                debug!("region r={}", r.to_str());
+                match r {
+                ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
+                    *map.find_or_insert_with(br, |_| mapf(br))
+                }
+                _ => r
+            }});
+        (ty_fold::super_fold_sig(&mut f, fn_sig),
+         ty_fold::fold_opt_ty(&mut f, opt_self_ty))
     };
-    let new_fn_sig = ty::fold_sig(fn_sig, |t| {
-        replace_bound_regions(tcx, isr, t)
-    });
-    let new_self_ty = opt_self_ty.map(|t| replace_bound_regions(tcx, isr, t));
-
-    debug!("result of replace_bound_regions_in_fn_sig: \
-            new_self_ty={:?}, \
-            fn_sig={}",
-           new_self_ty.map(|t| ppaux::ty_to_str(tcx, t)),
-           ppaux::fn_sig_to_str(tcx, &new_fn_sig));
-
-    return (isr, new_self_ty, new_fn_sig);
-
-    // Takes `isr`, a (possibly empty) mapping from in-scope region
-    // names ("isr"s) to their corresponding regions; `tys`, a list of
-    // types, and `to_r`, a closure that takes a bound_region and
-    // returns a region.  Returns an updated version of `isr`,
-    // extended with the in-scope region names from all of the bound
-    // regions appearing in the types in the `tys` list (if they're
-    // not in `isr` already), with each of those in-scope region names
-    // mapped to a region that's the result of applying `to_r` to
-    // itself.
-    fn create_bound_region_mapping(
-        tcx: ty::ctxt,
-        isr: isr_alist,
-        tys: ~[ty::t],
-        to_r: &fn(ty::bound_region) -> ty::Region) -> isr_alist {
-
-        // Takes `isr` (described above), `to_r` (described above),
-        // and `r`, a region.  If `r` is anything other than a bound
-        // region, or if it's a bound region that already appears in
-        // `isr`, then we return `isr` unchanged.  If `r` is a bound
-        // region that doesn't already appear in `isr`, we return an
-        // updated isr_alist that now contains a mapping from `r` to
-        // the result of calling `to_r` on it.
-        fn append_isr(isr: isr_alist,
-                      to_r: &fn(ty::bound_region) -> ty::Region,
-                      r: ty::Region) -> isr_alist {
-            match r {
-              ty::re_empty | ty::re_free(*) | ty::re_static | ty::re_scope(_) |
-              ty::re_infer(_) => {
-                isr
-              }
-              ty::re_bound(br) => {
-                match isr.find(br) {
-                  Some(_) => isr,
-                  None => @Cons((br, to_r(br)), isr)
-                }
-              }
-            }
-        }
-
-        // For each type `ty` in `tys`...
-        do tys.iter().fold(isr) |isr, ty| {
-            let mut isr = isr;
-
-            // Using fold_regions is inefficient, because it
-            // constructs new types, but it avoids code duplication in
-            // terms of locating all the regions within the various
-            // kinds of types.  This had already caused me several
-            // bugs so I decided to switch over.
-            do ty::fold_regions(tcx, *ty) |r, in_fn| {
-                if !in_fn { isr = append_isr(isr, |br| to_r(br), r); }
-                r
-            };
-
-            isr
-        }
-    }
-
-    // Takes `isr`, a mapping from in-scope region names ("isr"s) to
-    // their corresponding regions; and `ty`, a type.  Returns an
-    // updated version of `ty`, in which bound regions in `ty` have
-    // been replaced with the corresponding bindings in `isr`.
-    fn replace_bound_regions(
-        tcx: ty::ctxt,
-        isr: isr_alist,
-        ty: ty::t) -> ty::t {
-
-        do ty::fold_regions(tcx, ty) |r, in_fn| {
-            let r1 = match r {
-              // As long as we are not within a fn() type, `&T` is
-              // mapped to the free region anon_r.  But within a fn
-              // type, it remains bound.
-              ty::re_bound(ty::br_anon(_)) if in_fn => r,
-
-              ty::re_bound(br) => {
-                match isr.find(br) {
-                  // In most cases, all named, bound regions will be
-                  // mapped to some free region.
-                  Some(fr) => fr,
-
-                  // But in the case of a fn() type, there may be
-                  // named regions within that remain bound:
-                  None if in_fn => r,
-                  None => {
-                    tcx.sess.bug(
-                        format!("Bound region not found in \
-                              in_scope_regions list: {}",
-                             region_to_str(tcx, "", false, r)));
-                  }
-                }
-              }
-
-              // Free regions like these just stay the same:
-              ty::re_empty |
-              ty::re_static |
-              ty::re_scope(_) |
-              ty::re_free(*) |
-              ty::re_infer(_) => r
-            };
-            r1
-        }
-    }
+    debug!("resulting map: {}", map.to_str());
+    (map, opt_self_ty, fn_sig)
 }
 
 pub fn relate_nested_regions(
@@ -168,7 +54,6 @@ pub fn relate_nested_regions(
     relate_op: &fn(ty::Region, ty::Region))
 {
     /*!
-     *
      * This rather specialized function walks each region `r` that appear
      * in `ty` and invokes `relate_op(r_encl, r)` for each one.  `r_encl`
      * here is the region of any enclosing `&'r T` pointer.  If there is
@@ -194,41 +79,60 @@ pub fn relate_nested_regions(
      * Hence, in the second example above, `'r2` must be a subregion of `'r3`.
      */
 
-    let mut the_stack = ~[];
-    for &r in opt_region.iter() { the_stack.push(r); }
-    walk_ty(tcx, &mut the_stack, ty, relate_op);
+    let mut rr = RegionRelator { tcx: tcx,
+                                 stack: ~[],
+                                 relate_op: relate_op };
+    match opt_region {
+        Some(o_r) => { rr.stack.push(o_r); }
+        None => {}
+    }
+    rr.fold_ty(ty);
 
-    fn walk_ty(tcx: ty::ctxt,
-               the_stack: &mut ~[ty::Region],
-               ty: ty::t,
-               relate_op: &fn(ty::Region, ty::Region))
-    {
-        match ty::get(ty).sty {
-            ty::ty_rptr(r, ref mt) |
-            ty::ty_evec(ref mt, ty::vstore_slice(r)) => {
-                relate(*the_stack, r, |x,y| relate_op(x,y));
-                the_stack.push(r);
-                walk_ty(tcx, the_stack, mt.ty, |x,y| relate_op(x,y));
-                the_stack.pop();
+    struct RegionRelator<'self> {
+        tcx: ty::ctxt,
+        stack: ~[ty::Region],
+        relate_op: &'self fn(ty::Region, ty::Region),
+    }
+
+    // FIXME(#10151) -- Define more precisely when a region is
+    // considered "nested". Consider taking variance into account as
+    // well.
+
+    impl<'self> TypeFolder for RegionRelator<'self> {
+        fn tcx(&self) -> ty::ctxt {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, ty: ty::t) -> ty::t {
+            match ty::get(ty).sty {
+                ty::ty_rptr(r, ref mt) |
+                ty::ty_evec(ref mt, ty::vstore_slice(r)) => {
+                    self.relate(r);
+                    self.stack.push(r);
+                    ty_fold::super_fold_ty(self, mt.ty);
+                    self.stack.pop();
+                }
+
+                _ => {
+                    ty_fold::super_fold_ty(self, ty);
+                }
             }
-            _ => {
-                ty::fold_regions_and_ty(
-                    tcx,
-                    ty,
-                    |r| { relate(     *the_stack, r, |x,y| relate_op(x,y)); r },
-                    |t| { walk_ty(tcx, the_stack, t, |x,y| relate_op(x,y)); t },
-                    |t| { walk_ty(tcx, the_stack, t, |x,y| relate_op(x,y)); t });
-            }
+
+            ty
+        }
+
+        fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+            self.relate(r);
+            r
         }
     }
 
-    fn relate(the_stack: &[ty::Region],
-              r_sub: ty::Region,
-              relate_op: &fn(ty::Region, ty::Region))
-    {
-        for &r in the_stack.iter() {
-            if !r.is_bound() && !r_sub.is_bound() {
-                relate_op(r, r_sub);
+    impl<'self> RegionRelator<'self> {
+        fn relate(&mut self, r_sub: ty::Region) {
+            for &r in self.stack.iter() {
+                if !r.is_bound() && !r_sub.is_bound() {
+                    (self.relate_op)(r, r_sub);
+                }
             }
         }
     }
@@ -265,7 +169,7 @@ pub fn relate_free_regions(
         debug!("relate_free_regions(t={})", ppaux::ty_to_str(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {
-                (&ty::re_free(free_a), &ty::re_free(free_b)) => {
+                (&ty::ReFree(free_a), &ty::ReFree(free_b)) => {
                     tcx.region_maps.relate_free_regions(free_a, free_b);
                 }
                 _ => {}

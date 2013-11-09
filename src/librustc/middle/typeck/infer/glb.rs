@@ -20,14 +20,12 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
-use middle::typeck::isr_alist;
 use syntax::ast::{Many, Once, extern_fn, impure_fn, MutImmutable, MutMutable};
-use syntax::ast::{unsafe_fn};
+use syntax::ast::{unsafe_fn, NodeId};
 use syntax::ast::{Onceness, purity};
+use std::hashmap::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
-
-use extra::list;
 
 pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 
@@ -132,14 +130,14 @@ impl Combine for Glb {
         let snapshot = self.infcx.region_vars.start_snapshot();
 
         // Instantiate each bound region with a fresh region variable.
-        let (a_with_fresh, a_isr) =
+        let (a_with_fresh, a_map) =
             self.infcx.replace_bound_regions_with_fresh_regions(
                 self.trace, a);
-        let a_vars = var_ids(self, a_isr);
-        let (b_with_fresh, b_isr) =
+        let a_vars = var_ids(self, &a_map);
+        let (b_with_fresh, b_map) =
             self.infcx.replace_bound_regions_with_fresh_regions(
                 self.trace, b);
-        let b_vars = var_ids(self, b_isr);
+        let b_vars = var_ids(self, &b_map);
 
         // Collect constraints.
         let sig0 = if_ok!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
@@ -152,20 +150,23 @@ impl Combine for Glb {
             fold_regions_in_sig(
                 self.infcx.tcx,
                 &sig0,
-                |r, _in_fn| generalize_region(self, snapshot,
-                                              new_vars, a_isr, a_vars, b_vars,
-                                              r));
+                |r| generalize_region(self, snapshot,
+                                      new_vars, sig0.binder_id,
+                                      &a_map, a_vars, b_vars,
+                                      r));
         debug!("sig1 = {}", sig1.inf_str(self.infcx));
         return Ok(sig1);
 
         fn generalize_region(this: &Glb,
                              snapshot: uint,
                              new_vars: &[RegionVid],
-                             a_isr: isr_alist,
+                             new_binder_id: NodeId,
+                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
                              a_vars: &[RegionVid],
                              b_vars: &[RegionVid],
                              r0: ty::Region) -> ty::Region {
             if !is_var_in_set(new_vars, r0) {
+                assert!(!r0.is_bound());
                 return r0;
             }
 
@@ -177,13 +178,13 @@ impl Combine for Glb {
             for r in tainted.iter() {
                 if is_var_in_set(a_vars, *r) {
                     if a_r.is_some() {
-                        return fresh_bound_variable(this);
+                        return fresh_bound_variable(this, new_binder_id);
                     } else {
                         a_r = Some(*r);
                     }
                 } else if is_var_in_set(b_vars, *r) {
                     if b_r.is_some() {
-                        return fresh_bound_variable(this);
+                        return fresh_bound_variable(this, new_binder_id);
                     } else {
                         b_r = Some(*r);
                     }
@@ -192,57 +193,57 @@ impl Combine for Glb {
                 }
             }
 
-                // NB---I do not believe this algorithm computes
-                // (necessarily) the GLB.  As written it can
-                // spuriously fail.  In particular, if there is a case
-                // like: &fn(fn(&a)) and fn(fn(&b)), where a and b are
-                // free, it will return fn(&c) where c = GLB(a,b).  If
-                // however this GLB is not defined, then the result is
-                // an error, even though something like
-                // "fn<X>(fn(&X))" where X is bound would be a
-                // subtype of both of those.
-                //
-                // The problem is that if we were to return a bound
-                // variable, we'd be computing a lower-bound, but not
-                // necessarily the *greatest* lower-bound.
+            // NB---I do not believe this algorithm computes
+            // (necessarily) the GLB.  As written it can
+            // spuriously fail.  In particular, if there is a case
+            // like: &fn(fn(&a)) and fn(fn(&b)), where a and b are
+            // free, it will return fn(&c) where c = GLB(a,b).  If
+            // however this GLB is not defined, then the result is
+            // an error, even though something like
+            // "fn<X>(fn(&X))" where X is bound would be a
+            // subtype of both of those.
+            //
+            // The problem is that if we were to return a bound
+            // variable, we'd be computing a lower-bound, but not
+            // necessarily the *greatest* lower-bound.
+            //
+            // Unfortunately, this problem is non-trivial to solve,
+            // because we do not know at the time of computing the GLB
+            // whether a GLB(a,b) exists or not, because we haven't
+            // run region inference (or indeed, even fully computed
+            // the region hierarchy!). The current algorithm seems to
+            // works ok in practice.
 
             if a_r.is_some() && b_r.is_some() && only_new_vars {
                 // Related to exactly one bound variable from each fn:
-                return rev_lookup(this, a_isr, a_r.unwrap());
+                return rev_lookup(this, a_map, new_binder_id, a_r.unwrap());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
+                assert!(!r0.is_bound());
                 return r0;
             } else {
                 // Other:
-                return fresh_bound_variable(this);
+                return fresh_bound_variable(this, new_binder_id);
             }
         }
 
         fn rev_lookup(this: &Glb,
-                      a_isr: isr_alist,
+                      a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                      new_binder_id: NodeId,
                       r: ty::Region) -> ty::Region
         {
-            let mut ret = None;
-            do list::each(a_isr) |pair| {
-                let (a_br, a_r) = *pair;
-                if a_r == r {
-                    ret = Some(ty::re_bound(a_br));
-                    false
-                } else {
-                    true
+            for (a_br, a_r) in a_map.iter() {
+                if *a_r == r {
+                    return ty::ReLateBound(new_binder_id, *a_br);
                 }
-            };
-
-            match ret {
-                Some(x) => x,
-                None => this.infcx.tcx.sess.span_bug(
-                            this.trace.origin.span(),
-                            format!("could not find original bound region for {:?}", r))
             }
+            this.infcx.tcx.sess.span_bug(
+                this.trace.origin.span(),
+                format!("could not find original bound region for {:?}", r))
         }
 
-        fn fresh_bound_variable(this: &Glb) -> ty::Region {
-            this.infcx.region_vars.new_bound()
+        fn fresh_bound_variable(this: &Glb, binder_id: NodeId) -> ty::Region {
+            this.infcx.region_vars.new_bound(binder_id)
         }
     }
 }

@@ -8,29 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+trait Repeat<A> { fn get(&self) -> A; }
 
-trait repeat<A> { fn get(&self) -> A; }
-
-impl<A:Clone> repeat<A> for @A {
-    fn get(&self) -> A { **self }
+impl<A:Clone> Repeat<A> for A {
+    fn get(&self) -> A { self.clone() }
 }
 
-fn repeater<A:Clone>(v: @A) -> @repeat<A> {
-    // Note: owned kind is not necessary as A appears in the trait type
-    @v as @repeat<A> // No
+fn repeater<A:Clone>(v: A) -> ~Repeat:<A> {
+    ~v as ~Repeat:<A> // No
 }
 
 fn main() {
     // Error results because the type of is inferred to be
-    // @repeat<&'blk int> where blk is the lifetime of the block below.
+    // ~Repeat<&'blk int> where blk is the lifetime of the block below.
 
-    let y = { //~ ERROR lifetime of variable does not enclose its declaration
-        let x: &'blk int = &3;
-        repeater(@x)
+    let y = {
+        let tmp0 = 3;
+        let tmp1 = &tmp0; //~ ERROR borrowed value does not live long enough
+        repeater(tmp1)
     };
     assert!(3 == *(y.get()));
-    //~^ ERROR dereference of reference outside its lifetime
-    //~^^ ERROR automatically borrowed pointer is not valid at the time of borrow
-    //~^^^ ERROR lifetime of return value does not outlive the function call
 }

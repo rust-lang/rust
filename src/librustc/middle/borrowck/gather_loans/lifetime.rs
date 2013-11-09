@@ -199,7 +199,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
 
         // Make sure that the loan does not exceed the maximum time
         // that we can root the value, dynamically.
-        let root_region = ty::re_scope(self.root_scope_id);
+        let root_region = ty::ReScope(self.root_scope_id);
         if !self.bccx.is_subregion_of(self.loan_region, root_region) {
             self.report_error(
                 err_out_of_root_scope(root_region, self.loan_region));
@@ -208,9 +208,9 @@ impl<'self> GuaranteeLifetimeContext<'self> {
 
         // Extract the scope id that indicates how long the rooting is required
         let root_scope = match self.loan_region {
-            ty::re_scope(id) => id,
+            ty::ReScope(id) => id,
             _ => {
-                // the check above should fail for anything is not re_scope
+                // the check above should fail for anything is not ReScope
                 self.bccx.tcx.sess.span_bug(
                     cmt_base.span,
                     format!("Cannot issue root for scope region: {:?}",
@@ -260,12 +260,12 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                 note_and_explain_region(
                     self.bccx.tcx,
                     "managed value only needs to be frozen for ",
-                    ty::re_scope(root_scope),
+                    ty::ReScope(root_scope),
                     "...");
                 note_and_explain_region(
                     self.bccx.tcx,
                     "...but due to Issue #6248, it will be frozen for ",
-                    ty::re_scope(cleanup_scope),
+                    ty::ReScope(cleanup_scope),
                     "");
             }
 
@@ -324,13 +324,13 @@ impl<'self> GuaranteeLifetimeContext<'self> {
 
         match cmt.cat {
             mc::cat_rvalue(cleanup_scope_id) => {
-                ty::re_scope(cleanup_scope_id)
+                ty::ReScope(cleanup_scope_id)
             }
             mc::cat_copied_upvar(_) => {
-                ty::re_scope(self.item_scope_id)
+                ty::ReScope(self.item_scope_id)
             }
             mc::cat_static_item => {
-                ty::re_static
+                ty::ReStatic
             }
             mc::cat_local(local_id) |
             mc::cat_arg(local_id) |
@@ -338,7 +338,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
                 self.bccx.tcx.region_maps.encl_region(local_id)
             }
             mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
-                ty::re_static
+                ty::ReStatic
             }
             mc::cat_deref(_, _, mc::region_ptr(_, r)) => {
                 r

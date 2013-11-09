@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(cond: bool) {
-    let x = 5;
-    let mut y: &'blk int = &x;
-
-    let mut z: &'blk int;
-    if cond {
-        z = &x; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
-    } else {
-        let w: &'blk int = &x;
-        z = w;
-    }
+struct Foo<'static> { //~ ERROR illegal lifetime parameter name: `static`
+    x: &'static int
 }
 
-fn main() {
-}
+fn main() {}

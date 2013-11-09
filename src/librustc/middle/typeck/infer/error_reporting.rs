@@ -73,6 +73,7 @@ use middle::typeck::infer::region_inference::SubSupConflict;
 use middle::typeck::infer::region_inference::SupSupConflict;
 use syntax::opt_vec::OptVec;
 use util::ppaux::UserString;
+use util::ppaux::bound_region_to_str;
 use util::ppaux::note_and_explain_region;
 
 pub trait ErrorReporting {
@@ -110,6 +111,13 @@ pub trait ErrorReporting {
                                region2: Region);
 }
 
+trait ErrorReportingHelpers {
+    fn report_inference_failure(@mut self,
+                                var_origin: RegionVariableOrigin);
+
+    fn note_region_origin(@mut self,
+                          origin: SubregionOrigin);
+}
 
 impl ErrorReporting for InferCtxt {
     fn report_region_errors(@mut self,
@@ -398,10 +406,7 @@ impl ErrorReporting for InferCtxt {
                                sub_region: Region,
                                sup_origin: SubregionOrigin,
                                sup_region: Region) {
-        self.tcx.sess.span_err(
-            var_origin.span(),
-            format!("cannot infer an appropriate lifetime \
-                  due to conflicting requirements"));
+        self.report_inference_failure(var_origin);
 
         note_and_explain_region(
             self.tcx,
@@ -409,9 +414,7 @@ impl ErrorReporting for InferCtxt {
             sup_region,
             "...");
 
-        self.tcx.sess.span_note(
-            sup_origin.span(),
-            format!("...due to the following expression"));
+        self.note_region_origin(sup_origin);
 
         note_and_explain_region(
             self.tcx,
@@ -419,9 +422,7 @@ impl ErrorReporting for InferCtxt {
             sub_region,
             "...");
 
-        self.tcx.sess.span_note(
-            sub_origin.span(),
-            format!("...due to the following expression"));
+        self.note_region_origin(sub_origin);
     }
 
     fn report_sup_sup_conflict(@mut self,
@@ -430,10 +431,7 @@ impl ErrorReporting for InferCtxt {
                                region1: Region,
                                origin2: SubregionOrigin,
                                region2: Region) {
-        self.tcx.sess.span_err(
-            var_origin.span(),
-            format!("cannot infer an appropriate lifetime \
-                  due to conflicting requirements"));
+        self.report_inference_failure(var_origin);
 
         note_and_explain_region(
             self.tcx,
@@ -441,9 +439,7 @@ impl ErrorReporting for InferCtxt {
             region1,
             "...");
 
-        self.tcx.sess.span_note(
-            origin1.span(),
-            format!("...due to the following expression"));
+        self.note_region_origin(origin1);
 
         note_and_explain_region(
             self.tcx,
@@ -451,9 +447,167 @@ impl ErrorReporting for InferCtxt {
             region2,
             "...");
 
-        self.tcx.sess.span_note(
-            origin2.span(),
-            format!("...due to the following expression"));
+        self.note_region_origin(origin2);
+    }
+}
+
+impl ErrorReportingHelpers for InferCtxt {
+    fn report_inference_failure(@mut self,
+                                var_origin: RegionVariableOrigin) {
+        let var_description = match var_origin {
+            infer::MiscVariable(_) => ~"",
+            infer::PatternRegion(_) => ~" for pattern",
+            infer::AddrOfRegion(_) => ~" for borrow expression",
+            infer::AddrOfSlice(_) => ~" for slice expression",
+            infer::Autoref(_) => ~" for autoref",
+            infer::Coercion(_) => ~" for automatic coercion",
+            infer::BoundRegionInFnCall(_, br) => {
+                format!(" for {}in function call",
+                        bound_region_to_str(self.tcx, "region ", true, br))
+            }
+            infer::BoundRegionInFnType(_, br) => {
+                format!(" for {}in function type",
+                        bound_region_to_str(self.tcx, "region ", true, br))
+            }
+            infer::BoundRegionInTypeOrImpl(_) => {
+                format!(" for region in type/impl")
+            }
+            infer::BoundRegionInCoherence(*) => {
+                format!(" for coherence check")
+            }
+        };
+
+        self.tcx.sess.span_err(
+            var_origin.span(),
+            format!("cannot infer an appropriate lifetime{} \
+                    due to conflicting requirements",
+                    var_description));
+    }
+
+    fn note_region_origin(@mut self,
+                          origin: SubregionOrigin) {
+        match origin {
+            infer::Subtype(ref trace) => {
+                let desc = match trace.origin {
+                    infer::Misc(_) => {
+                        format!("types are compatible")
+                    }
+                    infer::MethodCompatCheck(_) => {
+                        format!("method type is compatible with trait")
+                    }
+                    infer::ExprAssignable(_) => {
+                        format!("expression is assignable")
+                    }
+                    infer::RelateTraitRefs(_) => {
+                        format!("traits are compatible")
+                    }
+                    infer::RelateSelfType(_) => {
+                        format!("type matches impl")
+                    }
+                    infer::MatchExpression(_) => {
+                        format!("match arms have compatible types")
+                    }
+                    infer::IfExpression(_) => {
+                        format!("if and else have compatible types")
+                    }
+                };
+
+                match self.values_str(&trace.values) {
+                    Some(values_str) => {
+                        self.tcx.sess.span_note(
+                            trace.origin.span(),
+                            format!("...so that {} ({})",
+                                    desc, values_str));
+                    }
+                    None => {
+                        // Really should avoid printing this error at
+                        // all, since it is derived, but that would
+                        // require more refactoring than I feel like
+                        // doing right now. - nmatsakis
+                        self.tcx.sess.span_note(
+                            trace.origin.span(),
+                            format!("...so that {}", desc));
+                    }
+                }
+            }
+            infer::Reborrow(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that borrowed pointer does not outlive \
+                    borrowed content");
+            }
+            infer::InfStackClosure(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that closure does not outlive its stack frame");
+            }
+            infer::InvokeClosure(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that closure is not invoked outside its lifetime");
+            }
+            infer::DerefPointer(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that pointer is not dereferenced \
+                    outside its lifetime");
+            }
+            infer::FreeVariable(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that captured variable does not outlive the \
+                    enclosing closure");
+            }
+            infer::IndexSlice(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that slice is not indexed outside the lifetime");
+            }
+            infer::RelateObjectBound(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that source pointer does not outlive \
+                     lifetime bound of the object type");
+            }
+            infer::CallRcvr(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that method receiver is valid for the method call");
+            }
+            infer::CallArg(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that argument is valid for the call");
+            }
+            infer::CallReturn(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that return value is valid for the call");
+            }
+            infer::AddrOf(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that borrowed pointer is valid \
+                     at the time of borrow");
+            }
+            infer::AutoBorrow(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that automatically borrowed pointer is valid \
+                     at the time of borrow");
+            }
+            infer::BindingTypeIsNotValidAtDecl(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that variable is valid at time of its declaration");
+            }
+            infer::ReferenceOutlivesReferent(_, span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that the pointer does not outlive the \
+                    data it points at");
+            }
+        }
     }
 }
 

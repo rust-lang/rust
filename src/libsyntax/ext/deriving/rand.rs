@@ -14,6 +14,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
+use opt_vec;
 
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: Span,
@@ -77,7 +78,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
             let rand_name = cx.path_all(span,
                                         true,
                                         rand_ident.clone(),
-                                        None,
+                                        opt_vec::Empty,
                                         ~[]);
             let rand_name = cx.expr_path(rand_name);
 
