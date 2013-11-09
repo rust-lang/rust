@@ -29,4 +29,4 @@ fn use_<'a>(c: Contravariant<'a>) {
     fn collapse<'b>(x: &'b int, c: Contravariant<'b>) { }
 }
 
-fn main() {}
+pub fn main() {}
