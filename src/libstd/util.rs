@@ -91,7 +91,7 @@ impl Void {
 /// }
 ///
 /// impl A for int {
-///     fn a(_: ForType<Self>) -> uint { 6 }
+///     fn a(_: ForType<int>) -> uint { 6 }
 /// }
 ///
 /// assert_eq!(A::a(ForType::<int>), 6);
@@ -176,7 +176,7 @@ mod tests {
         }
 
         impl A for int {
-            fn a(_: ForType<Self>) -> uint { 6 }
+            fn a(_: ForType<int>) -> uint { 6 }
         }
 
         assert_eq!(A::a(ForType::<int>), 6);

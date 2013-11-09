@@ -17,8 +17,9 @@ use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num;
-use prelude::*;
 use to_str;
+use util::ForType;
+use prelude::*;
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
@@ -632,13 +633,13 @@ impl Bounded for f64 {
 
 impl Primitive for f64 {
     #[inline]
-    fn bits(_: Option<f64>) -> uint { 64 }
+    fn bits(_: ForType<f64>) -> uint { 64 }
 
     #[inline]
-    fn bytes(_: Option<f64>) -> uint { Primitive::bits(Some(0f64)) / 8 }
+    fn bytes(_: ForType<f64>) -> uint { Primitive::bits(ForType::<f64>) / 8 }
 
     #[inline]
-    fn is_signed(_: Option<f64>) -> bool { true }
+    fn is_signed(_: ForType<f64>) -> bool { true }
 }
 
 impl Float for f64 {
@@ -695,25 +696,25 @@ impl Float for f64 {
     }
 
     #[inline]
-    fn mantissa_digits(_: Option<f64>) -> uint { 53 }
+    fn mantissa_digits(_: ForType<f64>) -> uint { 53 }
 
     #[inline]
-    fn digits(_: Option<f64>) -> uint { 15 }
+    fn digits(_: ForType<f64>) -> uint { 15 }
 
     #[inline]
     fn epsilon() -> f64 { 2.2204460492503131e-16 }
 
     #[inline]
-    fn min_exp(_: Option<f64>) -> int { -1021 }
+    fn min_exp(_: ForType<f64>) -> int { -1021 }
 
     #[inline]
-    fn max_exp(_: Option<f64>) -> int { 1024 }
+    fn max_exp(_: ForType<f64>) -> int { 1024 }
 
     #[inline]
-    fn min_10_exp(_: Option<f64>) -> int { -307 }
+    fn min_10_exp(_: ForType<f64>) -> int { -307 }
 
     #[inline]
-    fn max_10_exp(_: Option<f64>) -> int { 308 }
+    fn max_10_exp(_: ForType<f64>) -> int { 308 }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline]
@@ -975,6 +976,7 @@ mod tests {
     use num::*;
     use num;
     use mem;
+    use util::ForType;
 
     #[test]
     fn test_num() {
@@ -1246,9 +1248,8 @@ mod tests {
 
     #[test]
     fn test_primitive() {
-        let none: Option<f64> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<f64>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<f64>());
+        assert_eq!(Primitive::bits(ForType::<f64>), mem::size_of::<f64>() * 8);
+        assert_eq!(Primitive::bytes(ForType::<f64>), mem::size_of::<f64>());
     }
 
     #[test]

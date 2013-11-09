@@ -16,8 +16,9 @@ use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num;
-use prelude::*;
 use to_str;
+use util::ForType;
+use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
 
@@ -584,13 +585,13 @@ impl Bounded for f32 {
 
 impl Primitive for f32 {
     #[inline]
-    fn bits(_: Option<f32>) -> uint { 32 }
+    fn bits(_: ForType<f32>) -> uint { 32 }
 
     #[inline]
-    fn bytes(_: Option<f32>) -> uint { Primitive::bits(Some(0f32)) / 8 }
+    fn bytes(_: ForType<f32>) -> uint { Primitive::bits(ForType::<f32>) / 8 }
 
     #[inline]
-    fn is_signed(_: Option<f32>) -> bool { true }
+    fn is_signed(_: ForType<f32>) -> bool { true }
 }
 
 impl Float for f32 {
@@ -647,25 +648,25 @@ impl Float for f32 {
     }
 
     #[inline]
-    fn mantissa_digits(_: Option<f32>) -> uint { 24 }
+    fn mantissa_digits(_: ForType<f32>) -> uint { 24 }
 
     #[inline]
-    fn digits(_: Option<f32>) -> uint { 6 }
+    fn digits(_: ForType<f32>) -> uint { 6 }
 
     #[inline]
     fn epsilon() -> f32 { 1.19209290e-07 }
 
     #[inline]
-    fn min_exp(_: Option<f32>) -> int { -125 }
+    fn min_exp(_: ForType<f32>) -> int { -125 }
 
     #[inline]
-    fn max_exp(_: Option<f32>) -> int { 128 }
+    fn max_exp(_: ForType<f32>) -> int { 128 }
 
     #[inline]
-    fn min_10_exp(_: Option<f32>) -> int { -37 }
+    fn min_10_exp(_: ForType<f32>) -> int { -37 }
 
     #[inline]
-    fn max_10_exp(_: Option<f32>) -> int { 38 }
+    fn max_10_exp(_: ForType<f32>) -> int { 38 }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline]
@@ -927,6 +928,7 @@ mod tests {
     use num::*;
     use num;
     use mem;
+    use util::ForType;
 
     #[test]
     fn test_num() {
@@ -1195,9 +1197,8 @@ mod tests {
 
     #[test]
     fn test_primitive() {
-        let none: Option<f32> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<f32>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<f32>());
+        assert_eq!(Primitive::bits(ForType::<f32>), mem::size_of::<f32>() * 8);
+        assert_eq!(Primitive::bytes(ForType::<f32>), mem::size_of::<f32>());
     }
 
     #[test]
