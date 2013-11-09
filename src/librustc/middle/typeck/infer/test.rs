@@ -188,7 +188,7 @@ impl Env {
             meta: FnMeta {purity: ast::impure_fn,
                           proto: ast::ProtoBare,
                           onceness: ast::Many,
-                          region: ty::re_static,
+                          region: ty::ReStatic,
                           bounds: @~[]},
             sig: FnSig {
                 inputs: inputs,
@@ -203,22 +203,22 @@ impl Env {
     }
 
     pub fn t_rptr_bound(&self, id: uint) -> ty::t {
-        ty::mk_imm_rptr(self.tcx, ty::re_bound(ty::br_anon(id)), self.t_int())
+        ty::mk_imm_rptr(self.tcx, ty::re_bound(ty::BrAnon(id)), self.t_int())
     }
 
     pub fn t_rptr_scope(&self, id: ast::node_id) -> ty::t {
-        ty::mk_imm_rptr(self.tcx, ty::re_scope(id), self.t_int())
+        ty::mk_imm_rptr(self.tcx, ty::ReScope(id), self.t_int())
     }
 
     pub fn t_rptr_free(&self, nid: ast::node_id, id: uint) -> ty::t {
         ty::mk_imm_rptr(self.tcx,
-                        ty::re_free(ty::FreeRegion {scope_id: nid,
-                                                    bound_region: ty::br_anon(id)}),
+                        ty::ReFree(ty::FreeRegion {scope_id: nid,
+                                                    bound_region: ty::BrAnon(id)}),
                         self.t_int())
     }
 
     pub fn t_rptr_static(&self) -> ty::t {
-        ty::mk_imm_rptr(self.tcx, ty::re_static, self.t_int())
+        ty::mk_imm_rptr(self.tcx, ty::ReStatic, self.t_int())
     }
 
     pub fn lub() -> Lub { Lub(self.infcx.combine_fields(true, dummy_sp())) }

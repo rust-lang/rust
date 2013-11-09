@@ -1048,7 +1048,7 @@ fn extract_vec_elems(bcx: @mut Block,
         let slice_len = Sub(bcx, len, slice_len_offset);
         let slice_ty = ty::mk_evec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable},
-            ty::vstore_slice(ty::re_static)
+            ty::vstore_slice(ty::ReStatic)
         );
         let scratch = scratch_datum(bcx, slice_ty, "", false);
         Store(bcx, slice_begin,
@@ -1697,7 +1697,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                   let t = node_id_type(bcx, pat_id);
                   let Result {bcx: after_cx, val: matches} = {
                       do with_scope_result(bcx, None,
-                                           "compare_scope") |bcx| {
+                                           "compaReScope") |bcx| {
                           match trans_opt(bcx, opt) {
                               single_result(
                                   Result {bcx, val}) => {

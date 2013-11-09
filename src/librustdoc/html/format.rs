@@ -92,16 +92,17 @@ impl fmt::Default for clean::Path {
             if i > 0 { f.buf.write("::".as_bytes()) }
             f.buf.write(seg.name.as_bytes());
 
-            if seg.lifetime.is_some() || seg.types.len() > 0 {
+            if seg.lifetimes.len() > 0 || seg.types.len() > 0 {
                 f.buf.write("&lt;".as_bytes());
-                match seg.lifetime {
-                    Some(ref lifetime) => write!(f.buf, "{}", *lifetime),
-                    None => {}
+                let mut comma = false;
+                for lifetime in seg.lifetimes.iter() {
+                    if comma { f.buf.write(", ".as_bytes()); }
+                    comma = true;
+                    write!(f.buf, "{}", *lifetime);
                 }
-                for (i, ty) in seg.types.iter().enumerate() {
-                    if i > 0 || seg.lifetime.is_some() {
-                        f.buf.write(", ".as_bytes());
-                    }
+                for ty in seg.types.iter() {
+                    if comma { f.buf.write(", ".as_bytes()); }
+                    comma = true;
                     write!(f.buf, "{}", *ty);
                 }
                 f.buf.write("&gt;".as_bytes());
@@ -152,16 +153,17 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
     // The generics will get written to both the title and link
     let mut generics = ~"";
     let last = path.segments.last();
-    if last.lifetime.is_some() || last.types.len() > 0 {
+    if last.lifetimes.len() > 0 || last.types.len() > 0 {
+        let mut counter = 0;
         generics.push_str("&lt;");
-        match last.lifetime {
-            Some(ref lifetime) => generics.push_str(format!("{}", *lifetime)),
-            None => {}
+        for lifetime in last.lifetimes.iter() {
+            if counter > 0 { generics.push_str(", "); }
+            counter += 1;
+            generics.push_str(format!("{}", *lifetime));
         }
-        for (i, ty) in last.types.iter().enumerate() {
-            if i > 0 || last.lifetime.is_some() {
-                generics.push_str(", ");
-            }
+        for ty in last.types.iter() {
+            if counter > 0 { generics.push_str(", "); }
+            counter += 1;
             generics.push_str(format!("{}", *ty));
         }
         generics.push_str("&gt;");
@@ -495,7 +497,7 @@ impl fmt::Default for clean::ViewListIdent {
                     global: false,
                     segments: ~[clean::PathSegment {
                         name: v.name.clone(),
-                        lifetime: None,
+                        lifetimes: ~[],
                         types: ~[],
                     }]
                 };

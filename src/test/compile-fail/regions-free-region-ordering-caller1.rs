@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct item_ty_yes0<'self> {
-    x: &'self uint
-}
+// Test various ways to construct a pointer with a longer lifetime
+// than the thing it points at and ensure that they result in
+// errors. See also regions-free-region-ordering-callee.rs
 
-struct item_ty_yes1<'self> {
-    x: &'self uint
-}
-
-struct item_ty_yes2 {
-    x: &'a uint //~ ERROR only 'self is allowed
+fn call1<'a>(x: &'a uint) {
+    // Test that creating a pointer like
+    // &'a &'z uint requires that 'a <= 'z:
+    let y: uint = 3;
+    let z: &'a & uint = &(&y);
+    //~^ ERROR borrowed value does not live long enough
+    //~^^ ERROR borrowed value does not live long enough
 }
 
 fn main() {}

@@ -225,7 +225,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
         segments: ~[
             ast::PathSegment {
                 identifier: identifier,
-                lifetime: None,
+                lifetimes: opt_vec::Empty,
                 types: opt_vec::Empty,
             }
         ],
@@ -948,7 +948,7 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
         for (idx,seg) in a.iter().enumerate() {
             if (seg.identifier.name != b[idx].identifier.name)
                 // FIXME #7743: ident -> name problems in lifetime comparison?
-                || (seg.lifetime != b[idx].lifetime)
+                || (seg.lifetimes != b[idx].lifetimes)
                 // can types contain idents?
                 || (seg.types != b[idx].types) {
                 return false;
@@ -966,7 +966,9 @@ mod test {
     use std::hashmap::HashMap;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
-        PathSegment{identifier:id.clone(), lifetime: None, types: opt_vec::Empty}
+        PathSegment {identifier:id.clone(),
+                     lifetimes: opt_vec::Empty,
+                     types: opt_vec::Empty}
     }
 
     #[test] fn idents_name_eq_test() {

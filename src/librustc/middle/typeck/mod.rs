@@ -19,16 +19,23 @@ The type checker is responsible for:
 3. Guaranteeing that most type rules are met ("most?", you say, "why most?"
    Well, dear reader, read on)
 
-The main entry point is `check_crate()`.  Type checking operates in two major
-phases: collect and check.  The collect phase passes over all items and
-determines their type, without examining their "innards".  The check phase
-then checks function bodies and so forth.
+The main entry point is `check_crate()`.  Type checking operates in
+several major phases:
 
-Within the check phase, we check each function body one at a time (bodies of
-function expressions are checked as part of the containing function).
-Inference is used to supply types wherever they are unknown. The actual
-checking of a function itself has several phases (check, regionck, writeback),
-as discussed in the documentation for the `check` module.
+1. The collect phase first passes over all items and determines their
+   type, without examining their "innards".
+
+2. Variance inference then runs to compute the variance of each parameter
+
+3. Coherence checks for overlapping or orphaned impls
+
+4. Finally, the check phase then checks function bodies and so forth.
+   Within the check phase, we check each function body one at a time
+   (bodies of function expressions are checked as part of the
+   containing function).  Inference is used to supply types wherever
+   they are unknown. The actual checking of a function itself has
+   several phases (check, regionck, writeback), as discussed in the
+   documentation for the `check` module.
 
 The type checker is defined into various submodules which are documented
 independently:
@@ -38,6 +45,10 @@ independently:
 
 - collect: computes the types of each top-level item and enters them into
   the `cx.tcache` table for later use
+
+- coherence: enforces coherence rules, builds some tables
+
+- variance: variance inference
 
 - check: walks over function bodies and type checks them, inferring types for
   local variables, type parameters, etc as necessary.
@@ -64,7 +75,6 @@ use extra::list;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
-use syntax::opt_vec;
 
 pub mod check;
 pub mod rscope;
@@ -72,6 +82,7 @@ pub mod astconv;
 pub mod infer;
 pub mod collect;
 pub mod coherence;
+pub mod variance;
 
 #[deriving(Clone, Encodable, Decodable, Eq, Ord)]
 pub enum param_index {
@@ -266,7 +277,7 @@ pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: @~[],
-                                region_param: None},
+                                region_param_defs: @[]},
         ty: t
     }
 }
@@ -306,19 +317,19 @@ pub fn require_same_types(
 
 // a list of mapping from in-scope-region-names ("isr") to the
 // corresponding ty::Region
-pub type isr_alist = @List<(ty::bound_region, ty::Region)>;
+pub type isr_alist = @List<(ty::BoundRegion, ty::Region)>;
 
 trait get_and_find_region {
-    fn get(&self, br: ty::bound_region) -> ty::Region;
-    fn find(&self, br: ty::bound_region) -> Option<ty::Region>;
+    fn get(&self, br: ty::BoundRegion) -> ty::Region;
+    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region>;
 }
 
 impl get_and_find_region for isr_alist {
-    fn get(&self, br: ty::bound_region) -> ty::Region {
+    fn get(&self, br: ty::BoundRegion) -> ty::Region {
         self.find(br).unwrap()
     }
 
-    fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
+    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region> {
         let mut ret = None;
         do list::each(*self) |isr| {
             let (isr_br, isr_r) = *isr;
@@ -354,7 +365,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 purity: ast::impure_fn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
+                    binder_id: main_id,
                     inputs: ~[],
                     output: ty::mk_nil(),
                     variadic: false
@@ -400,7 +411,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 purity: ast::impure_fn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
+                    binder_id: start_id,
                     inputs: ~[
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))
@@ -455,6 +466,9 @@ pub fn check_crate(tcx: ty::ctxt,
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.abort_if_errors();
+
+    time(time_passes, "variance inference", (), |_|
+         variance::infer_variance(tcx, crate));
 
     time(time_passes, "coherence checking", (), |_|
         coherence::check_coherence(ccx, crate));

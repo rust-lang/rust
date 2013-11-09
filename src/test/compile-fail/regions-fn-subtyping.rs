@@ -24,9 +24,9 @@ fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {
         of::<&fn<'b>(&'b T)>());
 
     subtype::<&fn<'b>(&'b T)>(
-        of::<&fn<'x>(&'x T)>());
+        of::<&fn(&'x T)>());
 
-    subtype::<&fn<'x>(&'x T)>(
+    subtype::<&fn(&'x T)>(
         of::<&fn<'b>(&'b T)>());  //~ ERROR mismatched types
 
     subtype::<&fn<'a,'b>(&'a T, &'b T)>(
@@ -36,9 +36,9 @@ fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {
         of::<&fn<'a,'b>(&'a T, &'b T)>()); //~ ERROR mismatched types
 
     subtype::<&fn<'a,'b>(&'a T, &'b T)>(
-        of::<&fn<'x,'y>(&'x T, &'y T)>());
+        of::<&fn(&'x T, &'y T)>());
 
-    subtype::<&fn<'x,'y>(&'x T, &'y T)>(
+    subtype::<&fn(&'x T, &'y T)>(
         of::<&fn<'a,'b>(&'a T, &'b T)>()); //~ ERROR mismatched types
 }
 

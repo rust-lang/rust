@@ -28,7 +28,7 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, IterBytes, ToStr)]
+#[deriving(Clone, IterBytes, ToStr, TotalEq, TotalOrd)]
 pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
@@ -110,6 +110,7 @@ pub enum SyntaxContext_ {
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
 pub type Name = uint;
+
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = uint;
 
@@ -156,9 +157,8 @@ pub struct Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     identifier: Ident,
-    /// The lifetime parameter for this path segment. Currently only one
-    /// lifetime parameter is allowed.
-    lifetime: Option<Lifetime>,
+    /// The lifetime parameters for this path segment.
+    lifetimes: OptVec<Lifetime>,
     /// The type parameters for this path segment, if present.
     types: OptVec<Ty>,
 }
@@ -167,7 +167,7 @@ pub type CrateNum = int;
 
 pub type NodeId = int;
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, ToStr)]
+#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub struct DefId {
     crate: CrateNum,
     node: NodeId,
@@ -249,6 +249,14 @@ pub enum Def {
     DefRegion(NodeId),
     DefLabel(NodeId),
     DefMethod(DefId /* method */, Option<DefId> /* trait */),
+}
+
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+pub enum DefRegion {
+    DefStaticRegion,
+    DefEarlyBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
+    DefLateBoundRegion(/* binder_id */ NodeId, /* depth */ uint, /* lifetime decl */ NodeId),
+    DefFreeRegion(/* block scope */ NodeId, /* lifetime decl */ NodeId),
 }
 
 // The set of MetaItems that define the compilation environment of the crate,

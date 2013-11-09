@@ -15,7 +15,8 @@ use driver::session::Session;
 use e = metadata::encoder;
 use metadata::decoder;
 use metadata::tydecode;
-use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
+use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
+                         RegionParameter};
 use metadata::tyencode;
 use middle::freevars::freevar_entry;
 use middle::typeck::{method_origin, method_map_entry};
@@ -231,6 +232,12 @@ impl tr_intern for ast::DefId {
 impl tr for ast::DefId {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::DefId {
         xcx.tr_def_id(*self)
+    }
+}
+
+impl tr for Option<ast::DefId> {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> Option<ast::DefId> {
+        self.map(|d| xcx.tr_def_id(d))
     }
 }
 
@@ -469,24 +476,28 @@ impl tr for ty::AutoRef {
 impl tr for ty::Region {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::Region {
         match *self {
-            ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
-            ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
-            ty::re_empty | ty::re_static | ty::re_infer(*) => *self,
-            ty::re_free(ref fr) => {
-                ty::re_free(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
+            ty::ReLateBound(id, br) => ty::ReLateBound(xcx.tr_id(id),
+                                                       br.tr(xcx)),
+            ty::ReEarlyBound(id, index, ident) => ty::ReEarlyBound(xcx.tr_id(id),
+                                                                     index,
+                                                                     ident),
+            ty::ReScope(id) => ty::ReScope(xcx.tr_id(id)),
+            ty::ReEmpty | ty::ReStatic | ty::ReInfer(*) => *self,
+            ty::ReFree(ref fr) => {
+                ty::ReFree(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
                                             bound_region: fr.bound_region.tr(xcx)})
             }
         }
     }
 }
 
-impl tr for ty::bound_region {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::bound_region {
+impl tr for ty::BoundRegion {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::BoundRegion {
         match *self {
-            ty::br_anon(_) | ty::br_named(_) | ty::br_self |
-            ty::br_fresh(_) => *self,
-            ty::br_cap_avoid(id, br) => ty::br_cap_avoid(xcx.tr_id(id),
-                                                         @br.tr(xcx))
+            ty::BrAnon(_) |
+            ty::BrFresh(_) => *self,
+            ty::BrNamed(id, ident) => ty::BrNamed(xcx.tr_def_id(id),
+                                                    ident),
         }
     }
 }
@@ -821,8 +832,8 @@ impl ebml_writer_helpers for writer::Encoder {
                             this.emit_type_param_def(ecx, type_param_def);
                         }
                     }
-                    do this.emit_struct_field("region_param", 1) |this| {
-                        tpbt.generics.region_param.encode(this);
+                    do this.emit_struct_field("region_param_defs", 1) |this| {
+                        tpbt.generics.region_param_defs.encode(this);
                     }
                 }
             }
@@ -1086,16 +1097,14 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         // are not used during trans.
 
         return do self.read_opaque |this, doc| {
+            debug!("read_ty({})", type_string(doc));
+
             let ty = tydecode::parse_ty_data(
                 *doc.data,
                 xcx.dcx.cdata.cnum,
                 doc.start,
                 xcx.dcx.tcx,
                 |s, a| this.convert_def_id(xcx, s, a));
-
-            debug!("read_ty({}) = {}",
-                   type_string(doc),
-                   ty_to_str(xcx.dcx.tcx, ty));
 
             ty
         };
@@ -1139,8 +1148,8 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                                     @this.read_to_vec(|this|
                                         this.read_type_param_def(xcx))
                             }),
-                            region_param:
-                                this.read_struct_field("region_param",
+                            region_param_defs:
+                                this.read_struct_field("region_param_defs",
                                                        1,
                                                        |this| {
                                     Decodable::decode(this)
@@ -1161,7 +1170,6 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                       did: ast::DefId)
                       -> ast::DefId {
         /*!
-         *
          * Converts a def-id that appears in a type.  The correct
          * translation will depend on what kind of def-id this is.
          * This is a subtle point: type definitions are not
@@ -1172,10 +1180,25 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
          * However, *type parameters* are cloned along with the function
          * they are attached to.  So we should translate those def-ids
          * to refer to the new, cloned copy of the type parameter.
+         * We only see references to free type parameters in the body of
+         * an inlined function. In such cases, we need the def-id to
+         * be a local id so that the TypeContents code is able to lookup
+         * the relevant info in the ty_param_defs table.
+         *
+         * *Region parameters*, unfortunately, are another kettle of fish.
+         * In such cases, def_id's can appear in types to distinguish
+         * shadowed bound regions and so forth. It doesn't actually
+         * matter so much what we do to these, since regions are erased
+         * at trans time, but it's good to keep them consistent just in
+         * case. We translate them with `tr_def_id()` which will map
+         * the crate numbers back to the original source crate.
+         *
+         * It'd be really nice to refactor the type repr to not include
+         * def-ids so that all these distinctions were unnecessary.
          */
 
         let r = match source {
-            NominalType | TypeWithId => xcx.tr_def_id(did),
+            NominalType | TypeWithId | RegionParameter => xcx.tr_def_id(did),
             TypeParameter => xcx.tr_intern_def_id(did)
         };
         debug!("convert_def_id(source={:?}, did={:?})={:?}", source, did, r);

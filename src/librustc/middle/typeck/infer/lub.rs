@@ -20,13 +20,11 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::infer::{TypeTrace, Subtype};
-use middle::typeck::isr_alist;
-use util::ppaux::mt_to_str;
-
-use extra::list;
-use syntax::ast::{Many, Once, extern_fn, impure_fn};
+use std::hashmap::HashMap;
+use syntax::ast::{Many, Once, extern_fn, impure_fn, NodeId};
 use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
+use util::ppaux::mt_to_str;
 
 pub struct Lub(CombineFields);  // least-upper-bound: common supertype
 
@@ -125,7 +123,7 @@ impl Combine for Lub {
         let snapshot = self.infcx.region_vars.start_snapshot();
 
         // Instantiate each bound region with a fresh region variable.
-        let (a_with_fresh, a_isr) =
+        let (a_with_fresh, a_map) =
             self.infcx.replace_bound_regions_with_fresh_regions(
                 self.trace, a);
         let (b_with_fresh, _) =
@@ -143,17 +141,20 @@ impl Combine for Lub {
             fold_regions_in_sig(
                 self.infcx.tcx,
                 &sig0,
-                |r, _in_fn| generalize_region(self, snapshot, new_vars,
-                                              a_isr, r));
+                |r| generalize_region(self, snapshot, new_vars,
+                                      sig0.binder_id, &a_map, r));
         return Ok(sig1);
 
         fn generalize_region(this: &Lub,
                              snapshot: uint,
                              new_vars: &[RegionVid],
-                             a_isr: isr_alist,
-                             r0: ty::Region) -> ty::Region {
+                             new_scope: NodeId,
+                             a_map: &HashMap<ty::BoundRegion, ty::Region>,
+                             r0: ty::Region)
+                             -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
+                assert!(!r0.is_bound());
                 debug!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
@@ -167,6 +168,7 @@ impl Combine for Lub {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
+                assert!(!r0.is_bound());
                 return r0;
             }
 
@@ -175,27 +177,19 @@ impl Combine for Lub {
             // in both A and B.  Replace the variable with the "first"
             // bound region from A that we find it to be associated
             // with.
-            let mut ret = None;
-            do list::each(a_isr) |pair| {
-                let (a_br, a_r) = *pair;
-                if tainted.iter().any(|x| x == &a_r) {
+            for (a_br, a_r) in a_map.iter() {
+                if tainted.iter().any(|x| x == a_r) {
                     debug!("generalize_region(r0={:?}): \
                             replacing with {:?}, tainted={:?}",
-                           r0, a_br, tainted);
-                    ret = Some(ty::re_bound(a_br));
-                    false
-                } else {
-                    true
+                           r0, *a_br, tainted);
+                    return ty::ReLateBound(new_scope, *a_br);
                 }
-            };
-
-            match ret {
-                Some(x) => x,
-                None => this.infcx.tcx.sess.span_bug(
-                            this.trace.origin.span(),
-                            format!("Region {:?} is not associated with \
-                                  any bound region from A!", r0))
             }
+
+            this.infcx.tcx.sess.span_bug(
+                this.trace.origin.span(),
+                format!("Region {:?} is not associated with \
+                        any bound region from A!", r0))
         }
     }
 

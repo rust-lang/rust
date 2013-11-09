@@ -277,7 +277,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
           // Currently these do not use adjustments, so we have to
           // hardcode this check here (note that the receiver DOES use
           // adjustments).
-          let scope_r = ty::re_scope(ex.id);
+          let scope_r = ty::ReScope(ex.id);
           let arg_cmt = this.bccx.cat_expr(arg);
           this.guarantee_valid(arg.id,
                                arg.span,
@@ -441,7 +441,7 @@ impl<'self> GatherLoanCtxt<'self> {
 
         // a loan for the empty region can never be dereferenced, so
         // it is always safe
-        if loan_region == ty::re_empty {
+        if loan_region == ty::ReEmpty {
             return;
         }
 
@@ -470,10 +470,10 @@ impl<'self> GatherLoanCtxt<'self> {
 
             restrictions::SafeIf(loan_path, restrictions) => {
                 let loan_scope = match loan_region {
-                    ty::re_scope(id) => id,
-                    ty::re_free(ref fr) => fr.scope_id,
+                    ty::ReScope(id) => id,
+                    ty::ReFree(ref fr) => fr.scope_id,
 
-                    ty::re_static => {
+                    ty::ReStatic => {
                         // If we get here, an error must have been
                         // reported in
                         // `lifetime::guarantee_lifetime()`, because
@@ -485,9 +485,10 @@ impl<'self> GatherLoanCtxt<'self> {
                         return;
                     }
 
-                    ty::re_empty |
-                    ty::re_bound(*) |
-                    ty::re_infer(*) => {
+                    ty::ReEmpty |
+                    ty::ReLateBound(*) |
+                    ty::ReEarlyBound(*) |
+                    ty::ReInfer(*) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
                             format!("Invalid borrow lifetime: {:?}", loan_region));
@@ -714,7 +715,7 @@ impl<'self> GatherLoanCtxt<'self> {
                     let cmt_discr = match arm_match_ids {
                         None => cmt,
                         Some((arm_id, match_id)) => {
-                            let arm_scope = ty::re_scope(arm_id);
+                            let arm_scope = ty::ReScope(arm_id);
                             if self.bccx.is_subregion_of(scope_r, arm_scope) {
                                 self.bccx.cat_discr(cmt, match_id)
                             } else {

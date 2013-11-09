@@ -38,7 +38,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: ~[ast::Ident],
-                rp: Option<ast::Lifetime>,
+                lifetimes: OptVec<ast::Lifetime>,
                 types: ~[ast::Ty])
         -> ast::Path;
 
@@ -237,19 +237,19 @@ pub trait AstBuilder {
 
 impl AstBuilder for @ExtCtxt {
     fn path(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
-        self.path_all(span, false, strs, None, ~[])
+        self.path_all(span, false, strs, opt_vec::Empty, ~[])
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, ~[id])
     }
     fn path_global(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
-        self.path_all(span, true, strs, None, ~[])
+        self.path_all(span, true, strs, opt_vec::Empty, ~[])
     }
     fn path_all(&self,
                 sp: Span,
                 global: bool,
                 mut idents: ~[ast::Ident],
-                rp: Option<ast::Lifetime>,
+                lifetimes: OptVec<ast::Lifetime>,
                 types: ~[ast::Ty])
                 -> ast::Path {
         let last_identifier = idents.pop();
@@ -257,13 +257,13 @@ impl AstBuilder for @ExtCtxt {
                                                       .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
-                lifetime: None,
+                lifetimes: opt_vec::Empty,
                 types: opt_vec::Empty,
             }
         }).collect();
         segments.push(ast::PathSegment {
             identifier: last_identifier,
-            lifetime: rp,
+            lifetimes: lifetimes,
             types: opt_vec::from(types),
         });
         ast::Path {
@@ -327,7 +327,7 @@ impl AstBuilder for @ExtCtxt {
                               self.ident_of("option"),
                               self.ident_of("Option")
                           ],
-                          None,
+                          opt_vec::Empty,
                           ~[ ty ]), None)
     }
 

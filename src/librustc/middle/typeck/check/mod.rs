@@ -81,10 +81,12 @@ use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::lint::unreachable_code;
+use middle::subst::Subst;
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty::{substs, param_ty, Disr, ExprTyProvider};
 use middle::ty;
+use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
@@ -99,22 +101,18 @@ use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
-use middle::typeck::rscope::bound_self_region;
-use middle::typeck::rscope::{RegionError};
 use middle::typeck::rscope::RegionScope;
-use middle::typeck::{isr_alist, lookup_def_ccx};
+use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{bound_region_ptr_to_str};
+use util::ppaux::UserString;
 use util::ppaux;
-
 
 use std::hashmap::HashMap;
 use std::result;
 use std::util::replace;
 use std::vec;
-use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
 use syntax::ast;
@@ -127,7 +125,6 @@ use syntax::codemap;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::parse::token;
-use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -157,9 +154,10 @@ pub struct SelfInfo {
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct inherited {
+pub struct Inherited {
     infcx: @mut infer::InferCtxt,
     locals: @mut HashMap<ast::NodeId, ty::t>,
+    param_env: ty::ParameterEnvironment,
 
     // Temporary tables:
     node_types: @mut HashMap<ast::NodeId, ty::t>,
@@ -249,22 +247,25 @@ pub struct FnCtxt {
     // function return type.
     fn_kind: FnKind,
 
-    in_scope_regions: isr_alist,
-
-    inh: @inherited,
+    inh: @Inherited,
 
     ccx: @mut CrateCtxt,
 }
 
-pub fn blank_inherited(ccx: @mut CrateCtxt) -> @inherited {
-    @inherited {
-        infcx: infer::new_infer_ctxt(ccx.tcx),
-        locals: @mut HashMap::new(),
-        node_types: @mut HashMap::new(),
-        node_type_substs: @mut HashMap::new(),
-        adjustments: @mut HashMap::new(),
-        method_map: @mut HashMap::new(),
-        vtable_map: @mut HashMap::new(),
+impl Inherited {
+    fn new(tcx: ty::ctxt,
+           param_env: ty::ParameterEnvironment)
+           -> Inherited {
+        Inherited {
+            infcx: infer::new_infer_ctxt(tcx),
+            locals: @mut HashMap::new(),
+            param_env: param_env,
+            node_types: @mut HashMap::new(),
+            node_type_substs: @mut HashMap::new(),
+            adjustments: @mut HashMap::new(),
+            method_map: @mut HashMap::new(),
+            vtable_map: @mut HashMap::new(),
+        }
     }
 }
 
@@ -272,17 +273,19 @@ pub fn blank_inherited(ccx: @mut CrateCtxt) -> @inherited {
 pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
                      rty: ty::t,
                      region_bnd: ast::NodeId)
-                  -> @mut FnCtxt {
-// It's kind of a kludge to manufacture a fake function context
-// and statement context, but we might as well do write the code only once
+                     -> @mut FnCtxt {
+    // It's kind of a kludge to manufacture a fake function context
+    // and statement context, but we might as well do write the code only once
+    let param_env = ty::ParameterEnvironment { free_substs: substs::empty(),
+                                               self_param_bound: None,
+                                               type_param_bounds: ~[] };
     @mut FnCtxt {
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
         ps: PurityState::function(ast::impure_fn, 0),
         region_lb: region_bnd,
-        in_scope_regions: @Nil,
         fn_kind: Vanilla,
-        inh: blank_inherited(ccx),
+        inh: @Inherited::new(ccx.tcx, param_env),
         ccx: ccx
     }
 }
@@ -315,14 +318,15 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
                      id: ast::NodeId,
-                     self_info: Option<SelfInfo>) {
-    let fty = ty::node_id_to_type(ccx.tcx, id);
+                     self_info: Option<SelfInfo>,
+                     fty: ty::t,
+                     param_env: ty::ParameterEnvironment) {
     match ty::get(fty).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let fcx =
                 check_fn(ccx, self_info, fn_ty.purity,
                          &fn_ty.sig, decl, id, body, Vanilla,
-                         @Nil, blank_inherited(ccx));;
+                         @Inherited::new(ccx.tcx, param_env));
 
             vtable::resolve_in_block(fcx, body);
             regionck::regionck_fn(fcx, body);
@@ -411,39 +415,35 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 id: ast::NodeId,
                 body: &ast::Block,
                 fn_kind: FnKind,
-                inherited_isr: isr_alist,
-                inherited: @inherited) -> @mut FnCtxt
+                inherited: @Inherited) -> @mut FnCtxt
 {
     /*!
-     *
      * Helper used by check_bare_fn and check_expr_fn.  Does the
      * grungy work of checking a function body and returns the
      * function context used for that purpose, since in the case of a
      * fn item there is still a bit more to do.
      *
      * - ...
-     * - inherited_isr: regions in scope from the enclosing fn (if any)
      * - inherited: other fields inherited from the enclosing fn (if any)
      */
 
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
 
-    // ______________________________________________________________________
     // First, we have to replace any bound regions in the fn and self
     // types with free ones.  The free region references will be bound
     // the node_id of the body block.
-    let (isr, opt_self_info, fn_sig) = {
+    let (opt_self_info, fn_sig) = {
         let opt_self_ty = opt_self_info.map(|i| i.self_ty);
-        let (isr, opt_self_ty, fn_sig) =
+        let (_, opt_self_ty, fn_sig) =
             replace_bound_regions_in_fn_sig(
-                tcx, inherited_isr, opt_self_ty, fn_sig,
-                |br| ty::re_free(ty::FreeRegion {scope_id: body.id,
+                tcx, opt_self_ty, fn_sig,
+                |br| ty::ReFree(ty::FreeRegion {scope_id: body.id,
                                                  bound_region: br}));
         let opt_self_info =
             opt_self_info.map(
                 |si| SelfInfo {self_ty: opt_self_ty.unwrap(), .. si});
-        (isr, opt_self_info, fn_sig)
+        (opt_self_info, fn_sig)
     };
 
     relate_free_regions(tcx, opt_self_info.map(|s| s.self_ty), &fn_sig);
@@ -456,7 +456,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
            ppaux::ty_to_str(tcx, ret_ty),
            opt_self_info.map(|si| ppaux::ty_to_str(tcx, si.self_ty)));
 
-    // ______________________________________________________________________
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx: @mut FnCtxt = {
@@ -465,7 +464,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             ret_ty: ret_ty,
             ps: PurityState::function(purity, id),
             region_lb: body.id,
-            in_scope_regions: isr,
             fn_kind: fn_kind,
             inh: inherited,
             ccx: ccx
@@ -536,26 +534,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     }
 }
 
-pub fn check_method(ccx: @mut CrateCtxt,
-                    method: @ast::method)
-{
-    let method_def_id = local_def(method.id);
-    let method_ty = ty::method(ccx.tcx, method_def_id);
-    let opt_self_info = method_ty.transformed_self_ty.map(|ty| {
-        SelfInfo {self_ty: ty,
-                  self_id: method.self_id,
-                  span: method.explicit_self.span}
-    });
-
-    check_bare_fn(
-        ccx,
-        &method.decl,
-        &method.body,
-        method.id,
-        opt_self_info
-    );
-}
-
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::Ident, Span)]) {
     let mut field_names = HashMap::new();
@@ -566,7 +544,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         match orig_sp {
             Some(orig_sp) => {
                 tcx.sess.span_err(sp, format!("Duplicate field name {} in record type declaration",
-                                           tcx.sess.str_of(id)));
+                                              tcx.sess.str_of(id)));
                 tcx.sess.span_note(orig_sp, "First declaration of this field occurred here");
                 break;
             }
@@ -603,18 +581,46 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                             it.id);
       }
       ast::item_fn(ref decl, _, _, _, ref body) => {
-        check_bare_fn(ccx, decl, body, it.id, None);
+        let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
+
+        // FIXME(#5121) -- won't work for lifetimes that appear in type bounds
+        let param_env = ty::construct_parameter_environment(
+                ccx.tcx,
+                None,
+                *fn_tpt.generics.type_param_defs,
+                [],
+                [],
+                body.id);
+
+        check_bare_fn(ccx, decl, body, it.id, None, fn_tpt.ty, param_env);
       }
-      ast::item_impl(_, _, _, ref ms) => {
-        let rp = ccx.tcx.region_paramd_items.find(&it.id).map(|x| *x);
-        debug!("item_impl {} with id {} rp {:?}",
-               ccx.tcx.sess.str_of(it.ident), it.id, rp);
+      ast::item_impl(_, ref opt_trait_ref, _, ref ms) => {
+        debug!("item_impl {} with id {}", ccx.tcx.sess.str_of(it.ident), it.id);
+
+        let impl_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         for m in ms.iter() {
-            check_method(ccx, *m);
+            check_method_body(ccx, &impl_tpt.generics, None, *m);
         }
-        vtable::resolve_impl(ccx, it);
+
+        match *opt_trait_ref {
+            Some(ref ast_trait_ref) => {
+                let impl_trait_ref =
+                    ty::node_id_to_trait_ref(ccx.tcx, ast_trait_ref.ref_id);
+                check_impl_methods_against_trait(ccx,
+                                             it.span,
+                                             &impl_tpt.generics,
+                                             ast_trait_ref,
+                                             impl_trait_ref,
+                                             *ms);
+                vtable::resolve_impl(ccx, it, &impl_tpt.generics,
+                                     impl_trait_ref);
+            }
+            None => { }
+        }
+
       }
       ast::item_trait(_, _, ref trait_methods) => {
+        let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in (*trait_methods).iter() {
             match *trait_method {
               required(*) => {
@@ -622,7 +628,8 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                 // bodies to check.
               }
               provided(m) => {
-                check_method(ccx, m);
+                check_method_body(ccx, &trait_def.generics,
+                                  Some(trait_def.trait_ref), m);
               }
             }
         }
@@ -662,6 +669,362 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     }
 }
 
+fn check_method_body(ccx: @mut CrateCtxt,
+                     item_generics: &ty::Generics,
+                     self_bound: Option<@ty::TraitRef>,
+                     method: @ast::method) {
+    /*!
+     * Type checks a method body.
+     *
+     * # Parameters
+     * - `item_generics`: generics defined on the impl/trait that contains
+     *   the method
+     * - `self_bound`: bound for the `Self` type parameter, if any
+     * - `method`: the method definition
+     */
+
+    debug!("check_method_body(item_generics={}, \
+            self_bound={}, \
+            method.id={})",
+            item_generics.repr(ccx.tcx),
+            self_bound.repr(ccx.tcx),
+            method.id);
+    let method_def_id = local_def(method.id);
+    let method_ty = ty::method(ccx.tcx, method_def_id);
+    let method_generics = &method_ty.generics;
+
+    let param_env =
+        ty::construct_parameter_environment(
+            ccx.tcx,
+            self_bound,
+            *item_generics.type_param_defs,
+            *method_generics.type_param_defs,
+            item_generics.region_param_defs,
+            method.body.id);
+
+    // Compute the self type and fty from point of view of inside fn
+    let opt_self_info = method_ty.transformed_self_ty.map(|ty| {
+        SelfInfo {self_ty: ty.subst(ccx.tcx, &param_env.free_substs),
+                  self_id: method.self_id,
+                  span: method.explicit_self.span}
+    });
+    let fty = ty::node_id_to_type(ccx.tcx, method.id);
+    let fty = fty.subst(ccx.tcx, &param_env.free_substs);
+
+    check_bare_fn(
+        ccx,
+        &method.decl,
+        &method.body,
+        method.id,
+        opt_self_info,
+        fty,
+        param_env);
+}
+
+fn check_impl_methods_against_trait(ccx: @mut CrateCtxt,
+                                    impl_span: Span,
+                                    impl_generics: &ty::Generics,
+                                    ast_trait_ref: &ast::trait_ref,
+                                    impl_trait_ref: &ty::TraitRef,
+                                    impl_methods: &[@ast::method]) {
+    // Locate trait methods
+    let tcx = ccx.tcx;
+    let trait_methods = ty::trait_methods(tcx, impl_trait_ref.def_id);
+
+    // Check existing impl methods to see if they are both present in trait
+    // and compatible with trait signature
+    for impl_method in impl_methods.iter() {
+        let impl_method_def_id = local_def(impl_method.id);
+        let impl_method_ty = ty::method(ccx.tcx, impl_method_def_id);
+
+        // If this is an impl of a trait method, find the corresponding
+        // method definition in the trait.
+        let opt_trait_method_ty =
+            trait_methods.iter().
+            find(|tm| tm.ident.name == impl_method_ty.ident.name);
+        match opt_trait_method_ty {
+            Some(trait_method_ty) => {
+                compare_impl_method(ccx.tcx,
+                                    impl_generics,
+                                    impl_method_ty,
+                                    impl_method.span,
+                                    impl_method.body.id,
+                                    *trait_method_ty,
+                                    &impl_trait_ref.substs);
+            }
+            None => {
+                tcx.sess.span_err(
+                    impl_method.span,
+                    format!("method `{}` is not a member of trait `{}`",
+                            tcx.sess.str_of(impl_method_ty.ident),
+                            pprust::path_to_str(&ast_trait_ref.path,
+                                                tcx.sess.intr())));
+            }
+        }
+    }
+
+    // Check for missing methods from trait
+    let provided_methods = ty::provided_trait_methods(tcx,
+                                                      impl_trait_ref.def_id);
+    let mut missing_methods = ~[];
+    for trait_method in trait_methods.iter() {
+        let is_implemented =
+            impl_methods.iter().any(
+                |m| m.ident.name == trait_method.ident.name);
+        let is_provided =
+            provided_methods.iter().any(
+                |m| m.ident.name == trait_method.ident.name);
+        if !is_implemented && !is_provided {
+            missing_methods.push(
+                format!("`{}`", ccx.tcx.sess.str_of(trait_method.ident)));
+        }
+    }
+
+    if !missing_methods.is_empty() {
+        tcx.sess.span_err(
+            impl_span,
+            format!("not all trait methods implemented, missing: {}",
+                    missing_methods.connect(", ")));
+    }
+}
+
+/**
+ * Checks that a method from an impl/class conforms to the signature of
+ * the same method as declared in the trait.
+ *
+ * # Parameters
+ *
+ * - impl_generics: the generics declared on the impl itself (not the method!)
+ * - impl_m: type of the method we are checking
+ * - impl_m_span: span to use for reporting errors
+ * - impl_m_body_id: id of the method body
+ * - trait_m: the method in the trait
+ * - trait_substs: the substitutions used on the type of the trait
+ */
+pub fn compare_impl_method(tcx: ty::ctxt,
+                           impl_generics: &ty::Generics,
+                           impl_m: @ty::Method,
+                           impl_m_span: Span,
+                           impl_m_body_id: ast::NodeId,
+                           trait_m: &ty::Method,
+                           trait_substs: &ty::substs) {
+    debug!("compare_impl_method()");
+    let infcx = infer::new_infer_ctxt(tcx);
+
+    let impl_tps = impl_generics.type_param_defs.len();
+
+    // Try to give more informative error messages about self typing
+    // mismatches.  Note that any mismatch will also be detected
+    // below, where we construct a canonical function type that
+    // includes the self parameter as a normal parameter.  It's just
+    // that the error messages you get out of this code are a bit more
+    // inscrutable, particularly for cases where one method has no
+    // self.
+    match (&trait_m.explicit_self, &impl_m.explicit_self) {
+        (&ast::sty_static, &ast::sty_static) => {}
+        (&ast::sty_static, _) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has a `{}` declaration in the impl, \
+                        but not in the trait",
+                        tcx.sess.str_of(trait_m.ident),
+                        pprust::explicit_self_to_str(&impl_m.explicit_self,
+                                                     tcx.sess.intr())));
+            return;
+        }
+        (_, &ast::sty_static) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has a `{}` declaration in the trait, \
+                        but not in the impl",
+                        tcx.sess.str_of(trait_m.ident),
+                        pprust::explicit_self_to_str(&trait_m.explicit_self,
+                                                     tcx.sess.intr())));
+            return;
+        }
+        _ => {
+            // Let the type checker catch other errors below
+        }
+    }
+
+    let num_impl_m_type_params = impl_m.generics.type_param_defs.len();
+    let num_trait_m_type_params = trait_m.generics.type_param_defs.len();
+    if num_impl_m_type_params != num_trait_m_type_params {
+        tcx.sess.span_err(
+            impl_m_span,
+            format!("method `{}` has {} type parameter(s), but its trait \
+                    declaration has {} type parameter(s)",
+                    tcx.sess.str_of(trait_m.ident),
+                    num_impl_m_type_params,
+                    num_trait_m_type_params));
+        return;
+    }
+
+    if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
+        tcx.sess.span_err(
+            impl_m_span,
+            format!("method `{}` has {} parameter(s) \
+                    but the trait has {} parameter(s)",
+                    tcx.sess.str_of(trait_m.ident),
+                    impl_m.fty.sig.inputs.len(),
+                    trait_m.fty.sig.inputs.len()));
+        return;
+    }
+
+    for (i, trait_param_def) in trait_m.generics.type_param_defs.iter().enumerate() {
+        // For each of the corresponding impl ty param's bounds...
+        let impl_param_def = &impl_m.generics.type_param_defs[i];
+
+        // Check that the impl does not require any builtin-bounds
+        // that the trait does not guarantee:
+        let extra_bounds =
+            impl_param_def.bounds.builtin_bounds -
+            trait_param_def.bounds.builtin_bounds;
+        if !extra_bounds.is_empty() {
+           tcx.sess.span_err(
+               impl_m_span,
+               format!("in method `{}`, \
+                       type parameter {} requires `{}`, \
+                       which is not required by \
+                       the corresponding type parameter \
+                       in the trait declaration",
+                       tcx.sess.str_of(trait_m.ident),
+                       i,
+                       extra_bounds.user_string(tcx)));
+           return;
+        }
+
+        // FIXME(#2687)---we should be checking that the bounds of the
+        // trait imply the bounds of the subtype, but it appears we
+        // are...not checking this.
+        if impl_param_def.bounds.trait_bounds.len() !=
+            trait_param_def.bounds.trait_bounds.len()
+        {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("in method `{}`, \
+                        type parameter {} has {} trait bound(s), but the \
+                        corresponding type parameter in \
+                        the trait declaration has {} trait bound(s)",
+                        tcx.sess.str_of(trait_m.ident),
+                        i, impl_param_def.bounds.trait_bounds.len(),
+                        trait_param_def.bounds.trait_bounds.len()));
+            return;
+        }
+    }
+
+    // Create a substitution that maps the type parameters on the impl
+    // to themselves and which replace any references to bound regions
+    // in the self type with free regions.  So, for example, if the
+    // impl type is "&'self str", then this would replace the self
+    // type with a free region `self`.
+    let dummy_impl_tps: ~[ty::t] =
+        impl_generics.type_param_defs.iter().enumerate().
+        map(|(i,t)| ty::mk_param(tcx, i, t.def_id)).
+        collect();
+    let dummy_method_tps: ~[ty::t] =
+        impl_m.generics.type_param_defs.iter().enumerate().
+        map(|(i,t)| ty::mk_param(tcx, i + impl_tps, t.def_id)).
+        collect();
+    let dummy_impl_regions: OptVec<ty::Region> =
+        impl_generics.region_param_defs.iter().
+        map(|l| ty::ReFree(ty::FreeRegion {
+                scope_id: impl_m_body_id,
+                bound_region: ty::BrNamed(l.def_id, l.ident)})).
+        collect();
+    let dummy_substs = ty::substs {
+        tps: vec::append(dummy_impl_tps, dummy_method_tps),
+        regions: ty::NonerasedRegions(dummy_impl_regions),
+        self_ty: None };
+
+    // We are going to create a synthetic fn type that includes
+    // both the method's self argument and its normal arguments.
+    // So a method like `fn(&self, a: uint)` would be converted
+    // into a function `fn(self: &T, a: uint)`.
+    let mut trait_fn_args = ~[];
+    let mut impl_fn_args = ~[];
+
+    // For both the trait and the impl, create an argument to
+    // represent the self argument (unless this is a static method).
+    // This argument will have the *transformed* self type.
+    for &t in trait_m.transformed_self_ty.iter() {
+        trait_fn_args.push(t);
+    }
+    for &t in impl_m.transformed_self_ty.iter() {
+        impl_fn_args.push(t);
+    }
+
+    // Add in the normal arguments.
+    trait_fn_args.push_all(trait_m.fty.sig.inputs);
+    impl_fn_args.push_all(impl_m.fty.sig.inputs);
+
+    // Create a bare fn type for trait/impl that includes self argument
+    let trait_fty =
+        ty::mk_bare_fn(tcx,
+                       ty::BareFnTy {
+                            purity: trait_m.fty.purity,
+                            abis: trait_m.fty.abis,
+                            sig: ty::FnSig {
+                                binder_id: trait_m.fty.sig.binder_id,
+                                inputs: trait_fn_args,
+                                output: trait_m.fty.sig.output,
+                                variadic: false
+                            }
+                        });
+    let impl_fty =
+        ty::mk_bare_fn(tcx,
+                       ty::BareFnTy {
+                            purity: impl_m.fty.purity,
+                            abis: impl_m.fty.abis,
+                            sig: ty::FnSig {
+                                binder_id: impl_m.fty.sig.binder_id,
+                                inputs: impl_fn_args,
+                                output: impl_m.fty.sig.output,
+                                variadic: false
+                            }
+                        });
+
+    // Perform substitutions so that the trait/impl methods are expressed
+    // in terms of the same set of type/region parameters:
+    // - replace trait type parameters with those from `trait_substs`,
+    //   except with any reference to bound self replaced with `dummy_self_r`
+    // - replace method parameters on the trait with fresh, dummy parameters
+    //   that correspond to the parameters we will find on the impl
+    // - replace self region with a fresh, dummy region
+    let impl_fty = {
+        debug!("impl_fty (pre-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
+        impl_fty.subst(tcx, &dummy_substs)
+    };
+    debug!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
+    let trait_fty = {
+        let substs { regions: trait_regions,
+                     tps: trait_tps,
+                     self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
+        let substs = substs {
+            regions: trait_regions,
+            tps: vec::append(trait_tps, dummy_method_tps),
+            self_ty: self_ty,
+        };
+        debug!("trait_fty (pre-subst): {} substs={}",
+               trait_fty.repr(tcx), substs.repr(tcx));
+        trait_fty.subst(tcx, &substs)
+    };
+    debug!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
+
+    match infer::mk_subty(infcx, false, infer::MethodCompatCheck(impl_m_span),
+                          impl_fty, trait_fty) {
+        result::Ok(()) => {}
+        result::Err(ref terr) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has an incompatible type: {}",
+                        tcx.sess.str_of(trait_m.ident),
+                        ty::type_err_to_str(tcx, terr)));
+            ty::note_and_explain_type_err(tcx, terr);
+        }
+    }
+}
+
 impl AstConv for FnCtxt {
     fn tcx(&self) -> ty::ctxt { self.ccx.tcx }
 
@@ -682,48 +1045,26 @@ impl FnCtxt {
     pub fn infcx(&self) -> @mut infer::InferCtxt {
         self.inh.infcx
     }
+
     pub fn err_count_since_creation(&self) -> uint {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
-    pub fn search_in_scope_regions(&self,
-                                   span: Span,
-                                   br: ty::bound_region)
-                                   -> Result<ty::Region, RegionError> {
-        let in_scope_regions = self.in_scope_regions;
-        match in_scope_regions.find(br) {
-            Some(r) => result::Ok(r),
-            None => {
-                let blk_br = ty::br_named(special_idents::blk);
-                if br == blk_br {
-                    result::Ok(self.block_region())
-                } else {
-                    result::Err(RegionError {
-                        msg: {
-                            format!("named region `{}` not in scope here",
-                                 bound_region_ptr_to_str(self.tcx(), br))
-                        },
-                        replacement: {
-                            self.infcx().next_region_var(
-                                infer::BoundRegionError(span))
-                        }
-                    })
-                }
-            }
+
+    pub fn vtable_context<'a>(&'a self) -> VtableContext<'a> {
+        VtableContext {
+            infcx: self.infcx(),
+            param_env: &self.inh.param_env
         }
     }
 }
 
-impl RegionScope for FnCtxt {
-    fn anon_region(&self, span: Span) -> Result<ty::Region, RegionError> {
-        result::Ok(self.infcx().next_region_var(infer::MiscVariable(span)))
-    }
-    fn self_region(&self, span: Span) -> Result<ty::Region, RegionError> {
-        self.search_in_scope_regions(span, ty::br_self)
-    }
-    fn named_region(&self,
+impl RegionScope for @mut infer::InferCtxt {
+    fn anon_regions(&self,
                     span: Span,
-                    id: ast::Ident) -> Result<ty::Region, RegionError> {
-        self.search_in_scope_regions(span, ty::br_named(id))
+                    count: uint) -> Result<~[ty::Region], ()> {
+        Ok(vec::from_fn(
+                count,
+                |_| self.next_region_var(infer::MiscVariable(span))))
     }
 }
 
@@ -746,7 +1087,7 @@ impl FnCtxt {
     }
 
     pub fn block_region(&self) -> ty::Region {
-        ty::re_scope(self.region_lb)
+        ty::ReScope(self.region_lb)
     }
 
     #[inline]
@@ -805,7 +1146,7 @@ impl FnCtxt {
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> ty::t {
-        ast_ty_to_ty(self, self, ast_t)
+        ast_ty_to_ty(self, &self.infcx(), ast_t)
     }
 
     pub fn pat_to_str(&self, pat: @ast::Pat) -> ~str {
@@ -817,7 +1158,7 @@ impl FnCtxt {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(format!("no type for expr in fcx {}",
-                                         self.tag()));
+                                            self.tag()));
             }
         }
     }
@@ -828,10 +1169,10 @@ impl FnCtxt {
             None => {
                 self.tcx().sess.bug(
                     format!("no type for node {}: {} in fcx {}",
-                         id, ast_map::node_id_to_str(
-                             self.tcx().items, id,
-                             token::get_ident_interner()),
-                         self.tag()));
+                            id, ast_map::node_id_to_str(
+                                self.tcx().items, id,
+                                token::get_ident_interner()),
+                            self.tag()));
             }
         }
     }
@@ -842,10 +1183,9 @@ impl FnCtxt {
             None => {
                 self.tcx().sess.bug(
                     format!("no type substs for node {}: {} in fcx {}",
-                         id, ast_map::node_id_to_str(
-                             self.tcx().items, id,
-                             token::get_ident_interner()),
-                         self.tag()));
+                            id, ast_map::node_id_to_str(self.tcx().items, id,
+                                                        token::get_ident_interner()),
+                            self.tag()));
             }
         }
     }
@@ -922,20 +1262,6 @@ impl FnCtxt {
         let v = f();
         self.region_lb = old_region_lb;
         v
-    }
-
-    pub fn region_var_if_parameterized(&self,
-                                       rp: Option<ty::region_variance>,
-                                       span: Span)
-                                       -> OptVec<ty::Region> {
-        match rp {
-            None => opt_vec::Empty,
-            Some(_) => {
-                opt_vec::with(
-                    self.infcx().next_region_var(
-                        infer::BoundRegionInTypeOrImpl(span)))
-            }
-        }
     }
 
     pub fn type_error_message(&self,
@@ -1028,10 +1354,10 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-      ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
+      ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::ReStatic)),
       ast::lit_binary(*) => {
           ty::mk_evec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
-                      ty::vstore_slice(ty::re_static))
+                      ty::vstore_slice(ty::ReStatic))
       }
       ast::lit_char(_) => ty::mk_char(),
       ast::lit_int(_, t) => ty::mk_mach_int(t),
@@ -1105,20 +1431,22 @@ pub fn impl_self_ty(vcx: &VtableContext,
                  -> ty_param_substs_and_ty {
     let tcx = vcx.tcx();
 
-    let (n_tps, region_param, raw_ty) = {
+    let (n_tps, n_rps, raw_ty) = {
         let ity = ty::lookup_item_type(tcx, did);
-        (ity.generics.type_param_defs.len(), ity.generics.region_param, ity.ty)
+        (ity.generics.type_param_defs.len(),
+         ity.generics.region_param_defs.len(),
+         ity.ty)
     };
 
-    let regions = ty::NonerasedRegions(if region_param.is_some() {
-        opt_vec::with(vcx.infcx.next_region_var(
-            infer::BoundRegionInTypeOrImpl(location_info.span)))
-    } else {
-        opt_vec::Empty
-    });
+    let rps =
+        vcx.infcx.next_region_vars(
+            infer::BoundRegionInTypeOrImpl(location_info.span),
+            n_rps);
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
-    let substs = substs {regions: regions, self_ty: None, tps: tps};
+    let substs = substs {regions: ty::NonerasedRegions(opt_vec::from(rps)),
+                         self_ty: None,
+                         tps: tps};
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
 
     ty_param_substs_and_ty { substs: substs, ty: substd_ty }
@@ -1174,22 +1502,21 @@ fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
     // Verify that no lifetimes or type parameters are present anywhere
     // except the final two elements of the path.
     for i in range(0, path.segments.len() - 2) {
-        match path.segments[i].lifetime {
-            None => {}
-            Some(lifetime) => {
-                function_context.tcx()
-                                .sess
-                                .span_err(lifetime.span,
-                                          "lifetime parameters may not \
-                                           appear here")
-            }
+        for lifetime in path.segments[i].lifetimes.iter() {
+            function_context.tcx()
+                .sess
+                .span_err(lifetime.span,
+                          "lifetime parameters may not \
+                          appear here");
+            break;
         }
 
         for typ in path.segments[i].types.iter() {
             function_context.tcx()
                             .sess
                             .span_err(typ.span,
-                                      "type parameters may not appear here")
+                                      "type parameters may not appear here");
+            break;
         }
     }
 
@@ -1197,7 +1524,7 @@ fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
     // rest of typechecking will (attempt to) infer everything.
     if path.segments
            .iter()
-           .all(|s| s.lifetime.is_none() && s.types.is_empty()) {
+           .all(|s| s.lifetimes.is_empty() && s.types.is_empty()) {
         return
     }
 
@@ -1219,26 +1546,17 @@ fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
 
             // Make sure lifetime parameterization agrees with the trait or
             // implementation type.
-            match (generics.region_param, trait_segment.lifetime) {
-                (Some(_), None) => {
-                    function_context.tcx()
-                                    .sess
-                                    .span_err(path.span,
-                                              format!("this {} has a lifetime \
-                                                    parameter but no \
-                                                    lifetime was specified",
-                                                   name))
-                }
-                (None, Some(_)) => {
-                    function_context.tcx()
-                                    .sess
-                                    .span_err(path.span,
-                                              format!("this {} has no lifetime \
-                                                    parameter but a lifetime \
-                                                    was specified",
-                                                   name))
-                }
-                (Some(_), Some(_)) | (None, None) => {}
+            let trait_region_parameter_count = generics.region_param_defs.len();
+            let supplied_region_parameter_count = trait_segment.lifetimes.len();
+            if trait_region_parameter_count != supplied_region_parameter_count
+                && supplied_region_parameter_count != 0 {
+                function_context.tcx()
+                    .sess
+                    .span_err(path.span,
+                              format!("expected {} lifetime parameter(s), \
+                                      found {} lifetime parameter(s)",
+                                      trait_region_parameter_count,
+                                      supplied_region_parameter_count));
             }
 
             // Make sure the number of type parameters supplied on the trait
@@ -1276,15 +1594,13 @@ fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
             // Verify that no lifetimes or type parameters are present on
             // the penultimate segment of the path.
             let segment = &path.segments[path.segments.len() - 2];
-            match segment.lifetime {
-                None => {}
-                Some(lifetime) => {
-                    function_context.tcx()
-                                    .sess
-                                    .span_err(lifetime.span,
-                                              "lifetime parameters may not
-                                               appear here")
-                }
+            for lifetime in segment.lifetimes.iter() {
+                function_context.tcx()
+                    .sess
+                    .span_err(lifetime.span,
+                              "lifetime parameters may not
+                              appear here");
+                break;
             }
             for typ in segment.types.iter() {
                 function_context.tcx()
@@ -1292,10 +1608,7 @@ fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
                                 .span_err(typ.span,
                                           "type parameters may not appear \
                                            here");
-                function_context.tcx()
-                                .sess
-                                .span_note(typ.span,
-                                           format!("this is a {:?}", def));
+                break;
             }
         }
     }
@@ -1556,7 +1869,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // In that case, we check each argument against "error" in order to
         // set up all the node type bindings.
         let error_fn_sig = FnSig {
-            bound_lifetime_names: opt_vec::Empty,
+            binder_id: ast::CRATE_NODE_ID,
             inputs: err_args(args.len()),
             output: ty::mk_err(),
             variadic: false
@@ -1577,7 +1890,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // signature with region variables
         let (_, _, fn_sig) =
             replace_bound_regions_in_fn_sig(fcx.tcx(),
-                                            @Nil,
                                             None,
                                             fn_sig,
                                             |br| fcx.infcx()
@@ -1908,10 +2220,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                      expected: Option<ty::t>) {
         let tcx = fcx.ccx.tcx;
 
-        // Find the expected input/output types (if any).  Careful to
-        // avoid capture of bound regions in the expected type.  See
-        // def'n of br_cap_avoid() for a more lengthy explanation of
-        // what's going on here.
+        // Find the expected input/output types (if any). Substitute
+        // fresh bound regions for any bound regions we find in the
+        // expected types so as to avoid capture.
+        //
         // Also try to pick up inferred purity and sigil, defaulting
         // to impure and block. Note that we only will use those for
         // block syntax lambdas; that is, lambdas without explicit
@@ -1927,11 +2239,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
              expected_bounds) = {
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
-                    let id = expr.id;
                     let (_, _, sig) =
                         replace_bound_regions_in_fn_sig(
-                            tcx, @Nil, None, &cenv.sig,
-                            |br| ty::re_bound(ty::br_cap_avoid(id, @br)));
+                            tcx, None, &cenv.sig,
+                            |_| fcx.inh.infcx.fresh_bound_region(expr.id));
                     (Some(sig), cenv.purity, cenv.sigil,
                      cenv.onceness, cenv.bounds)
                 }
@@ -1952,7 +2263,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // construct the function type
         let fn_ty = astconv::ty_of_closure(fcx,
-                                           fcx,
+                                           &fcx.infcx(),
+                                           expr.id,
                                            sigil,
                                            purity,
                                            expected_onceness,
@@ -1960,13 +2272,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            &None,
                                            decl,
                                            expected_sig,
-                                           &opt_vec::Empty,
                                            expr.span);
 
         let fty_sig;
         let fty = if error_happened {
             fty_sig = FnSig {
-                bound_lifetime_names: opt_vec::Empty,
+                binder_id: ast::CRATE_NODE_ID,
                 inputs: fn_ty.sig.inputs.map(|_| ty::mk_err()),
                 output: ty::mk_err(),
                 variadic: false
@@ -1989,7 +2300,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            sigil);
 
         check_fn(fcx.ccx, None, inherited_purity, &fty_sig,
-                 decl, id, body, fn_kind, fcx.in_scope_regions, fcx.inh);
+                 decl, id, body, fn_kind, fcx.inh);
     }
 
 
@@ -2168,50 +2479,18 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Look up the number of type parameters and the raw type, and
         // determine whether the class is region-parameterized.
-        let type_parameter_count;
-        let region_parameterized;
-        let raw_type;
-        if class_id.crate == ast::LOCAL_CRATE {
-            region_parameterized =
-                tcx.region_paramd_items.find(&class_id.node).
-                    map(|x| *x);
-            match tcx.items.find(&class_id.node) {
-                Some(&ast_map::node_item(@ast::item {
-                        node: ast::item_struct(_, ref generics),
-                        _
-                    }, _)) => {
-
-                    type_parameter_count = generics.ty_params.len();
-
-                    let self_region =
-                        bound_self_region(region_parameterized);
-
-                    raw_type = ty::mk_struct(tcx, class_id, substs {
-                        regions: ty::NonerasedRegions(self_region),
-                        self_ty: None,
-                        tps: ty::ty_params_to_tys(
-                            tcx,
-                            generics)
-                    });
-                }
-                _ => {
-                    tcx.sess.span_bug(span,
-                                      "resolve didn't map this to a class");
-                }
-            }
-        } else {
-            let item_type = ty::lookup_item_type(tcx, class_id);
-            type_parameter_count = item_type.generics.type_param_defs.len();
-            region_parameterized = item_type.generics.region_param;
-            raw_type = item_type.ty;
-        }
+        let item_type = ty::lookup_item_type(tcx, class_id);
+        let type_parameter_count = item_type.generics.type_param_defs.len();
+        let region_parameter_count = item_type.generics.region_param_defs.len();
+        let raw_type = item_type.ty;
 
         // Generate the struct type.
-        let regions =
-            fcx.region_var_if_parameterized(region_parameterized, span);
+        let regions = fcx.infcx().next_region_vars(
+            infer::BoundRegionInTypeOrImpl(span),
+            region_parameter_count);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
-            regions: ty::NonerasedRegions(regions),
+            regions: ty::NonerasedRegions(opt_vec::from(regions)),
             self_ty: None,
             tps: type_parameters
         };
@@ -2258,48 +2537,18 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
-        let type_parameter_count;
-        let region_parameterized;
-        let raw_type;
-        if enum_id.crate == ast::LOCAL_CRATE {
-            region_parameterized =
-                tcx.region_paramd_items.find(&enum_id.node).map(|x| *x);
-            match tcx.items.find(&enum_id.node) {
-                Some(&ast_map::node_item(@ast::item {
-                        node: ast::item_enum(_, ref generics),
-                        _
-                    }, _)) => {
-
-                    type_parameter_count = generics.ty_params.len();
-
-                    let regions = bound_self_region(region_parameterized);
-
-                    raw_type = ty::mk_enum(tcx, enum_id, substs {
-                        regions: ty::NonerasedRegions(regions),
-                        self_ty: None,
-                        tps: ty::ty_params_to_tys(
-                            tcx,
-                            generics)
-                    });
-                }
-                _ => {
-                    tcx.sess.span_bug(span,
-                                      "resolve didn't map this to an enum");
-                }
-            }
-        } else {
-            let item_type = ty::lookup_item_type(tcx, enum_id);
-            type_parameter_count = item_type.generics.type_param_defs.len();
-            region_parameterized = item_type.generics.region_param;
-            raw_type = item_type.ty;
-        }
+        let item_type = ty::lookup_item_type(tcx, enum_id);
+        let type_parameter_count = item_type.generics.type_param_defs.len();
+        let region_parameter_count = item_type.generics.region_param_defs.len();
+        let raw_type = item_type.ty;
 
         // Generate the enum type.
-        let regions =
-            fcx.region_var_if_parameterized(region_parameterized, span);
+        let regions = fcx.infcx().next_region_vars(
+            infer::BoundRegionInTypeOrImpl(span),
+            region_parameter_count);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
-            regions: ty::NonerasedRegions(regions),
+            regions: ty::NonerasedRegions(opt_vec::from(regions)),
             self_ty: None,
             tps: type_parameters
         };
@@ -3445,28 +3694,25 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
            ty_param_count,
            ty_substs_len);
 
-    // determine the region bound, using the value given by the user
+    // determine the region parameters, using the value given by the user
     // (if any) and otherwise using a fresh region variable
-    let regions = match pth.segments.last().lifetime {
-        Some(_) => { // user supplied a lifetime parameter...
-            match tpt.generics.region_param {
-                None => { // ...but the type is not lifetime parameterized!
-                    fcx.ccx.tcx.sess.span_err
-                        (span, "this item is not region-parameterized");
-                    opt_vec::Empty
-                }
-                Some(_) => { // ...and the type is lifetime parameterized, ok.
-                    opt_vec::with(
-                        ast_region_to_region(fcx,
-                                             fcx,
-                                             span,
-                                             &pth.segments.last().lifetime))
-                }
-            }
+    let num_expected_regions = tpt.generics.region_param_defs.len();
+    let num_supplied_regions = pth.segments.last().lifetimes.len();
+    let regions = if num_expected_regions == num_supplied_regions {
+        pth.segments.last().lifetimes.map(
+            |l| ast_region_to_region(fcx.tcx(), l))
+    } else {
+        if num_supplied_regions != 0 {
+            fcx.ccx.tcx.sess.span_err(
+                span,
+                format!("expected {} lifetime parameter(s), \
+                        found {} lifetime parameter(s)",
+                        num_expected_regions, num_supplied_regions));
         }
-        None => { // no lifetime parameter supplied, insert default
-            fcx.region_var_if_parameterized(tpt.generics.region_param, span)
-        }
+
+        opt_vec::from(fcx.infcx().next_region_vars(
+                infer::BoundRegionInTypeOrImpl(span),
+                num_expected_regions))
     };
 
     // Special case: If there is a self parameter, omit it from the list of
@@ -3642,18 +3888,14 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
     if tps.len() == 0u { return; }
     let mut tps_used = vec::from_elem(tps.len(), false);
 
-    ty::walk_regions_and_ty(
-        ccx.tcx, ty,
-        |_r| {},
-        |t| {
+    ty::walk_ty(ty, |t| {
             match ty::get(t).sty {
-              ty::ty_param(param_ty {idx, _}) => {
-                  debug!("Found use of ty param \\#{}", idx);
-                  tps_used[idx] = true;
-              }
-              _ => ()
+                ty::ty_param(param_ty {idx, _}) => {
+                    debug!("Found use of ty param \\#{}", idx);
+                    tps_used[idx] = true;
+                }
+                _ => ()
             }
-            true
         });
 
     for (i, b) in tps_used.iter().enumerate() {
@@ -3680,19 +3922,19 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         //We only care about the operation here
         match split[1] {
             "cxchg" => (0, ~[ty::mk_mut_rptr(tcx,
-                                             ty::re_bound(ty::br_anon(0)),
+                                             ty::ReLateBound(it.id, ty::BrAnon(0)),
                                              ty::mk_int()),
                         ty::mk_int(),
                         ty::mk_int()
                         ], ty::mk_int()),
             "load" => (0,
                ~[
-                  ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
+                  ty::mk_imm_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int())
                ],
               ty::mk_int()),
             "store" => (0,
                ~[
-                  ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int()),
                   ty::mk_int()
                ],
                ty::mk_nil()),
@@ -3700,7 +3942,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or"   | "xor"  | "max"  |
             "min"  | "umax" | "umin" => {
                 (0, ~[ty::mk_mut_rptr(tcx,
-                                      ty::re_bound(ty::br_anon(0)),
+                                      ty::ReLateBound(it.id, ty::BrAnon(0)),
                                       ty::mk_int()), ty::mk_int() ], ty::mk_int())
             }
             "fence" => {
@@ -3726,7 +3968,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "move_val" | "move_val_init" => {
                 (1u,
                  ~[
-                    ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                    ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), param(ccx, 0)),
                     param(ccx, 0u)
                   ],
                ty::mk_nil())
@@ -3738,7 +3980,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "atomic_xchg_rel" | "atomic_xadd_rel" | "atomic_xsub_rel" => {
               (0,
                ~[
-                  ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int()),
                   ty::mk_int()
                ],
                ty::mk_int())
@@ -3761,7 +4003,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   Ok(t) => t,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
               };
-              let region = ty::re_bound(ty::br_anon(0));
+              let region = ty::ReLateBound(it.id, ty::BrAnon(0));
               let visitor_object_ty = match ty::visitor_object_ty(tcx, region) {
                   Ok((_, vot)) => vot,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
@@ -3953,12 +4195,10 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::unsafe_fn,
         abis: AbiSet::Intrinsic(),
-        sig: FnSig {
-            bound_lifetime_names: opt_vec::Empty,
-            inputs: inputs,
-            output: output,
-            variadic: false
-        }
+        sig: FnSig {binder_id: it.id,
+                    inputs: inputs,
+                    output: output,
+                    variadic: false}
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = i_ty.generics.type_param_defs.len();
@@ -3974,3 +4214,4 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                      ppaux::ty_to_str(ccx.tcx, fty)));
     }
 }
+

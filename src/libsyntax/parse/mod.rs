@@ -368,7 +368,7 @@ mod test {
                         segments: ~[
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
-                                lifetime: None,
+                                lifetimes: opt_vec::Empty,
                                 types: opt_vec::Empty,
                             }
                         ],
@@ -387,12 +387,12 @@ mod test {
                             segments: ~[
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
                             ]
@@ -592,7 +592,7 @@ mod test {
                             segments: ~[
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
                             ],
@@ -614,7 +614,7 @@ mod test {
                                segments: ~[
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
                                ],
@@ -641,7 +641,7 @@ mod test {
                                     segments: ~[
                                         ast::PathSegment {
                                             identifier: str_to_ident("b"),
-                                            lifetime: None,
+                                            lifetimes: opt_vec::Empty,
                                             types: opt_vec::Empty,
                                         }
                                     ],
@@ -669,7 +669,7 @@ mod test {
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("int"),
-                                                lifetime: None,
+                                                lifetimes: opt_vec::Empty,
                                                 types: opt_vec::Empty,
                                             }
                                         ],
@@ -687,7 +687,7 @@ mod test {
                                                     ast::PathSegment {
                                                         identifier:
                                                             str_to_ident("b"),
-                                                        lifetime: None,
+                                                        lifetimes: opt_vec::Empty,
                                                         types: opt_vec::Empty,
                                                     }
                                                 ],
@@ -724,8 +724,8 @@ mod test {
                                                                 identifier:
                                                                 str_to_ident(
                                                                     "b"),
-                                                                lifetime:
-                                                                    None,
+                                                                lifetimes:
+                                                                opt_vec::Empty,
                                                                 types:
                                                                 opt_vec::Empty
                                                             }

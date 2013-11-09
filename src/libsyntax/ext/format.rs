@@ -15,7 +15,7 @@ use ext::base;
 use ext::build::AstBuilder;
 use rsparse = parse;
 use parse::token;
-
+use opt_vec;
 use std::fmt::parse;
 use std::hashmap::{HashMap, HashSet};
 use std::vec;
@@ -464,7 +464,7 @@ impl Context {
                 sp,
                 true,
                 rtpath("Method"),
-                Some(life),
+                opt_vec::with(life),
                 ~[]
             ), None);
             let st = ast::item_static(ty, ast::MutImmutable, method);
@@ -582,7 +582,8 @@ impl Context {
                     self.ecx.ident_of("rt"),
                     self.ecx.ident_of("Piece"),
                 ],
-                Some(self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
+                opt_vec::with(
+                    self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
                 ~[]
             ), None);
         let ty = ast::ty_fixed_length_vec(

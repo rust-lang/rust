@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that taking the address of an argument yields a lifetime
+// bounded by the current function call.
+
 fn foo(a: int) {
     let _p: &'static int = &a; //~ ERROR borrowed value does not live long enough
 }
 
 fn bar(a: int) {
-    let _q: &'blk int = &a;
+    let _q: &int = &a;
+}
+
+fn zed<'a>(a: int) -> &'a int {
+    &a //~ ERROR borrowed value does not live long enough
 }
 
 fn main() {

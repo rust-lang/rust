@@ -8,25 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Invariance with respect to a region:
-//
-// You cannot convert between regions.
+// Test that anonymous lifetimes are not permitted in struct declarations
 
-struct invariant<'self> {
-    f: &'self fn(x: &'self int) -> &'self int
+struct Foo {
+    x: &int //~ ERROR missing lifetime specifier
 }
 
-fn to_same_lifetime<'r>(bi: invariant<'r>) {
-    let bj: invariant<'r> = bi;
-}
-
-fn to_shorter_lifetime<'r>(bi: invariant<'r>) {
-    let bj: invariant<'blk> = bi; //~ ERROR mismatched types
-}
-
-fn to_longer_lifetime<'r>(bi: invariant<'r>) -> invariant<'static> {
-    bi //~ ERROR mismatched types
-}
-
-fn main() {
-}
+fn main() {}
