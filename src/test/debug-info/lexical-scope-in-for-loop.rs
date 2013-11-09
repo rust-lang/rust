@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-win32
-// xfail-android
+// xfail-android: FIXME(#10381)
 
 // compile-flags:-Z extra-debug-info
 // debugger:rbreak zzz
