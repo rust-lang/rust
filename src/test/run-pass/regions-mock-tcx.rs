@@ -93,7 +93,6 @@ enum AstKind<'ast> {
     ExprInt,
     ExprVar(uint),
     ExprLambda(Ast<'ast>),
-    // ...
 }
 
 fn compute_types<'tcx,'ast>(tcx: &mut TypeContext<'tcx,'ast>,
@@ -104,15 +103,12 @@ fn compute_types<'tcx,'ast>(tcx: &mut TypeContext<'tcx,'ast>,
             let ty = tcx.add_type(TypeInt);
             tcx.set_type(ast.id, ty)
         }
-
         ExprLambda(ast) => {
             let arg_ty = tcx.add_type(TypeInt);
             let body_ty = compute_types(tcx, ast);
             let lambda_ty = tcx.add_type(TypeFunction(arg_ty, body_ty));
             tcx.set_type(ast.id, lambda_ty)
         }
-
-        // ...
     }
 }
 
