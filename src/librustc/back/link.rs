@@ -32,6 +32,7 @@ use std::run;
 use std::str;
 use std::vec;
 use std::rt::io::fs;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
@@ -877,13 +878,13 @@ pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str 
 }
 
 
-pub fn output_dll_filename(os: session::Os, lm: LinkMeta) -> ~str {
+pub fn output_dll_filename(os: abi::Os, lm: LinkMeta) -> ~str {
     let (dll_prefix, dll_suffix) = match os {
-        session::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-        session::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-        session::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-        session::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-        session::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+        abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
+        abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
     format!("{}{}-{}-{}{}", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
@@ -898,7 +899,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
     match sess.opts.linker {
         Some(ref linker) => linker.to_str(),
         None => match sess.targ_cfg.os {
-            session::OsAndroid =>
+            abi::OsAndroid =>
                 match &sess.opts.android_cross_path {
                     &Some(ref path) => {
                         format!("{}/bin/arm-linux-androideabi-gcc", *path)
@@ -908,7 +909,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
                                     (--android-cross-path)")
                     }
                 },
-            session::OsWin32 => ~"g++",
+            abi::OsWin32 => ~"g++",
             _ => ~"cc"
         }
     }
@@ -956,7 +957,7 @@ pub fn link_binary(sess: Session,
     }
 
     // Clean up on Darwin
-    if sess.targ_cfg.os == session::OsMacos {
+    if sess.targ_cfg.os == abi::OsMacos {
         // FIXME (#9639): This needs to handle non-utf8 paths
         run::process_status("dsymutil", [output.as_str().unwrap().to_owned()]);
     }
@@ -985,7 +986,7 @@ pub fn link_args(sess: Session,
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
-            config.os != session::OsWin32 {
+            config.os != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
         } else {
             stem
@@ -1029,7 +1030,7 @@ pub fn link_args(sess: Session,
         obj_filename.as_str().unwrap().to_owned()]);
 
     let lib_cmd = match sess.targ_cfg.os {
-        session::OsMacos => ~"-dynamiclib",
+        abi::OsMacos => ~"-dynamiclib",
         _ => ~"-shared"
     };
 
@@ -1080,7 +1081,7 @@ pub fn link_args(sess: Session,
 
         // On mac we need to tell the linker to let this library
         // be rpathed
-        if sess.targ_cfg.os == session::OsMacos {
+        if sess.targ_cfg.os == abi::OsMacos {
             // FIXME (#9639): This needs to handle non-utf8 paths
             args.push("-Wl,-install_name,@rpath/"
                       + output.filename_str().unwrap());
@@ -1089,7 +1090,7 @@ pub fn link_args(sess: Session,
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
-    if sess.targ_cfg.os == session::OsLinux {
+    if sess.targ_cfg.os == abi::OsLinux {
         args.push_all([~"-lrt", ~"-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
@@ -1097,12 +1098,12 @@ pub fn link_args(sess: Session,
         // have to be explicit about linking to it. See #2510
         args.push(~"-lm");
     }
-    else if sess.targ_cfg.os == session::OsAndroid {
+    else if sess.targ_cfg.os == abi::OsAndroid {
         args.push_all([~"-ldl", ~"-llog",  ~"-lsupc++", ~"-lgnustl_shared"]);
         args.push(~"-lm");
     }
 
-    if sess.targ_cfg.os == session::OsFreebsd {
+    if sess.targ_cfg.os == abi::OsFreebsd {
         args.push_all([~"-pthread", ~"-lrt",
                        ~"-L/usr/local/lib", ~"-lexecinfo",
                        ~"-L/usr/local/lib/gcc46",

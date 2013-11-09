@@ -418,15 +418,32 @@ calling foreign functions. Some foreign functions, most notably the Windows API,
 conventions. Rust provides a way to tell the compiler which convention to use:
 
 ~~~~
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "win32", target_arch = "x86")]
 #[link_name = "kernel32"]
 extern "stdcall" {
     fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
 }
 ~~~~
 
-This applies to the entire `extern` block, and must be either `"cdecl"` or
-`"stdcall"`. The compiler may eventually support other calling conventions.
+This applies to the entire `extern` block. The list of supported ABI constraints
+are:
+
+* `stdcall`
+* `aapcs`
+* `cdecl`
+* `fastcall`
+* `Rust`
+* `rust-intrinsic`
+* `system`
+* `C`
+
+Most of the abis in this list are self-explanatory, but the `system` abi may
+seem a little odd. This constraint selects whatever the appropriate ABI is for
+interoperating with the target's libraries. For example, on win32 with a x86
+architecture, this means that the abi used would be `stdcall`. On x86_64,
+however, windows uses the `C` calling convention, so `C` would be used. This
+means that in our previous example, we could have used `extern "system" { ... }`
+to define a block for all windows systems, not just x86 ones.
 
 # Interoperability with foreign code
 

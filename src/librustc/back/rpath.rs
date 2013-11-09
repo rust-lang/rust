@@ -15,9 +15,10 @@ use metadata::filesearch;
 
 use std::hashmap::HashSet;
 use std::{os, vec};
+use syntax::abi;
 
-fn not_win32(os: session::Os) -> bool {
-  os != session::OsWin32
+fn not_win32(os: abi::Os) -> bool {
+  os != abi::OsWin32
 }
 
 pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
@@ -25,7 +26,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
-    if os == session::OsWin32 {
+    if os == abi::OsWin32 {
         return ~[];
     }
 
@@ -55,7 +56,7 @@ pub fn rpaths_to_flags(rpaths: &[~str]) -> ~[~str] {
     rpaths.iter().map(|rpath| format!("-Wl,-rpath,{}",*rpath)).collect()
 }
 
-fn get_rpaths(os: session::Os,
+fn get_rpaths(os: abi::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
@@ -100,13 +101,13 @@ fn get_rpaths(os: session::Os,
     return rpaths;
 }
 
-fn get_rpaths_relative_to_output(os: session::Os,
+fn get_rpaths_relative_to_output(os: abi::Os,
                                  output: &Path,
                                  libs: &[Path]) -> ~[~str] {
     libs.iter().map(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
-pub fn get_rpath_relative_to_output(os: session::Os,
+pub fn get_rpath_relative_to_output(os: abi::Os,
                                     output: &Path,
                                     lib: &Path)
                                  -> ~str {
@@ -116,10 +117,10 @@ pub fn get_rpath_relative_to_output(os: session::Os,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
-        session::OsAndroid | session::OsLinux | session::OsFreebsd
+        abi::OsAndroid | abi::OsLinux | abi::OsFreebsd
                           => "$ORIGIN",
-        session::OsMacos => "@loader_path",
-        session::OsWin32 => unreachable!()
+        abi::OsMacos => "@loader_path",
+        abi::OsWin32 => unreachable!()
     };
 
     let mut lib = os::make_absolute(lib);
@@ -169,13 +170,10 @@ pub fn minimize_rpaths(rpaths: &[~str]) -> ~[~str] {
 mod test {
     use std::os;
 
-    // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
-    // these redundant #[cfg(test)] blocks can be removed
-    #[cfg(test)]
-    #[cfg(test)]
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
     use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
     use driver::session;
+    use syntax::abi;
 
     #[test]
     fn test_rpaths_to_flags() {
@@ -219,7 +217,7 @@ mod test {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     fn test_rpath_relative() {
-      let o = session::OsLinux;
+      let o = abi::OsLinux;
       let res = get_rpath_relative_to_output(o,
             &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
       assert_eq!(res.as_slice(), "$ORIGIN/../lib");
@@ -228,7 +226,7 @@ mod test {
     #[test]
     #[cfg(target_os = "freebsd")]
     fn test_rpath_relative() {
-        let o = session::OsFreebsd;
+        let o = abi::OsFreebsd;
         let res = get_rpath_relative_to_output(o,
             &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
         assert_eq!(res.as_slice(), "$ORIGIN/../lib");
@@ -237,7 +235,7 @@ mod test {
     #[test]
     #[cfg(target_os = "macos")]
     fn test_rpath_relative() {
-        let o = session::OsMacos;
+        let o = abi::OsMacos;
         let res = get_rpath_relative_to_output(o,
                                                &Path::new("bin/rustc"),
                                                &Path::new("lib/libstd.so"));

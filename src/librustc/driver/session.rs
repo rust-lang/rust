@@ -31,9 +31,6 @@ use syntax;
 use std::int;
 use std::hashmap::{HashMap,HashSet};
 
-#[deriving(Eq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
-
 #[deriving(Clone)]
 pub enum crate_type {
     bin_crate,
@@ -42,7 +39,7 @@ pub enum crate_type {
 }
 
 pub struct config {
-    os: Os,
+    os: abi::Os,
     arch: abi::Architecture,
     target_strs: target_strs::t,
     int_type: int_ty,
@@ -410,15 +407,15 @@ pub fn building_library(req_crate_type: crate_type,
     }
 }
 
-pub fn sess_os_to_meta_os(os: Os) -> metadata::loader::Os {
+pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
     use metadata::loader;
 
     match os {
-        OsWin32 => loader::OsWin32,
-        OsLinux => loader::OsLinux,
-        OsAndroid => loader::OsAndroid,
-        OsMacos => loader::OsMacos,
-        OsFreebsd => loader::OsFreebsd
+        abi::OsWin32 => loader::OsWin32,
+        abi::OsLinux => loader::OsLinux,
+        abi::OsAndroid => loader::OsAndroid,
+        abi::OsMacos => loader::OsMacos,
+        abi::OsFreebsd => loader::OsFreebsd
     }
 }
 
