@@ -14,6 +14,7 @@
 use cast::transmute;
 use cmp::Eq;
 use option::{Option, Some, None};
+use to_bytes::{IterBytes, Cb};
 use to_str::ToStr;
 use unstable::intrinsics;
 use util::Void;
@@ -39,6 +40,12 @@ impl Eq for TypeId {
     #[inline]
     fn eq(&self, &other: &TypeId) -> bool {
         self.t == other.t
+    }
+}
+
+impl IterBytes for TypeId {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.t.iter_bytes(lsb0, f)
     }
 }
 
@@ -175,6 +182,7 @@ mod tests {
     use super::*;
     use super::AnyRefExt;
     use option::{Some, None};
+    use hash::Hash;
 
     #[deriving(Eq)]
     struct Test;
@@ -195,6 +203,13 @@ mod tests {
         assert_eq!(a, d);
         assert_eq!(b, e);
         assert_eq!(c, f);
+    }
+
+    #[test]
+    fn type_id_hash() {
+        let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>::());
+
+        assert_eq!(a.hash(), b.hash());
     }
 
     #[test]
