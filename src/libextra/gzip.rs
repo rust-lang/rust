@@ -39,6 +39,32 @@ the data from the source to the destination streams automatically.  It is
 callee-driven with an internal loop running until all the data have been processed.
 It's more efficient with less buffer copying.
 
+Usage: GZipReader to read decompressed data automatically from an inner reader.
+    let greader = GZipReader::new(input_reader);
+    greader.read(output_data_buf);
+    ...
+    Call read() repeatedly until it returns None at EOF.
+
+Usage: GZipWriter to compress any data written to it automatically.
+    let gwriter = GZipWriter::new(output_writer);
+    gwriter.write(plain_data_buf);
+    write repeatedly to compress more data in the stream.
+    ...
+    gwriter.finalize();     // must call finalize() to finish compression.
+    The output_writer receives the compressed data.
+
+Usage: GZip::decompress_stream to decompress the entire reader stream to the writer stream.
+    match GZip::decompress_init(&mut reader) {
+        Ok(gzip) => gzip.decompress_stream(&mut reader, &mut writer, DEFAULT_SIZE_FACTOR),
+        ...
+    }
+
+Usage: GZip::compress_stream to compress the entire reader stream to the writer stream, along with some file info.
+    match GZip::compress_init(&mut writer, file_name, modified_time, file_size) {
+        Ok(gzip) => gzip.compress_stream(&mut reader, &mut writer, compress_level, DEFAULT_SIZE_FACTOR),
+        ...
+    }
+
 */
 
 
@@ -239,7 +265,6 @@ impl GZip {
                 }
                 false                           // don't abort
             });
-        deflator.free();
 
         match status {
             DeflateStatusDone => {
@@ -350,7 +375,6 @@ impl GZip {
                     end_len += read_buf_upto(reader, end_buf, end_len, END_LENGTH - end_len);
                 }
             } );
-        inflator.free();
 
         match status {
             InflateStatusDone => {
@@ -518,7 +542,6 @@ impl<R: Reader> Reader for GZipReader<R> {
                 if end_len < END_LENGTH {
                     end_len += read_buf_upto(&mut self.inner_reader, end_buf, end_len, END_LENGTH - end_len);
                 }
-                self.inflator.free();
                 match self.gzip.readEndSection(end_buf, end_len)
                     .and_then( |_| self.gzip.checkCrc() ) {
                     Ok(_)   => return None,
@@ -539,7 +562,6 @@ impl<R: Reader> Reader for GZipReader<R> {
             _ => {
                 // Clean up states before raising error.
                 self.is_eof = true;
-                self.inflator.free();
                 io_error::cond.raise(IoError {
                         kind: OtherIoError,
                         desc: "Read failure in decompression",
@@ -564,7 +586,7 @@ impl<R: Reader> Reader for GZipReader<R> {
 ///     ...
 ///     gwriter.finalize();     // must call finalize() to finish compression.
 ///
-/// The output_writer will receive the compressed data.
+/// The output_writer receives the compressed data.
 pub struct GZipWriter<W> {
     /// The GZip object for the gzip file informatioin 
     gzip:               GZip,
@@ -643,14 +665,12 @@ impl<W: Writer> GZipWriter<W> {
             },
             DeflateStatusDone => {
                 self.finalized = true;
-                self.deflator.free();
                 self.gzip.crc32 = self.gzip.cmp_crc32;
                 self.gzip.writeEndSection(&mut self.inner_writer);
             },
             _ => {
                 // Clean up states before raising error.
                 self.finalized = true;
-                self.deflator.free();
                 io_error::cond.raise(IoError {
                         kind: OtherIoError,
                         desc: "Write failure in compression",
@@ -781,7 +801,7 @@ fn make_crc_table() -> [u32, ..256] {
 }
 
 /// Run this to pre-generate the CRC table to be included in source code.
-pub fn generate_crc_table() {
+fn generate_crc_table() {
     let table = make_crc_table();
     let mut output = ~"static crc_table : [u32, ..256] = [";
     for n in range(0, 256) {
@@ -837,6 +857,7 @@ mod tests {
     use std::rt::io::Reader;
     use std::rt::io::mem::MemReader;
     use std::rt::io::mem::MemWriter;
+    use std::rt::io::io_error;
     use super::GZipReader;
     use super::GZipWriter;
 
@@ -844,7 +865,7 @@ mod tests {
     #[test]
     fn test_generate_crc_table() {
         // Uncomment to generate the crc table text.
-        // super::generate_crc_table();
+        //super::generate_crc_table();
     }
 
     #[test]
@@ -858,9 +879,79 @@ mod tests {
                 let mut out_buf = [0u8, ..64];
                 let out_len = gzip_reader.read(out_buf);
                 let decomp_buf = out_buf.slice(0, out_len.unwrap());
-                // println(format!("original_data:  {:?}", original_data.clone()));
-                // println(format!("decomp_buf:     {:?}", decomp_buf));
                 assert!(( decomp_buf.eq(&original_data) ));
+            },
+            Err(e) => fail!(e)
+        }
+    }
+
+    #[test]
+    fn test_gzip_reader_bad_header_signature() {
+
+        let comp_reader = MemReader::new(~[0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
+        match GZipReader::new(comp_reader) {
+            Ok(_) => fail!(~"Should not succeed"),
+            Err(e) => {  debug!("{:?}", e)  }
+        }
+    }
+
+    #[test]
+    fn test_gzip_reader_bad_header_too_short() {
+
+        let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00]);
+        match GZipReader::new(comp_reader) {
+            Ok(_) => fail!(~"Should not succeed"),
+            Err(e) => {  debug!("{:?}", e)  }
+        }
+    }
+
+    #[test]
+    fn test_gzip_reader_bad_crc() {
+
+        let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0A, 0x00, 0x00, 0x00]);
+        match GZipReader::new(comp_reader) {
+            Ok(gzip_reader) => {
+                let mut gzip_reader = gzip_reader;
+                let mut expected_error = false;
+                do io_error::cond.trap(|c| {
+                    expected_error = true;
+                    debug!("{:?}", c);
+                }).inside {
+                    let mut out_buf = [0u8, ..64];
+                    loop {
+                        match gzip_reader.read(out_buf) {
+                            Some(_) => (),
+                            None    => break
+                        }
+                    }
+                    assert!(expected_error);
+                }
+            },
+            Err(e) => fail!(e)
+        }
+    }
+
+    #[test]
+    fn test_gzip_reader_bad_data() {
+
+        let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
+        match GZipReader::new(comp_reader) {
+            Ok(gzip_reader) => {
+                let mut gzip_reader = gzip_reader;
+                let mut expected_error = false;
+                do io_error::cond.trap(|c| {
+                    expected_error = true;
+                    debug!("{:?}", c);
+                }).inside {
+                    let mut out_buf = [0u8, ..64];
+                    loop {
+                        match gzip_reader.read(out_buf) {
+                            Some(_) => (),
+                            None    => break
+                        }
+                    }
+                    assert!(expected_error);
+                }
             },
             Err(e) => fail!(e)
         }
@@ -878,7 +969,6 @@ mod tests {
                 gzip_writer.write(original_data);
                 gzip_writer.finalize();
                 comp_data = gzip_writer.inner().inner();
-                //println(format!("comp_data: {:?}", comp_data));
             },
             Err(e) => fail!(e)
         }
@@ -890,8 +980,6 @@ mod tests {
                 let mut out_buf = [0u8, ..64];
                 let out_len = gzip_reader.read(out_buf);
                 let decomp_buf = out_buf.slice(0, out_len.unwrap());
-                // println(format!("original_data:  {:?}", original_data.clone()));
-                // println(format!("decomp_buf:     {:?}", decomp_buf));
                 assert!(( decomp_buf.eq(&original_data) ));
             },
             Err(e) => fail!(e)

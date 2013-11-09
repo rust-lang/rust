@@ -259,7 +259,7 @@ impl Deflator {
 
     /// Releases the underlying tdefl_compressor structure.  After this call, the instance can not be used any more.
     /// Called by the drop() destructor.
-    pub fn free(&mut self) {
+    fn free(&mut self) {
         #[fixed_stack_segment];
         #[inline(never)];
         unsafe {
@@ -532,7 +532,7 @@ impl Inflator {
     }
 
     /// Releases the underlying tinfl_decompressor structure.  After this call, the instance must not be used anymore.
-    pub fn free(&mut self) {
+    fn free(&mut self) {
         #[fixed_stack_segment];
         #[inline(never)];
         unsafe {
