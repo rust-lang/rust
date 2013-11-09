@@ -26,4 +26,4 @@ fn use_<'a>(c: Covariant<'a>) {
     let _: Covariant<'static> = c;
 }
 
-fn main() {}
+pub fn main() {}
