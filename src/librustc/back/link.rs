@@ -634,6 +634,18 @@ pub fn build_link_meta(sess: Session,
         }
     }
 
+    fn crate_meta_pkgid(sess: Session, name: @str, opt_pkg_id: Option<@str>)
+        -> @str {
+        match opt_pkg_id {
+            Some(v) if !v.is_empty() => v,
+            _ => {
+                let pkg_id = name.clone();
+                warn_missing(sess, "package_id", pkg_id);
+                pkg_id
+            }
+        }
+    }
+
     let ProvidedMetas {
         name: opt_name,
         vers: opt_vers,
@@ -642,15 +654,16 @@ pub fn build_link_meta(sess: Session,
     } = provided_link_metas(sess, c);
     let name = crate_meta_name(sess, output, opt_name);
     let vers = crate_meta_vers(sess, opt_vers);
+    let pkg_id = crate_meta_pkgid(sess, name, opt_pkg_id);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
         crate_meta_extras_hash(symbol_hasher, cmh_items,
-                               dep_hashes, opt_pkg_id);
+                               dep_hashes, Some(pkg_id));
 
     LinkMeta {
         name: name,
         vers: vers,
-        package_id: opt_pkg_id,
+        package_id: Some(pkg_id),
         extras_hash: extras_hash
     }
 }

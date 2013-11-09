@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustdoc",
+       package_id = "rustdoc",
        vers = "0.9-pre",
        uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6",
        url = "https://github.com/mozilla/rust/tree/master/src/librustdoc")];

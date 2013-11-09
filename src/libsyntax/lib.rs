@@ -14,6 +14,7 @@
  */
 
 #[link(name = "syntax",
+       package_id = "syntax",
        vers = "0.9-pre",
        uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
 
