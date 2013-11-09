@@ -913,41 +913,81 @@ pub fn page_size() -> uint {
     }
 }
 
+/// A memory mapped file or chunk of memory. This is a very system-specific interface to the OS's
+/// memory mapping facilities (`mmap` on POSIX, `VirtualAlloc`/`CreateFileMapping` on win32). It
+/// makes no attempt at abstracting platform differences, besides in error values returned. Consider
+/// yourself warned.
+///
+/// The memory map is released (unmapped) when the destructor is run, so don't let it leave scope by
+/// accident if you want it to stick around.
 pub struct MemoryMap {
+    /// Pointer to the memory created or modified by this map.
     data: *mut u8,
+    /// Number of bytes this map applies to
     len: size_t,
+    /// Type of mapping
     kind: MemoryMapKind
 }
 
+/// Type of memory map
 pub enum MemoryMapKind {
+    /// Memory-mapped file. On Windows, the inner pointer is a handle to the mapping, and
+    /// corresponds to `CreateFileMapping`. Elsewhere, it is null.
     MapFile(*c_void),
+    /// Virtual memory map. Usually used to change the permissions of a given chunk of memory.
+    /// Corresponds to `VirtualAlloc` on Windows.
     MapVirtual
 }
 
+/// Options the memory map is created with
 pub enum MapOption {
+    /// The memory should be readable
     MapReadable,
+    /// The memory should be writable
     MapWritable,
+    /// The memory should be executable
     MapExecutable,
+    /// Create a map for a specific address range. Corresponds to `MAP_FIXED` on POSIX.
     MapAddr(*c_void),
+    /// Create a memory mapping for a file with a given fd.
     MapFd(c_int),
+    /// When using `MapFd`, the start of the map is `uint` bytes from the start of the file.
     MapOffset(uint)
 }
 
+/// Possible errors when creating a map.
 pub enum MapError {
-    // Linux-specific errors
+    /// ## The following are POSIX-specific
+    ///
+    /// fd was not open for reading or, if using `MapWritable`, was not open for writing.
     ErrFdNotAvail,
+    /// fd was not valid
     ErrInvalidFd,
+    /// Either the address given by `MapAddr` or offset given by `MapOffset` was not a multiple of
+    /// `MemoryMap::granularity` (unaligned to page size).
     ErrUnaligned,
+    /// With `MapFd`, the fd does not support mapping.
     ErrNoMapSupport,
+    /// If using `MapAddr`, the address + `min_len` was outside of the process's address space. If
+    /// using `MapFd`, the target of the fd didn't have enough resources to fulfill the request.
     ErrNoMem,
+    /// Unrecognized error. The inner value is the unrecognized errno.
     ErrUnknown(libc::c_int),
-
-    // Windows-specific errors
+    /// ## The following are win32-specific
+    ///
+    /// Unsupported combination of protection flags (`MapReadable`/`MapWritable`/`MapExecutable`).
     ErrUnsupProt,
+    /// When using `MapFd`, `MapOffset` was given (Windows does not support this at all)
     ErrUnsupOffset,
+    /// When using `MapFd`, there was already a mapping to the file.
     ErrAlreadyExists,
+    /// Unrecognized error from `VirtualAlloc`. The inner value is the return value of GetLastError.
     ErrVirtualAlloc(uint),
+    /// Unrecognized error from `CreateFileMapping`. The inner value is the return value of
+    /// `GetLastError`.
     ErrCreateFileMappingW(uint),
+    /// Unrecognized error from `MapViewOfFile`. The inner value is the return value of
+    /// `GetLastError`.
     ErrMapViewOfFile(uint)
 }
 
@@ -973,6 +1013,7 @@ impl to_str::ToStr for MapError {
 
 #[cfg(unix)]
 impl MemoryMap {
+    /// Create a new mapping with the given `options`, at least `min_len` bytes long.
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         #[fixed_stack_segment]; #[inline(never)];
 
@@ -1028,6 +1069,7 @@ impl MemoryMap {
         }
     }
 
+    /// Granularity that the offset or address must be for `MapOffset` and `MapAddr` respectively.
     pub fn granularity() -> uint {
         page_size()
     }
@@ -1035,6 +1077,7 @@ impl MemoryMap {
 
 #[cfg(unix)]
 impl Drop for MemoryMap {
+    /// Unmap the mapping. Fails the task if `munmap` fails.
     fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
@@ -1053,6 +1096,7 @@ impl Drop for MemoryMap {
 
 #[cfg(windows)]
 impl MemoryMap {
+    /// Create a new mapping with the given `options`, at least `min_len` bytes long.
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         #[fixed_stack_segment]; #[inline(never)];
 
@@ -1161,6 +1205,8 @@ impl MemoryMap {
 
 #[cfg(windows)]
 impl Drop for MemoryMap {
+    /// Unmap the mapping. Fails the task if any of `VirtualFree`, `UnmapViewOfFile`, or
+    /// `CloseHandle` fail.
     fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
