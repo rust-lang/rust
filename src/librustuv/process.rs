@@ -232,6 +232,6 @@ impl Drop for Process {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
         assert!(self.to_wake.is_none());
-        self.close_async_();
+        self.close();
     }
 }

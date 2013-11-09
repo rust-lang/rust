@@ -30,26 +30,21 @@ pub struct SignalWatcher {
 impl SignalWatcher {
     pub fn new(loop_: &mut Loop, signum: Signum,
                channel: SharedChan<Signum>) -> Result<~SignalWatcher, UvError> {
-        let handle = UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL);
+        let s = ~SignalWatcher {
+            handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),
+            home: get_handle_to_current_scheduler!(),
+            channel: channel,
+            signal: signum,
+        };
         assert_eq!(unsafe {
-            uvll::uv_signal_init(loop_.handle, handle)
-
+            uvll::uv_signal_init(loop_.handle, s.handle)
         }, 0);
 
-        match unsafe { uvll::uv_signal_start(handle, signal_cb, signum as c_int) } {
-            0 => {
-                let s = ~SignalWatcher {
-                    handle: handle,
-                    home: get_handle_to_current_scheduler!(),
-                    channel: channel,
-                    signal: signum,
-                };
-                Ok(s.install())
-            }
-            n => {
-                unsafe { uvll::free_handle(handle) }
-                Err(UvError(n))
-            }
+        match unsafe {
+            uvll::uv_signal_start(s.handle, signal_cb, signum as c_int)
+        } {
+            0 => Ok(s.install()),
+            n => Err(UvError(n)),
         }
 
     }
