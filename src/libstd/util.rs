@@ -23,10 +23,8 @@ pub fn id<T>(x: T) -> T { x }
 #[inline]
 pub fn ignore<T>(_x: T) { }
 
-/**
- * Swap the values at two mutable locations of the same type, without
- * deinitialising or copying either one.
- */
+/// Swap the values at two mutable locations of the same type, without
+/// deinitialising or copying either one.
 #[inline]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
@@ -47,10 +45,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/**
- * Replace the value at a mutable location with a new one, returning the old
- * value, without deinitialising or copying either one.
- */
+/// Replace the value at a mutable location with a new one, returning the old
+/// value, without deinitialising or copying either one.
 #[inline]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     swap(dest, &mut src);
