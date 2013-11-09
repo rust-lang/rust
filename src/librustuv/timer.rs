@@ -14,6 +14,7 @@ use std::rt::BlockedTask;
 use std::rt::local::Local;
 use std::rt::rtio::RtioTimer;
 use std::rt::sched::{Scheduler, SchedHandle};
+use std::util;
 
 use uvll;
 use super::{Loop, UvHandle, ForbidUnwind, ForbidSwitch};
@@ -82,9 +83,13 @@ impl RtioTimer for TimerWatcher {
     fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
         let (port, chan) = oneshot();
 
-        let _m = self.fire_homing_missile();
-        self.action = Some(SendOnce(chan));
-        self.start(msecs, 0);
+        // similarly to the destructor, we must drop the previous action outside
+        // of the homing missile
+        let _prev_action = {
+            let _m = self.fire_homing_missile();
+            self.start(msecs, 0);
+            util::replace(&mut self.action, Some(SendOnce(chan)))
+        };
 
         return port;
     }
@@ -93,8 +98,14 @@ impl RtioTimer for TimerWatcher {
         let (port, chan) = stream();
 
         let _m = self.fire_homing_missile();
-        self.action = Some(SendMany(chan));
-        self.start(msecs, msecs);
+
+        // similarly to the destructor, we must drop the previous action outside
+        // of the homing missile
+        let _prev_action = {
+            let _m = self.fire_homing_missile();
+            self.start(msecs, msecs);
+            util::replace(&mut self.action, Some(SendMany(chan)))
+        };
 
         return port;
     }
@@ -120,16 +131,24 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
 
 impl Drop for TimerWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_homing_missile();
-        self.action = None;
-        self.stop();
-        self.close_async_();
+        // note that this drop is a little subtle. Dropping a channel which is
+        // held internally may invoke some scheduling operations. We can't take
+        // the channel unless we're on the home scheduler, but once we're on the
+        // home scheduler we should never move. Hence, we take the timer's
+        // action item and then move it outside of the homing block.
+        let _action = {
+            let _m = self.fire_homing_missile();
+            self.stop();
+            self.close_async_();
+            self.action.take()
+        };
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::cell::Cell;
     use std::rt::rtio::RtioTimer;
     use super::super::local_loop;
 
@@ -203,6 +222,19 @@ mod test {
 
         // when we drop the TimerWatcher we're going to destroy the channel,
         // which must wake up the task on the other end
+    }
+
+    #[test]
+    fn reset_doesnt_switch_tasks() {
+        // similar test to the one above.
+        let mut timer = TimerWatcher::new(local_loop());
+        let timer_port = Cell::new(timer.period(1000));
+
+        do spawn {
+            timer_port.take().try_recv();
+        }
+
+        timer.oneshot(1);
     }
 
     #[test]

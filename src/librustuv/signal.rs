@@ -77,3 +77,29 @@ impl Drop for SignalWatcher {
         self.close_async_();
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::cell::Cell;
+    use super::super::local_loop;
+    use std::rt::io::signal;
+    use std::comm::{SharedChan, stream};
+
+    #[test]
+    fn closing_channel_during_drop_doesnt_kill_everything() {
+        // see issue #10375, relates to timers as well.
+        let (port, chan) = stream();
+        let chan = SharedChan::new(chan);
+        let _signal = SignalWatcher::new(local_loop(), signal::Interrupt,
+                                         chan);
+
+        let port = Cell::new(port);
+        do spawn {
+            port.take().try_recv();
+        }
+
+        // when we drop the SignalWatcher we're going to destroy the channel,
+        // which must wake up the task on the other end
+    }
+}
