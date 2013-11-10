@@ -64,6 +64,20 @@ doc/rust.tex: rust.md doc/version.md
          --from=markdown --to=latex \
          --output=$@
 
+DOCS += doc/rust.epub
+doc/rust.epub: rust.md doc/version_info.html doc/rust.css doc/manual.inc
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	"$(CFG_PANDOC)" \
+         --standalone --toc \
+         --section-divs \
+         --number-sections \
+         --from=markdown --to=epub \
+         --css=rust.css --include-in-header=doc/manual.inc \
+         --include-before-body=doc/version_info.html \
+         --output=$@
+
+
 DOCS += doc/tutorial.tex
 doc/tutorial.tex: tutorial.md doc/version.md
 	@$(call E, pandoc: $@)
@@ -97,6 +111,17 @@ doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css
            --from=markdown --to=html5 --css=rust.css \
            --include-before-body=doc/version_info.html \
            --output=$@
+
+DOCS += doc/tutorial.epub
+doc/tutorial.epub: tutorial.md doc/version_info.html doc/rust.css
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+          $(CFG_PANDOC) --standalone --toc \
+           --section-divs --number-sections \
+           --from=markdown --to=epub --css=rust.css \
+           --include-before-body=doc/version_info.html \
+           --output=$@
+
 
 DOCS_L10N += doc/l10n/ja/tutorial.html
 doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rust.css
