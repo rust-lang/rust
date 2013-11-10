@@ -142,7 +142,8 @@ pub struct Matches {
 }
 
 /// The type returned when the command line does not conform to the
-/// expected format. Pass this value to <fail_str> to get an error message.
+/// expected format. Call the `to_err_msg` method to retrieve the
+/// error as a string.
 #[deriving(Clone, Eq, ToStr)]
 #[allow(missing_doc)]
 pub enum Fail_ {
