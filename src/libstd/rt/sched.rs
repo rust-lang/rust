@@ -23,7 +23,7 @@ use super::message_queue::MessageQueue;
 use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::{RemoteCallback, PausibleIdleCallback};
+use rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback};
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, Rng, Rand};
@@ -169,7 +169,8 @@ impl Scheduler {
     pub fn bootstrap(mut ~self, task: ~Task) {
 
         // Build an Idle callback.
-        self.idle_callback = Some(self.event_loop.pausible_idle_callback());
+        let cb = ~SchedRunner as ~Callback;
+        self.idle_callback = Some(self.event_loop.pausible_idle_callback(cb));
 
         // Initialize the TLS key.
         local_ptr::init_tls_key();
@@ -184,7 +185,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        self.idle_callback.get_mut_ref().start(Scheduler::run_sched_once);
+        self.idle_callback.get_mut_ref().resume();
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -202,7 +203,7 @@ impl Scheduler {
 
         // Close the idle callback.
         let mut sched: ~Scheduler = Local::take();
-        sched.idle_callback.get_mut_ref().close();
+        sched.idle_callback.take();
         // Make one go through the loop to run the close callback.
         sched.run();
 
@@ -454,8 +455,7 @@ impl Scheduler {
     // * Task Routing Functions - Make sure tasks send up in the right
     // place.
 
-    fn process_task(mut ~self, mut task: ~Task,
-                    schedule_fn: SchedulingFn) {
+    fn process_task(mut ~self, mut task: ~Task, schedule_fn: SchedulingFn) {
         rtdebug!("processing a task");
 
         let home = task.take_unwrap_home();
@@ -767,7 +767,7 @@ impl Scheduler {
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
-        let remote = self.event_loop.remote_callback(Scheduler::run_sched_once);
+        let remote = self.event_loop.remote_callback(~SchedRunner as ~Callback);
 
         return SchedHandle {
             remote: remote,
@@ -779,7 +779,7 @@ impl Scheduler {
 
 // Supporting types
 
-type SchedulingFn = ~fn(~Scheduler, ~Task);
+type SchedulingFn = extern "Rust" fn (~Scheduler, ~Task);
 
 pub enum SchedMessage {
     Wake,
@@ -799,6 +799,14 @@ impl SchedHandle {
     pub fn send(&mut self, msg: SchedMessage) {
         self.queue.push(msg);
         self.remote.fire();
+    }
+}
+
+struct SchedRunner;
+
+impl Callback for SchedRunner {
+    fn call(&mut self) {
+        Scheduler::run_sched_once();
     }
 }
 

@@ -8,59 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
+use std::libc::c_int;
 use std::libc;
 use std::ptr;
-use std::vec;
+use std::rt::BlockedTask;
+use std::rt::io::IoError;
 use std::rt::io::process::*;
+use std::rt::local::Local;
+use std::rt::rtio::RtioProcess;
+use std::rt::sched::{Scheduler, SchedHandle};
+use std::vec;
 
-use super::{Watcher, Loop, NativeHandle, UvError};
-use super::{status_to_maybe_uv_error, ExitCallback};
-use uvio::{UvPipeStream, UvUnboundPipe};
+use super::{Loop, UvHandle, UvError, uv_error_to_io_error,
+            wait_until_woken_after};
+use uvio::HomingIO;
 use uvll;
+use pipe::PipeWatcher;
 
-/// A process wraps the handle of the underlying uv_process_t.
-pub struct Process(*uvll::uv_process_t);
+pub struct Process {
+    handle: *uvll::uv_process_t,
+    home: SchedHandle,
 
-impl Watcher for Process {}
+    /// Task to wake up (may be null) for when the process exits
+    to_wake: Option<BlockedTask>,
+
+    /// Collected from the exit_cb
+    exit_status: Option<int>,
+    term_signal: Option<int>,
+}
 
 impl Process {
-    /// Creates a new process, ready to spawn inside an event loop
-    pub fn new() -> Process {
-        let handle = unsafe { uvll::malloc_handle(uvll::UV_PROCESS) };
-        assert!(handle.is_not_null());
-        let mut ret: Process = NativeHandle::from_native_handle(handle);
-        ret.install_watcher_data();
-        return ret;
-    }
-
     /// Spawn a new process inside the specified event loop.
-    ///
-    /// The `config` variable will be passed down to libuv, and the `exit_cb`
-    /// will be run only once, when the process exits.
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(&mut self, loop_: &Loop, config: ProcessConfig,
-                 exit_cb: ExitCallback)
-                    -> Result<~[Option<~UvPipeStream>], UvError>
+    pub fn spawn(loop_: &Loop, config: ProcessConfig)
+                -> Result<(~Process, ~[Option<PipeWatcher>]), UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
-
-        extern fn on_exit(p: *uvll::uv_process_t,
-                          exit_status: libc::c_int,
-                          term_signal: libc::c_int) {
-            let mut p: Process = NativeHandle::from_native_handle(p);
-            let err = match exit_status {
-                0 => None,
-                _ => status_to_maybe_uv_error(-1)
-            };
-            p.get_watcher_data().exit_cb.take_unwrap()(p,
-                                                       exit_status as int,
-                                                       term_signal as int,
-                                                       err);
-        }
-
         let io = config.io;
         let mut stdio = vec::with_capacity::<uvll::uv_stdio_container_t>(io.len());
         let mut ret_io = vec::with_capacity(io.len());
@@ -73,9 +58,7 @@ impl Process {
             }
         }
 
-        let exit_cb = Cell::new(exit_cb);
-        let ret_io = Cell::new(ret_io);
-        do with_argv(config.program, config.args) |argv| {
+        let ret = do with_argv(config.program, config.args) |argv| {
             do with_env(config.env) |envp| {
                 let options = uvll::uv_process_options_t {
                     exit_cb: on_exit,
@@ -93,40 +76,52 @@ impl Process {
                     gid: 0,
                 };
 
+                let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
+                let process = ~Process {
+                    handle: handle,
+                    home: get_handle_to_current_scheduler!(),
+                    to_wake: None,
+                    exit_status: None,
+                    term_signal: None,
+                };
                 match unsafe {
-                    uvll::spawn(loop_.native_handle(), **self, options)
+                    uvll::uv_spawn(loop_.handle, handle, &options)
                 } {
-                    0 => {
-                        (*self).get_watcher_data().exit_cb = Some(exit_cb.take());
-                        Ok(ret_io.take())
-                    }
-                    err => Err(UvError(err))
+                    0 => Ok(process.install()),
+                    err => Err(UvError(err)),
                 }
             }
+        };
+
+        match ret {
+            Ok(p) => Ok((p, ret_io)),
+            Err(e) => Err(e),
         }
     }
+}
 
-    /// Sends a signal to this process.
-    ///
-    /// This is a wrapper around `uv_process_kill`
-    pub fn kill(&self, signum: int) -> Result<(), UvError> {
-        match unsafe {
-            uvll::process_kill(self.native_handle(), signum as libc::c_int)
-        } {
-            0 => Ok(()),
-            err => Err(UvError(err))
+extern fn on_exit(handle: *uvll::uv_process_t,
+                  exit_status: i64,
+                  term_signal: libc::c_int) {
+    let p: &mut Process = unsafe { UvHandle::from_uv_handle(&handle) };
+
+    assert!(p.exit_status.is_none());
+    assert!(p.term_signal.is_none());
+    p.exit_status = Some(exit_status as int);
+    p.term_signal = Some(term_signal as int);
+
+    match p.to_wake.take() {
+        Some(task) => {
+            let scheduler: ~Scheduler = Local::take();
+            scheduler.resume_blocked_task_immediately(task);
         }
-    }
-
-    /// Returns the process id of a spawned process
-    pub fn pid(&self) -> libc::pid_t {
-        unsafe { uvll::process_pid(**self) as libc::pid_t }
+        None => {}
     }
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
                     io: &StdioContainer,
-                    loop_: &Loop) -> Option<~UvPipeStream> {
+                    loop_: &Loop) -> Option<PipeWatcher> {
     match *io {
         Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
@@ -145,11 +140,10 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
-            let pipe = UvUnboundPipe::new(loop_);
-            let handle = pipe.pipe.as_stream().native_handle();
+            let pipe = PipeWatcher::new(loop_, false);
             uvll::set_stdio_container_flags(dst, flags);
-            uvll::set_stdio_container_stream(dst, handle);
-            Some(~UvPipeStream::new(pipe))
+            uvll::set_stdio_container_stream(dst, pipe.handle());
+            Some(pipe)
         }
     }
 }
@@ -192,11 +186,52 @@ fn with_env<T>(env: Option<&[(~str, ~str)]>, f: &fn(**libc::c_char) -> T) -> T {
     c_envp.as_imm_buf(|buf, _| f(buf))
 }
 
-impl NativeHandle<*uvll::uv_process_t> for Process {
-    fn from_native_handle(handle: *uvll::uv_process_t) -> Process {
-        Process(handle)
+impl HomingIO for Process {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl UvHandle<uvll::uv_process_t> for Process {
+    fn uv_handle(&self) -> *uvll::uv_process_t { self.handle }
+}
+
+impl RtioProcess for Process {
+    fn id(&self) -> libc::pid_t {
+        unsafe { uvll::process_pid(self.handle) as libc::pid_t }
     }
-    fn native_handle(&self) -> *uvll::uv_process_t {
-        match self { &Process(ptr) => ptr }
+
+    fn kill(&mut self, signal: int) -> Result<(), IoError> {
+        let _m = self.fire_homing_missile();
+        match unsafe {
+            uvll::uv_process_kill(self.handle, signal as libc::c_int)
+        } {
+            0 => Ok(()),
+            err => Err(uv_error_to_io_error(UvError(err)))
+        }
+    }
+
+    fn wait(&mut self) -> int {
+        // Make sure (on the home scheduler) that we have an exit status listed
+        let _m = self.fire_homing_missile();
+        match self.exit_status {
+            Some(*) => {}
+            None => {
+                // If there's no exit code previously listed, then the
+                // process's exit callback has yet to be invoked. We just
+                // need to deschedule ourselves and wait to be reawoken.
+                wait_until_woken_after(&mut self.to_wake, || {});
+                assert!(self.exit_status.is_some());
+            }
+        }
+
+        // FIXME(#10109): this is wrong
+        self.exit_status.unwrap()
+    }
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        assert!(self.to_wake.is_none());
+        self.close();
     }
 }

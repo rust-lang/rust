@@ -587,6 +587,22 @@ pub fn rmdir_recursive(path: &Path) {
     rmdir(path);
 }
 
+/// Changes the timestamps for a file's last modification and access time.
+/// The file at the path specified will have its last access time set to
+/// `atime` and its modification time set to `mtime`. The times specified should
+/// be in milliseconds.
+///
+/// # Errors
+///
+/// This function will raise on the `io_error` condition if an error
+/// happens.
+// FIXME(#10301) these arguments should not be u64
+pub fn change_file_times(path: &Path, atime: u64, mtime: u64) {
+    do io_raise |io| {
+        io.fs_utime(&path.to_c_str(), atime, mtime)
+    };
+}
+
 impl Reader for File {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         match self.fd.read(buf) {
@@ -704,8 +720,8 @@ mod test {
     use rt::io;
     use str;
     use super::{File, rmdir, mkdir, readdir, rmdir_recursive, mkdir_recursive,
-                copy, unlink, stat, symlink, link, readlink, chmod, chown,
-                lstat};
+                copy, unlink, stat, symlink, link, readlink, chmod,
+                lstat, change_file_times};
 
     fn tmpdir() -> Path {
         use os;
@@ -1241,6 +1257,31 @@ mod test {
             f.write("bar".as_bytes());
         }
         assert_eq!(stat(&tmpdir.join("h")).size, 3);
+
+        rmdir_recursive(&tmpdir);
+    }
+
+    #[test]
+    fn utime() {
+        let tmpdir = tmpdir();
+        let path = tmpdir.join("a");
+        File::create(&path);
+
+        change_file_times(&path, 1000, 2000);
+        assert_eq!(path.stat().accessed, 1000);
+        assert_eq!(path.stat().modified, 2000);
+
+        rmdir_recursive(&tmpdir);
+    }
+
+    #[test]
+    fn utime_noexist() {
+        let tmpdir = tmpdir();
+
+        match io::result(|| change_file_times(&tmpdir.join("a"), 100, 200)) {
+            Ok(*) => fail!(),
+            Err(*) => {}
+        }
 
         rmdir_recursive(&tmpdir);
     }

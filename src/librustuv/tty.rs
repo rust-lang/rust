@@ -9,75 +9,110 @@
 // except according to those terms.
 
 use std::libc;
+use std::rt::io::IoError;
+use std::rt::local::Local;
+use std::rt::rtio::RtioTTY;
+use std::rt::sched::{Scheduler, SchedHandle};
 
-use super::{Watcher, Loop, NativeHandle, UvError};
-use net;
+use stream::StreamWatcher;
+use super::{Loop, UvError, UvHandle, uv_error_to_io_error};
+use uvio::HomingIO;
 use uvll;
 
-/// A process wraps the handle of the underlying uv_process_t.
-pub struct TTY(*uvll::uv_tty_t);
+pub struct TtyWatcher{
+    tty: *uvll::uv_tty_t,
+    stream: StreamWatcher,
+    home: SchedHandle,
+    fd: libc::c_int,
+}
 
-impl Watcher for TTY {}
-
-impl TTY {
-    #[fixed_stack_segment] #[inline(never)]
-    pub fn new(loop_: &Loop, fd: libc::c_int, readable: bool) ->
-            Result<TTY, UvError>
+impl TtyWatcher {
+    pub fn new(loop_: &Loop, fd: libc::c_int, readable: bool)
+        -> Result<TtyWatcher, UvError>
     {
-        let handle = unsafe { uvll::malloc_handle(uvll::UV_TTY) };
-        assert!(handle.is_not_null());
+        // libuv may succeed in giving us a handle (via uv_tty_init), but if the
+        // handle isn't actually connected to a terminal there are frequently
+        // many problems in using it with libuv. To get around this, always
+        // return a failure if the specified file descriptor isn't actually a
+        // TTY.
+        //
+        // Related:
+        // - https://github.com/joyent/libuv/issues/982
+        // - https://github.com/joyent/libuv/issues/988
+        if unsafe { uvll::guess_handle(fd) != uvll::UV_TTY as libc::c_int } {
+            return Err(UvError(uvll::EBADF));
+        }
 
-        let ret = unsafe {
-            uvll::tty_init(loop_.native_handle(), handle, fd as libc::c_int,
-                           readable as libc::c_int)
-        };
-        match ret {
+        // If this file descriptor is indeed guessed to be a tty, then go ahead
+        // with attempting to open it as a tty.
+        let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
+        match unsafe {
+            uvll::uv_tty_init(loop_.handle, handle, fd as libc::c_int,
+                              readable as libc::c_int)
+        } {
             0 => {
-                let mut ret: TTY = NativeHandle::from_native_handle(handle);
-                ret.install_watcher_data();
-                Ok(ret)
+                Ok(TtyWatcher {
+                    tty: handle,
+                    stream: StreamWatcher::new(handle),
+                    home: get_handle_to_current_scheduler!(),
+                    fd: fd,
+                })
             }
             n => {
-                unsafe { uvll::free_handle(handle); }
+                unsafe { uvll::free_handle(handle) }
                 Err(UvError(n))
             }
         }
     }
+}
 
-    pub fn as_stream(&self) -> net::StreamWatcher {
-        net::StreamWatcher(**self as *uvll::uv_stream_t)
+impl RtioTTY for TtyWatcher {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+        let _m = self.fire_homing_missile();
+        self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
-    #[fixed_stack_segment] #[inline(never)]
-    pub fn set_mode(&self, raw: bool) -> Result<(), UvError> {
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+        let _m = self.fire_homing_missile();
+        self.stream.write(buf).map_err(uv_error_to_io_error)
+    }
+
+    fn set_raw(&mut self, raw: bool) -> Result<(), IoError> {
         let raw = raw as libc::c_int;
-        match unsafe { uvll::tty_set_mode(self.native_handle(), raw) } {
+        let _m = self.fire_homing_missile();
+        match unsafe { uvll::uv_tty_set_mode(self.tty, raw) } {
             0 => Ok(()),
-            n => Err(UvError(n))
+            n => Err(uv_error_to_io_error(UvError(n)))
         }
     }
 
-    #[fixed_stack_segment] #[inline(never)] #[allow(unused_mut)]
-    pub fn get_winsize(&self) -> Result<(int, int), UvError> {
+    #[allow(unused_mut)]
+    fn get_winsize(&mut self) -> Result<(int, int), IoError> {
         let mut width: libc::c_int = 0;
         let mut height: libc::c_int = 0;
         let widthptr: *libc::c_int = &width;
         let heightptr: *libc::c_int = &width;
 
-        match unsafe { uvll::tty_get_winsize(self.native_handle(),
-                                             widthptr, heightptr) } {
+        let _m = self.fire_homing_missile();
+        match unsafe { uvll::uv_tty_get_winsize(self.tty,
+                                                widthptr, heightptr) } {
             0 => Ok((width as int, height as int)),
-            n => Err(UvError(n))
+            n => Err(uv_error_to_io_error(UvError(n)))
         }
     }
 }
 
-impl NativeHandle<*uvll::uv_tty_t> for TTY {
-    fn from_native_handle(handle: *uvll::uv_tty_t) -> TTY {
-        TTY(handle)
-    }
-    fn native_handle(&self) -> *uvll::uv_tty_t {
-        match self { &TTY(ptr) => ptr }
-    }
+impl UvHandle<uvll::uv_tty_t> for TtyWatcher {
+    fn uv_handle(&self) -> *uvll::uv_tty_t { self.tty }
 }
 
+impl HomingIO for TtyWatcher {
+    fn home<'a>(&'a mut self) -> &'a mut SchedHandle { &mut self.home }
+}
+
+impl Drop for TtyWatcher {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        self.close_async_();
+    }
+}
