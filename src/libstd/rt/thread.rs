@@ -118,16 +118,8 @@ impl Drop for Thread {
     }
 }
 
-#[cfg(windows, target_arch = "x86")]
-extern "stdcall" {
-    fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES, dwStackSize: SIZE_T,
-                    lpStartAddress: extern "C" fn(*libc::c_void) -> rust_thread_return,
-                    lpParameter: LPVOID, dwCreationFlags: DWORD, lpThreadId: LPDWORD) -> HANDLE;
-    fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
-}
-
-#[cfg(windows, target_arch = "x86_64")]
-extern {
+#[cfg(windows)]
+extern "system" {
     fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES, dwStackSize: SIZE_T,
                     lpStartAddress: extern "C" fn(*libc::c_void) -> rust_thread_return,
                     lpParameter: LPVOID, dwCreationFlags: DWORD, lpThreadId: LPDWORD) -> HANDLE;
