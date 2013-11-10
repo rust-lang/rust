@@ -33,7 +33,8 @@ use result::{Ok, Err};
 use rt::io::buffered::LineBufferedWriter;
 use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io,
                CloseAsynchronously};
-use super::{Reader, Writer, io_error, IoError, OtherIoError};
+use super::{Reader, Writer, io_error, IoError, OtherIoError,
+            standard_error, EndOfFile};
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -203,6 +204,15 @@ impl Reader for StdReader {
             File(ref mut file) => file.read(buf).map(|i| i as uint),
         };
         match ret {
+            // When reading a piped stdin, libuv will return 0-length reads when
+            // stdin reaches EOF. For pretty much all other streams it will
+            // return an actual EOF error, but apparently for stdin it's a
+            // little different. Hence, here we convert a 0 length read to an
+            // end-of-file indicator so the caller knows to stop reading.
+            Ok(0) => {
+                io_error::cond.raise(standard_error(EndOfFile));
+                None
+            }
             Ok(amt) => Some(amt as uint),
             Err(e) => {
                 io_error::cond.raise(e);
@@ -277,12 +287,10 @@ impl StdWriter {
         }
     }
 
-    /// Returns whether this tream is attached to a TTY instance or not.
-    ///
-    /// This is similar to libc's isatty() function
+    /// Returns whether this stream is attached to a TTY instance or not.
     pub fn isatty(&self) -> bool {
         match self.inner {
-            TTY(ref tty) => tty.isatty(),
+            TTY(*) => true,
             File(*) => false,
         }
     }

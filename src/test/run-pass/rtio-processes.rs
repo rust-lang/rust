@@ -23,8 +23,8 @@
 //
 // See #9341
 
+use std::rt::io;
 use std::rt::io::process::{Process, ProcessConfig, CreatePipe, Ignored};
-use std::rt::io::{Reader, Writer};
 use std::str;
 
 #[test]
@@ -55,10 +55,10 @@ fn smoke_failure() {
         cwd: None,
         io: io,
     };
-    let p = Process::new(args);
-    assert!(p.is_some());
-    let mut p = p.unwrap();
-    assert!(p.wait() != 0);
+    match io::result(|| Process::new(args)) {
+        Ok(*) => fail!(),
+        Err(*) => {}
+    }
 }
 
 #[test]

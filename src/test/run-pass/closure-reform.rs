@@ -67,7 +67,8 @@ pub fn main() {
     call_that(|x, y| *x + *y - z);
 
     call_cramped(|| 1, || unsafe {
-        cast::transmute(&100)
+        static a: uint = 100;
+        cast::transmute(&a)
     });
 
     // External functions

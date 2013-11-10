@@ -423,7 +423,11 @@ pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
 /// closure if no error occurred.
 pub fn result<T>(cb: &fn() -> T) -> Result<T, IoError> {
     let mut err = None;
-    let ret = io_error::cond.trap(|e| err = Some(e)).inside(cb);
+    let ret = io_error::cond.trap(|e| {
+        if err.is_none() {
+            err = Some(e);
+        }
+    }).inside(cb);
     match err {
         Some(e) => Err(e),
         None => Ok(ret),
@@ -1142,8 +1146,9 @@ pub struct FileStat {
     /// The file permissions currently on the file
     perm: FilePermission,
 
-    // XXX: These time fields are pretty useless without an actual time
-    //      representation, what are the milliseconds relative to?
+    // FIXME(#10301): These time fields are pretty useless without an actual
+    //                time representation, what are the milliseconds relative
+    //                to?
 
     /// The time that the file was created at, in platform-dependent
     /// milliseconds

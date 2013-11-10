@@ -436,13 +436,13 @@ mod tests {
     }
 
     fn writeclose(fd: c_int, s: &str) {
-        let mut writer = file::FileDesc::new(fd);
+        let mut writer = file::FileDesc::new(fd, true);
         writer.write(s.as_bytes());
     }
 
     fn readclose(fd: c_int) -> ~str {
         let mut res = ~[];
-        let mut reader = file::FileDesc::new(fd);
+        let mut reader = file::FileDesc::new(fd, true);
         let mut buf = [0, ..1024];
         loop {
             match reader.read(buf) {
