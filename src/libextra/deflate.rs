@@ -272,7 +272,7 @@ impl Deflator {
 
     /// Initializes the Deflator.
     ///
-    /// compress_level is 0 to 10, where 0 is the fastest with decompressed raw data and 9 is the slowest with best compression.
+    /// compress_level is 0 to 9, where 0 is the fastest with decompressed raw data and 9 is the slowest with best compression.
     /// add_zlib_header set to true to add the ZLib-format header in front of and an ADLER32 CRC at the end of the deflated data.
     /// add_crc32 set to true to add an ADLER32 CRC at the end of the deflated data regardless how add_zlib is set.
     pub fn init(&self, compress_level: uint, add_zlib_header: bool, add_crc32: bool) -> DeflateStatus {
