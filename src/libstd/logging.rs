@@ -107,14 +107,16 @@ pub fn log(_level: u32, args: &fmt::Arguments) {
         let optional_task: Option<*mut Task> = Local::try_unsafe_borrow();
         match optional_task {
             Some(local) => {
-                // Use the available logger
-                (*local).logger.log(args);
+                match (*local).logger {
+                    // Use the available logger if we have one
+                    Some(ref mut logger) => return logger.log(args),
+                    None => {}
+                }
             }
-            None => {
-                // There is no logger anywhere, just write to stderr
-                let mut logger = StdErrLogger::new();
-                logger.log(args);
-            }
+            None => {}
         }
+        // There is no logger anywhere, just write to stderr
+        let mut logger = StdErrLogger::new();
+        logger.log(args);
     }
 }

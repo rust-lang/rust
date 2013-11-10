@@ -80,18 +80,20 @@ pub type fd_t = libc::c_int;
 
 pub struct FileDesc {
     priv fd: fd_t,
+    priv close_on_drop: bool,
 }
 
 impl FileDesc {
     /// Create a `FileDesc` from an open C file descriptor.
     ///
     /// The `FileDesc` will take ownership of the specified file descriptor and
-    /// close it upon destruction.
+    /// close it upon destruction if the `close_on_drop` flag is true, otherwise
+    /// it will not close the file descriptor when this `FileDesc` is dropped.
     ///
     /// Note that all I/O operations done on this object will be *blocking*, but
     /// they do not require the runtime to be active.
-    pub fn new(fd: fd_t) -> FileDesc {
-        FileDesc { fd: fd }
+    pub fn new(fd: fd_t, close_on_drop: bool) -> FileDesc {
+        FileDesc { fd: fd, close_on_drop: close_on_drop }
     }
 }
 
@@ -137,7 +139,9 @@ impl Writer for FileDesc {
 impl Drop for FileDesc {
     #[fixed_stack_segment] #[inline(never)]
     fn drop(&mut self) {
-        unsafe { libc::close(self.fd); }
+        if self.close_on_drop {
+            unsafe { libc::close(self.fd); }
+        }
     }
 }
 
@@ -245,8 +249,8 @@ mod tests {
         // opening or closing files.
         unsafe {
             let os::Pipe { input, out } = os::pipe();
-            let mut reader = FileDesc::new(input);
-            let mut writer = FileDesc::new(out);
+            let mut reader = FileDesc::new(input, true);
+            let mut writer = FileDesc::new(out, true);
 
             writer.write(bytes!("test"));
             let mut buf = [0u8, ..4];

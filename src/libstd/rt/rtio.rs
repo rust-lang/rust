@@ -24,11 +24,15 @@ use path::Path;
 use super::io::{SeekStyle};
 use super::io::{FileMode, FileAccess, FileStat, FilePermission};
 
+pub trait Callback {
+    fn call(&mut self);
+}
+
 pub trait EventLoop {
     fn run(&mut self);
-    fn callback(&mut self, ~fn());
-    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback;
-    fn remote_callback(&mut self, ~fn()) -> ~RemoteCallback;
+    fn callback(&mut self, proc());
+    fn pausible_idle_callback(&mut self, ~Callback) -> ~PausibleIdleCallback;
+    fn remote_callback(&mut self, ~Callback) -> ~RemoteCallback;
 
     /// The asynchronous I/O services. Not all event loops may provide one
     // FIXME(#9382) this is an awful interface
@@ -121,6 +125,8 @@ pub trait IoFactory {
     fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError>;
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
     fn fs_link(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
+    fn fs_utime(&mut self, src: &CString, atime: u64, mtime: u64) ->
+        Result<(), IoError>;
 
     // misc
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
@@ -209,8 +215,6 @@ pub trait RtioUnixListener {
 
 pub trait RtioUnixAcceptor {
     fn accept(&mut self) -> Result<~RtioPipe, IoError>;
-    fn accept_simultaneously(&mut self) -> Result<(), IoError>;
-    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioTTY {
@@ -218,14 +222,11 @@ pub trait RtioTTY {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
     fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
     fn get_winsize(&mut self) -> Result<(int, int), IoError>;
-    fn isatty(&self) -> bool;
 }
 
 pub trait PausibleIdleCallback {
-    fn start(&mut self, f: ~fn());
     fn pause(&mut self);
     fn resume(&mut self);
-    fn close(&mut self);
 }
 
 pub trait RtioSignal {}

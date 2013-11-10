@@ -34,7 +34,7 @@ macro_rules! rtassert (
     ( $arg:expr ) => ( {
         if ::rt::util::ENFORCE_SANITY {
             if !$arg {
-                rtabort!("assertion failed: {}", stringify!($arg));
+                rtabort!(" assertion failed: {}", stringify!($arg));
             }
         }
     } )
@@ -42,7 +42,7 @@ macro_rules! rtassert (
 
 
 macro_rules! rtabort (
-    ($($msg:tt)*) => ( {
-        ::rt::util::abort(format!($($msg)*));
+    ($($arg:tt)*) => ( {
+        ::rt::util::abort(format!($($arg)*));
     } )
 )
