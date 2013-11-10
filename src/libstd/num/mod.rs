@@ -136,26 +136,87 @@ pub trait Integer: Num
 /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
 #[inline(always)] pub fn lcm<T: Integer>(x: T, y: T) -> T { x.lcm(&y) }
 
+/// A collection of rounding operations.
 pub trait Round {
+    /// Return the largest integer less than or equal to a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.floor(), 1.0);
+    /// assert_approx_eq!((-1.3f32).floor(), -2.0);
+    /// ```
     fn floor(&self) -> Self;
+
+    /// Return the smallest integer greater than or equal to a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.ceil(), 2.0);
+    /// assert_approx_eq!((-1.3f32).ceil(), -1.0);
+    /// ```
     fn ceil(&self) -> Self;
+
+    /// Return the nearest integer to a number. Round half-way cases away from
+    /// `0.0`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.round(), 1.0);
+    /// assert_approx_eq!((-1.3f32).round(), -1.0);
+    /// assert_approx_eq!(1.5f32.round(), 2.0);
+    /// assert_approx_eq!((-1.5f32).round(), -2.0);
+    /// ```
     fn round(&self) -> Self;
+
+    /// Return the integer part of a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.round(), 1.0);
+    /// assert_approx_eq!((-1.3f32).round(), -1.0);
+    /// assert_approx_eq!(1.5f32.round(), 1.0);
+    /// assert_approx_eq!((-1.5f32).round(), -1.0);
+    /// ```
     fn trunc(&self) -> Self;
+
+    /// Return the fractional part of a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.round(), 0.3);
+    /// assert_approx_eq!((-1.3f32).round(), -0.3);
+    /// assert_approx_eq!(1.5f32.round(), 0.5);
+    /// assert_approx_eq!((-1.5f32).round(), -0.5);
+    /// ```
     fn fract(&self) -> Self;
 }
 
+/// Trait for common fractional operations.
 pub trait Fractional: Num
                     + Orderable
                     + Round
                     + Div<Self,Self> {
+    /// Take the reciprocal (inverse) of a number, `1/x`.
     fn recip(&self) -> Self;
 }
 
+/// A collection of algebraic operations.
 pub trait Algebraic {
+    /// Raise a number to a power.
     fn pow(&self, n: &Self) -> Self;
+    /// Take the squre root of a number.
     fn sqrt(&self) -> Self;
+    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(&self) -> Self;
+    /// Take the cubic root of a number.
     fn cbrt(&self) -> Self;
+    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// legs of length `x` and `y`.
     fn hypot(&self, other: &Self) -> Self;
 }
 
@@ -178,16 +239,44 @@ pub trait Algebraic {
 /// `y`.
 #[inline(always)] pub fn hypot<T: Algebraic>(x: T, y: T) -> T { x.hypot(&y) }
 
+/// A trait for trigonometric functions.
 pub trait Trigonometric {
+    /// Computes the sine of a number (in radians).
     fn sin(&self) -> Self;
+    /// Computes the cosine of a number (in radians).
     fn cos(&self) -> Self;
+    /// Computes the tangent of a number (in radians).
     fn tan(&self) -> Self;
 
+    /// Computes the arcsine of a number. Return value is in radians in
+    /// the range [-pi/2, pi/2] or NaN if the number is outside the range
+    /// [-1, 1].
     fn asin(&self) -> Self;
+    /// Computes the arccosine of a number. Return value is in radians in
+    /// the range [0, pi] or NaN if the number is outside the range
+    /// [-1, 1].
     fn acos(&self) -> Self;
+    /// Computes the arctangent of a number. Return value is in radians in the
+    /// range [-pi/2, pi/2];
     fn atan(&self) -> Self;
 
+    /// Computes the four quadrant arctangent of a number, `y`, and another
+    /// number `x`. Return value is in radians in the range [-pi, pi];
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let y = 3f32.sqrt();
+    /// let x = 1f32;
+    /// let pi_3 = 1.04719758f32;
+    /// assert_approx_eq!(y.atan2(&x), pi_3);
+    /// let neg_2_pi_3 = -2.09439516f32;
+    /// assert_approx_eq!((-y).atan2(&(-x)), neg_2_pi_3);
+    /// ```
     fn atan2(&self, other: &Self) -> Self;
+
+    /// Simultaneously computes the sine and cosine of the number, `x`. Returns
+    /// `(sin(x), cos(x))`.
     fn sin_cos(&self) -> (Self, Self);
 }
 
