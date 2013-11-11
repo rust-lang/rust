@@ -83,6 +83,32 @@ void lock_and_signal::lock() {
 #endif
 }
 
+bool lock_and_signal::try_lock() {
+    must_not_have_lock();
+#if defined(__WIN32__)
+    if (TryEnterCriticalSection(&_cs)) {
+#if defined(DEBUG_LOCKS)
+        _holding_thread = GetCurrentThreadId();
+#endif
+        return true;
+    }
+#else // non-windows
+    int trylock = pthread_mutex_trylock(&_mutex);
+    if (trylock == 0) {
+#if defined(DEBUG_LOCKS)
+        _holding_thread = pthread_self();
+#endif
+        return true;
+    } else if (trylock == EBUSY) {
+        // EBUSY means lock was already held by someone else
+        return false;
+    }
+    // abort on all other errors
+    CHECKED(trylock);
+#endif
+    return false;
+}
+
 void lock_and_signal::unlock() {
     must_have_lock();
 #if defined(DEBUG_LOCKS)
