@@ -22,7 +22,7 @@ use io::net::ip::{IpAddr, SocketAddr};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
 use io::{FileMode, FileAccess, FileStat, FilePermission};
-use io::{SeekStyle};
+use io::{SeekStyle, IoResult};
 
 pub trait Callback {
     fn call(&mut self);
@@ -75,7 +75,7 @@ pub enum CloseBehavior {
     CloseAsynchronously,
 }
 
-pub fn with_local_io<T>(f: |&mut IoFactory| -> Option<T>) -> Option<T> {
+pub fn with_local_io<T>(f: |&mut IoFactory| -> IoResult<T>) -> IoResult<T> {
     use rt::sched::Scheduler;
     use rt::local::Local;
     use io::native;

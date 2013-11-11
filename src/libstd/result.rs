@@ -332,7 +332,7 @@ impl<T, E> AsOption<T> for Result<T, E> {
 
 impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
     #[inline]
-    fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) {
+    fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) -> fmt::Result {
         match *s {
             Ok(ref t) => write!(f.buf, "Ok({})", *t),
             Err(ref e) => write!(f.buf, "Err({})", *e)

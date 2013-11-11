@@ -199,13 +199,17 @@ fn add_git_tag(repo: &Path, tag: ~str) {
 }
 
 fn is_rwx(p: &Path) -> bool {
-    if !p.exists() { return false }
-    p.stat().perm & io::UserRWX == io::UserRWX
+    match p.stat() {
+        Ok(s) => s.perm & io::UserRWX == io::UserRWX,
+        Err(*) => false,
+    }
 }
 
 fn is_read_only(p: &Path) -> bool {
-    if !p.exists() { return false }
-    p.stat().perm & io::UserRWX == io::UserRead
+    match p.stat() {
+        Ok(s) => s.perm & io::UserRWX == io::UserRead,
+        Err(*) => false,
+    }
 }
 
 fn test_sysroot() -> Path {
@@ -411,7 +415,7 @@ fn built_executable_exists(repo: &Path, short_name: &str) -> bool {
 fn remove_built_executable_file(p: &PkgId, workspace: &Path) {
     let exec = built_executable_in_workspace(&PkgId::new(p.short_name), workspace);
     match exec {
-        Some(r) => fs::unlink(&r),
+        Some(r) => { fs::unlink(&r); }
         None    => ()
     }
 }
@@ -515,7 +519,7 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
 fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.join_many([~"src", pkgid.to_str()]);
-    let contents = fs::readdir(&pkg_src_dir);
+    let contents = fs::readdir(&pkg_src_dir).unwrap();
     for p in contents.iter() {
         if p.extension_str() == Some("rs") {
             // should be able to do this w/o a process
@@ -531,7 +535,6 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
 
 /// Add a comment at the end
 fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
-    use conditions::bad_path::cond;
     let pkg_src_dir = workspace.join_many([~"src", pkgid.to_str()]);
     let mut maybe_p = None;
     let maybe_file = pkg_src_dir.join(filename);
@@ -542,12 +545,8 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
     debug!("Frobbed? {:?}", maybe_p);
     match maybe_p {
         Some(ref p) => {
-            io::io_error::cond.trap(|e| {
-                cond.raise((p.clone(), format!("Bad path: {}", e.desc)));
-            }).inside(|| {
-                let mut w = File::open_mode(p, io::Append, io::Write);
-                w.write(bytes!("/* hi */\n"));
-            })
+            let mut w = File::open_mode(p, io::Append, io::Write).unwrap();
+            w.write(bytes!("/* hi */\n"));
         }
         None => fail!("frob_source_file failed to find a source file in {}",
                            pkg_src_dir.display())
@@ -1968,7 +1967,7 @@ fn test_target_specific_build_dir() {
                       workspace);
     assert!(target_build_dir(workspace).is_dir());
     assert!(built_executable_exists(workspace, "foo"));
-    assert!(fs::readdir(&workspace.join("build")).len() == 1);
+    assert!(fs::readdir(&workspace.join("build")).unwrap().len() == 1);
 }
 
 #[test]
@@ -1984,7 +1983,7 @@ fn test_target_specific_install_dir() {
                       workspace);
     assert!(workspace.join_many([~"lib", host_triple()]).is_dir());
     assert_lib_exists(workspace, &Path::new("foo"), NoVersion);
-    assert!(fs::readdir(&workspace.join("lib")).len() == 1);
+    assert!(fs::readdir(&workspace.join("lib")).unwrap().len() == 1);
     assert!(workspace.join("bin").is_dir());
     assert_executable_exists(workspace, "foo");
 }
@@ -2442,5 +2441,8 @@ fn correct_error_dependency() {
 
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
-    p.exists() && p.stat().perm & io::UserExecute == io::UserExecute
+    match p.stat() {
+        Ok(stat) => stat.perm & io::UserExecute == io::UserExecute,
+        Err(*) => false,
+    }
 }

@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::{Option, Some, None};
-use result::{Ok, Err};
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer, Listener, Acceptor};
-use io::{io_error, EndOfFile};
+use io::IoResult;
 use rt::rtio::{IoFactory, with_local_io,
                RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
 
@@ -25,64 +23,29 @@ impl TcpStream {
         TcpStream { obj: s }
     }
 
-    pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
-        with_local_io(|io| {
-            match io.tcp_connect(addr) {
-                Ok(s) => Some(TcpStream::new(s)),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
-            }
-        })
+    pub fn connect(addr: SocketAddr) -> IoResult<TcpStream> {
+        with_local_io(|io| io.tcp_connect(addr).map(TcpStream::new))
     }
 
-    pub fn peer_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.peer_name() {
-            Ok(pn) => Some(pn),
-            Err(ioerr) => {
-                debug!("failed to get peer name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn peer_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.peer_name()
     }
 
-    pub fn socket_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(sn) => Some(sn),
-            Err(ioerr) => {
-                debug!("failed to get socket name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.socket_name()
     }
 }
 
 impl Reader for TcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.obj.read(buf) {
-            Ok(read) => Some(read),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                return None;
-            }
-        }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.obj.read(buf)
     }
-
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { false }
 }
 
 impl Writer for TcpStream {
-    fn write(&mut self, buf: &[u8]) {
-        match self.obj.write(buf) {
-            Ok(_) => (),
-            Err(ioerr) => io_error::cond.raise(ioerr),
-        }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.obj.write(buf)
     }
 }
 
@@ -91,39 +54,18 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
-        with_local_io(|io| {
-            match io.tcp_bind(addr) {
-                Ok(l) => Some(TcpListener { obj: l }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
-            }
-        })
+    pub fn bind(addr: SocketAddr) -> IoResult<TcpListener> {
+        with_local_io(|io| io.tcp_bind(addr).map(|l| TcpListener { obj: l }))
     }
 
-    pub fn socket_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(sn) => Some(sn),
-            Err(ioerr) => {
-                debug!("failed to get socket name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.socket_name()
     }
 }
 
 impl Listener<TcpStream, TcpAcceptor> for TcpListener {
-    fn listen(self) -> Option<TcpAcceptor> {
-        match self.obj.listen() {
-            Ok(acceptor) => Some(TcpAcceptor { obj: acceptor }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn listen(self) -> IoResult<TcpAcceptor> {
+        self.obj.listen().map(|a| TcpAcceptor { obj: a })
     }
 }
 
@@ -132,14 +74,8 @@ pub struct TcpAcceptor {
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {
-    fn accept(&mut self) -> Option<TcpStream> {
-        match self.obj.accept() {
-            Ok(s) => Some(TcpStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn accept(&mut self) -> IoResult<TcpStream> {
+        self.obj.accept().map(TcpStream::new)
     }
 }
 
@@ -156,38 +92,27 @@ mod test {
     #[test] #[ignore]
     fn bind_error() {
         do run_in_mt_newsched_task {
-            let mut called = false;
-            io_error::cond.trap(|e| {
-                assert!(e.kind == PermissionDenied);
-                called = true;
-            }).inside(|| {
-                let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
-                let listener = TcpListener::bind(addr);
-                assert!(listener.is_none());
-            });
-            assert!(called);
+            let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
+            match TcpListener::bind(addr) {
+                Ok(*) => fail!(),
+                Err(e) => assert_eq!(e.kind, PermissionDenied),
+            }
         }
     }
 
     #[test]
     fn connect_error() {
         do run_in_mt_newsched_task {
-            let mut called = false;
-            io_error::cond.trap(|e| {
-                let expected_error = if cfg!(unix) {
+            let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
+            match TcpStream::connect(addr) {
+                Ok(*) => fail!(),
+                Err(e) => assert_eq!(e.kind, if cfg!(unix) {
                     ConnectionRefused
                 } else {
                     // On Win32, opening port 1 gives WSAEADDRNOTAVAIL error.
                     OtherIoError
-                };
-                assert_eq!(e.kind, expected_error);
-                called = true;
-            }).inside(|| {
-                let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
-                let stream = TcpStream::connect(addr);
-                assert!(stream.is_none());
-            });
-            assert!(called);
+                })
+            }
         }
     }
 
@@ -255,7 +180,7 @@ mod test {
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
-                assert!(nread.is_none());
+                assert!(nread.is_err());
             }
 
             do spawntask {
@@ -280,7 +205,7 @@ mod test {
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
-                assert!(nread.is_none());
+                assert!(nread.is_err());
             }
 
             do spawntask {
@@ -304,18 +229,18 @@ mod test {
                 chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
-                let nread = stream.read(buf);
-                assert!(nread.is_none());
-                io_error::cond.trap(|e| {
-                    if cfg!(windows) {
-                        assert_eq!(e.kind, NotConnected);
+                match stream.read(buf) {
+                    Ok(*) => fail!(),
+                    Err(e) => assert_eq!(e.kind, EndOfFile),
+                }
+                match stream.read(buf) {
+                    Ok(*) => fail!(),
+                    Err(e) => assert_eq!(e.kind, if cfg!(windows) {
+                        NotConnected
                     } else {
-                        fail!();
-                    }
-                }).inside(|| {
-                    let nread = stream.read(buf);
-                    assert!(nread.is_none());
-                })
+                        EndOfFile
+                    })
+                }
             }
 
             do spawntask {
@@ -339,18 +264,18 @@ mod test {
                 chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
-                let nread = stream.read(buf);
-                assert!(nread.is_none());
-                io_error::cond.trap(|e| {
-                    if cfg!(windows) {
-                        assert_eq!(e.kind, NotConnected);
+                match stream.read(buf) {
+                    Ok(*) => fail!(),
+                    Err(e) => assert_eq!(e.kind, EndOfFile),
+                }
+                match stream.read(buf) {
+                    Ok(*) => fail!(),
+                    Err(e) => assert_eq!(e.kind, if cfg!(windows) {
+                        NotConnected
                     } else {
-                        fail!();
-                    }
-                }).inside(|| {
-                    let nread = stream.read(buf);
-                    assert!(nread.is_none());
-                })
+                        EndOfFile
+                    })
+                }
             }
 
             do spawntask {
@@ -375,19 +300,18 @@ mod test {
                 let mut stream = acceptor.accept();
                 let buf = [0];
                 loop {
-                    let mut stop = false;
-                    io_error::cond.trap(|e| {
-                        // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
-                        //     on windows
-                        assert!(e.kind == ConnectionReset ||
-                                e.kind == BrokenPipe ||
-                                e.kind == ConnectionAborted,
-                                "unknown error: {:?}", e);
-                        stop = true;
-                    }).inside(|| {
-                        stream.write(buf);
-                    });
-                    if stop { break }
+                    match stream.write(buf) {
+                        Ok(*) => {}
+                        Err(e) => {
+                            // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
+                            //     on windows
+                            assert!(e.kind == ConnectionReset ||
+                                    e.kind == BrokenPipe ||
+                                    e.kind == ConnectionAborted,
+                                    "unknown error: {:?}", e);
+                            break
+                        }
+                    }
                 }
             }
 
@@ -413,19 +337,18 @@ mod test {
                 let mut stream = acceptor.accept();
                 let buf = [0];
                 loop {
-                    let mut stop = false;
-                    io_error::cond.trap(|e| {
-                        // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
-                        //     on windows
-                        assert!(e.kind == ConnectionReset ||
-                                e.kind == BrokenPipe ||
-                                e.kind == ConnectionAborted,
-                                "unknown error: {:?}", e);
-                        stop = true;
-                    }).inside(|| {
-                        stream.write(buf);
-                    });
-                    if stop { break }
+                    match stream.write(buf) {
+                        Ok(*) => {}
+                        Err(e) => {
+                            // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
+                            //     on windows
+                            assert!(e.kind == ConnectionReset ||
+                                    e.kind == BrokenPipe ||
+                                    e.kind == ConnectionAborted,
+                                    "unknown error: {:?}", e);
+                            break
+                        }
+                    }
                 }
             }
 
@@ -671,7 +594,7 @@ mod test {
                 // Make sure socket_name gives
                 // us the socket we binded to.
                 let so_name = listener.socket_name();
-                assert!(so_name.is_some());
+                assert!(so_name.is_ok());
                 assert_eq!(addr, so_name.unwrap());
 
             }
@@ -696,14 +619,14 @@ mod test {
                 port.take().recv();
                 let stream = TcpStream::connect(addr);
 
-                assert!(stream.is_some());
+                assert!(stream.is_ok());
                 let mut stream = stream.unwrap();
 
                 // Make sure peer_name gives us the
                 // address/port of the peer we've
                 // connected to.
                 let peer_name = stream.peer_name();
-                assert!(peer_name.is_some());
+                assert!(peer_name.is_ok());
                 assert_eq!(addr, peer_name.unwrap());
             }
         }

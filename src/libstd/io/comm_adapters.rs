@@ -10,7 +10,7 @@
 
 use option::Option;
 use comm::{GenericPort, GenericChan};
-use super::{Reader, Writer};
+use super::{Reader, Writer, IoResult};
 
 struct PortReader<P>;
 
@@ -19,7 +19,7 @@ impl<P: GenericPort<~[u8]>> PortReader<P> {
 }
 
 impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, _buf: &mut [u8]) -> IoResult<uint> { fail!() }
 
     fn eof(&mut self) -> bool { fail!() }
 }
@@ -31,7 +31,7 @@ impl<C: GenericChan<~[u8]>> ChanWriter<C> {
 }
 
 impl<C: GenericChan<~[u8]>> Writer for ChanWriter<C> {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) -> IoResult<()> { fail!() }
 }
 
 struct ReaderPort<R>;

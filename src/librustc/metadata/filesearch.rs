@@ -11,7 +11,6 @@
 
 use std::option;
 use std::os;
-use std::io;
 use std::io::fs;
 use std::hashmap::HashSet;
 
@@ -120,7 +119,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 pub fn search(filesearch: @FileSearch, pick: pick) {
     filesearch.for_each_lib_search_path(|lib_search_path| {
         debug!("searching {}", lib_search_path.display());
-        match io::result(|| fs::readdir(lib_search_path)) {
+        match fs::readdir(lib_search_path) {
             Ok(files) => {
                 let mut rslt = FileDoesntMatch;
                 for path in files.iter() {

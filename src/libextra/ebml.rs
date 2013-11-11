@@ -658,14 +658,14 @@ pub mod writer {
             write_vuint(self.writer, tag_id);
 
             // Write a placeholder four-byte size.
-            self.size_positions.push(self.writer.tell() as uint);
+            self.size_positions.push(self.writer.tell().unwrap() as uint);
             let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
             self.writer.write(zeroes);
         }
 
         pub fn end_tag(&mut self) {
             let last_size_pos = self.size_positions.pop();
-            let cur_pos = self.writer.tell();
+            let cur_pos = self.writer.tell().unwrap();
             self.writer.seek(last_size_pos as i64, io::SeekSet);
             let size = (cur_pos as uint - last_size_pos - 4);
             write_sized_vuint(self.writer, size as uint, 4u);

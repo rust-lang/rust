@@ -152,7 +152,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let src = File::open(testfile).read_to_end();
+    let src = File::open(testfile).read_to_end().unwrap();
     let src = str::from_utf8_owned(src);
     let mut srcs = ~[src];
 
@@ -174,7 +174,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut expected = match props.pp_exact {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
-            let s = File::open(&filepath).read_to_end();
+            let s = File::open(&filepath).read_to_end().unwrap();
             str::from_utf8_owned(s)
           }
           None => { srcs[srcs.len() - 2u].clone() }
@@ -995,7 +995,7 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
 fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
-    let dirs = fs::readdir(&tdir);
+    let dirs = fs::readdir(&tdir).unwrap();
     for file in dirs.iter() {
         if file.extension_str() == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1090,7 +1090,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = File::open(&p.with_extension("ll")).read_to_end();
+    let x = File::open(&p.with_extension("ll")).read_to_end().unwrap();
     let x = str::from_utf8_owned(x);
     x.lines().len()
 }

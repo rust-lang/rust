@@ -73,8 +73,8 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            None => break,
-            Some(*) => buf[0] as char,
+            Err(*) => break,
+            Ok(*) => buf[0] as char,
         };
 
         match ch {
@@ -137,14 +137,14 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            None => break,
-            Some(*) => buf[0] as char
+            Err(*) => break,
+            Ok(*) => buf[0] as char
         };
         match ch {
           '%' => {
             let mut bytes = [0, 0];
             match rdr.read(bytes) {
-                Some(2) => {}
+                Ok(2) => {}
                 _ => fail!() // XXX: malformed url?
             }
             let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
@@ -199,8 +199,8 @@ fn encode_plus(s: &str) -> ~str {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            Some(*) => buf[0] as char,
-            None => break,
+            Ok(*) => buf[0] as char,
+            Err(*) => break,
         };
         match ch {
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
@@ -253,8 +253,8 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            Some(*) => buf[0] as char,
-            None => break,
+            Ok(*) => buf[0] as char,
+            Err(*) => break,
         };
         match ch {
             '&' | ';' => {
@@ -278,7 +278,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                     '%' => {
                         let mut bytes = [0, 0];
                         match rdr.read(bytes) {
-                            Some(2) => {}
+                            Ok(2) => {}
                             _ => fail!() // XXX: malformed?
                         }
                         uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
@@ -318,12 +318,12 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            Some(*) => buf[0] as char,
-            None => break,
+            Ok(*) => buf[0] as char,
+            Err(*) => break,
         };
         if ch == c {
             // found a match, adjust markers
-            index = (rdr.tell() as uint) - 1;
+            index = (rdr.tell().unwrap() as uint) - 1;
             mat = 1;
             break;
         }

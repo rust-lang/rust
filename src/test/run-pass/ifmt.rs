@@ -24,10 +24,14 @@ struct A;
 struct B;
 
 impl fmt::Signed for A {
-    fn fmt(_: &A, f: &mut fmt::Formatter) { f.buf.write("aloha".as_bytes()); }
+    fn fmt(_: &A, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write("aloha".as_bytes())
+    }
 }
 impl fmt::Signed for B {
-    fn fmt(_: &B, f: &mut fmt::Formatter) { f.buf.write("adios".as_bytes()); }
+    fn fmt(_: &B, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write("adios".as_bytes())
+    }
 }
 
 macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })

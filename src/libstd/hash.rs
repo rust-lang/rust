@@ -28,8 +28,9 @@
 
 use container::Container;
 use iter::Iterator;
+use result::Ok;
 use option::{Some, None};
-use io::Writer;
+use io::{Writer, IoResult};
 use str::OwnedStr;
 use to_bytes::IterBytes;
 use vec::ImmutableVector;
@@ -265,7 +266,7 @@ macro_rules! compress (
 impl Writer for SipState {
     // Methods for io::writer
     #[inline]
-    fn write(&mut self, msg: &[u8]) {
+    fn write(&mut self, msg: &[u8]) -> IoResult<()> {
         let length = msg.len();
         self.length += length;
 
@@ -281,7 +282,7 @@ impl Writer for SipState {
                     t += 1;
                 }
                 self.ntail += length;
-                return;
+                return Ok(());
             }
 
             let mut t = 0;
@@ -323,10 +324,7 @@ impl Writer for SipState {
             t += 1
         }
         self.ntail = left;
-    }
-
-    fn flush(&mut self) {
-        // No-op
+        return Ok(());
     }
 }
 

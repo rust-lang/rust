@@ -271,7 +271,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
             if i > 0 { write!(w, ","); }
             write!(w, "\\{ty:\"{}\",name:\"{}\",path:\"{}\",desc:{}",
                    item.ty, item.name, item.path,
-                   item.desc.to_json().to_str())
+                   item.desc.to_json().to_str());
             match item.parent {
                 Some(id) => { write!(w, ",parent:'{}'", id); }
                 None => {}
@@ -320,15 +320,15 @@ fn write(dst: Path, contents: &str) {
 /// Makes a directory on the filesystem, failing the task if an error occurs and
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) {
-    io::io_error::cond.trap(|err| {
-        error!("Couldn't create directory `{}`: {}",
-                path.display(), err.desc);
-        fail!()
-    }).inside(|| {
-        if !path.is_dir() {
-            fs::mkdir(path, io::UserRWX);
+    if path.is_dir() { return }
+    match fs::mkdir(path, io::UserRWX) {
+        Ok(()) => {}
+        Err(e) => {
+            fail!("Couldn't create directory `{}`: {}",
+                  path.display(), e);
         }
-    })
+
+    }
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
@@ -414,25 +414,19 @@ impl<'self> SourceCollector<'self> {
         let p = Path::new(filename);
 
         // Read the contents of the file
-        let mut contents = ~[];
+        let mut contents;
         {
-            let mut buf = [0, ..1024];
             // If we couldn't open this file, then just returns because it
             // probably means that it's some standard library macro thing and we
             // can't have the source to it anyway.
-            let mut r = match io::result(|| File::open(&p)) {
+            let mut r = match File::open(&p) {
                 Ok(r) => r,
                 // eew macro hacks
                 Err(*) => return filename == "<std-macros>"
             };
 
             // read everything
-            loop {
-                match r.read(buf) {
-                    Some(n) => contents.push_all(buf.slice_to(n)),
-                    None => break
-                }
-            }
+            contents = r.read_to_end().unwrap();
         }
         let contents = str::from_utf8_owned(contents);
 
@@ -860,7 +854,7 @@ impl<'self> Item<'self> {
 }
 
 impl<'self> fmt::Default for Item<'self> {
-    fn fmt(it: &Item<'self>, fmt: &mut fmt::Formatter) {
+    fn fmt(it: &Item<'self>, fmt: &mut fmt::Formatter) -> fmt::Result {
         match attr::find_stability(it.item.attrs.iter()) {
             Some(stability) => {
                 write!(fmt.buf,
@@ -895,11 +889,11 @@ impl<'self> fmt::Default for Item<'self> {
         // Write the breadcrumb trail header for the top
         write!(fmt.buf, "<h1 class='fqn'>");
         match it.item.inner {
-            clean::ModuleItem(*) => write!(fmt.buf, "Module "),
-            clean::FunctionItem(*) => write!(fmt.buf, "Function "),
-            clean::TraitItem(*) => write!(fmt.buf, "Trait "),
-            clean::StructItem(*) => write!(fmt.buf, "Struct "),
-            clean::EnumItem(*) => write!(fmt.buf, "Enum "),
+            clean::ModuleItem(*) => { write!(fmt.buf, "Module "); }
+            clean::FunctionItem(*) => { write!(fmt.buf, "Function "); }
+            clean::TraitItem(*) => { write!(fmt.buf, "Trait "); }
+            clean::StructItem(*) => { write!(fmt.buf, "Struct "); }
+            clean::EnumItem(*) => { write!(fmt.buf, "Enum "); }
             _ => {}
         }
         let cur = it.cx.current.as_slice();
@@ -926,6 +920,8 @@ impl<'self> fmt::Default for Item<'self> {
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
             _ => {}
         }
+
+        Ok(())
     }
 }
 
@@ -1048,12 +1044,13 @@ fn item_module(w: &mut Writer, cx: &Context,
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
                 struct Initializer<'self>(&'self str);
                 impl<'self> fmt::Default for Initializer<'self> {
-                    fn fmt(s: &Initializer<'self>, f: &mut fmt::Formatter) {
-                        if s.len() == 0 { return; }
+                    fn fmt(s: &Initializer<'self>,
+                           f: &mut fmt::Formatter) -> fmt::Result {
+                        if s.len() == 0 { return Ok(()); }
                         write!(f.buf, "<code> = </code>");
                         let tag = if s.contains("\n") { "pre" } else { "code" };
                         write!(f.buf, "<{tag}>{}</{tag}>",
-                               s.as_slice(), tag=tag);
+                               s.as_slice(), tag=tag)
                     }
                 }
 
@@ -1076,8 +1073,9 @@ fn item_module(w: &mut Writer, cx: &Context,
                         write!(w, "<tr><td><code>extern mod {}",
                                name.as_slice());
                         match *src {
-                            Some(ref src) => write!(w, " = \"{}\"",
-                                                    src.as_slice()),
+                            Some(ref src) => {
+                                write!(w, " = \"{}\"", src.as_slice());
+                            }
                             None => {}
                         }
                         write!(w, ";</code></td></tr>");
@@ -1294,11 +1292,11 @@ fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) {
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
-                        clean::CLikeVariant => write!(w, "{}", name),
+                        clean::CLikeVariant => { write!(w, "{}", name); }
                         clean::TupleVariant(ref tys) => {
                             write!(w, "{}(", name);
                             for (i, ty) in tys.iter().enumerate() {
-                                if i > 0 { write!(w, ", ") }
+                                if i > 0 { write!(w, ", "); }
                                 write!(w, "{}", *ty);
                             }
                             write!(w, ")");
@@ -1368,7 +1366,7 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
            if structhead {"struct "} else {""},
            it.name.get_ref().as_slice());
     match g {
-        Some(g) => write!(w, "{}", *g),
+        Some(g) => { write!(w, "{}", *g); }
         None => {}
     }
     match ty {
@@ -1395,7 +1393,7 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
         doctree::Tuple | doctree::Newtype => {
             write!(w, "(");
             for (i, field) in fields.iter().enumerate() {
-                if i > 0 { write!(w, ", ") }
+                if i > 0 { write!(w, ", "); }
                 match field.inner {
                     clean::StructFieldItem(ref field) => {
                         write!(w, "{}", field.type_);
@@ -1553,13 +1551,13 @@ fn item_typedef(w: &mut Writer, it: &clean::Item, t: &clean::Typedef) {
 }
 
 impl<'self> fmt::Default for Sidebar<'self> {
-    fn fmt(s: &Sidebar<'self>, fmt: &mut fmt::Formatter) {
+    fn fmt(s: &Sidebar<'self>, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = s.cx;
         let it = s.item;
         write!(fmt.buf, "<p class='location'>");
         let len = cx.current.len() - if it.is_mod() {1} else {0};
         for (i, name) in cx.current.iter().take(len).enumerate() {
-            if i > 0 { write!(fmt.buf, "&\\#8203;::") }
+            if i > 0 { write!(fmt.buf, "&\\#8203;::"); }
             write!(fmt.buf, "<a href='{}index.html'>{}</a>",
                    cx.root_path.slice_to((cx.current.len() - i - 1) * 3), *name);
         }
@@ -1596,6 +1594,7 @@ impl<'self> fmt::Default for Sidebar<'self> {
         block(fmt.buf, "enum", "Enums", it, cx);
         block(fmt.buf, "trait", "Traits", it, cx);
         block(fmt.buf, "fn", "Functions", it, cx);
+        Ok(())
     }
 }
 
@@ -1618,7 +1617,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
 }
 
 impl<'self> fmt::Default for Source<'self> {
-    fn fmt(s: &Source<'self>, fmt: &mut fmt::Formatter) {
+    fn fmt(s: &Source<'self>, fmt: &mut fmt::Formatter) -> fmt::Result {
         let lines = s.lines().len();
         let mut cols = 0;
         let mut tmp = lines;
@@ -1634,5 +1633,6 @@ impl<'self> fmt::Default for Source<'self> {
         write!(fmt.buf, "<pre class='rust'>");
         write!(fmt.buf, "{}", Escape(s.as_slice()));
         write!(fmt.buf, "</pre>");
+        Ok(())
     }
 }

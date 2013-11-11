@@ -261,7 +261,7 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     debug!("making tests from {}",
            config.src_base.display());
     let mut tests = ~[];
-    let dirs = fs::readdir(&config.src_base);
+    let dirs = fs::readdir(&config.src_base).unwrap();
     for file in dirs.iter() {
         let file = file.clone();
         debug!("inspecting file {}", file.display());

@@ -643,7 +643,7 @@ fn debug_flags() -> ~[~str] { ~[] }
 pub fn datestamp(p: &Path) -> Option<libc::time_t> {
     debug!("Scrutinizing datestamp for {} - does it exist? {:?}", p.display(),
            p.exists());
-    match io::result(|| p.stat()) {
+    match p.stat() {
         Ok(s) => {
             let out = s.modified;
             debug!("Date = {:?}", out);

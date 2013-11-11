@@ -137,7 +137,7 @@ fn add_to_index(ebml_w: &mut writer::Encoder,
     index.push(
         entry {
             val: ast_util::path_name_i(full_path),
-            pos: ebml_w.writer.tell()
+            pos: ebml_w.writer.tell().unwrap()
         });
 }
 
@@ -364,7 +364,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     for variant in variants.iter() {
         let def_id = local_def(variant.node.id);
         index.push(entry {val: variant.node.id as i64,
-                          pos: ebml_w.writer.tell()});
+                          pos: ebml_w.writer.tell().unwrap()});
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         match variant.node.kind {
@@ -705,7 +705,7 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
         match m {
             MutImmutable => ebml_w.writer.write(&[ 'i' as u8 ]),
             MutMutable => ebml_w.writer.write(&[ 'm' as u8 ]),
-        }
+        };
     }
 }
 
@@ -745,8 +745,9 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         };
 
         let id = field.node.id;
-        index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
-        global_index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
+        let pos = ebml_w.writer.tell().unwrap();
+        index.push(entry {val: id as i64, pos: pos});
+        global_index.push(entry {val: id as i64, pos: pos});
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
                tcx.sess.str_of(nm), id);
@@ -767,7 +768,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ctor_id: NodeId,
                                index: @mut ~[entry<i64>],
                                struct_id: NodeId) {
-    index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell() });
+    index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell().unwrap() });
 
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
@@ -909,7 +910,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
     fn add_to_index(item: @item, ebml_w: &writer::Encoder,
                      index: @mut ~[entry<i64>]) {
-        index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
+        index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell().unwrap() });
     }
     let add_to_index: || = || add_to_index(item, ebml_w, index);
 
@@ -1133,7 +1134,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             } else { None };
 
             index.push(entry {val: m.def_id.node as i64,
-                              pos: ebml_w.writer.tell()});
+                              pos: ebml_w.writer.tell().unwrap()});
             encode_info_for_method(ecx,
                                    ebml_w,
                                    *m,
@@ -1187,7 +1188,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let method_ty = ty::method(tcx, method_def_id);
 
             index.push(entry {val: method_def_id.node as i64,
-                              pos: ebml_w.writer.tell()});
+                              pos: ebml_w.writer.tell().unwrap()});
 
             ebml_w.start_tag(tag_items_data_item);
 
@@ -1252,7 +1253,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 index: @mut ~[entry<i64>],
                                 path: &ast_map::path,
                                 abi: AbiSet) {
-    index.push(entry { val: nitem.id as i64, pos: ebml_w.writer.tell() });
+    index.push(entry { val: nitem.id as i64, pos: ebml_w.writer.tell().unwrap() });
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
@@ -1362,7 +1363,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                          -> ~[entry<i64>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
-    index.push(entry { val: CRATE_NODE_ID as i64, pos: ebml_w.writer.tell() });
+    index.push(entry { val: CRATE_NODE_ID as i64, pos: ebml_w.writer.tell().unwrap() });
     encode_info_for_mod(ecx,
                         ebml_w,
                         &crate.module,
@@ -1416,7 +1417,7 @@ fn encode_index<T:'static>(
     let mut bucket_locs = ~[];
     ebml_w.start_tag(tag_index_buckets);
     for bucket in buckets.iter() {
-        bucket_locs.push(ebml_w.writer.tell());
+        bucket_locs.push(ebml_w.writer.tell().unwrap());
         ebml_w.start_tag(tag_index_buckets_bucket);
         for elt in (**bucket).iter() {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
@@ -1792,43 +1793,43 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
 
     encode_hash(&mut ebml_w, ecx.link_meta.extras_hash);
 
-    let mut i = wr.tell();
+    let mut i = wr.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, crate);
     encode_attributes(&mut ebml_w, crate_attrs);
-    ecx.stats.attr_bytes = wr.tell() - i;
+    ecx.stats.attr_bytes = wr.tell().unwrap() - i;
 
-    i = wr.tell();
+    i = wr.tell().unwrap();
     encode_crate_deps(&ecx, &mut ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes = wr.tell() - i;
+    ecx.stats.dep_bytes = wr.tell().unwrap() - i;
 
     // Encode the language items.
-    i = wr.tell();
+    i = wr.tell().unwrap();
     encode_lang_items(&ecx, &mut ebml_w);
-    ecx.stats.lang_item_bytes = wr.tell() - i;
+    ecx.stats.lang_item_bytes = wr.tell().unwrap() - i;
 
     // Encode the def IDs of impls, for coherence checking.
-    i = wr.tell();
+    i = wr.tell().unwrap();
     encode_impls(&ecx, crate, &mut ebml_w);
-    ecx.stats.impl_bytes = wr.tell() - i;
+    ecx.stats.impl_bytes = wr.tell().unwrap() - i;
 
     // Encode miscellaneous info.
-    i = wr.tell();
+    i = wr.tell().unwrap();
     encode_misc_info(&ecx, crate, &mut ebml_w);
-    ecx.stats.misc_bytes = wr.tell() - i;
+    ecx.stats.misc_bytes = wr.tell().unwrap() - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
-    i = wr.tell();
+    i = wr.tell().unwrap();
     let items_index = encode_info_for_items(&ecx, &mut ebml_w, crate);
-    ecx.stats.item_bytes = wr.tell() - i;
+    ecx.stats.item_bytes = wr.tell().unwrap() - i;
 
-    i = wr.tell();
+    i = wr.tell().unwrap();
     let items_buckets = create_index(items_index);
     encode_index(&mut ebml_w, items_buckets, write_i64);
-    ecx.stats.index_bytes = wr.tell() - i;
+    ecx.stats.index_bytes = wr.tell().unwrap() - i;
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes = wr.tell();
+    ecx.stats.total_bytes = wr.tell().unwrap();
 
     if (tcx.sess.meta_stats()) {
         for e in wr.inner_ref().iter() {

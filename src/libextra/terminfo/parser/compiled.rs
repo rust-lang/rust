@@ -177,17 +177,17 @@ pub fn parse(file: &mut io::Reader,
     }
 
     // Check magic number
-    let magic = file.read_le_u16();
+    let magic = file.read_le_u16().unwrap();
     if (magic != 0x011A) {
         return Err(format!("invalid magic number: expected {:x} but found {:x}",
                            0x011A, magic as uint));
     }
 
-    let names_bytes          = file.read_le_i16() as int;
-    let bools_bytes          = file.read_le_i16() as int;
-    let numbers_count        = file.read_le_i16() as int;
-    let string_offsets_count = file.read_le_i16() as int;
-    let string_table_bytes   = file.read_le_i16() as int;
+    let names_bytes          = file.read_le_i16().unwrap() as int;
+    let bools_bytes          = file.read_le_i16().unwrap() as int;
+    let numbers_count        = file.read_le_i16().unwrap() as int;
+    let string_offsets_count = file.read_le_i16().unwrap() as int;
+    let string_table_bytes   = file.read_le_i16().unwrap() as int;
 
     assert!(names_bytes          > 0);
 
@@ -215,7 +215,11 @@ pub fn parse(file: &mut io::Reader,
         return Err(~"incompatible file: more string offsets than expected");
     }
 
-    let names_str = str::from_utf8(file.read_bytes(names_bytes as uint - 1)); // don't read NUL
+    let b = match file.read_bytes(names_bytes as uint - 1) { // don't read NUL
+        Ok(bytes) => bytes,
+        Err((_, e)) => return Err(format!("{}", e)),
+    };
+    let names_str = str::from_utf8(b);
     let term_names: ~[~str] = names_str.split('|').map(|s| s.to_owned()).collect();
 
     file.read_byte(); // consume NUL
@@ -246,7 +250,7 @@ pub fn parse(file: &mut io::Reader,
     let mut numbers_map = HashMap::new();
     if numbers_count != 0 {
         for i in range(0, numbers_count) {
-            let n = file.read_le_u16();
+            let n = file.read_le_u16().unwrap();
             if n != 0xFFFF {
                 debug!("{}\\#{}", nnames[i], n);
                 numbers_map.insert(nnames[i].to_owned(), n);
@@ -261,12 +265,12 @@ pub fn parse(file: &mut io::Reader,
     if string_offsets_count != 0 {
         let mut string_offsets = vec::with_capacity(10);
         for _ in range(0, string_offsets_count) {
-            string_offsets.push(file.read_le_u16());
+            string_offsets.push(file.read_le_u16().unwrap());
         }
 
         debug!("offsets: {:?}", string_offsets);
 
-        let string_table = file.read_bytes(string_table_bytes as uint);
+        let string_table = file.read_bytes(string_table_bytes as uint).unwrap();
 
         if string_table.len() != string_table_bytes as uint {
             error!("EOF reading string table after {} bytes, wanted {}", string_table.len(),

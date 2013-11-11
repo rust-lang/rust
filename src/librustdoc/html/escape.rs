@@ -20,7 +20,7 @@ use std::fmt;
 pub struct Escape<'self>(&'self str);
 
 impl<'self> fmt::Default for Escape<'self> {
-    fn fmt(s: &Escape<'self>, fmt: &mut fmt::Formatter) {
+    fn fmt(s: &Escape<'self>, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
         let pile_o_bits = s.as_slice();
@@ -47,5 +47,6 @@ impl<'self> fmt::Default for Escape<'self> {
         if last < s.len() {
             fmt.buf.write(pile_o_bits.slice_from(last).as_bytes());
         }
+        Ok(())
     }
 }

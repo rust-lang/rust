@@ -263,8 +263,9 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, ~str> {
     let input = match File::open(&Path::new(input)) {
-        Some(f) => f,
-        None => return Err(format!("couldn't open {} for reading", input)),
+        Ok(f) => f,
+        Err(e) => return Err(format!("couldn't open {} for reading: {}",
+                                     input, e)),
     };
     match json::from_reader(@mut input as @mut io::Reader) {
         Err(s) => Err(s.to_str()),

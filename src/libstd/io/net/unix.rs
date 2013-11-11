@@ -28,7 +28,7 @@ use c_str::ToCStr;
 use rt::rtio::{IoFactory, RtioUnixListener, with_local_io};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use io::pipe::PipeStream;
-use io::{io_error, Listener, Acceptor, Reader, Writer};
+use io::{IoResult, Listener, Acceptor, Reader, Writer};
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -58,26 +58,20 @@ impl UnixStream {
     ///     let mut stream = UnixStream::connect(&server);
     ///     stream.write([1, 2, 3]);
     ///
-    pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
+    pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
         with_local_io(|io| {
-            match io.unix_connect(&path.to_c_str()) {
-                Ok(s) => Some(UnixStream::new(s)),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
-            }
+            io.unix_connect(&path.to_c_str()).map(UnixStream::new)
         })
     }
 }
 
 impl Reader for UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.obj.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
     fn eof(&mut self) -> bool { self.obj.eof() }
 }
 
 impl Writer for UnixStream {
-    fn write(&mut self, buf: &[u8]) { self.obj.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
 pub struct UnixListener {
@@ -107,28 +101,16 @@ impl UnixListener {
     ///         client.write([1, 2, 3, 4]);
     ///     }
     ///
-    pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
+    pub fn bind<P: ToCStr>(path: &P) -> IoResult<UnixListener> {
         with_local_io(|io| {
-            match io.unix_bind(&path.to_c_str()) {
-                Ok(s) => Some(UnixListener{ obj: s }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
-            }
+            io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
         })
     }
 }
 
 impl Listener<UnixStream, UnixAcceptor> for UnixListener {
-    fn listen(self) -> Option<UnixAcceptor> {
-        match self.obj.listen() {
-            Ok(acceptor) => Some(UnixAcceptor { obj: acceptor }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn listen(self) -> IoResult<UnixAcceptor> {
+        self.obj.listen().map(|a| UnixAcceptor { obj: a })
     }
 }
 
@@ -137,14 +119,8 @@ pub struct UnixAcceptor {
 }
 
 impl Acceptor<UnixStream> for UnixAcceptor {
-    fn accept(&mut self) -> Option<UnixStream> {
-        match self.obj.accept() {
-            Ok(s) => Some(UnixStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn accept(&mut self) -> IoResult<UnixStream> {
+        self.obj.accept().map(UnixStream::new)
     }
 }
 
@@ -185,30 +161,20 @@ mod tests {
     #[test]
     fn bind_error() {
         do run_in_mt_newsched_task {
-            let mut called = false;
-            io_error::cond.trap(|e| {
-                assert!(e.kind == PermissionDenied);
-                called = true;
-            }).inside(|| {
-                let listener = UnixListener::bind(&("path/to/nowhere"));
-                assert!(listener.is_none());
-            });
-            assert!(called);
+            match UnixListener::bind(&("path/to/nowhere")) {
+                Ok(*) => fail!(),
+                Err(e) => assert_eq!(e.kind, PermissionDenied)
+            }
         }
     }
 
     #[test]
     fn connect_error() {
         do run_in_mt_newsched_task {
-            let mut called = false;
-            io_error::cond.trap(|e| {
-                assert_eq!(e.kind, OtherIoError);
-                called = true;
-            }).inside(|| {
-                let stream = UnixStream::connect(&("path/to/nowhere"));
-                assert!(stream.is_none());
-            });
-            assert!(called);
+            match UnixStream::connect(&("path/to/nowhere")) {
+                Ok(*) => fail!(),
+                Err(e) => assert_eq!(e.kind, OtherIoError),
+            }
         }
     }
 
@@ -227,9 +193,9 @@ mod tests {
     fn read_eof() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            assert!(server.read(buf).is_none());
-            assert!(server.read(buf).is_none());
-        }, proc(_client) {
+            assert!(server.read(buf).is_err());
+            assert!(server.read(buf).is_err());
+        }, |_client| {
             // drop the client
         })
     }
@@ -240,13 +206,14 @@ mod tests {
             let buf = [0];
             let mut stop = false;
             while !stop{
-                io_error::cond.trap(|e| {
-                    assert!(e.kind == BrokenPipe || e.kind == NotConnected,
-                            "unknown error {:?}", e);
-                    stop = true;
-                }).inside(|| {
-                    server.write(buf);
-                })
+                match server.write(buf) {
+                    Ok(*) => {}
+                    Err(e) => {
+                        stop = true;
+                        assert!(e.kind == BrokenPipe || e.kind == NotConnected,
+                                "unknown error {:?}", e);
+                    }
+                }
             }
         }, proc(_client) {
             // drop the client

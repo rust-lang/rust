@@ -41,7 +41,7 @@ fn smoke() {
         io: io,
     };
     let p = Process::new(args);
-    assert!(p.is_some());
+    assert!(p.is_ok());
     let mut p = p.unwrap();
     assert!(p.wait().success());
 }
@@ -58,7 +58,7 @@ fn smoke_failure() {
         cwd: None,
         io: io,
     };
-    match io::result(|| Process::new(args)) {
+    match Process::new(args) {
         Ok(*) => fail!(),
         Err(*) => {}
     }
@@ -77,7 +77,7 @@ fn exit_reported_right() {
         io: io,
     };
     let p = Process::new(args);
-    assert!(p.is_some());
+    assert!(p.is_ok());
     let mut p = p.unwrap();
     assert!(p.wait().matches_exit_status(1));
 }
@@ -94,7 +94,7 @@ fn signal_reported_right() {
         io: io,
     };
     let p = Process::new(args);
-    assert!(p.is_some());
+    assert!(p.is_ok());
     let mut p = p.unwrap();
     match p.wait() {
         process::ExitSignal(1) => {},
@@ -103,20 +103,12 @@ fn signal_reported_right() {
 }
 
 fn read_all(input: &mut Reader) -> ~str {
-    let mut ret = ~"";
-    let mut buf = [0, ..1024];
-    loop {
-        match input.read(buf) {
-            None => { break }
-            Some(n) => { ret = ret + str::from_utf8(buf.slice_to(n)); }
-        }
-    }
-    return ret;
+    str::from_utf8(input.read_to_end().unwrap())
 }
 
 fn run_output(args: ProcessConfig) -> ~str {
     let p = Process::new(args);
-    assert!(p.is_some());
+    assert!(p.is_ok());
     let mut p = p.unwrap();
     assert!(p.io[0].is_none());
     assert!(p.io[1].is_some());

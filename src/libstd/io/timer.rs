@@ -39,9 +39,7 @@ loop {
 */
 
 use comm::{Port, PortOne};
-use option::{Option, Some, None};
-use result::{Ok, Err};
-use io::io_error;
+use io::IoResult;
 use rt::rtio::{IoFactory, RtioTimer, with_local_io};
 
 pub struct Timer {
@@ -59,18 +57,8 @@ impl Timer {
     /// Creates a new timer which can be used to put the current task to sleep
     /// for a number of milliseconds, or to possibly create channels which will
     /// get notified after an amount of time has passed.
-    pub fn new() -> Option<Timer> {
-        with_local_io(|io| {
-            match io.timer_init() {
-                Ok(t) => Some(Timer { obj: t }),
-                Err(ioerr) => {
-                    debug!("Timer::init: failed to init: {:?}", ioerr);
-                    io_error::cond.raise(ioerr);
-                    None
-                }
-            }
-
-        })
+    pub fn new() -> IoResult<Timer> {
+        with_local_io(|io| io.timer_init().map(|t| Timer { obj: t }))
     }
 
     /// Blocks the current task for `msecs` milliseconds.

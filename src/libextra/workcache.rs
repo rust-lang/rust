@@ -182,12 +182,12 @@ impl Database {
     fn load(&mut self) {
         assert!(!self.db_dirty);
         assert!(self.db_filename.exists());
-        match io::result(|| File::open(&self.db_filename)) {
+        match File::open(&self.db_filename) {
             Err(e) => fail!("Couldn't load workcache database {}: {}",
                             self.db_filename.display(),
                             e.desc),
             Ok(r) =>
-                match json::from_reader(@mut r.unwrap() as @mut io::Reader) {
+                match json::from_reader(@mut r as @mut io::Reader) {
                     Err(e) => fail!("Couldn't parse workcache database (from file {}): {}",
                                     self.db_filename.display(), e.to_str()),
                     Ok(r) => {
@@ -512,7 +512,7 @@ fn test() {
         let subcx = cx.clone();
         let pth = pth.clone();
 
-        let file_content = from_utf8_owned(File::open(&pth).read_to_end());
+        let file_content = from_utf8_owned(File::open(&pth).read_to_end().unwrap());
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);

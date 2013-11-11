@@ -221,20 +221,16 @@ impl Process {
         let ch_clone = ch.clone();
 
         do spawn {
-            io::ignore_io_error(|| {
-                match error.take() {
-                    Some(ref mut e) => ch.send((2, e.read_to_end())),
-                    None => ch.send((2, ~[]))
-                }
-            })
+            match error.take() {
+                Some(ref mut e) => ch.send((2, e.read_to_end())),
+                None => ch.send((2, Ok(~[])))
+            }
         }
         do spawn {
-            io::ignore_io_error(|| {
-                match output.take() {
-                    Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
-                    None => ch_clone.send((1, ~[]))
-                }
-            })
+            match output.take() {
+                Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
+                None => ch_clone.send((1, Ok(~[])))
+            }
         }
 
         let status = self.finish();
@@ -248,8 +244,8 @@ impl Process {
         };
 
         return ProcessOutput {status: status,
-                              output: outs,
-                              error: errs};
+                              output: outs.unwrap(),
+                              error: errs.unwrap()};
     }
 
     /**
@@ -324,12 +320,13 @@ mod tests {
     use option::{Option, None, Some};
     use os;
     use path::Path;
+    use result::{Ok, Err};
+    use io::native::file;
+    use io::{Writer, Reader};
     use run;
     use str;
     use task::spawn;
     use unstable::running_on_valgrind;
-    use io::native::file;
-    use io::{Writer, Reader};
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
@@ -410,8 +407,8 @@ mod tests {
         let mut buf = [0, ..1024];
         loop {
             match reader.read(buf) {
-                Some(n) => { res.push_all(buf.slice_to(n)); }
-                None => break
+                Ok(n) => { res.push_all(buf.slice_to(n)); }
+                Err(*) => break
             }
         }
         str::from_utf8_owned(res)
@@ -508,8 +505,8 @@ mod tests {
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.trim());
 
-        let parent_stat = parent_dir.stat();
-        let child_stat = child_dir.stat();
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
@@ -525,8 +522,8 @@ mod tests {
         let output = str::from_utf8(prog.finish_with_output().output);
         let child_dir = Path::new(output.trim());
 
-        let parent_stat = parent_dir.stat();
-        let child_stat = child_dir.stat();
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
