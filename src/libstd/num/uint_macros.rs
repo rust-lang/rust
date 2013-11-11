@@ -29,8 +29,8 @@ pub use cmp::{min, max};
 pub static bits : uint = $bits;
 pub static bytes : uint = ($bits / 8);
 
-pub static min_value: $T = 0 as $T;
-pub static max_value: $T = 0 as $T - 1 as $T;
+pub static MIN_VALUE: $T = 0 as $T;
+pub static MAX_VALUE: $T = 0 as $T - 1 as $T;
 
 impl CheckedDiv for $T {
     #[inline]
@@ -229,10 +229,10 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline]
-    fn min_value() -> $T { min_value }
+    fn MIN_VALUE() -> $T { MIN_VALUE }
 
     #[inline]
-    fn max_value() -> $T { max_value }
+    fn MAX_VALUE() -> $T { MAX_VALUE }
 }
 
 impl Int for $T {}
@@ -420,7 +420,7 @@ mod tests {
         assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
         assert_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
         assert_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
-        assert_eq!(max_value - (0b1011 as $T), (0b1011 as $T).not());
+        assert_eq!(MAX_VALUE - (0b1011 as $T), (0b1011 as $T).not());
     }
 
     #[test]

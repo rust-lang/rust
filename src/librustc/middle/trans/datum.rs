@@ -753,7 +753,7 @@ impl Datum {
         // either we were asked to deref a specific number of times,
         // in which case we should have, or we asked to deref as many
         // times as we can
-        assert!(derefs == max || max == uint::max_value);
+        assert!(derefs == max || max == uint::MAX_VALUE);
         DatumBlock { bcx: bcx, datum: datum }
     }
 

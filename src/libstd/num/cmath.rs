@@ -219,8 +219,8 @@ pub mod c_float_targ_consts {
     pub static max_10_exp: int = 38;
     // FIXME (#1433): this is wrong, replace with hexadecimal (%a) staticants
     // below.
-    pub static min_value: f32 = 1.175494e-38_f32;
-    pub static max_value: f32 = 3.402823e+38_f32;
+    pub static MIN_VALUE: f32 = 1.175494e-38_f32;
+    pub static MAX_VALUE: f32 = 3.402823e+38_f32;
     pub static epsilon: f32 = 0.000000_f32;
 }
 
@@ -234,8 +234,8 @@ pub mod c_double_targ_consts {
     pub static max_10_exp: int = 308;
     // FIXME (#1433): this is wrong, replace with hexadecimal (%a) staticants
     // below.
-    pub static min_value: f64 = 2.225074e-308_f64;
-    pub static max_value: f64 = 1.797693e+308_f64;
+    pub static MIN_VALUE: f64 = 2.225074e-308_f64;
+    pub static MAX_VALUE: f64 = 1.797693e+308_f64;
     pub static epsilon: f64 = 2.220446e-16_f64;
 }
 
@@ -283,8 +283,8 @@ pub mod c_float_targ_consts {
     pub static max_exp: int = 128;
     pub static min_10_exp: int = -37;
     pub static max_10_exp: int = 38;
-    pub static min_value: c_float = 0x1p-126_f32;
-    pub static max_value: c_float = 0x1.fffffep+127_f32;
+    pub static MIN_VALUE: c_float = 0x1p-126_f32;
+    pub static MAX_VALUE: c_float = 0x1.fffffep+127_f32;
     pub static epsilon: c_float = 0x1p-23_f32;
 }
 
@@ -296,8 +296,8 @@ pub mod c_double_targ_consts {
     pub static max_exp: int = 1024;
     pub static min_10_exp: int = -307;
     pub static max_10_exp: int = 308;
-    pub static min_value: c_double = 0x1p-1022_f64;
-    pub static max_value: c_double = 0x1.fffffffffffffp+1023_f64;
+    pub static MIN_VALUE: c_double = 0x1p-1022_f64;
+    pub static MAX_VALUE: c_double = 0x1.fffffffffffffp+1023_f64;
     pub static epsilon: c_double = 0x1p-52_f64;
 }
 

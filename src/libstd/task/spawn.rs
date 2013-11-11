@@ -201,7 +201,7 @@ fn each_ancestor(list:        &mut AncestorList,
                  forward_blk: &fn(TaskGroupInner) -> bool)
               -> bool {
     // "Kickoff" call - there was no last generation.
-    return !coalesce(list, bail_blk, forward_blk, uint::max_value);
+    return !coalesce(list, bail_blk, forward_blk, uint::MAX_VALUE);
 
     // Recursively iterates, and coalesces afterwards if needed. Returns
     // whether or not unwinding is needed (i.e., !successful iteration).
@@ -514,7 +514,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 }));
                 let a = if supervised {
                     let new_generation = incr_generation(&ancestors);
-                    assert!(new_generation < uint::max_value);
+                    assert!(new_generation < uint::MAX_VALUE);
                     // Child's ancestors start with the spawner.
                     // Build a new node in the ancestor list.
                     AncestorList(Some(Exclusive::new(AncestorNode {

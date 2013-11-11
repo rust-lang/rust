@@ -600,7 +600,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_add_bytes_to_bits_overflow() {
-        add_bytes_to_bits::<u64>(Bounded::max_value(), 1);
+        add_bytes_to_bits::<u64>(Bounded::MAX_VALUE(), 1);
     }
 }
 

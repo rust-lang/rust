@@ -1025,7 +1025,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 
     #[inline]
     fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
-        self.splitn_iter(uint::max_value, pred)
+        self.splitn_iter(uint::MAX_VALUE, pred)
     }
     #[inline]
     fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
@@ -1038,7 +1038,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
     #[inline]
     fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
-        self.rsplitn_iter(uint::max_value, pred)
+        self.rsplitn_iter(uint::MAX_VALUE, pred)
     }
     #[inline]
     fn rsplitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {

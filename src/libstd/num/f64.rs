@@ -624,10 +624,10 @@ impl RealExt for f64 {
 
 impl Bounded for f64 {
     #[inline]
-    fn min_value() -> f64 { 2.2250738585072014e-308 }
+    fn MIN_VALUE() -> f64 { 2.2250738585072014e-308 }
 
     #[inline]
-    fn max_value() -> f64 { 1.7976931348623157e+308 }
+    fn MAX_VALUE() -> f64 { 1.7976931348623157e+308 }
 }
 
 impl Primitive for f64 {

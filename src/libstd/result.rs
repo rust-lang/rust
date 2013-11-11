@@ -353,7 +353,7 @@ impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
 /// checking for overflow:
 ///
 ///     fn inc_conditionally(x: uint) -> Result<uint, &'static str> {
-///         if x == uint::max_value { return Err("overflow"); }
+///         if x == uint::MAX_VALUE { return Err("overflow"); }
 ///         else { return Ok(x+1u); }
 ///     }
 ///     let v = [1u, 2, 3];

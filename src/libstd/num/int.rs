@@ -153,7 +153,7 @@ fn test_pow() {
 
 #[test]
 fn test_overflows() {
-    assert!((::int::max_value > 0));
-    assert!((::int::min_value <= 0));
-    assert!((::int::min_value + ::int::max_value + 1 == 0));
+    assert!((::int::MAX_VALUE > 0));
+    assert!((::int::MIN_VALUE <= 0));
+    assert!((::int::MIN_VALUE + ::int::MAX_VALUE + 1 == 0));
 }

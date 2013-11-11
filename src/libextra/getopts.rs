@@ -849,7 +849,7 @@ pub mod groups {
         t("hello", 15, [~"hello"]);
         t("\nMary had a little lamb\nLittle lamb\n", 15,
             [~"Mary had a", ~"little lamb", ~"Little lamb"]);
-        t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::max_value,
+        t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::MAX_VALUE,
             [~"Mary had a little lamb\nLittle lamb"]);
     }
 } // end groups module

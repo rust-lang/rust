@@ -595,14 +595,14 @@ mod test_map {
     fn test_each_break() {
         let mut m = TrieMap::new();
 
-        for x in range(uint::max_value - 10000, uint::max_value).invert() {
+        for x in range(uint::MAX_VALUE - 10000, uint::MAX_VALUE).invert() {
             m.insert(x, x / 2);
         }
 
-        let mut n = uint::max_value - 10000;
+        let mut n = uint::MAX_VALUE - 10000;
         do m.each |k, v| {
-            if n == uint::max_value - 5000 { false } else {
-                assert!(n < uint::max_value - 5000);
+            if n == uint::MAX_VALUE - 5000 { false } else {
+                assert!(n < uint::MAX_VALUE - 5000);
 
                 assert_eq!(*k, n);
                 assert_eq!(*v, n / 2);
@@ -635,14 +635,14 @@ mod test_map {
     fn test_each_reverse_break() {
         let mut m = TrieMap::new();
 
-        for x in range(uint::max_value - 10000, uint::max_value).invert() {
+        for x in range(uint::MAX_VALUE - 10000, uint::MAX_VALUE).invert() {
             m.insert(x, x / 2);
         }
 
-        let mut n = uint::max_value - 1;
+        let mut n = uint::MAX_VALUE - 1;
         do m.each_reverse |k, v| {
-            if n == uint::max_value - 5000 { false } else {
-                assert!(n > uint::max_value - 5000);
+            if n == uint::MAX_VALUE - 5000 { false } else {
+                assert!(n > uint::MAX_VALUE - 5000);
 
                 assert_eq!(*k, n);
                 assert_eq!(*v, n / 2);
@@ -684,8 +684,8 @@ mod test_map {
         let empty_map : TrieMap<uint> = TrieMap::new();
         assert_eq!(empty_map.iter().next(), None);
 
-        let first = uint::max_value - 10000;
-        let last = uint::max_value;
+        let first = uint::MAX_VALUE - 10000;
+        let last = uint::MAX_VALUE;
 
         let mut map = TrieMap::new();
         for x in range(first, last).invert() {

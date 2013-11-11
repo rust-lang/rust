@@ -208,11 +208,11 @@ impl to_str::ToStr for Variable {
 
 impl LiveNode {
     pub fn is_valid(&self) -> bool {
-        **self != uint::max_value
+        **self != uint::MAX_VALUE
     }
 }
 
-fn invalid_node() -> LiveNode { LiveNode(uint::max_value) }
+fn invalid_node() -> LiveNode { LiveNode(uint::MAX_VALUE) }
 
 struct CaptureInfo {
     ln: LiveNode,

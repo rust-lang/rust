@@ -275,7 +275,7 @@ impl Session_ {
     pub fn reserve_node_ids(&self, count: uint) -> ast::NodeId {
         let v = *self.node_id;
         *self.node_id += count;
-        if v > (int::max_value as uint) {
+        if v > (int::MAX_VALUE as uint) {
             self.bug("Input too large, ran out of node ids!");
         }
         v as int

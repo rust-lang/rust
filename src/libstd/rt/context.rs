@@ -111,7 +111,7 @@ impl Context {
                 // If we're going back to one of the original contexts or
                 // something that's possibly not a "normal task", then reset
                 // the stack limit to 0 to make morestack never fail
-                None => record_stack_bounds(0, uint::max_value),
+                None => record_stack_bounds(0, uint::MAX_VALUE),
             }
             swap_registers(out_regs, in_regs)
         }

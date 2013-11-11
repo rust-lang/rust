@@ -415,7 +415,7 @@ mod test {
 
     #[test]
     fn test_read_write_le_mem() {
-        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::max_value];
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::MAX_VALUE];
 
         let mut writer = MemWriter::new();
         for i in uints.iter() {
@@ -431,7 +431,7 @@ mod test {
 
     #[test]
     fn test_read_write_be() {
-        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::max_value];
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::MAX_VALUE];
 
         let mut writer = MemWriter::new();
         for i in uints.iter() {
@@ -446,7 +446,7 @@ mod test {
 
     #[test]
     fn test_read_be_int_n() {
-        let ints = [::i32::min_value, -123456, -42, -5, 0, 1, ::i32::max_value];
+        let ints = [::i32::MIN_VALUE, -123456, -42, -5, 0, 1, ::i32::MAX_VALUE];
 
         let mut writer = MemWriter::new();
         for i in ints.iter() {

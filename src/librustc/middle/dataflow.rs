@@ -213,7 +213,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             len
         };
         if expanded {
-            let entry = if self.oper.initial_value() { uint::max_value } else {0};
+            let entry = if self.oper.initial_value() { uint::MAX_VALUE } else {0};
             do self.words_per_id.times {
                 self.gens.push(0);
                 self.kills.push(0);
@@ -905,7 +905,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn reset(&mut self, bits: &mut [uint]) {
-        let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
+        let e = if self.dfcx.oper.initial_value() {uint::MAX_VALUE} else {0};
         for b in bits.mut_iter() { *b = e; }
     }
 

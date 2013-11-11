@@ -78,7 +78,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     /// remove a "[ \t]*\*" block from each line, if possible
     fn horizontal_trim(lines: ~[~str]) -> ~[~str] {
-        let mut i = uint::max_value;
+        let mut i = uint::MAX_VALUE;
         let mut can_trim = true;
         let mut first = true;
         for line in lines.iter() {

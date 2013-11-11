@@ -10,10 +10,10 @@
 
 // error-pattern:index out of bounds: the len is 3 but the index is
 
-use std::uint::max_value;
+use std::uint::MAX_VALUE;
 use std::mem::size_of;
 
 fn main() {
     let xs = [1, 2, 3];
-    xs[max_value / size_of::<int>() + 1];
+    xs[MAX_VALUE / size_of::<int>() + 1];
 }

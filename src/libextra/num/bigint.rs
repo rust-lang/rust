@@ -1187,7 +1187,7 @@ impl ToPrimitive for BigInt {
                     if n < m {
                         Some(-(n as i64))
                     } else if n == m {
-                        Some(i64::min_value)
+                        Some(i64::MIN_VALUE)
                     } else {
                         None
                     }
@@ -1214,7 +1214,7 @@ impl FromPrimitive for BigInt {
                 Some(BigInt::from_biguint(Plus, n))
             }
         } else if n < 0 {
-            do FromPrimitive::from_u64(u64::max_value - (n as u64) + 1).and_then |n| {
+            do FromPrimitive::from_u64(u64::MAX_VALUE - (n as u64) + 1).and_then |n| {
                 Some(BigInt::from_biguint(Minus, n))
             }
         } else {
@@ -1624,7 +1624,7 @@ mod biguint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
-        check(i64::max_value.to_biguint().unwrap(), i64::max_value);
+        check(i64::MAX_VALUE.to_biguint().unwrap(), i64::MAX_VALUE);
 
         check(BigUint::new(~[                   ]), 0);
         check(BigUint::new(~[ 1                 ]), (1 << (0*BigDigit::bits)));
@@ -1634,9 +1634,9 @@ mod biguint_tests {
         check(BigUint::new(~[ 0,  0,  1         ]), (1 << (2*BigDigit::bits)));
         check(BigUint::new(~[-1, -1, -1         ]), (1 << (3*BigDigit::bits)) - 1);
         check(BigUint::new(~[ 0,  0,  0,  1     ]), (1 << (3*BigDigit::bits)));
-        check(BigUint::new(~[-1, -1, -1, -1 >> 1]), i64::max_value);
+        check(BigUint::new(~[-1, -1, -1, -1 >> 1]), i64::MAX_VALUE);
 
-        assert_eq!(i64::min_value.to_biguint(), None);
+        assert_eq!(i64::MIN_VALUE.to_biguint(), None);
         assert_eq!(BigUint::new(~[-1, -1, -1, -1    ]).to_i64(), None);
         assert_eq!(BigUint::new(~[ 0,  0,  0,  0,  1]).to_i64(), None);
         assert_eq!(BigUint::new(~[-1, -1, -1, -1, -1]).to_i64(), None);
@@ -1653,15 +1653,15 @@ mod biguint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
-        check(i64::max_value.to_biguint().unwrap(), i64::max_value);
+        check(i64::MAX_VALUE.to_biguint().unwrap(), i64::MAX_VALUE);
 
         check(BigUint::new(~[           ]), 0);
         check(BigUint::new(~[ 1         ]), (1 << (0*BigDigit::bits)));
         check(BigUint::new(~[-1         ]), (1 << (1*BigDigit::bits)) - 1);
         check(BigUint::new(~[ 0,  1     ]), (1 << (1*BigDigit::bits)));
-        check(BigUint::new(~[-1, -1 >> 1]), i64::max_value);
+        check(BigUint::new(~[-1, -1 >> 1]), i64::MAX_VALUE);
 
-        assert_eq!(i64::min_value.to_biguint(), None);
+        assert_eq!(i64::MIN_VALUE.to_biguint(), None);
         assert_eq!(BigUint::new(~[-1, -1    ]).to_i64(), None);
         assert_eq!(BigUint::new(~[ 0,  0,  1]).to_i64(), None);
         assert_eq!(BigUint::new(~[-1, -1, -1]).to_i64(), None);
@@ -1678,8 +1678,8 @@ mod biguint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
-        check(u64::min_value.to_biguint().unwrap(), u64::min_value);
-        check(u64::max_value.to_biguint().unwrap(), u64::max_value);
+        check(u64::MIN_VALUE.to_biguint().unwrap(), u64::MIN_VALUE);
+        check(u64::MAX_VALUE.to_biguint().unwrap(), u64::MAX_VALUE);
 
         check(BigUint::new(~[              ]), 0);
         check(BigUint::new(~[ 1            ]), (1 << (0*BigDigit::bits)));
@@ -1689,7 +1689,7 @@ mod biguint_tests {
         check(BigUint::new(~[ 0,  0,  1    ]), (1 << (2*BigDigit::bits)));
         check(BigUint::new(~[-1, -1, -1    ]), (1 << (3*BigDigit::bits)) - 1);
         check(BigUint::new(~[ 0,  0,  0,  1]), (1 << (3*BigDigit::bits)));
-        check(BigUint::new(~[-1, -1, -1, -1]), u64::max_value);
+        check(BigUint::new(~[-1, -1, -1, -1]), u64::MAX_VALUE);
 
         assert_eq!(BigUint::new(~[ 0,  0,  0,  0,  1]).to_u64(), None);
         assert_eq!(BigUint::new(~[-1, -1, -1, -1, -1]).to_u64(), None);
@@ -1706,14 +1706,14 @@ mod biguint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
-        check(u64::min_value.to_biguint().unwrap(), u64::min_value);
-        check(u64::max_value.to_biguint().unwrap(), u64::max_value);
+        check(u64::MIN_VALUE.to_biguint().unwrap(), u64::MIN_VALUE);
+        check(u64::MAX_VALUE.to_biguint().unwrap(), u64::MAX_VALUE);
 
         check(BigUint::new(~[      ]), 0);
         check(BigUint::new(~[ 1    ]), (1 << (0*BigDigit::bits)));
         check(BigUint::new(~[-1    ]), (1 << (1*BigDigit::bits)) - 1);
         check(BigUint::new(~[ 0,  1]), (1 << (1*BigDigit::bits)));
-        check(BigUint::new(~[-1, -1]), u64::max_value);
+        check(BigUint::new(~[-1, -1]), u64::MAX_VALUE);
 
         assert_eq!(BigUint::new(~[ 0,  0,  1]).to_u64(), None);
         assert_eq!(BigUint::new(~[-1, -1, -1]).to_u64(), None);
@@ -2164,11 +2164,11 @@ mod bigint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
-        check(i64::min_value.to_bigint().unwrap(), i64::min_value);
-        check(i64::max_value.to_bigint().unwrap(), i64::max_value);
+        check(i64::MIN_VALUE.to_bigint().unwrap(), i64::MIN_VALUE);
+        check(i64::MAX_VALUE.to_bigint().unwrap(), i64::MAX_VALUE);
 
         assert_eq!(
-            (i64::max_value as u64 + 1).to_bigint().unwrap().to_i64(),
+            (i64::MAX_VALUE as u64 + 1).to_bigint().unwrap().to_i64(),
             None);
 
         assert_eq!(
@@ -2194,15 +2194,15 @@ mod bigint_tests {
 
         check(Zero::zero(), 0);
         check(One::one(), 1);
-        check(u64::min_value.to_bigint().unwrap(), u64::min_value);
-        check(u64::max_value.to_bigint().unwrap(), u64::max_value);
+        check(u64::MIN_VALUE.to_bigint().unwrap(), u64::MIN_VALUE);
+        check(u64::MAX_VALUE.to_bigint().unwrap(), u64::MAX_VALUE);
 
         assert_eq!(
             BigInt::from_biguint(Plus, BigUint::new(~[1, 2, 3, 4, 5])).to_u64(),
             None);
 
-        let max_value: BigUint = FromPrimitive::from_u64(u64::max_value).unwrap();
-        assert_eq!(BigInt::from_biguint(Minus, max_value).to_u64(), None);
+        let MAX_VALUE: BigUint = FromPrimitive::from_u64(u64::MAX_VALUE).unwrap();
+        assert_eq!(BigInt::from_biguint(Minus, MAX_VALUE).to_u64(), None);
         assert_eq!(BigInt::from_biguint(Minus, BigUint::new(~[1, 2, 3, 4, 5])).to_u64(), None);
     }
 

@@ -537,21 +537,21 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
     // warnings are consistent between 32- and 64-bit platforms
     fn int_ty_range(int_ty: ast::int_ty) -> (i64, i64) {
         match int_ty {
-            ast::ty_i =>    (i64::min_value,        i64::max_value),
-            ast::ty_i8 =>   (i8::min_value  as i64, i8::max_value  as i64),
-            ast::ty_i16 =>  (i16::min_value as i64, i16::max_value as i64),
-            ast::ty_i32 =>  (i32::min_value as i64, i32::max_value as i64),
-            ast::ty_i64 =>  (i64::min_value,        i64::max_value)
+            ast::ty_i =>    (i64::MIN_VALUE,        i64::MAX_VALUE),
+            ast::ty_i8 =>   (i8::MIN_VALUE  as i64, i8::MAX_VALUE  as i64),
+            ast::ty_i16 =>  (i16::MIN_VALUE as i64, i16::MAX_VALUE as i64),
+            ast::ty_i32 =>  (i32::MIN_VALUE as i64, i32::MAX_VALUE as i64),
+            ast::ty_i64 =>  (i64::MIN_VALUE,        i64::MAX_VALUE)
         }
     }
 
     fn uint_ty_range(uint_ty: ast::uint_ty) -> (u64, u64) {
         match uint_ty {
-            ast::ty_u =>   (u64::min_value,         u64::max_value),
-            ast::ty_u8 =>  (u8::min_value   as u64, u8::max_value   as u64),
-            ast::ty_u16 => (u16::min_value  as u64, u16::max_value  as u64),
-            ast::ty_u32 => (u32::min_value  as u64, u32::max_value  as u64),
-            ast::ty_u64 => (u64::min_value,         u64::max_value)
+            ast::ty_u =>   (u64::MIN_VALUE,         u64::MAX_VALUE),
+            ast::ty_u8 =>  (u8::MIN_VALUE   as u64, u8::MAX_VALUE   as u64),
+            ast::ty_u16 => (u16::MIN_VALUE  as u64, u16::MAX_VALUE  as u64),
+            ast::ty_u32 => (u32::MIN_VALUE  as u64, u32::MAX_VALUE  as u64),
+            ast::ty_u64 => (u64::MIN_VALUE,         u64::MAX_VALUE)
         }
     }
 

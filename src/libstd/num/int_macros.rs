@@ -28,14 +28,14 @@ pub use cmp::{min, max};
 pub static bits : uint = $bits;
 pub static bytes : uint = ($bits / 8);
 
-pub static min_value: $T = (-1 as $T) << (bits - 1);
-// FIXME(#9837): Compute min_value like this so the high bits that shouldn't exist are 0.
-pub static max_value: $T = !min_value;
+pub static MIN_VALUE: $T = (-1 as $T) << (bits - 1);
+// FIXME(#9837): Compute MIN_VALUE like this so the high bits that shouldn't exist are 0.
+pub static MAX_VALUE: $T = MIN_VALUE - 1 as $T;
 
 impl CheckedDiv for $T {
     #[inline]
     fn checked_div(&self, v: &$T) -> Option<$T> {
-        if *v == 0 || (*self == min_value && *v == -1) {
+        if *v == 0 || (*self == MIN_VALUE && *v == -1) {
             None
         } else {
             Some(self / *v)
@@ -367,10 +367,10 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline]
-    fn min_value() -> $T { min_value }
+    fn MIN_VALUE() -> $T { MIN_VALUE }
 
     #[inline]
-    fn max_value() -> $T { max_value }
+    fn MAX_VALUE() -> $T { MAX_VALUE }
 }
 
 impl Int for $T {}
@@ -777,7 +777,7 @@ mod tests {
     fn test_signed_checked_div() {
         assert_eq!(10i.checked_div(&2), Some(5));
         assert_eq!(5i.checked_div(&0), None);
-        assert_eq!(int::min_value.checked_div(&-1), None);
+        assert_eq!(int::MIN_VALUE.checked_div(&-1), None);
     }
 }
 

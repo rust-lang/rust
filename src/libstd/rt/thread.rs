@@ -44,7 +44,7 @@ impl Thread {
         extern "C" fn thread_start(trampoline: *libc::c_void) -> rust_thread_return {
             use rt::context;
             unsafe {
-                context::record_stack_bounds(0, uint::max_value);
+                context::record_stack_bounds(0, uint::MAX_VALUE);
                 let f: ~~fn() = cast::transmute(trampoline);
                 (*f)();
             }
