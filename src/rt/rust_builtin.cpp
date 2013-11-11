@@ -203,7 +203,7 @@ get_time(int64_t *sec, int32_t *nsec) {
 }
 #endif
 
-const uint64_t ns_per_s = 1000000000LL;
+const int64_t ns_per_s = 1000000000LL;
 
 extern "C" CDECL void
 precise_time_ns(uint64_t *ns) {
@@ -217,18 +217,18 @@ precise_time_ns(uint64_t *ns) {
     uint64_t time_nano = time * (info.numer / info.denom);
     *ns = time_nano;
 #elif __WIN32__
-    uint64_t ticks_per_s;
+    int64_t ticks_per_s;
     QueryPerformanceFrequency((LARGE_INTEGER *)&ticks_per_s);
     if (ticks_per_s == 0LL) {
         ticks_per_s = 1LL;
     }
-    uint64_t ticks;
+    int64_t ticks;
     QueryPerformanceCounter((LARGE_INTEGER *)&ticks);
-    *ns = ((ticks * ns_per_s) / ticks_per_s);
+    *ns = (uint64_t)((ticks * ns_per_s) / ticks_per_s);
 #else
     timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    *ns = (ts.tv_sec * ns_per_s + ts.tv_nsec);
+    *ns = (uint64_t)(ts.tv_sec * ns_per_s + ts.tv_nsec);
 #endif
 }
 
