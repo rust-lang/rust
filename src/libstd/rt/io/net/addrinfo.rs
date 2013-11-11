@@ -114,6 +114,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[ignore(cfg(target_os="android"))] // cannot give tcp/ip permission without help of apk
     fn dns_smoke_test() {
         let ipaddrs = get_host_addresses("localhost").unwrap();
         let mut found_local = false;

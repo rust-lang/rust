@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-android: FIXME(#10381)
+
 // compile-flags:-Z extra-debug-info
 // debugger:rbreak zzz
 // debugger:run

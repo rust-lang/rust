@@ -191,6 +191,7 @@ mod test {
     use super::super::local_loop;
 
     #[test]
+    #[ignore(cfg(target_os="android"))] // cannot give tcp/ip permission without help of apk
     fn getaddrinfo_test() {
         match GetAddrInfoRequest::run(local_loop(), Some("localhost"), None, None) {
             Ok(infos) => {
