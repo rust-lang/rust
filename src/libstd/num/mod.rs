@@ -299,13 +299,20 @@ pub trait Trigonometric {
 /// Simultaneously computes the sine and cosine of the number.
 #[inline(always)] pub fn sin_cos<T: Trigonometric>(value: T) -> (T, T) { value.sin_cos() }
 
+/// A trait exponential functions.
 pub trait Exponential {
+    /// Returns `e^(self)`, (the exponential function).
     fn exp(&self) -> Self;
+    /// Returns 2 raised to the power of the number, `2^(self)`.
     fn exp2(&self) -> Self;
 
+    /// Returns the natural logarithm of the number.
     fn ln(&self) -> Self;
+    /// Returns the logarithm of the number with respect to an arbitrary base.
     fn log(&self, base: &Self) -> Self;
+    /// Returns the base 2 logarithm of the number.
     fn log2(&self) -> Self;
+    /// Returns the base 10 logarithm of the number.
     fn log10(&self) -> Self;
 }
 
@@ -323,19 +330,26 @@ pub trait Exponential {
 /// Returns the base 10 logarithm of the number.
 #[inline(always)] pub fn log10<T: Exponential>(value: T) -> T { value.log10() }
 
+/// A trait hyperbolic functions.
 pub trait Hyperbolic: Exponential {
+    /// Hyperbolic sine function.
     fn sinh(&self) -> Self;
+    /// Hyperbolic cosine function.
     fn cosh(&self) -> Self;
+    /// Hyperbolic tangent function.
     fn tanh(&self) -> Self;
 
+    /// Inverse hyperbolic sine function.
     fn asinh(&self) -> Self;
+    /// Inverse hyperbolic cosine function.
     fn acosh(&self) -> Self;
+    /// Inverse hyperbolic tangent function.
     fn atanh(&self) -> Self;
 }
 
-/// Hyperbolic cosine function.
-#[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
 /// Hyperbolic sine function.
+#[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
+/// Hyperbolic cosine function.
 #[inline(always)] pub fn cosh<T: Hyperbolic>(value: T) -> T { value.cosh() }
 /// Hyperbolic tangent function.
 #[inline(always)] pub fn tanh<T: Hyperbolic>(value: T) -> T { value.tanh() }
@@ -374,7 +388,10 @@ pub trait Real: Signed
     fn ln_10() -> Self;
 
     // Angular conversions
+
+    /// Convert degrees to radians.
     fn to_degrees(&self) -> Self;
+    /// Convert radians to degrees.
     fn to_radians(&self) -> Self;
 }
 
@@ -404,9 +421,34 @@ pub trait Bitwise: Not<Self>
                  + Shl<Self,Self>
                  + Shr<Self,Self> {}
 
+/// A trait for common counting operations on bits.
 pub trait BitCount {
+    /// Returns the number of bits set in the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    /// assert_eq!(n.population_count(), 2);
+    /// ```
     fn population_count(&self) -> Self;
+    /// Returns the number of leading zeros in the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    /// assert_eq!(n.leading_zeros(), 10);
+    /// ```
     fn leading_zeros(&self) -> Self;
+    /// Returns the number of trailing zeros in the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    /// assert_eq!(n.trailing_zeros(), 3);
+    /// ```
     fn trailing_zeros(&self) -> Self;
 }
 
