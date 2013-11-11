@@ -798,27 +798,51 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
     }
 }
 
-// check if crate-level attribute is used on item,
-// since it is usually caused by mistake of semicolon omission.
-// also make error on obsolete attributes for less confusion.
-fn check_item_attribute_usage(cx: &Context, it: &ast::item) {
-    let crate_attrs = ["crate_type", "link", "feature", "no_uv", "no_main", "no_std"];
+fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
+    // check if element has crate-level, obsolete, or any unknown attributes.
+
+    let crate_attrs = [
+        "crate_type", "link", "feature", "no_uv", "no_main", "no_std",
+        "comment", "license", "copyright", // not used in rustc now
+    ];
+
     let obsolete_attrs = [
         ("abi", "extern \"abi\" fn"),
         ("auto_encode", "#[deriving(Encodable)]"),
         ("auto_decode", "#[deriving(Decodable)]"),
     ];
 
-    for attr in it.attrs.iter() {
+    let other_attrs = [
+        // item-level
+        "address_insignificant", // can be crate-level too
+        "allow", "deny", "forbid", "warn", // lint options
+        "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
+        "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
+        "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
+        "packed", "simd", "repr", "deriving", "unsafe_destructor",
+
+        // mod-level
+        "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
+
+        // fn-level
+        "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
+        "fixed_stack_segment", "no_split_stack", "rust_stack", "cold",
+
+        // internal attribute: bypass privacy inside items
+        "!resolve_unexported",
+    ];
+
+    for attr in attrs.iter() {
         let name = attr.node.value.name();
         for crate_attr in crate_attrs.iter() {
             if name.equiv(crate_attr) {
                 let msg = match attr.node.style {
-                    ast::AttrOuter  => "crate-level attribute should be an inner attribute: \
-                                   add semicolon at end",
+                    ast::AttrOuter => "crate-level attribute should be an inner attribute: \
+                                       add semicolon at end",
                     ast::AttrInner => "crate-level attribute should be in the root module",
                 };
                 cx.span_lint(attribute_usage, attr.span, msg);
+                return;
             }
         }
 
@@ -826,7 +850,12 @@ fn check_item_attribute_usage(cx: &Context, it: &ast::item) {
             if name.equiv(&obs_attr) {
                 cx.span_lint(attribute_usage, attr.span,
                              format!("obsolete attribute: use `{:s}` instead", obs_alter));
+                return;
             }
+        }
+
+        if !other_attrs.iter().any(|other_attr| { name.equiv(other_attr) }) {
+            cx.span_lint(attribute_usage, attr.span, "unknown attribute");
         }
     }
 }
@@ -1151,13 +1180,27 @@ impl<'self> Visitor<()> for Context<'self> {
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
-            check_item_attribute_usage(cx, it);
+            check_attrs_usage(cx, it.attrs);
 
             do cx.visit_ids |v| {
                 v.visit_item(it, ());
             }
 
             visit::walk_item(cx, it, ());
+        }
+    }
+
+    fn visit_foreign_item(&mut self, it: @ast::foreign_item, _: ()) {
+        do self.with_lint_attrs(it.attrs) |cx| {
+            check_attrs_usage(cx, it.attrs);
+            visit::walk_foreign_item(cx, it, ());
+        }
+    }
+
+    fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
+        do self.with_lint_attrs(i.attrs) |cx| {
+            check_attrs_usage(cx, i.attrs);
+            visit::walk_view_item(cx, i, ());
         }
     }
 
@@ -1210,6 +1253,7 @@ impl<'self> Visitor<()> for Context<'self> {
             visit::fk_method(_, _, m) => {
                 do self.with_lint_attrs(m.attrs) |cx| {
                     check_missing_doc_method(cx, m);
+                    check_attrs_usage(cx, m.attrs);
 
                     do cx.visit_ids |v| {
                         v.visit_fn(fk, decl, body, span, id, ());
@@ -1221,9 +1265,11 @@ impl<'self> Visitor<()> for Context<'self> {
         }
     }
 
+
     fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
         do self.with_lint_attrs(t.attrs) |cx| {
             check_missing_doc_ty_method(cx, t);
+            check_attrs_usage(cx, t.attrs);
 
             visit::walk_ty_method(cx, t, ());
         }
@@ -1244,6 +1290,7 @@ impl<'self> Visitor<()> for Context<'self> {
     fn visit_struct_field(&mut self, s: @ast::struct_field, _: ()) {
         do self.with_lint_attrs(s.node.attrs) |cx| {
             check_missing_doc_struct_field(cx, s);
+            check_attrs_usage(cx, s.node.attrs);
 
             visit::walk_struct_field(cx, s, ());
         }
@@ -1252,6 +1299,7 @@ impl<'self> Visitor<()> for Context<'self> {
     fn visit_variant(&mut self, v: &ast::variant, g: &ast::Generics, _: ()) {
         do self.with_lint_attrs(v.node.attrs) |cx| {
             check_missing_doc_variant(cx, v);
+            check_attrs_usage(cx, v.node.attrs);
 
             visit::walk_variant(cx, v, g, ());
         }
