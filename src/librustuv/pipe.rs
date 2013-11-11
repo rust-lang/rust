@@ -251,7 +251,6 @@ mod tests {
     use super::super::local_loop;
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#10386): how windows pipes work
     fn connect_err() {
         match PipeWatcher::connect(local_loop(), &"path/to/nowhere".to_c_str()) {
             Ok(*) => fail!(),
@@ -260,7 +259,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#10386): how windows pipes work
     fn bind_err() {
         match PipeListener::bind(local_loop(), &"path/to/nowhere".to_c_str()) {
             Ok(*) => fail!(),
@@ -269,7 +267,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#10386): how windows pipes work
     fn bind() {
         let p = next_test_unix().to_c_str();
         match PipeListener::bind(local_loop(), &p) {
@@ -279,7 +276,6 @@ mod tests {
     }
 
     #[test] #[should_fail]
-    #[ignore(cfg(windows))] // FIXME(#10386): how windows pipes work
     fn bind_fail() {
         let p = next_test_unix().to_c_str();
         let _w = PipeListener::bind(local_loop(), &p).unwrap();
@@ -287,7 +283,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#10386): how windows pipes work
     fn connect() {
         let path = next_test_unix();
         let path2 = path.clone();
@@ -313,7 +308,6 @@ mod tests {
     }
 
     #[test] #[should_fail]
-    #[ignore(cfg(windows))] // FIXME(#10386): how windows pipes work
     fn connect_fail() {
         let path = next_test_unix();
         let path2 = path.clone();
