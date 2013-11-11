@@ -661,7 +661,6 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 };
                 new_sched.bootstrap(bootstrap_task);
 
-                debug!("enqueing join_task");
                 // Now tell the original scheduler to join with this thread
                 // by scheduling a thread-joining task on the original scheduler
                 orig_sched_handle.send(TaskFromFriend(join_task));
