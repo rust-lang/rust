@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-android: FIXME(#10393)
+
 // xfail-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 

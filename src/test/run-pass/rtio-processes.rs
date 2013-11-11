@@ -28,6 +28,7 @@ use std::rt::io::process::{Process, ProcessConfig, CreatePipe, Ignored};
 use std::str;
 
 #[test]
+// FIXME(#10380)
 #[cfg(unix, not(target_os="android"))]
 fn smoke() {
     let io = ~[];
@@ -45,6 +46,7 @@ fn smoke() {
 }
 
 #[test]
+// FIXME(#10380)
 #[cfg(unix, not(target_os="android"))]
 fn smoke_failure() {
     let io = ~[];
@@ -62,6 +64,7 @@ fn smoke_failure() {
 }
 
 #[test]
+// FIXME(#10380)
 #[cfg(unix, not(target_os="android"))]
 fn exit_reported_right() {
     let io = ~[];
@@ -102,6 +105,7 @@ fn run_output(args: ProcessConfig) -> ~str {
 }
 
 #[test]
+// FIXME(#10380)
 #[cfg(unix, not(target_os="android"))]
 fn stdout_works() {
     let io = ~[Ignored, CreatePipe(false, true)];
@@ -116,6 +120,7 @@ fn stdout_works() {
 }
 
 #[test]
+// FIXME(#10380)
 #[cfg(unix, not(target_os="android"))]
 fn set_cwd_works() {
     let io = ~[Ignored, CreatePipe(false, true)];
@@ -131,6 +136,7 @@ fn set_cwd_works() {
 }
 
 #[test]
+// FIXME(#10380)
 #[cfg(unix, not(target_os="android"))]
 fn stdin_works() {
     let io = ~[CreatePipe(true, false),
