@@ -351,7 +351,7 @@ The `raise` method maps a value of the condition's input type to its output type
 The input type should therefore convey all relevant information to the condition handler.
 The output type should convey all relevant information _for continuing execution at the site of error_.
 When the error site raises a condition handler,
-the `Condition::raise` method searches task-local storage (TLS) for the innermost installed _handler_,
+the `Condition::raise` method searches for the innermost installed task-local condition _handler_,
 and if any such handler is found, calls it with the provided input value.
 If no handler is found, `Condition::raise` will fail the task with an appropriate error message.
 
