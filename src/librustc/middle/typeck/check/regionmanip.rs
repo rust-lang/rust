@@ -36,7 +36,8 @@ pub fn replace_bound_regions_in_fn_sig(
                 debug!("region r={}", r.to_str());
                 match r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
-                    *map.find_or_insert_with(br, |_| mapf(br))
+                    let (_, v) = map.find_or_insert_with(br, |_| mapf(br));
+                    *v
                 }
                 _ => r
             }});

@@ -16,6 +16,7 @@
 use std::util::{swap, replace};
 use std::iter::{Peekable};
 use std::cmp::Ordering;
+use std::cell::Cell;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -116,10 +117,39 @@ impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
 
     /// Insert a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise None is returned.
-    fn swap(&mut self, key: K, value: V) -> Option<V> {
-        let ret = insert(&mut self.root, key, value);
-        if ret.is_none() { self.length += 1 }
+    fn swap(&mut self, k: K, v: V) -> Option<V> {
+        let cell = Cell::new(v);
+        let mut ret = None;
+        insert_helper(&mut self.root,
+                      k,
+                      |_| { self.length += 1; cell.take() },
+                      |old| { ret = Some(replace(old, cell.take()))},
+                      |_| {});
         ret
+    }
+
+
+    /// Return the value corresponding to the key in the map, or create,
+    /// insert, and return a new value if it doesn't exist.
+    fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V)
+                               -> (&'a K, &'a mut V) {
+        // since insert_helper needs to rebalance the tree on the
+        // way back up the stack, it can't safely hold a reference
+        // to the found or newly inserted node.  Instead we will
+        // build a trail back to the node we want to find.
+        let mut trail = ~[];
+        insert_helper(&mut self.root, k,
+                      |k| { self.length += 1; f(k) },
+                      |_| {},
+                      |o| { trail.push(o) });
+        let node = trail.rev_iter().fold(self.root.get_mut_ref(), |node, dir| {
+            match *dir {
+                Less => &mut node.left,
+                Greater => &mut node.right,
+                Equal => unreachable!(),
+            }.get_mut_ref()
+        });
+        (&node.key, &mut node.value)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -128,6 +158,10 @@ impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
         let ret = remove(&mut self.root, key);
         if ret.is_some() { self.length -= 1 }
         ret
+    }
+
+    /// Does nothing for this implementation.
+    fn reserve_at_least(&mut self, _: uint) {
     }
 }
 
@@ -694,18 +728,21 @@ fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
+fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) -> bool {
     if node.left.as_ref().map_default(false, |x| x.level == node.level) {
         let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
         node.right = Some(save);
+        true
+    } else {
+        false
     }
 }
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
+fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) -> bool {
     if node.right.as_ref().map_default(false,
       |x| x.right.as_ref().map_default(false, |y| y.level == node.level)) {
         let mut save = node.right.take_unwrap();
@@ -713,6 +750,9 @@ fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
         save.level += 1;
         swap(node, &mut save);
         node.left = Some(save);
+        true
+    } else {
+        false
     }
 }
 
@@ -731,33 +771,43 @@ fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
     }
 }
 
-fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
-                          key: K, value: V) -> Option<V> {
+fn insert_helper<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
+                                 key: K,
+                                 insert: &fn(&K) -> V,
+                                 update: &fn(&mut V),
+                                 build_trail: &fn(Ordering)) {
     match *node {
-      Some(ref mut save) => {
-        match key.cmp(&save.key) {
-          Less => {
-            let inserted = insert(&mut save.left, key, value);
-            skew(save);
-            split(save);
-            inserted
-          }
-          Greater => {
-            let inserted = insert(&mut save.right, key, value);
-            skew(save);
-            split(save);
-            inserted
-          }
-          Equal => {
-            save.key = key;
-            Some(replace(&mut save.value, value))
-          }
+        Some(ref mut save) => {
+            match key.cmp(&save.key) {
+                Less => {
+                    insert_helper(&mut save.left, key, insert, update,
+                                  |o| build_trail(o));
+                    if !skew(save) {
+                        build_trail(Less);
+                    }
+                    if split(save) {
+                        build_trail(Less);
+                    }
+                }
+                Greater => {
+                    insert_helper(&mut save.right, key, insert, update,
+                                  |o| build_trail(o));
+                    if skew(save) {
+                        build_trail(Greater);
+                    }
+                    if !split(save) {
+                        build_trail(Greater);
+                    }
+                }
+                Equal => {
+                    update(&mut save.value);
+                }
+            }
         }
-      }
-      None => {
-       *node = Some(~TreeNode::new(key, value));
-        None
-      }
+        None => {
+            let value = insert(&key);
+            *node = Some(~TreeNode::new(key, value));
+        }
     }
 }
 
@@ -828,11 +878,11 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 
                 for right in save.right.mut_iter() {
                     skew(right);
-                    for x in right.right.mut_iter() { skew(x) }
+                    for x in right.right.mut_iter() { skew(x); }
                 }
 
                 split(save);
-                for x in save.right.mut_iter() { split(x) }
+                for x in save.right.mut_iter() { split(x); }
             }
 
             return ret;
@@ -921,6 +971,47 @@ mod test_treemap {
         assert!(m.insert(2, 9));
         assert!(!m.insert(2, 11));
         assert_eq!(m.find(&2).unwrap(), &11);
+    }
+
+    #[test]
+    fn test_find_or_insert_with() {
+        let mut m = TreeMap::new();
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_find_or_insert() {
+        let mut m = TreeMap::new();
+        for i in range(0, 10) {
+            let (k, v) = m.find_or_insert(i, i + 1);
+            assert_eq!((*k, *v), (i, i + 1))
+        }
+        for i in range(0, 10) {
+            let (k, v) = m.find_or_insert(-i, i + 1);
+            assert_eq!((*k, *v), (-i, i + 1))
+        }
+        for i in range(0, 10) {
+            let (k, v) = m.find_or_insert(i, i + 2);
+            assert_eq!((*k, *v), (i, i + 1))
+        }
+        for i in range(0, 10) {
+            let (k, v) = m.find_or_insert(-i, i + 2);
+            assert_eq!((*k, *v), (-i, i + 1))
+        }
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = TreeMap::new();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]

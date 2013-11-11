@@ -15,25 +15,25 @@
 
 #[allow(missing_doc)];
 
-use std::iter::{Enumerate, FilterMap, Invert};
+use std::iter::{FilterMap, Invert};
 use std::util::replace;
 use std::vec::{VecIterator, VecMutIterator};
 use std::vec;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
-    priv v: ~[Option<T>],
+    priv v: ~[(uint, Option<T>)],
 }
 
 impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
-        self.v.iter().count(|elt| elt.is_some())
+        self.v.iter().count(|&(_, ref elt)| elt.is_some())
     }
 
     /// Return true if there are no elements in the map
     fn is_empty(&self) -> bool {
-        self.v.iter().all(|elt| elt.is_none())
+        self.v.iter().all(|&(_, ref elt)| elt.is_none())
     }
 }
 
@@ -47,8 +47,8 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
             match self.v[*key] {
-              Some(ref value) => Some(value),
-              None => None
+              (_, Some(ref value)) => Some(value),
+              (_, None) => None
             }
         } else {
             None
@@ -61,25 +61,34 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
             match self.v[*key] {
-              Some(ref mut value) => Some(value),
-              None => None
+              (_, Some(ref mut value)) => Some(value),
+              (_, None) => None
             }
         } else {
             None
         }
     }
 
-    /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
-    /// not already exist in the map.
-    fn insert(&mut self, key: uint, value: V) -> bool {
-        let exists = self.contains_key(&key);
+    /// Return the value corresponding to the key in the map, or create,
+    /// insert, and return a new value if it doesn't exist.
+    fn find_or_insert_with<'a>(&'a mut self, key: uint, f: &fn(&uint) -> V)
+                               -> (&'a uint, &'a mut V) {
         let len = self.v.len();
         if len <= key {
-            self.v.grow_fn(key - len + 1, |_| None);
+            self.v.grow_fn(key - len + 1, |i| (i + len, None));
         }
-        self.v[key] = Some(value);
-        !exists
+        match self.v[key] {
+            (ref key, Some(ref mut value)) => (key, value),
+            (ref key, ref mut e) => {
+                let value = f(key);
+                *e = Some(value);
+                (key, e.get_mut_ref())
+            }
+        }
+    }
+
+    /// Does nothing for this implementation.
+    fn reserve_at_least(&mut self, _: uint) {
     }
 
     /// Remove a key-value pair from the map. Return true if the key
@@ -88,24 +97,14 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         self.pop(key).is_some()
     }
 
-    /// Insert a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise None is returned.
-    fn swap(&mut self, key: uint, value: V) -> Option<V> {
-        match self.find_mut(&key) {
-            Some(loc) => { return Some(replace(loc, value)); }
-            None => ()
-        }
-        self.insert(key, value);
-        return None;
-    }
-
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     fn pop(&mut self, key: &uint) -> Option<V> {
         if *key >= self.v.len() {
             return None;
         }
-        self.v[*key].take()
+        let (_, ref mut e) = self.v[*key];
+        e.take()
     }
 }
 
@@ -154,10 +153,10 @@ impl<V> SmallIntMap<V> {
     /// Empties the hash map, moving all values into the specified closure
     pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<vec::MoveIterator<Option<V>>>>
+                vec::MoveIterator<(uint, Option<V>)>>
     {
         let values = replace(&mut self.v, ~[]);
-        values.move_iter().enumerate().filter_map(|(i, v)| {
+        values.move_iter().filter_map(|(i, v)| {
             v.map(|v| (i, v))
         })
     }
@@ -179,77 +178,112 @@ impl<V:Clone> SmallIntMap<V> {
     }
 }
 
-
-macro_rules! iterator {
-    (impl $name:ident -> $elem:ty, $getter:ident) => {
-        impl<'self, T> Iterator<$elem> for $name<'self, T> {
-            #[inline]
-            fn next(&mut self) -> Option<$elem> {
-                while self.front < self.back {
-                    match self.iter.next() {
-                        Some(elem) => {
-                            if elem.is_some() {
-                                let index = self.front;
-                                self.front += 1;
-                                return Some((index, elem. $getter ()));
-                            }
-                        }
-                        _ => ()
-                    }
-                    self.front += 1;
-                }
-                None
-            }
-
-            #[inline]
-            fn size_hint(&self) -> (uint, Option<uint>) {
-                (0, Some(self.back - self.front))
-            }
-        }
-    }
-}
-
-macro_rules! double_ended_iterator {
-    (impl $name:ident -> $elem:ty, $getter:ident) => {
-        impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
-            #[inline]
-            fn next_back(&mut self) -> Option<$elem> {
-                while self.front < self.back {
-                    match self.iter.next_back() {
-                        Some(elem) => {
-                            if elem.is_some() {
-                                self.back -= 1;
-                                return Some((self.back, elem. $getter ()));
-                            }
-                        }
-                        _ => ()
-                    }
-                    self.back -= 1;
-                }
-                None
-            }
-        }
-    }
-}
-
 pub struct SmallIntMapIterator<'self, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: VecIterator<'self, Option<T>>
+    priv iter: VecIterator<'self, (uint, Option<T>)>
 }
 
-iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
-double_ended_iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
+impl<'self, T> Iterator<(uint, &'self T)> for SmallIntMapIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, &'self T)> {
+        while self.front < self.back {
+            match self.iter.next() {
+                Some(elem) => {
+                    let (_, ref v) = *elem;
+                    if v.is_some() {
+                        let index = self.front;
+                        self.front += 1;
+                        return Some((index, v.get_ref()));
+                    }
+                }
+                _ => ()
+            }
+            self.front += 1;
+        }
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (0, Some(self.back - self.front))
+    }
+}
+
+impl<'self, T> DoubleEndedIterator<(uint, &'self T)> for SmallIntMapIterator<'self, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(uint, &'self T)> {
+        while self.front < self.back {
+            match self.iter.next_back() {
+                Some(elem) => {
+                    let (_, ref v) = *elem;
+                    if v.is_some() {
+                        self.back -= 1;
+                        return Some((self.back, v.get_ref()));
+                    }
+                }
+                _ => ()
+            }
+            self.back -= 1;
+        }
+        None
+    }
+}
+
 pub type SmallIntMapRevIterator<'self, T> = Invert<SmallIntMapIterator<'self, T>>;
 
 pub struct SmallIntMapMutIterator<'self, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: VecMutIterator<'self, Option<T>>
+    priv iter: VecMutIterator<'self, (uint, Option<T>)>
 }
 
-iterator!(impl SmallIntMapMutIterator -> (uint, &'self mut T), get_mut_ref)
-double_ended_iterator!(impl SmallIntMapMutIterator -> (uint, &'self mut T), get_mut_ref)
+impl<'self, T> Iterator<(uint, &'self mut T)> for SmallIntMapMutIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, &'self mut T)> {
+        while self.front < self.back {
+            match self.iter.next() {
+                Some(elem) => {
+                    let (_, ref mut v) = *elem;
+                    if v.is_some() {
+                        let index = self.front;
+                        self.front += 1;
+                        return Some((index, v.get_mut_ref()));
+                    }
+                }
+                _ => ()
+            }
+            self.front += 1;
+        }
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (0, Some(self.back - self.front))
+    }
+}
+
+impl<'self, T> DoubleEndedIterator<(uint, &'self mut T)> for SmallIntMapMutIterator<'self, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(uint, &'self mut T)> {
+        while self.front < self.back {
+            match self.iter.next_back() {
+                Some(elem) => {
+                    let (_, ref mut v) = *elem;
+                    if v.is_some() {
+                        self.back -= 1;
+                        return Some((self.back, v.get_mut_ref()));
+                    }
+                }
+                _ => ()
+            }
+            self.back -= 1;
+        }
+        None
+    }
+}
+
 pub type SmallIntMapMutRevIterator<'self, T> = Invert<SmallIntMapMutIterator<'self, T>>;
 
 #[cfg(test)]
@@ -336,6 +370,41 @@ mod test_map {
         assert_eq!(m.swap(1, 3), Some(2));
         assert_eq!(m.swap(1, 4), Some(3));
     }
+
+
+    #[test]
+    fn test_find_or_insert() {
+        let mut m = SmallIntMap::new();
+        {
+            let (k, v) = m.find_or_insert(1, 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert(1, 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_find_or_insert_with() {
+        let mut m = SmallIntMap::new();
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = SmallIntMap::new();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
+    }
+
 
     #[test]
     fn test_pop() {
