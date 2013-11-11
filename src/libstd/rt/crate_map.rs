@@ -49,8 +49,6 @@ pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
 }
 
 #[cfg(windows)]
-#[fixed_stack_segment]
-#[inline(never)]
 pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
     use cast::transmute;
     use c_str::ToCStr;

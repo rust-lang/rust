@@ -63,7 +63,6 @@ use syntax::visit::Visitor;
 #[deriving(Clone, Eq)]
 pub enum lint {
     ctypes,
-    cstack,
     unused_imports,
     unnecessary_qualification,
     while_true,
@@ -134,13 +133,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: ctypes,
         desc: "proper use of std::libc types in foreign modules",
         default: warn
-     }),
-
-    ("cstack",
-     LintSpec {
-        lint: cstack,
-        desc: "only invoke foreign functions from fixedstacksegment fns",
-        default: deny
      }),
 
     ("unused_imports",

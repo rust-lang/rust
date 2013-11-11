@@ -117,9 +117,11 @@ mod imp {
         }
     }
 
-    externfn!(fn rust_take_global_args_lock())
-    externfn!(fn rust_drop_global_args_lock())
-    externfn!(fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>)
+    extern {
+        fn rust_take_global_args_lock();
+        fn rust_drop_global_args_lock();
+        fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>;
+    }
 
     #[cfg(test)]
     mod tests {

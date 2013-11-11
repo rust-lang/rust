@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(cstack)]; // each rendering task runs on a fixed stack segment.
-
 //! Markdown formatting for rustdoc
 //!
 //! This module implements markdown formatting through the sundown C-library

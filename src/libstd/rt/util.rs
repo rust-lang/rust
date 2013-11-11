@@ -24,8 +24,6 @@ pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         return rust_get_num_cpus();
     }
@@ -146,7 +144,6 @@ memory and partly incapable of presentation to others.",
     abort();
 
     fn abort() -> ! {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe { libc::abort() }
     }
 }

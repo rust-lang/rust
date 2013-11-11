@@ -717,7 +717,6 @@ impl Context {
                       port: &SharedPort<Work>,
                       chan: &SharedChan<Work>,
                       prog_chan: &SharedChan<Progress>) {
-                #[fixed_stack_segment]; // we hit markdown FFI *a lot*
                 local_data::set(cache_key, cache);
 
                 loop {
