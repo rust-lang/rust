@@ -161,7 +161,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix)]
+    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
         signal.register(Interrupt);
@@ -173,7 +173,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix)]
+    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -191,7 +191,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix)]
+    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
