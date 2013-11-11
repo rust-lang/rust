@@ -186,7 +186,11 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
             vec
         } else {
             let alloc = capacity * mem::nonzero_size_of::<T>();
-            let ptr = malloc_raw(alloc + mem::size_of::<Vec<()>>()) as *mut Vec<()>;
+            let size = alloc + mem::size_of::<Vec<()>>();
+            if alloc / mem::nonzero_size_of::<T>() != capacity || size < alloc {
+                fail!("vector size is too large: {}", capacity);
+            }
+            let ptr = malloc_raw(size) as *mut Vec<()>;
             (*ptr).alloc = alloc;
             (*ptr).fill = 0;
             cast::transmute(ptr)
