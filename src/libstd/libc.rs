@@ -3387,8 +3387,7 @@ pub mod funcs {
                                                LPSYSTEM_INFO};
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
-            #[cfg(target_arch = "x86")]
-            extern "stdcall" {
+            extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
                                                v: LPWSTR,
                                                nsize: DWORD)
@@ -3409,114 +3408,6 @@ pub mod funcs {
                                  lpNewFileName: LPCWSTR,
                                  bFailIfExists: BOOL)
                                  -> BOOL;
-                pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
-                pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-                pub fn GetCurrentDirectoryW(nBufferLength: DWORD,
-                                            lpBuffer: LPWSTR)
-                                            -> DWORD;
-                pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-                pub fn GetLastError() -> DWORD;
-                pub fn FindFirstFileW(fileName: *u16, findFileData: HANDLE)
-                                      -> HANDLE;
-                pub fn FindNextFileW(findFile: HANDLE, findFileData: HANDLE)
-                                     -> BOOL;
-                pub fn FindClose(findFile: HANDLE) -> BOOL;
-                pub fn DuplicateHandle(hSourceProcessHandle: HANDLE,
-                                       hSourceHandle: HANDLE,
-                                       hTargetProcessHandle: HANDLE,
-                                       lpTargetHandle: LPHANDLE,
-                                       dwDesiredAccess: DWORD,
-                                       bInheritHandle: BOOL,
-                                       dwOptions: DWORD)
-                                       -> BOOL;
-                pub fn CloseHandle(hObject: HANDLE) -> BOOL;
-                pub fn OpenProcess(dwDesiredAccess: DWORD,
-                                   bInheritHandle: BOOL,
-                                   dwProcessId: DWORD)
-                                   -> HANDLE;
-                pub fn GetCurrentProcess() -> HANDLE;
-                pub fn CreateProcessA(lpApplicationName: LPCTSTR,
-                                      lpCommandLine: LPTSTR,
-                                      lpProcessAttributes:
-                                      LPSECURITY_ATTRIBUTES,
-                                      lpThreadAttributes:
-                                      LPSECURITY_ATTRIBUTES,
-                                      bInheritHandles: BOOL,
-                                      dwCreationFlags: DWORD,
-                                      lpEnvironment: LPVOID,
-                                      lpCurrentDirectory: LPCTSTR,
-                                      lpStartupInfo: LPSTARTUPINFO,
-                                      lpProcessInformation:
-                                      LPPROCESS_INFORMATION)
-                                      -> BOOL;
-                pub fn WaitForSingleObject(hHandle: HANDLE,
-                                           dwMilliseconds: DWORD)
-                                           -> DWORD;
-                pub fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint)
-                                        -> BOOL;
-                pub fn GetExitCodeProcess(hProcess: HANDLE,
-                                          lpExitCode: LPDWORD)
-                                          -> BOOL;
-                pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
-                pub fn VirtualAlloc(lpAddress: LPVOID,
-                                    dwSize: SIZE_T,
-                                    flAllocationType: DWORD,
-                                    flProtect: DWORD)
-                                    -> LPVOID;
-                pub fn VirtualFree(lpAddress: LPVOID,
-                                   dwSize: SIZE_T,
-                                   dwFreeType: DWORD)
-                                   -> BOOL;
-                pub fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
-                pub fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T)
-                                     -> BOOL;
-                pub fn VirtualProtect(lpAddress: LPVOID,
-                                      dwSize: SIZE_T,
-                                      flNewProtect: DWORD,
-                                      lpflOldProtect: LPDWORD)
-                                      -> BOOL;
-                pub fn VirtualQuery(lpAddress: LPCVOID,
-                                    lpBuffer: LPMEMORY_BASIC_INFORMATION,
-                                    dwLength: SIZE_T)
-                                    -> SIZE_T;
-                pub fn CreateFileMappingW(hFile: HANDLE,
-                                          lpAttributes: LPSECURITY_ATTRIBUTES,
-                                          flProtect: DWORD,
-                                          dwMaximumSizeHigh: DWORD,
-                                          dwMaximumSizeLow: DWORD,
-                                          lpName: LPCTSTR)
-                                          -> HANDLE;
-                pub fn MapViewOfFile(hFileMappingObject: HANDLE,
-                                     dwDesiredAccess: DWORD,
-                                     dwFileOffsetHigh: DWORD,
-                                     dwFileOffsetLow: DWORD,
-                                     dwNumberOfBytesToMap: SIZE_T)
-                                     -> LPVOID;
-                pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
-            }
-
-            #[cfg(target_arch = "x86_64")]
-            extern {
-                pub fn GetEnvironmentVariableW(n: LPCWSTR,
-                                               v: LPWSTR,
-                                               nsize: DWORD)
-                                               -> DWORD;
-                pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
-                                               -> BOOL;
-                pub fn GetEnvironmentStringsA() -> LPTCH;
-                pub fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
-                pub fn GetModuleFileNameW(hModule: HMODULE,
-                                          lpFilename: LPWSTR,
-                                          nSize: DWORD)
-                                          -> DWORD;
-                pub fn CreateDirectoryW(lpPathName: LPCWSTR,
-                                        lpSecurityAttributes:
-                                        LPSECURITY_ATTRIBUTES)
-                                        -> BOOL;
-                pub fn CopyFileW(lpExistingFileName: LPCWSTR,
-                                        lpNewFileName: LPCWSTR,
-                                        bFailIfExists: BOOL)
-                                        -> BOOL;
                 pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
                 pub fn GetCurrentDirectoryW(nBufferLength: DWORD,

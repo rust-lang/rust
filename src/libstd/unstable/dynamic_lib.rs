@@ -264,20 +264,8 @@ pub mod dl {
         FreeLibrary(handle); ()
     }
 
-    #[cfg(target_arch = "x86")]
     #[link_name = "kernel32"]
-    extern "stdcall" {
-        fn SetLastError(error: u32);
-        fn LoadLibraryW(name: *u16) -> *libc::c_void;
-        fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *u16,
-                              handle: **libc::c_void) -> *libc::c_void;
-        fn GetProcAddress(handle: *libc::c_void, name: *libc::c_char) -> *libc::c_void;
-        fn FreeLibrary(handle: *libc::c_void);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    #[link_name = "kernel32"]
-    extern {
+    extern "system" {
         fn SetLastError(error: u32);
         fn LoadLibraryW(name: *u16) -> *libc::c_void;
         fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *u16,

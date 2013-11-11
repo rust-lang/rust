@@ -88,24 +88,13 @@ pub unsafe fn get(key: Key) -> *mut c_void {
     TlsGetValue(key)
 }
 
-#[cfg(windows, target_arch = "x86")]
-extern "stdcall" {
+#[cfg(windows)]
+extern "system" {
     fn TlsAlloc() -> DWORD;
 
     // See the reasoning in pthread_getspecific as to why this has the
     // 'rust_stack' attribute, as this function was also verified to only
     // require a small amount of stack.
-    #[rust_stack]
-    fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
-    #[rust_stack]
-    fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
-}
-
-#[cfg(windows, target_arch = "x86_64")]
-extern {
-    fn TlsAlloc() -> DWORD;
-
-    // See above.
     #[rust_stack]
     fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
     #[rust_stack]
