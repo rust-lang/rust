@@ -210,9 +210,9 @@ solves the problem.
 
 # Macro argument pattern matching
 
-Now consider code like the following:
-
 ## Motivation
+
+Now consider code like the following:
 
 ~~~~
 # enum t1 { good_1(t2, uint), bad_1 };
