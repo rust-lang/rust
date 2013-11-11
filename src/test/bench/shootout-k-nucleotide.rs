@@ -243,8 +243,6 @@ fn read_stdin() -> ~[u8] {
     }
 }
 
-#[inline(never)]
-#[fixed_stack_segment]
 fn generate_frequencies(frequencies: &mut Table,
                         mut input: &[u8],
                         frame: i32) {
@@ -264,8 +262,6 @@ fn generate_frequencies(frequencies: &mut Table,
     }
 }
 
-#[inline(never)]
-#[fixed_stack_segment]
 fn print_frequencies(frequencies: &Table, frame: i32) {
     let mut vector = ~[];
     for frequencies.each |entry| {
@@ -289,7 +285,6 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
     frequencies.lookup(Code::pack(occurrence), PrintCallback(occurrence))
 }
 
-#[fixed_stack_segment]
 fn main() {
     let input = read_stdin();
 

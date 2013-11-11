@@ -277,7 +277,6 @@ fn get_with<T: 'static, U>(key: Key<T>,
 }
 
 fn abort() -> ! {
-    #[fixed_stack_segment]; #[inline(never)];
     unsafe { libc::abort() }
 }
 

@@ -69,8 +69,6 @@ impl Process {
                stdin: Option<file::fd_t>,
                stdout: Option<file::fd_t>,
                stderr: Option<file::fd_t>) -> Process {
-        #[fixed_stack_segment]; #[inline(never)];
-
         let (in_pipe, in_fd) = match stdin {
             None => {
                 let pipe = os::pipe();
@@ -208,7 +206,6 @@ impl Process {
 
         #[cfg(windows)]
         unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
-            #[fixed_stack_segment]; #[inline(never)];
             match signal {
                 io::process::PleaseExitSignal |
                 io::process::MustDieSignal => {
@@ -226,7 +223,6 @@ impl Process {
 
         #[cfg(not(windows))]
         unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
-            #[fixed_stack_segment]; #[inline(never)];
             libc::funcs::posix88::signal::kill(pid, signal as c_int);
             Ok(())
         }
@@ -254,8 +250,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
-    #[fixed_stack_segment]; #[inline(never)];
-
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use libc::consts::os::extra::{
         TRUE, FALSE,
@@ -439,8 +433,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
-    #[fixed_stack_segment]; #[inline(never)];
-
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
 
@@ -455,7 +447,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
     unsafe fn set_environ(_envp: *c_void) {}
     #[cfg(target_os = "macos")]
     unsafe fn set_environ(envp: *c_void) {
-        externfn!(fn _NSGetEnviron() -> *mut *c_void);
+        extern { fn _NSGetEnviron() -> *mut *c_void; }
 
         *_NSGetEnviron() = envp;
     }
@@ -603,7 +595,6 @@ fn with_dirp<T>(d: Option<&Path>, cb: &fn(*libc::c_char) -> T) -> T {
 
 #[cfg(windows)]
 fn free_handle(handle: *()) {
-    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
     }
@@ -629,8 +620,6 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
-        #[fixed_stack_segment]; #[inline(never)];
-
         use libc::types::os::arch::extra::DWORD;
         use libc::consts::os::extra::{
             SYNCHRONIZE,
@@ -676,8 +665,6 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
-        #[fixed_stack_segment]; #[inline(never)];
-
         use libc::funcs::posix01::wait::*;
 
         #[cfg(target_os = "linux")]

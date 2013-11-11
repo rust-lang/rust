@@ -26,8 +26,6 @@ use tls = rt::thread_local_storage;
 static mut RT_TLS_KEY: tls::Key = -1;
 
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
-#[fixed_stack_segment]
-#[inline(never)]
 pub fn init_tls_key() {
     unsafe {
         rust_initialize_rt_tls_key(&mut RT_TLS_KEY);

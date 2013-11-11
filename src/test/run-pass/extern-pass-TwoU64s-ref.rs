@@ -20,7 +20,6 @@ extern {
     pub fn rust_dbg_extern_identity_TwoU64s(u: TwoU64s) -> TwoU64s;
 }
 
-#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         let x = TwoU64s {one: 22, two: 23};

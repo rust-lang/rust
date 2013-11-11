@@ -15,7 +15,6 @@ extern {
 }
 
 trait A {
-    #[fixed_stack_segment]
     fn foo() {
         unsafe {
             rust_get_test_int();

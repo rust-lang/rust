@@ -162,7 +162,6 @@ mod tests {
     }
 
     impl Runnable for LibcFree {
-        #[fixed_stack_segment]
         fn run(~self) {
             unsafe {
                 libc::free(self.mem)
@@ -171,9 +170,6 @@ mod tests {
     }
 
     fn malloc(n: size_t) -> CVec<u8> {
-        #[fixed_stack_segment];
-        #[inline(never)];
-
         unsafe {
             let mem = libc::malloc(n);
 

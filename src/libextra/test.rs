@@ -220,8 +220,6 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
 }
 
 fn usage(binary: &str, helpstr: &str) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
     println(groups::usage(message, optgroups()));
     println("");

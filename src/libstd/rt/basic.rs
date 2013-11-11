@@ -236,7 +236,6 @@ impl Drop for BasicPausible {
 }
 
 fn time() -> Time {
-    #[fixed_stack_segment]; #[inline(never)];
     extern {
         fn get_time(sec: &mut i64, nsec: &mut i32);
     }

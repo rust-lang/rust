@@ -2857,11 +2857,7 @@ pub mod funcs {
 
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
-                #[rust_stack]
-                #[inline]
                 pub fn memcmp(cx: *c_void, ct: *c_void, n: size_t) -> c_int;
-                #[rust_stack]
-                #[inline]
                 pub fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
             }
         }
@@ -3059,11 +3055,9 @@ pub mod funcs {
             // doesn't link it correctly on i686, so we're going
             // through a C function that mysteriously does work.
             pub unsafe fn opendir(dirname: *c_char) -> *DIR {
-                #[fixed_stack_segment]; #[inline(never)];
                 rust_opendir(dirname)
             }
             pub unsafe fn readdir(dirp: *DIR) -> *dirent_t {
-                #[fixed_stack_segment]; #[inline(never)];
                 rust_readdir(dirp)
             }
 

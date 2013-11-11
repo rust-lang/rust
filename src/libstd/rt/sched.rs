@@ -853,7 +853,6 @@ fn new_sched_rng() -> XorShiftRng {
     XorShiftRng::new()
 }
 #[cfg(unix)]
-#[fixed_stack_segment] #[inline(never)]
 fn new_sched_rng() -> XorShiftRng {
     use libc;
     use mem;

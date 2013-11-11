@@ -184,7 +184,6 @@ impl RandomFasta {
     }
 }
 
-#[fixed_stack_segment]
 fn main() {
     let n: uint = FromStr::from_str(os::args()[1]).unwrap();
 

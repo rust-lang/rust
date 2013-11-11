@@ -18,7 +18,6 @@ extern {
 
 extern "C" fn bar(f: int, x: u8) {}
 
-#[fixed_stack_segment]
 fn main() {
     unsafe {
         foo(); //~ ERROR: this function takes at least 2 parameters but 0 parameters were supplied

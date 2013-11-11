@@ -201,7 +201,6 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
 
     let stderr = @mut io::stderr() as @mut io::Writer;
     fn is_stderr_screen() -> bool {
-        #[fixed_stack_segment];
         use std::libc;
         unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
     }

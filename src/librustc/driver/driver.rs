@@ -278,9 +278,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "loop checking", (), |_|
          middle::check_loop::check_crate(ty_cx, crate));
 
-    time(time_passes, "stack checking", (), |_|
-         middle::stack_check::stack_check_crate(ty_cx, crate));
-
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
         time(time_passes, "compute moves", (), |_|
@@ -428,7 +425,6 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
     return false;
 }
 
-#[fixed_stack_segment]
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     // We need nested scopes here, because the intermediate results can keep
@@ -703,12 +699,7 @@ pub fn build_session_options(binary: @str,
     }
 
     if debugging_opts & session::debug_llvm != 0 {
-        set_llvm_debug();
-
-        fn set_llvm_debug() {
-            #[fixed_stack_segment]; #[inline(never)];
-            unsafe { llvm::LLVMSetDebug(1); }
-        }
+        unsafe { llvm::LLVMSetDebug(1); }
     }
 
     let output_type =

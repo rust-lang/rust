@@ -361,7 +361,6 @@ impl FileWatcher {
     }
     fn seek_common(&mut self, pos: i64, whence: c_int) ->
         Result<u64, IoError>{
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             match libc::lseek(self.fd, pos as libc::off_t, whence) {
                 -1 => {
