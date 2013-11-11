@@ -76,6 +76,7 @@ pub static no_vectorize_loops:      uint = 1 << 26;
 pub static no_vectorize_slp:        uint = 1 << 27;
 pub static no_prepopulate_passes:   uint = 1 << 28;
 pub static use_softfp:              uint = 1 << 29;
+pub static gen_crate_map:           uint = 1 << 30;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -128,6 +129,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
       "Don't run LLVM's SLP vectorization passes",
       no_vectorize_slp),
      ("soft-float", "Generate software floating point library calls", use_softfp),
+     ("gen-crate-map", "Force generation of a toplevel crate map", gen_crate_map),
     ]
 }
 
@@ -330,6 +332,9 @@ impl Session_ {
     }
     pub fn no_vectorize_slp(&self) -> bool {
         self.debugging_opt(no_vectorize_slp)
+    }
+    pub fn gen_crate_map(&self) -> bool {
+        self.debugging_opt(gen_crate_map)
     }
 
     // pointless function, now...
