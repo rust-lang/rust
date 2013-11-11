@@ -615,15 +615,8 @@ pub fn errno() -> uint {
     #[fixed_stack_segment]; #[inline(never)];
     use libc::types::os::arch::extra::DWORD;
 
-    #[cfg(target_arch = "x86")]
     #[link_name = "kernel32"]
-    extern "stdcall" {
-        fn GetLastError() -> DWORD;
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    #[link_name = "kernel32"]
-    extern {
+    extern "system" {
         fn GetLastError() -> DWORD;
     }
 
@@ -693,22 +686,8 @@ pub fn last_os_error() -> ~str {
         use libc::types::os::arch::extra::LPVOID;
         use libc::types::os::arch::extra::WCHAR;
 
-        #[cfg(target_arch = "x86")]
         #[link_name = "kernel32"]
-        extern "stdcall" {
-            fn FormatMessageW(flags: DWORD,
-                              lpSrc: LPVOID,
-                              msgId: DWORD,
-                              langId: DWORD,
-                              buf: LPWSTR,
-                              nsize: DWORD,
-                              args: *c_void)
-                              -> DWORD;
-        }
-
-        #[cfg(target_arch = "x86_64")]
-        #[link_name = "kernel32"]
-        extern {
+        extern "system" {
             fn FormatMessageW(flags: DWORD,
                               lpSrc: LPVOID,
                               msgId: DWORD,
@@ -833,31 +812,16 @@ fn real_args() -> ~[~str] {
 
 type LPCWSTR = *u16;
 
-#[cfg(windows, target_arch = "x86")]
+#[cfg(windows)]
 #[link_name="kernel32"]
-#[abi="stdcall"]
-extern "stdcall" {
+extern "system" {
     fn GetCommandLineW() -> LPCWSTR;
     fn LocalFree(ptr: *c_void);
 }
 
-#[cfg(windows, target_arch = "x86_64")]
-#[link_name="kernel32"]
-extern {
-    fn GetCommandLineW() -> LPCWSTR;
-    fn LocalFree(ptr: *c_void);
-}
-
-#[cfg(windows, target_arch = "x86")]
+#[cfg(windows)]
 #[link_name="shell32"]
-#[abi="stdcall"]
-extern "stdcall" {
-    fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
-}
-
-#[cfg(windows, target_arch = "x86_64")]
-#[link_name="shell32"]
-extern {
+extern "system" {
     fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
 }
 
