@@ -221,6 +221,7 @@ nav, .content {
 a {
     text-decoration: none;
     color: #000;
+    background: transparent;
 }
 
 .content a, .block a.current { font-weight: bold; }

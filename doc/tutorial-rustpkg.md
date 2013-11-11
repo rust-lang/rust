@@ -27,7 +27,6 @@ $ rustc main.rs
 main.rs:1:0: 1:17 error: can't find crate for `hello`
 main.rs:1 extern mod hello;
           ^~~~~~~~~~~~~~~~~
-
 ~~~~
 
 This makes sense, as we haven't gotten it from anywhere yet!  Luckily for us,
@@ -216,7 +215,7 @@ a function that can be sensibly tested:
 #[license = "MIT"];
 
 pub fn is_even(i: uint) -> bool {
-	i % 2 == 0
+    i % 2 == 0
 }
 ~~~
 
@@ -230,9 +229,9 @@ use hello::is_even;
 
 #[test]
 fn test_is_even() {
-   assert!(is_even(0));
-   assert!(!is_even(1));
-   assert!(is_even(2));	
+    assert!(is_even(0));
+    assert!(!is_even(1));
+    assert!(is_even(2));
 }
 ~~~
 
