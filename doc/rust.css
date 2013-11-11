@@ -114,7 +114,7 @@ h5 a:link, h5 a:visited {color: black;}
 /* Code
    ========================================================================== */
 pre, code {
-	font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+	font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 	border-radius: 4px;
 }
 pre {
