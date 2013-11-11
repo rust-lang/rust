@@ -2949,7 +2949,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = if *sess.building_library {
+    let mapname = if *sess.building_library && !sess.gen_crate_map() {
         format!("{}_{}_{}", mapmeta.name, mapmeta.vers, mapmeta.extras_hash)
     } else {
         ~"toplevel"
