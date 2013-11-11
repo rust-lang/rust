@@ -65,7 +65,7 @@ the rest of the rust manuals.
 */
 
 use cmp;
-use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating};
+use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating, ToPrimitive};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
 use cmp::{Eq, Ord};
@@ -1829,7 +1829,8 @@ pub fn range<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> Range<A> {
     Range{state: start, stop: stop, one: One::one()}
 }
 
-impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
+// FIXME: #10414: Unfortunate type bound
+impl<A: Add<A, A> + Ord + Clone + ToPrimitive> Iterator<A> for Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.state < self.stop {
@@ -1841,13 +1842,42 @@ impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
         }
     }
 
-    // FIXME: #8606 Implement size_hint() on Range
-    // Blocked on #8605 Need numeric trait for converting to `Option<uint>`
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // This first checks if the elements are representable as i64. If they aren't, try u64 (to
+        // handle cases like range(huge, huger)). We don't use uint/int because the difference of
+        // the i64/u64 might lie within their range.
+        let bound = match self.state.to_i64() {
+            Some(a) => {
+                let sz = self.stop.to_i64().map(|b| b.checked_sub(&a));
+                match sz {
+                    Some(Some(bound)) => bound.to_uint(),
+                    _ => None,
+                }
+            },
+            None => match self.state.to_u64() {
+                Some(a) => {
+                    let sz = self.stop.to_u64().map(|b| b.checked_sub(&a));
+                    match sz {
+                        Some(Some(bound)) => bound.to_uint(),
+                        _ => None
+                    }
+                },
+                None => None
+            }
+        };
+
+        match bound {
+            Some(b) => (b, Some(b)),
+            // Standard fallback for unbounded/unrepresentable bounds
+            None => (0, None)
+        }
+    }
 }
 
 /// `Integer` is required to ensure the range will be the same regardless of
 /// the direction it is consumed.
-impl<A: Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
+impl<A: Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.stop > self.state {
@@ -1868,11 +1898,12 @@ pub struct RangeInclusive<A> {
 
 /// Return an iterator over the range [start, stop]
 #[inline]
-pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> RangeInclusive<A> {
+pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One + ToPrimitive>(start: A, stop: A)
+    -> RangeInclusive<A> {
     RangeInclusive{range: range(start, stop), done: false}
 }
 
-impl<A: Add<A, A> + Eq + Ord + Clone> Iterator<A> for RangeInclusive<A> {
+impl<A: Add<A, A> + Eq + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
@@ -1904,7 +1935,8 @@ impl<A: Add<A, A> + Eq + Ord + Clone> Iterator<A> for RangeInclusive<A> {
     }
 }
 
-impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclusive<A> {
+impl<A: Sub<A, A> + Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A>
+    for RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.range.stop > self.range.state {
@@ -2184,6 +2216,7 @@ mod tests {
 
     use cmp;
     use uint;
+    use num;
 
     #[test]
     fn test_counter_from_iter() {
@@ -2801,12 +2834,51 @@ mod tests {
 
     #[test]
     fn test_range() {
+        /// A mock type to check Range when ToPrimitive returns None
+        struct Foo;
+
+        impl ToPrimitive for Foo {
+            fn to_i64(&self) -> Option<i64> { None }
+            fn to_u64(&self) -> Option<u64> { None }
+        }
+
+        impl Add<Foo, Foo> for Foo {
+            fn add(&self, _: &Foo) -> Foo {
+                Foo
+            }
+        }
+
+        impl Ord for Foo {
+            fn lt(&self, _: &Foo) -> bool {
+                false
+            }
+        }
+
+        impl Clone for Foo {
+            fn clone(&self) -> Foo {
+                Foo
+            }
+        }
+
+        impl num::One for Foo {
+            fn one() -> Foo {
+                Foo
+            }
+        }
+
         assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
+        assert_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
         assert_eq!(range(0i, 5).invert().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
         assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
         assert_eq!(range(200, -5).invert().collect::<~[int]>(), ~[]);
         assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
         assert_eq!(range(200, 200).invert().collect::<~[int]>(), ~[]);
+
+        assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
+        // this test is only meaningful when sizeof uint < sizeof u64
+        assert_eq!(range(uint::max_value - 1, uint::max_value).size_hint(), (1, Some(1)));
+        assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
+        assert_eq!(range(Foo, Foo).size_hint(), (0, None));
     }
 
     #[test]
