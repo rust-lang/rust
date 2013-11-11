@@ -111,8 +111,6 @@ mod test {
     use prelude::*;
     use super::*;
     use rt::test::*;
-    use cell::Cell;
-    use task;
 
     #[test]
     fn test_io_timer_sleep_simple() {
