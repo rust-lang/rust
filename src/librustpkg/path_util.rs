@@ -462,7 +462,6 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
 
 #[cfg(target_os = "win32")]
 pub fn chmod_read_only(p: &Path) -> bool {
-    #[fixed_stack_segment];
     unsafe {
         do p.with_c_str |src_buf| {
             libc::chmod(src_buf, S_IRUSR as libc::c_int) == 0 as libc::c_int
@@ -472,7 +471,6 @@ pub fn chmod_read_only(p: &Path) -> bool {
 
 #[cfg(not(target_os = "win32"))]
 pub fn chmod_read_only(p: &Path) -> bool {
-    #[fixed_stack_segment];
     unsafe {
         do p.with_c_str |src_buf| {
             libc::chmod(src_buf, S_IRUSR as libc::mode_t) == 0

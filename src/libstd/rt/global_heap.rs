@@ -14,7 +14,6 @@ use unstable::raw;
 use mem::size_of;
 
 extern {
-    #[rust_stack]
     fn abort();
 }
 
@@ -36,8 +35,6 @@ fn align_to(size: uint, align: uint) -> uint {
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 pub unsafe fn malloc_raw(size: uint) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     let p = malloc(size as size_t);
     if p.is_null() {
         // we need a non-allocating way to print an error here
@@ -48,8 +45,6 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 
 /// A wrapper around libc::realloc, aborting on out-of-memory
 pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     let p = realloc(ptr, size as size_t);
     if p.is_null() {
         // we need a non-allocating way to print an error here
@@ -100,8 +95,6 @@ pub unsafe fn exchange_free_(ptr: *c_char) {
 }
 
 pub unsafe fn exchange_free(ptr: *c_char) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     free(ptr as *c_void);
 }
 

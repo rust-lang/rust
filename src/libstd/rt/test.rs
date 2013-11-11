@@ -143,8 +143,6 @@ mod darwin_fd_limit {
     static RLIMIT_NOFILE: libc::c_int = 8;
 
     pub unsafe fn raise_fd_limit() {
-        #[fixed_stack_segment]; #[inline(never)];
-
         // The strategy here is to fetch the current resource limits, read the kern.maxfilesperproc
         // sysctl value, and bump the soft resource limit for maxfiles up to the sysctl value.
         use ptr::{to_unsafe_ptr, to_mut_unsafe_ptr, mut_null};
@@ -362,7 +360,6 @@ pub fn cleanup_task(mut task: ~Task) {
 }
 
 /// Get a port number, starting at 9600, for use in tests
-#[fixed_stack_segment] #[inline(never)]
 pub fn next_test_port() -> u16 {
     unsafe {
         return rust_dbg_next_port(base_port() as libc::uintptr_t) as u16;
@@ -373,7 +370,6 @@ pub fn next_test_port() -> u16 {
 }
 
 /// Get a temporary path which could be the location of a unix socket
-#[fixed_stack_segment] #[inline(never)]
 pub fn next_test_unix() -> Path {
     if cfg!(unix) {
         os::tmpdir().join(rand::task_rng().gen_ascii_str(20))

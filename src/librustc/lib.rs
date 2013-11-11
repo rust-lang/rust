@@ -19,11 +19,8 @@
 #[crate_type = "lib"];
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-
-// Rustc tasks always run on a fixed_stack_segment, so code in this
-// module can call C functions (in particular, LLVM functions) with
-// impunity.
-#[allow(cstack)];
+#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
+#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 extern mod extra;
 extern mod syntax;
@@ -81,7 +78,6 @@ pub mod middle {
     pub mod reachable;
     pub mod graph;
     pub mod cfg;
-    pub mod stack_check;
 }
 
 pub mod front {

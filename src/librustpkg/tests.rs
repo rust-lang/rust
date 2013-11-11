@@ -2319,7 +2319,7 @@ fn test_c_dependency_ok() {
     let dir = dir.path();
     writeFile(&dir.join_many(["src", "cdep-0.1", "main.rs"]),
               "#[link_args = \"-lfoo\"]\nextern { fn f(); } \
-              \n#[fixed_stack_segment]\nfn main() { unsafe { f(); } }");
+              \nfn main() { unsafe { f(); } }");
     writeFile(&dir.join_many(["src", "cdep-0.1", "foo.c"]), "void f() {}");
 
     debug!("dir = {}", dir.display());
@@ -2340,7 +2340,7 @@ fn test_c_dependency_no_rebuilding() {
     let dir = dir.path();
     writeFile(&dir.join_many(["src", "cdep-0.1", "main.rs"]),
               "#[link_args = \"-lfoo\"]\nextern { fn f(); } \
-              \n#[fixed_stack_segment]\nfn main() { unsafe { f(); } }");
+              \nfn main() { unsafe { f(); } }");
     writeFile(&dir.join_many(["src", "cdep-0.1", "foo.c"]), "void f() {}");
 
     debug!("dir = {}", dir.display());
@@ -2371,7 +2371,7 @@ fn test_c_dependency_yes_rebuilding() {
     let dir = dir.path();
     writeFile(&dir.join_many(["src", "cdep-0.1", "main.rs"]),
               "#[link_args = \"-lfoo\"]\nextern { fn f(); } \
-              \n#[fixed_stack_segment]\nfn main() { unsafe { f(); } }");
+              \nfn main() { unsafe { f(); } }");
     let c_file_name = dir.join_many(["src", "cdep-0.1", "foo.c"]);
     writeFile(&c_file_name, "void f() {}");
 

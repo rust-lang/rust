@@ -22,7 +22,6 @@ unsafe fn check<T>(expected: &str, f: &fn(*mut c_char) -> T) {
     assert_eq!(expected, res.as_str().unwrap());
 }
 
-#[fixed_stack_segment]
 pub fn main() {
 
     unsafe {
@@ -43,8 +42,6 @@ pub fn main() {
 
         // A function that takes a function pointer
         unsafe fn call(p: extern "C" unsafe fn(*mut c_char, *c_char, ...) -> c_int) {
-            #[fixed_stack_segment];
-
             // Call with just the named parameter via fn pointer
             do "Hello World\n".with_c_str |c| {
                 check("Hello World\n", |s| p(s, c));

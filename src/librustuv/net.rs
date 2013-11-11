@@ -35,7 +35,6 @@ use uvll::sockaddr;
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
 
-#[fixed_stack_segment]
 fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: &fn(*sockaddr) -> T) -> T {
     let malloc = match addr.ip {
         Ipv4Addr(*) => uvll::rust_malloc_ip4_addr,
@@ -51,7 +50,6 @@ fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: &fn(*sockaddr) -> T) -> T {
     }
 }
 
-#[fixed_stack_segment]
 pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
     unsafe {
         let ip_size = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
@@ -112,7 +110,6 @@ enum SocketNameKind {
     Udp
 }
 
-#[fixed_stack_segment]
 fn socket_name(sk: SocketNameKind, handle: *c_void) -> Result<SocketAddr, IoError> {
     unsafe {
         let getsockname = match sk {

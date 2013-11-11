@@ -98,7 +98,6 @@ impl FileDesc {
 }
 
 impl Reader for FileDesc {
-    #[fixed_stack_segment] #[inline(never)]
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         #[cfg(windows)] type rlen = libc::c_uint;
         #[cfg(not(windows))] type rlen = libc::size_t;
@@ -121,7 +120,6 @@ impl Reader for FileDesc {
 }
 
 impl Writer for FileDesc {
-    #[fixed_stack_segment] #[inline(never)]
     fn write(&mut self, buf: &[u8]) {
         #[cfg(windows)] type wlen = libc::c_uint;
         #[cfg(not(windows))] type wlen = libc::size_t;
@@ -137,7 +135,6 @@ impl Writer for FileDesc {
 }
 
 impl Drop for FileDesc {
-    #[fixed_stack_segment] #[inline(never)]
     fn drop(&mut self) {
         if self.close_on_drop {
             unsafe { libc::close(self.fd); }
@@ -158,7 +155,6 @@ impl CFile {
 }
 
 impl Reader for CFile {
-    #[fixed_stack_segment] #[inline(never)]
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let ret = do keep_going(buf) |buf, len| {
             unsafe {
@@ -176,14 +172,12 @@ impl Reader for CFile {
         }
     }
 
-    #[fixed_stack_segment] #[inline(never)]
     fn eof(&mut self) -> bool {
         unsafe { libc::feof(self.file) != 0 }
     }
 }
 
 impl Writer for CFile {
-    #[fixed_stack_segment] #[inline(never)]
     fn write(&mut self, buf: &[u8]) {
         let ret = do keep_going(buf) |buf, len| {
             unsafe {
@@ -196,7 +190,6 @@ impl Writer for CFile {
         }
     }
 
-    #[fixed_stack_segment] #[inline(never)]
     fn flush(&mut self) {
         if unsafe { libc::fflush(self.file) } < 0 {
             raise_error();
@@ -205,7 +198,6 @@ impl Writer for CFile {
 }
 
 impl Seek for CFile {
-    #[fixed_stack_segment] #[inline(never)]
     fn tell(&self) -> u64 {
         let ret = unsafe { libc::ftell(self.file) };
         if ret < 0 {
@@ -214,7 +206,6 @@ impl Seek for CFile {
         return ret as u64;
     }
 
-    #[fixed_stack_segment] #[inline(never)]
     fn seek(&mut self, pos: i64, style: SeekStyle) {
         let whence = match style {
             SeekSet => libc::SEEK_SET,
@@ -228,7 +219,6 @@ impl Seek for CFile {
 }
 
 impl Drop for CFile {
-    #[fixed_stack_segment] #[inline(never)]
     fn drop(&mut self) {
         unsafe { libc::fclose(self.file); }
     }
@@ -242,7 +232,6 @@ mod tests {
     use rt::io::{io_error, SeekSet};
     use super::*;
 
-    #[test] #[fixed_stack_segment]
     #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with
@@ -278,7 +267,6 @@ mod tests {
         }
     }
 
-    #[test] #[fixed_stack_segment]
     #[ignore(cfg(windows))] // apparently windows doesn't like tmpfile
     fn test_cfile() {
         unsafe {
@@ -358,7 +346,6 @@ mod old_os {
     #[cfg(unix)]
     /// Indicates whether a path represents a directory
     pub fn path_is_dir(p: &Path) -> bool {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do p.with_c_str |buf| {
                 rustrt::rust_path_is_dir(buf) != 0 as c_int
@@ -369,7 +356,6 @@ mod old_os {
 
     #[cfg(windows)]
     pub fn path_is_dir(p: &Path) -> bool {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do os::win32::as_utf16_p(p.as_str().unwrap()) |buf| {
                 rustrt::rust_path_is_dir_u16(buf) != 0 as c_int
@@ -380,7 +366,6 @@ mod old_os {
     #[cfg(unix)]
     /// Indicates whether a path exists
     pub fn path_exists(p: &Path) -> bool {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do p.with_c_str |buf| {
                 rustrt::rust_path_exists(buf) != 0 as c_int
@@ -390,7 +375,6 @@ mod old_os {
 
     #[cfg(windows)]
     pub fn path_exists(p: &Path) -> bool {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do os::win32::as_utf16_p(p.as_str().unwrap()) |buf| {
                 rustrt::rust_path_exists_u16(buf) != 0 as c_int
@@ -404,7 +388,6 @@ mod old_os {
 
         #[cfg(windows)]
         fn mkdir(p: &Path, _mode: c_int) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 use os::win32::as_utf16_p;
                 // FIXME: turn mode into something useful? #2623
@@ -417,7 +400,6 @@ mod old_os {
 
         #[cfg(unix)]
         fn mkdir(p: &Path, mode: c_int) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             do p.with_c_str |buf| {
                 unsafe {
                     libc::mkdir(buf, mode as libc::mode_t) == (0 as c_int)
@@ -457,7 +439,6 @@ mod old_os {
             #[cfg(target_os = "freebsd")]
             #[cfg(target_os = "macos")]
             unsafe fn get_list(p: &Path) -> ~[Path] {
-                #[fixed_stack_segment]; #[inline(never)];
                 use libc::{dirent_t};
                 use libc::{opendir, readdir, closedir};
                 extern {
@@ -488,7 +469,6 @@ mod old_os {
             }
             #[cfg(windows)]
             unsafe fn get_list(p: &Path) -> ~[Path] {
-                #[fixed_stack_segment]; #[inline(never)];
                 use libc::consts::os::extra::INVALID_HANDLE_VALUE;
                 use libc::{wcslen, free};
                 use libc::funcs::extra::kernel32::{
@@ -568,7 +548,6 @@ mod old_os {
 
         #[cfg(windows)]
         fn rmdir(p: &Path) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 use os::win32::as_utf16_p;
                 return do as_utf16_p(p.as_str().unwrap()) |buf| {
@@ -579,7 +558,6 @@ mod old_os {
 
         #[cfg(unix)]
         fn rmdir(p: &Path) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             do p.with_c_str |buf| {
                 unsafe {
                     libc::rmdir(buf) == (0 as c_int)
@@ -594,7 +572,6 @@ mod old_os {
 
         #[cfg(windows)]
         fn unlink(p: &Path) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 use os::win32::as_utf16_p;
                 return do as_utf16_p(p.as_str().unwrap()) |buf| {
@@ -605,7 +582,6 @@ mod old_os {
 
         #[cfg(unix)]
         fn unlink(p: &Path) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 do p.with_c_str |buf| {
                     libc::unlink(buf) == (0 as c_int)
@@ -616,7 +592,6 @@ mod old_os {
 
     /// Renames an existing file or directory
     pub fn rename_file(old: &Path, new: &Path) -> bool {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
            do old.with_c_str |old_buf| {
                 do new.with_c_str |new_buf| {
@@ -632,7 +607,6 @@ mod old_os {
 
         #[cfg(windows)]
         fn do_copy_file(from: &Path, to: &Path) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 use os::win32::as_utf16_p;
                 return do as_utf16_p(from.as_str().unwrap()) |fromp| {
@@ -646,7 +620,6 @@ mod old_os {
 
         #[cfg(unix)]
         fn do_copy_file(from: &Path, to: &Path) -> bool {
-            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 let istream = do from.with_c_str |fromp| {
                     do "rb".with_c_str |modebuf| {

@@ -10,7 +10,6 @@
 
 // Exercise the unused_unsafe attribute in some positive and negative cases
 
-#[allow(cstack)];
 #[deny(unused_unsafe)];
 
 mod foo {

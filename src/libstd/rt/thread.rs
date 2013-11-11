@@ -68,8 +68,6 @@ impl Thread {
 #[cfg(windows)]
 fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_thread_return,
                         tramp: ~~fn()) -> rust_thread {
-    #[fixed_stack_segment];
-
     unsafe {
         let ptr: *mut libc::c_void = cast::transmute(tramp);
         CreateThread(ptr::mut_null(), DEFAULT_STACK_SIZE, thread_start, ptr, 0, ptr::mut_null())
@@ -78,7 +76,6 @@ fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_threa
 
 #[cfg(windows)]
 fn native_thread_join(native: rust_thread) {
-    #[fixed_stack_segment];
     use libc::consts::os::extra::INFINITE;
     unsafe { WaitForSingleObject(native, INFINITE); }
 }
@@ -86,8 +83,6 @@ fn native_thread_join(native: rust_thread) {
 #[cfg(unix)]
 fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_thread_return,
                         tramp: ~~fn()) -> rust_thread {
-    #[fixed_stack_segment];
-
     use unstable::intrinsics;
     let mut native: libc::pthread_t = unsafe { intrinsics::uninit() };
 
@@ -107,13 +102,11 @@ fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_threa
 
 #[cfg(unix)]
 fn native_thread_join(native: rust_thread) {
-    #[fixed_stack_segment];
     unsafe { assert!(pthread_join(native, ptr::null()) == 0) }
 }
 
 impl Drop for Thread {
     fn drop(&mut self) {
-        #[fixed_stack_segment]; #[inline(never)];
         assert!(self.joined);
     }
 }
