@@ -11,7 +11,7 @@
 // xfail-fast
 
 use std::{os, run};
-use std::rt::io::process;
+use std::io::process;
 
 fn main() {
     let args = os::args();

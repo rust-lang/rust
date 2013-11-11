@@ -15,8 +15,8 @@ use std::cast;
 use std::libc::{c_int, c_char, c_void, size_t};
 use std::libc;
 use std::rt::BlockedTask;
-use std::rt::io::{FileStat, IoError};
-use std::rt::io;
+use std::io::{FileStat, IoError};
+use std::io;
 use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::sched::{Scheduler, SchedHandle};
@@ -450,7 +450,7 @@ impl rtio::RtioFileStream for FileWatcher {
 mod test {
     use std::libc::c_int;
     use std::libc::{O_CREAT, O_RDWR, O_RDONLY, S_IWUSR, S_IRUSR};
-    use std::rt::io;
+    use std::io;
     use std::str;
     use std::vec;
     use super::*;

@@ -24,8 +24,8 @@
  */
 
 use std::{os, path};
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use std::path::is_sep;
 
 use sort;

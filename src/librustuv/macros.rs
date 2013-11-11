@@ -33,8 +33,8 @@ macro_rules! get_handle_to_current_scheduler(
 )
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use std::rt::io::native::stdio::stderr;
-    use std::rt::io::Writer;
+    use std::io::native::stdio::stderr;
+    use std::io::Writer;
 
     let mut out = stderr();
     fmt::writeln(&mut out as &mut Writer, args);

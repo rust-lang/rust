@@ -68,8 +68,8 @@ pub fn default_sched_threads() -> uint {
 }
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use rt::io::native::stdio::stderr;
-    use rt::io::{Writer, io_error, ResourceUnavailable};
+    use io::native::stdio::stderr;
+    use io::{Writer, io_error, ResourceUnavailable};
     use rt::task::Task;
     use rt::local::Local;
 

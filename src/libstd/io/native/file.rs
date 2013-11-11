@@ -229,7 +229,7 @@ mod tests {
     use libc;
     use os;
     use prelude::*;
-    use rt::io::{io_error, SeekSet};
+    use io::{io_error, SeekSet};
     use super::*;
 
     #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
@@ -714,8 +714,8 @@ mod old_os {
 
     #[test]
     fn test_path_is_dir() {
-        use rt::io::fs::{mkdir_recursive};
-        use rt::io::{File, UserRWX};
+        use io::fs::{mkdir_recursive};
+        use io::{File, UserRWX};
 
         assert!((path_is_dir(&Path::new("."))));
         assert!((!path_is_dir(&Path::new("test/stdtest/fs.rs"))));
@@ -742,8 +742,8 @@ mod old_os {
 
     #[test]
     fn test_path_exists() {
-        use rt::io::fs::mkdir_recursive;
-        use rt::io::UserRWX;
+        use io::fs::mkdir_recursive;
+        use io::UserRWX;
 
         assert!((path_exists(&Path::new("."))));
         assert!((!path_exists(&Path::new(

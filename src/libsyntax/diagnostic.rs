@@ -11,7 +11,7 @@
 use codemap::{Pos, Span};
 use codemap;
 
-use std::rt::io;
+use std::io;
 use std::local_data;
 use extra::term;
 

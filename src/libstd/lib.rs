@@ -21,7 +21,7 @@
 //! boxes (`owned`), and unsafe and borrowed pointers (`ptr`, `borrowed`).
 //! Additionally, `std` provides pervasive types (`option` and `result`),
 //! task creation and communication primitives (`task`, `comm`), platform
-//! abstractions (`os` and `path`), basic I/O abstractions (`rt::io`), common
+//! abstractions (`os` and `path`), basic I/O abstractions (`io`), common
 //! traits (`kinds`, `ops`, `cmp`, `num`, `to_str`), and complete bindings
 //! to the C standard library (`libc`).
 //!
@@ -68,7 +68,7 @@
 #[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
-// things and all of the std::rt::io tests have an I/O interface to run on top
+// things and all of the std::io tests have an I/O interface to run on top
 // of
 #[cfg(test)] extern mod rustuv(vers = "0.9-pre");
 
@@ -179,6 +179,7 @@ pub mod local_data;
 pub mod libc;
 pub mod c_str;
 pub mod os;
+pub mod io;
 pub mod path;
 pub mod rand;
 pub mod run;
@@ -225,6 +226,7 @@ mod std {
     pub use logging;
     pub use option;
     pub use os;
+    pub use io;
     pub use rt;
     pub use str;
     pub use to_bytes;

@@ -97,7 +97,7 @@ pub mod reader {
     use std::cast::transmute;
     use std::int;
     use std::option::{None, Option, Some};
-    use std::rt::io::extensions::u64_from_be_bytes;
+    use std::io::extensions::u64_from_be_bytes;
 
     // ebml reading
 
@@ -608,10 +608,10 @@ pub mod writer {
 
     use std::cast;
     use std::clone::Clone;
-    use std::rt::io;
-    use std::rt::io::{Writer, Seek};
-    use std::rt::io::mem::MemWriter;
-    use std::rt::io::extensions::u64_to_be_bytes;
+    use std::io;
+    use std::io::{Writer, Seek};
+    use std::io::mem::MemWriter;
+    use std::io::extensions::u64_to_be_bytes;
 
     // ebml writing
     pub struct Encoder {
@@ -961,8 +961,8 @@ mod tests {
     use serialize::Encodable;
     use serialize;
 
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
     use std::option::{None, Option, Some};
 
     #[test]

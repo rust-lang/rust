@@ -10,8 +10,8 @@
 
 use std::libc;
 use std::os;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;

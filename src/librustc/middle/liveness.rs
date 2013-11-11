@@ -111,7 +111,7 @@ use middle::moves;
 
 use std::cast::transmute;
 use std::hashmap::HashMap;
-use std::rt::io;
+use std::io;
 use std::str;
 use std::to_str;
 use std::uint;

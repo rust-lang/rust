@@ -25,7 +25,7 @@ use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
 use std::cast;
-use std::rt::io;
+use std::io;
 use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};

@@ -19,9 +19,10 @@ getaddrinfo()
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::{io_error};
-use rt::io::net::ip::{SocketAddr, IpAddr};
+use io::{io_error};
+use io::net::ip::{SocketAddr, IpAddr};
 use rt::rtio::{IoFactory, with_local_io};
+use vec::ImmutableVector;
 
 /// Hints to the types of sockets that are desired when looking up hosts
 pub enum SocketType {
@@ -110,7 +111,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>,
 #[cfg(test)]
 mod test {
     use option::Some;
-    use rt::io::net::ip::Ipv4Addr;
+    use io::net::ip::Ipv4Addr;
     use super::*;
 
     #[test]

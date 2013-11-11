@@ -12,11 +12,11 @@
 
 use context::{BuildContext, Context, RustcFlags};
 use std::{os, run, str, task};
-use std::rt::io;
-use std::rt::io::fs;
-use std::rt::io::File;
-use std::rt::io::process;
-use std::rt::io::process::ProcessExit;
+use std::io;
+use std::io::fs;
+use std::io::File;
+use std::io::process;
+use std::io::process::ProcessExit;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;

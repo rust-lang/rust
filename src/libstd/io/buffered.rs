@@ -349,6 +349,7 @@ impl<S: Stream> Decorator<S> for BufferedStream<S> {
 mod test {
     use prelude::*;
     use super::*;
+    use io;
     use super::super::mem::{MemReader, MemWriter};
 
     #[test]
@@ -427,11 +428,11 @@ mod test {
         use rt;
         struct S;
 
-        impl rt::io::Writer for S {
+        impl io::Writer for S {
             fn write(&mut self, _: &[u8]) {}
         }
 
-        impl rt::io::Reader for S {
+        impl io::Reader for S {
             fn read(&mut self, _: &mut [u8]) -> Option<uint> { None }
             fn eof(&mut self) -> bool { true }
         }

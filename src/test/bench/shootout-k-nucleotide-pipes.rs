@@ -22,7 +22,7 @@ use std::comm;
 use std::hashmap::HashMap;
 use std::option;
 use std::os;
-use std::rt::io;
+use std::io;
 use std::str;
 use std::task;
 use std::util;
@@ -153,10 +153,10 @@ fn make_sequence_processor(sz: uint,
 
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
-    use std::rt::io::Reader;
-    use std::rt::io::native::stdio;
-    use std::rt::io::mem::MemReader;
-    use std::rt::io::buffered::BufferedReader;
+    use std::io::Reader;
+    use std::io::native::stdio;
+    use std::io::mem::MemReader;
+    use std::io::buffered::BufferedReader;
 
     let rdr = if os::getenv("RUST_BENCH").is_some() {
         let foo = include_bin!("shootout-k-nucleotide.data");
