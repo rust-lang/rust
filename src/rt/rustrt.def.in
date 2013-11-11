@@ -37,6 +37,7 @@ rust_dbg_do_nothing
 rust_create_little_lock
 rust_destroy_little_lock
 rust_lock_little_lock
+rust_trylock_little_lock
 rust_unlock_little_lock
 rust_signal_little_lock
 rust_wait_little_lock
