@@ -29,9 +29,9 @@ use print::pprust;
 
 use std::char;
 use std::str;
-use std::rt::io;
-use std::rt::io::Decorator;
-use std::rt::io::mem::MemWriter;
+use std::io;
+use std::io::Decorator;
+use std::io::mem::MemWriter;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {

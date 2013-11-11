@@ -116,8 +116,10 @@ mod kill;
 /// The coroutine task scheduler, built on the `io` event loop.
 pub mod sched;
 
-/// Synchronous I/O.
-pub mod io;
+#[cfg(stage0)]
+pub mod io {
+    pub use io::stdio;
+}
 
 /// The EventLoop and internal synchronous I/O interface.
 pub mod rtio;

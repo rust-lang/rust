@@ -388,7 +388,7 @@ pub fn self_exe_path() -> Option<Path> {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     fn load_self() -> Option<~[u8]> {
-        use std::rt::io;
+        use std::io;
 
         match io::result(|| io::fs::readlink(&Path::new("/proc/self/exe"))) {
             Ok(Some(path)) => Some(path.as_vec().to_owned()),
@@ -1447,8 +1447,8 @@ mod tests {
         use result::{Ok, Err};
         use os::*;
         use libc::*;
-        use rt::io;
-        use rt::io::fs;
+        use io;
+        use io::fs;
 
         #[cfg(unix)]
         fn lseek_(fd: c_int, size: uint) {

@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc;
-use option::*;
-use result::*;
+use c_str::CString;
 use comm::{SharedChan, PortOne, Port};
 use libc::c_int;
-use c_str::CString;
-
-use ai = rt::io::net::addrinfo;
-use rt::io::IoError;
-use rt::io::signal::Signum;
-use super::io::process::{ProcessConfig, ProcessExit};
-use super::io::net::ip::{IpAddr, SocketAddr};
+use libc;
+use option::*;
 use path::Path;
-use super::io::{SeekStyle};
-use super::io::{FileMode, FileAccess, FileStat, FilePermission};
+use result::*;
+
+use ai = io::net::addrinfo;
+use io::IoError;
+use io::net::ip::{IpAddr, SocketAddr};
+use io::process::{ProcessConfig, ProcessExit};
+use io::signal::Signum;
+use io::{FileMode, FileAccess, FileStat, FilePermission};
+use io::{SeekStyle};
 
 pub trait Callback {
     fn call(&mut self);
@@ -78,7 +78,7 @@ pub enum CloseBehavior {
 pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
     use rt::sched::Scheduler;
     use rt::local::Local;
-    use rt::io::{io_error, standard_error, IoUnavailable};
+    use io::{io_error, standard_error, IoUnavailable};
 
     unsafe {
         let sched: *mut Scheduler = Local::unsafe_borrow();

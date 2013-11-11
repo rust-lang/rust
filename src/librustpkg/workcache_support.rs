@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 use extra::workcache;
 use sha1::{Digest, Sha1};
 

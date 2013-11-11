@@ -17,7 +17,7 @@ At the top-level of the module are a set of freestanding functions, associated
 with various filesystem operations. They all operate on a `Path` object.
 
 All operations in this module, including those as part of `File` et al
-block the task during execution. Most will raise `std::rt::io::io_error`
+block the task during execution. Most will raise `std::io::io_error`
 conditions in the event of failure.
 
 Also included in this module is an implementation block on the `Path` object
@@ -27,7 +27,7 @@ particular bits of it, etc.
 
 # Example
 
-    use std::rt::io::{File, fs};
+    use std::io::{File, fs};
 
     let path = Path::new("foo.txt");
 
@@ -46,17 +46,18 @@ particular bits of it, etc.
 */
 
 use c_str::ToCStr;
+use clone::Clone;
 use iter::Iterator;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
             FileMode, FileAccess, FileStat, io_error, FilePermission};
 use rt::rtio::{RtioFileStream, IoFactory, with_local_io};
-use rt::io;
+use io;
 use option::{Some, None, Option};
 use result::{Ok, Err, Result};
 use path;
 use path::{Path, GenericPath};
-use vec::OwnedVector;
+use vec::{OwnedVector, ImmutableVector};
 
 /// Unconstrained file access type that exposes read and write operations
 ///
@@ -92,7 +93,7 @@ impl File {
     ///
     /// # Example
     ///
-    ///     use std::rt::io::{File, io_error, Open, ReadWrite};
+    ///     use std::io::{File, io_error, Open, ReadWrite};
     ///
     ///     let p = Path::new("/some/file/path.txt");
     ///
@@ -111,7 +112,7 @@ impl File {
     ///
     /// `FileMode` and `FileAccess` provide information about the permissions
     /// context in which a given stream is created. More information about them
-    /// can be found in `std::rt::io`'s docs. If a file is opened with `Write`
+    /// can be found in `std::io`'s docs. If a file is opened with `Write`
     /// or `ReadWrite` access, then it will be created it it does not already
     /// exist.
     ///
@@ -154,7 +155,7 @@ impl File {
     ///
     /// # Example
     ///
-    ///     use std::rt::io::File;
+    ///     use std::io::File;
     ///
     ///     let contents = File::open(&Path::new("foo.txt")).read_to_end();
     pub fn open(path: &Path) -> Option<File> {
@@ -169,7 +170,7 @@ impl File {
     ///
     /// # Example
     ///
-    ///     use std::rt::io::File;
+    ///     use std::io::File;
     ///
     ///     let mut f = File::create(&Path::new("foo.txt"));
     ///     f.write(bytes!("This is a sample file"));
@@ -226,7 +227,7 @@ impl File {
 ///
 /// # Example
 ///
-///     use std::rt::io::fs;
+///     use std::io::fs;
 ///
 ///     let p = Path::new("/some/file/path.txt");
 ///     fs::unlink(&p);
@@ -256,8 +257,8 @@ pub fn unlink(path: &Path) {
 ///
 /// # Example
 ///
-///     use std::rt::io;
-///     use std::rt::io::fs;
+///     use std::io;
+///     use std::io::fs;
 ///
 ///     let p = Path::new("/some/file/path.txt");
 ///     match io::result(|| fs::stat(&p)) {
@@ -318,7 +319,7 @@ pub fn lstat(path: &Path) -> FileStat {
 ///
 /// # Example
 ///
-///     use std::rt::io::fs;
+///     use std::io::fs;
 ///
 ///     fs::rename(&Path::new("foo"), &Path::new("bar"));
 ///     // Oh boy, nothing was raised!
@@ -342,7 +343,7 @@ pub fn rename(from: &Path, to: &Path) {
 ///
 /// # Example
 ///
-///     use std::rt::io::fs;
+///     use std::io::fs;
 ///
 ///     fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
 ///     // Oh boy, nothing was raised!
@@ -388,8 +389,8 @@ pub fn copy(from: &Path, to: &Path) {
 ///
 /// # Example
 ///
-///     use std::rt::io;
-///     use std::rt::io::fs;
+///     use std::io;
+///     use std::io::fs;
 ///
 ///     fs::chmod(&Path::new("file.txt"), io::UserFile);
 ///     fs::chmod(&Path::new("file.txt"), io::UserRead | io::UserWrite);
@@ -453,7 +454,7 @@ pub fn readlink(path: &Path) -> Option<Path> {
 /// # Example
 ///
 ///     use std::libc::S_IRWXU;
-///     use std::rt::io::fs;
+///     use std::io::fs;
 ///
 ///     let p = Path::new("/some/dir");
 ///     fs::mkdir(&p, S_IRWXU as int);
@@ -474,7 +475,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) {
 ///
 /// # Example
 ///
-///     use std::rt::io::fs;
+///     use std::io::fs;
 ///
 ///     let p = Path::new("/some/dir");
 ///     fs::rmdir(&p);
@@ -495,7 +496,7 @@ pub fn rmdir(path: &Path) {
 ///
 /// # Example
 ///
-///     use std::rt::io::fs;
+///     use std::io::fs;
 ///
 ///     // one possible implementation of fs::walk_dir only visiting files
 ///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
@@ -716,8 +717,8 @@ impl path::Path {
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use rt::io::{SeekSet, SeekCur, SeekEnd, io_error, Read, Open, ReadWrite};
-    use rt::io;
+    use io::{SeekSet, SeekCur, SeekEnd, io_error, Read, Open, ReadWrite};
+    use io;
     use str;
     use super::{File, rmdir, mkdir, readdir, rmdir_recursive, mkdir_recursive,
                 copy, unlink, stat, symlink, link, readlink, chmod,

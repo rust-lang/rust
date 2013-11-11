@@ -18,7 +18,7 @@ about the stream or terminal that it is attached to.
 # Example
 
 ```rust
-use std::rt::io;
+use std::io;
 
 let mut out = io::stdout();
 out.write(bytes!("Hello, world!"));
@@ -30,7 +30,7 @@ use fmt;
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::buffered::LineBufferedWriter;
+use io::buffered::LineBufferedWriter;
 use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io,
                CloseAsynchronously};
 use super::{Reader, Writer, io_error, IoError, OtherIoError,

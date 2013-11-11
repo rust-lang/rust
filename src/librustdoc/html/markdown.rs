@@ -24,7 +24,7 @@
 
 use std::fmt;
 use std::libc;
-use std::rt::io;
+use std::io;
 use std::vec;
 
 /// A unit struct which has the `fmt::Default` trait implemented. When

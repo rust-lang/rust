@@ -13,21 +13,21 @@ use std::comm::SharedChan;
 use std::libc::c_int;
 use std::libc;
 use std::path::Path;
-use std::rt::io::IoError;
-use std::rt::io::net::ip::SocketAddr;
-use std::rt::io::process::ProcessConfig;
-use std::rt::io;
+use std::io::IoError;
+use std::io::net::ip::SocketAddr;
+use std::io::process::ProcessConfig;
+use std::io;
 use std::rt::local::Local;
 use std::rt::rtio::*;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::task::Task;
 use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
                 S_IRUSR, S_IWUSR};
-use std::rt::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
+use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
                   ReadWrite, FileStat};
-use std::rt::io::signal::Signum;
+use std::io::signal::Signum;
 use std::util;
-use ai = std::rt::io::net::addrinfo;
+use ai = std::io::net::addrinfo;
 
 #[cfg(test)] use std::unstable::run_in_bare_thread;
 

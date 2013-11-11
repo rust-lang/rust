@@ -19,12 +19,13 @@ definitions for a number of signals.
 
 */
 
-use container::{Map, MutableMap};
+use clone::Clone;
 use comm::{Port, SharedChan, stream};
+use container::{Map, MutableMap};
 use hashmap;
+use io::io_error;
 use option::{Some, None};
 use result::{Err, Ok};
-use rt::io::io_error;
 use rt::rtio::{IoFactory, RtioSignal, with_local_io};
 
 #[repr(int)]
@@ -61,7 +62,7 @@ pub enum Signum {
 /// # Example
 ///
 /// ```rust
-/// use std::rt::io::signal::{Listener, Interrupt};
+/// use std::io::signal::{Listener, Interrupt};
 ///
 /// let mut listener = Listener::new();
 /// listener.register(signal::Interrupt);
@@ -148,7 +149,7 @@ impl Listener {
 #[cfg(test)]
 mod test {
     use libc;
-    use rt::io::timer;
+    use io::timer;
     use super::{Listener, Interrupt};
     use comm::{GenericPort, Peekable};
 
@@ -207,7 +208,7 @@ mod test {
     #[cfg(windows)]
     #[test]
     fn test_io_signal_invalid_signum() {
-        use rt::io;
+        use io;
         use super::User1;
         let mut s = Listener::new();
         let mut called = false;

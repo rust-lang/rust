@@ -11,7 +11,7 @@
 use std::os;
 use std::run;
 use std::str;
-use std::rt::io::process::ProcessExit;
+use std::io::process::ProcessExit;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {

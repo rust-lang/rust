@@ -19,7 +19,7 @@ and create ports which will receive notifications after a period of time.
 
 ```rust
 
-use std::rt::io::Timer;
+use std::io::Timer;
 
 let mut timer = Timer::new().unwrap();
 timer.sleep(10); // block the task for awhile
@@ -41,7 +41,7 @@ loop {
 use comm::{Port, PortOne};
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::io_error;
+use io::io_error;
 use rt::rtio::{IoFactory, RtioTimer, with_local_io};
 
 pub struct Timer {
@@ -64,7 +64,7 @@ impl Timer {
             match io.timer_init() {
                 Ok(t) => Some(Timer { obj: t }),
                 Err(ioerr) => {
-                    rtdebug!("Timer::init: failed to init: {:?}", ioerr);
+                    debug!("Timer::init: failed to init: {:?}", ioerr);
                     io_error::cond.raise(ioerr);
                     None
                 }

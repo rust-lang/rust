@@ -13,7 +13,7 @@
 use sort;
 use std::cmp;
 use std::hashmap;
-use std::rt::io;
+use std::io;
 use std::num;
 
 // NB: this can probably be rewritten in terms of num::Num
@@ -388,7 +388,7 @@ mod tests {
     use stats::Summary;
     use stats::write_5_number_summary;
     use stats::write_boxplot;
-    use std::rt::io;
+    use std::io;
     use std::str;
 
     fn check(samples: &[f64], summ: &Summary) {
@@ -942,8 +942,8 @@ mod tests {
     #[test]
     fn test_boxplot_nonpositive() {
         fn t(s: &Summary, expected: ~str) {
-            use std::rt::io::mem::MemWriter;
-            use std::rt::io::Decorator;
+            use std::io::mem::MemWriter;
+            use std::io::Decorator;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30);
             let out = str::from_utf8_owned(m.inner());

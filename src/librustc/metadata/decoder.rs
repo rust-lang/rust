@@ -27,8 +27,8 @@ use middle::astencode::vtable_decoder_helpers;
 
 use std::at_vec;
 use std::u64;
-use std::rt::io;
-use std::rt::io::extensions::u64_from_be_bytes;
+use std::io;
+use std::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::str;
 use std::vec;

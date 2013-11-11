@@ -14,13 +14,13 @@
 
 use cell::Cell;
 use comm::{stream, SharedChan};
+use io::Reader;
+use io::process::ProcessExit;
+use io::process;
+use io;
 use libc::{pid_t, c_int};
 use libc;
 use prelude::*;
-use rt::io::process;
-use rt::io::process::ProcessExit;
-use rt::io;
-use rt::io::Reader;
 use task;
 
 /**
@@ -335,8 +335,8 @@ mod tests {
     use str;
     use task::spawn;
     use unstable::running_on_valgrind;
-    use rt::io::native::file;
-    use rt::io::{Writer, Reader};
+    use io::native::file;
+    use io::{Writer, Reader};
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)

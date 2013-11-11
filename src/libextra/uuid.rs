@@ -522,8 +522,8 @@ mod test {
     use std::str;
     use std::rand;
     use std::num::Zero;
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
 
     #[test]
     fn test_new_nil() {

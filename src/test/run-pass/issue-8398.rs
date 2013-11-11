@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rt::io;
+use std::io;
 
 fn foo(a: &mut io::Writer) {
     a.write([])

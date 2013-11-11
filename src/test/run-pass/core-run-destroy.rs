@@ -18,7 +18,7 @@
 use std::libc;
 use std::run;
 use std::str;
-use std::rt::io;
+use std::io;
 
 #[test]
 fn test_destroy_once() {

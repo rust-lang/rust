@@ -61,7 +61,7 @@ use std::task;
 use std::unstable::finally::Finally;
 use std::vec;
 
-use std::rt::io::IoError;
+use std::io::IoError;
 
 pub use self::async::AsyncWatcher;
 pub use self::file::{FsRequest, FileWatcher};
@@ -327,7 +327,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
     unsafe {
         // Importing error constants
         use uvll::*;
-        use std::rt::io::*;
+        use std::io::*;
 
         // uv error descriptions are static
         let c_desc = uvll::uv_strerror(*uverr);

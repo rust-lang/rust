@@ -14,8 +14,8 @@
 use std::os;
 use std::rand::Rng;
 use std::rand;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-pased deletion.

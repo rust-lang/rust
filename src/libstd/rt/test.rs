@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 
 use cell::Cell;
 use clone::Clone;

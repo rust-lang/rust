@@ -34,8 +34,8 @@ use driver::session;
 use middle::lint;
 
 use std::comm;
-use std::rt::io;
-use std::rt::io::Reader;
+use std::io;
+use std::io::Reader;
 use std::num;
 use std::os;
 use std::result;

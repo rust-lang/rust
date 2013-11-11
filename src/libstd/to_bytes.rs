@@ -358,8 +358,8 @@ pub trait ToBytes {
 
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
-        use rt::io::mem;
-        use rt::io::Writer;
+        use io::mem;
+        use io::Writer;
 
         do mem::with_mem_writer |wr| {
             do self.iter_bytes(lsb0) |bytes| {
