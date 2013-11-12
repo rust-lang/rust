@@ -33,8 +33,7 @@ pub struct Process {
     to_wake: Option<BlockedTask>,
 
     /// Collected from the exit_cb
-    exit_status: Option<int>,
-    term_signal: Option<int>,
+    exit_status: Option<ProcessExit>,
 }
 
 impl Process {
@@ -82,7 +81,6 @@ impl Process {
                     home: get_handle_to_current_scheduler!(),
                     to_wake: None,
                     exit_status: None,
-                    term_signal: None,
                 };
                 match unsafe {
                     uvll::uv_spawn(loop_.handle, handle, &options)
@@ -106,9 +104,10 @@ extern fn on_exit(handle: *uvll::uv_process_t,
     let p: &mut Process = unsafe { UvHandle::from_uv_handle(&handle) };
 
     assert!(p.exit_status.is_none());
-    assert!(p.term_signal.is_none());
-    p.exit_status = Some(exit_status as int);
-    p.term_signal = Some(term_signal as int);
+    p.exit_status = Some(match term_signal {
+        0 => ExitStatus(exit_status as int),
+        n => ExitSignal(n as int),
+    });
 
     match p.to_wake.take() {
         Some(task) => {
@@ -209,7 +208,7 @@ impl RtioProcess for Process {
         }
     }
 
-    fn wait(&mut self) -> int {
+    fn wait(&mut self) -> ProcessExit {
         // Make sure (on the home scheduler) that we have an exit status listed
         let _m = self.fire_homing_missile();
         match self.exit_status {
@@ -223,7 +222,6 @@ impl RtioProcess for Process {
             }
         }
 
-        // FIXME(#10109): this is wrong
         self.exit_status.unwrap()
     }
 }

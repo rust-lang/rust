@@ -18,7 +18,7 @@ use c_str::CString;
 use ai = rt::io::net::addrinfo;
 use rt::io::IoError;
 use rt::io::signal::Signum;
-use super::io::process::ProcessConfig;
+use super::io::process::{ProcessConfig, ProcessExit};
 use super::io::net::ip::{IpAddr, SocketAddr};
 use path::Path;
 use super::io::{SeekStyle};
@@ -201,7 +201,7 @@ pub trait RtioFileStream {
 pub trait RtioProcess {
     fn id(&self) -> libc::pid_t;
     fn kill(&mut self, signal: int) -> Result<(), IoError>;
-    fn wait(&mut self) -> int;
+    fn wait(&mut self) -> ProcessExit;
 }
 
 pub trait RtioPipe {

@@ -18,6 +18,7 @@ use libc::{pid_t, c_int};
 use libc;
 use prelude::*;
 use rt::io::process;
+use rt::io::process::ProcessExit;
 use rt::io;
 use rt::io::Reader;
 use task;
@@ -100,7 +101,7 @@ impl <'self> ProcessOptions<'self> {
 /// The output of a finished process.
 pub struct ProcessOutput {
     /// The status (exit code) of the process.
-    status: int,
+    status: ProcessExit,
 
     /// The data that the process wrote to stdout.
     output: ~[u8],
@@ -194,7 +195,7 @@ impl Process {
      *
      * If the child has already been finished then the exit code is returned.
      */
-    pub fn finish(&mut self) -> int { self.inner.wait() }
+    pub fn finish(&mut self) -> ProcessExit { self.inner.wait() }
 
     /**
      * Closes the handle to stdin, waits for the child process to terminate, and
@@ -296,7 +297,7 @@ impl Process {
  *
  * The process's exit code
  */
-pub fn process_status(prog: &str, args: &[~str]) -> int {
+pub fn process_status(prog: &str, args: &[~str]) -> ProcessExit {
     let mut prog = Process::new(prog, args, ProcessOptions {
         env: None,
         dir: None,
@@ -340,8 +341,11 @@ mod tests {
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_process_status() {
-        assert_eq!(run::process_status("false", []), 1);
-        assert_eq!(run::process_status("true", []), 0);
+        let mut status = run::process_status("false", []);
+        assert!(status.matches_exit_status(1));
+
+        status = run::process_status("true", []);
+        assert!(status.success());
     }
 
     #[test]
@@ -352,7 +356,7 @@ mod tests {
              = run::process_output("echo", [~"hello"]);
         let output_str = str::from_utf8(output);
 
-        assert_eq!(status, 0);
+        assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
@@ -367,7 +371,7 @@ mod tests {
         let run::ProcessOutput {status, output, error}
              = run::process_output("mkdir", [~"."]);
 
-        assert_eq!(status, 1);
+        assert!(status.matches_exit_status(1));
         assert_eq!(output, ~[]);
         assert!(!error.is_empty());
     }
@@ -424,15 +428,15 @@ mod tests {
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_once() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
-        assert_eq!(prog.finish(), 1);
+        assert!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_twice() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
-        assert_eq!(prog.finish(), 1);
-        assert_eq!(prog.finish(), 1);
+        assert!(prog.finish().matches_exit_status(1));
+        assert!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
@@ -444,7 +448,7 @@ mod tests {
             = prog.finish_with_output();
         let output_str = str::from_utf8(output);
 
-        assert_eq!(status, 0);
+        assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
@@ -462,7 +466,7 @@ mod tests {
 
         let output_str = str::from_utf8(output);
 
-        assert_eq!(status, 0);
+        assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
@@ -472,7 +476,7 @@ mod tests {
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
-        assert_eq!(status, 0);
+        assert!(status.success());
         assert_eq!(output, ~[]);
         // FIXME #7224
         if !running_on_valgrind() {
