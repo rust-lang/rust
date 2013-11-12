@@ -658,9 +658,9 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
     }
 }
 
-// a visitor that extracts the pat_ident paths
+// a visitor that extracts the pat_ident (binding) paths
 // from a given thingy and puts them in a mutable
-// array (passed in to the traversal)
+// array (passed in to the traversal).
 #[deriving(Clone)]
 pub struct NewNameFinderContext {
     ident_accumulator: Vec<ast::Ident> ,
@@ -1026,7 +1026,7 @@ mod test {
     use parse;
     use parse::token;
     use util::parser_testing::{string_to_parser};
-    use util::parser_testing::{string_to_pat, strs_to_idents};
+    use util::parser_testing::{string_to_pat, string_to_crate, strs_to_idents};
     use visit;
     use visit::Visitor;
 
@@ -1059,7 +1059,7 @@ mod test {
     }
 
     // return a visitor that extracts the paths
-    // from a given pattern and puts them in a mutable
+    // from a given thingy and puts them in a mutable
     // array (passed in to the traversal)
     pub fn new_path_finder(paths: Vec<ast::Path> ) -> NewPathExprFinderContext {
         NewPathExprFinderContext {
@@ -1188,7 +1188,7 @@ mod test {
     // The comparisons are done post-mtwt-resolve, so we're comparing renamed
     // names; differences in marks don't matter any more.
     //
-    // oog... I also want tests that check "binding-identifier-=?". That is,
+    // oog... I also want tests that check "bound-identifier-=?". That is,
     // not just "do these have the same name", but "do they have the same
     // name *and* the same marks"? Understanding this is really pretty painful.
     // in principle, you might want to control this boolean on a per-varref basis,
@@ -1217,11 +1217,54 @@ mod test {
                 ("macro_rules! letty(($x:ident) => (let $x = 15;))
                   macro_rules! user(($x:ident) => ({letty!($x); $x}))
                   fn main() -> int {user!(z)}",
-                 vec!(vec!(0)), false));
+                 vec!(vec!(0)), false)
+                );
         for (idx,s) in tests.iter().enumerate() {
             run_renaming_test(s,idx);
         }
     }
+
+    // no longer a fixme #8062: this test exposes a *potential* bug; our system does
+    // not behave exactly like MTWT, but a conversation with Matthew Flatt
+    // suggests that this can only occur in the presence of local-expand, which
+    // we have no plans to support. ... unless it's needed for item hygiene....
+    #[ignore]
+    #[test] fn issue_8062(){
+        run_renaming_test(
+            &("fn main() {let hrcoo = 19; macro_rules! getx(()=>(hrcoo)); getx!();}",
+              vec!(vec!(0)), true), 0)
+    }
+
+    // FIXME #6994:
+    // the z flows into and out of two macros (g & f) along one path, and one
+    // (just g) along the other, so the result of the whole thing should
+    // be "let z_123 = 3; z_123"
+    #[ignore]
+    #[test] fn issue_6994(){
+        run_renaming_test(
+            &("macro_rules! g (($x:ident) =>
+              ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
+              fn a(){g!(z)}",
+              vec!(vec!(0)),false),
+            0)
+    }
+
+    // create a really evil test case where a $x appears inside a binding of $x
+    // but *shouldnt* bind because it was inserted by a different macro....
+    // can't write this test case until we have macro-generating macros.
+
+    // FIXME #9383 : lambda var hygiene
+    // interesting... can't even write this test, yet, because the name-finder
+    // only finds pattern vars. Time to upgrade test framework.
+    /*#[test]
+    fn issue_9383(){
+        run_renaming_test(
+            &("macro_rules! bad_macro (($ex:expr) => ({(|_x| { $ex }) (9) }))
+              fn takes_x(_x : int) { assert_eq!(bad_macro!(_x),8); }
+              fn main() { takes_x(8); }",
+              vec!(vec!()),false),
+            0)
+    }*/
 
     // run one of the renaming tests
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
@@ -1356,6 +1399,15 @@ foo_module!()
         pat_idents.visit_pat(pat, ());
         assert_eq!(pat_idents.ident_accumulator,
                    strs_to_idents(vec!("a","c","b","d")));
+    }
+
+    #[test]
+    fn pat_idents_2(){
+        let the_crate = string_to_crate("fn main (a : int) -> int {|b| {a + b} }".to_string());
+        let mut pat_idents = new_name_finder(Vec::new());
+        pat_idents.visit_mod(&the_crate.module, the_crate.span, ast::CRATE_NODE_ID, ());
+        assert_eq!(pat_idents.ident_accumulator,
+                   strs_to_idents(vec!("a","b")));
     }
 
 }

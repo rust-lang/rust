@@ -835,6 +835,7 @@ impl Arg {
     }
 }
 
+// represents the header (not the body) of a function declaration
 #[deriving(Clone, PartialEq, Eq, Encodable, Decodable, Hash)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
