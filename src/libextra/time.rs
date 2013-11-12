@@ -21,8 +21,8 @@ pub mod rustrt {
     use super::Tm;
 
     extern {
-        pub fn get_time(sec: &mut i64, nsec: &mut i32);
-        pub fn precise_time_ns(ns: &mut u64);
+        pub fn rust_get_time(sec: &mut i64, nsec: &mut i32);
+        pub fn rust_precise_time_ns(ns: &mut u64);
         pub fn rust_tzset();
         pub fn rust_gmtime(sec: i64, nsec: i32, result: &mut Tm);
         pub fn rust_localtime(sec: i64, nsec: i32, result: &mut Tm);
@@ -66,7 +66,7 @@ pub fn get_time() -> Timespec {
     unsafe {
         let mut sec = 0i64;
         let mut nsec = 0i32;
-        rustrt::get_time(&mut sec, &mut nsec);
+        rustrt::rust_get_time(&mut sec, &mut nsec);
         return Timespec::new(sec, nsec);
     }
 }
@@ -79,7 +79,7 @@ pub fn get_time() -> Timespec {
 pub fn precise_time_ns() -> u64 {
     unsafe {
         let mut ns = 0u64;
-        rustrt::precise_time_ns(&mut ns);
+        rustrt::rust_precise_time_ns(&mut ns);
         ns
     }
 }
