@@ -18,6 +18,7 @@ use cast;
 use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback,
                Callback};
 use unstable::sync::Exclusive;
+use io::native;
 use util;
 
 /// This is the only exported function from this module.
@@ -30,7 +31,8 @@ struct BasicLoop {
     idle: Option<*mut BasicPausible>, // only one is allowed
     remotes: ~[(uint, ~Callback)],
     next_remote: uint,
-    messages: Exclusive<~[Message]>
+    messages: Exclusive<~[Message]>,
+    io: ~IoFactory,
 }
 
 enum Message { RunRemote(uint), RemoveRemote(uint) }
@@ -54,6 +56,7 @@ impl BasicLoop {
             next_remote: 0,
             remotes: ~[],
             messages: Exclusive::new(~[]),
+            io: ~native::IoFactory as ~IoFactory,
         }
     }
 
@@ -167,8 +170,9 @@ impl EventLoop for BasicLoop {
         ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback
     }
 
-    /// This has no bindings for local I/O
-    fn io<'a>(&'a mut self, _: &fn(&'a mut IoFactory)) {}
+    fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory)) {
+        f(self.io)
+    }
 }
 
 struct BasicRemote {

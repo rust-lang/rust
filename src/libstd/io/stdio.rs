@@ -126,17 +126,23 @@ fn with_task_stdout(f: &fn(&mut Writer)) {
     use rt::task::Task;
 
     unsafe {
-        // Logging may require scheduling operations, so we can't remove the
-        // task from TLS right now, hence the unsafe borrow. Sad.
-        let task: *mut Task = Local::unsafe_borrow();
+        let task: Option<*mut Task> = Local::try_unsafe_borrow();
+        match task {
+            Some(task) => {
+                match (*task).stdout_handle {
+                    Some(ref mut handle) => f(*handle),
+                    None => {
+                        let handle = ~LineBufferedWriter::new(stdout());
+                        let mut handle = handle as ~Writer;
+                        f(handle);
+                        (*task).stdout_handle = Some(handle);
+                    }
+                }
+            }
 
-        match (*task).stdout_handle {
-            Some(ref mut handle) => f(*handle),
             None => {
-                let handle = stdout();
-                let mut handle = ~LineBufferedWriter::new(handle) as ~Writer;
-                f(handle);
-                (*task).stdout_handle = Some(handle);
+                let mut io = stdout();
+                f(&mut io as &mut Writer);
             }
         }
     }
