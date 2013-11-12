@@ -268,10 +268,8 @@ pub trait Trigonometric {
     /// ```rust
     /// let y = 3f32.sqrt();
     /// let x = 1f32;
-    /// let pi_3 = 1.04719758f32;
-    /// assert_approx_eq!(y.atan2(&x), pi_3);
-    /// let neg_2_pi_3 = -2.09439516f32;
-    /// assert_approx_eq!((-y).atan2(&(-x)), neg_2_pi_3);
+    /// assert_approx_eq!(y.atan2(&x), f32::consts::PI / 3f32);
+    /// assert_approx_eq!((-y).atan2(&(-x)), - 2f32 * f32::consts::PI / 3f32);
     /// ```
     fn atan2(&self, other: &Self) -> Self;
 
