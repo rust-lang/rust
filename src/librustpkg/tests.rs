@@ -15,6 +15,8 @@ use std::{os, run, str, task};
 use std::rt::io;
 use std::rt::io::fs;
 use std::rt::io::File;
+use std::rt::io::process;
+use std::rt::io::process::ProcessExit;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
@@ -149,7 +151,7 @@ fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &st
         err_fd: None
     });
     let rslt = prog.finish_with_output();
-    if rslt.status != 0 {
+    if !rslt.status.success() {
         fail!("{} [git returned {:?}, output = {}, error = {}]", err_msg,
            rslt.status, str::from_utf8(rslt.output), str::from_utf8(rslt.error));
     }
@@ -251,7 +253,7 @@ fn command_line_test_expect_fail(args: &[~str],
                                  expected_exitcode: int) {
     match command_line_test_with_env(args, cwd, env) {
         Success(_) => fail!("Should have failed with {}, but it succeeded", expected_exitcode),
-        Fail(error) if error == expected_exitcode => (), // ok
+        Fail(error) if error.matches_exit_status(expected_exitcode) => (), // ok
         Fail(other) => fail!("Expected to fail with {}, but failed with {} instead",
                               expected_exitcode, other)
     }
@@ -259,7 +261,7 @@ fn command_line_test_expect_fail(args: &[~str],
 
 enum ProcessResult {
     Success(ProcessOutput),
-    Fail(int) // exit code
+    Fail(ProcessExit)
 }
 
 /// Runs `rustpkg` (based on the directory that this executable was
@@ -289,7 +291,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
                     cmd, args, str::from_utf8(output.output),
                    str::from_utf8(output.error),
                    output.status);
-    if output.status != 0 {
+    if !output.status.success() {
         debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} ---",
               cmd, args, output.status,
               str::from_utf8(output.output) + str::from_utf8(output.error));
@@ -501,9 +503,9 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // should be able to do this w/o a process
             // FIXME (#9639): This needs to handle non-utf8 paths
             // n.b. Bumps time up by 2 seconds to get around granularity issues
-            if run::process_output("touch", [~"--date",
+            if !run::process_output("touch", [~"--date",
                                              ~"+2 seconds",
-                                             p.as_str().unwrap().to_owned()]).status != 0 {
+                                             p.as_str().unwrap().to_owned()]).status.success() {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -520,8 +522,8 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // should be able to do this w/o a process
             // FIXME (#9639): This needs to handle non-utf8 paths
             // n.b. Bumps time up by 2 seconds to get around granularity issues
-            if run::process_output("touch", [~"-A02",
-                                             p.as_str().unwrap().to_owned()]).status != 0 {
+            if !run::process_output("touch", [~"-A02",
+                                             p.as_str().unwrap().to_owned()]).status.success() {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -1091,7 +1093,8 @@ fn no_rebuilding() {
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("no_rebuilding failed: it tried to rebuild bar"),
+        Fail(status) if status.matches_exit_status(65) =>
+            fail!("no_rebuilding failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding failed for some other reason")
     }
 }
@@ -1109,7 +1112,7 @@ fn no_recopying() {
 
     match command_line_test_partial([~"install", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(65) => fail!("no_recopying failed: it tried to re-copy foo"),
+        Fail(process::ExitStatus(65)) => fail!("no_recopying failed: it tried to re-copy foo"),
         Fail(_) => fail!("no_copying failed for some other reason")
     }
 }
@@ -1127,7 +1130,8 @@ fn no_rebuilding_dep() {
     assert!(chmod_read_only(&bar_lib));
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
+        Fail(status) if status.matches_exit_status(65) =>
+            fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding_dep failed for some other reason")
     }
 }
@@ -1147,7 +1151,7 @@ fn do_rebuild_dep_dates_change() {
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => fail!("do_rebuild_dep_dates_change failed: it didn't rebuild bar"),
-        Fail(status) if status == 65 => (), // ok
+        Fail(status) if status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_dates_change failed for some other reason")
     }
 }
@@ -1168,7 +1172,7 @@ fn do_rebuild_dep_only_contents_change() {
     // should adjust the datestamp
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => fail!("do_rebuild_dep_only_contents_change failed: it didn't rebuild bar"),
-        Fail(status) if status == 65 => (), // ok
+        Fail(status) if status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_only_contents_change failed for some other reason")
     }
 }
@@ -1274,7 +1278,7 @@ fn test_extern_mod() {
         err_fd: None
     });
     let outp = prog.finish_with_output();
-    if outp.status != 0 {
+    if !outp.status.success() {
         fail!("output was {}, error was {}",
               str::from_utf8(outp.output),
               str::from_utf8(outp.error));
@@ -1329,7 +1333,7 @@ fn test_extern_mod_simpler() {
         err_fd: None
     });
     let outp = prog.finish_with_output();
-    if outp.status != 0 {
+    if !outp.status.success() {
         fail!("output was {}, error was {}",
               str::from_utf8(outp.output),
               str::from_utf8(outp.error));
@@ -2144,7 +2148,7 @@ fn test_rebuild_when_needed() {
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
         Success(*) => fail!("test_rebuild_when_needed didn't rebuild"),
-        Fail(status) if status == 65 => (), // ok
+        Fail(status) if status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("test_rebuild_when_needed failed for some other reason")
     }
 }
@@ -2164,7 +2168,8 @@ fn test_no_rebuilding() {
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("test_no_rebuilding failed: it rebuilt the tests"),
+        Fail(status) if status.matches_exit_status(65) =>
+            fail!("test_no_rebuilding failed: it rebuilt the tests"),
         Fail(_) => fail!("test_no_rebuilding failed for some other reason")
     }
 }
@@ -2359,9 +2364,11 @@ fn test_c_dependency_no_rebuilding() {
 
     match command_line_test_partial([~"build", ~"cdep"], dir) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("test_c_dependency_no_rebuilding failed: \
-                                              it tried to rebuild foo.c"),
-        Fail(_) => fail!("test_c_dependency_no_rebuilding failed for some other reason")
+        Fail(status) if status.matches_exit_status(65) =>
+            fail!("test_c_dependency_no_rebuilding failed: \
+                    it tried to rebuild foo.c"),
+        Fail(_) =>
+            fail!("test_c_dependency_no_rebuilding failed for some other reason")
     }
 }
 
@@ -2396,7 +2403,7 @@ fn test_c_dependency_yes_rebuilding() {
     match command_line_test_partial([~"build", ~"cdep"], dir) {
         Success(*) => fail!("test_c_dependency_yes_rebuilding failed: \
                             it didn't rebuild and should have"),
-        Fail(status) if status == 65 => (),
+        Fail(status) if status.matches_exit_status(65) => (),
         Fail(_) => fail!("test_c_dependency_yes_rebuilding failed for some other reason")
     }
 }

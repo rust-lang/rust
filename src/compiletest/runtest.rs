@@ -23,6 +23,8 @@ use util::logv;
 use std::rt::io;
 use std::rt::io::fs;
 use std::rt::io::File;
+use std::rt::io::process;
+use std::rt::io::process::ProcessExit;
 use std::os;
 use std::str;
 use std::vec;
@@ -60,7 +62,7 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
 fn run_cfail_test(config: &config, props: &TestProps, testfile: &Path) {
     let ProcRes = compile_test(config, props, testfile);
 
-    if ProcRes.status == 0 {
+    if ProcRes.status.success() {
         fatal_ProcRes(~"compile-fail test compiled successfully!", &ProcRes);
     }
 
@@ -81,7 +83,7 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
     let ProcRes = if !config.jit {
         let ProcRes = compile_test(config, props, testfile);
 
-        if ProcRes.status != 0 {
+        if !ProcRes.status.success() {
             fatal_ProcRes(~"compilation failed!", &ProcRes);
         }
 
@@ -92,7 +94,7 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
 
     // The value our Makefile configures valgrind to return on failure
     static VALGRIND_ERR: int = 100;
-    if ProcRes.status == VALGRIND_ERR {
+    if ProcRes.status.matches_exit_status(VALGRIND_ERR) {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", &ProcRes);
     }
 
@@ -115,10 +117,9 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
 fn check_correct_failure_status(ProcRes: &ProcRes) {
     // The value the rust runtime returns on failure
     static RUST_ERR: int = 101;
-    if ProcRes.status != RUST_ERR {
+    if !ProcRes.status.matches_exit_status(RUST_ERR) {
         fatal_ProcRes(
-            format!("failure produced the wrong error code: {}",
-                    ProcRes.status),
+            format!("failure produced the wrong error: {}", ProcRes.status),
             ProcRes);
     }
 }
@@ -127,19 +128,19 @@ fn run_rpass_test(config: &config, props: &TestProps, testfile: &Path) {
     if !config.jit {
         let mut ProcRes = compile_test(config, props, testfile);
 
-        if ProcRes.status != 0 {
+        if !ProcRes.status.success() {
             fatal_ProcRes(~"compilation failed!", &ProcRes);
         }
 
         ProcRes = exec_compiled_test(config, props, testfile);
 
-        if ProcRes.status != 0 {
+        if !ProcRes.status.success() {
             fatal_ProcRes(~"test run failed!", &ProcRes);
         }
     } else {
         let ProcRes = jit_test(config, props, testfile);
 
-        if ProcRes.status != 0 { fatal_ProcRes(~"jit failed!", &ProcRes); }
+        if !ProcRes.status.success() { fatal_ProcRes(~"jit failed!", &ProcRes); }
     }
 }
 
@@ -160,7 +161,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         logv(config, format!("pretty-printing round {}", round));
         let ProcRes = print_source(config, testfile, srcs[round].clone());
 
-        if ProcRes.status != 0 {
+        if !ProcRes.status.success() {
             fatal_ProcRes(format!("pretty-printing failed in round {}", round),
                           &ProcRes);
         }
@@ -192,7 +193,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     // Finally, let's make sure it actually appears to remain valid code
     let ProcRes = typecheck_source(config, props, testfile, actual);
 
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"pretty-printed source does not typecheck", &ProcRes);
     }
 
@@ -264,7 +265,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let mut ProcRes = compile_test(config, props, testfile);
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"compilation failed!", &ProcRes);
     }
 
@@ -375,7 +376,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         }
     }
 
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal(~"gdb failed to execute");
     }
     let num_check_lines = check_lines.len();
@@ -431,7 +432,7 @@ fn check_error_patterns(props: &TestProps,
         }
     }
 
-    if ProcRes.status == 0 {
+    if ProcRes.status.success() {
         fatal(~"process did not return an error status");
     }
 
@@ -473,7 +474,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     let mut found_flags = vec::from_elem(
         expected_errors.len(), false);
 
-    if ProcRes.status == 0 {
+    if ProcRes.status.success() {
         fatal(~"process did not return an error status");
     }
 
@@ -625,7 +626,7 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
 
 struct ProcArgs {prog: ~str, args: ~[~str]}
 
-struct ProcRes {status: int, stdout: ~str, stderr: ~str, cmdline: ~str}
+struct ProcRes {status: ProcessExit, stdout: ~str, stderr: ~str, cmdline: ~str}
 
 fn compile_test(config: &config, props: &TestProps,
                 testfile: &Path) -> ProcRes {
@@ -692,7 +693,7 @@ fn compose_and_run_compiler(
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
                                      config.compile_lib_path, None);
-        if auxres.status != 0 {
+        if !auxres.status.success() {
             fatal_ProcRes(
                 format!("auxiliary build of {} failed to compile: ",
                      abs_ab.display()),
@@ -966,7 +967,12 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     dump_output(config, testfile, stdout_out, stderr_out);
 
-    ProcRes {status: exitcode, stdout: stdout_out, stderr: stderr_out, cmdline: cmdline }
+    ProcRes {
+        status: process::ExitStatus(exitcode),
+        stdout: stdout_out,
+        stderr: stderr_out,
+        cmdline: cmdline
+    }
 }
 
 fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
@@ -976,9 +982,9 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     match config.mode {
-        mode_run_fail => ProcRes {status: 101, stdout: ~"",
+        mode_run_fail => ProcRes {status: process::ExitStatus(101), stdout: ~"",
                                  stderr: ~"", cmdline: cmdline},
-        _             => ProcRes {status: 0, stdout: ~"",
+        _             => ProcRes {status: process::ExitStatus(0), stdout: ~"",
                                  stderr: ~"", cmdline: cmdline}
     }
 }
@@ -1099,33 +1105,33 @@ fn run_codegen_test(config: &config, props: &TestProps,
     }
 
     let mut ProcRes = compile_test_and_save_bitcode(config, props, testfile);
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"compilation failed!", &ProcRes);
     }
 
     ProcRes = extract_function_from_bitcode(config, props, "test", testfile, "");
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"extracting 'test' function failed", &ProcRes);
     }
 
     ProcRes = disassemble_extract(config, props, testfile, "");
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"disassembling extract failed", &ProcRes);
     }
 
 
     let mut ProcRes = compile_cc_with_clang_and_save_bitcode(config, props, testfile);
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"compilation failed!", &ProcRes);
     }
 
     ProcRes = extract_function_from_bitcode(config, props, "test", testfile, "clang");
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"extracting 'test' function failed", &ProcRes);
     }
 
     ProcRes = disassemble_extract(config, props, testfile, "clang");
-    if ProcRes.status != 0 {
+    if !ProcRes.status.success() {
         fatal_ProcRes(~"disassembling extract failed", &ProcRes);
     }
 

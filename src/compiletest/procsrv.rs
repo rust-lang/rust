@@ -11,6 +11,7 @@
 use std::os;
 use std::run;
 use std::str;
+use std::rt::io::process::ProcessExit;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -39,7 +40,7 @@ fn target_env(_lib_path: &str, _prog: &str) -> ~[(~str,~str)] {
     os::env()
 }
 
-pub struct Result {status: int, out: ~str, err: ~str}
+pub struct Result {status: ProcessExit, out: ~str, err: ~str}
 
 pub fn run(lib_path: &str,
            prog: &str,

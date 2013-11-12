@@ -109,7 +109,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
 
         debug!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
 
-        if outp.status != 0 {
+        if !outp.status.success() {
             continue;
         }
 
@@ -143,7 +143,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
         let outp  = run::process_output("git", [~"clone", format!("https://{}",
                                                                   remote_path.as_str().unwrap()),
                                                 tmp_dir.as_str().unwrap().to_owned()]);
-        if outp.status == 0 {
+        if outp.status.success() {
             debug!("Cloned it... ( {}, {} )",
                    str::from_utf8(outp.output),
                    str::from_utf8(outp.error));
