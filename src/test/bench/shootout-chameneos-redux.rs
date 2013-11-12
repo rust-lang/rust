@@ -17,7 +17,6 @@ use std::comm::{stream, SharedChan};
 use std::option;
 use std::os;
 use std::task;
-use std::uint;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
