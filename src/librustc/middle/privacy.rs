@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -31,8 +31,7 @@ use syntax::visit::Visitor;
 
 type Context<'self> = (&'self method_map, &'self resolve::ExportMap2);
 
-// A set of all nodes in the ast which can be considered "publicly exported" in
-// the sense that they are accessible from anywhere in any hierarchy.
+/// A set of AST nodes exported by the crate.
 pub type ExportedItems = HashSet<ast::NodeId>;
 
 // This visitor is used to determine the parent of all nodes in question when it
@@ -141,9 +140,26 @@ impl<'self> Visitor<()> for ParentVisitor<'self> {
 // This visitor is used to determine which items of the ast are embargoed,
 // otherwise known as not exported.
 struct EmbargoVisitor<'self> {
+    tcx: ty::ctxt,
+    // A set of all nodes in the ast which can be considered "publicly
+    // exported" in the sense that they are accessible from anywhere
+    // in any hierarchy. They are public items whose ancestors are all
+    // public.
+    path_all_public_items: &'self mut ExportedItems,
+    // A set of all nodes in the ast that can be reached via a public
+    // path. This includes everything in `path_all_public_items` as
+    // well as re-exported private nodes (`pub use`ing a private
+    // path).
     exported_items: &'self mut ExportedItems,
     exp_map2: &'self resolve::ExportMap2,
     path_all_public: bool,
+}
+
+impl<'self> EmbargoVisitor<'self> {
+    fn add_path_all_public_item(&mut self, id: ast::NodeId) {
+        self.path_all_public_items.insert(id);
+        self.exported_items.insert(id);
+    }
 }
 
 impl<'self> Visitor<()> for EmbargoVisitor<'self> {
@@ -162,7 +178,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
         }
 
         if self.path_all_public {
-            self.exported_items.insert(item.id);
+            self.add_path_all_public_item(item.id);
         }
 
         match item.node {
@@ -171,7 +187,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
             ast::item_enum(ref def, _) if self.path_all_public => {
                 for variant in def.variants.iter() {
                     if variant.node.vis != ast::private {
-                        self.exported_items.insert(variant.node.id);
+                        self.add_path_all_public_item(variant.node.id);
                     }
                 }
             }
@@ -184,7 +200,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
                         _ => true,
                     } && method.vis == ast::public;
                     if public {
-                        self.exported_items.insert(method.id);
+                        self.add_path_all_public_item(method.id);
                     }
                 }
             }
@@ -193,7 +209,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
             ast::item_impl(_, Some(*), _, ref methods) => {
                 for method in methods.iter() {
                     debug!("exporting: {}", method.id);
-                    self.exported_items.insert(method.id);
+                    self.add_path_all_public_item(method.id);
                 }
             }
 
@@ -204,21 +220,20 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
                     match *method {
                         ast::provided(ref m) => {
                             debug!("provided {}", m.id);
-                            self.exported_items.insert(m.id);
+                            self.add_path_all_public_item(m.id);
                         }
                         ast::required(ref m) => {
                             debug!("required {}", m.id);
-                            self.exported_items.insert(m.id);
+                            self.add_path_all_public_item(m.id);
                         }
                     }
                 }
             }
 
-            // Default methods on traits are all public so long as the trait is
-            // public
+            // Struct constructors are public if the struct is all public.
             ast::item_struct(ref def, _) if self.path_all_public => {
                 match def.ctor_id {
-                    Some(id) => { self.exported_items.insert(id); }
+                    Some(id) => { self.add_path_all_public_item(id); }
                     None => {}
                 }
             }
@@ -233,8 +248,27 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
 
     fn visit_foreign_item(&mut self, a: @ast::foreign_item, _: ()) {
         if self.path_all_public && a.vis == ast::public {
-            self.exported_items.insert(a.id);
+            self.add_path_all_public_item(a.id);
         }
+    }
+
+    fn visit_mod(&mut self, m: &ast::_mod, sp: Span, id: ast::NodeId, _: ()) {
+        // This code is here instead of in visit_item so that the
+        // crate module gets processed as well.
+        if self.path_all_public {
+            match self.exp_map2.find(&id) {
+                Some(exports) => {
+                    for export in exports.iter() {
+                        if is_local(export.def_id) && export.reexport {
+                            self.exported_items.insert(export.def_id.node);
+                        }
+                    }
+                }
+                None => self.tcx.sess.span_bug(sp, "missing exp_map2 entry \
+                                               for module"),
+            }
+        }
+        visit::walk_mod(self, m, ())
     }
 }
 
@@ -242,8 +276,8 @@ struct PrivacyVisitor<'self> {
     tcx: ty::ctxt,
     curitem: ast::NodeId,
 
-    // Results of previous analyses necessary for privacy checking.
-    exported_items: &'self ExportedItems,
+    // See comments on the same field in `EmbargoVisitor`.
+    path_all_public_items: &'self ExportedItems,
     method_map: &'self method_map,
     parents: &'self HashMap<ast::NodeId, ast::NodeId>,
     external_exports: resolve::ExternalExports,
@@ -303,7 +337,7 @@ impl<'self> PrivacyVisitor<'self> {
                     ExternallyDenied
                 }
             };
-        } else if self.exported_items.contains(&did.node) {
+        } else if self.path_all_public_items.contains(&did.node) {
             debug!("privacy - exported item {}", self.nodestr(did.node));
             return Allowable;
         }
@@ -842,6 +876,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    last_private_map: resolve::LastPrivateMap,
                    crate: &ast::Crate) -> ExportedItems {
     let mut parents = HashMap::new();
+    let mut path_all_public_items = HashSet::new();
     let mut exported_items = HashSet::new();
 
     // First, figure out who everyone's parent is
@@ -855,14 +890,16 @@ pub fn check_crate(tcx: ty::ctxt,
 
     // Next, build up the list of all exported items from this crate
     {
-        // Initialize the exported items with resolve's id for the "root crate"
-        // to resolve references to `super` leading to the root and such.
-        exported_items.insert(ast::CRATE_NODE_ID);
         let mut visitor = EmbargoVisitor {
+            tcx: tcx,
+            path_all_public_items: &mut path_all_public_items,
             exported_items: &mut exported_items,
             exp_map2: exp_map2,
             path_all_public: true, // start out as public
         };
+        // Initialize the exported items with resolve's id for the "root crate"
+        // to resolve references to `super` leading to the root and such.
+        visitor.add_path_all_public_item(ast::CRATE_NODE_ID);
         visit::walk_crate(&mut visitor, crate, ());
     }
 
@@ -871,7 +908,7 @@ pub fn check_crate(tcx: ty::ctxt,
         let mut visitor = PrivacyVisitor {
             curitem: ast::DUMMY_NODE_ID,
             tcx: tcx,
-            exported_items: &exported_items,
+            path_all_public_items: &path_all_public_items,
             parents: &parents,
             method_map: method_map,
             external_exports: external_exports,
@@ -879,5 +916,6 @@ pub fn check_crate(tcx: ty::ctxt,
         };
         visit::walk_crate(&mut visitor, crate, ());
     }
+
     return exported_items;
 }
