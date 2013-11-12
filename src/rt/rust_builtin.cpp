@@ -10,7 +10,6 @@
 
 /* Foreign builtins. */
 
-#include "rust_util.h"
 #include "sync/lock_and_signal.h"
 #include "vg/valgrind.h"
 
@@ -233,6 +232,16 @@ precise_time_ns(uint64_t *ns) {
     *ns = (uint64_t)(ts.tv_sec * ns_per_s + ts.tv_nsec);
 #endif
 }
+
+struct
+rust_vec
+{
+    size_t fill;    // in bytes; if zero, heapified
+    size_t alloc;   // in bytes
+    uint8_t data[0];
+};
+
+typedef rust_vec rust_str;
 
 struct rust_tm {
     int32_t tm_sec;
