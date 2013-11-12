@@ -9,13 +9,16 @@
 // except according to those terms.
 
 use cast;
+use io;
 use libc::{pid_t, c_void, c_int};
 use libc;
 use os;
 use prelude::*;
 use ptr;
-use io;
+use rt::rtio;
 use super::file;
+
+use p = io::process;
 
 /**
  * A value representing a child process.
@@ -32,13 +35,6 @@ pub struct Process {
     /// windows it will be a HANDLE to the process, which will prevent the
     /// pid being re-used until the handle is closed.
     priv handle: *(),
-
-    /// Currently known stdin of the child, if any
-    priv input: Option<file::FileDesc>,
-    /// Currently known stdout of the child, if any
-    priv output: Option<file::FileDesc>,
-    /// Currently known stderr of the child, if any
-    priv error: Option<file::FileDesc>,
 
     /// None until finish() is called.
     priv exit_code: Option<int>,
@@ -64,35 +60,44 @@ impl Process {
     ///     these are `None`, then this module will bind the input/output to an
     ///     os pipe instead. This process takes ownership of these file
     ///     descriptors, closing them upon destruction of the process.
-    pub fn new(prog: &str, args: &[~str], env: Option<~[(~str, ~str)]>,
-               cwd: Option<&Path>,
-               stdin: Option<file::fd_t>,
-               stdout: Option<file::fd_t>,
-               stderr: Option<file::fd_t>) -> Process {
-        let (in_pipe, in_fd) = match stdin {
-            None => {
-                let pipe = os::pipe();
-                (Some(pipe), pipe.input)
-            },
-            Some(fd) => (None, fd)
-        };
-        let (out_pipe, out_fd) = match stdout {
-            None => {
-                let pipe = os::pipe();
-                (Some(pipe), pipe.out)
-            },
-            Some(fd) => (None, fd)
-        };
-        let (err_pipe, err_fd) = match stderr {
-            None => {
-                let pipe = os::pipe();
-                (Some(pipe), pipe.out)
-            },
-            Some(fd) => (None, fd)
-        };
+    pub fn spawn(config: p::ProcessConfig)
+        -> Result<(Process, ~[Option<file::FileDesc>]), io::IoError>
+    {
+        // right now we only handle stdin/stdout/stderr.
+        if config.io.len() > 3 {
+            return Err(super::unimpl());
+        }
 
-        let res = spawn_process_os(prog, args, env, cwd,
-                                   in_fd, out_fd, err_fd);
+        fn get_io(io: &[p::StdioContainer],
+                  ret: &mut ~[Option<file::FileDesc>],
+                  idx: uint) -> (Option<os::Pipe>, c_int) {
+            if idx >= io.len() { return (None, -1); }
+            ret.push(None);
+            match io[idx] {
+                p::Ignored => (None, -1),
+                p::InheritFd(fd) => (None, fd),
+                p::CreatePipe(readable, _writable) => {
+                    let pipe = os::pipe();
+                    let (theirs, ours) = if readable {
+                        (pipe.input, pipe.out)
+                    } else {
+                        (pipe.out, pipe.input)
+                    };
+                    ret[idx] = Some(file::FileDesc::new(ours, true));
+                    (Some(pipe), theirs)
+                }
+            }
+        }
+
+        let mut ret_io = ~[];
+        let (in_pipe, in_fd) = get_io(config.io, &mut ret_io, 0);
+        let (out_pipe, out_fd) = get_io(config.io, &mut ret_io, 1);
+        let (err_pipe, err_fd) = get_io(config.io, &mut ret_io, 2);
+
+        let env = config.env.map(|a| a.to_owned());
+        let cwd = config.cwd.map(|a| Path::new(a));
+        let res = spawn_process_os(config.program, config.args, env,
+                                   cwd.as_ref(), in_fd, out_fd, err_fd);
 
         unsafe {
             for pipe in in_pipe.iter() { libc::close(pipe.input); }
@@ -100,97 +105,26 @@ impl Process {
             for pipe in err_pipe.iter() { libc::close(pipe.out); }
         }
 
-        Process {
-            pid: res.pid,
-            handle: res.handle,
-            input: in_pipe.map(|pipe| file::FileDesc::new(pipe.out, true)),
-            output: out_pipe.map(|pipe| file::FileDesc::new(pipe.input, true)),
-            error: err_pipe.map(|pipe| file::FileDesc::new(pipe.input, true)),
-            exit_code: None,
-        }
+        Ok((Process { pid: res.pid, handle: res.handle, exit_code: None }, ret_io))
+    }
+}
+
+impl rtio::RtioProcess for Process {
+    fn id(&self) -> pid_t { self.pid }
+
+    fn wait(&mut self) -> p::ProcessExit {
+        let code = match self.exit_code {
+            Some(code) => code,
+            None => {
+                let code = waitpid(self.pid);
+                self.exit_code = Some(code);
+                code
+            }
+        };
+        return p::ExitStatus(code); // XXX: this is wrong
     }
 
-    /// Returns the unique id of the process
-    pub fn id(&self) -> pid_t { self.pid }
-
-    /**
-     * Returns an io::Writer that can be used to write to this Process's stdin.
-     *
-     * Fails if there is no stdinavailable (it's already been removed by
-     * take_input)
-     */
-    pub fn input<'a>(&'a mut self) -> &'a mut io::Writer {
-        match self.input {
-            Some(ref mut fd) => fd as &mut io::Writer,
-            None => fail!("This process has no stdin")
-        }
-    }
-
-    /**
-     * Returns an io::Reader that can be used to read from this Process's
-     * stdout.
-     *
-     * Fails if there is no stdin available (it's already been removed by
-     * take_output)
-     */
-    pub fn output<'a>(&'a mut self) -> &'a mut io::Reader {
-        match self.input {
-            Some(ref mut fd) => fd as &mut io::Reader,
-            None => fail!("This process has no stdout")
-        }
-    }
-
-    /**
-     * Returns an io::Reader that can be used to read from this Process's
-     * stderr.
-     *
-     * Fails if there is no stdin available (it's already been removed by
-     * take_error)
-     */
-    pub fn error<'a>(&'a mut self) -> &'a mut io::Reader {
-        match self.error {
-            Some(ref mut fd) => fd as &mut io::Reader,
-            None => fail!("This process has no stderr")
-        }
-    }
-
-    /**
-     * Takes the stdin of this process, transferring ownership to the caller.
-     * Note that when the return value is destroyed, the handle will be closed
-     * for the child process.
-     */
-    pub fn take_input(&mut self) -> Option<~io::Writer> {
-        self.input.take().map(|fd| ~fd as ~io::Writer)
-    }
-
-    /**
-     * Takes the stdout of this process, transferring ownership to the caller.
-     * Note that when the return value is destroyed, the handle will be closed
-     * for the child process.
-     */
-    pub fn take_output(&mut self) -> Option<~io::Reader> {
-        self.output.take().map(|fd| ~fd as ~io::Reader)
-    }
-
-    /**
-     * Takes the stderr of this process, transferring ownership to the caller.
-     * Note that when the return value is destroyed, the handle will be closed
-     * for the child process.
-     */
-    pub fn take_error(&mut self) -> Option<~io::Reader> {
-        self.error.take().map(|fd| ~fd as ~io::Reader)
-    }
-
-    pub fn wait(&mut self) -> int {
-        for &code in self.exit_code.iter() {
-            return code;
-        }
-        let code = waitpid(self.pid);
-        self.exit_code = Some(code);
-        return code;
-    }
-
-    pub fn signal(&mut self, signum: int) -> Result<(), io::IoError> {
+    fn kill(&mut self, signum: int) -> Result<(), io::IoError> {
         // if the process has finished, and therefore had waitpid called,
         // and we kill it, then on unix we might ending up killing a
         // newer process that happens to have the same (re-used) id
@@ -207,8 +141,7 @@ impl Process {
         #[cfg(windows)]
         unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
             match signal {
-                io::process::PleaseExitSignal |
-                io::process::MustDieSignal => {
+                io::process::PleaseExitSignal | io::process::MustDieSignal => {
                     libc::funcs::extra::kernel32::TerminateProcess(
                         cast::transmute(pid), 1);
                     Ok(())
@@ -231,11 +164,6 @@ impl Process {
 
 impl Drop for Process {
     fn drop(&mut self) {
-        // close all these handles
-        self.take_input();
-        self.take_output();
-        self.take_error();
-        self.wait();
         free_handle(self.handle);
     }
 }
