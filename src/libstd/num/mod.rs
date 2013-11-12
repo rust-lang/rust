@@ -452,8 +452,8 @@ pub trait BitCount {
 
 pub trait Bounded {
     // FIXME (#5527): These should be associated constants
-    fn min_value() -> Self;
-    fn max_value() -> Self;
+    fn MIN_VALUE() -> Self;
+    fn MAX_VALUE() -> Self;
 }
 
 /// Specifies the available operations common to all of Rust's core numeric primitives.
@@ -623,9 +623,9 @@ macro_rules! impl_to_primitive_int_to_int(
                 Some(*self as $DstT)
             } else {
                 let n = *self as i64;
-                let min_value: $DstT = Bounded::min_value();
-                let max_value: $DstT = Bounded::max_value();
-                if min_value as i64 <= n && n <= max_value as i64 {
+                let MIN_VALUE: $DstT = Bounded::MIN_VALUE();
+                let MAX_VALUE: $DstT = Bounded::MAX_VALUE();
+                if MIN_VALUE as i64 <= n && n <= MAX_VALUE as i64 {
                     Some(*self as $DstT)
                 } else {
                     None
@@ -639,8 +639,8 @@ macro_rules! impl_to_primitive_int_to_uint(
     ($SrcT:ty, $DstT:ty) => (
         {
             let zero: $SrcT = Zero::zero();
-            let max_value: $DstT = Bounded::max_value();
-            if zero <= *self && *self as u64 <= max_value as u64 {
+            let MAX_VALUE: $DstT = Bounded::MAX_VALUE();
+            if zero <= *self && *self as u64 <= MAX_VALUE as u64 {
                 Some(*self as $DstT)
             } else {
                 None
@@ -691,8 +691,8 @@ impl_to_primitive_int!(i64)
 macro_rules! impl_to_primitive_uint_to_int(
     ($DstT:ty) => (
         {
-            let max_value: $DstT = Bounded::max_value();
-            if *self as u64 <= max_value as u64 {
+            let MAX_VALUE: $DstT = Bounded::MAX_VALUE();
+            if *self as u64 <= MAX_VALUE as u64 {
                 Some(*self as $DstT)
             } else {
                 None
@@ -708,8 +708,8 @@ macro_rules! impl_to_primitive_uint_to_uint(
                 Some(*self as $DstT)
             } else {
                 let zero: $SrcT = Zero::zero();
-                let max_value: $DstT = Bounded::max_value();
-                if zero <= *self && *self as u64 <= max_value as u64 {
+                let MAX_VALUE: $DstT = Bounded::MAX_VALUE();
+                if zero <= *self && *self as u64 <= MAX_VALUE as u64 {
                     Some(*self as $DstT)
                 } else {
                     None
@@ -764,8 +764,8 @@ macro_rules! impl_to_primitive_float_to_float(
             Some(*self as $DstT)
         } else {
             let n = *self as f64;
-            let max_value: $SrcT = Bounded::max_value();
-            if -max_value as f64 <= n && n <= max_value as f64 {
+            let MAX_VALUE: $SrcT = Bounded::MAX_VALUE();
+            if -MAX_VALUE as f64 <= n && n <= MAX_VALUE as f64 {
                 Some(*self as $DstT)
             } else {
                 None
@@ -1106,9 +1106,9 @@ impl<T: CheckedAdd + CheckedSub + Zero + Ord + Bounded> Saturating for T {
         match self.checked_add(&v) {
             Some(x) => x,
             None => if v >= Zero::zero() {
-                Bounded::max_value()
+                Bounded::MAX_VALUE()
             } else {
-                Bounded::min_value()
+                Bounded::MIN_VALUE()
             }
         }
     }
@@ -1118,9 +1118,9 @@ impl<T: CheckedAdd + CheckedSub + Zero + Ord + Bounded> Saturating for T {
         match self.checked_sub(&v) {
             Some(x) => x,
             None => if v >= Zero::zero() {
-                Bounded::min_value()
+                Bounded::MIN_VALUE()
             } else {
-                Bounded::max_value()
+                Bounded::MAX_VALUE()
             }
         }
     }
@@ -1233,25 +1233,25 @@ mod tests {
 
     #[test]
     fn test_cast_range_int_min() {
-        assert_eq!(int::min_value.to_int(),  Some(int::min_value as int));
-        assert_eq!(int::min_value.to_i8(),   None);
-        assert_eq!(int::min_value.to_i16(),  None);
-        // int::min_value.to_i32() is word-size specific
-        assert_eq!(int::min_value.to_i64(),  Some(int::min_value as i64));
-        assert_eq!(int::min_value.to_uint(), None);
-        assert_eq!(int::min_value.to_u8(),   None);
-        assert_eq!(int::min_value.to_u16(),  None);
-        assert_eq!(int::min_value.to_u32(),  None);
-        assert_eq!(int::min_value.to_u64(),  None);
+        assert_eq!(int::MIN_VALUE.to_int(),  Some(int::MIN_VALUE as int));
+        assert_eq!(int::MIN_VALUE.to_i8(),   None);
+        assert_eq!(int::MIN_VALUE.to_i16(),  None);
+        // int::MIN_VALUE.to_i32() is word-size specific
+        assert_eq!(int::MIN_VALUE.to_i64(),  Some(int::MIN_VALUE as i64));
+        assert_eq!(int::MIN_VALUE.to_uint(), None);
+        assert_eq!(int::MIN_VALUE.to_u8(),   None);
+        assert_eq!(int::MIN_VALUE.to_u16(),  None);
+        assert_eq!(int::MIN_VALUE.to_u32(),  None);
+        assert_eq!(int::MIN_VALUE.to_u64(),  None);
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(int::min_value.to_i32(), Some(int::min_value as i32));
+            assert_eq!(int::MIN_VALUE.to_i32(), Some(int::MIN_VALUE as i32));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(int::min_value.to_i32(), None);
+            assert_eq!(int::MIN_VALUE.to_i32(), None);
         }
 
         check_word_size();
@@ -1259,67 +1259,67 @@ mod tests {
 
     #[test]
     fn test_cast_range_i8_min() {
-        assert_eq!(i8::min_value.to_int(),  Some(i8::min_value as int));
-        assert_eq!(i8::min_value.to_i8(),   Some(i8::min_value as i8));
-        assert_eq!(i8::min_value.to_i16(),  Some(i8::min_value as i16));
-        assert_eq!(i8::min_value.to_i32(),  Some(i8::min_value as i32));
-        assert_eq!(i8::min_value.to_i64(),  Some(i8::min_value as i64));
-        assert_eq!(i8::min_value.to_uint(), None);
-        assert_eq!(i8::min_value.to_u8(),   None);
-        assert_eq!(i8::min_value.to_u16(),  None);
-        assert_eq!(i8::min_value.to_u32(),  None);
-        assert_eq!(i8::min_value.to_u64(),  None);
+        assert_eq!(i8::MIN_VALUE.to_int(),  Some(i8::MIN_VALUE as int));
+        assert_eq!(i8::MIN_VALUE.to_i8(),   Some(i8::MIN_VALUE as i8));
+        assert_eq!(i8::MIN_VALUE.to_i16(),  Some(i8::MIN_VALUE as i16));
+        assert_eq!(i8::MIN_VALUE.to_i32(),  Some(i8::MIN_VALUE as i32));
+        assert_eq!(i8::MIN_VALUE.to_i64(),  Some(i8::MIN_VALUE as i64));
+        assert_eq!(i8::MIN_VALUE.to_uint(), None);
+        assert_eq!(i8::MIN_VALUE.to_u8(),   None);
+        assert_eq!(i8::MIN_VALUE.to_u16(),  None);
+        assert_eq!(i8::MIN_VALUE.to_u32(),  None);
+        assert_eq!(i8::MIN_VALUE.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i16_min() {
-        assert_eq!(i16::min_value.to_int(),  Some(i16::min_value as int));
-        assert_eq!(i16::min_value.to_i8(),   None);
-        assert_eq!(i16::min_value.to_i16(),  Some(i16::min_value as i16));
-        assert_eq!(i16::min_value.to_i32(),  Some(i16::min_value as i32));
-        assert_eq!(i16::min_value.to_i64(),  Some(i16::min_value as i64));
-        assert_eq!(i16::min_value.to_uint(), None);
-        assert_eq!(i16::min_value.to_u8(),   None);
-        assert_eq!(i16::min_value.to_u16(),  None);
-        assert_eq!(i16::min_value.to_u32(),  None);
-        assert_eq!(i16::min_value.to_u64(),  None);
+        assert_eq!(i16::MIN_VALUE.to_int(),  Some(i16::MIN_VALUE as int));
+        assert_eq!(i16::MIN_VALUE.to_i8(),   None);
+        assert_eq!(i16::MIN_VALUE.to_i16(),  Some(i16::MIN_VALUE as i16));
+        assert_eq!(i16::MIN_VALUE.to_i32(),  Some(i16::MIN_VALUE as i32));
+        assert_eq!(i16::MIN_VALUE.to_i64(),  Some(i16::MIN_VALUE as i64));
+        assert_eq!(i16::MIN_VALUE.to_uint(), None);
+        assert_eq!(i16::MIN_VALUE.to_u8(),   None);
+        assert_eq!(i16::MIN_VALUE.to_u16(),  None);
+        assert_eq!(i16::MIN_VALUE.to_u32(),  None);
+        assert_eq!(i16::MIN_VALUE.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i32_min() {
-        assert_eq!(i32::min_value.to_int(),  Some(i32::min_value as int));
-        assert_eq!(i32::min_value.to_i8(),   None);
-        assert_eq!(i32::min_value.to_i16(),  None);
-        assert_eq!(i32::min_value.to_i32(),  Some(i32::min_value as i32));
-        assert_eq!(i32::min_value.to_i64(),  Some(i32::min_value as i64));
-        assert_eq!(i32::min_value.to_uint(), None);
-        assert_eq!(i32::min_value.to_u8(),   None);
-        assert_eq!(i32::min_value.to_u16(),  None);
-        assert_eq!(i32::min_value.to_u32(),  None);
-        assert_eq!(i32::min_value.to_u64(),  None);
+        assert_eq!(i32::MIN_VALUE.to_int(),  Some(i32::MIN_VALUE as int));
+        assert_eq!(i32::MIN_VALUE.to_i8(),   None);
+        assert_eq!(i32::MIN_VALUE.to_i16(),  None);
+        assert_eq!(i32::MIN_VALUE.to_i32(),  Some(i32::MIN_VALUE as i32));
+        assert_eq!(i32::MIN_VALUE.to_i64(),  Some(i32::MIN_VALUE as i64));
+        assert_eq!(i32::MIN_VALUE.to_uint(), None);
+        assert_eq!(i32::MIN_VALUE.to_u8(),   None);
+        assert_eq!(i32::MIN_VALUE.to_u16(),  None);
+        assert_eq!(i32::MIN_VALUE.to_u32(),  None);
+        assert_eq!(i32::MIN_VALUE.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i64_min() {
-        // i64::min_value.to_int() is word-size specific
-        assert_eq!(i64::min_value.to_i8(),   None);
-        assert_eq!(i64::min_value.to_i16(),  None);
-        assert_eq!(i64::min_value.to_i32(),  None);
-        assert_eq!(i64::min_value.to_i64(),  Some(i64::min_value as i64));
-        assert_eq!(i64::min_value.to_uint(), None);
-        assert_eq!(i64::min_value.to_u8(),   None);
-        assert_eq!(i64::min_value.to_u16(),  None);
-        assert_eq!(i64::min_value.to_u32(),  None);
-        assert_eq!(i64::min_value.to_u64(),  None);
+        // i64::MIN_VALUE.to_int() is word-size specific
+        assert_eq!(i64::MIN_VALUE.to_i8(),   None);
+        assert_eq!(i64::MIN_VALUE.to_i16(),  None);
+        assert_eq!(i64::MIN_VALUE.to_i32(),  None);
+        assert_eq!(i64::MIN_VALUE.to_i64(),  Some(i64::MIN_VALUE as i64));
+        assert_eq!(i64::MIN_VALUE.to_uint(), None);
+        assert_eq!(i64::MIN_VALUE.to_u8(),   None);
+        assert_eq!(i64::MIN_VALUE.to_u16(),  None);
+        assert_eq!(i64::MIN_VALUE.to_u32(),  None);
+        assert_eq!(i64::MIN_VALUE.to_u64(),  None);
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(i64::min_value.to_int(), None);
+            assert_eq!(i64::MIN_VALUE.to_int(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(i64::min_value.to_int(), Some(i64::min_value as int));
+            assert_eq!(i64::MIN_VALUE.to_int(), Some(i64::MIN_VALUE as int));
         }
 
         check_word_size();
@@ -1327,26 +1327,26 @@ mod tests {
 
     #[test]
     fn test_cast_range_int_max() {
-        assert_eq!(int::max_value.to_int(),  Some(int::max_value as int));
-        assert_eq!(int::max_value.to_i8(),   None);
-        assert_eq!(int::max_value.to_i16(),  None);
-        // int::max_value.to_i32() is word-size specific
-        assert_eq!(int::max_value.to_i64(),  Some(int::max_value as i64));
-        assert_eq!(int::max_value.to_u8(),   None);
-        assert_eq!(int::max_value.to_u16(),  None);
-        // int::max_value.to_u32() is word-size specific
-        assert_eq!(int::max_value.to_u64(),  Some(int::max_value as u64));
+        assert_eq!(int::MAX_VALUE.to_int(),  Some(int::MAX_VALUE as int));
+        assert_eq!(int::MAX_VALUE.to_i8(),   None);
+        assert_eq!(int::MAX_VALUE.to_i16(),  None);
+        // int::MAX_VALUE.to_i32() is word-size specific
+        assert_eq!(int::MAX_VALUE.to_i64(),  Some(int::MAX_VALUE as i64));
+        assert_eq!(int::MAX_VALUE.to_u8(),   None);
+        assert_eq!(int::MAX_VALUE.to_u16(),  None);
+        // int::MAX_VALUE.to_u32() is word-size specific
+        assert_eq!(int::MAX_VALUE.to_u64(),  Some(int::MAX_VALUE as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(int::max_value.to_i32(), Some(int::max_value as i32));
-            assert_eq!(int::max_value.to_u32(), Some(int::max_value as u32));
+            assert_eq!(int::MAX_VALUE.to_i32(), Some(int::MAX_VALUE as i32));
+            assert_eq!(int::MAX_VALUE.to_u32(), Some(int::MAX_VALUE as u32));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(int::max_value.to_i32(), None);
-            assert_eq!(int::max_value.to_u32(), None);
+            assert_eq!(int::MAX_VALUE.to_i32(), None);
+            assert_eq!(int::MAX_VALUE.to_u32(), None);
         }
 
         check_word_size();
@@ -1354,69 +1354,69 @@ mod tests {
 
     #[test]
     fn test_cast_range_i8_max() {
-        assert_eq!(i8::max_value.to_int(),  Some(i8::max_value as int));
-        assert_eq!(i8::max_value.to_i8(),   Some(i8::max_value as i8));
-        assert_eq!(i8::max_value.to_i16(),  Some(i8::max_value as i16));
-        assert_eq!(i8::max_value.to_i32(),  Some(i8::max_value as i32));
-        assert_eq!(i8::max_value.to_i64(),  Some(i8::max_value as i64));
-        assert_eq!(i8::max_value.to_uint(), Some(i8::max_value as uint));
-        assert_eq!(i8::max_value.to_u8(),   Some(i8::max_value as u8));
-        assert_eq!(i8::max_value.to_u16(),  Some(i8::max_value as u16));
-        assert_eq!(i8::max_value.to_u32(),  Some(i8::max_value as u32));
-        assert_eq!(i8::max_value.to_u64(),  Some(i8::max_value as u64));
+        assert_eq!(i8::MAX_VALUE.to_int(),  Some(i8::MAX_VALUE as int));
+        assert_eq!(i8::MAX_VALUE.to_i8(),   Some(i8::MAX_VALUE as i8));
+        assert_eq!(i8::MAX_VALUE.to_i16(),  Some(i8::MAX_VALUE as i16));
+        assert_eq!(i8::MAX_VALUE.to_i32(),  Some(i8::MAX_VALUE as i32));
+        assert_eq!(i8::MAX_VALUE.to_i64(),  Some(i8::MAX_VALUE as i64));
+        assert_eq!(i8::MAX_VALUE.to_uint(), Some(i8::MAX_VALUE as uint));
+        assert_eq!(i8::MAX_VALUE.to_u8(),   Some(i8::MAX_VALUE as u8));
+        assert_eq!(i8::MAX_VALUE.to_u16(),  Some(i8::MAX_VALUE as u16));
+        assert_eq!(i8::MAX_VALUE.to_u32(),  Some(i8::MAX_VALUE as u32));
+        assert_eq!(i8::MAX_VALUE.to_u64(),  Some(i8::MAX_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_i16_max() {
-        assert_eq!(i16::max_value.to_int(),  Some(i16::max_value as int));
-        assert_eq!(i16::max_value.to_i8(),   None);
-        assert_eq!(i16::max_value.to_i16(),  Some(i16::max_value as i16));
-        assert_eq!(i16::max_value.to_i32(),  Some(i16::max_value as i32));
-        assert_eq!(i16::max_value.to_i64(),  Some(i16::max_value as i64));
-        assert_eq!(i16::max_value.to_uint(), Some(i16::max_value as uint));
-        assert_eq!(i16::max_value.to_u8(),   None);
-        assert_eq!(i16::max_value.to_u16(),  Some(i16::max_value as u16));
-        assert_eq!(i16::max_value.to_u32(),  Some(i16::max_value as u32));
-        assert_eq!(i16::max_value.to_u64(),  Some(i16::max_value as u64));
+        assert_eq!(i16::MAX_VALUE.to_int(),  Some(i16::MAX_VALUE as int));
+        assert_eq!(i16::MAX_VALUE.to_i8(),   None);
+        assert_eq!(i16::MAX_VALUE.to_i16(),  Some(i16::MAX_VALUE as i16));
+        assert_eq!(i16::MAX_VALUE.to_i32(),  Some(i16::MAX_VALUE as i32));
+        assert_eq!(i16::MAX_VALUE.to_i64(),  Some(i16::MAX_VALUE as i64));
+        assert_eq!(i16::MAX_VALUE.to_uint(), Some(i16::MAX_VALUE as uint));
+        assert_eq!(i16::MAX_VALUE.to_u8(),   None);
+        assert_eq!(i16::MAX_VALUE.to_u16(),  Some(i16::MAX_VALUE as u16));
+        assert_eq!(i16::MAX_VALUE.to_u32(),  Some(i16::MAX_VALUE as u32));
+        assert_eq!(i16::MAX_VALUE.to_u64(),  Some(i16::MAX_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_i32_max() {
-        assert_eq!(i32::max_value.to_int(),  Some(i32::max_value as int));
-        assert_eq!(i32::max_value.to_i8(),   None);
-        assert_eq!(i32::max_value.to_i16(),  None);
-        assert_eq!(i32::max_value.to_i32(),  Some(i32::max_value as i32));
-        assert_eq!(i32::max_value.to_i64(),  Some(i32::max_value as i64));
-        assert_eq!(i32::max_value.to_uint(), Some(i32::max_value as uint));
-        assert_eq!(i32::max_value.to_u8(),   None);
-        assert_eq!(i32::max_value.to_u16(),  None);
-        assert_eq!(i32::max_value.to_u32(),  Some(i32::max_value as u32));
-        assert_eq!(i32::max_value.to_u64(),  Some(i32::max_value as u64));
+        assert_eq!(i32::MAX_VALUE.to_int(),  Some(i32::MAX_VALUE as int));
+        assert_eq!(i32::MAX_VALUE.to_i8(),   None);
+        assert_eq!(i32::MAX_VALUE.to_i16(),  None);
+        assert_eq!(i32::MAX_VALUE.to_i32(),  Some(i32::MAX_VALUE as i32));
+        assert_eq!(i32::MAX_VALUE.to_i64(),  Some(i32::MAX_VALUE as i64));
+        assert_eq!(i32::MAX_VALUE.to_uint(), Some(i32::MAX_VALUE as uint));
+        assert_eq!(i32::MAX_VALUE.to_u8(),   None);
+        assert_eq!(i32::MAX_VALUE.to_u16(),  None);
+        assert_eq!(i32::MAX_VALUE.to_u32(),  Some(i32::MAX_VALUE as u32));
+        assert_eq!(i32::MAX_VALUE.to_u64(),  Some(i32::MAX_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_i64_max() {
-        // i64::max_value.to_int() is word-size specific
-        assert_eq!(i64::max_value.to_i8(),   None);
-        assert_eq!(i64::max_value.to_i16(),  None);
-        assert_eq!(i64::max_value.to_i32(),  None);
-        assert_eq!(i64::max_value.to_i64(),  Some(i64::max_value as i64));
-        // i64::max_value.to_uint() is word-size specific
-        assert_eq!(i64::max_value.to_u8(),   None);
-        assert_eq!(i64::max_value.to_u16(),  None);
-        assert_eq!(i64::max_value.to_u32(),  None);
-        assert_eq!(i64::max_value.to_u64(),  Some(i64::max_value as u64));
+        // i64::MAX_VALUE.to_int() is word-size specific
+        assert_eq!(i64::MAX_VALUE.to_i8(),   None);
+        assert_eq!(i64::MAX_VALUE.to_i16(),  None);
+        assert_eq!(i64::MAX_VALUE.to_i32(),  None);
+        assert_eq!(i64::MAX_VALUE.to_i64(),  Some(i64::MAX_VALUE as i64));
+        // i64::MAX_VALUE.to_uint() is word-size specific
+        assert_eq!(i64::MAX_VALUE.to_u8(),   None);
+        assert_eq!(i64::MAX_VALUE.to_u16(),  None);
+        assert_eq!(i64::MAX_VALUE.to_u32(),  None);
+        assert_eq!(i64::MAX_VALUE.to_u64(),  Some(i64::MAX_VALUE as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(i64::max_value.to_int(),  None);
-            assert_eq!(i64::max_value.to_uint(), None);
+            assert_eq!(i64::MAX_VALUE.to_int(),  None);
+            assert_eq!(i64::MAX_VALUE.to_uint(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(i64::max_value.to_int(),  Some(i64::max_value as int));
-            assert_eq!(i64::max_value.to_uint(), Some(i64::max_value as uint));
+            assert_eq!(i64::MAX_VALUE.to_int(),  Some(i64::MAX_VALUE as int));
+            assert_eq!(i64::MAX_VALUE.to_uint(), Some(i64::MAX_VALUE as uint));
         }
 
         check_word_size();
@@ -1424,96 +1424,96 @@ mod tests {
 
     #[test]
     fn test_cast_range_uint_min() {
-        assert_eq!(uint::min_value.to_int(),  Some(uint::min_value as int));
-        assert_eq!(uint::min_value.to_i8(),   Some(uint::min_value as i8));
-        assert_eq!(uint::min_value.to_i16(),  Some(uint::min_value as i16));
-        assert_eq!(uint::min_value.to_i32(),  Some(uint::min_value as i32));
-        assert_eq!(uint::min_value.to_i64(),  Some(uint::min_value as i64));
-        assert_eq!(uint::min_value.to_uint(), Some(uint::min_value as uint));
-        assert_eq!(uint::min_value.to_u8(),   Some(uint::min_value as u8));
-        assert_eq!(uint::min_value.to_u16(),  Some(uint::min_value as u16));
-        assert_eq!(uint::min_value.to_u32(),  Some(uint::min_value as u32));
-        assert_eq!(uint::min_value.to_u64(),  Some(uint::min_value as u64));
+        assert_eq!(uint::MIN_VALUE.to_int(),  Some(uint::MIN_VALUE as int));
+        assert_eq!(uint::MIN_VALUE.to_i8(),   Some(uint::MIN_VALUE as i8));
+        assert_eq!(uint::MIN_VALUE.to_i16(),  Some(uint::MIN_VALUE as i16));
+        assert_eq!(uint::MIN_VALUE.to_i32(),  Some(uint::MIN_VALUE as i32));
+        assert_eq!(uint::MIN_VALUE.to_i64(),  Some(uint::MIN_VALUE as i64));
+        assert_eq!(uint::MIN_VALUE.to_uint(), Some(uint::MIN_VALUE as uint));
+        assert_eq!(uint::MIN_VALUE.to_u8(),   Some(uint::MIN_VALUE as u8));
+        assert_eq!(uint::MIN_VALUE.to_u16(),  Some(uint::MIN_VALUE as u16));
+        assert_eq!(uint::MIN_VALUE.to_u32(),  Some(uint::MIN_VALUE as u32));
+        assert_eq!(uint::MIN_VALUE.to_u64(),  Some(uint::MIN_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_u8_min() {
-        assert_eq!(u8::min_value.to_int(),  Some(u8::min_value as int));
-        assert_eq!(u8::min_value.to_i8(),   Some(u8::min_value as i8));
-        assert_eq!(u8::min_value.to_i16(),  Some(u8::min_value as i16));
-        assert_eq!(u8::min_value.to_i32(),  Some(u8::min_value as i32));
-        assert_eq!(u8::min_value.to_i64(),  Some(u8::min_value as i64));
-        assert_eq!(u8::min_value.to_uint(), Some(u8::min_value as uint));
-        assert_eq!(u8::min_value.to_u8(),   Some(u8::min_value as u8));
-        assert_eq!(u8::min_value.to_u16(),  Some(u8::min_value as u16));
-        assert_eq!(u8::min_value.to_u32(),  Some(u8::min_value as u32));
-        assert_eq!(u8::min_value.to_u64(),  Some(u8::min_value as u64));
+        assert_eq!(u8::MIN_VALUE.to_int(),  Some(u8::MIN_VALUE as int));
+        assert_eq!(u8::MIN_VALUE.to_i8(),   Some(u8::MIN_VALUE as i8));
+        assert_eq!(u8::MIN_VALUE.to_i16(),  Some(u8::MIN_VALUE as i16));
+        assert_eq!(u8::MIN_VALUE.to_i32(),  Some(u8::MIN_VALUE as i32));
+        assert_eq!(u8::MIN_VALUE.to_i64(),  Some(u8::MIN_VALUE as i64));
+        assert_eq!(u8::MIN_VALUE.to_uint(), Some(u8::MIN_VALUE as uint));
+        assert_eq!(u8::MIN_VALUE.to_u8(),   Some(u8::MIN_VALUE as u8));
+        assert_eq!(u8::MIN_VALUE.to_u16(),  Some(u8::MIN_VALUE as u16));
+        assert_eq!(u8::MIN_VALUE.to_u32(),  Some(u8::MIN_VALUE as u32));
+        assert_eq!(u8::MIN_VALUE.to_u64(),  Some(u8::MIN_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_u16_min() {
-        assert_eq!(u16::min_value.to_int(),  Some(u16::min_value as int));
-        assert_eq!(u16::min_value.to_i8(),   Some(u16::min_value as i8));
-        assert_eq!(u16::min_value.to_i16(),  Some(u16::min_value as i16));
-        assert_eq!(u16::min_value.to_i32(),  Some(u16::min_value as i32));
-        assert_eq!(u16::min_value.to_i64(),  Some(u16::min_value as i64));
-        assert_eq!(u16::min_value.to_uint(), Some(u16::min_value as uint));
-        assert_eq!(u16::min_value.to_u8(),   Some(u16::min_value as u8));
-        assert_eq!(u16::min_value.to_u16(),  Some(u16::min_value as u16));
-        assert_eq!(u16::min_value.to_u32(),  Some(u16::min_value as u32));
-        assert_eq!(u16::min_value.to_u64(),  Some(u16::min_value as u64));
+        assert_eq!(u16::MIN_VALUE.to_int(),  Some(u16::MIN_VALUE as int));
+        assert_eq!(u16::MIN_VALUE.to_i8(),   Some(u16::MIN_VALUE as i8));
+        assert_eq!(u16::MIN_VALUE.to_i16(),  Some(u16::MIN_VALUE as i16));
+        assert_eq!(u16::MIN_VALUE.to_i32(),  Some(u16::MIN_VALUE as i32));
+        assert_eq!(u16::MIN_VALUE.to_i64(),  Some(u16::MIN_VALUE as i64));
+        assert_eq!(u16::MIN_VALUE.to_uint(), Some(u16::MIN_VALUE as uint));
+        assert_eq!(u16::MIN_VALUE.to_u8(),   Some(u16::MIN_VALUE as u8));
+        assert_eq!(u16::MIN_VALUE.to_u16(),  Some(u16::MIN_VALUE as u16));
+        assert_eq!(u16::MIN_VALUE.to_u32(),  Some(u16::MIN_VALUE as u32));
+        assert_eq!(u16::MIN_VALUE.to_u64(),  Some(u16::MIN_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_u32_min() {
-        assert_eq!(u32::min_value.to_int(),  Some(u32::min_value as int));
-        assert_eq!(u32::min_value.to_i8(),   Some(u32::min_value as i8));
-        assert_eq!(u32::min_value.to_i16(),  Some(u32::min_value as i16));
-        assert_eq!(u32::min_value.to_i32(),  Some(u32::min_value as i32));
-        assert_eq!(u32::min_value.to_i64(),  Some(u32::min_value as i64));
-        assert_eq!(u32::min_value.to_uint(), Some(u32::min_value as uint));
-        assert_eq!(u32::min_value.to_u8(),   Some(u32::min_value as u8));
-        assert_eq!(u32::min_value.to_u16(),  Some(u32::min_value as u16));
-        assert_eq!(u32::min_value.to_u32(),  Some(u32::min_value as u32));
-        assert_eq!(u32::min_value.to_u64(),  Some(u32::min_value as u64));
+        assert_eq!(u32::MIN_VALUE.to_int(),  Some(u32::MIN_VALUE as int));
+        assert_eq!(u32::MIN_VALUE.to_i8(),   Some(u32::MIN_VALUE as i8));
+        assert_eq!(u32::MIN_VALUE.to_i16(),  Some(u32::MIN_VALUE as i16));
+        assert_eq!(u32::MIN_VALUE.to_i32(),  Some(u32::MIN_VALUE as i32));
+        assert_eq!(u32::MIN_VALUE.to_i64(),  Some(u32::MIN_VALUE as i64));
+        assert_eq!(u32::MIN_VALUE.to_uint(), Some(u32::MIN_VALUE as uint));
+        assert_eq!(u32::MIN_VALUE.to_u8(),   Some(u32::MIN_VALUE as u8));
+        assert_eq!(u32::MIN_VALUE.to_u16(),  Some(u32::MIN_VALUE as u16));
+        assert_eq!(u32::MIN_VALUE.to_u32(),  Some(u32::MIN_VALUE as u32));
+        assert_eq!(u32::MIN_VALUE.to_u64(),  Some(u32::MIN_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_u64_min() {
-        assert_eq!(u64::min_value.to_int(),  Some(u64::min_value as int));
-        assert_eq!(u64::min_value.to_i8(),   Some(u64::min_value as i8));
-        assert_eq!(u64::min_value.to_i16(),  Some(u64::min_value as i16));
-        assert_eq!(u64::min_value.to_i32(),  Some(u64::min_value as i32));
-        assert_eq!(u64::min_value.to_i64(),  Some(u64::min_value as i64));
-        assert_eq!(u64::min_value.to_uint(), Some(u64::min_value as uint));
-        assert_eq!(u64::min_value.to_u8(),   Some(u64::min_value as u8));
-        assert_eq!(u64::min_value.to_u16(),  Some(u64::min_value as u16));
-        assert_eq!(u64::min_value.to_u32(),  Some(u64::min_value as u32));
-        assert_eq!(u64::min_value.to_u64(),  Some(u64::min_value as u64));
+        assert_eq!(u64::MIN_VALUE.to_int(),  Some(u64::MIN_VALUE as int));
+        assert_eq!(u64::MIN_VALUE.to_i8(),   Some(u64::MIN_VALUE as i8));
+        assert_eq!(u64::MIN_VALUE.to_i16(),  Some(u64::MIN_VALUE as i16));
+        assert_eq!(u64::MIN_VALUE.to_i32(),  Some(u64::MIN_VALUE as i32));
+        assert_eq!(u64::MIN_VALUE.to_i64(),  Some(u64::MIN_VALUE as i64));
+        assert_eq!(u64::MIN_VALUE.to_uint(), Some(u64::MIN_VALUE as uint));
+        assert_eq!(u64::MIN_VALUE.to_u8(),   Some(u64::MIN_VALUE as u8));
+        assert_eq!(u64::MIN_VALUE.to_u16(),  Some(u64::MIN_VALUE as u16));
+        assert_eq!(u64::MIN_VALUE.to_u32(),  Some(u64::MIN_VALUE as u32));
+        assert_eq!(u64::MIN_VALUE.to_u64(),  Some(u64::MIN_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_uint_max() {
-        assert_eq!(uint::max_value.to_int(),  None);
-        assert_eq!(uint::max_value.to_i8(),   None);
-        assert_eq!(uint::max_value.to_i16(),  None);
-        assert_eq!(uint::max_value.to_i32(),  None);
-        // uint::max_value.to_i64() is word-size specific
-        assert_eq!(uint::max_value.to_u8(),   None);
-        assert_eq!(uint::max_value.to_u16(),  None);
-        // uint::max_value.to_u32() is word-size specific
-        assert_eq!(uint::max_value.to_u64(),  Some(uint::max_value as u64));
+        assert_eq!(uint::MAX_VALUE.to_int(),  None);
+        assert_eq!(uint::MAX_VALUE.to_i8(),   None);
+        assert_eq!(uint::MAX_VALUE.to_i16(),  None);
+        assert_eq!(uint::MAX_VALUE.to_i32(),  None);
+        // uint::MAX_VALUE.to_i64() is word-size specific
+        assert_eq!(uint::MAX_VALUE.to_u8(),   None);
+        assert_eq!(uint::MAX_VALUE.to_u16(),  None);
+        // uint::MAX_VALUE.to_u32() is word-size specific
+        assert_eq!(uint::MAX_VALUE.to_u64(),  Some(uint::MAX_VALUE as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(uint::max_value.to_u32(), Some(uint::max_value as u32));
-            assert_eq!(uint::max_value.to_i64(), Some(uint::max_value as i64));
+            assert_eq!(uint::MAX_VALUE.to_u32(), Some(uint::MAX_VALUE as u32));
+            assert_eq!(uint::MAX_VALUE.to_i64(), Some(uint::MAX_VALUE as i64));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(uint::max_value.to_u32(), None);
-            assert_eq!(uint::max_value.to_i64(), None);
+            assert_eq!(uint::MAX_VALUE.to_u32(), None);
+            assert_eq!(uint::MAX_VALUE.to_i64(), None);
         }
 
         check_word_size();
@@ -1521,53 +1521,53 @@ mod tests {
 
     #[test]
     fn test_cast_range_u8_max() {
-        assert_eq!(u8::max_value.to_int(),  Some(u8::max_value as int));
-        assert_eq!(u8::max_value.to_i8(),   None);
-        assert_eq!(u8::max_value.to_i16(),  Some(u8::max_value as i16));
-        assert_eq!(u8::max_value.to_i32(),  Some(u8::max_value as i32));
-        assert_eq!(u8::max_value.to_i64(),  Some(u8::max_value as i64));
-        assert_eq!(u8::max_value.to_uint(), Some(u8::max_value as uint));
-        assert_eq!(u8::max_value.to_u8(),   Some(u8::max_value as u8));
-        assert_eq!(u8::max_value.to_u16(),  Some(u8::max_value as u16));
-        assert_eq!(u8::max_value.to_u32(),  Some(u8::max_value as u32));
-        assert_eq!(u8::max_value.to_u64(),  Some(u8::max_value as u64));
+        assert_eq!(u8::MAX_VALUE.to_int(),  Some(u8::MAX_VALUE as int));
+        assert_eq!(u8::MAX_VALUE.to_i8(),   None);
+        assert_eq!(u8::MAX_VALUE.to_i16(),  Some(u8::MAX_VALUE as i16));
+        assert_eq!(u8::MAX_VALUE.to_i32(),  Some(u8::MAX_VALUE as i32));
+        assert_eq!(u8::MAX_VALUE.to_i64(),  Some(u8::MAX_VALUE as i64));
+        assert_eq!(u8::MAX_VALUE.to_uint(), Some(u8::MAX_VALUE as uint));
+        assert_eq!(u8::MAX_VALUE.to_u8(),   Some(u8::MAX_VALUE as u8));
+        assert_eq!(u8::MAX_VALUE.to_u16(),  Some(u8::MAX_VALUE as u16));
+        assert_eq!(u8::MAX_VALUE.to_u32(),  Some(u8::MAX_VALUE as u32));
+        assert_eq!(u8::MAX_VALUE.to_u64(),  Some(u8::MAX_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_u16_max() {
-        assert_eq!(u16::max_value.to_int(),  Some(u16::max_value as int));
-        assert_eq!(u16::max_value.to_i8(),   None);
-        assert_eq!(u16::max_value.to_i16(),  None);
-        assert_eq!(u16::max_value.to_i32(),  Some(u16::max_value as i32));
-        assert_eq!(u16::max_value.to_i64(),  Some(u16::max_value as i64));
-        assert_eq!(u16::max_value.to_uint(), Some(u16::max_value as uint));
-        assert_eq!(u16::max_value.to_u8(),   None);
-        assert_eq!(u16::max_value.to_u16(),  Some(u16::max_value as u16));
-        assert_eq!(u16::max_value.to_u32(),  Some(u16::max_value as u32));
-        assert_eq!(u16::max_value.to_u64(),  Some(u16::max_value as u64));
+        assert_eq!(u16::MAX_VALUE.to_int(),  Some(u16::MAX_VALUE as int));
+        assert_eq!(u16::MAX_VALUE.to_i8(),   None);
+        assert_eq!(u16::MAX_VALUE.to_i16(),  None);
+        assert_eq!(u16::MAX_VALUE.to_i32(),  Some(u16::MAX_VALUE as i32));
+        assert_eq!(u16::MAX_VALUE.to_i64(),  Some(u16::MAX_VALUE as i64));
+        assert_eq!(u16::MAX_VALUE.to_uint(), Some(u16::MAX_VALUE as uint));
+        assert_eq!(u16::MAX_VALUE.to_u8(),   None);
+        assert_eq!(u16::MAX_VALUE.to_u16(),  Some(u16::MAX_VALUE as u16));
+        assert_eq!(u16::MAX_VALUE.to_u32(),  Some(u16::MAX_VALUE as u32));
+        assert_eq!(u16::MAX_VALUE.to_u64(),  Some(u16::MAX_VALUE as u64));
     }
 
     #[test]
     fn test_cast_range_u32_max() {
-        // u32::max_value.to_int() is word-size specific
-        assert_eq!(u32::max_value.to_i8(),   None);
-        assert_eq!(u32::max_value.to_i16(),  None);
-        assert_eq!(u32::max_value.to_i32(),  None);
-        assert_eq!(u32::max_value.to_i64(),  Some(u32::max_value as i64));
-        assert_eq!(u32::max_value.to_uint(), Some(u32::max_value as uint));
-        assert_eq!(u32::max_value.to_u8(),   None);
-        assert_eq!(u32::max_value.to_u16(),  None);
-        assert_eq!(u32::max_value.to_u32(),  Some(u32::max_value as u32));
-        assert_eq!(u32::max_value.to_u64(),  Some(u32::max_value as u64));
+        // u32::MAX_VALUE.to_int() is word-size specific
+        assert_eq!(u32::MAX_VALUE.to_i8(),   None);
+        assert_eq!(u32::MAX_VALUE.to_i16(),  None);
+        assert_eq!(u32::MAX_VALUE.to_i32(),  None);
+        assert_eq!(u32::MAX_VALUE.to_i64(),  Some(u32::MAX_VALUE as i64));
+        assert_eq!(u32::MAX_VALUE.to_uint(), Some(u32::MAX_VALUE as uint));
+        assert_eq!(u32::MAX_VALUE.to_u8(),   None);
+        assert_eq!(u32::MAX_VALUE.to_u16(),  None);
+        assert_eq!(u32::MAX_VALUE.to_u32(),  Some(u32::MAX_VALUE as u32));
+        assert_eq!(u32::MAX_VALUE.to_u64(),  Some(u32::MAX_VALUE as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(u32::max_value.to_int(),  None);
+            assert_eq!(u32::MAX_VALUE.to_int(),  None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(u32::max_value.to_int(),  Some(u32::max_value as int));
+            assert_eq!(u32::MAX_VALUE.to_int(),  Some(u32::MAX_VALUE as int));
         }
 
         check_word_size();
@@ -1575,25 +1575,25 @@ mod tests {
 
     #[test]
     fn test_cast_range_u64_max() {
-        assert_eq!(u64::max_value.to_int(),  None);
-        assert_eq!(u64::max_value.to_i8(),   None);
-        assert_eq!(u64::max_value.to_i16(),  None);
-        assert_eq!(u64::max_value.to_i32(),  None);
-        assert_eq!(u64::max_value.to_i64(),  None);
-        // u64::max_value.to_uint() is word-size specific
-        assert_eq!(u64::max_value.to_u8(),   None);
-        assert_eq!(u64::max_value.to_u16(),  None);
-        assert_eq!(u64::max_value.to_u32(),  None);
-        assert_eq!(u64::max_value.to_u64(),  Some(u64::max_value as u64));
+        assert_eq!(u64::MAX_VALUE.to_int(),  None);
+        assert_eq!(u64::MAX_VALUE.to_i8(),   None);
+        assert_eq!(u64::MAX_VALUE.to_i16(),  None);
+        assert_eq!(u64::MAX_VALUE.to_i32(),  None);
+        assert_eq!(u64::MAX_VALUE.to_i64(),  None);
+        // u64::MAX_VALUE.to_uint() is word-size specific
+        assert_eq!(u64::MAX_VALUE.to_u8(),   None);
+        assert_eq!(u64::MAX_VALUE.to_u16(),  None);
+        assert_eq!(u64::MAX_VALUE.to_u32(),  None);
+        assert_eq!(u64::MAX_VALUE.to_u64(),  Some(u64::MAX_VALUE as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(u64::max_value.to_uint(), None);
+            assert_eq!(u64::MAX_VALUE.to_uint(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(u64::max_value.to_uint(), Some(u64::max_value as uint));
+            assert_eq!(u64::MAX_VALUE.to_uint(), Some(u64::MAX_VALUE as uint));
         }
 
         check_word_size();
@@ -1601,55 +1601,55 @@ mod tests {
 
     #[test]
     fn test_saturating_add_uint() {
-        use uint::max_value;
+        use uint::MAX_VALUE;
         assert_eq!(3u.saturating_add(5u), 8u);
-        assert_eq!(3u.saturating_add(max_value-1), max_value);
-        assert_eq!(max_value.saturating_add(max_value), max_value);
-        assert_eq!((max_value-2).saturating_add(1), max_value-1);
+        assert_eq!(3u.saturating_add(MAX_VALUE-1), MAX_VALUE);
+        assert_eq!(MAX_VALUE.saturating_add(MAX_VALUE), MAX_VALUE);
+        assert_eq!((MAX_VALUE-2).saturating_add(1), MAX_VALUE-1);
     }
 
     #[test]
     fn test_saturating_sub_uint() {
-        use uint::max_value;
+        use uint::MAX_VALUE;
         assert_eq!(5u.saturating_sub(3u), 2u);
         assert_eq!(3u.saturating_sub(5u), 0u);
         assert_eq!(0u.saturating_sub(1u), 0u);
-        assert_eq!((max_value-1).saturating_sub(max_value), 0);
+        assert_eq!((MAX_VALUE-1).saturating_sub(MAX_VALUE), 0);
     }
 
     #[test]
     fn test_saturating_add_int() {
-        use int::{min_value,max_value};
+        use int::{MIN_VALUE,MAX_VALUE};
         assert_eq!(3i.saturating_add(5i), 8i);
-        assert_eq!(3i.saturating_add(max_value-1), max_value);
-        assert_eq!(max_value.saturating_add(max_value), max_value);
-        assert_eq!((max_value-2).saturating_add(1), max_value-1);
+        assert_eq!(3i.saturating_add(MAX_VALUE-1), MAX_VALUE);
+        assert_eq!(MAX_VALUE.saturating_add(MAX_VALUE), MAX_VALUE);
+        assert_eq!((MAX_VALUE-2).saturating_add(1), MAX_VALUE-1);
         assert_eq!(3i.saturating_add(-5i), -2i);
-        assert_eq!(min_value.saturating_add(-1i), min_value);
-        assert_eq!((-2i).saturating_add(-max_value), min_value);
+        assert_eq!(MIN_VALUE.saturating_add(-1i), MIN_VALUE);
+        assert_eq!((-2i).saturating_add(-MAX_VALUE), MIN_VALUE);
     }
 
     #[test]
     fn test_saturating_sub_int() {
-        use int::{min_value,max_value};
+        use int::{MIN_VALUE,MAX_VALUE};
         assert_eq!(3i.saturating_sub(5i), -2i);
-        assert_eq!(min_value.saturating_sub(1i), min_value);
-        assert_eq!((-2i).saturating_sub(max_value), min_value);
+        assert_eq!(MIN_VALUE.saturating_sub(1i), MIN_VALUE);
+        assert_eq!((-2i).saturating_sub(MAX_VALUE), MIN_VALUE);
         assert_eq!(3i.saturating_sub(-5i), 8i);
-        assert_eq!(3i.saturating_sub(-(max_value-1)), max_value);
-        assert_eq!(max_value.saturating_sub(-max_value), max_value);
-        assert_eq!((max_value-2).saturating_sub(-1), max_value-1);
+        assert_eq!(3i.saturating_sub(-(MAX_VALUE-1)), MAX_VALUE);
+        assert_eq!(MAX_VALUE.saturating_sub(-MAX_VALUE), MAX_VALUE);
+        assert_eq!((MAX_VALUE-2).saturating_sub(-1), MAX_VALUE-1);
     }
 
     #[test]
     fn test_checked_add() {
-        let five_less = uint::max_value - 5;
-        assert_eq!(five_less.checked_add(&0), Some(uint::max_value - 5));
-        assert_eq!(five_less.checked_add(&1), Some(uint::max_value - 4));
-        assert_eq!(five_less.checked_add(&2), Some(uint::max_value - 3));
-        assert_eq!(five_less.checked_add(&3), Some(uint::max_value - 2));
-        assert_eq!(five_less.checked_add(&4), Some(uint::max_value - 1));
-        assert_eq!(five_less.checked_add(&5), Some(uint::max_value));
+        let five_less = uint::MAX_VALUE - 5;
+        assert_eq!(five_less.checked_add(&0), Some(uint::MAX_VALUE - 5));
+        assert_eq!(five_less.checked_add(&1), Some(uint::MAX_VALUE - 4));
+        assert_eq!(five_less.checked_add(&2), Some(uint::MAX_VALUE - 3));
+        assert_eq!(five_less.checked_add(&3), Some(uint::MAX_VALUE - 2));
+        assert_eq!(five_less.checked_add(&4), Some(uint::MAX_VALUE - 1));
+        assert_eq!(five_less.checked_add(&5), Some(uint::MAX_VALUE));
         assert_eq!(five_less.checked_add(&6), None);
         assert_eq!(five_less.checked_add(&7), None);
     }
@@ -1668,7 +1668,7 @@ mod tests {
 
     #[test]
     fn test_checked_mul() {
-        let third = uint::max_value / 3;
+        let third = uint::MAX_VALUE / 3;
         assert_eq!(third.checked_mul(&0), Some(0));
         assert_eq!(third.checked_mul(&1), Some(third));
         assert_eq!(third.checked_mul(&2), Some(third * 2));

@@ -78,14 +78,14 @@ impl Clone for MovePathIndex {
 }
 
 static InvalidMovePathIndex: MovePathIndex =
-    MovePathIndex(uint::max_value);
+    MovePathIndex(uint::MAX_VALUE);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[deriving(Eq)]
 pub struct MoveIndex(uint);
 
 static InvalidMoveIndex: MoveIndex =
-    MoveIndex(uint::max_value);
+    MoveIndex(uint::MAX_VALUE);
 
 pub struct MovePath {
     /// Loan path corresponding to this move path

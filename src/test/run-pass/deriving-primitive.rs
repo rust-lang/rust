@@ -13,14 +13,14 @@ use std::int;
 
 #[deriving(Eq, FromPrimitive)]
 enum A {
-    Foo = int::max_value,
+    Foo = int::MAX_VALUE,
     Bar = 1,
     Baz = 3,
     Qux,
 }
 
 pub fn main() {
-    let x: Option<A> = FromPrimitive::from_int(int::max_value);
+    let x: Option<A> = FromPrimitive::from_int(int::MAX_VALUE);
     assert_eq!(x, Some(Foo));
 
     let x: Option<A> = FromPrimitive::from_int(1);

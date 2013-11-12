@@ -4943,7 +4943,7 @@ impl Resolver {
             j -= 1;
             for (&k, _) in this.value_ribs[j].bindings.iter() {
                 maybes.push(interner_get(k));
-                values.push(uint::max_value);
+                values.push(uint::MAX_VALUE);
             }
         }
 
@@ -4957,7 +4957,7 @@ impl Resolver {
         }
 
         if values.len() > 0 &&
-            values[smallest] != uint::max_value &&
+            values[smallest] != uint::MAX_VALUE &&
             values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
             name != maybes[smallest] {

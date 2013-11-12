@@ -976,7 +976,7 @@ impl RegionVarBindings {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = vec::from_elem(self.num_vars(), uint::max_value);
+        let mut dup_vec = vec::from_elem(self.num_vars(), uint::MAX_VALUE);
 
         let mut opt_graph = None;
 
@@ -1196,7 +1196,7 @@ impl RegionVarBindings {
             let classification = var_data[node_idx.to_uint()].classification;
 
             // check whether we've visited this node on some previous walk
-            if dup_vec[node_idx.to_uint()] == uint::max_value {
+            if dup_vec[node_idx.to_uint()] == uint::MAX_VALUE {
                 dup_vec[node_idx.to_uint()] = orig_node_idx.to_uint();
             } else if dup_vec[node_idx.to_uint()] != orig_node_idx.to_uint() {
                 state.dup_found = true;

@@ -382,8 +382,8 @@ pub struct id_range {
 impl id_range {
     pub fn max() -> id_range {
         id_range {
-            min: int::max_value,
-            max: int::min_value,
+            min: int::MAX_VALUE,
+            max: int::MIN_VALUE,
         }
     }
 

@@ -21,7 +21,7 @@ fn main() {
     // length (in bytes), because the scaling of the index will cause it to
     // wrap around to a small number.
 
-    let idx = uint::max_value & !(uint::max_value >> 1u);
+    let idx = uint::MAX_VALUE & !(uint::MAX_VALUE >> 1u);
     error!("ov2 idx = 0x%x", idx);
 
     // This should fail.

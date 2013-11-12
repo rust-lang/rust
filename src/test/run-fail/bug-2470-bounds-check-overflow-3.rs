@@ -23,7 +23,7 @@ fn main() {
 
     // This test is only meaningful on 32-bit hosts.
 
-    let idx = u64::max_value & !(u64::max_value >> 1u);
+    let idx = u64::MAX_VALUE & !(u64::MAX_VALUE >> 1u);
     error!("ov3 idx = 0x%8.8x%8.8x",
            (idx >> 32) as uint,
            idx as uint);

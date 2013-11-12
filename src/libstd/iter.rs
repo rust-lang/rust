@@ -680,7 +680,7 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
     /// of the original iterator.
     ///
     /// Note: Random access with inverted indices still only applies to the first
-    /// `uint::max_value` elements of the original iterator.
+    /// `uint::MAX_VALUE` elements of the original iterator.
     #[inline]
     fn invert(self) -> Invert<Self> {
         Invert{iter: self}
@@ -712,7 +712,7 @@ impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator 
 ///
 /// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
 pub trait RandomAccessIterator<A>: Iterator<A> {
-    /// Return the number of indexable elements. At most `std::uint::max_value`
+    /// Return the number of indexable elements. At most `std::uint::MAX_VALUE`
     /// elements are indexable, even if the iterator represents a longer range.
     fn indexable(&self) -> uint;
 
@@ -946,7 +946,7 @@ impl<A, T: Clone + Iterator<A>> Iterator<A> for Cycle<T> {
         match self.orig.size_hint() {
             sz @ (0, Some(0)) => sz,
             (0, _) => (0, None),
-            _ => (uint::max_value, None)
+            _ => (uint::MAX_VALUE, None)
         }
     }
 }
@@ -955,7 +955,7 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
     #[inline]
     fn indexable(&self) -> uint {
         if self.orig.indexable() > 0 {
-            uint::max_value
+            uint::MAX_VALUE
         } else {
             0
         }
@@ -1811,7 +1811,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (uint::max_value, None) // Too bad we can't specify an infinite lower bound
+        (uint::MAX_VALUE, None) // Too bad we can't specify an infinite lower bound
     }
 }
 
@@ -2037,7 +2037,7 @@ impl<A: Clone> Iterator<A> for Repeat<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.idx(0) }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { (uint::max_value, None) }
+    fn size_hint(&self) -> (uint, Option<uint>) { (uint::MAX_VALUE, None) }
 }
 
 impl<A: Clone> DoubleEndedIterator<A> for Repeat<A> {
@@ -2047,7 +2047,7 @@ impl<A: Clone> DoubleEndedIterator<A> for Repeat<A> {
 
 impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
     #[inline]
-    fn indexable(&self) -> uint { uint::max_value }
+    fn indexable(&self) -> uint { uint::MAX_VALUE }
     #[inline]
     fn idx(&self, _: uint) -> Option<A> { Some(self.element.clone()) }
 }
@@ -2405,7 +2405,7 @@ mod tests {
     fn test_cycle() {
         let cycle_len = 3;
         let it = count(0u, 1).take(cycle_len).cycle();
-        assert_eq!(it.size_hint(), (uint::max_value, None));
+        assert_eq!(it.size_hint(), (uint::MAX_VALUE, None));
         for (i, x) in it.take(100).enumerate() {
             assert_eq!(i % cycle_len, x);
         }
@@ -2477,19 +2477,19 @@ mod tests {
         let v2 = &[10, 11, 12];
         let vi = v.iter();
 
-        assert_eq!(c.size_hint(), (uint::max_value, None));
+        assert_eq!(c.size_hint(), (uint::MAX_VALUE, None));
         assert_eq!(vi.size_hint(), (10, Some(10)));
 
         assert_eq!(c.take(5).size_hint(), (5, Some(5)));
         assert_eq!(c.skip(5).size_hint().second(), None);
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
-        assert_eq!(c.enumerate().size_hint(), (uint::max_value, None));
-        assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::max_value, None));
+        assert_eq!(c.enumerate().size_hint(), (uint::MAX_VALUE, None));
+        assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::MAX_VALUE, None));
         assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
         assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
         assert_eq!(c.filter(|_| false).size_hint(), (0, None));
-        assert_eq!(c.map(|_| 0).size_hint(), (uint::max_value, None));
+        assert_eq!(c.map(|_| 0).size_hint(), (uint::MAX_VALUE, None));
         assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
 
         assert_eq!(vi.take(5).size_hint(), (5, Some(5)));
@@ -2876,7 +2876,7 @@ mod tests {
 
         assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
         // this test is only meaningful when sizeof uint < sizeof u64
-        assert_eq!(range(uint::max_value - 1, uint::max_value).size_hint(), (1, Some(1)));
+        assert_eq!(range(uint::MAX_VALUE - 1, uint::MAX_VALUE).size_hint(), (1, Some(1)));
         assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
         assert_eq!(range(Foo, Foo).size_hint(), (0, None));
     }

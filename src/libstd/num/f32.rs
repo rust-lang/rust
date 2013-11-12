@@ -576,10 +576,10 @@ impl Real for f32 {
 
 impl Bounded for f32 {
     #[inline]
-    fn min_value() -> f32 { 1.17549435e-38 }
+    fn MIN_VALUE() -> f32 { 1.17549435e-38 }
 
     #[inline]
-    fn max_value() -> f32 { 3.40282347e+38 }
+    fn MAX_VALUE() -> f32 { 3.40282347e+38 }
 }
 
 impl Primitive for f32 {
