@@ -113,6 +113,15 @@ impl ProcessExit {
     pub fn matches_exit_status(&self, wanted: int) -> bool {
         *self == ExitStatus(wanted)
     }
+
+    /// Returns the exit status if the process was not terminated
+    /// by signal.
+    pub fn exit_status(&self) -> Option<int> {
+        match *self {
+            ExitStatus(code) => Some(code),
+            _ => None
+        }
+    }
 }
 
 impl Process {
