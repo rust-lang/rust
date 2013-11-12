@@ -15,6 +15,7 @@ use package_id::PkgId;
 use std::io;
 use std::io::fs;
 use std::os;
+use std::treemap::TreeMap;
 use context::*;
 use crate::Crate;
 use messages::*;
@@ -26,7 +27,6 @@ use util::{compile_crate, DepMap};
 use workcache_support;
 use workcache_support::{digest_only_date, digest_file_with_date, crate_tag};
 use extra::workcache;
-use extra::treemap::TreeMap;
 
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.

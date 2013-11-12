@@ -22,10 +22,10 @@ use std::at_vec;
 use std::hashmap::{HashMap, HashSet};
 use std::trie::{TrieMap, TrieSet};
 use std::vec;
+use std::treemap::{TreeMap, TreeSet};
 use ringbuf::RingBuf;
 use container::Deque;
 use dlist::DList;
-use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
     // Primitive types:

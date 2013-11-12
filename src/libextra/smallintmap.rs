@@ -472,7 +472,7 @@ mod bench {
 
     use super::*;
     use test::BenchHarness;
-    use container::bench::*;
+    use std::container::bench::*;
 
     // Find seq
     #[bench]

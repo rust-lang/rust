@@ -303,7 +303,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
-    let mut json = ~extra::treemap::TreeMap::new();
+    let mut json = ~std::treemap::TreeMap::new();
     json.insert(~"schema", json::String(SCHEMA_VERSION.to_owned()));
     let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
 

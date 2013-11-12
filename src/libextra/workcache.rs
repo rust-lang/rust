@@ -14,7 +14,7 @@ use json;
 use json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use arc::{Arc,RWArc};
-use treemap::TreeMap;
+use std::treemap::TreeMap;
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::{str, task};

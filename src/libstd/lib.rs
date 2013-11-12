@@ -201,6 +201,10 @@ pub mod mem;
 pub mod unstable;
 
 
+// others
+pub mod treemap;
+
+
 /* For internal use, not exported */
 
 mod unicode;
@@ -232,4 +236,5 @@ mod std {
     pub use to_bytes;
     pub use to_str;
     pub use unstable;
+    pub use container; // for smalltreemap bench test
 }
