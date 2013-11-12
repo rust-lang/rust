@@ -36,7 +36,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             let outp = run::process_output("git", [~"clone",
                                                    source.as_str().unwrap().to_owned(),
                                                    target.as_str().unwrap().to_owned()]);
-            if outp.status != 0 {
+            if !outp.status.success() {
                 println(str::from_utf8_owned(outp.output.clone()));
                 println(str::from_utf8_owned(outp.error));
                 return DirToUse(target.clone());
@@ -52,7 +52,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                             [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
                              format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                              ~"checkout", format!("{}", *s)]);
-                        if outp.status != 0 {
+                        if !outp.status.success() {
                             println(str::from_utf8_owned(outp.output.clone()));
                             println(str::from_utf8_owned(outp.error));
                             return DirToUse(target.clone());
@@ -73,7 +73,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                         format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                         ~"pull", ~"--no-edit", source.as_str().unwrap().to_owned()];
             let outp = run::process_output("git", args);
-            assert!(outp.status == 0);
+            assert!(outp.status.success());
         }
         CheckedOutSources
     } else {
@@ -110,7 +110,7 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     // FIXME (#9639): This needs to handle non-utf8 paths
     let outp = run::process_output("git", [~"clone", source.to_owned(),
                                            target.as_str().unwrap().to_owned()]);
-    if outp.status != 0 {
+    if !outp.status.success() {
          debug!("{}", str::from_utf8_owned(outp.output.clone()));
          debug!("{}", str::from_utf8_owned(outp.error));
          cond.raise((source.to_owned(), target.clone()))
@@ -120,7 +120,7 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
             &ExactRevision(ref s) | &Tagged(ref s) => {
                     let outp = process_output_in_cwd("git", [~"checkout", s.to_owned()],
                                                          target);
-                    if outp.status != 0 {
+                    if !outp.status.success() {
                         debug!("{}", str::from_utf8_owned(outp.output.clone()));
                         debug!("{}", str::from_utf8_owned(outp.error));
                         cond.raise((source.to_owned(), target.clone()))
