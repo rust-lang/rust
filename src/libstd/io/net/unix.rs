@@ -27,8 +27,8 @@ use prelude::*;
 use c_str::ToCStr;
 use rt::rtio::{IoFactory, RtioUnixListener, with_local_io};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
-use rt::io::pipe::PipeStream;
-use rt::io::{io_error, Listener, Acceptor, Reader, Writer};
+use io::pipe::PipeStream;
+use io::{io_error, Listener, Acceptor, Reader, Writer};
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -52,7 +52,7 @@ impl UnixStream {
     ///
     /// # Example
     ///
-    ///     use std::rt::io::net::unix::UnixStream;
+    ///     use std::io::net::unix::UnixStream;
     ///
     ///     let server = Path("path/to/my/socket");
     ///     let mut stream = UnixStream::connect(&server);
@@ -98,7 +98,7 @@ impl UnixListener {
     ///
     /// # Example
     ///
-    ///     use std::rt::io::net::unix::UnixListener;
+    ///     use std::io::net::unix::UnixListener;
     ///
     ///     let server = Path("path/to/my/socket");
     ///     let mut stream = UnixListener::bind(&server);
@@ -154,7 +154,7 @@ mod tests {
     use super::*;
     use cell::Cell;
     use rt::test::*;
-    use rt::io::*;
+    use io::*;
     use rt::comm::oneshot;
 
     fn smalltest(server: ~fn(UnixStream), client: ~fn(UnixStream)) {

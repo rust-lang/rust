@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::libc;
-use std::rt::io::IoError;
+use std::io::IoError;
 use std::rt::local::Local;
 use std::rt::rtio::RtioTTY;
 use std::rt::sched::{Scheduler, SchedHandle};

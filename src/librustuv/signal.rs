@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::libc::c_int;
-use std::rt::io::signal::Signum;
+use std::io::signal::Signum;
 use std::rt::sched::{SchedHandle, Scheduler};
 use std::comm::{SharedChan, SendDeferred};
 use std::rt::local::Local;
@@ -78,7 +78,7 @@ mod test {
     use super::*;
     use std::cell::Cell;
     use super::super::local_loop;
-    use std::rt::io::signal;
+    use std::io::signal;
     use std::comm::{SharedChan, stream};
 
     #[test]

@@ -18,8 +18,8 @@
 extern mod extra;
 
 use std::int;
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 use std::os;
 use std::rand::Rng;
 use std::rand;

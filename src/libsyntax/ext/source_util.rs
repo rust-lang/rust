@@ -19,8 +19,8 @@ use parse;
 use parse::token::{get_ident_interner};
 use print::pprust;
 
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 use std::str;
 
 // These macros all relate to the file system; they either return

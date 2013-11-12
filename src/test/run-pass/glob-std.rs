@@ -16,7 +16,7 @@ use extra::glob::glob;
 use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
 use std::{os, unstable};
-use std::rt::io;
+use std::io;
 
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {

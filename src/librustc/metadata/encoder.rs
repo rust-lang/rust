@@ -22,8 +22,8 @@ use middle::typeck;
 use middle;
 
 use std::hashmap::{HashMap, HashSet};
-use std::rt::io::{Writer, Seek, Decorator};
-use std::rt::io::mem::MemWriter;
+use std::io::{Writer, Seek, Decorator};
+use std::io::mem::MemWriter;
 use std::str;
 use std::vec;
 

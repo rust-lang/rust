@@ -17,7 +17,7 @@ extern mod extra;
 
 use std::os;
 use std::rt;
-use std::rt::io::fs;
+use std::io::fs;
 
 use extra::getopts;
 use extra::getopts::groups::{optopt, optflag, reqopt};

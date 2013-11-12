@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ai = std::rt::io::net::addrinfo;
+use ai = std::io::net::addrinfo;
 use std::libc::c_int;
 use std::ptr::null;
 use std::rt::BlockedTask;
@@ -186,7 +186,7 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 
 #[cfg(test)]
 mod test {
-    use std::rt::io::net::ip::{SocketAddr, Ipv4Addr};
+    use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use super::*;
     use super::super::local_loop;
 

@@ -11,8 +11,8 @@
 
 use std::option;
 use std::os;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use std::hashmap::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }

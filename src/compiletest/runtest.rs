@@ -8,30 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::mode_run_pass;
-use common::mode_run_fail;
+use common::config;
 use common::mode_compile_fail;
 use common::mode_pretty;
-use common::config;
+use common::mode_run_fail;
+use common::mode_run_pass;
 use errors;
-use header::load_props;
 use header::TestProps;
+use header::load_props;
 use procsrv;
-use util;
 use util::logv;
+use util;
 
-use std::rt::io;
-use std::rt::io::fs;
-use std::rt::io::File;
-use std::rt::io::process;
-use std::rt::io::process::ProcessExit;
+use std::io::File;
+use std::io::fs;
+use std::io::net::ip::{Ipv4Addr, SocketAddr};
+use std::io::net::tcp;
+use std::io::process::ProcessExit;
+use std::io::process;
+use std::io::timer;
+use std::io;
 use std::os;
 use std::str;
-use std::vec;
-use std::rt::io::net::tcp;
-use std::rt::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::task;
-use std::rt::io::timer;
+use std::vec;
 
 use extra::test::MetricMap;
 

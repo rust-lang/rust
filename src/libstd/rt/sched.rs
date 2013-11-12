@@ -1133,7 +1133,7 @@ mod test {
 
     #[test]
     fn test_io_callback() {
-        use rt::io::timer;
+        use io::timer;
 
         // This is a regression test that when there are no schedulable tasks
         // in the work queue, but we are performing I/O, that once we do put

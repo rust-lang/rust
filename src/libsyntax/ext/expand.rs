@@ -945,10 +945,10 @@ pub fn std_macros() -> @str {
         format_args!(|args| { ::std::fmt::writeln($dst, args) }, $($arg)*)
     ))
     macro_rules! print (
-        ($($arg:tt)*) => (format_args!(::std::rt::io::stdio::print_args, $($arg)*))
+        ($($arg:tt)*) => (format_args!(::std::io::stdio::print_args, $($arg)*))
     )
     macro_rules! println (
-        ($($arg:tt)*) => (format_args!(::std::rt::io::stdio::println_args, $($arg)*))
+        ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
     )
 
     macro_rules! local_data_key (
@@ -1436,7 +1436,7 @@ mod test {
     }
 
     fn fake_print_crate(crate: &ast::Crate) {
-        let out = @mut std::rt::io::stderr() as @mut std::rt::io::Writer;
+        let out = @mut std::io::stderr() as @mut std::io::Writer;
         let s = pprust::rust_printer(out, get_ident_interner());
         pprust::print_crate_(s, crate);
     }
