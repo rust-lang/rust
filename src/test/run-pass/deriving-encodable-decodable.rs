@@ -17,8 +17,8 @@
 
 extern mod extra;
 
-use std::rt::io::mem::MemWriter;
-use std::rt::io::Decorator;
+use std::io::mem::MemWriter;
+use std::io::Decorator;
 use std::rand::{random, Rand};
 use extra::serialize::{Encodable, Decodable};
 use extra::ebml;

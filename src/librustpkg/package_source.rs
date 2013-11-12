@@ -12,8 +12,8 @@ extern mod extra;
 
 use target::*;
 use package_id::PkgId;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use std::os;
 use context::*;
 use crate::Crate;

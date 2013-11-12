@@ -18,7 +18,7 @@
 
 
 use std::cast;
-use std::rt::io;
+use std::io;
 use std::uint;
 use std::vec;
 use std::hashmap::HashMap;

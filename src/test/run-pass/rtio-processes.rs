@@ -23,9 +23,9 @@
 //
 // See #9341
 
-use std::rt::io;
-use std::rt::io::process;
-use std::rt::io::process::{Process, ProcessConfig, CreatePipe, Ignored};
+use std::io;
+use std::io::process;
+use std::io::process::{Process, ProcessConfig, CreatePipe, Ignored};
 use std::str;
 
 #[test]

@@ -14,8 +14,8 @@ use prelude::*;
 use cell::Cell;
 
 use libc;
-use rt::io;
-use rt::io::io_error;
+use io;
+use io::io_error;
 use rt::rtio::{RtioProcess, IoFactory, with_local_io};
 
 use fmt;

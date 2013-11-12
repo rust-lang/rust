@@ -20,9 +20,9 @@ use std::char;
 use std::cast::transmute;
 use std::f64;
 use std::hashmap::HashMap;
-use std::rt::io;
-use std::rt::io::Decorator;
-use std::rt::io::mem::MemWriter;
+use std::io;
+use std::io::Decorator;
+use std::io::mem::MemWriter;
 use std::num;
 use std::str;
 use std::to_str;
@@ -1311,7 +1311,7 @@ mod tests {
 
     use super::*;
 
-    use std::rt::io;
+    use std::io;
     use serialize::Decodable;
     use treemap::TreeMap;
 
@@ -1483,8 +1483,8 @@ mod tests {
     }
 
     fn with_str_writer(f: &fn(@mut io::Writer)) -> ~str {
-        use std::rt::io::mem::MemWriter;
-        use std::rt::io::Decorator;
+        use std::io::mem::MemWriter;
+        use std::io::Decorator;
         use std::str;
 
         let m = @mut MemWriter::new();

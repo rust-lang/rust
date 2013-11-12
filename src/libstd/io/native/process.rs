@@ -14,7 +14,7 @@ use libc;
 use os;
 use prelude::*;
 use ptr;
-use rt::io;
+use io;
 use super::file;
 
 /**

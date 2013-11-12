@@ -13,7 +13,7 @@
 #[allow(missing_doc)];
 
 
-use std::rt::io;
+use std::io;
 
 #[cfg(not(target_os = "win32"))] use std::os;
 #[cfg(not(target_os = "win32"))] use terminfo::*;

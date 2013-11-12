@@ -18,9 +18,9 @@ use treemap::TreeMap;
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::{str, task};
-use std::rt::io;
-use std::rt::io::{File, Decorator};
-use std::rt::io::mem::MemWriter;
+use std::io;
+use std::io::{File, Decorator};
+use std::io::mem::MemWriter;
 
 /**
 *
@@ -479,7 +479,7 @@ impl<'self, T:Send +
 #[test]
 fn test() {
     use std::{os, run};
-    use std::rt::io::fs;
+    use std::io::fs;
     use std::str::from_utf8_owned;
 
     // Create a path to a new file 'filename' in the directory in which

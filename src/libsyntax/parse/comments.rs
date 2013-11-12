@@ -18,7 +18,7 @@ use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
 
-use std::rt::io;
+use std::io;
 use std::str;
 use std::uint;
 

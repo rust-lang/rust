@@ -56,8 +56,8 @@ d.write("#[feature(globs, managed_boxes)];\n")
 d.write("extern mod extra;\n")
 d.write("extern mod run_pass_stage2;\n")
 d.write("use run_pass_stage2::*;\n")
-d.write("use std::rt::io;\n");
-d.write("use std::rt::io::Writer;\n");
+d.write("use std::io;\n");
+d.write("use std::io::Writer;\n");
 d.write("fn main() {\n");
 d.write("    let mut out = io::stdout();\n");
 i = 0

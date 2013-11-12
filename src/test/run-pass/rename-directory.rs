@@ -17,8 +17,8 @@ extern mod extra;
 use extra::tempfile::TempDir;
 use std::os;
 use std::libc;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 
 fn rename_directory() {
     unsafe {

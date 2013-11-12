@@ -11,9 +11,9 @@
 // Type encoding
 
 use std::hashmap::HashMap;
-use std::rt::io;
-use std::rt::io::{Decorator, Writer, Seek};
-use std::rt::io::mem::MemWriter;
+use std::io;
+use std::io::{Decorator, Writer, Seek};
+use std::io::mem::MemWriter;
 use std::str;
 use std::fmt;
 

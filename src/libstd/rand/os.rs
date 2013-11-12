@@ -17,7 +17,7 @@ use ops::Drop;
 #[cfg(unix)]
 use rand::reader::ReaderRng;
 #[cfg(unix)]
-use rt::io::File;
+use io::File;
 
 #[cfg(windows)]
 use cast;

@@ -13,7 +13,7 @@
 extern mod extra;
 
 use extra::tempfile;
-use std::rt::io::File;
+use std::io::File;
 
 pub fn main() {
     let dir = tempfile::TempDir::new_in(&Path::new("."), "").unwrap();

@@ -19,8 +19,8 @@ use rustc::driver::driver::host_triple;
 use std::libc;
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use messages::*;
 
 pub fn default_workspace() -> Path {

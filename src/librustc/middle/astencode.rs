@@ -38,7 +38,7 @@ use syntax;
 use std::at_vec;
 use std::libc;
 use std::cast;
-use std::rt::io::Seek;
+use std::io::Seek;
 
 use extra::ebml::reader;
 use extra::ebml;
@@ -1344,8 +1344,8 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
 
     let in_item = in_item.unwrap();
     let wr = @mut MemWriter::new();

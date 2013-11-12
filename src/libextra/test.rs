@@ -30,8 +30,8 @@ use treemap::TreeMap;
 
 use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -655,9 +655,9 @@ pub fn run_tests_console(opts: &TestOpts,
 
 #[test]
 fn should_sort_failures_before_printing_them() {
-    use std::rt::io;
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
     use std::str;
     fn dummy() {}
 

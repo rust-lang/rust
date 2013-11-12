@@ -19,8 +19,6 @@ file, TCP, UDP, Unix domain sockets.
 Readers and Writers may be composed to add capabilities like string
 parsing, encoding, and compression.
 
-This will likely live in std::io, not std::rt::io.
-
 # Examples
 
 Some examples of obvious things you might want to do
@@ -240,16 +238,20 @@ Out of scope
 
 */
 
+#[allow(missing_doc)];
+
 use cast;
+use container::Container;
 use int;
-use path::Path;
-use str::{StrSlice, OwnedStr};
-use option::{Option, Some, None};
-use result::{Ok, Err, Result};
 use iter::Iterator;
+use option::{Option, Some, None};
+use path::Path;
+use result::{Ok, Err, Result};
+use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
+use vec::{OwnedVector, MutableVector};
 use vec;
 
 // Reexports

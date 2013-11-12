@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use extra::term;
-use std::rt::io;
+use std::io;
 
 pub fn note(msg: &str) {
     pretty_message(msg, "note: ", term::color::GREEN,

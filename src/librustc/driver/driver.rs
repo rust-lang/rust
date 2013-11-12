@@ -26,9 +26,9 @@ use util::common::time;
 use util::ppaux;
 
 use std::hashmap::{HashMap,HashSet};
-use std::rt::io;
-use std::rt::io::fs;
-use std::rt::io::mem::MemReader;
+use std::io;
+use std::io::fs;
+use std::io::mem::MemReader;
 use std::os;
 use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};

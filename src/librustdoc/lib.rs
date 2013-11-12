@@ -26,10 +26,10 @@ extern mod extra;
 
 use std::cell::Cell;
 use std::local_data;
-use std::rt::io;
-use std::rt::io::File;
-use std::rt::io::mem::MemWriter;
-use std::rt::io::Decorator;
+use std::io;
+use std::io::File;
+use std::io::mem::MemWriter;
+use std::io::Decorator;
 use std::str;
 use extra::getopts;
 use extra::getopts::groups;

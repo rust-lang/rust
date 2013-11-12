@@ -29,7 +29,7 @@ use rt::borrowck;
 use rt::context::Context;
 use rt::context;
 use rt::env;
-use rt::io::Writer;
+use io::Writer;
 use rt::kill::Death;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
