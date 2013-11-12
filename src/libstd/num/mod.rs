@@ -136,26 +136,87 @@ pub trait Integer: Num
 /// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
 #[inline(always)] pub fn lcm<T: Integer>(x: T, y: T) -> T { x.lcm(&y) }
 
+/// A collection of rounding operations.
 pub trait Round {
+    /// Return the largest integer less than or equal to a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.floor(), 1.0);
+    /// assert_approx_eq!((-1.3f32).floor(), -2.0);
+    /// ```
     fn floor(&self) -> Self;
+
+    /// Return the smallest integer greater than or equal to a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.ceil(), 2.0);
+    /// assert_approx_eq!((-1.3f32).ceil(), -1.0);
+    /// ```
     fn ceil(&self) -> Self;
+
+    /// Return the nearest integer to a number. Round half-way cases away from
+    /// `0.0`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.round(), 1.0);
+    /// assert_approx_eq!((-1.3f32).round(), -1.0);
+    /// assert_approx_eq!(1.5f32.round(), 2.0);
+    /// assert_approx_eq!((-1.5f32).round(), -2.0);
+    /// ```
     fn round(&self) -> Self;
+
+    /// Return the integer part of a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.round(), 1.0);
+    /// assert_approx_eq!((-1.3f32).round(), -1.0);
+    /// assert_approx_eq!(1.5f32.round(), 1.0);
+    /// assert_approx_eq!((-1.5f32).round(), -1.0);
+    /// ```
     fn trunc(&self) -> Self;
+
+    /// Return the fractional part of a number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_approx_eq!(1.3f32.round(), 0.3);
+    /// assert_approx_eq!((-1.3f32).round(), -0.3);
+    /// assert_approx_eq!(1.5f32.round(), 0.5);
+    /// assert_approx_eq!((-1.5f32).round(), -0.5);
+    /// ```
     fn fract(&self) -> Self;
 }
 
+/// Trait for common fractional operations.
 pub trait Fractional: Num
                     + Orderable
                     + Round
                     + Div<Self,Self> {
+    /// Take the reciprocal (inverse) of a number, `1/x`.
     fn recip(&self) -> Self;
 }
 
+/// A collection of algebraic operations.
 pub trait Algebraic {
+    /// Raise a number to a power.
     fn pow(&self, n: &Self) -> Self;
+    /// Take the squre root of a number.
     fn sqrt(&self) -> Self;
+    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(&self) -> Self;
+    /// Take the cubic root of a number.
     fn cbrt(&self) -> Self;
+    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// legs of length `x` and `y`.
     fn hypot(&self, other: &Self) -> Self;
 }
 
@@ -178,16 +239,42 @@ pub trait Algebraic {
 /// `y`.
 #[inline(always)] pub fn hypot<T: Algebraic>(x: T, y: T) -> T { x.hypot(&y) }
 
+/// A trait for trigonometric functions.
 pub trait Trigonometric {
+    /// Computes the sine of a number (in radians).
     fn sin(&self) -> Self;
+    /// Computes the cosine of a number (in radians).
     fn cos(&self) -> Self;
+    /// Computes the tangent of a number (in radians).
     fn tan(&self) -> Self;
 
+    /// Computes the arcsine of a number. Return value is in radians in
+    /// the range [-pi/2, pi/2] or NaN if the number is outside the range
+    /// [-1, 1].
     fn asin(&self) -> Self;
+    /// Computes the arccosine of a number. Return value is in radians in
+    /// the range [0, pi] or NaN if the number is outside the range
+    /// [-1, 1].
     fn acos(&self) -> Self;
+    /// Computes the arctangent of a number. Return value is in radians in the
+    /// range [-pi/2, pi/2];
     fn atan(&self) -> Self;
 
+    /// Computes the four quadrant arctangent of a number, `y`, and another
+    /// number `x`. Return value is in radians in the range [-pi, pi];
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let y = 3f32.sqrt();
+    /// let x = 1f32;
+    /// assert_approx_eq!(y.atan2(&x), f32::consts::PI / 3f32);
+    /// assert_approx_eq!((-y).atan2(&(-x)), - 2f32 * f32::consts::PI / 3f32);
+    /// ```
     fn atan2(&self, other: &Self) -> Self;
+
+    /// Simultaneously computes the sine and cosine of the number, `x`. Returns
+    /// `(sin(x), cos(x))`.
     fn sin_cos(&self) -> (Self, Self);
 }
 
@@ -210,13 +297,20 @@ pub trait Trigonometric {
 /// Simultaneously computes the sine and cosine of the number.
 #[inline(always)] pub fn sin_cos<T: Trigonometric>(value: T) -> (T, T) { value.sin_cos() }
 
+/// A trait exponential functions.
 pub trait Exponential {
+    /// Returns `e^(self)`, (the exponential function).
     fn exp(&self) -> Self;
+    /// Returns 2 raised to the power of the number, `2^(self)`.
     fn exp2(&self) -> Self;
 
+    /// Returns the natural logarithm of the number.
     fn ln(&self) -> Self;
+    /// Returns the logarithm of the number with respect to an arbitrary base.
     fn log(&self, base: &Self) -> Self;
+    /// Returns the base 2 logarithm of the number.
     fn log2(&self) -> Self;
+    /// Returns the base 10 logarithm of the number.
     fn log10(&self) -> Self;
 }
 
@@ -234,19 +328,26 @@ pub trait Exponential {
 /// Returns the base 10 logarithm of the number.
 #[inline(always)] pub fn log10<T: Exponential>(value: T) -> T { value.log10() }
 
+/// A trait hyperbolic functions.
 pub trait Hyperbolic: Exponential {
+    /// Hyperbolic sine function.
     fn sinh(&self) -> Self;
+    /// Hyperbolic cosine function.
     fn cosh(&self) -> Self;
+    /// Hyperbolic tangent function.
     fn tanh(&self) -> Self;
 
+    /// Inverse hyperbolic sine function.
     fn asinh(&self) -> Self;
+    /// Inverse hyperbolic cosine function.
     fn acosh(&self) -> Self;
+    /// Inverse hyperbolic tangent function.
     fn atanh(&self) -> Self;
 }
 
-/// Hyperbolic cosine function.
-#[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
 /// Hyperbolic sine function.
+#[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
+/// Hyperbolic cosine function.
 #[inline(always)] pub fn cosh<T: Hyperbolic>(value: T) -> T { value.cosh() }
 /// Hyperbolic tangent function.
 #[inline(always)] pub fn tanh<T: Hyperbolic>(value: T) -> T { value.tanh() }
@@ -285,7 +386,10 @@ pub trait Real: Signed
     fn ln_10() -> Self;
 
     // Angular conversions
+
+    /// Convert radians to degrees.
     fn to_degrees(&self) -> Self;
+    /// Convert degrees to radians.
     fn to_radians(&self) -> Self;
 }
 
@@ -315,9 +419,34 @@ pub trait Bitwise: Not<Self>
                  + Shl<Self,Self>
                  + Shr<Self,Self> {}
 
+/// A trait for common counting operations on bits.
 pub trait BitCount {
+    /// Returns the number of bits set in the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    /// assert_eq!(n.population_count(), 2);
+    /// ```
     fn population_count(&self) -> Self;
+    /// Returns the number of leading zeros in the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    /// assert_eq!(n.leading_zeros(), 10);
+    /// ```
     fn leading_zeros(&self) -> Self;
+    /// Returns the number of trailing zeros in the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let n = 0b0101000u16;
+    /// assert_eq!(n.trailing_zeros(), 3);
+    /// ```
     fn trailing_zeros(&self) -> Self;
 }
 
