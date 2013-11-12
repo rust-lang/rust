@@ -10,7 +10,6 @@
 
 // Helper functions used only in tests
 
-#include "rust_util.h"
 #include "sync/lock_and_signal.h"
 
 // These functions are used in the unit tests for C ABI calls.
