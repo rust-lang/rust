@@ -26,6 +26,7 @@ extern mod rustc;
 extern mod syntax;
 
 use std::{os, result, run, str, task};
+use std::rt::io::process;
 use std::hashmap::HashSet;
 use std::rt::io;
 use std::rt::io::fs;
@@ -164,14 +165,14 @@ impl<'self> PkgScript<'self> {
     /// is the command to pass to it (e.g., "build", "clean", "install")
     /// Returns a pair of an exit code and list of configs (obtained by
     /// calling the package script's configs() function if it exists
-    fn run_custom(exe: &Path, sysroot: &Path) -> (~[~str], int) {
+    fn run_custom(exe: &Path, sysroot: &Path) -> (~[~str], process::ProcessExit) {
         debug!("Running program: {} {} {}", exe.as_str().unwrap().to_owned(),
                sysroot.display(), "install");
         // FIXME #7401 should support commands besides `install`
         // FIXME (#9639): This needs to handle non-utf8 paths
         let status = run::process_status(exe.as_str().unwrap(),
                                          [sysroot.as_str().unwrap().to_owned(), ~"install"]);
-        if status != 0 {
+        if !status.success() {
             debug!("run_custom: first pkg command failed with {:?}", status);
             (~[], status)
         }
@@ -486,7 +487,7 @@ impl CtxMethods for BuildContext {
                 // We always *run* the package script
                 let (cfgs, hook_result) = PkgScript::run_custom(&Path::new(pkg_exe), &sysroot);
                 debug!("Command return code = {:?}", hook_result);
-                if hook_result != 0 {
+                if !hook_result.success() {
                     fail!("Error running custom build command")
                 }
                 custom = true;
@@ -697,7 +698,7 @@ impl CtxMethods for BuildContext {
                 debug!("test: test_exec = {}", test_exec.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
-                if status != 0 {
+                if !status.success() {
                     fail!("Some tests failed");
                 }
             }

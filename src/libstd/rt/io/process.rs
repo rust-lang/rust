@@ -18,6 +18,8 @@ use rt::io;
 use rt::io::io_error;
 use rt::rtio::{RtioProcess, IoFactory, with_local_io};
 
+use fmt;
+
 // windows values don't matter as long as they're at least one of unix's
 // TERM/KILL/INT signals
 #[cfg(windows)] pub static PleaseExitSignal: int = 15;
@@ -79,6 +81,40 @@ pub enum StdioContainer {
     CreatePipe(bool /* readable */, bool /* writable */),
 }
 
+/// Describes the result of a process after it has terminated.
+#[deriving(Eq)]
+pub enum ProcessExit {
+    /// Normal termination with an exit status.
+    ExitStatus(int),
+
+    /// Termination by signal, with the signal number.
+    ExitSignal(int),
+}
+
+impl fmt::Default for ProcessExit {
+    /// Format a ProcessExit enum, to nicely present the information.
+    fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) {
+        match *obj {
+            ExitStatus(code) =>  write!(f.buf, "exit code: {}", code),
+            ExitSignal(code) =>  write!(f.buf, "signal: {}", code),
+        }
+    }
+}
+
+impl ProcessExit {
+    /// Was termination successful? Signal termination not considered a success,
+    /// and success is defined as a zero exit status.
+    pub fn success(&self) -> bool {
+        return self.matches_exit_status(0);
+    }
+
+    /// Checks whether this ProcessExit matches the given exit status.
+    /// Termination by signal will never match an exit code.
+    pub fn matches_exit_status(&self, wanted: int) -> bool {
+        *self == ExitStatus(wanted)
+    }
+}
+
 impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
@@ -122,7 +158,7 @@ impl Process {
     /// Wait for the child to exit completely, returning the status that it
     /// exited with. This function will continue to have the same return value
     /// after it has been called at least once.
-    pub fn wait(&mut self) -> int { self.handle.wait() }
+    pub fn wait(&mut self) -> ProcessExit { self.handle.wait() }
 }
 
 impl Drop for Process {

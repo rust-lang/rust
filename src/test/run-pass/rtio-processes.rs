@@ -24,6 +24,7 @@
 // See #9341
 
 use std::rt::io;
+use std::rt::io::process;
 use std::rt::io::process::{Process, ProcessConfig, CreatePipe, Ignored};
 use std::str;
 
@@ -42,7 +43,7 @@ fn smoke() {
     let p = Process::new(args);
     assert!(p.is_some());
     let mut p = p.unwrap();
-    assert_eq!(p.wait(), 0);
+    assert!(p.wait().success());
 }
 
 #[test]
@@ -78,7 +79,27 @@ fn exit_reported_right() {
     let p = Process::new(args);
     assert!(p.is_some());
     let mut p = p.unwrap();
-    assert_eq!(p.wait(), 1);
+    assert!(p.wait().matches_exit_status(1));
+}
+
+#[test]
+#[cfg(unix, not(target_os="android"))]
+fn signal_reported_right() {
+    let io = ~[];
+    let args = ProcessConfig {
+        program: "/bin/sh",
+        args: [~"-c", ~"kill -1 $$"],
+        env: None,
+        cwd: None,
+        io: io,
+    };
+    let p = Process::new(args);
+    assert!(p.is_some());
+    let mut p = p.unwrap();
+    match p.wait() {
+        process::ExitSignal(1) => {},
+        result => fail!("not terminated by signal 1 (instead, {})", result),
+    }
 }
 
 fn read_all(input: &mut Reader) -> ~str {
@@ -100,7 +121,7 @@ fn run_output(args: ProcessConfig) -> ~str {
     assert!(p.io[0].is_none());
     assert!(p.io[1].is_some());
     let ret = read_all(p.io[1].get_mut_ref() as &mut Reader);
-    assert_eq!(p.wait(), 0);
+    assert!(p.wait().success());
     return ret;
 }
 
@@ -152,6 +173,6 @@ fn stdin_works() {
     p.io[0].get_mut_ref().write("foobar".as_bytes());
     p.io[0] = None; // close stdin;
     let out = read_all(p.io[1].get_mut_ref() as &mut Reader);
-    assert_eq!(p.wait(), 0);
+    assert!(p.wait().success());
     assert_eq!(out, ~"foobar\n");
 }

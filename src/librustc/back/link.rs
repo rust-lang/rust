@@ -378,9 +378,8 @@ pub mod write {
 
         let prog = run::process_output(cc_prog, cc_args);
 
-        if prog.status != 0 {
-            sess.err(format!("building with `{}` failed with code {}",
-                        cc_prog, prog.status));
+        if !prog.status.success() {
+            sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
             sess.note(format!("{} arguments: {}",
                         cc_prog, cc_args.connect(" ")));
             sess.note(str::from_utf8(prog.error + prog.output));
@@ -947,11 +946,11 @@ pub fn link_binary(sess: Session,
 
     // We run 'cc' here
     let prog = run::process_output(cc_prog, cc_args);
-    if 0 != prog.status {
-        sess.err(format!("linking with `{}` failed with code {}",
-                      cc_prog, prog.status));
+
+    if !prog.status.success() {
+        sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
         sess.note(format!("{} arguments: {}",
-                       cc_prog, cc_args.connect(" ")));
+                    cc_prog, cc_args.connect(" ")));
         sess.note(str::from_utf8(prog.error + prog.output));
         sess.abort_if_errors();
     }
