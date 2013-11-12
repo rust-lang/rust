@@ -8,15 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:`break` outside of loop
-
 struct Foo {
     t: ~str
 }
 
+fn cond() -> bool { true }
+
+fn foo(_: ||) {}
+
 fn main() {
-    let pth = break;
+    let pth = break; //~ ERROR: `break` outside of loop
+    if cond() { continue } //~ ERROR: `continue` outside of loop
+
+    while cond() {
+        if cond() { break }
+        if cond() { continue }
+        do foo {
+            if cond() { break } //~ ERROR: `break` inside of a closure
+            if cond() { continue } //~ ERROR: `continue` inside of a closure
+        }
+    }
 
     let rs: Foo = Foo{t: pth};
-
 }

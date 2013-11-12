@@ -25,7 +25,6 @@ use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
-use syntax::attr;
 use syntax::parse::token;
 use syntax::parse::token::{ident_interner, interner_get};
 use syntax::parse::token::special_idents;
@@ -252,19 +251,6 @@ enum RibKind {
 enum MethodSort {
     Required,
     Provided(NodeId)
-}
-
-// The X-ray flag indicates that a context has the X-ray privilege, which
-// allows it to reference private names. Currently, this is used for the test
-// runner.
-//
-// FIXME #4947: The X-ray flag is kind of questionable in the first
-// place. It might be better to introduce an expr_xray_path instead.
-
-#[deriving(Eq)]
-enum XrayFlag {
-    NoXray,     //< Private items cannot be accessed.
-    Xray        //< Private items can be accessed.
 }
 
 enum UseLexicalScopeFlag {
@@ -831,7 +817,6 @@ fn Resolver(session: Session,
         type_ribs: @mut ~[],
         label_ribs: @mut ~[],
 
-        xray_context: NoXray,
         current_trait_refs: None,
 
         self_ident: special_idents::self_,
@@ -882,10 +867,6 @@ struct Resolver {
 
     // The current set of local scopes, for labels.
     label_ribs: @mut ~[@Rib],
-
-    // Whether the current context is an X-ray context. An X-ray context is
-    // allowed to access private names of any module.
-    xray_context: XrayFlag,
 
     // The trait that the current context can refer to.
     current_trait_refs: Option<~[DefId]>,
@@ -3545,13 +3526,6 @@ impl Resolver {
         debug!("(resolving item) resolving {}",
                self.session.str_of(item.ident));
 
-        // Items with the !resolve_unexported attribute are X-ray contexts.
-        // This is used to allow the test runner to run unexported tests.
-        let orig_xray_flag = self.xray_context;
-        if attr::contains_name(item.attrs, "!resolve_unexported") {
-            self.xray_context = Xray;
-        }
-
         match item.node {
 
             // enum item: resolve all the variants' discrs,
@@ -3715,8 +3689,6 @@ impl Resolver {
             fail!("item macros unimplemented")
           }
         }
-
-        self.xray_context = orig_xray_flag;
     }
 
     fn with_type_parameter_rib(&mut self,
