@@ -17,7 +17,7 @@
 
 use std::fmt;
 use std::local_data;
-use std::rt::io;
+use std::io;
 
 use syntax::ast;
 use syntax::ast_util;

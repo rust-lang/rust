@@ -11,7 +11,7 @@
 use std::c_str::CString;
 use std::libc;
 use std::rt::BlockedTask;
-use std::rt::io::IoError;
+use std::io::IoError;
 use std::rt::local::Local;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 use std::rt::sched::{Scheduler, SchedHandle};

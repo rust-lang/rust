@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::fmt;
-use std::rt::io;
+use std::io;
 
 #[deriving(Clone)]
 pub struct Layout {

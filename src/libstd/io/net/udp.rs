@@ -10,9 +10,9 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::net::ip::SocketAddr;
-use rt::io::{Reader, Writer};
-use rt::io::{io_error, EndOfFile};
+use io::net::ip::SocketAddr;
+use io::{Reader, Writer};
+use io::{io_error, EndOfFile};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, with_local_io};
 
 pub struct UdpSocket {
@@ -60,7 +60,7 @@ impl UdpSocket {
         match self.obj.socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
-                rtdebug!("failed to get socket name: {:?}", ioerr);
+                debug!("failed to get socket name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -106,8 +106,8 @@ impl Writer for UdpStream {
 mod test {
     use super::*;
     use rt::test::*;
-    use rt::io::net::ip::{Ipv4Addr, SocketAddr};
-    use rt::io::*;
+    use io::net::ip::{Ipv4Addr, SocketAddr};
+    use io::*;
     use option::{Some, None};
     use rt::comm::oneshot;
     use cell::Cell;

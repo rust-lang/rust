@@ -29,7 +29,7 @@
 use container::Container;
 use iter::Iterator;
 use option::{Some, None};
-use rt::io::Writer;
+use io::Writer;
 use str::OwnedStr;
 use to_bytes::IterBytes;
 use vec::ImmutableVector;

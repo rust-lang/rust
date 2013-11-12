@@ -10,7 +10,7 @@
 
 use libc;
 use option::Option;
-use rt::io::{Reader, Writer};
+use io::{Reader, Writer};
 use super::file;
 
 /// Creates a new handle to the stdin of this process

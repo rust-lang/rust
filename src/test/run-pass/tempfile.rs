@@ -24,8 +24,8 @@ use extra::tempfile::TempDir;
 use std::os;
 use std::task;
 use std::cell::Cell;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 
 fn test_tempdir() {
     let path = {

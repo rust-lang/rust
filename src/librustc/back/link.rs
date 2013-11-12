@@ -31,7 +31,7 @@ use std::ptr;
 use std::run;
 use std::str;
 use std::vec;
-use std::rt::io::fs;
+use std::io::fs;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
@@ -969,7 +969,7 @@ pub fn link_binary(sess: Session,
 }
 
 fn is_writeable(p: &Path) -> bool {
-    use std::rt::io;
+    use std::io;
 
     !p.exists() ||
         (match io::result(|| p.stat()) {

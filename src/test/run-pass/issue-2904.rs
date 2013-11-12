@@ -16,7 +16,7 @@
 
 extern mod extra;
 
-use std::rt::io;
+use std::io;
 use std::to_str;
 
 enum square {

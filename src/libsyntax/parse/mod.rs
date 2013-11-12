@@ -19,8 +19,8 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 use std::str;
 
 pub mod lexer;
@@ -332,9 +332,9 @@ mod test {
     use super::*;
     use extra::serialize::Encodable;
     use extra;
-    use std::rt::io;
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
     use std::str;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use vec::MutableCloneableVector;
-use to_str::ToStr;
+use container::Container;
 use from_str::FromStr;
 use option::{Option, None, Some};
-
+use to_str::ToStr;
+use vec::{MutableCloneableVector, ImmutableVector};
 
 pub type Port = u16;
 

@@ -13,8 +13,8 @@
 use rustc::metadata::filesearch::rust_path;
 use path_util::*;
 use std::os;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 
 pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     let workspaces = rust_path();

@@ -10,9 +10,9 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::net::ip::SocketAddr;
-use rt::io::{Reader, Writer, Listener, Acceptor};
-use rt::io::{io_error, EndOfFile};
+use io::net::ip::SocketAddr;
+use io::{Reader, Writer, Listener, Acceptor};
+use io::{io_error, EndOfFile};
 use rt::rtio::{IoFactory, with_local_io,
                RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
 
@@ -41,7 +41,7 @@ impl TcpStream {
         match self.obj.peer_name() {
             Ok(pn) => Some(pn),
             Err(ioerr) => {
-                rtdebug!("failed to get peer name: {:?}", ioerr);
+                debug!("failed to get peer name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -52,7 +52,7 @@ impl TcpStream {
         match self.obj.socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
-                rtdebug!("failed to get socket name: {:?}", ioerr);
+                debug!("failed to get socket name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -107,7 +107,7 @@ impl TcpListener {
         match self.obj.socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
-                rtdebug!("failed to get socket name: {:?}", ioerr);
+                debug!("failed to get socket name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -148,8 +148,8 @@ mod test {
     use super::*;
     use cell::Cell;
     use rt::test::*;
-    use rt::io::net::ip::{Ipv4Addr, SocketAddr};
-    use rt::io::*;
+    use io::net::ip::{Ipv4Addr, SocketAddr};
+    use io::*;
     use prelude::*;
     use rt::comm::oneshot;
 
@@ -514,7 +514,7 @@ mod test {
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == i as u8);
-                        rtdebug!("read");
+                        debug!("read");
                     }
                 }
             }
@@ -526,11 +526,11 @@ mod test {
                 if i == MAX { return }
 
                 do spawntask {
-                    rtdebug!("connecting");
+                    debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
-                    rtdebug!("writing");
+                    debug!("writing");
                     stream.write([i as u8]);
                 }
             }
@@ -556,7 +556,7 @@ mod test {
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == i as u8);
-                        rtdebug!("read");
+                        debug!("read");
                     }
                 }
             }
@@ -568,11 +568,11 @@ mod test {
                 if i == MAX { return }
 
                 do spawntask {
-                    rtdebug!("connecting");
+                    debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
-                    rtdebug!("writing");
+                    debug!("writing");
                     stream.write([i as u8]);
                 }
             }
@@ -598,7 +598,7 @@ mod test {
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == 99);
-                        rtdebug!("read");
+                        debug!("read");
                     }
                 }
             }
@@ -610,11 +610,11 @@ mod test {
                 if i == MAX { return }
 
                 do spawntask_later {
-                    rtdebug!("connecting");
+                    debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
-                    rtdebug!("writing");
+                    debug!("writing");
                     stream.write([99]);
                 }
             }
@@ -639,7 +639,7 @@ mod test {
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == 99);
-                        rtdebug!("read");
+                        debug!("read");
                     }
                 }
             }
@@ -651,11 +651,11 @@ mod test {
                 if i == MAX { return }
 
                 do spawntask_later {
-                    rtdebug!("connecting");
+                    debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
-                    rtdebug!("writing");
+                    debug!("writing");
                     stream.write([99]);
                 }
             }

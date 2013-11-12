@@ -220,7 +220,7 @@ currently implemented are:
 
 ```rust
 format!      // described above
-write!       // first argument is a &mut rt::io::Writer, the destination
+write!       // first argument is a &mut io::Writer, the destination
 writeln!     // same as write but appends a newline
 print!       // the format string is printed to the standard output
 println!     // same as print but appends a newline
@@ -236,7 +236,7 @@ strings and instead directly write the output. Under the hood, this function is
 actually invoking the `write` function defined in this module. Example usage is:
 
 ```rust
-use std::rt::io;
+use std::io;
 
 let mut w = io::mem::MemWriter::new();
 write!(&mut w as &mut io::Writer, "Hello {}!", "world");
@@ -462,9 +462,9 @@ use prelude::*;
 
 use cast;
 use char::Char;
-use rt::io::Decorator;
-use rt::io::mem::MemWriter;
-use rt::io;
+use io::Decorator;
+use io::mem::MemWriter;
+use io;
 use str;
 use repr;
 use util;

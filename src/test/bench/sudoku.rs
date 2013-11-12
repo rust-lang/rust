@@ -14,9 +14,9 @@
 
 extern mod extra;
 
-use std::rt::io;
-use std::rt::io::stdio::StdReader;
-use std::rt::io::buffered::BufferedReader;
+use std::io;
+use std::io::stdio::StdReader;
+use std::io::buffered::BufferedReader;
 use std::os;
 use std::uint;
 use std::unstable::intrinsics::cttz16;

@@ -12,7 +12,7 @@ extern mod rustpkg;
 extern mod rustc;
 
 use std::os;
-use std::rt::io::File;
+use std::io::File;
 use rustpkg::api;
 use rustpkg::version::NoVersion;
 

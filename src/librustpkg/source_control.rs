@@ -12,7 +12,7 @@
 
 use std::{run, str};
 use std::run::{ProcessOutput, ProcessOptions, Process};
-use std::rt::io::fs;
+use std::io::fs;
 use extra::tempfile::TempDir;
 use version::*;
 use path_util::chmod_read_only;

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rt::io::buffered::BufferedReader;
-use std::rt::io::File;
+use std::io::buffered::BufferedReader;
+use std::io::File;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 

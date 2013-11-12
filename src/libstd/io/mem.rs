@@ -226,7 +226,7 @@ pub fn with_mem_writer(writeFn:&fn(&mut MemWriter)) -> ~[u8] {
 mod test {
     use prelude::*;
     use super::*;
-    use rt::io::*;
+    use io::*;
 
     #[test]
     fn test_mem_writer() {

@@ -61,7 +61,7 @@
  * avoid combining it with other lines and making matters even worse.
  */
 
-use std::rt::io;
+use std::io;
 use std::vec;
 
 #[deriving(Clone, Eq)]

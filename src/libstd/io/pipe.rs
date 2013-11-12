@@ -15,8 +15,8 @@
 
 use prelude::*;
 use super::{Reader, Writer};
-use rt::io::{io_error, EndOfFile};
-use rt::io::native::file;
+use io::{io_error, EndOfFile};
+use io::native::file;
 use rt::rtio::{RtioPipe, with_local_io};
 
 pub struct PipeStream {
@@ -34,7 +34,7 @@ impl PipeStream {
     /// # Example
     ///
     ///     use std::libc;
-    ///     use std::rt::io::pipe;
+    ///     use std::io::pipe;
     ///
     ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
     ///     pipe.write(bytes!("Hello, stderr!"));

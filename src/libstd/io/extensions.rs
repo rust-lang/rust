@@ -15,7 +15,7 @@
 
 use iter::Iterator;
 use option::Option;
-use rt::io::{Reader, Decorator};
+use io::{Reader, Decorator};
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.
@@ -139,8 +139,9 @@ pub fn u64_from_be_bytes(data: &[u8],
 #[cfg(test)]
 mod test {
     use option::{None, Option, Some};
-    use rt::io::mem::{MemReader, MemWriter};
-    use rt::io::{Reader, io_error, placeholder_error};
+    use io::mem::{MemReader, MemWriter};
+    use io::{Reader, io_error, placeholder_error};
+    use vec::ImmutableVector;
 
     struct InitialZeroByteReader {
         count: int,

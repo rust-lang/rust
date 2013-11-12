@@ -19,7 +19,7 @@ More runtime type reflection
 use cast::transmute;
 use char;
 use container::Container;
-use rt::io;
+use io;
 use iter::Iterator;
 use libc::c_void;
 use option::{Some, None};
@@ -621,8 +621,8 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
 
 pub fn repr_to_str<T>(t: &T) -> ~str {
     use str;
-    use rt::io;
-    use rt::io::Decorator;
+    use io;
+    use io::Decorator;
 
     let mut result = io::mem::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t);
@@ -637,7 +637,7 @@ fn test_repr() {
     use prelude::*;
     use str;
     use str::Str;
-    use rt::io::Decorator;
+    use io::Decorator;
     use util::swap;
     use char::is_alphabetic;
 

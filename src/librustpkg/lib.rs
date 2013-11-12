@@ -26,10 +26,10 @@ extern mod rustc;
 extern mod syntax;
 
 use std::{os, result, run, str, task};
-use std::rt::io::process;
+use std::io::process;
 use std::hashmap::HashSet;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 pub use std::path::Path;
 
 use extra::workcache;
