@@ -17,7 +17,6 @@
  */
 
 #include "rust_globals.h"
-#include "rust_util.h"
 
 //Unwinding ABI declarations.
 typedef int _Unwind_Reason_Code;
