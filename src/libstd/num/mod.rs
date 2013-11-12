@@ -389,9 +389,9 @@ pub trait Real: Signed
 
     // Angular conversions
 
-    /// Convert degrees to radians.
-    fn to_degrees(&self) -> Self;
     /// Convert radians to degrees.
+    fn to_degrees(&self) -> Self;
+    /// Convert degrees to radians.
     fn to_radians(&self) -> Self;
 }
 
