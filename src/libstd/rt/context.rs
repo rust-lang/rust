@@ -59,7 +59,7 @@ impl Context {
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
         unsafe {
-            swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs));
+            rust_swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs));
         };
 
         initialize_call_frame(&mut *regs, fp, argp, sp);
@@ -104,8 +104,8 @@ impl Context {
             // stack limit in the OS-specified TLS slot. This also  means that
             // we cannot call any more rust functions after record_stack_bounds
             // returns because they would all likely fail due to the limit being
-            // invalid for the current task. Lucky for us `swap_registers` is a
-            // C function so we don't have to worry about that!
+            // invalid for the current task. Lucky for us `rust_swap_registers`
+            // is a C function so we don't have to worry about that!
             match in_context.stack_bounds {
                 Some((lo, hi)) => record_stack_bounds(lo, hi),
                 // If we're going back to one of the original contexts or
@@ -113,13 +113,13 @@ impl Context {
                 // the stack limit to 0 to make morestack never fail
                 None => record_stack_bounds(0, uint::max_value),
             }
-            swap_registers(out_regs, in_regs)
+            rust_swap_registers(out_regs, in_regs)
         }
     }
 }
 
 extern {
-    fn swap_registers(out_regs: *mut Registers, in_regs: *Registers);
+    fn rust_swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
 
 // Register contexts used in various architectures
@@ -142,7 +142,7 @@ extern {
 //
 // These structures/functions are roughly in-sync with the source files inside
 // of src/rt/arch/$arch. The only currently used function from those folders is
-// the `swap_registers` function, but that's only because for now segmented
+// the `rust_swap_registers` function, but that's only because for now segmented
 // stacks are disabled.
 
 #[cfg(target_arch = "x86")]
