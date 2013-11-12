@@ -955,8 +955,9 @@ pub fn link_binary(sess: Session,
         sess.abort_if_errors();
     }
 
-    // Clean up on Darwin
-    if sess.targ_cfg.os == abi::OsMacos {
+    // On OSX, debuggers needs this utility to get run to do some munging of the
+    // symbols
+    if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
         // FIXME (#9639): This needs to handle non-utf8 paths
         run::process_status("dsymutil", [output.as_str().unwrap().to_owned()]);
     }
