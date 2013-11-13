@@ -55,8 +55,7 @@ use prelude::*;
 
 use num;
 use vec;
-use str;
-use super::{Reader, Writer, Stream, Decorator};
+use super::{Stream, Decorator};
 
 // libuv recommends 64k buffers to maximize throughput
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
@@ -93,45 +92,10 @@ impl<R: Reader> BufferedReader<R> {
     pub fn new(inner: R) -> BufferedReader<R> {
         BufferedReader::with_capacity(DEFAULT_CAPACITY, inner)
     }
+}
 
-    /// Reads the next line of input, interpreted as a sequence of utf-8
-    /// encoded unicode codepoints. If a newline is encountered, then the
-    /// newline is contained in the returned string.
-    pub fn read_line(&mut self) -> Option<~str> {
-        self.read_until('\n' as u8).map(str::from_utf8_owned)
-    }
-
-    /// Reads a sequence of bytes leading up to a specified delimeter. Once the
-    /// specified byte is encountered, reading ceases and the bytes up to and
-    /// including the delimiter are returned.
-    pub fn read_until(&mut self, byte: u8) -> Option<~[u8]> {
-        let mut res = ~[];
-        let mut used;
-        loop {
-            {
-                let available = self.fill_buffer();
-                match available.iter().position(|&b| b == byte) {
-                    Some(i) => {
-                        res.push_all(available.slice_to(i + 1));
-                        used = i + 1;
-                        break
-                    }
-                    None => {
-                        res.push_all(available);
-                        used = available.len();
-                    }
-                }
-            }
-            if used == 0 {
-                break
-            }
-            self.pos += used;
-        }
-        self.pos += used;
-        return if res.len() == 0 {None} else {Some(res)};
-    }
-
-    fn fill_buffer<'a>(&'a mut self) -> &'a [u8] {
+impl<R: Reader> Buffer for BufferedReader<R> {
+    fn fill<'a>(&'a mut self) -> &'a [u8] {
         if self.pos == self.cap {
             match self.inner.read(self.buf) {
                 Some(cap) => {
@@ -143,12 +107,17 @@ impl<R: Reader> BufferedReader<R> {
         }
         return self.buf.slice(self.pos, self.cap);
     }
+
+    fn consume(&mut self, amt: uint) {
+        self.pos += amt;
+        assert!(self.pos <= self.cap);
+    }
 }
 
 impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let nread = {
-            let available = self.fill_buffer();
+            let available = self.fill();
             if available.len() == 0 {
                 return None;
             }
@@ -166,17 +135,9 @@ impl<R: Reader> Reader for BufferedReader<R> {
 }
 
 impl<R: Reader> Decorator<R> for BufferedReader<R> {
-    fn inner(self) -> R {
-        self.inner
-    }
-
-    fn inner_ref<'a>(&'a self) -> &'a R {
-        &self.inner
-    }
-
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R {
-        &mut self.inner
-    }
+    fn inner(self) -> R { self.inner }
+    fn inner_ref<'a>(&'a self) -> &'a R { &self.inner }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R { &mut self.inner }
 }
 
 /// Wraps a Writer and buffers output to it
@@ -279,13 +240,8 @@ impl<W: Writer> Decorator<W> for LineBufferedWriter<W> {
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        self.inner.read(buf)
-    }
-
-    fn eof(&mut self) -> bool {
-        self.inner.eof()
-    }
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
+    fn eof(&mut self) -> bool { self.inner.eof() }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
@@ -311,35 +267,24 @@ impl<S: Stream> BufferedStream<S> {
     }
 }
 
-impl<S: Stream> Reader for BufferedStream<S> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        self.inner.read(buf)
-    }
+impl<S: Stream> Buffer for BufferedStream<S> {
+    fn fill<'a>(&'a mut self) -> &'a [u8] { self.inner.fill() }
+    fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
+}
 
-    fn eof(&mut self) -> bool {
-        self.inner.eof()
-    }
+impl<S: Stream> Reader for BufferedStream<S> {
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
+    fn eof(&mut self) -> bool { self.inner.eof() }
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
-    fn write(&mut self, buf: &[u8]) {
-        self.inner.inner.write(buf)
-    }
-
-    fn flush(&mut self) {
-        self.inner.inner.flush()
-    }
+    fn write(&mut self, buf: &[u8]) { self.inner.inner.write(buf) }
+    fn flush(&mut self) { self.inner.inner.flush() }
 }
 
 impl<S: Stream> Decorator<S> for BufferedStream<S> {
-    fn inner(self) -> S {
-        self.inner.inner.inner()
-    }
-
-    fn inner_ref<'a>(&'a self) -> &'a S {
-        self.inner.inner.inner_ref()
-    }
-
+    fn inner(self) -> S { self.inner.inner.inner() }
+    fn inner_ref<'a>(&'a self) -> &'a S { self.inner.inner.inner_ref() }
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut S {
         self.inner.inner.inner_mut_ref()
     }

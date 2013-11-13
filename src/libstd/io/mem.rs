@@ -119,29 +119,18 @@ impl Reader for MemReader {
 
 impl Seek for MemReader {
     fn tell(&self) -> u64 { self.pos as u64 }
-
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
+impl Buffer for MemReader {
+    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn consume(&mut self, amt: uint) { self.pos += amt; }
+}
+
 impl Decorator<~[u8]> for MemReader {
-
-    fn inner(self) -> ~[u8] {
-        match self {
-            MemReader { buf: buf, _ } => buf
-        }
-    }
-
-    fn inner_ref<'a>(&'a self) -> &'a ~[u8] {
-        match *self {
-            MemReader { buf: ref buf, _ } => buf
-        }
-    }
-
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] {
-        match *self {
-            MemReader { buf: ref mut buf, _ } => buf
-        }
-    }
+    fn inner(self) -> ~[u8] { self.buf }
+    fn inner_ref<'a>(&'a self) -> &'a ~[u8] { &self.buf }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] { &mut self.buf }
 }
 
 
@@ -212,6 +201,11 @@ impl<'self> Seek for BufReader<'self> {
     fn tell(&self) -> u64 { self.pos as u64 }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+}
+
+impl<'self> Buffer for BufReader<'self> {
+    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
 ///Calls a function with a MemWriter and returns
