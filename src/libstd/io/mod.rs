@@ -1048,6 +1048,33 @@ pub trait Buffer: Reader {
         self.consume(used);
         return if res.len() == 0 {None} else {Some(res)};
     }
+
+    /// Reads the next utf8-encoded character from the underlying stream.
+    ///
+    /// This will return `None` if the following sequence of bytes in the
+    /// stream are not a valid utf8-sequence, or if an I/O error is encountered.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if a read error is
+    /// encountered.
+    fn read_char(&mut self) -> Option<char> {
+        let width = {
+            let available = self.fill();
+            if available.len() == 0 { return None } // read error
+            str::utf8_char_width(available[0])
+        };
+        if width == 0 { return None } // not uf8
+        let mut buf = [0, ..4];
+        match self.read(buf.mut_slice_to(width)) {
+            Some(n) if n == width => {}
+            Some(*) | None => return None // read error
+        }
+        match str::from_utf8_slice_opt(buf.slice_to(width)) {
+            Some(s) => Some(s.char_at(0)),
+            None => None
+        }
+    }
 }
 
 pub enum SeekStyle {

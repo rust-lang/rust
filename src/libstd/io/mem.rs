@@ -299,4 +299,20 @@ mod test {
         let buf = with_mem_writer(|wr| wr.write([1,2,3,4,5,6,7]));
         assert_eq!(buf, ~[1,2,3,4,5,6,7]);
     }
+
+    #[test]
+    fn test_read_char() {
+        let mut r = BufReader::new(bytes!("Việt"));
+        assert_eq!(r.read_char(), Some('V'));
+        assert_eq!(r.read_char(), Some('i'));
+        assert_eq!(r.read_char(), Some('ệ'));
+        assert_eq!(r.read_char(), Some('t'));
+        assert_eq!(r.read_char(), None);
+    }
+
+    #[test]
+    fn test_read_bad_char() {
+        let mut r = BufReader::new(bytes!(0x80));
+        assert_eq!(r.read_char(), None);
+    }
 }
