@@ -14,7 +14,7 @@
 //!
 //! * Should probably have something like this for strings.
 //! * Should they implement Closable? Would take extra state.
-
+use cmp::max;
 use cmp::min;
 use prelude::*;
 use super::*;
@@ -64,15 +64,19 @@ impl Writer for MemWriter {
     }
 }
 
+// FIXME(#10432)
 impl Seek for MemWriter {
     fn tell(&self) -> u64 { self.pos as u64 }
 
     fn seek(&mut self, pos: i64, style: SeekStyle) {
-        match style {
-            SeekSet => { self.pos = pos as uint; }
-            SeekEnd => { self.pos = self.buf.len() + pos as uint; }
-            SeekCur => { self.pos += pos as uint; }
-        }
+        // compute offset as signed and clamp to prevent overflow
+        let offset = match style {
+            SeekSet => { 0 }
+            SeekEnd => { self.buf.len() }
+            SeekCur => { self.pos }
+        } as i64;
+
+        self.pos = max(0, offset+pos) as uint;
     }
 }
 
@@ -146,6 +150,9 @@ impl Decorator<~[u8]> for MemReader {
 
 
 /// Writes to a fixed-size byte slice
+///
+/// If a write will not fit in the buffer, it raises the `io_error`
+/// condition and does not write any data.
 pub struct BufWriter<'self> {
     priv buf: &'self mut [u8],
     priv pos: uint
@@ -161,15 +168,38 @@ impl<'self> BufWriter<'self> {
 }
 
 impl<'self> Writer for BufWriter<'self> {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, buf: &[u8]) {
+        // raises a condition if the entire write does not fit in the buffer
+        let max_size = self.buf.len();
+        if self.pos >= max_size || (self.pos + buf.len()) > max_size {
+            io_error::cond.raise(IoError {
+                kind: OtherIoError,
+                desc: "Trying to write past end of buffer",
+                detail: None
+            });
+            return;
+        }
 
-    fn flush(&mut self) { fail!() }
+        vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos),
+                                buf, buf.len());
+        self.pos += buf.len();
+    }
 }
 
+// FIXME(#10432)
 impl<'self> Seek for BufWriter<'self> {
-    fn tell(&self) -> u64 { fail!() }
+    fn tell(&self) -> u64 { self.pos as u64 }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, pos: i64, style: SeekStyle) {
+        // compute offset as signed and clamp to prevent overflow
+        let offset = match style {
+            SeekSet => { 0 }
+            SeekEnd => { self.buf.len() }
+            SeekCur => { self.pos }
+        } as i64;
+
+        self.pos = max(0, offset+pos) as uint;
+    }
 }
 
 
@@ -255,6 +285,65 @@ mod test {
         writer.seek(1, SeekEnd);
         writer.write([1]);
         assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
+    }
+
+    #[test]
+    fn test_buf_writer() {
+        let mut buf = [0 as u8, ..8];
+        {
+            let mut writer = BufWriter::new(buf);
+            assert_eq!(writer.tell(), 0);
+            writer.write([0]);
+            assert_eq!(writer.tell(), 1);
+            writer.write([1, 2, 3]);
+            writer.write([4, 5, 6, 7]);
+            assert_eq!(writer.tell(), 8);
+        }
+        assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn test_buf_writer_seek() {
+        let mut buf = [0 as u8, ..8];
+        {
+            let mut writer = BufWriter::new(buf);
+            assert_eq!(writer.tell(), 0);
+            writer.write([1]);
+            assert_eq!(writer.tell(), 1);
+
+            writer.seek(2, SeekSet);
+            assert_eq!(writer.tell(), 2);
+            writer.write([2]);
+            assert_eq!(writer.tell(), 3);
+
+            writer.seek(-2, SeekCur);
+            assert_eq!(writer.tell(), 1);
+            writer.write([3]);
+            assert_eq!(writer.tell(), 2);
+
+            writer.seek(-1, SeekEnd);
+            assert_eq!(writer.tell(), 7);
+            writer.write([4]);
+            assert_eq!(writer.tell(), 8);
+
+        }
+        assert_eq!(buf, [1, 3, 2, 0, 0, 0, 0, 4]);
+    }
+
+    #[test]
+    fn test_buf_writer_error() {
+        let mut buf = [0 as u8, ..2];
+        let mut writer = BufWriter::new(buf);
+        writer.write([0]);
+
+        let mut called = false;
+        do io_error::cond.trap(|err| {
+            assert_eq!(err.kind, OtherIoError);
+            called = true;
+        }).inside {
+            writer.write([0, 0]);
+        }
+        assert!(called);
     }
 
     #[test]
