@@ -247,11 +247,12 @@ use iter::Iterator;
 use option::{Option, Some, None};
 use path::Path;
 use result::{Ok, Err, Result};
+use str;
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
-use vec::{OwnedVector, MutableVector};
+use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCopyableVector};
 use vec;
 
 // Reexports
@@ -976,6 +977,78 @@ impl<'self> Writer for &'self mut Writer {
 pub trait Stream: Reader + Writer { }
 
 impl<T: Reader + Writer> Stream for T {}
+
+/// A Buffer is a type of reader which has some form of internal buffering to
+/// allow certain kinds of reading operations to be more optimized than others.
+/// This type extends the `Reader` trait with a few methods that are not
+/// possible to reasonably implement with purely a read interface.
+pub trait Buffer: Reader {
+    /// Fills the internal buffer of this object, returning the buffer contents.
+    /// Note that none of the contents will be "read" in the sense that later
+    /// calling `read` may return the same contents.
+    ///
+    /// The `consume` function must be called with the number of bytes that are
+    /// consumed from this buffer returned to ensure that the bytes are never
+    /// returned twice.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if a read error is
+    /// encountered.
+    fn fill<'a>(&'a mut self) -> &'a [u8];
+
+    /// Tells this buffer that `amt` bytes have been consumed from the buffer,
+    /// so they should no longer be returned in calls to `fill` or `read`.
+    fn consume(&mut self, amt: uint);
+
+    /// Reads the next line of input, interpreted as a sequence of utf-8
+    /// encoded unicode codepoints. If a newline is encountered, then the
+    /// newline is contained in the returned string.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if a read error is
+    /// encountered. The task will also fail if sequence of bytes leading up to
+    /// the newline character are not valid utf-8.
+    fn read_line(&mut self) -> Option<~str> {
+        self.read_until('\n' as u8).map(str::from_utf8_owned)
+    }
+
+    /// Reads a sequence of bytes leading up to a specified delimeter. Once the
+    /// specified byte is encountered, reading ceases and the bytes up to and
+    /// including the delimiter are returned.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise on the `io_error` condition if a read error is
+    /// encountered.
+    fn read_until(&mut self, byte: u8) -> Option<~[u8]> {
+        let mut res = ~[];
+        let mut used;
+        loop {
+            {
+                let available = self.fill();
+                match available.iter().position(|&b| b == byte) {
+                    Some(i) => {
+                        res.push_all(available.slice_to(i + 1));
+                        used = i + 1;
+                        break
+                    }
+                    None => {
+                        res.push_all(available);
+                        used = available.len();
+                    }
+                }
+            }
+            if used == 0 {
+                break
+            }
+            self.consume(used);
+        }
+        self.consume(used);
+        return if res.len() == 0 {None} else {Some(res)};
+    }
+}
 
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
