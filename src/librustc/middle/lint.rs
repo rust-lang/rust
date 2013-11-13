@@ -34,6 +34,7 @@
 //! Context itself, span_lint should be used instead of add_lint.
 
 use driver::session;
+use middle::privacy;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
 use middle::pat_util;
@@ -309,13 +310,20 @@ pub fn get_lint_dict() -> LintDict {
     return map;
 }
 
-struct Context {
+struct Context<'self> {
     // All known lint modes (string versions)
     dict: @LintDict,
     // Current levels of each lint warning
     cur: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
     tcx: ty::ctxt,
+    // Items exported by the crate; used by the missing_doc lint.
+    exported_items: &'self privacy::ExportedItems,
+    // The id of the current `ast::struct_def` being walked.
+    cur_struct_def_id: ast::NodeId,
+    // Whether some ancestor of the current node was marked
+    // #[doc(hidden)].
+    is_doc_hidden: bool,
 
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
@@ -323,7 +331,7 @@ struct Context {
     lint_stack: ~[(lint, level, LintSource)],
 }
 
-impl Context {
+impl<'self> Context<'self> {
     fn get_level(&self, lint: lint) -> level {
         match self.cur.find(&(lint as uint)) {
           Some(&(lvl, _)) => lvl,
@@ -432,9 +440,16 @@ impl Context {
             true
         };
 
+        let old_is_doc_hidden = self.is_doc_hidden;
+        self.is_doc_hidden = self.is_doc_hidden ||
+            attrs.iter().any(|attr| ("doc" == attr.name() && match attr.meta_item_list()
+                                     { None => false,
+                                       Some(l) => attr::contains_name(l, "hidden") }));
+
         f(self);
 
         // rollback
+        self.is_doc_hidden = old_is_doc_hidden;
         do pushed.times {
             let (lint, lvl, src) = self.lint_stack.pop();
             self.set_level(lint, lvl, src);
@@ -862,123 +877,81 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
     }
 }
 
-struct MissingDocLintVisitor(ty::ctxt);
+fn check_missing_doc_attrs(cx: &Context,
+                           id: ast::NodeId,
+                           attrs: &[ast::Attribute],
+                           sp: Span,
+                           desc: &'static str) {
+    // If we're building a test harness, then warning about
+    // documentation is probably not really relevant right now.
+    if cx.tcx.sess.opts.test { return }
 
-impl MissingDocLintVisitor {
-    fn check_attrs(&self, attrs: &[ast::Attribute], id: ast::NodeId,
-                   sp: Span, msg: ~str) {
-        if !attrs.iter().any(|a| a.node.is_sugared_doc) {
-            self.sess.add_lint(missing_doc, id, sp, msg);
-        }
-    }
+    // `#[doc(hidden)]` disables missing_doc check.
+    if cx.is_doc_hidden { return }
 
-    fn check_struct(&self, sdef: &ast::struct_def) {
-        for field in sdef.fields.iter() {
-            match field.node.kind {
-                ast::named_field(_, vis) if vis != ast::private => {
-                    self.check_attrs(field.node.attrs, field.node.id, field.span,
-                                     ~"missing documentation for a field");
-                }
-                ast::unnamed_field | ast::named_field(*) => {}
-            }
-        }
-    }
+    // Only check publicly-visible items, using the result from the
+    // privacy pass.
+    if !cx.exported_items.contains(&id) { return }
 
-    fn doc_hidden(&self, attrs: &[ast::Attribute]) -> bool {
-        do attrs.iter().any |attr| {
-            "doc" == attr.name() &&
-                match attr.meta_item_list() {
-                    Some(l) => attr::contains_name(l, "hidden"),
-                    None    => false // not of the form #[doc(...)]
-                }
-        }
+    if !attrs.iter().any(|a| a.node.is_sugared_doc) {
+        cx.span_lint(missing_doc, sp,
+                     format!("missing documentation for {}", desc));
     }
 }
 
-impl Visitor<()> for MissingDocLintVisitor {
-    fn visit_ty_method(&mut self, m:&ast::TypeMethod, _: ()) {
-        if self.doc_hidden(m.attrs) { return }
+fn check_missing_doc_item(cx: &mut Context, it: &ast::item) { // XXX doesn't need to be mut
+    let desc = match it.node {
+        ast::item_fn(*) => "a function",
+        ast::item_mod(*) => "a module",
+        ast::item_enum(*) => "an enum",
+        ast::item_struct(*) => "a struct",
+        ast::item_trait(*) => "a trait",
+        _ => return
+    };
+    check_missing_doc_attrs(cx, it.id, it.attrs, it.span, desc);
+}
 
-        // All ty_method objects are linted about because they're part of a
-        // trait (no visibility)
-        self.check_attrs(m.attrs, m.id, m.span,
-                         ~"missing documentation for a method");
-        visit::walk_ty_method(self, m, ());
-    }
-
-    fn visit_fn(&mut self, fk: &visit::fn_kind, d: &ast::fn_decl,
-                b: &ast::Block, sp: Span, id: ast::NodeId, _: ()) {
-        // Only warn about explicitly public methods.
-        match *fk {
-            visit::fk_method(_, _, m) => {
-                if self.doc_hidden(m.attrs) {
-                    return;
-                }
-                // If we're in a trait implementation, no need to duplicate
-                // documentation
-                if m.vis == ast::public {
-                    self.check_attrs(m.attrs, id, sp,
-                                     ~"missing documentation for a method");
-                }
-            }
-            _ => {}
-        }
-        visit::walk_fn(self, fk, d, b, sp, id, ());
-    }
-
-    fn visit_item(&mut self, it: @ast::item, _: ()) {
-        // If we're building a test harness, then warning about documentation is
-        // probably not really relevant right now
-        if self.sess.opts.test { return }
-        if self.doc_hidden(it.attrs) { return }
-
-        match it.node {
-            ast::item_struct(sdef, _) if it.vis == ast::public => {
-                self.check_attrs(it.attrs, it.id, it.span,
-                                 ~"missing documentation for a struct");
-                self.check_struct(sdef);
-            }
-
-            // Skip implementations because they inherit documentation from the
-            // trait (which was already linted)
-            ast::item_impl(_, Some(*), _, _) => return,
-
-            ast::item_trait(*) if it.vis != ast::public => return,
-            ast::item_trait(*) => self.check_attrs(it.attrs, it.id, it.span,
-                                                   ~"missing documentation for a trait"),
-
-            ast::item_fn(*) if it.vis == ast::public => {
-                self.check_attrs(it.attrs, it.id, it.span,
-                                 ~"missing documentation for a function");
-            }
-
-            ast::item_mod(*) if it.vis == ast::public => {
-                self.check_attrs(it.attrs, it.id, it.span,
-                                 ~"missing documentation for a module");
-            }
-
-            ast::item_enum(ref edef, _) if it.vis == ast::public => {
-                self.check_attrs(it.attrs, it.id, it.span,
-                                 ~"missing documentation for an enum");
-                for variant in edef.variants.iter() {
-                    if variant.node.vis == ast::private { continue; }
-
-                    self.check_attrs(variant.node.attrs, variant.node.id,
-                                     variant.span,
-                                     ~"missing documentation for a variant");
-                    match variant.node.kind {
-                        ast::struct_variant_kind(sdef) => {
-                            self.check_struct(sdef);
-                        }
-                        _ => ()
+fn check_missing_doc_method(cx: &Context, m: &ast::method) {
+    let did = ast::DefId {
+        crate: ast::LOCAL_CRATE,
+        node: m.id
+    };
+    match cx.tcx.methods.find(&did) {
+        None => cx.tcx.sess.span_bug(m.span, "missing method descriptor?!"),
+        Some(md) => {
+            match md.container {
+                // Always check default methods defined on traits.
+                ty::TraitContainer(*) => {}
+                // For methods defined on impls, it depends on whether
+                // it is an implementation for a trait or is a plain
+                // impl.
+                ty::ImplContainer(cid) => {
+                    match ty::impl_trait_ref(cx.tcx, cid) {
+                        Some(*) => return, // impl for trait: don't doc
+                        None => {} // plain impl: doc according to privacy
                     }
                 }
             }
-
-            _ => {}
         }
-        visit::walk_item(self, it, ());
     }
+    check_missing_doc_attrs(cx, m.id, m.attrs, m.span, "a method");
+}
+
+fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
+    check_missing_doc_attrs(cx, tm.id, tm.attrs, tm.span, "a type method");
+}
+
+fn check_missing_doc_struct_field(cx: &Context, sf: &ast::struct_field) {
+    match sf.node.kind {
+        ast::named_field(_, vis) if vis != ast::private =>
+            check_missing_doc_attrs(cx, cx.cur_struct_def_id, sf.node.attrs,
+                                    sf.span, "a struct field"),
+        _ => {}
+    }
+}
+
+fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
+    check_missing_doc_attrs(cx, v.node.id, v.node.attrs, v.span, "a variant");
 }
 
 /// Checks for use of items with #[deprecated], #[experimental] and
@@ -1054,13 +1027,14 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     cx.span_lint(lint, e.span, msg);
 }
 
-impl Visitor<()> for Context {
+impl<'self> Visitor<()> for Context<'self> {
     fn visit_item(&mut self, it: @ast::item, _: ()) {
         do self.with_lint_attrs(it.attrs) |cx| {
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
+            check_missing_doc_item(cx, it);
 
             do cx.visit_ids |v| {
                 v.visit_item(it, ());
@@ -1103,6 +1077,8 @@ impl Visitor<()> for Context {
         match *fk {
             visit::fk_method(_, _, m) => {
                 do self.with_lint_attrs(m.attrs) |cx| {
+                    check_missing_doc_method(cx, m);
+
                     do cx.visit_ids |v| {
                         v.visit_fn(fk, decl, body, span, id, ());
                     }
@@ -1112,9 +1088,45 @@ impl Visitor<()> for Context {
             _ => recurse(self),
         }
     }
+
+    fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
+        do self.with_lint_attrs(t.attrs) |cx| {
+            check_missing_doc_ty_method(cx, t);
+
+            visit::walk_ty_method(cx, t, ());
+        }
+    }
+
+    fn visit_struct_def(&mut self,
+                        s: @ast::struct_def,
+                        i: ast::Ident,
+                        g: &ast::Generics,
+                        id: ast::NodeId,
+                        _: ()) {
+        let old_id = self.cur_struct_def_id;
+        self.cur_struct_def_id = id;
+        visit::walk_struct_def(self, s, i, g, id, ());
+        self.cur_struct_def_id = old_id;
+    }
+
+    fn visit_struct_field(&mut self, s: @ast::struct_field, _: ()) {
+        do self.with_lint_attrs(s.node.attrs) |cx| {
+            check_missing_doc_struct_field(cx, s);
+
+            visit::walk_struct_field(cx, s, ());
+        }
+    }
+
+    fn visit_variant(&mut self, v: &ast::variant, g: &ast::Generics, _: ()) {
+        do self.with_lint_attrs(v.node.attrs) |cx| {
+            check_missing_doc_variant(cx, v);
+
+            visit::walk_variant(cx, v, g, ());
+        }
+    }
 }
 
-impl ast_util::IdVisitingOperation for Context {
+impl<'self> ast_util::IdVisitingOperation for Context<'self> {
     fn visit_id(&self, id: ast::NodeId) {
         match self.tcx.sess.lints.pop(&id) {
             None => {}
@@ -1127,17 +1139,16 @@ impl ast_util::IdVisitingOperation for Context {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt, crate: &ast::Crate) {
-    // This visitor contains more state than is currently maintained in Context,
-    // and there's no reason for the Context to keep track of this information
-    // really
-    let mut dox = MissingDocLintVisitor(tcx);
-    visit::walk_crate(&mut dox, crate, ());
-
+pub fn check_crate(tcx: ty::ctxt,
+                   exported_items: &privacy::ExportedItems,
+                   crate: &ast::Crate) {
     let mut cx = Context {
         dict: @get_lint_dict(),
         cur: SmallIntMap::new(),
         tcx: tcx,
+        exported_items: exported_items,
+        cur_struct_def_id: -1,
+        is_doc_hidden: false,
         lint_stack: ~[],
     };
 

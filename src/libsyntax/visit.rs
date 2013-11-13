@@ -90,6 +90,7 @@ pub trait Visitor<E:Clone> {
         walk_struct_def(self, s, i, g, n, e)
     }
     fn visit_struct_field(&mut self, s:@struct_field, e:E) { walk_struct_field(self, s, e) }
+    fn visit_variant(&mut self, v:&variant, g:&Generics, e:E) { walk_variant(self, v, g, e) }
     fn visit_opt_lifetime_ref(&mut self,
                               _span: Span,
                               opt_lifetime: &Option<Lifetime>,
@@ -234,19 +235,26 @@ pub fn walk_enum_def<E:Clone, V:Visitor<E>>(visitor: &mut V,
                                generics: &Generics,
                                env: E) {
     for variant in enum_definition.variants.iter() {
-        match variant.node.kind {
-            tuple_variant_kind(ref variant_arguments) => {
-                for variant_argument in variant_arguments.iter() {
-                    visitor.visit_ty(&variant_argument.ty, env.clone())
-                }
+        visitor.visit_variant(variant, generics, env.clone());
+    }
+}
+
+pub fn walk_variant<E:Clone, V:Visitor<E>>(visitor:&mut V,
+                                           variant: &variant,
+                                           generics: &Generics,
+                                           env: E) {
+    match variant.node.kind {
+        tuple_variant_kind(ref variant_arguments) => {
+            for variant_argument in variant_arguments.iter() {
+                visitor.visit_ty(&variant_argument.ty, env.clone())
             }
-            struct_variant_kind(struct_definition) => {
-                visitor.visit_struct_def(struct_definition,
-                                         variant.node.name,
-                                         generics,
-                                         variant.node.id,
-                                         env.clone())
-            }
+        }
+        struct_variant_kind(struct_definition) => {
+            visitor.visit_struct_def(struct_definition,
+                                     variant.node.name,
+                                     generics,
+                                     variant.node.id,
+                                     env.clone())
         }
     }
 }
