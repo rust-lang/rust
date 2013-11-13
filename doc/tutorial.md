@@ -804,7 +804,7 @@ confusing numbers that correspond to different units.
 We've already seen several function definitions. Like all other static
 declarations, such as `type`, functions can be declared both at the
 top level and inside other functions (or in modules, which we'll come
-back to [later](#modules-and-crates)). The `fn` keyword introduces a
+back to [later](#crates-and-the-module-system)). The `fn` keyword introduces a
 function. A function has an argument list, which is a parenthesized
 list of `expr: type` pairs separated by commas. An arrow `->`
 separates the argument list and the function's return type.
@@ -2711,10 +2711,10 @@ extend with the `-L` switch).
 However, Rust also ships with rustpkg, a package manager that is able to automatically download and build
 libraries if you use it for building your crate. How it works is explained [here][rustpkg],
 but for this tutorial it's only important to know that you can optionally annotate an
-`extern mod` statement with an package id that rustpkg can use to identify it:
+`extern mod` statement with a package id that rustpkg can use to identify it:
 
 ~~~ {.ignore}
-extern mod rust = "github.com/mozilla/rust"; // pretend Rust is an simple library
+extern mod rust = "github.com/mozilla/rust"; // pretend Rust is a simple library
 ~~~
 
 [rustpkg]: rustpkg.html
@@ -2730,7 +2730,7 @@ the link name and the version. It also hashes the filename and the symbols in a 
 based on the link metadata, allowing you to use two different versions of the same library in a crate
 without conflict.
 
-Therefor, if you plan to compile your crate as a library, you should annotate it with that information:
+Therefore, if you plan to compile your crate as a library, you should annotate it with that information:
 
 ~~~~
 // lib.rs
@@ -2746,8 +2746,8 @@ Therefor, if you plan to compile your crate as a library, you should annotate it
 You can also in turn require in a `extern mod` statement that certain link metadata items match some criteria.
 For that, Rust currently parses a comma-separated list of name/value pairs that appear after
 it, and ensures that they match the attributes provided in the `link` attribute of a crate file.
-This enables you to, eg, pick a a crate based on it's version number, or to link an library under an
-different name. For example, this two mod statements would both accept and select the crate define above:
+This enables you to, e.g., pick a crate based on its version number, or link a library under a
+different name. For example, these two `mod` statements would both accept and select the crate define above:
 
 ~~~~ {.xfail-test}
 extern mod farm(vers = "2.5");
@@ -2836,14 +2836,14 @@ This allows you to use common types and functions like `Option<T>` or `println`
 without needing to import them. And if you need something from `std` that's not in the prelude,
 you just have to import it with an `use` statement.
 
-For example, it re-exports `println` which is defined in `std::io::println`:
+For example, it re-exports `println` which is defined in `std::io::stdio::println`:
 
 ~~~
 use puts = std::io::stdio::println;
 
 fn main() {
     println("println is imported per default.");
-    puts("Doesn't hinder you from importing it under an different name yourself.");
+    puts("Doesn't hinder you from importing it under a different name yourself.");
     ::std::io::stdio::println("Or from not using the automatic import.");
 }
 ~~~
