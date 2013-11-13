@@ -110,62 +110,6 @@ rust_list_dir_wfd_fp_buf(void* wfd) {
 }
 #endif
 
-int
-rust_path_is_dir(const char *path) {
-    struct stat buf;
-    if (stat(path, &buf)) {
-        return 0;
-    }
-    return S_ISDIR(buf.st_mode);
-}
-
-int
-#if defined(__WIN32__)
-rust_path_is_dir_u16(const wchar_t *path) {
-    struct _stat buf;
-    // Don't use GetFileAttributesW, it cannot get attributes of
-    // some system files (e.g. pagefile.sys).
-    if (_wstat(path, &buf)) {
-        return 0;
-    }
-    return S_ISDIR(buf.st_mode);
-}
-#else
-rust_path_is_dir_u16(const void *path) {
-    // Wide version of function is only used on Windows.
-    return 0;
-}
-#endif
-
-int
-rust_path_exists(const char *path) {
-    struct stat buf;
-    if (stat(path, &buf)) {
-        return 0;
-    }
-    return 1;
-}
-
-int
-#if defined(__WIN32__)
-rust_path_exists_u16(const wchar_t *path) {
-    struct _stat buf;
-    if (_wstat(path, &buf)) {
-        return 0;
-    }
-    return 1;
-}
-#else
-rust_path_exists_u16(const void *path) {
-    // Wide version of function is only used on Windows.
-    return 0;
-}
-#endif
-
-FILE* rust_get_stdin() {return stdin;}
-FILE* rust_get_stdout() {return stdout;}
-FILE* rust_get_stderr() {return stderr;}
-
 #if defined(__WIN32__)
 void
 rust_get_time(int64_t *sec, int32_t *nsec) {
