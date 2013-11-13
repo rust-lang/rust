@@ -2,7 +2,7 @@
  * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
  * file at the top-level directory of this distribution and at
  * http://rust-lang.org/COPYRIGHT.
- * With elements taken from Bootstrap v3.0.0 (Apache v2.0 licensed).
+ * With elements taken from Bootstrap v3.0.2 (MIT licensed).
  *
  * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
  * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -93,6 +93,7 @@ p {
 a {
 	text-decoration: none;
 	color: #428BCA;
+	background: transparent;
 }
 a:hover, a:focus {
 	color: #2A6496;
@@ -114,7 +115,7 @@ h5 a:link, h5 a:visited {color: black;}
 /* Code
    ========================================================================== */
 pre, code {
-	font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+	font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
 	border-radius: 4px;
 }
 pre {
@@ -141,7 +142,7 @@ pre code {
 	color: inherit;
 	white-space: pre-wrap;
 	background-color: transparent;
-	border: 0;
+	border-radius: 0;
 }
 
 /* Code highlighting */
@@ -158,7 +159,7 @@ pre code {
 .cm-s-default span.cm-string {color: #a11;}
 .cm-s-default span.cm-string-2 {color: #f50;}
 .cm-s-default span.cm-meta {color: #555;}
-.cm-s-default span.cm-error {color: #f00;}
+/*.cm-s-default span.cm-error {color: #f00;}*/
 .cm-s-default span.cm-qualifier {color: #555;}
 .cm-s-default span.cm-builtin {color: #30a;}
 .cm-s-default span.cm-bracket {color: #cc7;}
@@ -187,7 +188,7 @@ pre code {
 }
 #versioninfo a.hash {
 	color: gray;
-	font-size: 60%;
+	font-size: 70%;
 }
 
 blockquote {

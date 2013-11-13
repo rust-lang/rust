@@ -43,7 +43,13 @@ h2 code, h3 code, h4 code {
 }
 
 code, pre, h1.fqn {
-    font: 15px Monaco, Menlo, "Inconsolata", Consolas, "Courier New", monospace;
+    font-family: Menlo, Monaco, Consolas, "Inconsolata", "Courier New", monospace;
+}
+code, pre {
+    color: #333;
+}
+pre {
+    font-size: 15px;
 }
 h1.fqn {
     font-size: 26px;
@@ -215,6 +221,7 @@ nav, .content {
 a {
     text-decoration: none;
     color: #000;
+    background: transparent;
 }
 
 .content a, .block a.current { font-weight: bold; }
