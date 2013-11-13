@@ -9,13 +9,6 @@ rust_localtime
 rust_timegm
 rust_mktime
 rust_precise_time_ns
-rust_path_is_dir
-rust_path_is_dir_u16
-rust_path_exists
-rust_path_exists_u16
-rust_get_stdin
-rust_get_stdout
-rust_get_stderr
 rust_list_dir_val
 rust_list_dir_wfd_size
 rust_list_dir_wfd_fp_buf
