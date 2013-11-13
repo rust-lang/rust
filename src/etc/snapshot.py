@@ -148,8 +148,11 @@ def get_url_to_file(u,f):
         returncode = subprocess.call(["wget", "-O", tmpf, u])
 
     if returncode != 0:
-        os.unlink(tmpf)
-        raise
+        try:
+            os.unlink(tmpf)
+        except OSError as e:
+            pass
+        raise Exception("failed to fetch url")
     os.rename(tmpf, f)
 
 def snap_filename_hash_part(snap):
