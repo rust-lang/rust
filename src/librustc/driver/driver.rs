@@ -302,11 +302,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     let reachable_map =
         time(time_passes, "reachability checking", (), |_|
-             reachable::find_reachable(ty_cx, method_map, exp_map2,
-                                       &exported_items));
+             reachable::find_reachable(ty_cx, method_map, &exported_items));
 
     time(time_passes, "lint checking", (), |_|
-         lint::check_crate(ty_cx, crate));
+         lint::check_crate(ty_cx, &exported_items, crate));
 
     CrateAnalysis {
         exp_map2: exp_map2,

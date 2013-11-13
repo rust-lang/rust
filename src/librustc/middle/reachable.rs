@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,7 +18,6 @@
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
-use middle::resolve;
 
 use std::hashmap::HashSet;
 use syntax::ast;
@@ -105,8 +104,6 @@ struct ReachableContext {
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     worklist: @mut ~[ast::NodeId],
-    // Known reexports of modules
-    exp_map2: resolve::ExportMap2,
 }
 
 struct MarkSymbolVisitor {
@@ -173,14 +170,12 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 impl ReachableContext {
     // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::method_map,
-           exp_map2: resolve::ExportMap2) -> ReachableContext {
+    fn new(tcx: ty::ctxt, method_map: typeck::method_map) -> ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
             reachable_symbols: @mut HashSet::new(),
             worklist: @mut ~[],
-            exp_map2: exp_map2,
         }
     }
 
@@ -255,19 +250,6 @@ impl ReachableContext {
         }
     }
 
-    fn propagate_mod(&self, id: ast::NodeId) {
-        match self.exp_map2.find(&id) {
-            Some(l) => {
-                for reexport in l.iter() {
-                    if reexport.reexport && is_local(reexport.def_id) {
-                        self.worklist.push(reexport.def_id.node);
-                    }
-                }
-            }
-            None => {}
-        }
-    }
-
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&self) {
         let mut visitor = self.init_visitor();
@@ -291,13 +273,6 @@ impl ReachableContext {
                                 visit::walk_block(&mut visitor, search_block, ())
                             }
                         }
-
-                        // Our recursion into modules involves looking up their
-                        // public reexports and the destinations of those
-                        // exports. Privacy will put them in the worklist, but
-                        // we won't find them in the ast_map, so this is where
-                        // we deal with publicly re-exported items instead.
-                        ast::item_mod(*) => self.propagate_mod(item.id),
 
                         // Implementations of exported structs/enums need to get
                         // added to the worklist (as all their methods should be
@@ -339,7 +314,7 @@ impl ReachableContext {
                         // inherently and their children are already in the
                         // worklist
                         ast::item_static(*) | ast::item_ty(*) |
-                            ast::item_foreign_mod(*) => {}
+                            ast::item_mod(*) | ast::item_foreign_mod(*) => {}
 
                         _ => {
                             self.tcx.sess.span_bug(item.span,
@@ -376,9 +351,7 @@ impl ReachableContext {
                                                worklist: {}",
                                                desc))
                 }
-                None if search_item == ast::CRATE_NODE_ID => {
-                    self.propagate_mod(search_item);
-                }
+                None if search_item == ast::CRATE_NODE_ID => {}
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
                                                {}",
@@ -404,10 +377,9 @@ impl ReachableContext {
 
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
-                      exp_map2: resolve::ExportMap2,
                       exported_items: &privacy::ExportedItems)
                       -> @mut HashSet<ast::NodeId> {
-    let reachable_context = ReachableContext::new(tcx, method_map, exp_map2);
+    let reachable_context = ReachableContext::new(tcx, method_map);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
     //         a result of the privacy pass
