@@ -36,6 +36,7 @@ pub use target::{Target, Build, Install};
 use extra::treemap::TreeMap;
 pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
 use workcache_support::{digest_file_with_date, digest_only_date};
+use messages::error;
 
 // It would be nice to have the list of commands in just one place -- for example,
 // you could update the match in rustpkg.rc but forget to update this list. I think
@@ -430,6 +431,8 @@ struct ViewItemVisitor<'self> {
 
 impl<'self> Visitor<()> for ViewItemVisitor<'self> {
     fn visit_view_item(&mut self, vi: &ast::view_item, env: ()) {
+        use conditions::nonexistent_package::cond;
+
         match vi.node {
             // ignore metadata, I guess
             ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
@@ -490,12 +493,21 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         // and the `PkgSrc` constructor will detect that;
                         // or else it's already in a workspace and we'll build into that
                         // workspace
-                        let pkg_src = PkgSrc::new(source_workspace,
-                                                  dest_workspace,
-                        // Use the rust_path_hack to search for dependencies iff
-                        // we were already using it
-                                                  self.context.context.use_rust_path_hack,
-                                                  pkg_id.clone());
+                        let pkg_src = do cond.trap(|_| {
+                                 // Nonexistent package? Then print a better error
+                                 error(format!("Package {} depends on {}, but I don't know \
+                                               how to find it",
+                                               self.parent.path.display(),
+                                               pkg_id.path.display()));
+                                 fail!()
+                        }).inside {
+                            PkgSrc::new(source_workspace.clone(),
+                                        dest_workspace.clone(),
+                                        // Use the rust_path_hack to search for dependencies iff
+                                        // we were already using it
+                                        self.context.context.use_rust_path_hack,
+                                        pkg_id.clone())
+                        };
                         let (outputs_disc, inputs_disc) =
                             self.context.install(
                                 pkg_src,
