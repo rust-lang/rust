@@ -2863,6 +2863,7 @@ pub mod consts {
             pub static MAP_PRIVATE : c_int = 0x0002;
             pub static MAP_FIXED : c_int = 0x0010;
             pub static MAP_ANON : c_int = 0x1000;
+            pub static MAP_STACK : c_int = 0;
 
             pub static MAP_FAILED : *c_void = -1 as *c_void;
 
