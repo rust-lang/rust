@@ -1,4 +1,4 @@
-// xfail-fast #7103 `extern mod` does not work on windows
+// xfail-fast #7103 `extern mod` does not work on check-fast
 // xfail-pretty - does not converge
 
 // Copyright 2013 The Rust Project Developers. See the COPYRIGHT

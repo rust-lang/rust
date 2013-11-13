@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:reexport-should-still-link.rs
-// xfail-fast windows doesn't like extern mod
+// xfail-fast check-fast doesn't like extern mod
 
 extern mod foo(name = "reexport-should-still-link");
 
