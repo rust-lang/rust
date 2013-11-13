@@ -351,6 +351,27 @@ mod test {
     use super::*;
     use io;
     use super::super::mem::{MemReader, MemWriter};
+    use Harness = extra::test::BenchHarness;
+
+    /// A type, free to create, primarily intended for benchmarking creation of wrappers that, just
+    /// for construction, don't need a Reader/Writer that does anything useful. Is equivalent to
+    /// `/dev/null` in semantics.
+    #[deriving(Clone,Eq,Ord)]
+    pub struct NullStream;
+
+    impl Reader for NullStream {
+        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
+            None
+        }
+
+        fn eof(&mut self) -> bool {
+            true
+        }
+    }
+
+    impl Writer for NullStream {
+        fn write(&mut self, _: &[u8]) { }
+    }
 
     #[test]
     fn test_buffered_reader() {
@@ -469,5 +490,26 @@ mod test {
         assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1, 0, '\n' as u8]);
         writer.flush();
         assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1, 0, '\n' as u8, 1]);
+    }
+
+    #[bench]
+    fn bench_buffered_reader(bh: &mut Harness) {
+        do bh.iter {
+            BufferedReader::new(NullStream);
+        }
+    }
+
+    #[bench]
+    fn bench_buffered_writer(bh: &mut Harness) {
+        do bh.iter {
+            BufferedWriter::new(NullStream);
+        }
+    }
+
+    #[bench]
+    fn bench_buffered_stream(bh: &mut Harness) {
+        do bh.iter {
+            BufferedStream::new(NullStream);
+        }
     }
 }
