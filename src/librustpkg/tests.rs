@@ -15,8 +15,6 @@ use std::{os, run, str, task};
 use std::io;
 use std::io::fs;
 use std::io::File;
-use std::io::process;
-use std::io::process::ProcessExit;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
@@ -294,7 +292,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
                    output.status);
     if !output.status.success() {
         debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} ---",
-              cmd, args, output.status,
+               cmd, args, output.status,
               str::from_utf8(output.output) + str::from_utf8(output.error));
         Fail(output)
     }
@@ -615,7 +613,6 @@ fn test_install_valid() {
 }
 
 #[test]
-#[ignore]
 fn test_install_invalid() {
     let sysroot = test_sysroot();
     let pkgid = fake_pkg();
@@ -631,8 +628,11 @@ fn test_install_invalid() {
                                   pkgid.clone());
         ctxt.install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything));
     };
-    assert!(result.unwrap_err()
-            .to_str().contains("supplied path for package dir does not exist"));
+    let x = result.unwrap_err();
+    assert!(x.is::<~str>());
+    let error_string = *x.move::<~str>().unwrap();
+    debug!("result error = {}", error_string);
+    assert!(error_string.contains("supplied path for package dir does not exist"));
 }
 
 #[test]
@@ -663,7 +663,6 @@ fn test_install_valid_external() {
 }
 
 #[test]
-#[ignore(reason = "9994")]
 fn test_install_invalid_external() {
     let cwd = os::getcwd();
     command_line_test_expect_fail([~"install", ~"foo"],
@@ -2439,6 +2438,21 @@ fn correct_error_dependency() {
             }
         }
         Success(*)       => fail!("Test passed when it should have failed")
+    }
+}
+
+#[test]
+fn test_bad_package_id_url() {
+    use str::{is_utf8, from_utf8};
+
+    match command_line_test_partial([~"install", ~"git://github.com/mozilla/servo.git"],
+                                    &os::getcwd()) {
+        Fail(ProcessOutput{ error: _, output: output, _}) => {
+            assert!(is_utf8(output));
+            assert!(from_utf8(output).contains("rustpkg operates on package IDs; did you mean to \
+                                               write `github.com/mozilla/servo` instead"));
+        }
+        Success(*)  => fail!("test_bad_package_id_url: succeeded but should have failed")
     }
 }
 

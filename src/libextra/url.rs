@@ -573,7 +573,7 @@ fn get_authority(rawurl: &str) ->
 
 
 // returns the path and unparsed part of url, or an error
-fn get_path(rawurl: &str, authority: bool) ->
+pub fn get_path(rawurl: &str, authority: bool) ->
     Result<(~str, ~str), ~str> {
     let len = rawurl.len();
     let mut end = len;
