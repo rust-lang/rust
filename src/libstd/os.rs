@@ -843,8 +843,8 @@ pub enum MemoryMapKind {
     /// Memory-mapped file. On Windows, the inner pointer is a handle to the mapping, and
     /// corresponds to `CreateFileMapping`. Elsewhere, it is null.
     MapFile(*c_void),
-    /// Virtual memory map. Usually used to change the permissions of a given chunk of memory.
-    /// Corresponds to `VirtualAlloc` on Windows.
+    /// Virtual memory map. Usually used to change the permissions of a given chunk of memory, or
+    /// for allocation. Corresponds to `VirtualAlloc` on Windows.
     MapVirtual
 }
 
@@ -861,7 +861,11 @@ pub enum MapOption {
     /// Create a memory mapping for a file with a given fd.
     MapFd(c_int),
     /// When using `MapFd`, the start of the map is `uint` bytes from the start of the file.
-    MapOffset(uint)
+    MapOffset(uint),
+    /// On POSIX, this can be used to specify the default flags passed to `mmap`. By default it uses
+    /// `MAP_PRIVATE` and, if not using `MapFd`, `MAP_ANON`. This will override both of those. This
+    /// is platform-specific (the exact values used) and unused on Windows.
+    MapNonStandardFlags(c_int),
 }
 
 /// Possible errors when creating a map.
@@ -931,6 +935,7 @@ impl MemoryMap {
         let mut flags: c_int = libc::MAP_PRIVATE;
         let mut fd: c_int = -1;
         let mut offset: off_t = 0;
+        let mut custom_flags = false;
         let len = round_up(min_len, page_size()) as size_t;
 
         for &o in options.iter() {
@@ -946,10 +951,11 @@ impl MemoryMap {
                     flags |= libc::MAP_FILE;
                     fd = fd_;
                 },
-                MapOffset(offset_) => { offset = offset_ as off_t; }
+                MapOffset(offset_) => { offset = offset_ as off_t; },
+                MapNonStandardFlags(f) => { custom_flags = true; flags = f },
             }
         }
-        if fd == -1 { flags |= libc::MAP_ANON; }
+        if fd == -1 && !custom_flags { flags |= libc::MAP_ANON; }
 
         let r = unsafe {
             libc::mmap(addr, len, prot, flags, fd, offset)
@@ -1020,7 +1026,9 @@ impl MemoryMap {
                 MapExecutable => { executable = true; }
                 MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
                 MapFd(fd_) => { fd = fd_; },
-                MapOffset(offset_) => { offset = offset_; }
+                MapOffset(offset_) => { offset = offset_; },
+                MapNonStandardFlags(f) => info!("MemoryMap::new: MapNonStandardFlags used on \
+                                                Windows: {}", f),
             }
         }
 
