@@ -39,7 +39,7 @@ use os;
 use prelude::*;
 use ptr;
 use str;
-use to_str;
+use fmt;
 use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
@@ -871,7 +871,7 @@ pub enum MapOption {
     MapOffset(uint),
     /// On POSIX, this can be used to specify the default flags passed to `mmap`. By default it uses
     /// `MAP_PRIVATE` and, if not using `MapFd`, `MAP_ANON`. This will override both of those. This
-    /// is platform-specific (the exact values used) and unused on Windows.
+    /// is platform-specific (the exact values used) and ignored on Windows.
     MapNonStandardFlags(c_int),
 }
 
@@ -911,23 +911,29 @@ pub enum MapError {
     ErrMapViewOfFile(uint)
 }
 
-impl to_str::ToStr for MapError {
-    fn to_str(&self) -> ~str {
-        match *self {
-            ErrFdNotAvail => ~"fd not available for reading or writing",
-            ErrInvalidFd => ~"Invalid fd",
-            ErrUnaligned => ~"Unaligned address, invalid flags, \
-                              negative length or unaligned offset",
-            ErrNoMapSupport=> ~"File doesn't support mapping",
-            ErrNoMem => ~"Invalid address, or not enough available memory",
-            ErrUnknown(code) => format!("Unknown error={}", code),
-            ErrUnsupProt => ~"Protection mode unsupported",
-            ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
-            ErrAlreadyExists => ~"File mapping for specified file already exists",
-            ErrVirtualAlloc(code) => format!("VirtualAlloc failure={}", code),
-            ErrCreateFileMappingW(code) => format!("CreateFileMappingW failure={}", code),
-            ErrMapViewOfFile(code) => format!("MapViewOfFile failure={}", code)
-        }
+impl fmt::Default for MapError {
+    fn fmt(val: &MapError, out: &mut fmt::Formatter) {
+        let str = match *val {
+            ErrFdNotAvail => "fd not available for reading or writing",
+            ErrInvalidFd => "Invalid fd",
+            ErrUnaligned => "Unaligned address, invalid flags, negative length or unaligned offset",
+            ErrNoMapSupport=> "File doesn't support mapping",
+            ErrNoMem => "Invalid address, or not enough available memory",
+            ErrUnsupProt => "Protection mode unsupported",
+            ErrUnsupOffset => "Offset in virtual memory mode is unsupported",
+            ErrAlreadyExists => "File mapping for specified file already exists",
+            ErrUnknown(code) => { write!(out.buf, "Unknown error = {}", code); return },
+            ErrVirtualAlloc(code) => { write!(out.buf, "VirtualAlloc failure = {}", code); return },
+            ErrCreateFileMappingW(code) => {
+                format!("CreateFileMappingW failure = {}", code);
+                return
+            },
+            ErrMapViewOfFile(code) => {
+                write!(out.buf, "MapViewOfFile failure = {}", code);
+                return
+            }
+        };
+        write!(out.buf, "{}", str);
     }
 }
 
@@ -1130,8 +1136,7 @@ impl Drop for MemoryMap {
         unsafe {
             match self.kind {
                 MapVirtual => {
-                    if libc::VirtualFree(self.data as *mut c_void,
-                                         self.len as size_t,
+                    if libc::VirtualFree(self.data as *mut c_void, 0,
                                          libc::MEM_RELEASE) == FALSE {
                         error!("VirtualFree failed: {}", errno());
                     }
@@ -1487,7 +1492,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len > 0);
 
