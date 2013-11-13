@@ -1005,18 +1005,17 @@ mod tests {
 
     fn test_precise_time() {
         let s0 = precise_time_s();
-        let ns1 = precise_time_ns();
-
         debug!("s0={} sec", f64::to_str_digits(s0, 9u));
         assert!(s0 > 0.);
-        let ns0 = (s0 * 1000000000.) as u64;
-        debug!("ns0={:?} ns", ns0);
 
-        debug!("ns1={:?} ns", ns0);
+        let ns0 = precise_time_ns();
+        let ns1 = precise_time_ns();
+        debug!("ns0={:?} ns", ns0);
+        debug!("ns1={:?} ns", ns1);
         assert!(ns1 >= ns0);
 
         let ns2 = precise_time_ns();
-        debug!("ns2={:?} ns", ns0);
+        debug!("ns2={:?} ns", ns2);
         assert!(ns2 >= ns1);
     }
 
