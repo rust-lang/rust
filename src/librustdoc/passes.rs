@@ -16,7 +16,6 @@ use std::local_data;
 
 use syntax::ast;
 
-use core;
 use clean;
 use clean::Item;
 use plugins;
@@ -59,17 +58,7 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
     let mut retained = HashSet::new();
     let crate = Cell::new(crate);
     let exported_items = do local_data::get(super::analysiskey) |analysis| {
-        let analysis = analysis.unwrap();
-        let mut exported_items = analysis.exported_items.clone();
-        {
-            let mut finder = ExportedItemsFinder {
-                exported_items: &mut exported_items,
-                analysis: analysis,
-            };
-            let c = finder.fold_crate(crate.take());
-            crate.put_back(c);
-        }
-        exported_items
+        analysis.unwrap().exported_items.clone()
     };
     let mut crate = crate.take();
 
@@ -88,32 +77,6 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
         crate = stripper.fold_crate(crate);
     }
     (crate, None)
-}
-
-struct ExportedItemsFinder<'self> {
-    exported_items: &'self mut HashSet<ast::NodeId>,
-    analysis: &'self core::CrateAnalysis,
-}
-
-impl<'self> fold::DocFolder for ExportedItemsFinder<'self> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.inner {
-            clean::ModuleItem(*) => {
-                if self.analysis.exported_items.contains(&i.id) {
-                    match self.analysis.reexports.find(&i.id) {
-                        Some(l) => {
-                            for &id in l.iter() {
-                                self.exported_items.insert(id);
-                            }
-                        }
-                        None => {}
-                    }
-                }
-            }
-            _ => {}
-        }
-        return self.fold_item_recur(i);
-    }
 }
 
 struct Stripper<'self> {
