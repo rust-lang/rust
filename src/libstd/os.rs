@@ -864,7 +864,7 @@ pub enum MapOption {
     MapOffset(uint),
     /// On POSIX, this can be used to specify the default flags passed to `mmap`. By default it uses
     /// `MAP_PRIVATE` and, if not using `MapFd`, `MAP_ANON`. This will override both of those. This
-    /// is platform-specific (the exact values used) and unused on Windows.
+    /// is platform-specific (the exact values used) and ignored on Windows.
     MapNonStandardFlags(c_int),
 }
 
