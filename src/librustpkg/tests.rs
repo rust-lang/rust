@@ -239,7 +239,8 @@ fn rustpkg_exec() -> Path {
 fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
     match command_line_test_with_env(args, cwd, None) {
         Success(r) => r,
-        Fail(error) => fail!("Command line test failed with error {}", error)
+        Fail(error) => fail!("Command line test failed with error {}",
+                             error.status)
     }
 }
 
@@ -253,15 +254,15 @@ fn command_line_test_expect_fail(args: &[~str],
                                  expected_exitcode: int) {
     match command_line_test_with_env(args, cwd, env) {
         Success(_) => fail!("Should have failed with {}, but it succeeded", expected_exitcode),
-        Fail(error) if error.matches_exit_status(expected_exitcode) => (), // ok
+        Fail(ref error) if error.status.matches_exit_status(expected_exitcode) => (), // ok
         Fail(other) => fail!("Expected to fail with {}, but failed with {} instead",
-                              expected_exitcode, other)
+                              expected_exitcode, other.status)
     }
 }
 
 enum ProcessResult {
     Success(ProcessOutput),
-    Fail(ProcessExit)
+    Fail(ProcessOutput)
 }
 
 /// Runs `rustpkg` (based on the directory that this executable was
@@ -295,7 +296,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
         debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} ---",
               cmd, args, output.status,
               str::from_utf8(output.output) + str::from_utf8(output.error));
-        Fail(output.status)
+        Fail(output)
     }
     else {
         Success(output)
@@ -1093,7 +1094,7 @@ fn no_rebuilding() {
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(status) if status.matches_exit_status(65) =>
+        Fail(ref status) if status.status.matches_exit_status(65) =>
             fail!("no_rebuilding failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding failed for some other reason")
     }
@@ -1112,7 +1113,8 @@ fn no_recopying() {
 
     match command_line_test_partial([~"install", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(process::ExitStatus(65)) => fail!("no_recopying failed: it tried to re-copy foo"),
+        Fail(ref status) if status.status.matches_exit_status(65) =>
+            fail!("no_recopying failed: it tried to re-copy foo"),
         Fail(_) => fail!("no_copying failed for some other reason")
     }
 }
@@ -1130,7 +1132,7 @@ fn no_rebuilding_dep() {
     assert!(chmod_read_only(&bar_lib));
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(status) if status.matches_exit_status(65) =>
+        Fail(ref r) if r.status.matches_exit_status(65) =>
             fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding_dep failed for some other reason")
     }
@@ -1151,7 +1153,7 @@ fn do_rebuild_dep_dates_change() {
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => fail!("do_rebuild_dep_dates_change failed: it didn't rebuild bar"),
-        Fail(status) if status.matches_exit_status(65) => (), // ok
+        Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_dates_change failed for some other reason")
     }
 }
@@ -1172,7 +1174,7 @@ fn do_rebuild_dep_only_contents_change() {
     // should adjust the datestamp
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => fail!("do_rebuild_dep_only_contents_change failed: it didn't rebuild bar"),
-        Fail(status) if status.matches_exit_status(65) => (), // ok
+        Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_only_contents_change failed for some other reason")
     }
 }
@@ -2148,7 +2150,7 @@ fn test_rebuild_when_needed() {
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
         Success(*) => fail!("test_rebuild_when_needed didn't rebuild"),
-        Fail(status) if status.matches_exit_status(65) => (), // ok
+        Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("test_rebuild_when_needed failed for some other reason")
     }
 }
@@ -2168,7 +2170,7 @@ fn test_no_rebuilding() {
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
         Success(*) => (), // ok
-        Fail(status) if status.matches_exit_status(65) =>
+        Fail(ref r) if r.status.matches_exit_status(65) =>
             fail!("test_no_rebuilding failed: it rebuilt the tests"),
         Fail(_) => fail!("test_no_rebuilding failed for some other reason")
     }
@@ -2296,7 +2298,7 @@ fn test_compile_error() {
     let result = command_line_test_partial([~"build", ~"foo"], foo_workspace);
     match result {
         Success(*) => fail!("Failed by succeeding!"), // should be a compile error
-        Fail(status) => {
+        Fail(ref status) => {
             debug!("Failed with status {:?}... that's good, right?", status);
         }
     }
@@ -2364,7 +2366,7 @@ fn test_c_dependency_no_rebuilding() {
 
     match command_line_test_partial([~"build", ~"cdep"], dir) {
         Success(*) => (), // ok
-        Fail(status) if status.matches_exit_status(65) =>
+        Fail(ref r) if r.status.matches_exit_status(65) =>
             fail!("test_c_dependency_no_rebuilding failed: \
                     it tried to rebuild foo.c"),
         Fail(_) =>
@@ -2403,8 +2405,40 @@ fn test_c_dependency_yes_rebuilding() {
     match command_line_test_partial([~"build", ~"cdep"], dir) {
         Success(*) => fail!("test_c_dependency_yes_rebuilding failed: \
                             it didn't rebuild and should have"),
-        Fail(status) if status.matches_exit_status(65) => (),
+        Fail(ref r) if r.status.matches_exit_status(65) => (),
         Fail(_) => fail!("test_c_dependency_yes_rebuilding failed for some other reason")
+    }
+}
+
+// n.b. This might help with #10253, or at least the error will be different.
+#[test]
+fn correct_error_dependency() {
+    // Supposing a package we're trying to install via a dependency doesn't
+    // exist, we should throw a condition, and not ICE
+    let dir = create_local_package(&PkgId::new("badpkg"));
+
+    let dir = dir.path();
+    writeFile(&dir.join_many(["src", "badpkg-0.1", "main.rs"]),
+              "extern mod p = \"some_package_that_doesnt_exist\";
+               fn main() {}");
+
+    match command_line_test_partial([~"build", ~"badpkg"], dir) {
+        Fail(ProcessOutput{ error: error, output: output, _ }) => {
+            assert!(str::is_utf8(error));
+            assert!(str::is_utf8(output));
+            let error_str = str::from_utf8(error);
+            let out_str   = str::from_utf8(output);
+            debug!("ss = {}", error_str);
+            debug!("out_str = {}", out_str);
+            if out_str.contains("Package badpkg depends on some_package_that_doesnt_exist") &&
+                !error_str.contains("nonexistent_package") {
+                // Ok
+                ()
+            } else {
+                fail!("Wrong error");
+            }
+        }
+        Success(*)       => fail!("Test passed when it should have failed")
     }
 }
 

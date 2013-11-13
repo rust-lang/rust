@@ -118,7 +118,8 @@ impl PkgSrc {
 
         debug!("Checking dirs: {:?}", to_try.map(|p| p.display().to_str()).connect(":"));
 
-        let path = to_try.iter().find(|&d| d.exists());
+        let path = to_try.iter().find(|&d| d.is_dir()
+                                      && dir_has_crate_file(d));
 
         // See the comments on the definition of PkgSrc
         let mut build_in_destination = use_rust_path_hack;
