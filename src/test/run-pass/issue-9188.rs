@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue_9188.rs
-// xfail-fast windows doesn't like aux-build
+// xfail-fast check-fast doesn't like aux-build
 
 extern mod issue_9188;
 

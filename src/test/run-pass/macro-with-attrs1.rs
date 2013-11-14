@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows doesn't like compile-flags
+// xfail-fast check-fast doesn't like compile-flags
 // compile-flags: --cfg foo
 
 #[feature(macro_rules)];
