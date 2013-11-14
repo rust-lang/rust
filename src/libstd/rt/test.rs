@@ -14,7 +14,6 @@ use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iter::{Iterator, range};
-use libc;
 use option::{Some, None};
 use os;
 use path::GenericPath;
@@ -361,11 +360,16 @@ pub fn cleanup_task(mut task: ~Task) {
 
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
+    use unstable::mutex::{Mutex, MUTEX_INIT};
+    static mut lock: Mutex = MUTEX_INIT;
+    static mut next_offset: u16 = 0;
     unsafe {
-        return rust_dbg_next_port(base_port() as libc::uintptr_t) as u16;
-    }
-    extern {
-        fn rust_dbg_next_port(base: libc::uintptr_t) -> libc::uintptr_t;
+        let base = base_port();
+        lock.lock();
+        let ret = base + next_offset;
+        next_offset += 1;
+        lock.unlock();
+        return ret;
     }
 }
 
@@ -395,13 +399,13 @@ The bots run multiple builds at the same time, and these builds
 all want to use ports. This function figures out which workspace
 it is running in and assigns a port range based on it.
 */
-fn base_port() -> uint {
+fn base_port() -> u16 {
     use os;
     use str::StrSlice;
     use vec::ImmutableVector;
 
-    let base = 9600u;
-    let range = 1000;
+    let base = 9600u16;
+    let range = 1000u16;
 
     let bases = [
         ("32-opt", base + range * 1),

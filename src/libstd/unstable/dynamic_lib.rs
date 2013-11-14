@@ -154,6 +154,9 @@ pub mod dl {
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
+        use unstable::mutex::{Mutex, MUTEX_INIT};
+        static mut lock: Mutex = MUTEX_INIT;
+
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence. `atomically` asserts that we don't do anything that
@@ -161,7 +164,7 @@ pub mod dl {
             // the scheduler if it happens while the lock is held.
             // FIXME #9105 use a Rust mutex instead of C++ mutexes.
             do atomically {
-                rust_take_dlerror_lock();
+                lock.lock();
                 let _old_error = dlerror();
 
                 let result = f();
@@ -172,7 +175,7 @@ pub mod dl {
                 } else {
                     Err(str::raw::from_c_str(last_error))
                 };
-                rust_drop_dlerror_lock();
+                lock.unlock();
                 ret
             }
         }
@@ -190,11 +193,6 @@ pub mod dl {
         Now = 2,
         Global = 256,
         Local = 0,
-    }
-
-    extern {
-        fn rust_take_dlerror_lock();
-        fn rust_drop_dlerror_lock();
     }
 
     #[link_name = "dl"]
