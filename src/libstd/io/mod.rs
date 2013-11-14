@@ -306,24 +306,7 @@ pub mod timer;
 /// Buffered I/O wrappers
 pub mod buffered;
 
-/// Thread-blocking implementations
-pub mod native {
-    /// Posix file I/O
-    pub mod file;
-    /// Process spawning and child management
-    pub mod process;
-    /// Posix stdio
-    pub mod stdio;
-
-    /// Sockets
-    /// # XXX - implement this
-    pub mod net {
-        pub mod tcp { }
-        pub mod udp { }
-        #[cfg(unix)]
-        pub mod unix { }
-    }
-}
+pub mod native;
 
 /// Signal handling
 pub mod signal;
