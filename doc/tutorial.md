@@ -2550,18 +2550,21 @@ fn main() {
 ~~~~
 
 And here an example with multiple files:
+
 ~~~{.ignore}
 // a.rs - crate root
 use b::foo;
 mod b;
 fn main() { foo(); }
 ~~~
+
 ~~~{.ignore}
 // b.rs
 use b::c::bar;
 pub mod c;
 pub fn foo() { bar(); }
 ~~~
+
 ~~~
 // c.rs
 pub fn bar() { println("Baz!"); }
