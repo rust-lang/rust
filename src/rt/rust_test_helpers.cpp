@@ -10,7 +10,7 @@
 
 // Helper functions used only in tests
 
-#include "sync/lock_and_signal.h"
+#include "rust_globals.h"
 
 // These functions are used in the unit tests for C ABI calls.
 
@@ -32,41 +32,6 @@ rust_dbg_extern_identity_double(double u) {
 extern "C" CDECL char
 rust_dbg_extern_identity_u8(char u) {
     return u;
-}
-
-extern "C" CDECL lock_and_signal *
-rust_dbg_lock_create() {
-    return new lock_and_signal();
-}
-
-extern "C" CDECL void
-rust_dbg_lock_destroy(lock_and_signal *lock) {
-    assert(lock);
-    delete lock;
-}
-
-extern "C" CDECL void
-rust_dbg_lock_lock(lock_and_signal *lock) {
-    assert(lock);
-    lock->lock();
-}
-
-extern "C" CDECL void
-rust_dbg_lock_unlock(lock_and_signal *lock) {
-    assert(lock);
-    lock->unlock();
-}
-
-extern "C" CDECL void
-rust_dbg_lock_wait(lock_and_signal *lock) {
-    assert(lock);
-    lock->wait();
-}
-
-extern "C" CDECL void
-rust_dbg_lock_signal(lock_and_signal *lock) {
-    assert(lock);
-    lock->signal();
 }
 
 typedef void *(*dbg_callback)(void*);
@@ -158,17 +123,6 @@ struct TwoDoubles {
 extern "C" CDECL TwoDoubles
 rust_dbg_extern_identity_TwoDoubles(TwoDoubles u) {
     return u;
-}
-
-// Generates increasing port numbers for network testing
-extern "C" CDECL uintptr_t
-rust_dbg_next_port(uintptr_t base_port) {
-  static lock_and_signal dbg_port_lock;
-  static uintptr_t next_offset = 0;
-  scoped_lock with(dbg_port_lock);
-  uintptr_t this_port = base_port + next_offset;
-  next_offset += 1;
-  return this_port;
 }
 
 extern "C" CDECL intptr_t

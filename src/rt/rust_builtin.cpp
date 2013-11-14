@@ -10,7 +10,7 @@
 
 /* Foreign builtins. */
 
-#include "sync/lock_and_signal.h"
+#include "rust_globals.h"
 #include "vg/valgrind.h"
 
 #include <time.h>
@@ -379,41 +379,6 @@ rust_mktime(rust_tm* timeptr) {
     return mktime(&t);
 }
 
-extern "C" lock_and_signal*
-rust_create_little_lock() {
-    return new lock_and_signal();
-}
-
-extern "C" void
-rust_destroy_little_lock(lock_and_signal *lock) {
-    delete lock;
-}
-
-extern "C" void
-rust_lock_little_lock(lock_and_signal *lock) {
-    lock->lock();
-}
-
-extern "C" bool
-rust_trylock_little_lock(lock_and_signal *lock) {
-    return lock->try_lock();
-}
-
-extern "C" void
-rust_unlock_little_lock(lock_and_signal *lock) {
-    lock->unlock();
-}
-
-extern "C" void
-rust_wait_little_lock(lock_and_signal *lock) {
-    lock->wait();
-}
-
-extern "C" void
-rust_signal_little_lock(lock_and_signal *lock) {
-    lock->signal();
-}
-
 #ifndef _WIN32
 #include <sys/types.h>
 #include <dirent.h>
@@ -439,34 +404,6 @@ rust_readdir() {
 }
 
 #endif
-
-#ifndef _WIN32
-typedef pthread_key_t tls_key;
-#else
-typedef DWORD tls_key;
-#endif
-
-// Initialize the TLS key used by the new scheduler
-extern "C" CDECL void
-rust_initialize_rt_tls_key(tls_key *key) {
-
-    static lock_and_signal init_lock;
-    static bool initialized = false;
-
-    scoped_lock with(init_lock);
-
-    if (!initialized) {
-
-#ifndef _WIN32
-        assert(!pthread_key_create(key, NULL));
-#else
-        *key = TlsAlloc();
-        assert(*key != TLS_OUT_OF_INDEXES);
-#endif
-
-        initialized = true;
-    }
-}
 
 typedef void *(rust_try_fn)(void*, void*);
 
@@ -536,48 +473,6 @@ get_num_cpus() {
 extern "C" CDECL uintptr_t
 rust_get_num_cpus() {
     return get_num_cpus();
-}
-
-static lock_and_signal global_args_lock;
-static uintptr_t global_args_ptr = 0;
-
-extern "C" CDECL void
-rust_take_global_args_lock() {
-    global_args_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_global_args_lock() {
-    global_args_lock.unlock();
-}
-
-extern "C" CDECL uintptr_t*
-rust_get_global_args_ptr() {
-    return &global_args_ptr;
-}
-
-static lock_and_signal env_lock;
-
-extern "C" CDECL void
-rust_take_env_lock() {
-    env_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_env_lock() {
-    env_lock.unlock();
-}
-
-static lock_and_signal dlerror_lock;
-
-extern "C" CDECL void
-rust_take_dlerror_lock() {
-    dlerror_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_dlerror_lock() {
-    dlerror_lock.unlock();
 }
 
 extern "C" CDECL unsigned int
