@@ -73,5 +73,6 @@ rust_get_global_args_ptr
 rust_take_global_args_lock
 rust_drop_global_args_lock
 rust_get_test_int
-rust_take_dlerror_lock
-rust_drop_dlerror_lock
+rust_pthread_mutex_t_size
+rust_pthread_cond_t_size
+rust_crit_section_size
