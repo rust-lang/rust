@@ -78,20 +78,28 @@ pub enum CloseBehavior {
 pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
     use rt::sched::Scheduler;
     use rt::local::Local;
-    use io::{io_error, standard_error, IoUnavailable};
+    use io::native;
 
     unsafe {
-        let sched: *mut Scheduler = Local::unsafe_borrow();
-        let mut io = None;
-        (*sched).event_loop.io(|i| io = Some(i));
-        match io {
-            Some(io) => f(io),
-            None => {
-                io_error::cond.raise(standard_error(IoUnavailable));
-                None
+        // First, attempt to use the local scheduler's I/O services
+        let sched: Option<*mut Scheduler> = Local::try_unsafe_borrow();
+        match sched {
+            Some(sched) => {
+                let mut io = None;
+                (*sched).event_loop.io(|i| io = Some(i));
+                match io {
+                    Some(io) => return f(io),
+                    None => {}
+                }
             }
+            None => {}
         }
     }
+
+    // If we don't have a scheduler or the scheduler doesn't have I/O services,
+    // then fall back to the native I/O services.
+    let mut io = native::IoFactory;
+    f(&mut io as &mut IoFactory)
 }
 
 pub trait IoFactory {

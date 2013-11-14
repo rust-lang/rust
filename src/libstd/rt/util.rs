@@ -68,25 +68,11 @@ pub fn default_sched_threads() -> uint {
 }
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use io::native::stdio::stderr;
-    use io::{Writer, io_error, ResourceUnavailable};
-    use rt::task::Task;
-    use rt::local::Local;
-
-    let mut out = stderr();
-    if Local::exists(None::<Task>) {
-        let mut again = true;
-        do io_error::cond.trap(|e| {
-            again = e.kind == ResourceUnavailable;
-        }).inside {
-            while again {
-                again = false;
-                fmt::writeln(&mut out as &mut Writer, args);
-            }
-        }
-    } else {
-        fmt::writeln(&mut out as &mut Writer, args);
-    }
+    use io::native::file::FileDesc;
+    use io;
+    use libc;
+    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
+    fmt::writeln(&mut out as &mut io::Writer, args);
 }
 
 pub fn abort(msg: &str) -> ! {

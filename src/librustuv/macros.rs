@@ -33,9 +33,9 @@ macro_rules! get_handle_to_current_scheduler(
 )
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use std::io::native::stdio::stderr;
-    use std::io::Writer;
-
-    let mut out = stderr();
-    fmt::writeln(&mut out as &mut Writer, args);
+    use std::io::native::file::FileDesc;
+    use std::io;
+    use std::libc;
+    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
+    fmt::writeln(&mut out as &mut io::Writer, args);
 }

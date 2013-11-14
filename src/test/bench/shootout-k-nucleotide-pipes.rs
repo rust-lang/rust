@@ -154,7 +154,7 @@ fn make_sequence_processor(sz: uint,
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
     use std::io::Reader;
-    use std::io::native::stdio;
+    use std::io::stdio;
     use std::io::mem::MemReader;
     use std::io::buffered::BufferedReader;
 
