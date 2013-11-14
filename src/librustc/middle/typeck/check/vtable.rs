@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use middle::ty::{FloatVar, IntVar};
 use middle::ty::param_ty;
 use middle::ty;
 use middle::ty_fold::TypeFolder;
@@ -18,7 +19,7 @@ use middle::typeck::infer::fixup_err_to_str;
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
 use middle::typeck::{CrateCtxt, vtable_origin, vtable_res, vtable_param_res};
-use middle::typeck::{vtable_static, vtable_param, impl_res};
+use middle::typeck::{vtable_static, vtable_param, vtable_none, impl_res};
 use middle::typeck::{param_numbered, param_self, param_index};
 use middle::subst::Subst;
 use util::common::indenter;
@@ -232,6 +233,24 @@ fn lookup_vtable(vcx: &VtableContext,
            vcx.infcx.ty_to_str(ty),
            vcx.infcx.trait_ref_to_str(trait_ref));
     let _i = indenter();
+
+    if is_early {
+        let tcx = vcx.tcx();
+        let ty = vcx.infcx.resolve_type_vars_if_possible(ty);
+        match ty::get(ty).sty {
+            ty::ty_infer(IntVar(..)) => {
+                if tcx.int_traits.contains(&trait_ref.def_id) {
+                    return Some(vtable_none);
+                }
+            }
+            ty::ty_infer(FloatVar(..)) => {
+                if tcx.float_traits.contains(&trait_ref.def_id) {
+                    return Some(vtable_none);
+                }
+            }
+            _ => ()
+        }
+    }
 
     let ty = match fixup_ty(vcx, location_info, ty, is_early) {
         Some(ty) => ty,

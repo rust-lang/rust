@@ -183,6 +183,9 @@ pub enum vtable_origin {
       and the second is the bound number (identifying baz)
      */
     vtable_param(param_index, uint),
+
+    // For early vtable resolution
+    vtable_none,
 }
 
 impl Repr for vtable_origin {
@@ -198,6 +201,9 @@ impl Repr for vtable_origin {
 
             vtable_param(x, y) => {
                 format!("vtable_param({:?}, {:?})", x, y)
+            }
+            vtable_none => {
+                ~"vtable_none"
             }
         }
     }

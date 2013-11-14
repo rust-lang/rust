@@ -335,6 +335,12 @@ struct ctxt_ {
     // Maps a trait onto a list of impls of that trait.
     trait_impls: @mut HashMap<ast::DefId, @mut ~[@Impl]>,
 
+    // Traits implemented by all integral types.
+    int_traits: @mut HashSet<ast::DefId>,
+
+    // Traits implemented by all floating point types.
+    float_traits: @mut HashSet<ast::DefId>,
+
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
@@ -1009,6 +1015,8 @@ pub fn mk_ctxt(s: session::Session,
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
+        int_traits: @mut HashSet::new(),
+        float_traits: @mut HashSet::new(),
         inherent_impls:  @mut HashMap::new(),
         impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
@@ -4515,8 +4523,22 @@ pub fn populate_implementations_for_trait_if_necessary(
         return
     }
 
+    let mut int_count = 0;
+    let mut float_count = 0;
+
     csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id,
             |implementation_def_id| {
+        let ty = lookup_item_type(tcx, implementation_def_id).ty;
+        match get(ty).sty {
+            ty_int(..) | ty_uint(..) => {
+                int_count += 1;
+            }
+            ty_float(..) => {
+                float_count += 1;
+            }
+            _ => ()
+        }
+
         let implementation = @csearch::get_impl(tcx, implementation_def_id);
 
         // Record the trait->implementation mapping.
@@ -4533,6 +4555,13 @@ pub fn populate_implementations_for_trait_if_necessary(
         // Store the implementation info.
         tcx.impls.insert(implementation_def_id, implementation);
     });
+
+    if int_count == 10 {
+        tcx.int_traits.insert(trait_id);
+    }
+    if float_count == 2 {
+        tcx.float_traits.insert(trait_id);
+    }
 
     tcx.populated_external_traits.insert(trait_id);
 }

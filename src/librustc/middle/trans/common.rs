@@ -1227,6 +1227,9 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
                 }
             }
         }
+        typeck::vtable_none => {
+            tcx.sess.bug("unexpected vtable_none in trans");
+        }
     }
 }
 
