@@ -120,7 +120,7 @@ Thus, there should be no need to pass a `-L` flag to rustpkg to tell it where to
 
 # Custom build scripts
 
-A file called `pkg.rs` at the root level in a workspace is called a *package script*.
+A file called `pkg.rs` at the root level in a package directory is called a *package script*.
 If a package script exists, rustpkg executes it to build the package
 rather than inferring crates as described previously.
 
