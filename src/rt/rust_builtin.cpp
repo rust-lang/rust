@@ -394,6 +394,11 @@ rust_lock_little_lock(lock_and_signal *lock) {
     lock->lock();
 }
 
+extern "C" bool
+rust_trylock_little_lock(lock_and_signal *lock) {
+    return lock->try_lock();
+}
+
 extern "C" void
 rust_unlock_little_lock(lock_and_signal *lock) {
     lock->unlock();

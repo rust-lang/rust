@@ -13,7 +13,7 @@ use cell::Cell;
 use comm;
 use libc;
 use ptr;
-use option::*;
+use option::{Option,Some,None};
 use task;
 use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,Relaxed,SeqCst};
 use unstable::finally::Finally;
@@ -354,6 +354,20 @@ impl LittleLock {
         }
     }
 
+    pub unsafe fn try_lock<T>(&self, f: &fn() -> T) -> Option<T> {
+        do atomically {
+            if rust_trylock_little_lock(self.l) {
+                Some(do (|| {
+                    f()
+                }).finally {
+                    rust_unlock_little_lock(self.l);
+                })
+            } else {
+                None
+            }
+        }
+    }
+
     pub unsafe fn signal(&self) {
         rust_signal_little_lock(self.l);
     }
@@ -478,6 +492,7 @@ impl<T:Send> Exclusive<T> {
 extern {
     fn rust_create_little_lock() -> rust_little_lock;
     fn rust_destroy_little_lock(lock: rust_little_lock);
+    fn rust_trylock_little_lock(lock: rust_little_lock) -> bool;
     fn rust_lock_little_lock(lock: rust_little_lock);
     fn rust_unlock_little_lock(lock: rust_little_lock);
     fn rust_signal_little_lock(lock: rust_little_lock);
