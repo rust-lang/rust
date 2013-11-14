@@ -43,6 +43,7 @@ public:
     virtual ~lock_and_signal();
 
     void lock();
+    bool try_lock();
     void unlock();
     void wait();
     void signal();
