@@ -671,6 +671,27 @@ rust_win32_rand_release() {
 }
 
 #endif
+
+#if defined(__WIN32__)
+
+extern "C" CDECL int
+rust_crit_section_size() { return sizeof(CRITICAL_SECTION); }
+extern "C" CDECL int
+rust_pthread_mutex_t_size() { return 0; }
+extern "C" CDECL int
+rust_pthread_cond_t_size() { return 0; }
+
+#else
+
+extern "C" CDECL int
+rust_crit_section_size() { return 0; }
+extern "C" CDECL int
+rust_pthread_mutex_t_size() { return sizeof(pthread_mutex_t); }
+extern "C" CDECL int
+rust_pthread_cond_t_size() { return sizeof(pthread_cond_t); }
+
+#endif
+
 //
 // Local Variables:
 // mode: C++
