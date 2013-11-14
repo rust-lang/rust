@@ -3022,10 +3022,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                     let t1 = structurally_resolved_type(fcx, e.span, t_1);
                     let te = structurally_resolved_type(fcx, e.span, t_e);
+                    let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
                     let t_1_is_char = type_is_char(fcx, expr.span, t_1);
+                    let t_1_is_bare_fn = type_is_bare_fn(fcx, expr.span, t_1);
 
-                    // casts to scalars other than `char` are allowed
-                    let t_1_is_trivial = type_is_scalar(fcx, expr.span, t_1) && !t_1_is_char;
+                    // casts to scalars other than `char` and `bare fn` are trivial
+                    let t_1_is_trivial = t_1_is_scalar &&
+                        !t_1_is_char && !t_1_is_bare_fn;
 
                     if type_is_c_like_enum(fcx, expr.span, t_e) && t_1_is_trivial {
                         // casts from C-like enums are allowed
@@ -3823,6 +3826,11 @@ pub fn type_is_scalar(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
 pub fn type_is_char(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_char(typ_s);
+}
+
+pub fn type_is_bare_fn(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_bare_fn(typ_s);
 }
 
 pub fn type_is_unsafe_ptr(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
