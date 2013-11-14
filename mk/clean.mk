@@ -12,12 +12,18 @@
 # Cleanup
 ######################################################################
 
-CLEAN_STAGE_RULES =								\
- $(foreach stage, $(STAGES),					\
-  $(foreach host, $(CFG_HOST),		\
+CLEAN_STAGE_RULES :=							\
+ $(foreach stage, $(STAGES),						\
+  $(foreach host, $(CFG_HOST),						\
    clean$(stage)_H_$(host)						\
-   $(foreach target, $(CFG_TARGET),		\
+   $(foreach target, $(CFG_TARGET),					\
     clean$(stage)_T_$(target)_H_$(host))))
+
+CLEAN_STAGE_RULES := $(CLEAN_STAGE_RULES)				\
+    $(foreach host, $(CFG_HOST), clean-generic-H-$(host))
+
+CLEAN_STAGE_RULES := $(CLEAN_STAGE_RULES)				\
+    $(foreach host, $(CFG_TARGET), clean-generic-T-$(host))
 
 CLEAN_LLVM_RULES = 								\
  $(foreach target, $(CFG_HOST),		\
@@ -33,19 +39,6 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find $(CFG_BUILD)/rustllvm \
-	         $(CFG_BUILD)/rt \
-		 $(CFG_BUILD)/test \
-         -name '*.[odasS]' -o \
-         -name '*.so' -o      \
-         -name '*.dylib' -o   \
-         -name '*.dll' -o     \
-         -name '*.def' -o     \
-         -name '*.bc'         \
-         | xargs rm -f
-	$(Q)find $(CFG_BUILD)\
-         -name '*.dSYM'       \
-         | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
 	$(Q)rm -Rf $(DOCS)
@@ -59,6 +52,27 @@ clean-misc:
 	$(Q)rm -Rf doc/version.md
 	$(Q)rm -Rf $(foreach sub, index styles files search javascript, \
                  $(wildcard doc/*/$(sub)))
+
+define CLEAN_GENERIC
+
+clean-generic-$(2)-$(1):
+	$(Q)find $(1)/rustllvm \
+	         $(1)/rt \
+		 $(1)/test \
+         -name '*.[odasS]' -o \
+         -name '*.so' -o      \
+         -name '*.dylib' -o   \
+         -name '*.dll' -o     \
+         -name '*.def' -o     \
+         -name '*.bc'         \
+         | xargs rm -f
+	$(Q)find $(1)\
+         -name '*.dSYM'       \
+         | xargs rm -Rf
+endef
+
+$(foreach host, $(CFG_HOST), $(eval $(call CLEAN_GENERIC,$(host),H)))
+$(foreach targ, $(CFG_TARGET), $(eval $(call CLEAN_GENERIC,$(targ),T)))
 
 define CLEAN_HOST_STAGE_N
 

@@ -63,6 +63,7 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 mod imp {
+    use cast;
     use libc;
     use option::{Option, Some, None};
     use iter::Iterator;

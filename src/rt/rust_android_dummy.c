@@ -14,53 +14,53 @@ char **backtrace_symbols(void *const *array, int size) { return 0; }
 
 void backtrace_symbols_fd (void *const *array, int size, int fd) {}
 
-extern "C" volatile int* __errno_location() {
+volatile int* __errno_location() {
     return &errno;
 }
 
-extern "C" float log2f(float f)
+float log2f(float f)
 {
     return logf( f ) / logf( 2 );
 }
 
-extern "C" double log2( double n )
+double log2( double n )
 {
     return log( n ) / log( 2 );
 }
 
-extern "C" void telldir()
+void telldir()
 {
 }
 
-extern "C" void seekdir()
+void seekdir()
 {
 }
 
-extern "C" void mkfifo()
+void mkfifo()
 {
 }
 
-extern "C" void abs()
+void abs()
 {
 }
 
-extern "C" void labs()
+void labs()
 {
 }
 
-extern "C" void rand()
+void rand()
 {
 }
 
-extern "C" void srand()
+void srand()
 {
 }
 
-extern "C" void atof()
+void atof()
 {
 }
 
-extern "C" int glob(const char *pattern,
+int glob(const char *pattern,
                     int flags,
                     int (*errfunc) (const char *epath, int eerrno),
                     glob_t *pglob)
@@ -68,38 +68,38 @@ extern "C" int glob(const char *pattern,
     return 0;
 }
 
-extern "C" void globfree(glob_t *pglob)
+void globfree(glob_t *pglob)
 {
 }
 
-extern "C" int pthread_atfork(void (*prefork)(void),
+int pthread_atfork(void (*prefork)(void),
                               void (*postfork_parent)(void),
                               void (*postfork_child)(void))
 {
     return 0;
 }
 
-extern "C" int mlockall(int flags)
+int mlockall(int flags)
 {
     return 0;
 }
 
-extern "C" int munlockall(void)
+int munlockall(void)
 {
     return 0;
 }
 
-extern "C" int shm_open(const char *name, int oflag, mode_t mode)
+int shm_open(const char *name, int oflag, mode_t mode)
 {
     return 0;
 }
 
-extern "C" int shm_unlink(const char *name)
+int shm_unlink(const char *name)
 {
     return 0;
 }
 
-extern "C" int posix_madvise(void *addr, size_t len, int advice)
+int posix_madvise(void *addr, size_t len, int advice)
 {
     return 0;
 }

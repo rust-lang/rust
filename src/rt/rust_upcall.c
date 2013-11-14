@@ -35,24 +35,24 @@ struct _Unwind_Exception;
 #  endif
 #endif
 
-extern "C" _Unwind_Reason_Code
+_Unwind_Reason_Code
 PERSONALITY_FUNC(int version,
                      _Unwind_Action actions,
                      uint64_t exception_class,
-                     _Unwind_Exception *ue_header,
-                     _Unwind_Context *context);
+                     struct _Unwind_Exception *ue_header,
+                     struct _Unwind_Context *context);
 
 struct s_rust_personality_args {
     _Unwind_Reason_Code retval;
     int version;
     _Unwind_Action actions;
     uint64_t exception_class;
-    _Unwind_Exception *ue_header;
-    _Unwind_Context *context;
+    struct _Unwind_Exception *ue_header;
+    struct _Unwind_Context *context;
 };
 
-extern "C" void
-upcall_s_rust_personality(s_rust_personality_args *args) {
+void
+upcall_s_rust_personality(struct s_rust_personality_args *args) {
     args->retval = PERSONALITY_FUNC(args->version,
                                     args->actions,
                                     args->exception_class,
@@ -65,15 +65,15 @@ upcall_s_rust_personality(s_rust_personality_args *args) {
    out what to do with each landing pad. Just a stack-switching
    wrapper around the C++ personality function.
 */
-extern "C" _Unwind_Reason_Code
+_Unwind_Reason_Code
 upcall_rust_personality(int version,
                         _Unwind_Action actions,
                         uint64_t exception_class,
-                        _Unwind_Exception *ue_header,
-                        _Unwind_Context *context) {
-    s_rust_personality_args args = {(_Unwind_Reason_Code)0,
-                                    version, actions, exception_class,
-                                    ue_header, context};
+                        struct _Unwind_Exception *ue_header,
+                        struct _Unwind_Context *context) {
+    struct s_rust_personality_args args = {(_Unwind_Reason_Code)0,
+                                           version, actions, exception_class,
+                                           ue_header, context};
     upcall_s_rust_personality(&args);
     return args.retval;
 }
@@ -82,7 +82,7 @@ upcall_rust_personality(int version,
 // correct limit into TLS.
 // NB: This must run on the Rust stack because it
 // needs to acquire the value of the stack pointer
-extern "C" CDECL void
+void
 upcall_reset_stack_limit() {
 }
 
