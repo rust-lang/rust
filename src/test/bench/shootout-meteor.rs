@@ -14,17 +14,12 @@
 
 // returns an infinite iterator of repeated applications of f to x,
 // i.e. [x, f(x), f(f(x)), ...], as haskell iterate function.
-fn iterate<'a, T>(f: &'a fn(&T) -> T, x: T) -> Iterate<'a, T> {
-    Iterate::new(f, x)
+fn iterate<'a, T>(x: T, f: &'a fn(&T) -> T) -> Iterate<'a, T> {
+    Iterate {f: f, next: x}
 }
 struct Iterate<'self, T> {
     priv f: &'self fn(&T) -> T,
     priv next: T
-}
-impl<'self, T> Iterate<'self, T> {
-    fn new<'a>(f: &'a fn(&T) -> T, x: T) -> Iterate<'a, T> {
-        Iterate {f: f, next: x}
-    }
 }
 impl<'self, T> Iterator<T> for Iterate<'self, T> {
     fn next(&mut self) -> Option<T> {
@@ -71,11 +66,11 @@ impl<'self, T> Iterator<&'self T> for ListIterator<'self, T> {
 fn transform(p: ~[(int, int)], all: bool) -> ~[~[(int, int)]] {
     let mut res =
         // rotations
-        iterate(|p| p.iter().map(|&(y, x)| (x + y, -y)).collect(), p)
+        iterate(p, |p| p.iter().map(|&(y, x)| (x + y, -y)).collect())
         .take(if all {6} else {3})
         // mirror
         .flat_map(|p| {
-            iterate(|p| p.iter().map(|&(y, x)| (x, y)).collect(), p).take(2)
+            iterate(p, |p| p.iter().map(|&(y, x)| (x, y)).collect()).take(2)
         }).to_owned_vec();
 
     // translating to (0, 0) as minimum coordinates.
