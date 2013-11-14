@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows doesn't like extern mod
+// xfail-fast check-fast doesn't like extern mod
 // aux-build:issue-9968.rs
 
 extern mod lib(name = "issue-9968");

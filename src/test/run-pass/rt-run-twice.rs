@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows uses a different test runner
+// xfail-fast make-check does not like `#[start]`
 
 use std::rt;
 

@@ -82,6 +82,7 @@ pub enum StdioContainer {
 }
 
 /// Describes the result of a process after it has terminated.
+/// Note that Windows have no signals, so the result is usually ExitStatus.
 #[deriving(Eq)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.

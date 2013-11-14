@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows doesn't like aux-build
+// xfail-fast check-fast doesn't like aux-build
 // aux-build:xcrate_address_insignificant.rs
 
 extern mod foo(name = "xcrate_address_insignificant");
