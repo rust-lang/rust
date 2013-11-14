@@ -63,20 +63,21 @@ impl<'self, T> Iterator<&'self T> for ListIterator<'self, T> {
 // corresponding mirrored piece), with, as minimum coordinates, (0,
 // 0).  If all is false, only generate half of the possibilities (used
 // to break the symetry of the board).
-fn transform(p: ~[(int, int)], all: bool) -> ~[~[(int, int)]] {
+fn transform(piece: ~[(int, int)], all: bool) -> ~[~[(int, int)]] {
     let mut res =
         // rotations
-        iterate(p, |p| p.iter().map(|&(y, x)| (x + y, -y)).collect())
+        iterate(piece, |rot| rot.iter().map(|&(y, x)| (x + y, -y)).collect())
         .take(if all {6} else {3})
         // mirror
-        .flat_map(|p| {
-            iterate(p, |p| p.iter().map(|&(y, x)| (x, y)).collect()).take(2)
+        .flat_map(|cur_piece| {
+            iterate(cur_piece, |mir| mir.iter().map(|&(y, x)| (x, y)).collect())
+            .take(2)
         }).to_owned_vec();
 
     // translating to (0, 0) as minimum coordinates.
-    for p in res.mut_iter() {
-        let (dy, dx) = *p.iter().min_by(|e| *e).unwrap();
-        for &(ref mut y, ref mut x) in p.mut_iter() {
+    for cur_piece in res.mut_iter() {
+        let (dy, dx) = *cur_piece.iter().min_by(|e| *e).unwrap();
+        for &(ref mut y, ref mut x) in cur_piece.mut_iter() {
             *y -= dy; *x -= dx;
         }
     }
