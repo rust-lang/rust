@@ -3857,4 +3857,20 @@ mod bench {
             xss.connect_vec(&0);
         }
     }
+
+    #[bench]
+    fn starts_with(b: &mut BenchHarness) {
+        let xs: &[int] = [5, ..10];
+        do b.iter() {
+            xs.starts_with([5]);
+        }
+    }
+
+    #[bench]
+    fn ends_with(b: &mut BenchHarness) {
+        let xs: &[int] = [5, ..10];
+        do b.iter() {
+            xs.ends_with([10]);
+        }
+    }
 }
