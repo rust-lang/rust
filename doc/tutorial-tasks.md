@@ -273,7 +273,7 @@ later.
 The basic example below illustrates this.
 ~~~
 # fn make_a_sandwich() {};
-fn fib(n: uint) -> uint {
+fn fib(n: u64) -> u64 {
     // lengthy computation returning an uint
     12586269025
 }
