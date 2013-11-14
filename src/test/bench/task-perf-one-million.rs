@@ -56,7 +56,7 @@ fn main() {
         args
     };
 
-    let children = from_str::<uint>(args[1]).get();
+    let children = from_str::<uint>(args[1]).unwrap();
     let (wait_port, wait_chan) = stream();
     do task::spawn {
         calc(children, &wait_chan);
@@ -66,5 +66,5 @@ fn main() {
     let (sum_port, sum_chan) = stream::<int>();
     start_chan.send(sum_chan);
     let sum = sum_port.recv();
-    error!("How many tasks? %d tasks.", sum);
+    error!("How many tasks? {} tasks.", sum);
 }
