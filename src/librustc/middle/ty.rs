@@ -2423,6 +2423,13 @@ pub fn type_is_char(ty: t) -> bool {
     }
 }
 
+pub fn type_is_bare_fn(ty: t) -> bool {
+    match get(ty).sty {
+        ty_bare_fn(*) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_fp(ty: t) -> bool {
     match get(ty).sty {
       ty_infer(FloatVar(_)) | ty_float(_) => true,
