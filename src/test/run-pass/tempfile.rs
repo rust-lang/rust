@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows doesn't like 'extern mod extra'
+// xfail-fast check-fast doesn't like 'extern mod'
+// xfail-win32 TempDir may cause IoError on windows: #10463
 
 // These tests are here to exercise the functionality of the `tempfile` module.
 // One might expect these tests to be located in that module, but sadly they

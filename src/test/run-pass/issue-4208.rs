@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-4208-cc.rs
-// xfail-fast - Windows hates cross-crate tests
+// xfail-fast - check-fast hates cross-crate tests
 
 extern mod numeric;
 use numeric::{sin, Angle};

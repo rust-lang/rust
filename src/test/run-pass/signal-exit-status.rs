@@ -8,7 +8,7 @@
 // option. this file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// xfail-fast calling itself doesn't work on check-fast
 
 use std::{os, run};
 use std::io::process;
@@ -20,8 +20,10 @@ fn main() {
         unsafe { *(0 as *mut int) = 0; }
     } else {
         let status = run::process_status(args[0], [~"signal"]);
+        // Windows does not have signal, so we get exit status 0xC0000028 (STATUS_BAD_STACK).
         match status {
-            process::ExitSignal(_) => {},
+            process::ExitSignal(_) if cfg!(unix) => {},
+            process::ExitStatus(0xC0000028) if cfg!(windows) => {},
             _ => fail!("invalid termination (was not signalled): {:?}", status)
         }
     }

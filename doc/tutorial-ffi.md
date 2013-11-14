@@ -303,7 +303,7 @@ conventions. Rust provides a way to tell the compiler which convention to use:
 #[cfg(target_os = "win32", target_arch = "x86")]
 #[link_name = "kernel32"]
 extern "stdcall" {
-    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
+    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> std::libc::c_int;
 }
 ~~~~
 
