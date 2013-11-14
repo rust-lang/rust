@@ -433,17 +433,19 @@ impl CtxMethods for BuildContext {
         let pkgid = pkg_src.id.clone();
 
         debug!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
-                pkgid = {} pkgsrc start_dir = {}", workspace.display(),
+               pkgid = {} pkgsrc start_dir = {}", workspace.display(),
                in_rust_path(&workspace), is_git_dir(&workspace.join(&pkgid.path)),
-               pkgid.to_str(), pkg_src.start_dir.display());
+               pkgid.to_str(),
+               pkg_src.start_dir.display());
+        let pkg_dir = workspace.join(&pkgid.path);
         debug!("build: what to build = {:?}", what_to_build);
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
-        if !in_rust_path(&workspace) && is_git_dir(&workspace.join(&pkgid.path)) {
+        if !in_rust_path(&workspace) && is_git_dir(&pkg_dir) {
             let mut out_dir = default_workspace().join("src");
             out_dir.push(&pkgid.path);
-            let git_result = source_control::safe_git_clone(&workspace.join(&pkgid.path),
+            let git_result = source_control::safe_git_clone(&pkg_dir,
                                                             &pkgid.version,
                                                             &out_dir);
             match git_result {
@@ -516,7 +518,7 @@ impl CtxMethods for BuildContext {
                 JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
                     // so check that assumption
-                    debug!("JustOne: p = {}", p.display());
+                    debug!("JustOne: p = {} and {}", p.display(), pkg_src.start_dir.display());
                     assert!(pkg_src.start_dir.join(p).exists());
                     if is_lib(p) {
                         PkgSrc::push_crate(&mut pkg_src.libs, 0, p);

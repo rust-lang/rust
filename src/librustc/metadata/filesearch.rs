@@ -236,3 +236,27 @@ pub fn rust_path() -> ~[Path] {
 pub fn libdir() -> ~str {
     (env!("CFG_LIBDIR")).to_owned()
 }
+
+
+/// If s is of the form foo#bar, where bar is a valid version
+/// number, return the prefix before the # and the version.
+/// Otherwise, return None.
+pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, &'a str)> {
+    // Check for extra '#' characters separately
+    if s.split_iter('#').len() > 2 {
+        return None;
+    }
+    split_version_general(s, '#')
+}
+
+pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, &'a str)> {
+    match s.rfind(sep) {
+        Some(i) => {
+            let path = s.slice(0, i);
+            Some((path, s.slice(i + 1, s.len())))
+        }
+        None => {
+            None
+        }
+    }
+}

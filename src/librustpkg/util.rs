@@ -530,6 +530,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                     self.parent_crate.as_str().unwrap().to_owned(),
                                     (~"binary", dep.as_str().unwrap().to_owned()));
 
+                            // FIXME (#9639): This needs to handle non-utf8 paths
                             // Also, add an additional search path
                             let dep_dir = dep.dir_path();
                             debug!("Installed {} into {}", dep.display(), dep_dir.display());
@@ -567,13 +568,14 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                     lib_name, target_workspace.as_str().unwrap().to_owned());
                             (self.save)(target_workspace.clone());
                         }
+                        debug!("Installed {} into {}", lib_name, dest_workspace.display());
                     }
                 }
             }
             // Ignore `use`s
             _ => ()
         }
-        visit::walk_view_item(self, vi, env)
+        visit::walk_view_item(self, vi, env);
     }
 }
 
