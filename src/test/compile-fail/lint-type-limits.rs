@@ -24,11 +24,13 @@ fn bar() -> i8 {
 
 fn baz() -> bool {
     128 > bar() //~ ERROR comparison is useless due to type limits
+                //~^ WARNING literal out of range for its type
 }
 
 fn qux() {
     let mut i = 1i8;
     while 200 != i { //~ ERROR comparison is useless due to type limits
+                     //~^ WARNING literal out of range for its type
         i += 1;
     }
 }

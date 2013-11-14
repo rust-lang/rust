@@ -73,6 +73,7 @@ pub enum lint {
     non_uppercase_statics,
     non_uppercase_pattern_statics,
     type_limits,
+    type_overflow,
     unused_unsafe,
 
     managed_heap_memory,
@@ -220,6 +221,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: warn
      }),
 
+    ("type_overflow",
+     LintSpec {
+        lint: type_overflow,
+        desc: "literal out of range for its type",
+        default: warn
+     }),
+
+
     ("unused_unsafe",
      LintSpec {
         lint: unused_unsafe,
@@ -329,6 +338,9 @@ struct Context<'self> {
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
     lint_stack: ~[(lint, level, LintSource)],
+
+    // id of the last visited negated expression
+    negated_expr_id: ast::NodeId
 }
 
 impl<'self> Context<'self> {
@@ -522,7 +534,48 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                 cx.span_lint(type_limits, e.span,
                              "comparison is useless due to type limits");
             }
-        }
+        },
+        ast::ExprLit(lit) => {
+            match ty::get(ty::expr_ty(cx.tcx, e)).sty {
+                ty::ty_int(t) => {
+                    let int_type = if t == ast::ty_i {
+                        cx.tcx.sess.targ_cfg.int_type
+                    } else { t };
+                    let (min, max) = int_ty_range(int_type);
+                    let mut lit_val: i64 = match lit.node {
+                        ast::lit_int(v, _) => v,
+                        ast::lit_uint(v, _) => v as i64,
+                        ast::lit_int_unsuffixed(v) => v,
+                        _ => fail!()
+                    };
+                    if cx.negated_expr_id == e.id {
+                        lit_val *= -1;
+                    }
+                    if  lit_val < min || lit_val > max {
+                        cx.span_lint(type_overflow, e.span,
+                                     "literal out of range for its type");
+                    }
+                },
+                ty::ty_uint(t) => {
+                    let uint_type = if t == ast::ty_u {
+                        cx.tcx.sess.targ_cfg.uint_type
+                    } else { t };
+                    let (min, max) = uint_ty_range(uint_type);
+                    let lit_val: u64 = match lit.node {
+                        ast::lit_int(v, _) => v as u64,
+                        ast::lit_uint(v, _) => v,
+                        ast::lit_int_unsuffixed(v) => v as u64,
+                        _ => fail!()
+                    };
+                    if  lit_val < min || lit_val > max {
+                        cx.span_lint(type_overflow, e.span,
+                                     "literal out of range for its type");
+                    }
+                },
+
+                _ => ()
+            };
+        },
         _ => ()
     };
 
@@ -1052,11 +1105,25 @@ impl<'self> Visitor<()> for Context<'self> {
     }
 
     fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
+        match e.node {
+            ast::ExprUnary(_, ast::UnNeg, expr) => {
+                // propagate negation, if the negation itself isn't negated
+                if self.negated_expr_id != e.id {
+                    self.negated_expr_id = expr.id;
+                }
+            },
+            ast::ExprParen(expr) => if self.negated_expr_id == e.id {
+                self.negated_expr_id = expr.id
+            },
+            _ => ()
+        };
+
         check_while_true_expr(self, e);
         check_stability(self, e);
         check_unused_unsafe(self, e);
         check_unnecessary_allocation(self, e);
         check_heap_expr(self, e);
+
         check_type_limits(self, e);
 
         visit::walk_expr(self, e, ());
@@ -1150,6 +1217,7 @@ pub fn check_crate(tcx: ty::ctxt,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
         lint_stack: ~[],
+        negated_expr_id: -1
     };
 
     // Install default lint levels, followed by the command line levels, and
