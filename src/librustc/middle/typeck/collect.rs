@@ -236,13 +236,18 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                              trait_ty_generics: &ty::Generics) {
         // If declaration is
         //
-        //     trait<'a,'b,'c,A,B,C> {
+        //     trait Trait<'a,'b,'c,A,B,C> {
         //        fn foo<'d,'e,'f,D,E,F>(...) -> Self;
         //     }
         //
         // and we will create a function like
         //
-        //     fn foo<'a,'b,'c,'d,'e,'f,A',B',C',D',E',F',G'>(...) -> D' {}
+        //     fn foo<'a,'b,'c,   // First the lifetime params from trait
+        //            'd,'e,'f,   // Then lifetime params from `foo()`
+        //            A',B',C',   // Then type params from trait
+        //            D':Trait<'a,'b,'c,A',B',C'>, // Then this sucker
+        //            E',F',G'    // Then type params from `foo()`, offset by 1
+        //           >(...) -> D' {}
         //
         // Note that `Self` is replaced with an explicit type
         // parameter D' that is sandwiched in between the trait params
@@ -250,6 +255,11 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         // type parameters are offset by 1 (that is, the method
         // parameters are mapped from D, E, F to E', F', and G').  The
         // choice of this ordering is somewhat arbitrary.
+        //
+        // Note also that the bound for `D'` is `Trait<'a,'b,'c,A',B',C'>`.
+        // This implies that the lifetime parameters that were inherited
+        // from the trait (i.e., `'a`, `'b`, and `'c`) all must be early
+        // bound, since they appear in a trait bound.
         //
         // Also, this system is rather a hack that should be replaced
         // with a more uniform treatment of Self (which is partly
@@ -280,13 +290,17 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         };
 
         // Convert the regions 'a, 'b, 'c defined on the trait into
-        // bound regions on the fn.
-        let rps_from_trait = trait_ty_generics.region_param_defs.iter().map(|d| {
-            ty::ReLateBound(m.fty.sig.binder_id,
-                            ty::BrNamed(d.def_id, d.ident))
-        }).collect();
+        // bound regions on the fn. Note that because these appear in the
+        // bound for `Self` they must be early bound.
+        let new_early_region_param_defs = trait_ty_generics.region_param_defs;
+        let rps_from_trait =
+            trait_ty_generics.region_param_defs.iter().
+            enumerate().
+            map(|(index,d)| ty::ReEarlyBound(d.def_id.node, index, d.ident)).
+            collect();
 
         // build up the substitution from
+        //     'a,'b,'c => 'a,'b,'c
         //     A,B,C => A',B',C'
         //     Self => D'
         //     D,E,F => E',F',G'
@@ -336,7 +350,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                           ty_param_bounds_and_ty {
                               generics: ty::Generics {
                                   type_param_defs: @new_type_param_defs,
-                                  region_param_defs: @[], // fn items
+                                  region_param_defs: new_early_region_param_defs
                               },
                               ty: ty
                           });
