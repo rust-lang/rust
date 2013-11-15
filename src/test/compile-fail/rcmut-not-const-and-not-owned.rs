@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::RcMut;
+use std::mutable::Mut;
+use std::rc::Rc;
 
 fn o<T: Send>(_: &T) {}
 fn c<T: Freeze>(_: &T) {}
 
 fn main() {
-    let x = RcMut::from_send(0);
-    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::RcMut<int>`, which does not fulfill `Send`
-    c(&x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::RcMut<int>`, which does not fulfill `Freeze`
+    let x = Rc::from_send(Mut::new(0));
+    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::mutable::Mut<int>>`, which does not fulfill `Send`
+    c(&x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::mutable::Mut<int>>`, which does not fulfill `Freeze`
 }
