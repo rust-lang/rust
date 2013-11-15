@@ -138,6 +138,7 @@ endif
 endif
 endif
 
+CFG_RLIB_GLOB=lib$(1)-*.rlib
 
 # x86_64-unknown-linux-gnu configuration
 CC_x86_64-unknown-linux-gnu=$(CC)

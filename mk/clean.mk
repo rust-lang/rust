@@ -59,6 +59,7 @@ clean-generic-$(2)-$(1):
 	$(Q)find $(1)/rustllvm \
 	         $(1)/rt \
 		 $(1)/test \
+		 $(1)/stage* \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -91,13 +92,16 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTC_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBSYNTAX_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(STDLIB_RGLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(EXTRALIB_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(EXTRALIB_RGLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTUV_GLOB_$(2))
+	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTUV_RGLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTPKG_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUSTLLVM_$(2))
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/libstd.rlib
 
 endef
 
@@ -122,14 +126,16 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(STDLIB_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(STDLIB_RGLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(EXTRALIB_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(EXTRALIB_RGLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTUV_GLOB_$(2))
+	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTUV_RGLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTPKG_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOC_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(2))
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass_stage* # For unix
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows

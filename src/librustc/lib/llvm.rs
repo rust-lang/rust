@@ -14,7 +14,6 @@ use std::c_str::ToCStr;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ushort, c_void, free};
 use std::str::raw::from_c_str;
-use std::option;
 
 use middle::trans::type_::Type;
 
@@ -304,9 +303,16 @@ pub mod llvm {
     use super::{ValueRef, TargetMachineRef, FileType};
     use super::{CodeGenModel, RelocMode, CodeGenOptLevel};
     use super::debuginfo::*;
-    use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
+    use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
+                    size_t};
 
+    #[cfg(stage0)]
     #[link_args = "-lrustllvm"]
+    extern {}
+    #[cfg(not(stage0))] // if you're deleting this, put this on the block below
+    #[link(name = "rustllvm")]
+    extern {}
+
     extern {
         /* Create and destroy contexts. */
         pub fn LLVMContextCreate() -> ContextRef;
@@ -1426,6 +1432,16 @@ pub mod llvm {
             LLVMDisposeMemoryBuffer() to get rid of it. */
         pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *c_char)
             -> MemoryBufferRef;
+        /** Borrows the contents of the memory buffer (doesn't copy it) */
+        pub fn LLVMCreateMemoryBufferWithMemoryRange(InputData: *c_char,
+                                                     InputDataLength: size_t,
+                                                     BufferName: *c_char,
+                                                     RequiresNull: Bool)
+            -> MemoryBufferRef;
+        pub fn LLVMCreateMemoryBufferWithMemoryRangeCopy(InputData: *c_char,
+                                                         InputDataLength: size_t,
+                                                         BufferName: *c_char)
+            -> MemoryBufferRef;
 
         /** Returns a string describing the last error caused by an LLVMRust*
             call. */
@@ -1901,38 +1917,32 @@ pub fn mk_pass_manager() -> PassManager {
 
 /* Memory-managed interface to object files. */
 
-pub struct object_file_res {
-    ObjectFile: ObjectFileRef,
+pub struct ObjectFile {
+    llof: ObjectFileRef,
 }
 
-impl Drop for object_file_res {
-    fn drop(&mut self) {
+impl ObjectFile {
+    // This will take ownership of llmb
+    pub fn new(llmb: MemoryBufferRef) -> Option<ObjectFile> {
         unsafe {
-            llvm::LLVMDisposeObjectFile(self.ObjectFile);
+            let llof = llvm::LLVMCreateObjectFile(llmb);
+            if llof as int == 0 {
+                llvm::LLVMDisposeMemoryBuffer(llmb);
+                return None
+            }
+
+            Some(ObjectFile {
+                llof: llof,
+            })
         }
     }
 }
 
-pub fn object_file_res(ObjFile: ObjectFileRef) -> object_file_res {
-    object_file_res {
-        ObjectFile: ObjFile
-    }
-}
-
-pub struct ObjectFile {
-    llof: ObjectFileRef,
-    dtor: @object_file_res
-}
-
-pub fn mk_object_file(llmb: MemoryBufferRef) -> Option<ObjectFile> {
-    unsafe {
-        let llof = llvm::LLVMCreateObjectFile(llmb);
-        if llof as int == 0 { return option::None::<ObjectFile>; }
-
-        option::Some(ObjectFile {
-            llof: llof,
-            dtor: @object_file_res(llof)
-        })
+impl Drop for ObjectFile {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMDisposeObjectFile(self.llof);
+        }
     }
 }
 
