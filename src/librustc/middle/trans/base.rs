@@ -77,7 +77,7 @@ use extra::time;
 use extra::sort;
 use syntax::ast::Name;
 use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
-use syntax::ast_util::{local_def};
+use syntax::ast_util::{local_def, is_local};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
@@ -2979,7 +2979,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     return map;
 }
 
-pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
+pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     let mut subcrates: ~[ValueRef] = ~[];
     let mut i = 1;
     let cstore = ccx.sess.cstore;
@@ -2997,19 +2997,20 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         subcrates.push(p2i(ccx, cr));
         i += 1;
     }
-    let event_loop_factory = if !*ccx.sess.building_library {
-        match ccx.tcx.lang_items.event_loop_factory() {
-            Some(did) => unsafe {
+    let event_loop_factory = match ccx.tcx.lang_items.event_loop_factory() {
+        Some(did) => unsafe {
+            if is_local(did) {
+                llvm::LLVMConstPointerCast(get_item_val(ccx, did.node),
+                                           ccx.int_type.ptr_to().to_ref())
+            } else {
                 let name = csearch::get_symbol(ccx.sess.cstore, did);
                 let global = do name.with_c_str |buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
                 };
                 global
-            },
-            None => C_null(ccx.int_type.ptr_to())
-        }
-    } else {
-        C_null(ccx.int_type.ptr_to())
+            }
+        },
+        None => C_null(ccx.int_type.ptr_to())
     };
     unsafe {
         let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
