@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn type_id_hash() {
-        let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>::());
+        let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>());
 
         assert_eq!(a.hash(), b.hash());
     }
