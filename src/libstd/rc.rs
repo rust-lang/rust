@@ -105,26 +105,26 @@ impl<T> Drop for Rc<T> {
 #[cfg(test)]
 mod test_rc {
     use super::*;
-    use cell::Cell;
+    use mutable::Mut;
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(Cell::new(5));
+        let x = Rc::from_send(Mut::new(5));
         let y = x.clone();
-        do x.borrow().with_mut_ref |inner| {
+        do x.borrow().map_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 20);
+        assert_eq!(y.borrow().map(|v| *v), 20);
     }
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(Cell::new(5));
+        let x = Rc::from_send(Mut::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut_ref |inner| {
+        do x.borrow().map_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 5);
+        assert_eq!(y.borrow().map(|v| *v), 5);
     }
 
     #[test]
