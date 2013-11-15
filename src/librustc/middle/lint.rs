@@ -883,20 +883,23 @@ fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
 
 fn check_unused_mut_pat(cx: &Context, p: @ast::Pat) {
     match p.node {
-        ast::PatIdent(ast::BindByValue(ast::MutMutable), _, _) => {
-            let mut used = false;
-            let mut bindings = 0;
-            do pat_util::pat_bindings(cx.tcx.def_map, p) |_, id, _, _| {
-                used = used || cx.tcx.used_mut_nodes.contains(&id);
-                bindings += 1;
-            }
-            if !used {
-                let msg = if bindings == 1 {
-                    "variable does not need to be mutable"
-                } else {
-                    "variables do not need to be mutable"
-                };
-                cx.span_lint(unused_mut, p.span, msg);
+        ast::PatIdent(ast::BindByValue(ast::MutMutable),
+                      ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
+            // `let mut _a = 1;` doesn't need a warning.
+            let initial_underscore = match path.segments {
+                [ast::PathSegment { identifier: id, _ }] => {
+                    cx.tcx.sess.str_of(id).starts_with("_")
+                }
+                _ => {
+                    cx.tcx.sess.span_bug(p.span,
+                                         "mutable binding that doesn't \
+                                         consist of exactly one segment");
+                }
+            };
+
+            if !initial_underscore && !cx.tcx.used_mut_nodes.contains(&p.id) {
+                cx.span_lint(unused_mut, p.span,
+                             "variable does not need to be mutable");
             }
         }
         _ => ()
