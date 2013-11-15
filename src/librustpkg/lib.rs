@@ -17,7 +17,8 @@
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
 #[license = "MIT/ASL2"];
-#[crate_type = "lib"];
+#[crate_type = "lib"]; // NOTE: remove after stage0 snapshot
+#[crate_type = "dylib"];
 
 #[feature(globs, managed_boxes)];
 
@@ -114,7 +115,7 @@ impl<'self> PkgScript<'self> {
         let options = @session::options {
             binary: binary,
             maybe_sysroot: Some(@sysroot),
-            crate_type: session::bin_crate,
+            outputs: ~[session::OutputExecutable],
             .. (*session::basic_options()).clone()
         };
         let input = driver::file_input(script.clone());

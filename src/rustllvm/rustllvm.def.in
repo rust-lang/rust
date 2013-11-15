@@ -630,3 +630,5 @@ LLVMAddReturnAttribute
 LLVMRemoveReturnAttribute
 LLVMTypeToString
 LLVMAddColdAttribute
+LLVMCreateMemoryBufferWithMemoryRange
+LLVMCreateMemoryBufferWithMemoryRangeCopy

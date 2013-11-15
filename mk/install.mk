@@ -144,8 +144,11 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustpkg$(X_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(STDLIB_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(STDLIB_RGLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(EXTRALIB_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(EXTRALIB_RGLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTUV_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUSTUV_RGLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTC_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBSYNTAX_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD)))
@@ -170,8 +173,11 @@ uninstall:
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME_$(CFG_BUILD))
 	$(Q)for i in \
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(EXTRALIB_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(EXTRALIB_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTUV_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTUV_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD))) \

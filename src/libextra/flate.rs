@@ -23,7 +23,7 @@ use std::vec;
 pub mod rustrt {
     use std::libc::{c_int, c_void, size_t};
 
-    #[link_name = "rustrt"]
+    #[link(name = "rustrt")]
     extern {
         pub fn tdefl_compress_mem_to_heap(psrc_buf: *c_void,
                                           src_buf_len: size_t,

@@ -79,12 +79,12 @@ use syntax::ast::Name;
 use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
 use syntax::ast_util::{local_def};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::attr::AttrMetaMethods;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -3106,18 +3106,6 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
     }
 }
 
-// Writes the current ABI version into the crate.
-pub fn write_abi_version(ccx: &mut CrateContext) {
-    unsafe {
-        let llval = C_uint(ccx, abi::abi_version);
-        let llglobal = "rust_abi_version".with_c_str(|buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
-        });
-        llvm::LLVMSetInitializer(llglobal, llval);
-        llvm::LLVMSetGlobalConstant(llglobal, True);
-    }
-}
-
 pub fn trans_crate(sess: session::Session,
                    crate: ast::Crate,
                    analysis: &CrateAnalysis,
@@ -3177,7 +3165,6 @@ pub fn trans_crate(sess: session::Session,
     }
 
     glue::emit_tydescs(ccx);
-    write_abi_version(ccx);
     if ccx.sess.opts.debuginfo {
         debuginfo::finalize(ccx);
     }
@@ -3217,10 +3204,18 @@ pub fn trans_crate(sess: session::Session,
     let llcx = ccx.llcx;
     let link_meta = ccx.link_meta;
     let llmod = ccx.llmod;
+    let crate_types = crate.attrs.iter().filter_map(|a| {
+        if "crate_type" == a.name() {
+            a.value_str()
+        } else {
+            None
+        }
+    }).map(|a| a.to_owned()).collect();
 
     return CrateTranslation {
         context: llcx,
         module: llmod,
-        link: link_meta
+        link: link_meta,
+        crate_types: crate_types,
     };
 }
