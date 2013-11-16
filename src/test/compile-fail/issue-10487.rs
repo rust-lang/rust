@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static mut a: ~int = ~3; //~ ERROR: cannot do allocations in constant expressions
+#[feature(managed_boxes)];
+
+static x: ~[int] = ~[123, 456]; //~ ERROR: cannot allocate vectors in constant expressions
+static y: @[int] = @[123, 456]; //~ ERROR: cannot allocate vectors in constant expressions
+static z: @mut [int] = @mut [123, 456]; //~ ERROR: cannot allocate vectors in constant expressions
 
 fn main() {}
