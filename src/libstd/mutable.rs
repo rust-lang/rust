@@ -118,7 +118,7 @@ impl<T> Mut<T> {
     ///
     /// Fails if the value is currently mutably borrowed.
     #[inline]
-    pub fn map<U>(&self, blk: |&T| -> U) -> U {
+    pub fn with<U>(&self, blk: |&T| -> U) -> U {
         let ptr = self.borrow();
         blk(ptr.get())
     }
@@ -129,7 +129,7 @@ impl<T> Mut<T> {
     ///
     /// Fails if the value is currently borrowed.
     #[inline]
-    pub fn map_mut<U>(&self, blk: |&mut T| -> U) -> U {
+    pub fn with_mut<U>(&self, blk: |&mut T| -> U) -> U {
         let mut ptr = self.borrow_mut();
         blk(ptr.get())
     }
@@ -260,39 +260,39 @@ mod test {
     }
 
     #[test]
-    fn map_ok() {
+    fn with_ok() {
         let x = Mut::new(0);
-        assert_eq!(1, x.map(|x| *x+1));
+        assert_eq!(1, x.with(|x| *x+1));
     }
 
     #[test]
     #[should_fail]
-    fn mut_borrow_map() {
+    fn mut_borrow_with() {
         let x = Mut::new(0);
         let _b1 = x.borrow_mut();
-        x.map(|x| *x+1);
+        x.with(|x| *x+1);
     }
 
     #[test]
-    fn borrow_map() {
+    fn borrow_with() {
         let x = Mut::new(0);
         let _b1 = x.borrow();
-        assert_eq!(1, x.map(|x| *x+1));
+        assert_eq!(1, x.with(|x| *x+1));
     }
 
     #[test]
-    fn map_mut_ok() {
+    fn with_mut_ok() {
         let x = Mut::new(0);
-        x.map_mut(|x| *x += 1);
+        x.with_mut(|x| *x += 1);
         let b = x.borrow();
         assert_eq!(1, *b.get());
     }
 
     #[test]
     #[should_fail]
-    fn borrow_map_mut() {
+    fn borrow_with_mut() {
         let x = Mut::new(0);
         let _b = x.borrow();
-        x.map_mut(|x| *x += 1);
+        x.with_mut(|x| *x += 1);
     }
 }
