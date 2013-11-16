@@ -14,7 +14,7 @@
 
 use std::libc;
 
-#[nolink]
+#[link(name = "rustrt")]
 extern {
     static mut rust_dbg_static_mut: libc::c_int;
     pub fn rust_dbg_static_mut_check_four();

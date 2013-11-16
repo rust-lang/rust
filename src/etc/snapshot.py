@@ -31,7 +31,6 @@ snapshot_files = {
               "lib/librustc-*.so",
               "lib/libsyntax-*.so",
               "lib/librustuv-*.so",
-              "lib/librustrt.so",
               "lib/librustllvm.so"],
     "macos": ["bin/rustc",
               "lib/libstd-*.dylib",
@@ -39,7 +38,6 @@ snapshot_files = {
               "lib/librustc-*.dylib",
               "lib/libsyntax-*.dylib",
               "lib/librustuv-*.dylib",
-              "lib/librustrt.dylib",
               "lib/librustllvm.dylib"],
     "winnt": ["bin/rustc.exe",
               "bin/std-*.dll",
@@ -47,7 +45,6 @@ snapshot_files = {
               "bin/rustc-*.dll",
               "bin/syntax-*.dll",
               "bin/rustuv-*.dll",
-              "bin/rustrt.dll",
               "bin/rustllvm.dll"],
     "freebsd": ["bin/rustc",
                 "lib/libstd-*.so",
@@ -55,7 +52,6 @@ snapshot_files = {
                 "lib/librustc-*.so",
                 "lib/libsyntax-*.so",
                 "lib/librustuv-*.so",
-                "lib/librustrt.so",
                 "lib/librustllvm.so"]
     }
 

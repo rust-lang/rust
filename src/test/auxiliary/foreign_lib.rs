@@ -13,6 +13,7 @@
 pub mod rustrt {
     use std::libc;
 
+    #[link(name = "rustrt")]
     extern {
         fn rust_get_test_int() -> libc::intptr_t;
     }

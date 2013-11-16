@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[link(name = "rustrt")]
 extern {
     pub fn rust_dbg_extern_identity_double(v: f64) -> f64;
 }

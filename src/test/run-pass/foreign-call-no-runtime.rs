@@ -2,6 +2,7 @@ use std::cast;
 use std::libc;
 use std::unstable::run_in_bare_thread;
 
+#[link(name = "rustrt")]
 extern {
     fn rust_dbg_call(cb: extern "C" fn(libc::uintptr_t),
                      data: libc::uintptr_t) -> libc::uintptr_t;

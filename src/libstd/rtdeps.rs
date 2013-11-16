@@ -13,7 +13,7 @@
 //! necessary for running libstd.
 
 // All platforms need to link to rustrt
-#[link(name = "rustrt")]
+#[link(name = "rustrt", kind = "static")]
 extern {}
 
 // LLVM implements the `frem` instruction as a call to `fmod`, which lives in
@@ -26,6 +26,7 @@ extern {}
 #[link(name = "dl")]
 #[link(name = "m")]
 #[link(name = "pthread")]
+#[link(name = "stdc++")]
 extern {}
 
 #[cfg(target_os = "android")]
@@ -45,4 +46,9 @@ extern {}
 
 #[cfg(target_os = "macos")]
 #[link(name = "pthread")]
+#[link(name = "stdc++")]
+extern {}
+
+#[cfg(stage0)]
+#[link_args = "-lstdc++"]
 extern {}

@@ -222,7 +222,7 @@ GENERATED :=
 
 define DEF_LIBS
 
-CFG_RUNTIME_$(1) :=$(call CFG_LIB_NAME_$(1),rustrt)
+CFG_RUNTIME_$(1) :=$(call CFG_STATIC_LIB_NAME_$(1),rustrt)
 CFG_RUSTLLVM_$(1) :=$(call CFG_LIB_NAME_$(1),rustllvm)
 CFG_STDLIB_$(1) :=$(call CFG_LIB_NAME_$(1),std)
 CFG_EXTRALIB_$(1) :=$(call CFG_LIB_NAME_$(1),extra)
