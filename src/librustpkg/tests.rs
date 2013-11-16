@@ -2243,7 +2243,7 @@ fn test_import_specific_version() {
     let p_id = PkgId::new("foo");
     let dep_id = git_repo_pkg();
     let workspace = create_local_package(&p_id);
-    let workspace = workspace.unwrap();
+    let workspace = workspace.path();
     let repo = init_git_repo(&dep_id.path);
     let repo = repo.path();
     let rust_path = Some(~[(~"RUST_PATH", repo.as_str().unwrap().to_owned())]);
@@ -2262,8 +2262,38 @@ fn test_import_specific_version() {
               "extern mod bar = \"mockgithub.com/catamorphism/test-pkg#1.0\"; \
               use bar::f; fn main() { f(); }");
 
-    command_line_test_with_env([~"install", ~"foo"], &workspace, rust_path);
-    assert_executable_exists(&workspace, "foo");
+    command_line_test_with_env([~"install", ~"foo"], workspace, rust_path);
+    assert_executable_exists(workspace, "foo");
+}
+
+#[test]
+fn test_import_nonexistent_version() {
+    // Request a revision that isn't in the version control history. It
+    // should fail.
+    let p_id = PkgId::new("foo");
+    let dep_id = git_repo_pkg();
+    let workspace = create_local_package(&p_id);
+    let workspace = workspace.path();
+    let repo = init_git_repo(&dep_id.path);
+    let repo = repo.path();
+    let rust_path = Some(~[(~"RUST_PATH", repo.as_str().unwrap().to_owned())]);
+
+    let repo_subdir = repo.join(&dep_id.path);
+    fs::mkdir_recursive(&repo_subdir, io::UserRWX);
+    debug!("Writing files in: {}", repo_subdir.display());
+    writeFile(&repo_subdir.join("lib.rs"),
+              "pub fn f() { let _x = (); }");
+    add_git_tag(&repo_subdir, ~"1.0");
+
+    writeFile(&workspace.join_many([~"src", ~"foo-0.1", ~"main.rs"]),
+              "extern mod bar = \"mockgithub.com/catamorphism/test-pkg#monkeys\"; \
+              use bar::f; fn main() { f(); }");
+
+    match command_line_test_with_env([~"install", ~"foo"], workspace, rust_path) {
+        Fail(ref error) if error.status.matches_exit_status(70) => (), // ok
+        Fail(_)  => fail!("Wrong error"),
+        Success(*)   => fail!("Bad-revision test succeeded when it should fail")
+    }
 }
 
 #[test]
