@@ -1470,10 +1470,6 @@ impl Parser {
         let mut segments = ~[];
         loop {
             // First, parse an identifier.
-            match *self.token {
-                token::IDENT(*) => {}
-                _ => break,
-            }
             let identifier = self.parse_ident();
 
             // Next, parse a colon and bounded type parameters, if applicable.
