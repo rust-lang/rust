@@ -295,4 +295,13 @@ mod test {
         let _b = x.borrow();
         x.with_mut(|x| *x += 1);
     }
+
+    #[test]
+    #[should_fail]
+    fn discard_doesnt_unborrow() {
+        let x = Mut::new(0);
+        let _b = x.borrow();
+        let _ = _b;
+        let _b = x.borrow_mut();
+    }
 }
