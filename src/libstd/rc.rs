@@ -111,20 +111,20 @@ mod test_rc {
     fn test_clone() {
         let x = Rc::from_send(Mut::new(5));
         let y = x.clone();
-        do x.borrow().map_mut |inner| {
+        do x.borrow().with_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().map(|v| *v), 20);
+        assert_eq!(y.borrow().with(|v| *v), 20);
     }
 
     #[test]
     fn test_deep_clone() {
         let x = Rc::from_send(Mut::new(5));
         let y = x.deep_clone();
-        do x.borrow().map_mut |inner| {
+        do x.borrow().with_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().map(|v| *v), 5);
+        assert_eq!(y.borrow().with(|v| *v), 5);
     }
 
     #[test]

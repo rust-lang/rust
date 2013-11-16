@@ -506,7 +506,7 @@ impl<T: Send> GenericPort<T> for Port<T> {
 
 impl<T: Send> Peekable<T> for Port<T> {
     fn peek(&self) -> bool {
-        self.next.map_mut(|p| p.get_mut_ref().peek())
+        self.next.with_mut(|p| p.get_mut_ref().peek())
     }
 }
 
@@ -517,7 +517,7 @@ impl<T: Send> Peekable<T> for Port<T> {
 impl<'self, T: Send> SelectInner for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
-        do self.next.map_mut |pone| { pone.get_mut_ref().optimistic_check() }
+        do self.next.with_mut |pone| { pone.get_mut_ref().optimistic_check() }
     }
 
     #[inline]
@@ -528,7 +528,7 @@ impl<'self, T: Send> SelectInner for &'self Port<T> {
 
     #[inline]
     fn unblock_from(&mut self) -> bool {
-        do self.next.map_mut |pone| { pone.get_mut_ref().unblock_from() }
+        do self.next.with_mut |pone| { pone.get_mut_ref().unblock_from() }
     }
 }
 
