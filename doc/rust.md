@@ -254,6 +254,7 @@ common_escape : '\x5c'
 hex_digit : 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
           | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
           | dec_digit ;
+oct_digit : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' ;
 dec_digit : '0' | nonzero_dec ;
 nonzero_dec: '1' | '2' | '3' | '4'
            | '5' | '6' | '7' | '8' | '9' ;
@@ -318,8 +319,9 @@ r##"foo #"# bar"##;                // foo #"# bar
 ~~~~ {.ebnf .gram}
 
 num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
-        | '0' [       [ dec_digit | '_' ] + num_suffix ?
+        | '0' [       [ dec_digit | '_' ] * num_suffix ?
               | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
+              | 'o'   [ oct_digit | '_' ] + int_suffix ?
               | 'x'   [ hex_digit | '_' ] + int_suffix ? ] ;
 
 num_suffix : int_suffix | float_suffix ;
