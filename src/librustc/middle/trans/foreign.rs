@@ -33,7 +33,7 @@ use syntax::{ast};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System,
-                  Cdecl, Aapcs, C, AbiSet};
+                  Cdecl, Aapcs, C, AbiSet, Win64};
 use util::ppaux::{Repr, UserString};
 use middle::trans::type_::Type;
 
@@ -96,6 +96,7 @@ pub fn llvm_calling_convention(ccx: &mut CrateContext,
             Stdcall => lib::llvm::X86StdcallCallConv,
             Fastcall => lib::llvm::X86FastcallCallConv,
             C => lib::llvm::CCallConv,
+            Win64 => lib::llvm::X86_64_Win64,
 
             // NOTE These API constants ought to be more specific
             Cdecl => lib::llvm::CCallConv,
