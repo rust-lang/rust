@@ -81,8 +81,7 @@ fn main() {
     let num_tasks = from_str::<uint>(args[1]).unwrap();
     let msg_per_task = from_str::<uint>(args[2]).unwrap();
 
-    let (num_chan, num_port) = init();
-    let num_chan = Cell::new(num_chan);
+    let (mut num_chan, num_port) = init();
 
     let start = time::precise_time_s();
 
@@ -92,7 +91,7 @@ fn main() {
     for i in range(1u, num_tasks) {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
-        let num_chan2 = Cell::new(num_chan.take());
+        let num_chan2 = Cell::new(num_chan);
         let num_port = Cell::new(num_port);
         let new_future = do Future::spawn() {
             let num_chan = num_chan2.take();
@@ -100,11 +99,11 @@ fn main() {
             thread_ring(i, msg_per_task, num_chan, num_port1)
         };
         futures.push(new_future);
-        num_chan.put_back(new_chan);
+        num_chan = new_chan;
     };
 
     // do our iteration
-    thread_ring(0, msg_per_task, num_chan.take(), num_port);
+    thread_ring(0, msg_per_task, num_chan, num_port);
 
     // synchronize
     for f in futures.mut_iter() {
