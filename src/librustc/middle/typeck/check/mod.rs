@@ -864,7 +864,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         tcx.sess.span_err(
             impl_m_span,
             format!("method `{}` has {} parameter{} \
-                  but the trait method `{}` has {}",
+                  but the declaration in trait `{}` has {}",
                  tcx.sess.str_of(trait_m.ident),
                  impl_m.fty.sig.inputs.len(),
                  if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
