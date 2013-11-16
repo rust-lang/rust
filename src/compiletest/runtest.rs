@@ -167,7 +167,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         }
 
         let ProcRes{ stdout, _ } = ProcRes;
-        srcs.push(stdout);
+        srcs.push(str::from_utf8_owned(stdout));
         round += 1;
     }
 
@@ -285,7 +285,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                     cmds,
                     ~"quit"].connect("\n");
                 debug!("script_str = {}", script_str);
-                dump_output_file(config, testfile, script_str, "debugger.script");
+                dump_output_file(config, testfile, script_str.as_bytes(), "debugger.script");
 
 
                 procsrv::run("", config.adb_path.clone(),
@@ -357,7 +357,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                 cmds,
                 ~"quit\n"].connect("\n");
             debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
+            dump_output_file(config, testfile, script_str.as_bytes(), "debugger.script");
 
             // run debugger script with gdb
             #[cfg(windows)]
@@ -387,7 +387,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for line in ProcRes.stdout.line_iter() {
+        for line in str::from_utf8_slice(ProcRes.stdout).line_iter() {
             let mut rest = line.trim();
             let mut first = true;
             let mut failed = false;
@@ -439,7 +439,7 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for line in ProcRes.stderr.line_iter() {
+    for line in str::from_utf8_slice(ProcRes.stderr).line_iter() {
         if line.contains(*next_err_pat) {
             debug!("found error pattern {}", *next_err_pat);
             next_err_idx += 1u;
@@ -512,7 +512,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line in ProcRes.stderr.line_iter() {
+    for line in str::from_utf8_slice(ProcRes.stderr).line_iter() {
         let mut was_expected = false;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
@@ -626,7 +626,7 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
 
 struct ProcArgs {prog: ~str, args: ~[~str]}
 
-struct ProcRes {status: ProcessExit, stdout: ~str, stderr: ~str, cmdline: ~str}
+struct ProcRes {status: ProcessExit, stdout: ~[u8], stderr: ~[u8], cmdline: ~str}
 
 fn compile_test(config: &config, props: &TestProps,
                 testfile: &Path) -> ProcRes {
@@ -823,16 +823,16 @@ fn lib_path_cmd_prefix(path: &str) -> ~str {
     format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
 }
 
-fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
+fn dump_output(config: &config, testfile: &Path, out: &[u8], err: &[u8]) {
     dump_output_file(config, testfile, out, "out");
     dump_output_file(config, testfile, err, "err");
     maybe_dump_to_stdout(config, out, err);
 }
 
 fn dump_output_file(config: &config, testfile: &Path,
-                    out: &str, extension: &str) {
+                    out: &[u8], extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    File::create(&outfile).write(out.as_bytes());
+    File::create(&outfile).write(out);
 }
 
 fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
@@ -858,12 +858,16 @@ fn output_base_name(config: &config, testfile: &Path) -> Path {
         .with_extension(config.stage_id.as_slice())
 }
 
-fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
+fn to_str_for_printing<'a>(out: &'a [u8]) -> &'a str {
+    str::from_utf8_slice_opt(out).unwrap_or("[not valid utf8]")
+}
+
+fn maybe_dump_to_stdout(config: &config, out: &[u8], err: &[u8]) {
     if config.verbose {
         println!("------{}------------------------------", "stdout");
-        println!("{}", out);
+        println!("{}", to_str_for_printing(out));
         println!("------{}------------------------------", "stderr");
-        println!("{}", err);
+        println!("{}", to_str_for_printing(err));
         println!("------------------------------------------");
     }
 }
@@ -885,7 +889,10 @@ stderr:\n\
 {}\n\
 ------------------------------------------\n\
 \n",
-             err, ProcRes.cmdline, ProcRes.stdout, ProcRes.stderr);
+           err,
+           ProcRes.cmdline,
+           to_str_for_printing(ProcRes.stdout),
+           to_str_for_printing(ProcRes.stderr));
     fail!();
 }
 
@@ -906,8 +913,9 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     if config.verbose {
         println!("push ({}) {} {} {}",
-            config.target, args.prog,
-            copy_result.out, copy_result.err);
+                 config.target, args.prog,
+                 str::from_utf8_slice(copy_result.out),
+                 str::from_utf8_slice(copy_result.err));
     }
 
     logv(config, format!("executing ({}) {}", config.target, cmdline));
@@ -940,6 +948,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     let mut exitcode : int = 0;
     for c in exitcode_out.iter() {
+        let c = *c as char;
         if !c.is_digit() { break; }
         exitcode = exitcode * 10 + match c {
             '0' .. '9' => c as int - ('0' as int),
@@ -982,10 +991,10 @@ fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     match config.mode {
-        mode_run_fail => ProcRes {status: process::ExitStatus(101), stdout: ~"",
-                                 stderr: ~"", cmdline: cmdline},
-        _             => ProcRes {status: process::ExitStatus(0), stdout: ~"",
-                                 stderr: ~"", cmdline: cmdline}
+        mode_run_fail => ProcRes {status: process::ExitStatus(101), stdout: ~[],
+                                 stderr: ~[], cmdline: cmdline},
+        _             => ProcRes {status: process::ExitStatus(0), stdout: ~[],
+                                 stderr: ~[], cmdline: cmdline}
     }
 }
 
@@ -1002,8 +1011,9 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
 
             if config.verbose {
                 println!("push ({}) {} {} {}",
-                    config.target, file.display(),
-                    copy_result.out, copy_result.err);
+                         config.target, file.display(),
+                         str::from_utf8_slice(copy_result.out),
+                         str::from_utf8_slice(copy_result.err));
             }
         }
     }

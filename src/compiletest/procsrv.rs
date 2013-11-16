@@ -10,7 +10,6 @@
 
 use std::os;
 use std::run;
-use std::str;
 use std::io::process::ProcessExit;
 
 #[cfg(target_os = "win32")]
@@ -40,7 +39,7 @@ fn target_env(_lib_path: &str, _prog: &str) -> ~[(~str,~str)] {
     os::env()
 }
 
-pub struct Result {status: ProcessExit, out: ~str, err: ~str}
+pub struct Result {status: ProcessExit, out: ~[u8], err: ~[u8]}
 
 pub fn run(lib_path: &str,
            prog: &str,
@@ -60,12 +59,13 @@ pub fn run(lib_path: &str,
     for input in input.iter() {
         process.input().write(input.as_bytes());
     }
-    let output = process.finish_with_output();
+    let run::ProcessOutput {status: status, output: output, error: error } =
+        process.finish_with_output();
 
     Result {
-        status: output.status,
-        out: str::from_utf8(output.output),
-        err: str::from_utf8(output.error)
+        status: status,
+        out: output,
+        err: error
     }
 }
 
