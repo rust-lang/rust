@@ -18,6 +18,7 @@ struct TwoU16s {
     one: u16, two: u16
 }
 
+#[link(name = "rustrt")]
 extern {
     pub fn rust_dbg_extern_identity_TwoU16s(v: TwoU16s) -> TwoU16s;
 }

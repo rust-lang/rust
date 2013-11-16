@@ -121,11 +121,9 @@ $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJS_
 	@$$(call E, link: $$@)
 	$$(Q)$(AR_$(1)) rcs $$@ $$^
 
-$$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
-                        $$(RUNTIME_DEF_$(1)_$(2))
+$$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS)
 	@$$(call E, link: $$@)
-	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
-	    $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
+	$$(Q)$(AR_$(1)) rcs $$@ $$(RUNTIME_OBJS_$(1)_$(2))
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
