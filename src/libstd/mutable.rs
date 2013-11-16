@@ -82,16 +82,16 @@ impl<T> Mut<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts untile the returned `MutRef` exits scope. The value
+    /// The borrow lasts untile the returned `RefMut` exits scope. The value
     /// cannot be borrowed while this borrow is active.
     ///
     /// Returns `None` if the value is currently borrowed.
-    pub fn try_borrow_mut<'a>(&'a self) -> Option<MutRef<'a, T>> {
+    pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
         match self.borrow {
             UNUSED => unsafe {
                 let mut_self = self.as_mut();
                 mut_self.borrow = WRITING;
-                Some(MutRef { parent: mut_self })
+                Some(RefMut { parent: mut_self })
             },
             _ => None
         }
@@ -99,13 +99,13 @@ impl<T> Mut<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts untile the returned `MutRef` exits scope. The value
+    /// The borrow lasts untile the returned `RefMut` exits scope. The value
     /// cannot be borrowed while this borrow is active.
     ///
     /// # Failure
     ///
     /// Fails if the value is currently borrowed.
-    pub fn borrow_mut<'a>(&'a self) -> MutRef<'a, T> {
+    pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
             Some(ptr) => ptr,
             None => fail!("Mut<T> already borrowed")
@@ -179,19 +179,19 @@ impl<'box, T> Ref<'box, T> {
 }
 
 /// Wraps a mutable borrowed reference to a value in a `Mut` box.
-pub struct MutRef<'box, T> {
+pub struct RefMut<'box, T> {
     priv parent: &'box mut Mut<T>
 }
 
 #[unsafe_destructor]
-impl<'box, T> Drop for MutRef<'box, T> {
+impl<'box, T> Drop for RefMut<'box, T> {
     fn drop(&mut self) {
         assert!(self.parent.borrow == WRITING);
-        unsafe { self.parent.as_mut().borrow = UNUSED; }
+        self.parent.borrow = UNUSED;
     }
 }
 
-impl<'box, T> MutRef<'box, T> {
+impl<'box, T> RefMut<'box, T> {
     /// Retrieve a mutable reference to the stored value.
     #[inline]
     pub fn get<'a>(&'a mut self) -> &'a mut T {
