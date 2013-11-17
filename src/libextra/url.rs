@@ -364,6 +364,16 @@ fn query_from_str(rawquery: &str) -> Query {
     return query;
 }
 
+/**
+ * Converts an instance of a URI `Query` type to a string.
+ *
+ * # Example
+ *
+ * ```rust
+ * let query = ~[(~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10")];
+ * println(query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
+ * ```
+ */
 pub fn query_to_str(query: &Query) -> ~str {
     let mut strvec = ~[];
     for kv in query.iter() {
