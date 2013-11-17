@@ -11,7 +11,7 @@
 // Context data structure used by rustpkg
 
 use extra::workcache;
-use rustc::driver::session::{OptLevel, No};
+use rustc::driver::session;
 
 use std::hashmap::HashSet;
 
@@ -88,7 +88,7 @@ pub struct RustcFlags {
     // Extra arguments to pass to rustc with the --link-args flag
     link_args: Option<~str>,
     // Optimization level. 0 = default. -O = 2.
-    optimization_level: OptLevel,
+    optimization_level: session::OptLevel,
     // True if the user passed in --save-temps
     save_temps: bool,
     // Target (defaults to rustc's default target)
@@ -224,7 +224,7 @@ impl RustcFlags {
             linker: None,
             link_args: None,
             compile_upto: Nothing,
-            optimization_level: No,
+            optimization_level: session::Default,
             save_temps: false,
             target: None,
             target_cpu: None,
