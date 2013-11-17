@@ -399,11 +399,19 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
 
     let tys = foreign_types_for_id(ccx, node_id);
     let llfn_ty = lltype_for_fn_from_foreign_types(&tys);
+    let t = ty::node_id_to_type(ccx.tcx, node_id);
+    let cconv = match ty::get(t).sty {
+        ty::ty_bare_fn(ref fn_ty) => {
+            let c = llvm_calling_convention(ccx, fn_ty.abis);
+            c.unwrap_or(lib::llvm::CCallConv)
+        }
+        _ => lib::llvm::CCallConv
+    };
     let llfn = base::register_fn_llvmty(ccx,
                                         sp,
                                         sym,
                                         node_id,
-                                        lib::llvm::CCallConv,
+                                        cconv,
                                         llfn_ty);
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={:?}, llfn_ty={}, llfn={})",
