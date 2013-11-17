@@ -21,14 +21,15 @@ static LIMIT: f64 = 2.0;
 fn main() {
     let args = std::os::args();
     let (w, mut out) = if args.len() < 2 {
-        println("Test mode: do not dump the image.");
+        println("Test mode: do not dump the image because it's not utf8,"
+                + " which interferes with the test runner.");
         (1000, ~DummyWriter as ~Writer)
     } else {
         (from_str(args[1]).unwrap(),
          ~BufferedWriter::new(std::io::stdout()) as ~Writer)
     };
     let h = w;
-    let mut byte_acc = 0i8;
+    let mut byte_acc = 0u8;
     let mut bit_num = 0;
 
     writeln!(out, "P4\n{} {}", w, h);
@@ -62,12 +63,12 @@ fn main() {
             bit_num += 1;
 
             if bit_num == 8 {
-                out.write_i8(byte_acc);
+                out.write_u8(byte_acc);
                 byte_acc = 0;
                 bit_num = 0;
             } else if x == w - 1 {
                 byte_acc <<= 8 - w % 8;
-                out.write_i8(byte_acc);
+                out.write_u8(byte_acc);
                 byte_acc = 0;
                 bit_num = 0;
             }
