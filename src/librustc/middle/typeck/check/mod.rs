@@ -863,11 +863,13 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
         tcx.sess.span_err(
             impl_m_span,
-            format!("method `{}` has {} parameter(s) \
-                    but the trait has {} parameter(s)",
-                    tcx.sess.str_of(trait_m.ident),
-                    impl_m.fty.sig.inputs.len(),
-                    trait_m.fty.sig.inputs.len()));
+            format!("method `{}` has {} parameter{} \
+                  but the declaration in trait `{}` has {}",
+                 tcx.sess.str_of(trait_m.ident),
+                 impl_m.fty.sig.inputs.len(),
+                 if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
+                 ty::item_path_str(tcx, trait_m.def_id),
+                 trait_m.fty.sig.inputs.len()));
         return;
     }
 
