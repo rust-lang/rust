@@ -660,7 +660,7 @@ impl ToStrRadix for BigUint {
             let divider    = FromPrimitive::from_uint(base).unwrap();
             let mut result = ~[];
             let mut m      = n;
-            while m > divider {
+            while m >= divider {
                 let (d, m0) = m.div_mod_floor(&divider);
                 result.push(m0.to_uint().unwrap() as BigDigit);
                 m = d;
@@ -2520,6 +2520,11 @@ mod bigint_tests {
         check("-10", Some(-10));
         check("Z", None);
         check("_", None);
+
+        // issue 10522, this hit an edge case that caused it to
+        // attempt to allocate a vector of size (-1u) == huge.
+        let x: BigInt = from_str("1" + "0".repeat(36)).unwrap();
+        let _y = x.to_str();
     }
 
     #[test]
