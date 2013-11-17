@@ -424,16 +424,13 @@ pub trait Iterator<A> {
         ByRef{iter: self}
     }
 
-    /// An adaptation of an external iterator to the for-loop protocol of rust.
+    /// Apply a function to each element, or stop iterating if the
+    /// function returns `false`.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
-    ///
-    /// for i in count(0, 10) {
-    ///     println!("{}", i);
-    /// }
+    /// range(0, 5).advance(|x| {print!("{} ", x); true});
     /// ```
     #[inline]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool {
