@@ -21,6 +21,7 @@ use unstable::intrinsics::transmute;
 use ops::Drop;
 use kinds::{Freeze, Send};
 use clone::{Clone, DeepClone};
+use mutable::Mut;
 
 struct RcBox<T> {
     value: T,
@@ -48,6 +49,16 @@ impl<T: Send> Rc<T> {
     /// Construct a new reference-counted box from a `Send` value
     #[inline]
     pub fn from_send(value: T) -> Rc<T> {
+        unsafe {
+            Rc::new_unchecked(value)
+        }
+    }
+}
+
+impl<T: Freeze> Rc<Mut<T>> {
+    /// Construct a new reference-counted box from a `Mut`-wrapped `Freeze` value
+    #[inline]
+    pub fn from_mut(value: Mut<T>) -> Rc<Mut<T>> {
         unsafe {
             Rc::new_unchecked(value)
         }
@@ -145,5 +156,11 @@ mod test_rc {
     fn test_destructor() {
         let x = Rc::from_send(~5);
         assert_eq!(**x.borrow(), 5);
+    }
+
+    #[test]
+    fn test_from_mut() {
+        let a = 10;
+        let _x = Rc::from_mut(Mut::new(&a));
     }
 }
