@@ -123,29 +123,18 @@ impl Reader for MemReader {
 
 impl Seek for MemReader {
     fn tell(&self) -> u64 { self.pos as u64 }
-
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
+impl Buffer for MemReader {
+    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn consume(&mut self, amt: uint) { self.pos += amt; }
+}
+
 impl Decorator<~[u8]> for MemReader {
-
-    fn inner(self) -> ~[u8] {
-        match self {
-            MemReader { buf: buf, _ } => buf
-        }
-    }
-
-    fn inner_ref<'a>(&'a self) -> &'a ~[u8] {
-        match *self {
-            MemReader { buf: ref buf, _ } => buf
-        }
-    }
-
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] {
-        match *self {
-            MemReader { buf: ref mut buf, _ } => buf
-        }
-    }
+    fn inner(self) -> ~[u8] { self.buf }
+    fn inner_ref<'a>(&'a self) -> &'a ~[u8] { &self.buf }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] { &mut self.buf }
 }
 
 
@@ -242,6 +231,11 @@ impl<'self> Seek for BufReader<'self> {
     fn tell(&self) -> u64 { self.pos as u64 }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+}
+
+impl<'self> Buffer for BufReader<'self> {
+    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
 ///Calls a function with a MemWriter and returns
@@ -393,5 +387,21 @@ mod test {
     fn test_with_mem_writer() {
         let buf = with_mem_writer(|wr| wr.write([1,2,3,4,5,6,7]));
         assert_eq!(buf, ~[1,2,3,4,5,6,7]);
+    }
+
+    #[test]
+    fn test_read_char() {
+        let mut r = BufReader::new(bytes!("Việt"));
+        assert_eq!(r.read_char(), Some('V'));
+        assert_eq!(r.read_char(), Some('i'));
+        assert_eq!(r.read_char(), Some('ệ'));
+        assert_eq!(r.read_char(), Some('t'));
+        assert_eq!(r.read_char(), None);
+    }
+
+    #[test]
+    fn test_read_bad_char() {
+        let mut r = BufReader::new(bytes!(0x80));
+        assert_eq!(r.read_char(), None);
     }
 }
