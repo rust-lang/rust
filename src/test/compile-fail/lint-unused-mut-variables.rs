@@ -49,6 +49,10 @@ fn main() {
 
     let x = |mut y: int| y = 32;
     fn nothing(mut foo: int) { foo = 37; }
+
+    // leading underscore should avoid the warning, just like the
+    // unused variable lint.
+    let mut _allowed = 1;
 }
 
 fn callback(f: &fn()) {}
