@@ -509,6 +509,17 @@ pub fn set_source_location(fcx: &FunctionContext,
     }
 }
 
+/// Clears the current debug location.
+///
+/// Instructions generated hereafter won't be assigned a source location.
+pub fn clear_source_location(fcx: &FunctionContext) {
+    if fn_should_be_ignored(fcx) {
+        return;
+    }
+
+    set_debug_location(fcx.ccx, UnknownLocation);
+}
+
 /// Enables emitting source locations for the given functions.
 ///
 /// Since we don't want source locations to be emitted for the function prelude, they are disabled
