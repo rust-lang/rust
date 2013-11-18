@@ -260,103 +260,132 @@ impl ReachableContext {
                 continue
             }
             scanned.insert(search_item);
-            self.reachable_symbols.insert(search_item);
-
-            // Find the AST block corresponding to the item and visit it,
-            // marking all path expressions that resolve to something
-            // interesting.
             match self.tcx.items.find(&search_item) {
-                Some(&ast_map::node_item(item, _)) => {
-                    match item.node {
-                        ast::item_fn(_, _, _, _, ref search_block) => {
-                            if item_might_be_inlined(item) {
-                                visit::walk_block(&mut visitor, search_block, ())
-                            }
-                        }
-
-                        // Implementations of exported structs/enums need to get
-                        // added to the worklist (as all their methods should be
-                        // accessible)
-                        ast::item_struct(*) | ast::item_enum(*) => {
-                            let def = local_def(item.id);
-                            let impls = match self.tcx.inherent_impls.find(&def) {
-                                Some(&impls) => impls,
-                                None => continue
-                            };
-                            for imp in impls.iter() {
-                                if is_local(imp.did) {
-                                    self.worklist.push(imp.did.node);
-                                }
-                            }
-                        }
-
-                        // Propagate through this impl
-                        ast::item_impl(_, _, _, ref methods) => {
-                            for method in methods.iter() {
-                                self.worklist.push(method.id);
-                            }
-                        }
-
-                        // Default methods of exported traits need to all be
-                        // accessible.
-                        ast::item_trait(_, _, ref methods) => {
-                            for method in methods.iter() {
-                                match *method {
-                                    ast::required(*) => {}
-                                    ast::provided(ref method) => {
-                                        self.worklist.push(method.id);
-                                    }
-                                }
-                            }
-                        }
-
-                        // These are normal, nothing reachable about these
-                        // inherently and their children are already in the
-                        // worklist
-                        ast::item_static(*) | ast::item_ty(*) |
-                            ast::item_mod(*) | ast::item_foreign_mod(*) => {}
-
-                        _ => {
-                            self.tcx.sess.span_bug(item.span,
-                                                   "found non-function item \
-                                                    in worklist?!")
-                        }
-                    }
-                }
-                Some(&ast_map::node_trait_method(trait_method, _, _)) => {
-                    match *trait_method {
-                        ast::required(*) => {
-                            // Keep going, nothing to get exported
-                        }
-                        ast::provided(ref method) => {
-                            visit::walk_block(&mut visitor, &method.body, ())
-                        }
-                    }
-                }
-                Some(&ast_map::node_method(method, did, _)) => {
-                    if method_might_be_inlined(self.tcx, method, did) {
-                        visit::walk_block(&mut visitor, &method.body, ())
-                    }
-                }
-                // Nothing to recurse on for these
-                Some(&ast_map::node_foreign_item(*)) |
-                Some(&ast_map::node_variant(*)) |
-                Some(&ast_map::node_struct_ctor(*)) => {}
-                Some(_) => {
-                    let ident_interner = token::get_ident_interner();
-                    let desc = ast_map::node_id_to_str(self.tcx.items,
-                                                       search_item,
-                                                       ident_interner);
-                    self.tcx.sess.bug(format!("found unexpected thingy in \
-                                               worklist: {}",
-                                               desc))
-                }
+                Some(item) => self.propagate_node(item, search_item,
+                                                  &mut visitor),
                 None if search_item == ast::CRATE_NODE_ID => {}
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
                                                {}",
                                               search_item))
                 }
+            }
+        }
+    }
+
+    fn propagate_node(&self, node: &ast_map::ast_node,
+                      search_item: ast::NodeId,
+                      visitor: &mut MarkSymbolVisitor) {
+        if !*self.tcx.sess.building_library {
+            // If we are building an executable, then there's no need to flag
+            // anything as external except for `extern fn` types. These
+            // functions may still participate in some form of native interface,
+            // but all other rust-only interfaces can be private (they will not
+            // participate in linkage after this product is produced)
+            match *node {
+                ast_map::node_item(item, _) => {
+                    match item.node {
+                        ast::item_fn(_, ast::extern_fn, _, _, _) => {
+                            self.reachable_symbols.insert(search_item);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        } else {
+            // If we are building a library, then reachable symbols will
+            // continue to participate in linkage after this product is
+            // produced. In this case, we traverse the ast node, recursing on
+            // all reachable nodes from this one.
+            self.reachable_symbols.insert(search_item);
+        }
+
+        match *node {
+            ast_map::node_item(item, _) => {
+                match item.node {
+                    ast::item_fn(_, _, _, _, ref search_block) => {
+                        if item_might_be_inlined(item) {
+                            visit::walk_block(visitor, search_block, ())
+                        }
+                    }
+
+                    // Implementations of exported structs/enums need to get
+                    // added to the worklist (as all their methods should be
+                    // accessible)
+                    ast::item_struct(*) | ast::item_enum(*) => {
+                        let def = local_def(item.id);
+                        let impls = match self.tcx.inherent_impls.find(&def) {
+                            Some(&impls) => impls,
+                            None => return
+                        };
+                        for imp in impls.iter() {
+                            if is_local(imp.did) {
+                                self.worklist.push(imp.did.node);
+                            }
+                        }
+                    }
+
+                    // Propagate through this impl
+                    ast::item_impl(_, _, _, ref methods) => {
+                        for method in methods.iter() {
+                            self.worklist.push(method.id);
+                        }
+                    }
+
+                    // Default methods of exported traits need to all be
+                    // accessible.
+                    ast::item_trait(_, _, ref methods) => {
+                        for method in methods.iter() {
+                            match *method {
+                                ast::required(*) => {}
+                                ast::provided(ref method) => {
+                                    self.worklist.push(method.id);
+                                }
+                            }
+                        }
+                    }
+
+                    // These are normal, nothing reachable about these
+                    // inherently and their children are already in the
+                    // worklist
+                    ast::item_static(*) | ast::item_ty(*) |
+                        ast::item_mod(*) | ast::item_foreign_mod(*) => {}
+
+                    _ => {
+                        self.tcx.sess.span_bug(item.span,
+                                               "found non-function item \
+                                                in worklist?!")
+                    }
+                }
+            }
+            ast_map::node_trait_method(trait_method, _, _) => {
+                match *trait_method {
+                    ast::required(*) => {
+                        // Keep going, nothing to get exported
+                    }
+                    ast::provided(ref method) => {
+                        visit::walk_block(visitor, &method.body, ())
+                    }
+                }
+            }
+            ast_map::node_method(method, did, _) => {
+                if method_might_be_inlined(self.tcx, method, did) {
+                    visit::walk_block(visitor, &method.body, ())
+                }
+            }
+            // Nothing to recurse on for these
+            ast_map::node_foreign_item(*) |
+            ast_map::node_variant(*) |
+            ast_map::node_struct_ctor(*) => {}
+            _ => {
+                let ident_interner = token::get_ident_interner();
+                let desc = ast_map::node_id_to_str(self.tcx.items,
+                                                   search_item,
+                                                   ident_interner);
+                self.tcx.sess.bug(format!("found unexpected thingy in \
+                                           worklist: {}",
+                                           desc))
             }
         }
     }
