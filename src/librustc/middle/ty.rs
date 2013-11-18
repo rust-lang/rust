@@ -1409,7 +1409,7 @@ pub fn subst_tps(tcx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
     let mut subst = TpsSubst { tcx: tcx, self_ty_opt: self_ty_opt, tps: tps };
     return subst.fold_ty(typ);
 
-    pub struct TpsSubst<'self> {
+    struct TpsSubst<'self> {
         tcx: ctxt,
         self_ty_opt: Option<t>,
         tps: &'self [t],
