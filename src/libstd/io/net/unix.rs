@@ -157,7 +157,7 @@ mod tests {
     use io::*;
     use rt::comm::oneshot;
 
-    fn smalltest(server: ~fn(UnixStream), client: ~fn(UnixStream)) {
+    fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
         let server = Cell::new(server);
         let client = Cell::new(client);
         do run_in_mt_newsched_task {
