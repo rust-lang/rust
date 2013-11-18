@@ -110,7 +110,7 @@ see a failure from the grandchild task. While we could achieve this by having
 each intermediate task block on its handle, this keeps around the other resources
 the task was using. To be more efficient, this is accomplished via "tombstones".
 
-A tombstone is a closure, ~fn() -> bool, which will perform any waiting necessary
+A tombstone is a closure, proc() -> bool, which will perform any waiting necessary
 to collect the exit code of descendant tasks. In its environment is captured
 the KillHandle of whichever task created the tombstone, and perhaps also any
 tombstones that that task itself had, and finally also another tombstone,
@@ -205,7 +205,7 @@ struct KillHandleInner {
     // Locklessly accessed; protected by the enclosing refcount's barriers.
     any_child_failed: bool,
     // A lazy list, consuming which may unwrap() many child tombstones.
-    child_tombstones: Option<~fn() -> bool>,
+    child_tombstones: Option<proc() -> bool>,
     // Protects multiple children simultaneously creating tombstones.
     graveyard_lock: LittleLock,
 }
@@ -223,7 +223,7 @@ pub struct Death {
     priv watching_parent: Option<KillHandle>,
     // Action to be done with the exit code. If set, also makes the task wait
     // until all its watched children exit before collecting the status.
-    on_exit:         Option<~fn(UnwindResult)>,
+    on_exit:         Option<proc(UnwindResult)>,
     // nesting level counter for task::unkillable calls (0 == killable).
     priv unkillable:      int,
     // nesting level counter for unstable::atomically calls (0 == can deschedule).
@@ -525,7 +525,8 @@ impl KillHandle {
         // NB: Takes a pthread mutex -- 'blk' not allowed to reschedule.
         #[inline]
         fn add_lazy_tombstone(parent: &mut KillHandle,
-                              blk: &fn(Option<~fn() -> bool>) -> ~fn() -> bool) {
+                              blk: &fn(Option<proc() -> bool>)
+                              -> proc() -> bool) {
 
             let inner: &mut KillHandleInner = unsafe { &mut *parent.get() };
             unsafe {
