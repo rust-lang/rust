@@ -2294,7 +2294,7 @@ fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast:
                       llfn: ValueRef) {
     ccx.item_symbols.insert(node_id, sym);
 
-    if !*ccx.sess.building_library {
+    if !ccx.reachable.contains(&node_id) {
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
@@ -2504,7 +2504,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 };
 
-                                if !*ccx.sess.building_library {
+                                if !ccx.reachable.contains(&id) {
                                     lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
                                 }
 
