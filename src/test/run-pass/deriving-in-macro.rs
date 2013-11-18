@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static mut a: ~int = ~3; //~ ERROR: cannot do allocations in constant expressions
+#[feature(macro_rules)];
 
-fn main() {}
+macro_rules! define_vec (
+    () => (
+        mod foo {
+            #[deriving(Eq)]
+            pub struct bar;
+        }
+    )
+)
+
+define_vec!()
+
+pub fn main() {}
