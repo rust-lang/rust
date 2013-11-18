@@ -14,6 +14,7 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::ty;
 use util::common::indenter;
@@ -75,6 +76,7 @@ pub fn trans_if(bcx: @mut Block,
             // if true { .. } [else { .. }]
             return do with_scope(bcx, thn.info(), "if_true_then") |bcx| {
                 let bcx_out = trans_block(bcx, thn, dest);
+                debuginfo::clear_source_location(bcx.fcx);
                 trans_block_cleanups(bcx_out, block_cleanups(bcx))
             }
         } else {
@@ -86,6 +88,7 @@ pub fn trans_if(bcx: @mut Block,
                 Some(elexpr) => {
                     return do with_scope(bcx, elexpr.info(), "if_false_then") |bcx| {
                         let bcx_out = trans_if_else(bcx, elexpr, dest);
+                        debuginfo::clear_source_location(bcx.fcx);
                         trans_block_cleanups(bcx_out, block_cleanups(bcx))
                     }
                 }
@@ -98,6 +101,8 @@ pub fn trans_if(bcx: @mut Block,
     let then_bcx_in = scope_block(bcx, thn.info(), "then");
 
     let then_bcx_out = trans_block(then_bcx_in, thn, dest);
+
+    debuginfo::clear_source_location(bcx.fcx);
     let then_bcx_out = trans_block_cleanups(then_bcx_out,
                                             block_cleanups(then_bcx_in));
 
@@ -122,6 +127,9 @@ pub fn trans_if(bcx: @mut Block,
     debug!("then_bcx_in={}, else_bcx_in={}",
            then_bcx_in.to_str(), else_bcx_in.to_str());
 
+    // Clear the source location because it is still set to whatever has been translated
+    // right before.
+    debuginfo::clear_source_location(else_bcx_in.fcx);
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
     return next_bcx;
 
@@ -139,6 +147,7 @@ pub fn trans_if(bcx: @mut Block,
             // would be nice to have a constraint on ifs
             _ => else_bcx_in.tcx().sess.bug("strange alternative in if")
         };
+        debuginfo::clear_source_location(else_bcx_in.fcx);
         trans_block_cleanups(else_bcx_out, block_cleanups(else_bcx_in))
     }
 }
