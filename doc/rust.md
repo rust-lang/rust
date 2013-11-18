@@ -1550,6 +1550,7 @@ keyword for struct fields and enum variants). When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ~~~~
+# fn main() {}
 // Declare a private struct
 struct Foo;
 

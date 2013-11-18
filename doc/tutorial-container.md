@@ -87,6 +87,7 @@ Reaching the end of the iterator is signalled by returning `None` instead of
 `Some(item)`:
 
 ~~~
+# fn main() {}
 /// A stream of N zeroes
 struct ZeroStream {
     priv remaining: uint
@@ -301,6 +302,7 @@ the iterator can provide better information.
 The `ZeroStream` from earlier can provide an exact lower and upper bound:
 
 ~~~
+# fn main() {}
 /// A stream of N zeroes
 struct ZeroStream {
     priv remaining: uint

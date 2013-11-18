@@ -13,6 +13,7 @@
 //! which are available for use externally when compiled as a library.
 
 use std::hashmap::{HashSet, HashMap};
+use std::util;
 
 use middle::resolve;
 use middle::ty;
@@ -275,6 +276,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
 struct PrivacyVisitor<'self> {
     tcx: ty::ctxt,
     curitem: ast::NodeId,
+    in_fn: bool,
 
     // See comments on the same field in `EmbargoVisitor`.
     path_all_public_items: &'self ExportedItems,
@@ -688,6 +690,63 @@ impl<'self> PrivacyVisitor<'self> {
             }
         }
     }
+
+    /// When inside of something like a function or a method, visibility has no
+    /// control over anything so this forbids any mention of any visibility
+    fn check_all_inherited(&self, item: @ast::item) {
+        let tcx = self.tcx;
+        let check_inherited = |sp: Span, vis: ast::visibility| {
+            if vis != ast::inherited {
+                tcx.sess.span_err(sp, "visibility has no effect inside functions");
+            }
+        };
+        let check_struct = |def: &@ast::struct_def| {
+            for f in def.fields.iter() {
+               match f.node.kind {
+                    ast::named_field(_, p) => check_inherited(f.span, p),
+                    ast::unnamed_field => {}
+                }
+            }
+        };
+        check_inherited(item.span, item.vis);
+        match item.node {
+            ast::item_impl(_, _, _, ref methods) => {
+                for m in methods.iter() {
+                    check_inherited(m.span, m.vis);
+                }
+            }
+            ast::item_foreign_mod(ref fm) => {
+                for i in fm.items.iter() {
+                    check_inherited(i.span, i.vis);
+                }
+            }
+            ast::item_enum(ref def, _) => {
+                for v in def.variants.iter() {
+                    check_inherited(v.span, v.node.vis);
+
+                    match v.node.kind {
+                        ast::struct_variant_kind(ref s) => check_struct(s),
+                        ast::tuple_variant_kind(*) => {}
+                    }
+                }
+            }
+
+            ast::item_struct(ref def, _) => check_struct(def),
+
+            ast::item_trait(_, _, ref methods) => {
+                for m in methods.iter() {
+                    match *m {
+                        ast::required(*) => {}
+                        ast::provided(ref m) => check_inherited(m.span, m.vis),
+                    }
+                }
+            }
+
+            ast::item_static(*) |
+            ast::item_fn(*) | ast::item_mod(*) | ast::item_ty(*) |
+            ast::item_mac(*) => {}
+        }
+    }
 }
 
 impl<'self> Visitor<()> for PrivacyVisitor<'self> {
@@ -699,12 +758,28 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
         }
 
         // Disallow unnecessary visibility qualifiers
-        self.check_sane_privacy(item);
+        if self.in_fn {
+            self.check_all_inherited(item);
+        } else {
+            self.check_sane_privacy(item);
+        }
 
-        let orig_curitem = self.curitem;
-        self.curitem = item.id;
+        let orig_curitem = util::replace(&mut self.curitem, item.id);
+        let orig_in_fn = util::replace(&mut self.in_fn, match item.node {
+            ast::item_mod(*) => false, // modules turn privacy back on
+            _ => self.in_fn,           // otherwise we inherit
+        });
         visit::walk_item(self, item, ());
         self.curitem = orig_curitem;
+        self.in_fn = orig_in_fn;
+    }
+
+    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &ast::fn_decl,
+                b: &ast::Block, s: Span, n: ast::NodeId, _: ()) {
+        // This catches both functions and methods
+        let orig_in_fn = util::replace(&mut self.in_fn, true);
+        visit::walk_fn(self, fk, fd, b, s, n, ());
+        self.in_fn = orig_in_fn;
     }
 
     fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
@@ -907,6 +982,7 @@ pub fn check_crate(tcx: ty::ctxt,
     {
         let mut visitor = PrivacyVisitor {
             curitem: ast::DUMMY_NODE_ID,
+            in_fn: false,
             tcx: tcx,
             path_all_public_items: &path_all_public_items,
             parents: &parents,
