@@ -647,6 +647,46 @@ pub fn random<T: Rand>() -> T {
     task_rng().gen()
 }
 
+/// A wrapper for generating floating point numbers uniformly in the
+/// open interval `(0,1)` (not including either endpoint).
+///
+/// Use `Closed01` for the closed interval `[0,1]`, and the default
+/// `Rand` implementation for `f32` and `f64` for the half-open
+/// `[0,1)`.
+///
+/// # Example
+/// ```rust
+/// use std::rand::{random, Open01};
+///
+/// fn main() {
+///     println!("f32 from (0,1): {}", *random::<Open01<f32>>());
+///
+///     let x: Open01<f64> = random();
+///     println!("f64 from (0,1): {}", *x);
+/// }
+/// ```
+pub struct Open01<F>(F);
+
+/// A wrapper for generating floating point numbers uniformly in the
+/// closed interval `[0,1]` (including both endpoints).
+///
+/// Use `Open01` for the closed interval `(0,1)`, and the default
+/// `Rand` implementation of `f32` and `f64` for the half-open
+/// `[0,1)`.
+///
+/// # Example
+/// ```rust
+/// use std::rand::{random, Closed01};
+///
+/// fn main() {
+///     println!("f32 from [0,1]: {}", *random::<Closed01<f32>>());
+///
+///     let x: Closed01<f64> = random();
+///     println!("f64 from [0,1]: {}", *x);
+/// }
+/// ```
+pub struct Closed01<F>(F);
+
 #[cfg(test)]
 mod test {
     use iter::{Iterator, range};

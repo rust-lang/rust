@@ -94,32 +94,52 @@ impl Rand for u64 {
     }
 }
 
-impl Rand for f32 {
-    /// A random `f32` in the range `[0, 1)`, using 24 bits of
-    /// precision.
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> f32 {
-        // using any more than 24 bits will cause (e.g.) 0xffff_ffff
-        // to correspond to 1 exactly, so we need to drop 8 to
-        // guarantee the open end.
+macro_rules! float_impls {
+    ($mod_name:ident, $ty:ty, $mantissa_bits:expr, $method_name:ident, $ignored_bits:expr) => {
+        mod $mod_name {
+            use rand::{Rand, Rng, Open01, Closed01};
 
-        static SCALE: f32 = (1u32 << 24) as f32;
-        (rng.next_u32() >> 8) as f32 / SCALE
+            static SCALE: $ty = (1u64 << $mantissa_bits) as $ty;
+
+            impl Rand for $ty {
+                /// Generate a floating point number in the half-open
+                /// interval `[0,1)`.
+                ///
+                /// See `Closed01` for the closed interval `[0,1]`,
+                /// and `Open01` for the open interval `(0,1)`.
+                #[inline]
+                fn rand<R: Rng>(rng: &mut R) -> $ty {
+                    // using any more than `mantissa_bits` bits will
+                    // cause (e.g.) 0xffff_ffff to correspond to 1
+                    // exactly, so we need to drop some (8 for f32, 11
+                    // for f64) to guarantee the open end.
+                    (rng.$method_name() >> $ignored_bits) as $ty / SCALE
+                }
+            }
+            impl Rand for Open01<$ty> {
+                #[inline]
+                fn rand<R: Rng>(rng: &mut R) -> Open01<$ty> {
+                    // add a small amount (specifically 2 bits below
+                    // the precision of f64/f32 at 1.0), so that small
+                    // numbers are larger than 0, but large numbers
+                    // aren't pushed to/above 1.
+                    Open01(((rng.$method_name() >> $ignored_bits) as $ty + 0.25) / SCALE)
+                }
+            }
+            impl Rand for Closed01<$ty> {
+                #[inline]
+                fn rand<R: Rng>(rng: &mut R) -> Closed01<$ty> {
+                    // divide by the maximum value of the numerator to
+                    // get a non-zero probability of getting exactly
+                    // 1.0.
+                    Closed01((rng.$method_name() >> $ignored_bits) as $ty / (SCALE - 1.0))
+                }
+            }
+        }
     }
 }
-
-impl Rand for f64 {
-    /// A random `f64` in the range `[0, 1)`, using 53 bits of
-    /// precision.
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> f64 {
-        // as for f32, but using more bits.
-
-        static SCALE: f64 = (1u64 << 53) as f64;
-        (rng.next_u64() >> 11) as f64 / SCALE
-    }
-}
-
+float_impls! { f64_rand_impls, f64, 53, next_u64, 11 }
+float_impls! { f32_rand_impls, f32, 24, next_u32, 8 }
 
 impl Rand for char {
     #[inline]
@@ -206,7 +226,10 @@ impl<T: Rand + 'static> Rand for @T {
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
+    use rand::{Rng, task_rng, Open01, Closed01};
+    use iter::range;
+    use option::{None, Some};
+
     struct ConstantRng(u64);
     impl Rng for ConstantRng {
         fn next_u32(&mut self) -> u32 {
@@ -216,9 +239,36 @@ mod tests {
             **self
         }
     }
+
     fn floating_point_edge_cases() {
         // the test for exact equality is correct here.
         assert!(ConstantRng(0xffff_ffff).gen::<f32>() != 1.0)
         assert!(ConstantRng(0xffff_ffff_ffff_ffff).gen::<f64>() != 1.0)
+    }
+
+    fn rand_open() {
+        // this is unlikely to catch an incorrect implementation that
+        // generates exactly 0 or 1, but it keeps it sane.
+        let mut rng = task_rng();
+        for _ in range(0, 1_000) {
+            // strict inequalities
+            let f = *rng.gen::<Open01<f64>>();
+            assert!(0.0 < f && f < 1.0);
+
+            let f = *rng.gen::<Open01<f32>>();
+            assert!(0.0 < f && f < 1.0);
+        }
+    }
+
+    fn rand_closed() {
+        let mut rng = task_rng();
+        for _ in range(0, 1_000) {
+            // strict inequalities
+            let f = *rng.gen::<Closed01<f64>>();
+            assert!(0.0 <= f && f <= 1.0);
+
+            let f = *rng.gen::<Closed01<f32>>();
+            assert!(0.0 <= f && f <= 1.0);
+        }
     }
 }

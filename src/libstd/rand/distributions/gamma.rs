@@ -10,7 +10,7 @@
 
 //! The Gamma distribution.
 
-use rand::Rng;
+use rand::{Rng, Open01};
 use super::{IndependentSample, Sample, StandardNormal, Exp};
 use num;
 
@@ -142,11 +142,7 @@ impl IndependentSample<f64> for Gamma {
 }
 impl IndependentSample<f64> for GammaSmallShape {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        // Need (0, 1) here.
-        let mut u = rng.gen::<f64>();
-        while u == 0. {
-            u = rng.gen();
-        }
+        let u = *rng.gen::<Open01<f64>>();
 
         self.large_shape.ind_sample(rng) * num::pow(u, self.inv_shape)
     }
@@ -161,12 +157,7 @@ impl IndependentSample<f64> for GammaLargeShape {
             }
 
             let v = v_cbrt * v_cbrt * v_cbrt;
-            // Need (0, 1) here, not [0, 1). This would be faster if
-            // we were generating an f64 in (0, 1) directly.
-            let mut u = rng.gen::<f64>();
-            while u == 0.0 {
-                u = rng.gen();
-            }
+            let u = *rng.gen::<Open01<f64>>();
 
             let x_sqr = x * x;
             if u < 1.0 - 0.0331 * x_sqr * x_sqr ||
