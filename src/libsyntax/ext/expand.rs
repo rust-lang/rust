@@ -138,7 +138,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
             let span = e.span;
 
-            pub fn mk_expr(_: @ExtCtxt, span: Span, node: Expr_)
+            fn mk_expr(_: @ExtCtxt, span: Span, node: Expr_)
                            -> @ast::Expr {
                 @ast::Expr {
                     id: ast::DUMMY_NODE_ID,
