@@ -175,7 +175,7 @@ pub fn compile_input(context: &BuildContext,
                      deps: &mut DepMap,
                      flags: &[~str],
                      cfgs: &[~str],
-                     opt: bool,
+                     opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     assert!(in_file.component_iter().nth(1).is_some());
     let input = driver::file_input(in_file.clone());
@@ -241,7 +241,7 @@ pub fn compile_input(context: &BuildContext,
 
     let options = @session::options {
         crate_type: crate_type,
-        optimize: if opt { session::Aggressive } else { session::No },
+        optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
         addl_lib_search_paths: @mut context.additional_library_paths(),
@@ -408,7 +408,7 @@ pub fn compile_crate(ctxt: &BuildContext,
                      deps: &mut DepMap,
                      flags: &[~str],
                      cfgs: &[~str],
-                     opt: bool,
+                     opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     debug!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
     debug!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());

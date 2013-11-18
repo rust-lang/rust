@@ -28,6 +28,8 @@ use workcache_support::{digest_only_date, digest_file_with_date, crate_tag};
 use extra::workcache;
 use extra::treemap::TreeMap;
 
+use rustc::driver::session;
+
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
 #[deriving(Clone)]
@@ -425,6 +427,7 @@ impl PkgSrc {
                     }
                     debug!("Compiling crate {}; its output will be in {}",
                            subpath.display(), sub_dir.display());
+                    let opt: session::OptLevel = subcx.context.rustc_flags.optimization_level;
                     let result = compile_crate(&subcx,
                                                exec,
                                                &id,
@@ -433,7 +436,7 @@ impl PkgSrc {
                                                &mut (sub_deps.clone()),
                                                sub_flags,
                                                subcfgs,
-                                               false,
+                                               opt,
                                                what);
                     // XXX: result is an Option<Path>. The following code did not take that
                     // into account. I'm not sure if the workcache really likes seeing the
