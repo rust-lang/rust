@@ -732,6 +732,7 @@ pub fn resolve_impl(ccx: @mut CrateCtxt,
         *impl_generics.type_param_defs,
         [],
         impl_generics.region_param_defs,
+        [],
         impl_item.id);
 
     let impl_trait_ref = @impl_trait_ref.subst(ccx.tcx, &param_env.free_substs);

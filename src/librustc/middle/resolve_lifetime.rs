@@ -21,6 +21,7 @@ use driver::session;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{lifetime_to_str};
@@ -37,11 +38,13 @@ struct LifetimeContext {
 }
 
 enum ScopeChain<'self> {
-    ItemScope(&'self OptVec<ast::Lifetime>),
-    FnScope(ast::NodeId, &'self OptVec<ast::Lifetime>, &'self ScopeChain<'self>),
-    BlockScope(ast::NodeId, &'self ScopeChain<'self>),
+    EarlyScope(uint, &'self OptVec<ast::Lifetime>, Scope<'self>),
+    LateScope(ast::NodeId, &'self OptVec<ast::Lifetime>, Scope<'self>),
+    BlockScope(ast::NodeId, Scope<'self>),
     RootScope
 }
+
+type Scope<'self> = &'self ScopeChain<'self>;
 
 pub fn crate(sess: session::Session,
              crate: &ast::Crate)
@@ -55,10 +58,10 @@ pub fn crate(sess: session::Session,
     ctxt.named_region_map
 }
 
-impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
+impl<'self> Visitor<Scope<'self>> for LifetimeContext {
     fn visit_item(&mut self,
                   item: @ast::item,
-                  _: &'self ScopeChain<'self>) {
+                  _: Scope<'self>) {
         let scope = match item.node {
             ast::item_fn(*) | // fn lifetimes get added in visit_fn below
             ast::item_mod(*) |
@@ -73,7 +76,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
             ast::item_impl(ref generics, _, _, _) |
             ast::item_trait(ref generics, _, _) => {
                 self.check_lifetime_names(&generics.lifetimes);
-                ItemScope(&generics.lifetimes)
+                EarlyScope(0, &generics.lifetimes, &RootScope)
             }
         };
         debug!("entering scope {:?}", scope);
@@ -87,33 +90,32 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
                 b: &ast::Block,
                 s: Span,
                 n: ast::NodeId,
-                scope: &'self ScopeChain<'self>) {
+                scope: Scope<'self>) {
         match *fk {
             visit::fk_item_fn(_, generics, _, _) |
             visit::fk_method(_, generics, _) => {
-                let scope1 = FnScope(n, &generics.lifetimes, scope);
-                self.check_lifetime_names(&generics.lifetimes);
-                debug!("pushing fn scope id={} due to item/method", n);
-                visit::walk_fn(self, fk, fd, b, s, n, &scope1);
-                debug!("popping fn scope id={} due to item/method", n);
+                self.visit_fn_decl(
+                    n, generics, scope,
+                    |this, scope1| visit::walk_fn(this, fk, fd, b,
+                                                  s, n, scope1))
             }
             visit::fk_anon(*) | visit::fk_fn_block(*) => {
-                visit::walk_fn(self, fk, fd, b, s, n, scope);
+                visit::walk_fn(self, fk, fd, b, s, n, scope)
             }
         }
     }
 
     fn visit_ty(&mut self,
                 ty: &ast::Ty,
-                scope: &'self ScopeChain<'self>) {
+                scope: Scope<'self>) {
         match ty.node {
             ast::ty_closure(@ast::TyClosure { lifetimes: ref lifetimes, _ }) |
             ast::ty_bare_fn(@ast::TyBareFn { lifetimes: ref lifetimes, _ }) => {
-                let scope1 = FnScope(ty.id, lifetimes, scope);
+                let scope1 = LateScope(ty.id, lifetimes, scope);
                 self.check_lifetime_names(lifetimes);
-                debug!("pushing fn scope id={} due to type", ty.id);
+                debug!("pushing fn ty scope id={} due to type", ty.id);
                 visit::walk_ty(self, ty, &scope1);
-                debug!("popping fn scope id={} due to type", ty.id);
+                debug!("popping fn ty scope id={} due to type", ty.id);
             }
             _ => {
                 visit::walk_ty(self, ty, scope);
@@ -123,17 +125,15 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
 
     fn visit_ty_method(&mut self,
                        m: &ast::TypeMethod,
-                       scope: &'self ScopeChain<'self>) {
-        let scope1 = FnScope(m.id, &m.generics.lifetimes, scope);
-        self.check_lifetime_names(&m.generics.lifetimes);
-        debug!("pushing fn scope id={} due to ty_method", m.id);
-        visit::walk_ty_method(self, m, &scope1);
-        debug!("popping fn scope id={} due to ty_method", m.id);
+                       scope: Scope<'self>) {
+        self.visit_fn_decl(
+            m.id, &m.generics, scope,
+            |this, scope1| visit::walk_ty_method(this, m, scope1))
     }
 
     fn visit_block(&mut self,
                    b: &ast::Block,
-                   scope: &'self ScopeChain<'self>) {
+                   scope: Scope<'self>) {
         let scope1 = BlockScope(b.id, scope);
         debug!("pushing block scope {}", b.id);
         visit::walk_block(self, b, &scope1);
@@ -142,7 +142,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
 
     fn visit_lifetime_ref(&mut self,
                           lifetime_ref: &ast::Lifetime,
-                          scope: &'self ScopeChain<'self>) {
+                          scope: Scope<'self>) {
         if lifetime_ref.ident == special_idents::statik {
             self.insert_lifetime(lifetime_ref, ast::DefStaticRegion);
             return;
@@ -151,7 +151,93 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
     }
 }
 
+impl<'self> ScopeChain<'self> {
+    fn count_early_params(&self) -> uint {
+        /*!
+         * Counts the number of early parameters that are in scope.
+         * Used when checking methods so that we assign the early
+         * lifetime parameters declared on the method indices that
+         * come after those from the type (e.g., if there is something
+         * like `impl<'a> Foo { ... fn bar<'b>(...) }` then `'a` would
+         * have index 0 and `'b` would have index 1.
+         */
+
+        match *self {
+            RootScope => 0,
+            EarlyScope(base, lifetimes, _) => base + lifetimes.len(),
+            LateScope(_, _, s) => s.count_early_params(),
+            BlockScope(_, _) => 0,
+        }
+    }
+}
+
 impl LifetimeContext {
+    fn visit_fn_decl(&mut self,
+                     n: ast::NodeId,
+                     generics: &ast::Generics,
+                     scope: Scope,
+                     walk: |&mut LifetimeContext, Scope|) {
+        /*!
+         * Handles visiting fns and methods. These are a bit
+         * complicated because we must distinguish early- vs late-bound
+         * lifetime parameters. We do this by checking which lifetimes
+         * appear within type bounds; those are early bound lifetimes,
+         * and the rest are late bound.
+         *
+         * For example:
+         *
+         *    fn foo<'a,'b,'c,T:Trait<'b>>(...)
+         *
+         * Here `'a` and `'c` are late bound but `'b` is early
+         * bound. Note that early- and late-bound lifetimes may be
+         * interspersed together.
+         *
+         * If early bound lifetimes are present, we separate them into
+         * their own list (and likewise for late bound). They will be
+         * numbered sequentially, starting from the lowest index that
+         * is already in scope (for a fn item, that will be 0, but for
+         * a method it might not be). Late bound lifetimes are
+         * resolved by name and associated with a binder id (`n`), so
+         * the ordering is not important there.
+         */
+
+        self.check_lifetime_names(&generics.lifetimes);
+
+        let early_count = scope.count_early_params();
+        let referenced_idents =
+            free_lifetimes(&generics.ty_params);
+        debug!("pushing fn scope id={} due to item/method \
+               referenced_idents={:?} \
+               early_count={}",
+               n,
+               referenced_idents.map(|&i| self.sess.str_of(i)),
+               early_count);
+        if referenced_idents.is_empty() {
+            let scope1 = LateScope(n, &generics.lifetimes, scope);
+
+            walk(self, &scope1)
+        } else {
+            let early: OptVec<ast::Lifetime> =
+                generics.lifetimes.iter()
+                .filter(|l| referenced_idents.iter().any(|i| i == &l.ident))
+                .map(|l| *l)
+                .collect();
+            let scope1 = EarlyScope(early_count, &early, scope);
+            debug!("early names = {:?}",
+                   early.map(|l| self.sess.str_of(l.ident)));
+
+            let late: OptVec<ast::Lifetime> =
+                generics.lifetimes.iter()
+                .filter(|l| !referenced_idents.iter().any(|i| i == &l.ident))
+                .map(|l| *l)
+                .collect();
+            let scope2 = LateScope(n, &late, &scope1);
+
+            walk(self, &scope2)
+        }
+        debug!("popping fn scope id={} due to item/method", n);
+    }
+
     fn resolve_lifetime_ref(&self,
                             lifetime_ref: &ast::Lifetime,
                             scope: &ScopeChain) {
@@ -173,23 +259,25 @@ impl LifetimeContext {
                     break;
                 }
 
-                ItemScope(lifetimes) => {
+                EarlyScope(base, lifetimes, s) => {
                     match search_lifetimes(lifetimes, lifetime_ref) {
-                        Some((index, decl_id)) => {
+                        Some((offset, decl_id)) => {
+                            let index = base + offset;
                             let def = ast::DefEarlyBoundRegion(index, decl_id);
                             self.insert_lifetime(lifetime_ref, def);
                             return;
                         }
                         None => {
-                            break;
+                            depth += 1;
+                            scope = s;
                         }
                     }
                 }
 
-                FnScope(id, lifetimes, s) => {
+                LateScope(binder_id, lifetimes, s) => {
                     match search_lifetimes(lifetimes, lifetime_ref) {
                         Some((_index, decl_id)) => {
-                            let def = ast::DefLateBoundRegion(id, depth, decl_id);
+                            let def = ast::DefLateBoundRegion(binder_id, depth, decl_id);
                             self.insert_lifetime(lifetime_ref, def);
                             return;
                         }
@@ -227,12 +315,7 @@ impl LifetimeContext {
                     break;
                 }
 
-                ItemScope(lifetimes) => {
-                    search_result = search_lifetimes(lifetimes, lifetime_ref);
-                    break;
-                }
-
-                FnScope(_, lifetimes, s) => {
+                EarlyScope(_, lifetimes, s) | LateScope(_, lifetimes, s) => {
                     search_result = search_lifetimes(lifetimes, lifetime_ref);
                     if search_result.is_some() {
                         break;
@@ -318,4 +401,52 @@ fn search_lifetimes(lifetimes: &OptVec<ast::Lifetime>,
         }
     }
     return None;
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> OptVec<ast::Lifetime> {
+    let referenced_idents = free_lifetimes(&generics.ty_params);
+    if referenced_idents.is_empty() {
+        return opt_vec::Empty;
+    }
+
+    generics.lifetimes.iter()
+        .filter(|l| referenced_idents.iter().any(|i| i == &l.ident))
+        .map(|l| *l)
+        .collect()
+}
+
+pub fn free_lifetimes(ty_params: &OptVec<ast::TyParam>) -> OptVec<ast::Ident> {
+    /*!
+     * Gathers up and returns the names of any lifetimes that appear
+     * free in `ty_params`. Of course, right now, all lifetimes appear
+     * free, since we don't have any binders in type parameter
+     * declarations, but I just to be forwards compatible for future
+     * extensions with my terminology. =)
+     */
+
+    let mut collector = FreeLifetimeCollector { names: opt_vec::Empty };
+    for ty_param in ty_params.iter() {
+        visit::walk_ty_param_bounds(&mut collector, &ty_param.bounds, ());
+    }
+    return collector.names;
+
+    struct FreeLifetimeCollector {
+        names: OptVec<ast::Ident>,
+    }
+
+    impl Visitor<()> for FreeLifetimeCollector {
+        fn visit_ty(&mut self, t:&ast::Ty, _:()) {
+            // for some weird reason visitor doesn't descend into
+            // types by default
+            visit::walk_ty(self, t, ());
+        }
+
+        fn visit_lifetime_ref(&mut self,
+                              lifetime_ref: &ast::Lifetime,
+                              _: ()) {
+            self.names.push(lifetime_ref.ident);
+        }
+    }
 }
