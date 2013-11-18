@@ -117,7 +117,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprUnary(_, UnDeref, _) => { }
           ExprUnary(_, UnBox(_), _) | ExprUnary(_, UnUniq, _) => {
             sess.span_err(e.span,
-                          "disallowed operator in constant expression");
+                          "cannot do allocations in constant expressions");
             return;
           }
           ExprLit(@codemap::Spanned {node: lit_str(*), _}) => { }
@@ -191,7 +191,13 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                     e.span,
                     "borrowed pointers in constants may only refer to \
                      immutable values");
-          }
+          },
+          ExprVstore(_, ExprVstoreUniq) |
+          ExprVstore(_, ExprVstoreBox) |
+          ExprVstore(_, ExprVstoreMutBox) => {
+              sess.span_err(e.span, "cannot allocate vectors in constant expressions")
+          },
+
           _ => {
             sess.span_err(e.span,
                           "constant contains unimplemented expression type");
