@@ -562,13 +562,13 @@ fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
     result
 }
 
-pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
+pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
     assert!(in_green_task_context());
 
     let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
     let indestructible = opts.indestructible;
 
-    let child_wrapper: ~fn() = || {
+    let child_wrapper: proc() = || {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
@@ -589,12 +589,14 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
                 }
             }
         };
+
         // Should be run after the local-borrowed task is returned.
+        let f_cell = Cell::new(f);
         if enlist_success {
             if indestructible {
-                do unkillable { f() }
+                do unkillable { f_cell.take()() }
             } else {
-                f()
+                f_cell.take()()
             }
         }
     };
@@ -683,7 +685,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
         let notify_chan = Cell::new(notify_chan);
-        let on_exit: ~fn(UnwindResult) = |task_result| {
+        let on_exit: proc(UnwindResult) = |task_result| {
             notify_chan.take().send(task_result)
         };
         task.death.on_exit = Some(on_exit);
