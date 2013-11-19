@@ -31,6 +31,7 @@ pub fn expand_deriving_totalord(cx: @ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["std", "cmp", "Ordering"])),
+                inline: true,
                 const_nonmatching: false,
                 combine_substructure: cs_cmp
             }
