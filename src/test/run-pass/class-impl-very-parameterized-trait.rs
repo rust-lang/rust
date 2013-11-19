@@ -70,9 +70,11 @@ impl<T> Map<int, T> for cat<T> {
 }
 
 impl<T> MutableMap<int, T> for cat<T> {
-    fn insert(&mut self, k: int, _: T) -> bool {
+    fn find_or_insert_with<'a>(&'a mut self, k: int, f: &fn(&int) -> T)
+                               -> (&'a int, &'a mut T) {
+        self.name = f(&k);
         self.meows += k;
-        true
+        (&self.meows, &mut self.name)
     }
 
     fn find_mut<'a>(&'a mut self, _k: &int) -> Option<&'a mut T> { fail!() }
@@ -88,6 +90,9 @@ impl<T> MutableMap<int, T> for cat<T> {
     fn pop(&mut self, _k: &int) -> Option<T> { fail!() }
 
     fn swap(&mut self, _k: int, _v: T) -> Option<T> { fail!() }
+
+    fn reserve_at_least(&mut self, n: uint) {
+    }
 }
 
 impl<T> cat<T> {

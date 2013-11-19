@@ -491,7 +491,7 @@ impl DocFolder for Cache {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
                     Some(clean::ResolvedPath{ id, _ }) => {
-                        let v = do self.implementors.find_or_insert_with(id) |_|{
+                        let (_, v) = do self.implementors.find_or_insert_with(id) |_|{
                             ~[]
                         };
                         match i.for_ {
@@ -594,7 +594,7 @@ impl DocFolder for Cache {
                     clean::Item{ attrs, inner: clean::ImplItem(i), _ } => {
                         match i.for_ {
                             clean::ResolvedPath { id, _ } => {
-                                let v = do self.impls.find_or_insert_with(id) |_| {
+                                let (_, v) = do self.impls.find_or_insert_with(id) |_| {
                                     ~[]
                                 };
                                 // extract relevant documentation for this impl
@@ -1607,7 +1607,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
             None => continue,
             Some(ref s) => s.to_owned(),
         };
-        let v = map.find_or_insert_with(short.to_owned(), |_| ~[]);
+        let (_, v) = map.find_or_insert_with(short.to_owned(), |_| ~[]);
         v.push(myname);
     }
 

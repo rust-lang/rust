@@ -208,7 +208,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     fn compute_id_range(&mut self, id: ast::NodeId) -> (uint, uint) {
         let mut expanded = false;
         let len = self.nodeid_to_bitset.len();
-        let n = do self.nodeid_to_bitset.find_or_insert_with(id) |_| {
+        let (_, n) = do self.nodeid_to_bitset.find_or_insert_with(id) |_| {
             expanded = true;
             len
         };

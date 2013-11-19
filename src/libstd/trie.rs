@@ -10,6 +10,7 @@
 
 //! An ordered map and set for integer keys implemented as a radix trie
 
+use cell::Cell;
 use prelude::*;
 use uint;
 use util::{swap, replace};
@@ -77,14 +78,13 @@ impl<T> MutableMap<uint, T> for TrieMap<T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
     }
 
-    /// Insert a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise None is returned.
-    fn swap(&mut self, key: uint, value: T) -> Option<T> {
-        let ret = insert(&mut self.root.count,
-                         &mut self.root.children[chunk(key, 0)],
-                         key, value, 1);
-        if ret.is_none() { self.length += 1 }
-        ret
+    /// Return the value corresponding to the key in the map, or create,
+    /// insert, and return a new value if it doesn't exist.
+    fn find_or_insert_with<'a>(&'a mut self, k: uint, f: &fn(&uint) -> T)
+                               -> (&'a uint, &'a mut T) {
+        find_or_insert_with(&mut self.root.count,
+               &mut self.root.children[chunk(k, 0)],
+               k, |k| { self.length += 1; f(k) }, 1)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -95,6 +95,10 @@ impl<T> MutableMap<uint, T> for TrieMap<T> {
                          *key, 1);
         if ret.is_some() { self.length -= 1 }
         ret
+    }
+
+    /// Does nothing for this implementation.
+    fn reserve_at_least(&mut self, _: uint) {
     }
 }
 
@@ -379,41 +383,45 @@ fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r 
     }
 }
 
-fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
-             idx: uint) -> Option<T> {
+fn find_or_insert_with<'a, T>(count: &mut uint, child: &'a mut Child<T>,
+                              key: uint, f: &fn(&uint) -> T, idx: uint) -> (&'a uint, &'a mut T) {
     let mut tmp = Nothing;
-    let ret;
-    swap(&mut tmp, child);
+    swap(child, &mut tmp);
 
     *child = match tmp {
-      External(stored_key, stored_value) => {
-          if stored_key == key {
-              ret = Some(stored_value);
-              External(stored_key, value)
-          } else {
-              // conflict - split the node
-              let mut new = ~TrieNode::new();
-              insert(&mut new.count,
-                     &mut new.children[chunk(stored_key, idx)],
-                     stored_key, stored_value, idx + 1);
-              ret = insert(&mut new.count, &mut new.children[chunk(key, idx)],
-                           key, value, idx + 1);
-              Internal(new)
-          }
-      }
-      Internal(x) => {
-        let mut x = x;
-        ret = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
-                     value, idx + 1);
-        Internal(x)
-      }
-      Nothing => {
-        *count += 1;
-        ret = None;
-        External(key, value)
-      }
+        Nothing => {
+            *count += 1;
+            External(key, f(&key))
+        }
+        External(stored_key, stored_value) => {
+            if stored_key == key {
+                External(stored_key, stored_value)
+            }
+            else {
+                let mut new = ~TrieNode::new();
+                let cell = Cell::new(stored_value);
+                find_or_insert_with(&mut new.count,
+                                    &mut new.children[chunk(stored_key, idx)],
+                                    stored_key, |_| cell.take(), idx + 1);
+                Internal(new)
+            }
+        }
+        Internal(node) => {
+            Internal(node)
+        }
     };
-    return ret;
+
+    match *child {
+        Internal(ref mut node) => {
+            find_or_insert_with(&mut node.count,
+                                &mut node.children[chunk(key, idx)],
+                                key, f, idx + 1)
+        }
+        External(ref stored_key, ref mut stored_value) => {
+            (stored_key, stored_value)
+        }
+        Nothing => unreachable!(),
+    }
 }
 
 fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
@@ -658,6 +666,39 @@ mod test_map {
         assert_eq!(m.swap(1, 2), None);
         assert_eq!(m.swap(1, 3), Some(2));
         assert_eq!(m.swap(1, 4), Some(3));
+    }
+
+    #[test]
+    fn test_find_or_insert() {
+        let mut m = TrieMap::new();
+        {
+            let (k, v) = m.find_or_insert(1, 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert(1, 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_find_or_insert_with() {
+        let mut m = TrieMap::new();
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = TrieMap::new();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]

@@ -23,6 +23,7 @@ use std::vec;
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
+    priv last_key: uint,
 }
 
 impl<V> Container for SmallIntMap<V> {
@@ -69,34 +70,25 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         }
     }
 
-    /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
-    /// not already exist in the map.
-    fn insert(&mut self, key: uint, value: V) -> bool {
-        let exists = self.contains_key(&key);
+    /// Return the value corresponding to the key in the map, or create,
+    /// insert, and return a new value if it doesn't exist.
+    fn find_or_insert_with<'a>(&'a mut self, key: uint, f: &fn(&uint) -> V)
+                               -> (&'a uint, &'a mut V) {
         let len = self.v.len();
         if len <= key {
             self.v.grow_fn(key - len + 1, |_| None);
         }
-        self.v[key] = Some(value);
-        !exists
+        self.last_key = key;
+        if self.v[key].is_none() {
+            self.v[key] = Some(f(&key));
+        }
+        (&self.last_key, self.v[key].get_mut_ref())
     }
 
     /// Remove a key-value pair from the map. Return true if the key
     /// was present in the map, otherwise false.
     fn remove(&mut self, key: &uint) -> bool {
         self.pop(key).is_some()
-    }
-
-    /// Insert a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise None is returned.
-    fn swap(&mut self, key: uint, value: V) -> Option<V> {
-        match self.find_mut(&key) {
-            Some(loc) => { return Some(replace(loc, value)); }
-            None => ()
-        }
-        self.insert(key, value);
-        return None;
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -107,11 +99,15 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         }
         self.v[*key].take()
     }
+
+    /// Does nothing for this implementation.
+    fn reserve_at_least(&mut self, _: uint) {
+    }
 }
 
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
-    pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+    pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[], last_key: 0} }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
@@ -335,6 +331,39 @@ mod test_map {
         assert_eq!(m.swap(1, 2), None);
         assert_eq!(m.swap(1, 3), Some(2));
         assert_eq!(m.swap(1, 4), Some(3));
+    }
+
+    #[test]
+    fn test_find_or_insert() {
+        let mut m = SmallIntMap::new();
+        {
+            let (k, v) = m.find_or_insert(1, 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert(1, 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_find_or_insert_with() {
+        let mut m = SmallIntMap::new();
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 2);
+            assert_eq!((*k, *v), (1, 2));
+        }
+        {
+            let (k, v) = m.find_or_insert_with(1, |_| 3);
+            assert_eq!((*k, *v), (1, 2));
+        }
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = SmallIntMap::new();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]

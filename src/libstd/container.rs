@@ -10,7 +10,9 @@
 
 //! Container traits
 
+use cell::Cell;
 use option::Option;
+use util;
 
 /// A trait to represent the abstract idea of a container. The only concrete
 /// knowledge known is the number of elements contained within.
@@ -63,7 +65,12 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
 
     /// Insert a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise None is returned.
-    fn swap(&mut self, k: K, v: V) -> Option<V>;
+    #[inline]
+    fn swap(&mut self, k: K, v: V) -> Option<V> {
+        let cell = Cell::new(v);
+        let (_, r) = self.find_or_insert_with(k, |_| cell.take());
+        cell.take_opt().map(|v| util::replace(r, v))
+    }
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
@@ -71,6 +78,38 @@ pub trait MutableMap<K, V>: Map<K, V> + Mutable {
 
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V>;
+
+    /// Return the value corresponding to the key in the map, or insert
+    /// and return the value if it doesn't exist.
+    #[inline]
+    fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> (&'a K, &'a mut V) {
+        let cell = Cell::new(v);
+        self.find_or_insert_with(k, |_| cell.take())
+    }
+
+    /// Return the value corresponding to the key in the map, or create,
+    /// insert, and return a new value if it doesn't exist.
+    fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V)
+                               -> (&'a K, &'a mut V);
+
+    /// Insert a key-value pair into the map if the key is not already present.
+    /// Otherwise, modify the existing value for the key.
+    /// Returns the new or modified value for the key.
+    #[inline]
+    fn insert_or_update_with<'a>(&'a mut self, k: K, v: V,
+                                     f: &fn(&K, &mut V)) -> &'a mut V {
+        let cell = Cell::new(v);
+        let (k, v) = self.find_or_insert_with(k, |_| cell.take());
+        if !cell.is_empty() {
+            f(k, v);
+        }
+        v
+    }
+
+    /// Reserve space for at least `n` elements in the data structure
+    /// if applicable.  Does nothing if not pre-allocating space doesn't
+    /// make sense for the underlying data structure.
+    fn reserve_at_least(&mut self, n: uint);
 }
 
 /// A set is a group of objects which are each distinct from one another. This
