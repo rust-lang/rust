@@ -36,7 +36,7 @@ for it to terminate.
 The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
-pub fn run_in_bare_thread(f: ~fn()) {
+pub fn run_in_bare_thread(f: proc()) {
     use cell::Cell;
     use rt::thread::Thread;
 

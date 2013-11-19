@@ -74,6 +74,11 @@ impl TestDesc {
     }
 }
 
+/// Represents a benchmark function.
+pub trait TDynBenchFn {
+    fn run(&self, harness: &mut BenchHarness);
+}
+
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
@@ -81,10 +86,10 @@ impl TestDesc {
 pub enum TestFn {
     StaticTestFn(extern fn()),
     StaticBenchFn(extern fn(&mut BenchHarness)),
-    StaticMetricFn(~fn(&mut MetricMap)),
-    DynTestFn(~fn()),
-    DynMetricFn(~fn(&mut MetricMap)),
-    DynBenchFn(~fn(&mut BenchHarness))
+    StaticMetricFn(proc(&mut MetricMap)),
+    DynTestFn(proc()),
+    DynMetricFn(proc(&mut MetricMap)),
+    DynBenchFn(~TDynBenchFn)
 }
 
 impl TestFn {
@@ -859,7 +864,7 @@ pub fn run_test(force_ignore: bool,
 
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
-                      testfn: ~fn()) {
+                      testfn: proc()) {
         let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
             let mut task = task::task();
@@ -878,8 +883,8 @@ pub fn run_test(force_ignore: bool,
     }
 
     match testfn {
-        DynBenchFn(benchfn) => {
-            let bs = ::test::bench::benchmark(benchfn);
+        DynBenchFn(bencher) => {
+            let bs = ::test::bench::benchmark(|harness| bencher.run(harness));
             monitor_ch.send((desc, TrBench(bs)));
             return;
         }

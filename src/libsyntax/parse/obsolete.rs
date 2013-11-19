@@ -41,7 +41,8 @@ pub enum ObsoleteSyntax {
     ObsoleteLoopAsContinue,
     ObsoleteEnumWildcard,
     ObsoleteStructWildcard,
-    ObsoleteVecDotDotWildcard
+    ObsoleteVecDotDotWildcard,
+    ObsoleteBoxedClosure,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -127,6 +128,11 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteVecDotDotWildcard => (
                 "vec slice wildcard",
                 "use `..` instead of `.._` for matching slices"
+            ),
+            ObsoleteBoxedClosure => (
+                "managed or owned closure",
+                "managed closures have been removed and owned closures are \
+                 now written `proc()`"
             ),
         };
 

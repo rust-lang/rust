@@ -1,4 +1,4 @@
-fn call_f(f: ~fn:Send() -> int) -> int {
+fn call_f(f: proc() -> int) -> int {
     f()
 }
 

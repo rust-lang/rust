@@ -322,7 +322,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
+pub fn monitor(f: proc(@diagnostic::Emitter)) {
     use std::comm::*;
 
     // XXX: This is a hack for newsched since it doesn't support split stacks.

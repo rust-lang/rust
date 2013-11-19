@@ -10,7 +10,7 @@
 
 extern mod extra;
 
-fn asSendfn( f : ~fn()->uint ) -> uint {
+fn asSendfn( f : proc()->uint ) -> uint {
    return f();
 }
 

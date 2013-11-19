@@ -10,7 +10,7 @@
 
 // xfail-test
 type t = {
-    f: ~fn()
+    f: proc()
 };
 
 pub fn main() {
