@@ -329,6 +329,11 @@ pub mod types {
                     __unused5: c_long,
                 }
 
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
+                }
+
                 pub struct pthread_attr_t {
                     __size: [u32, ..9]
                 }
@@ -363,6 +368,11 @@ pub mod types {
                     st_ctime: time_t,
                     st_ctime_nsec: c_ulong,
                     st_ino: c_ulonglong
+                }
+
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
@@ -401,6 +411,11 @@ pub mod types {
                     st_blksize: blksize_t,
                     st_blocks: blkcnt_t,
                     st_pad5: [c_long, ..14],
+                }
+
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
@@ -477,6 +492,11 @@ pub mod types {
                     st_ctime: time_t,
                     st_ctime_nsec: c_long,
                     __unused: [c_long, ..3],
+                }
+
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
@@ -594,6 +614,11 @@ pub mod types {
                     __unused: [uint8_t, ..2],
                 }
 
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
+                }
+
                 pub type pthread_attr_t = *c_void;
             }
             pub mod posix08 {
@@ -628,6 +653,12 @@ pub mod types {
                     st_atime: time64_t,
                     st_mtime: time64_t,
                     st_ctime: time64_t,
+                }
+
+                // note that this is called utimbuf64 in win32
+                pub struct utimbuf {
+                    actime: time64_t,
+                    modtime: time64_t,
                 }
             }
         }
@@ -679,7 +710,7 @@ pub mod types {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use libc::types::os::arch::c95::{c_long, c_ulong};
                 use libc::types::os::arch::c95::{wchar_t};
-                use libc::types::os::arch::c99::{c_ulonglong};
+                use libc::types::os::arch::c99::{c_ulonglong, c_longlong};
 
                 pub type BOOL = c_int;
                 pub type BYTE = u8;
@@ -692,7 +723,12 @@ pub mod types {
                 pub type HANDLE = LPVOID;
                 pub type HMODULE = c_uint;
 
+                pub type LONG = c_long;
+                pub type PLONG = *mut c_long;
                 pub type LONG_PTR = c_long;
+
+                pub type LARGE_INTEGER = c_longlong;
+                pub type PLARGE_INTEGER = *mut c_longlong;
 
                 pub type LPCWSTR = *WCHAR;
                 pub type LPCSTR = *CHAR;
@@ -795,6 +831,16 @@ pub mod types {
                     Type: DWORD
                 }
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
+
+                pub struct OVERLAPPED {
+                    Internal: *c_ulong,
+                    InternalHigh: *c_ulong,
+                    Offset: DWORD,
+                    OffsetHigh: DWORD,
+                    hEvent: HANDLE,
+                }
+
+                pub type LPOVERLAPPED = *mut OVERLAPPED;
             }
         }
 
@@ -1065,6 +1111,11 @@ pub mod types {
                     st_qspare: [int64_t, ..2],
                 }
 
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
+                }
+
                 pub struct pthread_attr_t {
                     __sig: c_long,
                     __opaque: [c_char, ..36]
@@ -1149,6 +1200,11 @@ pub mod types {
                     st_gen: uint32_t,
                     st_lspare: int32_t,
                     st_qspare: [int64_t, ..2],
+                }
+
+                pub struct utimbuf {
+                    actime: time_t,
+                    modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
@@ -1337,6 +1393,72 @@ pub mod consts {
             pub static PROCESSOR_ARCHITECTURE_IA64 : WORD = 6;
             pub static PROCESSOR_ARCHITECTURE_AMD64 : WORD = 9;
             pub static PROCESSOR_ARCHITECTURE_UNKNOWN : WORD = 0xffff;
+
+            pub static MOVEFILE_COPY_ALLOWED: DWORD = 2;
+            pub static MOVEFILE_CREATE_HARDLINK: DWORD = 16;
+            pub static MOVEFILE_DELAY_UNTIL_REBOOT: DWORD = 4;
+            pub static MOVEFILE_FAIL_IF_NOT_TRACKABLE: DWORD = 32;
+            pub static MOVEFILE_REPLACE_EXISTING: DWORD = 1;
+            pub static MOVEFILE_WRITE_THROUGH: DWORD = 8;
+
+            pub static SYMBOLIC_LINK_FLAG_DIRECTORY: DWORD = 1;
+
+            pub static FILE_SHARE_DELETE: DWORD = 0x4;
+            pub static FILE_SHARE_READ: DWORD = 0x1;
+            pub static FILE_SHARE_WRITE: DWORD = 0x2;
+
+            pub static CREATE_ALWAYS: DWORD = 2;
+            pub static CREATE_NEW: DWORD = 1;
+            pub static OPEN_ALWAYS: DWORD = 4;
+            pub static OPEN_EXISTING: DWORD = 3;
+            pub static TRUNCATE_EXISTING: DWORD = 5;
+
+            pub static FILE_ATTRIBUTE_ARCHIVE: DWORD = 0x20;
+            pub static FILE_ATTRIBUTE_COMPRESSED: DWORD = 0x800;
+            pub static FILE_ATTRIBUTE_DEVICE: DWORD = 0x40;
+            pub static FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
+            pub static FILE_ATTRIBUTE_ENCRYPTED: DWORD = 0x4000;
+            pub static FILE_ATTRIBUTE_HIDDEN: DWORD = 0x2;
+            pub static FILE_ATTRIBUTE_INTEGRITY_STREAM: DWORD = 0x8000;
+            pub static FILE_ATTRIBUTE_NORMAL: DWORD = 0x80;
+            pub static FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: DWORD = 0x2000;
+            pub static FILE_ATTRIBUTE_NO_SCRUB_DATA: DWORD = 0x20000;
+            pub static FILE_ATTRIBUTE_OFFLINE: DWORD = 0x1000;
+            pub static FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
+            pub static FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
+            pub static FILE_ATTRIBUTE_SPARSE_FILE: DWORD = 0x200;
+            pub static FILE_ATTRIBUTE_SYSTEM: DWORD = 0x4;
+            pub static FILE_ATTRIBUTE_TEMPORARY: DWORD = 0x100;
+            pub static FILE_ATTRIBUTE_VIRTUAL: DWORD = 0x10000;
+
+            pub static FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
+            pub static FILE_FLAG_DELETE_ON_CLOSE: DWORD = 0x04000000;
+            pub static FILE_FLAG_NO_BUFFERING: DWORD = 0x20000000;
+            pub static FILE_FLAG_OPEN_NO_RECALL: DWORD = 0x00100000;
+            pub static FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
+            pub static FILE_FLAG_OVERLAPPED: DWORD = 0x40000000;
+            pub static FILE_FLAG_POSIX_SEMANTICS: DWORD = 0x0100000;
+            pub static FILE_FLAG_RANDOM_ACCESS: DWORD = 0x10000000;
+            pub static FILE_FLAG_SESSION_AWARE: DWORD = 0x00800000;
+            pub static FILE_FLAG_SEQUENTIAL_SCAN: DWORD = 0x08000000;
+            pub static FILE_FLAG_WRITE_THROUGH: DWORD = 0x80000000;
+
+            pub static FILE_NAME_NORMALIZED: DWORD = 0x0;
+            pub static FILE_NAME_OPENED: DWORD = 0x8;
+
+            pub static VOLUME_NAME_DOS: DWORD = 0x0;
+            pub static VOLUME_NAME_GUID: DWORD = 0x1;
+            pub static VOLUME_NAME_NONE: DWORD = 0x4;
+            pub static VOLUME_NAME_NT: DWORD = 0x2;
+
+            pub static GENERIC_READ: DWORD = 0x80000000;
+            pub static GENERIC_WRITE: DWORD = 0x40000000;
+            pub static GENERIC_EXECUTE: DWORD = 0x20000000;
+            pub static GENERIC_ALL: DWORD = 0x10000000;
+
+            pub static FILE_BEGIN: DWORD = 0;
+            pub static FILE_CURRENT: DWORD = 1;
+            pub static FILE_END: DWORD = 2;
         }
         pub mod sysconf {
         }
@@ -2873,18 +2995,26 @@ pub mod funcs {
     pub mod posix88 {
         #[nolink]
         pub mod stat_ {
-            use libc::types::os::common::posix01::stat;
-            use libc::types::os::arch::c95::{c_int, c_char};
+            use libc::types::os::common::posix01::{stat, utimbuf};
+            use libc::types::os::arch::c95::{c_int, c_char, wchar_t};
 
             extern {
                 #[link_name = "_chmod"]
                 pub fn chmod(path: *c_char, mode: c_int) -> c_int;
+                #[link_name = "_wchmod"]
+                pub fn wchmod(path: *wchar_t, mode: c_int) -> c_int;
                 #[link_name = "_mkdir"]
                 pub fn mkdir(path: *c_char) -> c_int;
+                #[link_name = "_wrmdir"]
+                pub fn wrmdir(path: *wchar_t) -> c_int;
                 #[link_name = "_fstat64"]
                 pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
                 #[link_name = "_stat64"]
                 pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                #[link_name = "_wstat64"]
+                pub fn wstat(path: *wchar_t, buf: *mut stat) -> c_int;
+                #[link_name = "_wutime64"]
+                pub fn wutime(file: *wchar_t, buf: *utimbuf) -> c_int;
             }
         }
 
@@ -2907,10 +3037,13 @@ pub mod funcs {
 
         #[nolink]
         pub mod fcntl {
-            use libc::types::os::arch::c95::{c_int, c_char};
+            use libc::types::os::arch::c95::{c_int, c_char, wchar_t};
             extern {
                 #[link_name = "_open"]
                 pub fn open(path: *c_char, oflag: c_int, mode: c_int)
+                            -> c_int;
+                #[link_name = "_wopen"]
+                pub fn wopen(path: *wchar_t, oflag: c_int, mode: c_int)
                             -> c_int;
                 #[link_name = "_creat"]
                 pub fn creat(path: *c_char, mode: c_int) -> c_int;
@@ -3079,8 +3212,11 @@ pub mod funcs {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
             use libc::types::os::arch::c95::{size_t};
+            use libc::types::os::arch::posix01::utimbuf;
             use libc::types::os::arch::posix88::{gid_t, off_t, pid_t};
             use libc::types::os::arch::posix88::{ssize_t, uid_t};
+
+            pub static _PC_NAME_MAX: c_int = 4;
 
             extern {
                 pub fn access(path: *c_char, amode: c_int) -> c_int;
@@ -3130,6 +3266,11 @@ pub mod funcs {
                 pub fn unlink(c: *c_char) -> c_int;
                 pub fn write(fd: c_int, buf: *c_void, count: size_t)
                              -> ssize_t;
+                pub fn pread(fd: c_int, buf: *c_void, count: size_t,
+                             offset: off_t) -> ssize_t;
+                pub fn pwrite(fd: c_int, buf: *c_void, count: size_t,
+                              offset: off_t) -> ssize_t;
+                pub fn utime(file: *c_char, buf: *utimbuf) -> c_int;
             }
         }
 
@@ -3201,7 +3342,7 @@ pub mod funcs {
         #[nolink]
         pub mod unistd {
             use libc::types::os::arch::c95::{c_char, c_int, size_t};
-            use libc::types::os::arch::posix88::{ssize_t};
+            use libc::types::os::arch::posix88::{ssize_t, off_t};
 
             extern {
                 pub fn readlink(path: *c_char,
@@ -3221,6 +3362,8 @@ pub mod funcs {
                 pub fn putenv(string: *c_char) -> c_int;
 
                 pub fn symlink(path1: *c_char, path2: *c_char) -> c_int;
+
+                pub fn ftruncate(fd: c_int, length: off_t) -> c_int;
             }
         }
 
@@ -3374,12 +3517,13 @@ pub mod funcs {
             use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE};
             use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCTSTR,
                                                LPTSTR, LPTCH, LPDWORD, LPVOID,
-                                               LPCVOID};
+                                               LPCVOID, LPOVERLAPPED};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
                                                LPPROCESS_INFORMATION,
                                                LPMEMORY_BASIC_INFORMATION,
                                                LPSYSTEM_INFO};
-            use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
+            use libc::types::os::arch::extra::{HANDLE, LPHANDLE, LARGE_INTEGER,
+                                               PLARGE_INTEGER};
 
             extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
@@ -3486,6 +3630,43 @@ pub mod funcs {
                                      dwNumberOfBytesToMap: SIZE_T)
                                      -> LPVOID;
                 pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
+                pub fn MoveFileExW(lpExistingFileName: LPCWSTR,
+                                   lpNewFileName: LPCWSTR,
+                                   dwFlags: DWORD) -> BOOL;
+                pub fn CreateSymbolicLinkW(lpSymlinkFileName: LPCWSTR,
+                                           lpTargetFileName: LPCWSTR,
+                                           dwFlags: DWORD) -> BOOL;
+                pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
+                                       lpTargetFileName: LPCWSTR,
+                                       lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                                        -> BOOL;
+                pub fn FlushFileBuffers(hFile: HANDLE) -> BOOL;
+                pub fn CreateFileW(lpFileName: LPCWSTR,
+                                   dwDesiredAccess: DWORD,
+                                   dwShareMode: DWORD,
+                                   lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+                                   dwCreationDisposition: DWORD,
+                                   dwFlagsAndAttributes: DWORD,
+                                   hTemplateFile: HANDLE) -> HANDLE;
+                pub fn GetFinalPathNameByHandleW(hFile: HANDLE,
+                                                 lpszFilePath: LPCWSTR,
+                                                 cchFilePath: DWORD,
+                                                 dwFlags: DWORD) -> DWORD;
+                pub fn ReadFile(hFile: HANDLE,
+                                lpBuffer: LPVOID,
+                                nNumberOfBytesToRead: DWORD,
+                                lpNumberOfBytesRead: LPDWORD,
+                                lpOverlapped: LPOVERLAPPED) -> BOOL;
+                pub fn WriteFile(hFile: HANDLE,
+                                 lpBuffer: LPVOID,
+                                 nNumberOfBytesToRead: DWORD,
+                                 lpNumberOfBytesRead: LPDWORD,
+                                 lpOverlapped: LPOVERLAPPED) -> BOOL;
+                pub fn SetFilePointerEx(hFile: HANDLE,
+                                        liDistanceToMove: LARGE_INTEGER,
+                                        lpNewFilePointer: PLARGE_INTEGER,
+                                        dwMoveMethod: DWORD) -> BOOL;
+                pub fn SetEndOfFile(hFile: HANDLE) -> BOOL;
             }
         }
 
