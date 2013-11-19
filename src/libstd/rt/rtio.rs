@@ -230,6 +230,7 @@ pub trait RtioTTY {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
     fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
     fn get_winsize(&mut self) -> Result<(int, int), IoError>;
+    fn isatty(&self) -> bool;
 }
 
 pub trait PausibleIdleCallback {
