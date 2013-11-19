@@ -240,7 +240,7 @@ impl<'self> Buffer for BufReader<'self> {
 
 ///Calls a function with a MemWriter and returns
 ///the writer's stored vector.
-pub fn with_mem_writer(writeFn:&fn(&mut MemWriter)) -> ~[u8] {
+pub fn with_mem_writer(writeFn: |&mut MemWriter|) -> ~[u8] {
     let mut writer = MemWriter::new();
     writeFn(&mut writer);
     writer.inner()

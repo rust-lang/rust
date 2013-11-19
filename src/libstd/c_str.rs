@@ -117,7 +117,7 @@ impl CString {
     /// # Failure
     ///
     /// Fails if the CString is null.
-    pub fn with_ref<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    pub fn with_ref<T>(&self, f: |*libc::c_char| -> T) -> T {
         if self.buf.is_null() { fail!("CString is null!"); }
         f(self.buf)
     }
@@ -127,7 +127,7 @@ impl CString {
     /// # Failure
     ///
     /// Fails if the CString is null.
-    pub fn with_mut_ref<T>(&mut self, f: &fn(*mut libc::c_char) -> T) -> T {
+    pub fn with_mut_ref<T>(&mut self, f: |*mut libc::c_char| -> T) -> T {
         if self.buf.is_null() { fail!("CString is null!"); }
         f(unsafe { cast::transmute_mut_unsafe(self.buf) })
     }
@@ -223,13 +223,13 @@ pub trait ToCStr {
     ///
     /// Raises the `null_byte` condition if the receiver has an interior null.
     #[inline]
-    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
         self.to_c_str().with_ref(f)
     }
 
     /// Unsafe variant of `with_c_str()` that doesn't check for nulls.
     #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    unsafe fn with_c_str_unchecked<T>(&self, f: |*libc::c_char| -> T) -> T {
         self.to_c_str_unchecked().with_ref(f)
     }
 }
@@ -246,12 +246,12 @@ impl<'self> ToCStr for &'self str {
     }
 
     #[inline]
-    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
         self.as_bytes().with_c_str(f)
     }
 
     #[inline]
-    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    unsafe fn with_c_str_unchecked<T>(&self, f: |*libc::c_char| -> T) -> T {
         self.as_bytes().with_c_str_unchecked(f)
     }
 }
@@ -282,17 +282,17 @@ impl<'self> ToCStr for &'self [u8] {
         }
     }
 
-    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
         unsafe { with_c_str(*self, true, f) }
     }
 
-    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+    unsafe fn with_c_str_unchecked<T>(&self, f: |*libc::c_char| -> T) -> T {
         with_c_str(*self, false, f)
     }
 }
 
 // Unsafe function that handles possibly copying the &[u8] into a stack array.
-unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: &fn(*libc::c_char) -> T) -> T {
+unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
     if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
         vec::bytes::copy_memory(buf, v, v.len());
@@ -357,7 +357,7 @@ impl<'self> Iterator<libc::c_char> for CStringIterator<'self> {
 /// is found, and the number of strings found is returned.
 pub unsafe fn from_c_multistring(buf: *libc::c_char,
                                  count: Option<uint>,
-                                 f: &fn(&CString)) -> uint {
+                                 f: |&CString|) -> uint {
 
     let mut curr_ptr: uint = buf as uint;
     let mut ctr = 0;

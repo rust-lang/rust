@@ -107,9 +107,8 @@ mod imp {
         })
     }
 
-    fn with_lock<T>(f: &fn() -> T) -> T {
+    fn with_lock<T>(f: || -> T) -> T {
         static mut lock: Mutex = MUTEX_INIT;
-
         do (|| {
             unsafe {
                 lock.lock();

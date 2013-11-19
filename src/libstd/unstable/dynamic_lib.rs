@@ -153,10 +153,9 @@ pub mod dl {
         dlopen(ptr::null(), Lazy as libc::c_int)
     }
 
-    pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
         use unstable::mutex::{Mutex, MUTEX_INIT};
         static mut lock: Mutex = MUTEX_INIT;
-
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence. `atomically` asserts that we don't do anything that
@@ -225,7 +224,7 @@ pub mod dl {
         handle
     }
 
-    pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
         unsafe {
             do atomically {
                 SetLastError(0);

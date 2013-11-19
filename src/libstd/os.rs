@@ -94,7 +94,7 @@ pub mod win32 {
     use os::TMPBUF_SZ;
     use libc::types::os::arch::extra::DWORD;
 
-    pub fn fill_utf16_buf_and_decode(f: &fn(*mut u16, DWORD) -> DWORD)
+    pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
         -> Option<~str> {
 
         unsafe {
@@ -125,7 +125,7 @@ pub mod win32 {
         }
     }
 
-    pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
+    pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
@@ -137,7 +137,7 @@ pub mod win32 {
 Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
-fn with_env_lock<T>(f: &fn() -> T) -> T {
+fn with_env_lock<T>(f: || -> T) -> T {
     use unstable::mutex::{Mutex, MUTEX_INIT};
     use unstable::finally::Finally;
 

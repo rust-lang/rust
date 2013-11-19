@@ -73,7 +73,7 @@ mod tests {
     fn synthesize_closure() {
         unsafe {
             let x = 10;
-            let f: &fn(int) -> int = |y| x + y;
+            let f: |int| -> int = |y| x + y;
 
             assert_eq!(f(20), 30);
 
@@ -87,7 +87,7 @@ mod tests {
                 env: environment
             };
 
-            let new_f: &fn(int) -> int = cast::transmute(new_closure);
+            let new_f: |int| -> int = cast::transmute(new_closure);
             assert_eq!(new_f(20), 30);
         }
     }

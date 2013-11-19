@@ -40,7 +40,7 @@ fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
     }
 }
 
-fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
+fn swap_task_borrow_list(f: |~[BorrowRecord]| -> ~[BorrowRecord]) {
     let borrows = match try_take_task_borrow_list() {
         Some(l) => l,
         None => ~[]

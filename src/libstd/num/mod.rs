@@ -108,7 +108,7 @@ pub trait Unsigned: Num {}
 /// ```
 ///
 pub trait Times {
-    fn times(&self, it: &fn());
+    fn times(&self, it: ||);
 }
 
 pub trait Integer: Num

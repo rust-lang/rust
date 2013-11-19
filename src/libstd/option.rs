@@ -147,7 +147,7 @@ impl<T> Option<T> {
 
     /// Returns the contained value or computes it from a closure
     #[inline]
-    pub fn unwrap_or_else(self, f: &fn() -> T) -> T {
+    pub fn unwrap_or_else(self, f: || -> T) -> T {
         match self {
             Some(x) => x,
             None => f()
@@ -160,19 +160,19 @@ impl<T> Option<T> {
 
     /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value.
     #[inline]
-    pub fn map<U>(self, f: &fn(T) -> U) -> Option<U> {
+    pub fn map<U>(self, f: |T| -> U) -> Option<U> {
         match self { Some(x) => Some(f(x)), None => None }
     }
 
     /// Applies a function to the contained value or returns a default.
     #[inline]
-    pub fn map_default<U>(self, def: U, f: &fn(T) -> U) -> U {
+    pub fn map_default<U>(self, def: U, f: |T| -> U) -> U {
         match self { None => def, Some(t) => f(t) }
     }
 
     /// Apply a function to the contained value or do nothing.
     /// Returns true if the contained value was mutated.
-    pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
+    pub fn mutate(&mut self, f: |T| -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
             true
@@ -181,7 +181,7 @@ impl<T> Option<T> {
 
     /// Apply a function to the contained value or set it to a default.
     /// Returns true if the contained value was mutated, or false if set to the default.
-    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) -> bool {
+    pub fn mutate_default(&mut self, def: T, f: |T| -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
             true
@@ -235,7 +235,7 @@ impl<T> Option<T> {
     /// Returns `None` if the option is `None`, otherwise calls `f` with the
     /// wrapped value and returns the result.
     #[inline]
-    pub fn and_then<U>(self, f: &fn(T) -> Option<U>) -> Option<U> {
+    pub fn and_then<U>(self, f: |T| -> Option<U>) -> Option<U> {
         match self {
             Some(x) => f(x),
             None => None,
@@ -254,7 +254,7 @@ impl<T> Option<T> {
     /// Returns the option if it contains a value, otherwise calls `f` and
     /// returns the result.
     #[inline]
-    pub fn or_else(self, f: &fn() -> Option<T>) -> Option<T> {
+    pub fn or_else(self, f: || -> Option<T>) -> Option<T> {
         match self {
             Some(_) => self,
             None => f(),
@@ -273,7 +273,7 @@ impl<T> Option<T> {
 
     /// Filters an optional value using a given function.
     #[inline(always)]
-    pub fn filtered(self, f: &fn(t: &T) -> bool) -> Option<T> {
+    pub fn filtered(self, f: |t: &T| -> bool) -> Option<T> {
         match self {
             Some(x) => if(f(&x)) {Some(x)} else {None},
             None => None
@@ -282,7 +282,7 @@ impl<T> Option<T> {
 
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
-    pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
+    pub fn while_some(self, blk: |v: T| -> Option<T>) {
         let mut opt = self;
         while opt.is_some() {
             opt = blk(opt.unwrap());

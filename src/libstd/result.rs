@@ -143,7 +143,7 @@ impl<T, E: ToStr> Result<T, E> {
     ///         parse_bytes(buf)
     ///     }
     #[inline]
-    pub fn map<U>(self, op: &fn(T) -> U) -> Result<U,E> {
+    pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
         match self {
           Ok(t) => Ok(op(t)),
           Err(e) => Err(e)
@@ -156,7 +156,7 @@ impl<T, E: ToStr> Result<T, E> {
     /// This function can be used to pass through a successful result while handling
     /// an error.
     #[inline]
-    pub fn map_err<F>(self, op: &fn(E) -> F) -> Result<T,F> {
+    pub fn map_err<F>(self, op: |E| -> F) -> Result<T,F> {
         match self {
           Ok(t) => Ok(t),
           Err(e) => Err(op(e))
@@ -208,7 +208,7 @@ impl<T, E: ToStr> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values
     #[inline]
-    pub fn and_then<U>(self, op: &fn(T) -> Result<U, E>) -> Result<U, E> {
+    pub fn and_then<U>(self, op: |T| -> Result<U, E>) -> Result<U, E> {
         match self {
             Ok(t) => op(t),
             Err(e) => Err(e),
@@ -228,7 +228,7 @@ impl<T, E: ToStr> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values
     #[inline]
-    pub fn or_else<F>(self, op: &fn(E) -> Result<T, F>) -> Result<T, F> {
+    pub fn or_else<F>(self, op: |E| -> Result<T, F>) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
             Err(e) => op(e),
@@ -378,12 +378,14 @@ pub fn collect<T, E, Iter: Iterator<Result<T, E>>>(mut iterator: Iter)
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.
 #[inline]
-pub fn fold<T, V, E,
+pub fn fold<T,
+            V,
+            E,
             Iter: Iterator<Result<T, E>>>(
             mut iterator: Iter,
             mut init: V,
-            f: &fn(V, T) -> V)
-         -> Result<V, E> {
+            f: |V, T| -> V)
+            -> Result<V, E> {
     for t in iterator {
         match t {
             Ok(v) => init = f(init, v),
@@ -399,9 +401,7 @@ pub fn fold<T, V, E,
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, a simple `Ok(())` is returned.
 #[inline]
-pub fn fold_<T, E, Iter: Iterator<Result<T, E>>>(
-             iterator: Iter)
-          -> Result<(), E> {
+pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
     fold(iterator, (), |_, _| ())
 }
 

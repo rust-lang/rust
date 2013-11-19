@@ -54,8 +54,7 @@ impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
     }
 }
 
-pub fn u64_to_le_bytes<T>(n: u64, size: uint,
-                          f: &fn(v: &[u8]) -> T) -> T {
+pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
@@ -88,8 +87,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint,
     }
 }
 
-pub fn u64_to_be_bytes<T>(n: u64, size: uint,
-                           f: &fn(v: &[u8]) -> T) -> T {
+pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
