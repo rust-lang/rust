@@ -213,7 +213,7 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-tasks.md:102
 msgid ""
-"The `spawn` function has a very simple type signature: `fn spawn(f: ~fn())`. "
+"The `spawn` function has a very simple type signature: `fn spawn(f: proc())`. "
 "Because it accepts only owned closures, and owned closures contain only "
 "owned data, `spawn` can safely move the entire closure and all its "
 "associated state into an entirely different task for execution. Like any "

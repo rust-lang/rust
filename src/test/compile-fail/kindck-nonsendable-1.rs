@@ -14,7 +14,7 @@ fn foo(_x: @uint) {}
 
 fn main() {
     let x = @3u;
-    let _: ~fn() = || foo(x); //~ ERROR does not fulfill `Send`
-    let _: ~fn() = || foo(x); //~ ERROR does not fulfill `Send`
-    let _: ~fn() = || foo(x); //~ ERROR does not fulfill `Send`
+    let _: proc() = || foo(x); //~ ERROR does not fulfill `Send`
+    let _: proc() = || foo(x); //~ ERROR does not fulfill `Send`
+    let _: proc() = || foo(x); //~ ERROR does not fulfill `Send`
 }

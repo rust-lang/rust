@@ -13,13 +13,13 @@ use std::task;
 
 pub fn main() { test05(); }
 
-fn test05_start(f: ~fn(int)) {
+fn test05_start(f: proc(int)) {
     f(22);
 }
 
 fn test05() {
     let three = ~3;
-    let fn_to_send: ~fn(int) = |n| {
+    let fn_to_send: proc(int) = |n| {
         error!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
