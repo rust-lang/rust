@@ -185,19 +185,20 @@ impl<N,E> Graph<N,E> {
     ///////////////////////////////////////////////////////////////////////////
     // Iterating over nodes, edges
 
-    pub fn each_node(&self, f: &fn(NodeIndex, &Node<N>) -> bool) -> bool {
+    pub fn each_node(&self, f: |NodeIndex, &Node<N>| -> bool) -> bool {
         //! Iterates over all edges defined in the graph.
         self.nodes.iter().enumerate().advance(|(i, node)| f(NodeIndex(i), node))
     }
 
-    pub fn each_edge(&self, f: &fn(EdgeIndex, &Edge<E>) -> bool) -> bool {
+    pub fn each_edge(&self, f: |EdgeIndex, &Edge<E>| -> bool) -> bool {
         //! Iterates over all edges defined in the graph
         self.edges.iter().enumerate().advance(|(i, edge)| f(EdgeIndex(i), edge))
     }
 
     pub fn each_outgoing_edge(&self,
                               source: NodeIndex,
-                              f: &fn(EdgeIndex, &Edge<E>) -> bool) -> bool {
+                              f: |EdgeIndex, &Edge<E>| -> bool)
+                              -> bool {
         //! Iterates over all outgoing edges from the node `from`
 
         self.each_adjacent_edge(source, Outgoing, f)
@@ -205,7 +206,8 @@ impl<N,E> Graph<N,E> {
 
     pub fn each_incoming_edge(&self,
                               target: NodeIndex,
-                              f: &fn(EdgeIndex, &Edge<E>) -> bool) -> bool {
+                              f: |EdgeIndex, &Edge<E>| -> bool)
+                              -> bool {
         //! Iterates over all incoming edges to the node `target`
 
         self.each_adjacent_edge(target, Incoming, f)
@@ -214,7 +216,8 @@ impl<N,E> Graph<N,E> {
     pub fn each_adjacent_edge(&self,
                               node: NodeIndex,
                               dir: Direction,
-                              f: &fn(EdgeIndex, &Edge<E>) -> bool) -> bool {
+                              f: |EdgeIndex, &Edge<E>| -> bool)
+                              -> bool {
         //! Iterates over all edges adjacent to the node `node`
         //! in the direction `dir` (either `Outgoing` or `Incoming)
 
@@ -239,9 +242,10 @@ impl<N,E> Graph<N,E> {
     // computation.
 
     pub fn iterate_until_fixed_point(&self,
-                                     op: &fn(iter_index: uint,
-                                             edge_index: EdgeIndex,
-                                             edge: &Edge<E>) -> bool) {
+                                     op: |iter_index: uint,
+                                          edge_index: EdgeIndex,
+                                          edge: &Edge<E>|
+                                          -> bool) {
         let mut iteration = 0;
         let mut changed = true;
         while changed {
@@ -254,7 +258,7 @@ impl<N,E> Graph<N,E> {
     }
 }
 
-pub fn each_edge_index(max_edge_index: EdgeIndex, f: &fn(EdgeIndex) -> bool) {
+pub fn each_edge_index(max_edge_index: EdgeIndex, f: |EdgeIndex| -> bool) {
     let mut i = 0;
     let n = *max_edge_index;
     while i < n {

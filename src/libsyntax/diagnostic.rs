@@ -347,9 +347,11 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
     }
 }
 
-pub fn expect<T:Clone>(diag: @mut span_handler,
-                       opt: Option<T>,
-                       msg: &fn() -> ~str) -> T {
+pub fn expect<T:Clone>(
+              diag: @mut span_handler,
+              opt: Option<T>,
+              msg: || -> ~str)
+              -> T {
     match opt {
        Some(ref t) => (*t).clone(),
        None => diag.handler().bug(msg()),

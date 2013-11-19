@@ -282,15 +282,14 @@ pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     }
 }
 
-pub fn require_same_types(
-    tcx: ty::ctxt,
-    maybe_infcx: Option<@mut infer::InferCtxt>,
-    t1_is_expected: bool,
-    span: Span,
-    t1: ty::t,
-    t2: ty::t,
-    msg: &fn() -> ~str) -> bool {
-
+pub fn require_same_types(tcx: ty::ctxt,
+                          maybe_infcx: Option<@mut infer::InferCtxt>,
+                          t1_is_expected: bool,
+                          span: Span,
+                          t1: ty::t,
+                          t2: ty::t,
+                          msg: || -> ~str)
+                          -> bool {
     let l_tcx;
     let l_infcx;
     match maybe_infcx {

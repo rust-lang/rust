@@ -331,7 +331,7 @@ pub fn synth_comment(s: @ps, text: ~str) {
     word(s.s, "*/");
 }
 
-pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T)) {
+pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: |@ps, &T|) {
     box(s, 0u, b);
     let mut first = true;
     for elt in elts.iter() {
@@ -342,8 +342,12 @@ pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T)) {
 }
 
 
-pub fn commasep_cmnt<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T),
-                               get_span: &fn(&T) -> codemap::Span) {
+pub fn commasep_cmnt<T>(
+                     s: @ps,
+                     b: breaks,
+                     elts: &[T],
+                     op: |@ps, &T|,
+                     get_span: |&T| -> codemap::Span) {
     box(s, 0u, b);
     let len = elts.len();
     let mut i = 0u;
@@ -2289,7 +2293,7 @@ pub fn print_string(s: @ps, st: &str, style: ast::StrStyle) {
     word(s.s, st);
 }
 
-pub fn to_str<T>(t: &T, f: &fn(@ps, &T), intr: @ident_interner) -> ~str {
+pub fn to_str<T>(t: &T, f: |@ps, &T|, intr: @ident_interner) -> ~str {
     let wr = @mut MemWriter::new();
     let s = rust_printer(wr as @mut io::Writer, intr);
     f(s, t);

@@ -925,7 +925,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// # Failures
 ///
 /// * Fails on invalid utf-16 data
-pub fn utf16_chars(v: &[u16], f: &fn(char)) {
+pub fn utf16_chars(v: &[u16], f: |char|) {
     let len = v.len();
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
@@ -1762,7 +1762,7 @@ pub trait StrSlice<'self> {
     /// Work with the byte buffer and length of a slice.
     ///
     /// The buffer does not have a null terminator.
-    fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T;
+    fn as_imm_buf<T>(&self, f: |*u8, uint| -> T) -> T;
 }
 
 impl<'self> StrSlice<'self> for &'self str {
@@ -2268,7 +2268,7 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     #[inline]
-    fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T {
+    fn as_imm_buf<T>(&self, f: |*u8, uint| -> T) -> T {
         let v: &[u8] = unsafe { cast::transmute(*self) };
         v.as_imm_buf(f)
     }
@@ -2355,7 +2355,7 @@ pub trait OwnedStr {
     ///
     /// The caller must make sure any mutations to this buffer keep the string
     /// valid UTF-8!
-    fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T;
+    fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T;
 }
 
 impl OwnedStr for ~str {
@@ -2456,7 +2456,7 @@ impl OwnedStr for ~str {
     }
 
     #[inline]
-    fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T {
+    fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T {
         unsafe {
             raw::as_owned_vec(self).as_mut_buf(f)
         }

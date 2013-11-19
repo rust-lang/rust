@@ -845,14 +845,12 @@ impl ebml_writer_helpers for writer::Encoder {
 }
 
 trait write_tag_and_id {
-    fn tag(&mut self, tag_id: c::astencode_tag, f: &fn(&mut Self));
+    fn tag(&mut self, tag_id: c::astencode_tag, f: |&mut Self|);
     fn id(&mut self, id: ast::NodeId);
 }
 
 impl write_tag_and_id for writer::Encoder {
-    fn tag(&mut self,
-           tag_id: c::astencode_tag,
-           f: &fn(&mut writer::Encoder)) {
+    fn tag(&mut self, tag_id: c::astencode_tag, f: |&mut writer::Encoder|) {
         self.start_tag(tag_id as uint);
         f(self);
         self.end_tag();

@@ -33,7 +33,7 @@ use vec;
 #[cfg(windows)] use ptr;
 #[cfg(windows)] use str;
 
-fn keep_going(data: &[u8], f: &fn(*u8, uint) -> i64) -> i64 {
+fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
     #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
 

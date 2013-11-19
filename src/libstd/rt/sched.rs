@@ -556,7 +556,7 @@ impl Scheduler {
 
     pub fn change_task_context(mut ~self,
                                next_task: ~Task,
-                               f: &fn(&mut Scheduler, ~Task)) {
+                               f: |&mut Scheduler, ~Task|) {
         // The current task is grabbed from TLS, not taken as an input.
         // Doing an unsafe_take to avoid writing back a null pointer -
         // We're going to call `put` later to do that.
@@ -568,8 +568,8 @@ impl Scheduler {
 
         // These transmutes do something fishy with a closure.
         let f_fake_region = unsafe {
-            transmute::<&fn(&mut Scheduler, ~Task),
-                        &fn(&mut Scheduler, ~Task)>(f)
+            transmute::<|&mut Scheduler, ~Task|,
+                        |&mut Scheduler, ~Task|>(f)
         };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
 
@@ -678,7 +678,7 @@ impl Scheduler {
     /// in order to prevent that fn from performing further scheduling operations.
     /// Doing further scheduling could easily result in infinite recursion.
     pub fn deschedule_running_task_and_then(mut ~self,
-                                            f: &fn(&mut Scheduler, BlockedTask)) {
+                                            f: |&mut Scheduler, BlockedTask|) {
         // Trickier - we need to get the scheduler task out of self
         // and use it as the destination.
         let stask = self.sched_task.take_unwrap();
@@ -687,7 +687,7 @@ impl Scheduler {
     }
 
     pub fn switch_running_tasks_and_then(~self, next_task: ~Task,
-                                         f: &fn(&mut Scheduler, BlockedTask)) {
+                                         f: |&mut Scheduler, BlockedTask|) {
         // This is where we convert the BlockedTask-taking closure into one
         // that takes just a Task, and is aware of the block-or-killed protocol.
         do self.change_task_context(next_task) |sched, task| {
@@ -829,18 +829,18 @@ impl CleanupJob {
     }
 }
 
-// XXX: Some hacks to put a &fn in Scheduler without borrowck
+// XXX: Some hacks to put a || closure in Scheduler without borrowck
 // complaining
 type UnsafeTaskReceiver = raw::Closure;
 trait ClosureConverter {
-    fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
-    fn to_fn(self) -> &fn(&mut Scheduler, ~Task);
+    fn from_fn(|&mut Scheduler, ~Task|) -> Self;
+    fn to_fn(self) -> |&mut Scheduler, ~Task|;
 }
 impl ClosureConverter for UnsafeTaskReceiver {
-    fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver {
+    fn from_fn(f: |&mut Scheduler, ~Task|) -> UnsafeTaskReceiver {
         unsafe { transmute(f) }
     }
-    fn to_fn(self) -> &fn(&mut Scheduler, ~Task) { unsafe { transmute(self) } }
+    fn to_fn(self) -> |&mut Scheduler, ~Task| { unsafe { transmute(self) } }
 }
 
 // On unix, we read randomness straight from /dev/urandom, but the

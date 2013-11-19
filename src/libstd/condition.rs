@@ -133,7 +133,7 @@ impl<T, U> Condition<T, U> {
 
     /// Performs the same functionality as `raise`, except that when no handler
     /// is found the `default` argument is called instead of failing the task.
-    pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
+    pub fn raise_default(&self, t: T, default: || -> U) -> U {
         match local_data::pop(self.key) {
             None => {
                 debug!("Condition.raise: found no handler");
@@ -145,7 +145,7 @@ impl<T, U> Condition<T, U> {
                     None => {}
                     Some(hp) => local_data::set(self.key, hp)
                 }
-                let handle : &fn(T) -> U = unsafe {
+                let handle : |T| -> U = unsafe {
                     ::cast::transmute(handler.handle)
                 };
                 let u = handle(t);

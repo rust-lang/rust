@@ -533,7 +533,7 @@ impl BorrowckCtxt {
     pub fn cat_pattern(&self,
                        cmt: mc::cmt,
                        pat: @ast::Pat,
-                       op: &fn(mc::cmt, @ast::Pat)) {
+                       op: |mc::cmt, @ast::Pat|) {
         let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }

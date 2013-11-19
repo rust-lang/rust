@@ -636,7 +636,7 @@ pub fn is_item_impl(item: @ast::item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
+pub fn walk_pat(pat: @Pat, it: |@Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
     }
@@ -665,7 +665,7 @@ pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    fn each_view_item(&self, f: &fn(&ast::view_item) -> bool) -> bool;
+    fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool;
 }
 
 struct EachViewItemData<'self> {
@@ -679,7 +679,7 @@ impl<'self> Visitor<()> for EachViewItemData<'self> {
 }
 
 impl EachViewItem for ast::Crate {
-    fn each_view_item(&self, f: &fn(&ast::view_item) -> bool) -> bool {
+    fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool {
         let mut visit = EachViewItemData {
             callback: f,
         };

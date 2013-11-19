@@ -132,7 +132,7 @@ use util;
  * Creates an owned vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
+pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
         let p = raw::to_mut_ptr(v);
@@ -211,7 +211,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
  *             onto the vector being constructed.
  */
 #[inline]
-pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
+pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
     let mut vec = with_capacity(size.unwrap_or(4));
     builder(|x| vec.push(x));
     vec
@@ -338,7 +338,7 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
  * Apply a function to each element of a vector and return a concatenation
  * of each result vector
  */
-pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
+pub fn flat_map<T, U>(v: &[T], f: |t: &T| -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for elem in v.iter() { result.push_all_move(f(elem)); }
     result
@@ -946,7 +946,7 @@ pub trait ImmutableVector<'self, T> {
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
      */
-    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
+    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U];
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
@@ -961,12 +961,12 @@ pub trait ImmutableVector<'self, T> {
      * Returns the index where the comparator returned `Equal`, or `None` if
      * not found.
      */
-    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint>;
+    fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
 
     /// Deprecated, use iterators where possible
     /// (`self.iter().map(f)`). Apply a function to each element
     /// of a vector and return the results.
-    fn map<U>(&self, &fn(t: &T) -> U) -> ~[U];
+    fn map<U>(&self, |t: &T| -> U) -> ~[U];
 
     /**
      * Work with the buffer of a vector.
@@ -974,7 +974,7 @@ pub trait ImmutableVector<'self, T> {
      * Allows for unsafe manipulation of vector contents, which is useful for
      * foreign interop.
      */
-    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U;
+    fn as_imm_buf<U>(&self, f: |*T, uint| -> U) -> U;
 }
 
 impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
@@ -1104,7 +1104,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U] {
+    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U] {
         flat_map(*self, f)
     }
 
@@ -1113,7 +1113,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         self.repr().data.offset(index as int)
     }
 
-    fn bsearch(&self, f: &fn(&T) -> Ordering) -> Option<uint> {
+    fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint> {
         let mut base : uint = 0;
         let mut lim : uint = self.len();
 
@@ -1132,12 +1132,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         return None;
     }
 
-    fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
+    fn map<U>(&self, f: |t: &T| -> U) -> ~[U] {
         self.iter().map(f).collect()
     }
 
     #[inline]
-    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
+    fn as_imm_buf<U>(&self, f: |*T, uint| -> U) -> U {
         let s = self.repr();
         f(s.data, s.len)
     }
@@ -1212,7 +1212,7 @@ pub trait ImmutableCopyableVector<T> {
      * Partitions the vector into those that satisfies the predicate, and
      * those that do not.
      */
-    fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+    fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
     /// Returns the element at the given index, without doing bounds checking.
     unsafe fn unsafe_get(&self, elem: uint) -> T;
 
@@ -1223,7 +1223,7 @@ pub trait ImmutableCopyableVector<T> {
 
 impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
     #[inline]
-    fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
+    fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
         let mut rights = ~[];
 
@@ -1370,12 +1370,12 @@ pub trait OwnedVector<T> {
     /**
      * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
      */
-    fn retain(&mut self, f: &fn(t: &T) -> bool);
+    fn retain(&mut self, f: |t: &T| -> bool);
     /**
      * Partitions the vector into those that satisfies the predicate, and
      * those that do not.
      */
-    fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
+    fn partition(self, f: |&T| -> bool) -> (~[T], ~[T]);
 
     /**
      * Expands a vector in place, initializing the new elements to the result of
@@ -1389,7 +1389,7 @@ pub trait OwnedVector<T> {
      * * init_op - A function to call to retreive each appended element's
      *             value
      */
-    fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T);
+    fn grow_fn(&mut self, n: uint, op: |uint| -> T);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -1646,7 +1646,7 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe { raw::set_len(self, newlen); }
     }
 
-    fn retain(&mut self, f: &fn(t: &T) -> bool) {
+    fn retain(&mut self, f: |t: &T| -> bool) {
         let len = self.len();
         let mut deleted: uint = 0;
 
@@ -1664,7 +1664,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn partition(self, f: &fn(&T) -> bool) -> (~[T], ~[T]) {
+    fn partition(self, f: |&T| -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
         let mut rights = ~[];
 
@@ -1678,7 +1678,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
         (lefts, rights)
     }
-    fn grow_fn(&mut self, n: uint, op: &fn(uint) -> T) {
+    fn grow_fn(&mut self, n: uint, op: |uint| -> T) {
         let new_len = self.len() + n;
         self.reserve_at_least(new_len);
         let mut i: uint = 0u;
@@ -1919,7 +1919,7 @@ pub trait MutableVector<'self, T> {
     unsafe fn unsafe_set(self, index: uint, val: T);
 
     /// Similar to `as_imm_buf` but passing a `*mut T`
-    fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U;
+    fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U;
 }
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
@@ -2016,7 +2016,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    fn as_mut_buf<U>(self, f: &fn(*mut T, uint) -> U) -> U {
+    fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U {
         let Slice{ data, len } = self.repr();
         f(data as *mut T, len)
     }
@@ -2107,9 +2107,8 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
-    pub unsafe fn buf_as_slice<T,U>(p: *T,
-                                    len: uint,
-                                    f: &fn(v: &[T]) -> U) -> U {
+    pub unsafe fn buf_as_slice<T,U>(p: *T, len: uint, f: |v: &[T]| -> U)
+                               -> U {
         f(cast::transmute(Slice {
             data: p,
             len: len
@@ -2121,9 +2120,12 @@ pub mod raw {
      * not bytes).
      */
     #[inline]
-    pub unsafe fn mut_buf_as_slice<T,U>(p: *mut T,
-                                        len: uint,
-                                        f: &fn(v: &mut [T]) -> U) -> U {
+    pub unsafe fn mut_buf_as_slice<T,
+                                   U>(
+                                   p: *mut T,
+                                   len: uint,
+                                   f: |v: &mut [T]| -> U)
+                                   -> U {
         f(cast::transmute(Slice {
             data: p as *T,
             len: len

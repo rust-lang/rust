@@ -3619,15 +3619,15 @@ pub mod decompose {
         ('\U0001d185', '\U0001d189', 230), ('\U0001d18a', '\U0001d18b', 220),
         ('\U0001d1aa', '\U0001d1ad', 230), ('\U0001d242', '\U0001d244', 230)
     ];
-    pub fn canonical(c: char, i: &fn(char)) { d(c, i, false); }
+    pub fn canonical(c: char, i: |char|) { d(c, i, false); }
 
-    pub fn compatibility(c: char, i: &fn(char)) { d(c, i, true); }
+    pub fn compatibility(c: char, i: |char|) { d(c, i, true); }
 
     pub fn canonical_combining_class(c: char) -> u8 {
         bsearch_range_value_table(c, combining_class_table)
     }
 
-    fn d(c: char, i: &fn(char), k: bool) {
+    fn d(c: char, i: |char|, k: bool) {
         use iter::Iterator;
         if c <= '\x7f' { i(c); return; }
 

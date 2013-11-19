@@ -394,7 +394,7 @@ condition! {
 
 /// Helper for wrapper calls where you want to
 /// ignore any io_errors that might be raised
-pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
+pub fn ignore_io_error<T>(cb: || -> T) -> T {
     do io_error::cond.trap(|_| {
         // just swallow the error.. downstream users
         // who can make a decision based on a None result
@@ -407,7 +407,7 @@ pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
 /// Helper for catching an I/O error and wrapping it in a Result object. The
 /// return result will be the last I/O error that happened or the result of the
 /// closure if no error occurred.
-pub fn result<T>(cb: &fn() -> T) -> Result<T, IoError> {
+pub fn result<T>(cb: || -> T) -> Result<T, IoError> {
     let mut err = None;
     let ret = io_error::cond.trap(|e| {
         if err.is_none() {

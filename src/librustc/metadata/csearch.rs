@@ -44,7 +44,8 @@ pub fn get_type_param_count(cstore: @mut cstore::CStore, def: ast::DefId)
 /// Iterates over all the language items in the given crate.
 pub fn each_lang_item(cstore: @mut cstore::CStore,
                       cnum: ast::CrateNum,
-                      f: &fn(ast::NodeId, uint) -> bool) -> bool {
+                      f: |ast::NodeId, uint| -> bool)
+                      -> bool {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     decoder::each_lang_item(crate_data, f)
 }
@@ -52,8 +53,9 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 /// Iterates over each child of the given item.
 pub fn each_child_of_item(cstore: @mut cstore::CStore,
                           def_id: ast::DefId,
-                          callback: &fn(decoder::DefLike, ast::Ident,
-                                        ast::visibility)) {
+                          callback: |decoder::DefLike,
+                                     ast::Ident,
+                                     ast::visibility|) {
     let crate_data = cstore::get_crate_data(cstore, def_id.crate);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -68,9 +70,9 @@ pub fn each_child_of_item(cstore: @mut cstore::CStore,
 /// Iterates over each top-level crate item.
 pub fn each_top_level_item_of_crate(cstore: @mut cstore::CStore,
                                     cnum: ast::CrateNum,
-                                    callback: &fn(decoder::DefLike,
-                                                  ast::Ident,
-                                                  ast::visibility)) {
+                                    callback: |decoder::DefLike,
+                                               ast::Ident,
+                                               ast::visibility|) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -178,7 +180,7 @@ pub fn get_static_methods_if_impl(cstore: @mut cstore::CStore,
 
 pub fn get_item_attrs(cstore: @mut cstore::CStore,
                       def_id: ast::DefId,
-                      f: &fn(~[@ast::MetaItem])) {
+                      f: |~[@ast::MetaItem]|) {
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
     decoder::get_item_attrs(cdata, def_id.node, f)
 }
@@ -262,21 +264,21 @@ pub fn get_item_visibility(cstore: @mut cstore::CStore,
 
 pub fn each_impl(cstore: @mut cstore::CStore,
                  crate_num: ast::CrateNum,
-                 callback: &fn(ast::DefId)) {
+                 callback: |ast::DefId|) {
     let cdata = cstore::get_crate_data(cstore, crate_num);
     decoder::each_impl(cdata, callback)
 }
 
 pub fn each_implementation_for_type(cstore: @mut cstore::CStore,
                                     def_id: ast::DefId,
-                                    callback: &fn(ast::DefId)) {
+                                    callback: |ast::DefId|) {
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
     decoder::each_implementation_for_type(cdata, def_id.node, callback)
 }
 
 pub fn each_implementation_for_trait(cstore: @mut cstore::CStore,
                                      def_id: ast::DefId,
-                                     callback: &fn(ast::DefId)) {
+                                     callback: |ast::DefId|) {
     let cdata = cstore::get_crate_data(cstore, def_id.crate);
     decoder::each_implementation_for_trait(cdata, def_id.node, callback)
 }

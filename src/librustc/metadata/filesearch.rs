@@ -35,7 +35,7 @@ pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
 
 pub trait FileSearch {
     fn sysroot(&self) -> @Path;
-    fn for_each_lib_search_path(&self, f: &fn(&Path) -> FileMatch);
+    fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch);
     fn get_target_lib_path(&self) -> Path;
     fn get_target_lib_file_path(&self, file: &Path) -> Path;
 }
@@ -51,7 +51,8 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     }
     impl FileSearch for FileSearchImpl {
         fn sysroot(&self) -> @Path { self.sysroot }
-        fn for_each_lib_search_path(&self, f: &fn(&Path) -> FileMatch) {
+
+        fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
             let mut visited_dirs = HashSet::new();
             let mut found = false;
 

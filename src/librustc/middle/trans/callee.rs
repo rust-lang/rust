@@ -600,7 +600,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
                         call_info: Option<NodeInfo>,
                         callee_ty: ty::t,
                         ret_ty: ty::t,
-                        get_callee: &fn(@mut Block) -> Callee,
+                        get_callee: |@mut Block| -> Callee,
                         args: CallArgs,
                         dest: Option<expr::Dest>,
                         autoref_arg: AutorefArg)

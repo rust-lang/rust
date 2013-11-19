@@ -931,8 +931,10 @@ impl<'self> Formatter<'self> {
         }
     }
 
-    fn with_padding(&mut self, padding: uint,
-                    default: parse::Alignment, f: &fn(&mut Formatter)) {
+    fn with_padding(&mut self,
+                    padding: uint,
+                    default: parse::Alignment,
+                    f: |&mut Formatter|) {
         let align = match self.align {
             parse::AlignUnknown => default,
             parse::AlignLeft | parse::AlignRight => self.align

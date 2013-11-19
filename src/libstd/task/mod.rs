@@ -554,7 +554,7 @@ pub fn try<T:Send>(f: proc() -> T) -> Result<T, ~Any> {
 /* Lifecycle functions */
 
 /// Read the name of the current task.
-pub fn with_task_name<U>(blk: &fn(Option<&str>) -> U) -> U {
+pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
@@ -605,7 +605,7 @@ pub fn failing() -> bool {
  * }
  * ```
  */
-pub fn unkillable<U>(f: &fn() -> U) -> U {
+pub fn unkillable<U>(f: || -> U) -> U {
     use rt::task::Task;
 
     unsafe {
@@ -640,7 +640,7 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
  *    // Task is unkillable again
  * }
  */
-pub fn rekillable<U>(f: &fn() -> U) -> U {
+pub fn rekillable<U>(f: || -> U) -> U {
     use rt::task::Task;
 
     unsafe {
@@ -1201,7 +1201,7 @@ fn test_spawn_sched_blocking() {
 }
 
 #[cfg(test)]
-fn avoid_copying_the_body(spawnfn: &fn(v: proc())) {
+fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     let (p, ch) = stream::<uint>();
 
     let x = ~1;
