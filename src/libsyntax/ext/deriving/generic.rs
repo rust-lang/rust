@@ -1064,14 +1064,13 @@ Fold the fields. `use_foldl` controls whether this is done
 left-to-right (`true`) or right-to-left (`false`).
 */
 pub fn cs_fold(use_foldl: bool,
-               f: &fn(@ExtCtxt, Span,
-                      old: @Expr,
-                      self_f: @Expr,
-                      other_fs: &[@Expr]) -> @Expr,
+               f: |@ExtCtxt, Span, @Expr, @Expr, &[@Expr]| -> @Expr,
                base: @Expr,
                enum_nonmatch_f: EnumNonMatchFunc,
-               cx: @ExtCtxt, trait_span: Span,
-               substructure: &Substructure) -> @Expr {
+               cx: @ExtCtxt,
+               trait_span: Span,
+               substructure: &Substructure)
+               -> @Expr {
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
@@ -1104,10 +1103,12 @@ f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
 ~~~
 */
 #[inline]
-pub fn cs_same_method(f: &fn(@ExtCtxt, Span, ~[@Expr]) -> @Expr,
+pub fn cs_same_method(f: |@ExtCtxt, Span, ~[@Expr]| -> @Expr,
                       enum_nonmatch_f: EnumNonMatchFunc,
-                      cx: @ExtCtxt, trait_span: Span,
-                      substructure: &Substructure) -> @Expr {
+                      cx: @ExtCtxt,
+                      trait_span: Span,
+                      substructure: &Substructure)
+                      -> @Expr {
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
@@ -1136,11 +1137,13 @@ fields. `use_foldl` controls whether this is done left-to-right
 */
 #[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
-                           f: &fn(@ExtCtxt, Span, @Expr, @Expr) -> @Expr,
+                           f: |@ExtCtxt, Span, @Expr, @Expr| -> @Expr,
                            base: @Expr,
                            enum_nonmatch_f: EnumNonMatchFunc,
-                           cx: @ExtCtxt, trait_span: Span,
-                           substructure: &Substructure) -> @Expr {
+                           cx: @ExtCtxt,
+                           trait_span: Span,
+                           substructure: &Substructure)
+                           -> @Expr {
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {

@@ -559,11 +559,11 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // should each_key and each_value operate on shadowed
     // names? I think not.
     // delaying implementing this....
-    pub fn each_key (&self, _f: &fn (&K)->bool) {
+    pub fn each_key (&self, _f: |&K| -> bool) {
         fail!("unimplemented 2013-02-15T10:01");
     }
 
-    pub fn each_value (&self, _f: &fn (&V) -> bool) {
+    pub fn each_value (&self, _f: |&V| -> bool) {
         fail!("unimplemented 2013-02-15T10:02");
     }
 
@@ -601,7 +601,11 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // ... there are definitely some opportunities for abstraction
     // here that I'm ignoring. (e.g., manufacturing a predicate on
     // the maps in the chain, and using an abstract "find".
-    pub fn insert_into_frame(&mut self, key: K, ext: @V, n: K, pred: &fn(&@V)->bool) {
+    pub fn insert_into_frame(&mut self,
+                             key: K,
+                             ext: @V,
+                             n: K,
+                             pred: |&@V| -> bool) {
         match *self {
             BaseMapChain (~ref mut map) => {
                 if satisfies_pred(map,&n,pred) {
@@ -622,10 +626,12 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
 }
 
 // returns true if the binding for 'n' satisfies 'pred' in 'map'
-fn satisfies_pred<K : Eq + Hash + IterBytes,V>(map : &mut HashMap<K,V>,
-                                               n: &K,
-                                               pred: &fn(&V)->bool)
-    -> bool {
+fn satisfies_pred<K:Eq + Hash + IterBytes,
+                  V>(
+                  map: &mut HashMap<K,V>,
+                  n: &K,
+                  pred: |&V| -> bool)
+                  -> bool {
     match map.find(n) {
         Some(ref v) => (pred(*v)),
         None => false
@@ -637,7 +643,8 @@ mod test {
     use super::MapChain;
     use std::hashmap::HashMap;
 
-    #[test] fn testenv () {
+    #[test]
+    fn testenv() {
         let mut a = HashMap::new();
         a.insert (@"abc",@15);
         let m = MapChain::new(~a);
