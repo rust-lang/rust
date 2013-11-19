@@ -21,45 +21,59 @@
 //! FIXME #7756: This has a lot of C glue for lack of globals.
 
 use option::Option;
+#[cfg(test)] use option::{Some, None};
+#[cfg(test)] use realstd;
+#[cfg(test)] use realargs = realstd::rt::args;
 
 /// One-time global initialization.
-pub unsafe fn init(argc: int, argv: **u8) {
-    imp::init(argc, argv)
-}
+#[cfg(not(test))]
+pub unsafe fn init(argc: int, argv: **u8) { imp::init(argc, argv) }
+#[cfg(test)]
+pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 
 /// One-time global cleanup.
-pub fn cleanup() {
-    imp::cleanup()
-}
+#[cfg(not(test))] pub fn cleanup() { imp::cleanup() }
+#[cfg(test)]      pub fn cleanup() { realargs::cleanup() }
 
 /// Take the global arguments from global storage.
-pub fn take() -> Option<~[~str]> {
-    imp::take()
+#[cfg(not(test))] pub fn take() -> Option<~[~str]> { imp::take() }
+#[cfg(test)]      pub fn take() -> Option<~[~str]> {
+    match realargs::take() {
+        realstd::option::Some(a) => Some(a),
+        realstd::option::None => None,
+    }
 }
 
 /// Give the global arguments to global storage.
 ///
 /// It is an error if the arguments already exist.
-pub fn put(args: ~[~str]) {
-    imp::put(args)
-}
+#[cfg(not(test))] pub fn put(args: ~[~str]) { imp::put(args) }
+#[cfg(test)]      pub fn put(args: ~[~str]) { realargs::put(args) }
 
 /// Make a clone of the global arguments.
-pub fn clone() -> Option<~[~str]> {
-    imp::clone()
+#[cfg(not(test))] pub fn clone() -> Option<~[~str]> { imp::clone() }
+#[cfg(test)]      pub fn clone() -> Option<~[~str]> {
+    match realargs::clone() {
+        realstd::option::Some(a) => Some(a),
+        realstd::option::None => None,
+    }
 }
 
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 mod imp {
+    use cast;
     use libc;
     use option::{Option, Some, None};
     use iter::Iterator;
     use str;
     use unstable::finally::Finally;
+    use unstable::mutex::{Mutex, MUTEX_INIT};
     use util;
     use vec;
+
+    static mut global_args_ptr: uint = 0;
 
     pub unsafe fn init(argc: int, argv: **u8) {
         let args = load_argc_and_argv(argc, argv);
@@ -94,20 +108,22 @@ mod imp {
     }
 
     fn with_lock<T>(f: &fn() -> T) -> T {
+        static mut lock: Mutex = MUTEX_INIT;
+
         do (|| {
             unsafe {
-                rust_take_global_args_lock();
+                lock.lock();
                 f()
             }
         }).finally {
             unsafe {
-                rust_drop_global_args_lock();
+                lock.unlock();
             }
         }
     }
 
     fn get_global_ptr() -> *mut Option<~~[~str]> {
-        unsafe { rust_get_global_args_ptr() }
+        unsafe { cast::transmute(&global_args_ptr) }
     }
 
     // Copied from `os`.
@@ -115,12 +131,6 @@ mod imp {
         do vec::from_fn(argc as uint) |i| {
             str::raw::from_c_str(*(argv as **libc::c_char).offset(i as int))
         }
-    }
-
-    extern {
-        fn rust_take_global_args_lock();
-        fn rust_drop_global_args_lock();
-        fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>;
     }
 
     #[cfg(test)]

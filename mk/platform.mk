@@ -206,7 +206,7 @@ CFG_LIB_GLOB_arm-apple-darwin = lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_arm-apple-darwin = lib$(1)-*.dylib.dSYM
 CFG_GCCISH_CFLAGS_arm-apple-darwin := -Wall -Werror -g -fPIC $(CFG_IOS_FLAGS)
 CFG_GCCISH_CXXFLAGS_arm-apple-darwin := -fno-rtti $(CFG_IOS_FLAGS)
-CFG_GCCISH_LINK_FLAGS_arm-apple-darwin := -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind 
+CFG_GCCISH_LINK_FLAGS_arm-apple-darwin := -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind
 CFG_GCCISH_DEF_FLAG_arm-apple-darwin := -Wl,-exported_symbols_list,
 CFG_GCCISH_PRE_LIB_FLAGS_arm-apple-darwin :=
 CFG_GCCISH_POST_LIB_FLAGS_arm-apple-darwin :=
@@ -506,7 +506,7 @@ define CFG_MAKE_TOOLCHAIN
         -c -o $$(1) $$(2)
   CFG_LINK_C_$(1) = $$(CC_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)          \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1)))             \
+        $$(CFG_GCCISH_LINK_FLAGS_$(1))              \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)     \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
   CFG_COMPILE_CXX_$(1) = $$(CXX_$(1)) \
