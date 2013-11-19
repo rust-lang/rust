@@ -583,12 +583,12 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_fn(ref decl, _, _, _, ref body) => {
         let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
-        // FIXME(#5121) -- won't work for lifetimes that appear in type bounds
         let param_env = ty::construct_parameter_environment(
                 ccx.tcx,
                 None,
                 *fn_tpt.generics.type_param_defs,
                 [],
+                fn_tpt.generics.region_param_defs,
                 [],
                 body.id);
 
@@ -700,6 +700,7 @@ fn check_method_body(ccx: @mut CrateCtxt,
             *item_generics.type_param_defs,
             *method_generics.type_param_defs,
             item_generics.region_param_defs,
+            method_generics.region_param_defs,
             method.body.id);
 
     // Compute the self type and fty from point of view of inside fn

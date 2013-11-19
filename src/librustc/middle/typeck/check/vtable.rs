@@ -94,7 +94,6 @@ fn lookup_vtables(vcx: &VtableContext,
            location_info,
            type_param_defs.repr(vcx.tcx()),
            substs.repr(vcx.tcx()));
-    let _i = indenter();
 
     // We do this backwards for reasons discussed above.
     assert_eq!(substs.tps.len(), type_param_defs.len());
@@ -733,6 +732,7 @@ pub fn resolve_impl(ccx: @mut CrateCtxt,
         *impl_generics.type_param_defs,
         [],
         impl_generics.region_param_defs,
+        [],
         impl_item.id);
 
     let impl_trait_ref = @impl_trait_ref.subst(ccx.tcx, &param_env.free_substs);

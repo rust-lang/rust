@@ -395,7 +395,7 @@ impl<'self> LookupContext<'self> {
                                             substs: &ty::substs) {
         debug!("push_inherent_candidates_from_object(did={}, substs={})",
                self.did_to_str(did),
-               substs_to_str(self.tcx(), substs));
+               substs.repr(self.tcx()));
         let _indenter = indenter();
 
         // It is illegal to invoke a method on a trait instance that
@@ -507,7 +507,8 @@ impl<'self> LookupContext<'self> {
                     let cand = mk_cand(bound_trait_ref, method,
                                        pos, this_bound_idx);
 
-                    debug!("pushing inherent candidate for param: {:?}", cand);
+                    debug!("pushing inherent candidate for param: {}",
+                           cand.repr(self.tcx()));
                     self.inherent_candidates.push(cand);
                 }
                 None => {
@@ -877,8 +878,9 @@ impl<'self> LookupContext<'self> {
             let mut j = i + 1;
             while j < candidates.len() {
                 let candidate_b = &candidates[j];
-                debug!("attempting to merge {:?} and {:?}",
-                       candidate_a, candidate_b);
+                debug!("attempting to merge {} and {}",
+                       candidate_a.repr(self.tcx()),
+                       candidate_b.repr(self.tcx()));
                 let candidates_same = match (&candidate_a.origin,
                                              &candidate_b.origin) {
                     (&method_param(ref p1), &method_param(ref p2)) => {
@@ -919,7 +921,7 @@ impl<'self> LookupContext<'self> {
 
         debug!("confirm_candidate(expr={}, candidate={}, fty={})",
                self.expr.repr(tcx),
-               self.cand_to_str(candidate),
+               candidate.repr(self.tcx()),
                self.ty_to_str(fty));
 
         self.enforce_object_limitations(fty, candidate);
@@ -1171,7 +1173,7 @@ impl<'self> LookupContext<'self> {
     // candidate method's `self_ty`.
     fn is_relevant(&self, rcvr_ty: ty::t, candidate: &Candidate) -> bool {
         debug!("is_relevant(rcvr_ty={}, candidate={})",
-               self.ty_to_str(rcvr_ty), self.cand_to_str(candidate));
+               self.ty_to_str(rcvr_ty), candidate.repr(self.tcx()));
 
         return match candidate.method_ty.explicit_self {
             sty_static => {
@@ -1332,13 +1334,6 @@ impl<'self> LookupContext<'self> {
         self.fcx.infcx().ty_to_str(t)
     }
 
-    fn cand_to_str(&self, cand: &Candidate) -> ~str {
-        format!("Candidate(rcvr_ty={}, rcvr_substs={}, origin={:?})",
-             cand.rcvr_match_condition.repr(self.tcx()),
-             ty::substs_to_str(self.tcx(), &cand.rcvr_substs),
-             cand.origin)
-    }
-
     fn did_to_str(&self, did: DefId) -> ~str {
         ty::item_path_str(self.tcx(), did)
     }
@@ -1367,3 +1362,13 @@ impl Repr for RcvrMatchCondition {
         }
     }
 }
+
+impl Repr for Candidate {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        format!("Candidate(rcvr_ty={}, rcvr_substs={}, origin={:?})",
+                self.rcvr_match_condition.repr(tcx),
+                self.rcvr_substs.repr(tcx),
+                self.origin)
+    }
+}
+
