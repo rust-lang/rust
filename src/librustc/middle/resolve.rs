@@ -1538,10 +1538,10 @@ impl Resolver {
 
     /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(&mut self,
-                                                foreign_item: @foreign_item,
-                                                parent: ReducedGraphParent,
-                                                f: &fn(&mut Resolver,
-                                                       ReducedGraphParent)) {
+                                            foreign_item: @foreign_item,
+                                            parent: ReducedGraphParent,
+                                            f: |&mut Resolver,
+                                                ReducedGraphParent|) {
         let name = foreign_item.ident;
         let is_public = foreign_item.vis == ast::public;
         let (name_bindings, new_parent) =
@@ -3331,7 +3331,7 @@ impl Resolver {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope(&mut self, name: Option<Ident>, f: &fn(&mut Resolver)) {
+    fn with_scope(&mut self, name: Option<Ident>, f: |&mut Resolver|) {
         let orig_module = self.current_module;
 
         // Move down in the graph.
@@ -3692,8 +3692,8 @@ impl Resolver {
     }
 
     fn with_type_parameter_rib(&mut self,
-                                   type_parameters: TypeParameters,
-                                   f: &fn(&mut Resolver)) {
+                               type_parameters: TypeParameters,
+                               f: |&mut Resolver|) {
         match type_parameters {
             HasTypeParameters(generics, node_id, initial_index,
                               rib_kind) => {
@@ -3735,13 +3735,13 @@ impl Resolver {
         }
     }
 
-    fn with_label_rib(&mut self, f: &fn(&mut Resolver)) {
+    fn with_label_rib(&mut self, f: |&mut Resolver|) {
         self.label_ribs.push(@Rib::new(NormalRibKind));
         f(self);
         self.label_ribs.pop();
     }
 
-    fn with_constant_rib(&mut self, f: &fn(&mut Resolver)) {
+    fn with_constant_rib(&mut self, f: |&mut Resolver|) {
         self.value_ribs.push(@Rib::new(ConstantItemRibKind));
         self.type_ribs.push(@Rib::new(ConstantItemRibKind));
         f(self);
@@ -4888,7 +4888,7 @@ impl Resolver {
         }
     }
 
-    fn with_no_errors<T>(&mut self, f: &fn(&mut Resolver) -> T) -> T {
+    fn with_no_errors<T>(&mut self, f: |&mut Resolver| -> T) -> T {
         self.emit_errors = false;
         let rs = f(self);
         self.emit_errors = true;
@@ -4901,10 +4901,8 @@ impl Resolver {
         }
     }
 
-    fn find_best_match_for_name(&mut self,
-                                    name: &str,
-                                    max_distance: uint)
-                                    -> Option<@str> {
+    fn find_best_match_for_name(&mut self, name: &str, max_distance: uint)
+                                -> Option<@str> {
         let this = &mut *self;
 
         let mut maybes: ~[@str] = ~[];

@@ -2274,9 +2274,9 @@ fn populate_scope_map(cx: &mut CrateContext,
                       scope_span: Span,
                       scope_stack: &mut ~[ScopeStackEntry],
                       scope_map: &mut HashMap<ast::NodeId, DIScope>,
-                      inner_walk: &fn(&mut CrateContext,
-                                      &mut ~[ScopeStackEntry],
-                                      &mut HashMap<ast::NodeId, DIScope>)) {
+                      inner_walk: |&mut CrateContext,
+                                   &mut ~[ScopeStackEntry],
+                                   &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess.codemap.lookup_char_pos(scope_span.lo);
         let file_metadata = file_metadata(cx, loc.file.name);

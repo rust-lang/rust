@@ -30,7 +30,8 @@ struct AnnihilateStats {
 }
 
 unsafe fn each_live_alloc(read_next_before: bool,
-                          f: &fn(box: *mut raw::Box<()>, uniq: bool) -> bool) -> bool {
+                          f: |box: *mut raw::Box<()>, uniq: bool| -> bool)
+                          -> bool {
     //! Walks the internal list of allocations
 
     use managed;

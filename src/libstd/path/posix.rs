@@ -87,7 +87,7 @@ impl ToCStr for Path {
 
 impl IterBytes for Path {
     #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
+    fn iter_bytes(&self, lsb0: bool, f: |buf: &[u8]| -> bool) -> bool {
         self.repr.iter_bytes(lsb0, f)
     }
 }

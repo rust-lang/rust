@@ -124,9 +124,12 @@ fn decodable_substructure(cx: @ExtCtxt, span: Span,
 /// Create a decoder for a single enum variant/struct:
 /// - `outer_pat_ident` is the name of this enum variant/struct
 /// - `getarg` should retrieve the `uint`-th field with name `@str`.
-fn decode_static_fields(cx: @ExtCtxt, outer_span: Span, outer_pat_ident: Ident,
+fn decode_static_fields(cx: @ExtCtxt,
+                        outer_span: Span,
+                        outer_pat_ident: Ident,
                         fields: &StaticFields,
-                        getarg: &fn(Span, @str, uint) -> @Expr) -> @Expr {
+                        getarg: |Span, @str, uint| -> @Expr)
+                        -> @Expr {
     match *fields {
         Unnamed(ref fields) => {
             if fields.is_empty() {

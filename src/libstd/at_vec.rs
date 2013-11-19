@@ -43,7 +43,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
  *             onto the vector being constructed.
  */
 #[inline]
-pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> @[A] {
+pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> @[A] {
     let mut vec = @[];
     unsafe { raw::reserve(&mut vec, size.unwrap_or(4)); }
     builder(|x| unsafe { raw::push(&mut vec, x) });
@@ -68,7 +68,7 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
 
 
 /// Apply a function to each element of a vector and return the results
-pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
+pub fn map<T, U>(v: &[T], f: |x: &T| -> U) -> @[U] {
     do build(Some(v.len())) |push| {
         for elem in v.iter() {
             push(f(elem));
@@ -82,7 +82,7 @@ pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> @[T] {
+pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> @[T] {
     do build(Some(n_elts)) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }

@@ -79,9 +79,7 @@ fn next_byte(st: &mut PState) -> u8 {
     return b;
 }
 
-fn scan<R>(st: &mut PState, is_last: &fn(char) -> bool,
-           op: &fn(&[u8]) -> R) -> R
-{
+fn scan<R>(st: &mut PState, is_last: |char| -> bool, op: |&[u8]| -> R) -> R {
     let start_pos = st.pos;
     debug!("scan: '{}' (start)", st.data[st.pos] as char);
     while !is_last(st.data[st.pos] as char) {
@@ -98,7 +96,7 @@ pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
     return parse_ident_(st, |a| is_last(last, a) );
 }
 
-fn parse_ident_(st: &mut PState, is_last: &fn(char) -> bool) -> ast::Ident {
+fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
     let rslt = scan(st, is_last, str::from_utf8);
     return st.tcx.sess.ident_of(rslt);
 }
@@ -292,7 +290,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
     }
 }
 
-fn parse_opt<T>(st: &mut PState, f: &fn(&mut PState) -> T) -> Option<T> {
+fn parse_opt<T>(st: &mut PState, f: |&mut PState| -> T) -> Option<T> {
     match next(st) {
       'n' => None,
       's' => Some(f(st)),

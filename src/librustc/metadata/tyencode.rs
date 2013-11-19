@@ -120,7 +120,7 @@ fn enc_mt(w: @mut MemWriter, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: @mut MemWriter, t: Option<T>, enc_f: &fn(T)) {
+fn enc_opt<T>(w: @mut MemWriter, t: Option<T>, enc_f: |T|) {
     match t {
         None => mywrite!(w, "n"),
         Some(v) => {

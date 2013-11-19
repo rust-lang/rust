@@ -235,7 +235,7 @@ impl ToStrConsume for ~[Ascii] {
 
 impl IterBytes for Ascii {
     #[inline]
-    fn iter_bytes(&self, _lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
+    fn iter_bytes(&self, _lsb0: bool, f: |buf: &[u8]| -> bool) -> bool {
         f([self.to_byte()])
     }
 }

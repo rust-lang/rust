@@ -124,9 +124,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    pub fn each_issued_loan(&self,
-                            scope_id: ast::NodeId,
-                            op: &fn(&Loan) -> bool)
+    pub fn each_issued_loan(&self, scope_id: ast::NodeId, op: |&Loan| -> bool)
                             -> bool {
         //! Iterates over each loan that has been issued
         //! on entrance to `scope_id`, regardless of whether it is
@@ -142,7 +140,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
     pub fn each_in_scope_loan(&self,
                               scope_id: ast::NodeId,
-                              op: &fn(&Loan) -> bool)
+                              op: |&Loan| -> bool)
                               -> bool {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
@@ -160,7 +158,7 @@ impl<'self> CheckLoanCtxt<'self> {
     pub fn each_in_scope_restriction(&self,
                                      scope_id: ast::NodeId,
                                      loan_path: @LoanPath,
-                                     op: &fn(&Loan, &Restriction) -> bool)
+                                     op: |&Loan, &Restriction| -> bool)
                                      -> bool {
         //! Iterates through all the in-scope restrictions for the
         //! given `loan_path`

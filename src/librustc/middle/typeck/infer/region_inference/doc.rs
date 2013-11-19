@@ -389,7 +389,7 @@ The problem we are addressing is that there is a kind of subtyping
 between functions with bound region parameters.  Consider, for
 example, whether the following relation holds:
 
-    fn(&'a int) <: &fn(&'b int)? (Yes, a => b)
+    fn(&'a int) <: |&'b int|? (Yes, a => b)
 
 The answer is that of course it does.  These two types are basically
 the same, except that in one we used the name `a` and one we used
@@ -406,7 +406,7 @@ Now let's consider two more function types.  Here, we assume that the
 `self` lifetime is defined somewhere outside and hence is not a
 lifetime parameter bound by the function type (it "appears free"):
 
-    fn<a>(&'a int) <: &fn(&'self int)? (Yes, a => self)
+    fn<a>(&'a int) <: |&'self int|? (Yes, a => self)
 
 This subtyping relation does in fact hold.  To see why, you have to
 consider what subtyping means.  One way to look at `T1 <: T2` is to
@@ -423,7 +423,7 @@ to the same thing: a function that accepts pointers with any lifetime
 
 So, what if we reverse the order of the two function types, like this:
 
-    fn(&'self int) <: &fn<a>(&'a int)? (No)
+    fn(&'self int) <: <a>|&'a int|? (No)
 
 Does the subtyping relationship still hold?  The answer of course is
 no.  In this case, the function accepts *only the lifetime `&self`*,
@@ -432,8 +432,8 @@ accepted any lifetime.
 
 What about these two examples:
 
-    fn<a,b>(&'a int, &'b int) <: &fn<a>(&'a int, &'a int)? (Yes)
-    fn<a>(&'a int, &'a int) <: &fn<a,b>(&'a int, &'b int)? (No)
+    fn<a,b>(&'a int, &'b int) <: <a>|&'a int, &'a int|? (Yes)
+    fn<a>(&'a int, &'a int) <: <a,b>|&'a int, &'b int|? (No)
 
 Here, it is true that functions which take two pointers with any two
 lifetimes can be treated as if they only accepted two pointers with
@@ -457,12 +457,12 @@ Let's walk through some examples and see how this algorithm plays out.
 
 We'll start with the first example, which was:
 
-    1. fn<a>(&'a T) <: &fn<b>(&'b T)?        Yes: a -> b
+    1. fn<a>(&'a T) <: <b>|&'b T|?        Yes: a -> b
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
 
-    1. fn(&'A T) <: &fn(&'x T)?
+    1. fn(&'A T) <: |&'x T|?
 
 Here the upper case `&A` indicates a *region variable*, that is, a
 region whose value is being inferred by the system.  I also replaced
@@ -491,12 +491,12 @@ So far we have encountered no error, so the subtype check succeeds.
 
 Now let's look first at the third example, which was:
 
-    3. fn(&'self T)    <: &fn<b>(&'b T)?        No!
+    3. fn(&'self T)    <: <b>|&'b T|?        No!
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
 
-    3. fn(&'self T) <: &fn(&'x T)?
+    3. fn(&'self T) <: |&'x T|?
 
 This looks pretty much the same as before, except that on the LHS
 `&self` was not bound, and hence was left as-is and not replaced with
@@ -511,7 +511,7 @@ You may be wondering about that mysterious last step in the algorithm.
 So far it has not been relevant.  The purpose of that last step is to
 catch something like *this*:
 
-    fn<a>() -> fn(&'a T) <: &fn() -> fn<b>(&'b T)?   No.
+    fn<a>() -> fn(&'a T) <: || -> fn<b>(&'b T)?   No.
 
 Here the function types are the same but for where the binding occurs.
 The subtype returns a function that expects a value in precisely one
@@ -525,15 +525,15 @@ So let's step through what happens when we perform this subtype check.
 We first replace the bound regions in the subtype (the supertype has
 no bound regions).  This gives us:
 
-    fn() -> fn(&'A T) <: &fn() -> fn<b>(&'b T)?
+    fn() -> fn(&'A T) <: || -> fn<b>(&'b T)?
 
 Now we compare the return types, which are covariant, and hence we have:
 
-    fn(&'A T) <: &fn<b>(&'b T)?
+    fn(&'A T) <: <b>|&'b T|?
 
 Here we skolemize the bound region in the supertype to yield:
 
-    fn(&'A T) <: &fn(&'x T)?
+    fn(&'A T) <: |&'x T|?
 
 And then proceed to compare the argument types:
 
@@ -550,7 +550,7 @@ The difference between this example and the first one is that the variable
 `A` already existed at the point where the skolemization occurred.  In
 the first example, you had two functions:
 
-    fn<a>(&'a T) <: &fn<b>(&'b T)
+    fn<a>(&'a T) <: <b>|&'b T|
 
 and hence `&A` and `&x` were created "together".  In general, the
 intention of the skolemized names is that they are supposed to be

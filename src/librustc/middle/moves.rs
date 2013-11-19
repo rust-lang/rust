@@ -148,7 +148,7 @@ use syntax::codemap::Span;
 pub enum CaptureMode {
     CapCopy, // Copy the value into the closure.
     CapMove, // Move the value into the closure.
-    CapRef,  // Reference directly from parent stack frame (used by `&fn()`).
+    CapRef,  // Reference directly from parent stack frame (used by `||`).
 }
 
 #[deriving(Encodable, Decodable)]
@@ -686,7 +686,7 @@ impl VisitContext {
         let sigil = ty::ty_closure_sigil(fn_ty);
         let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
         if sigil == BorrowedSigil {
-            // &fn() captures everything by ref
+            // || captures everything by ref
             at_vec::from_fn(freevars.len(), |i| {
                 let fvar = &freevars[i];
                 CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef}

@@ -84,7 +84,7 @@ static AbiDatas: &'static [AbiData] = &[
     AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
 ];
 
-fn each_abi(op: &fn(abi: Abi) -> bool) -> bool {
+fn each_abi(op: |abi: Abi| -> bool) -> bool {
     /*!
      *
      * Iterates through each of the defined ABIs.
@@ -201,7 +201,7 @@ impl AbiSet {
         self.bits |= (1 << abi.index());
     }
 
-    pub fn each(&self, op: &fn(abi: Abi) -> bool) -> bool {
+    pub fn each(&self, op: |abi: Abi| -> bool) -> bool {
         each_abi(|abi| !self.contains(abi) || op(abi))
     }
 

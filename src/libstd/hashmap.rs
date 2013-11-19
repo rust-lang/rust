@@ -80,8 +80,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
     }
 
     #[inline]
-    fn bucket_sequence(&self, hash: uint,
-                       op: &fn(uint) -> bool) -> bool {
+    fn bucket_sequence(&self, hash: uint, op: |uint| -> bool) -> bool {
         let start_idx = self.to_bucket(hash);
         let len_buckets = self.buckets.len();
         let mut idx = start_idx;
@@ -360,8 +359,14 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Modify and return the value corresponding to the key in the map, or
     /// insert and return a new value if it doesn't exist.
-    pub fn mangle<'a,A>(&'a mut self, k: K, a: A, not_found: &fn(&K, A) -> V,
-                        found: &fn(&K, &mut V, A)) -> &'a mut V {
+    pub fn mangle<'a,
+                  A>(
+                  &'a mut self,
+                  k: K,
+                  a: A,
+                  not_found: |&K, A| -> V,
+                  found: |&K, &mut V, A|)
+                  -> &'a mut V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
             // that we do not resize if this call to insert is
@@ -395,7 +400,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
-    pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V)
+    pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: |&K| -> V)
                                -> &'a mut V {
         self.mangle(k, (), |k,_a| f(k), |_k,_v,_a| ())
     }
@@ -403,8 +408,12 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Insert a key-value pair into the map if the key is not already present.
     /// Otherwise, modify the existing value for the key.
     /// Returns the new or modified value for the key.
-    pub fn insert_or_update_with<'a>(&'a mut self, k: K, v: V,
-                                     f: &fn(&K, &mut V)) -> &'a mut V {
+    pub fn insert_or_update_with<'a>(
+                                 &'a mut self,
+                                 k: K,
+                                 v: V,
+                                 f: |&K, &mut V|)
+                                 -> &'a mut V {
         self.mangle(k, v, |_k,a| a, |k,v,_a| f(k,v))
     }
 
@@ -446,12 +455,12 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 
     /// Visit all keys
-    pub fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
+    pub fn each_key(&self, blk: |k: &K| -> bool) -> bool {
         self.iter().advance(|(k, _)| blk(k))
     }
 
     /// Visit all values
-    pub fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) -> bool {
+    pub fn each_value<'a>(&'a self, blk: |v: &'a V| -> bool) -> bool {
         self.iter().advance(|(_, v)| blk(v))
     }
 

@@ -49,7 +49,7 @@ impl<T> TaskPool<T> {
     /// local data to be kept around in that task.
     pub fn new(n_tasks: uint,
                opt_sched_mode: Option<SchedMode>,
-               init_fn_factory: &fn() -> proc(uint) -> T)
+               init_fn_factory: || -> proc(uint) -> T)
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
@@ -97,7 +97,7 @@ impl<T> TaskPool<T> {
 
 #[test]
 fn test_task_pool() {
-    let f: &fn() -> proc(uint) -> uint = || {
+    let f: || -> proc(uint) -> uint = || {
         let g: proc(uint) -> uint = |i| i;
         g
     };

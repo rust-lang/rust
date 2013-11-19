@@ -82,7 +82,7 @@ impl ParserObsoleteMethods for Parser {
             ),
             ObsoleteBareFnType => (
                 "bare function type",
-                "use `&fn` or `extern fn` instead"
+                "use `|A| -> B` or `extern fn(A) -> B` instead"
             ),
             ObsoleteNamedExternModule => (
                 "named external module",

@@ -282,7 +282,7 @@ impl Task {
         }
     }
 
-    pub fn run(&mut self, f: &fn()) {
+    pub fn run(&mut self, f: ||) {
         rtdebug!("run called on task: {}", borrow::to_uint(self));
 
         // The only try/catch block in the world. Attempt to run the task's
@@ -494,7 +494,7 @@ impl Coroutine {
 static UNWIND_TOKEN: uintptr_t = 839147;
 
 impl Unwinder {
-    pub fn try(&mut self, f: &fn()) {
+    pub fn try(&mut self, f: ||) {
         use unstable::raw::Closure;
 
         unsafe {
@@ -512,7 +512,7 @@ impl Unwinder {
                     code: transmute(code),
                     env: transmute(env),
                 };
-                let closure: &fn() = transmute(closure);
+                let closure: || = transmute(closure);
                 closure();
             }
         }

@@ -128,10 +128,12 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };
 
-    fn rand_thing(cx: @ExtCtxt, span: Span,
+    fn rand_thing(cx: @ExtCtxt,
+                  span: Span,
                   ctor_ident: Ident,
                   summary: &StaticFields,
-                  rand_call: &fn(Span) -> @Expr) -> @Expr {
+                  rand_call: |Span| -> @Expr)
+                  -> @Expr {
         match *summary {
             Unnamed(ref fields) => {
                 if fields.is_empty() {

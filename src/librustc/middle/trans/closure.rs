@@ -51,7 +51,7 @@ use syntax::parse::token::special_idents;
 // };
 //
 // Note that the closure is itself a rust_opaque_box.  This is true
-// even for ~fn and &fn, because we wish to keep binary compatibility
+// even for ~fn and ||, because we wish to keep binary compatibility
 // between all kinds of closures.  The allocation strategy for this
 // closure depends on the closure type.  For a sendfn, the closure
 // (and the referenced type descriptors) will be allocated in the
@@ -422,11 +422,12 @@ pub fn trans_expr_fn(bcx: @mut Block,
     return bcx;
 }
 
-pub fn make_closure_glue(
-        cx: @mut Block,
-        v: ValueRef,
-        t: ty::t,
-        glue_fn: &fn(@mut Block, v: ValueRef, t: ty::t) -> @mut Block) -> @mut Block {
+pub fn make_closure_glue(cx: @mut Block,
+                         v: ValueRef,
+                         t: ty::t,
+                         glue_fn: |@mut Block, v: ValueRef, t: ty::t|
+                                   -> @mut Block)
+                         -> @mut Block {
     let _icx = push_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();

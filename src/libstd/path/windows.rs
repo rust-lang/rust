@@ -112,7 +112,7 @@ impl ToCStr for Path {
 
 impl IterBytes for Path {
     #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: &fn(&[u8]) -> bool) -> bool {
+    fn iter_bytes(&self, lsb0: bool, f: |&[u8]| -> bool) -> bool {
         self.repr.iter_bytes(lsb0, f)
     }
 }
@@ -970,7 +970,8 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     }
     return None;
 
-    fn parse_two_comps<'a>(mut path: &'a str, f: &fn(char)->bool) -> Option<(uint, uint)> {
+    fn parse_two_comps<'a>(mut path: &'a str, f: |char| -> bool)
+                       -> Option<(uint, uint)> {
         let idx_a = match path.find(|x| f(x)) {
             None => return None,
             Some(x) => x

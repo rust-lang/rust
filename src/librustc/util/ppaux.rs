@@ -286,7 +286,7 @@ pub fn vstore_ty_to_str(cx: ctxt, mt: &mt, vs: ty::vstore) -> ~str {
     }
 }
 
-pub fn vec_map_to_str<T>(ts: &[T], f: &fn(t: &T) -> ~str) -> ~str {
+pub fn vec_map_to_str<T>(ts: &[T], f: |t: &T| -> ~str) -> ~str {
     let tstrs = ts.map(f);
     format!("[{}]", tstrs.connect(", "))
 }
