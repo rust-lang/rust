@@ -10,7 +10,7 @@
 
 /* Foreign builtins. */
 
-#include "sync/lock_and_signal.h"
+#include "rust_globals.h"
 #include "vg/valgrind.h"
 
 #include <time.h>
@@ -58,12 +58,12 @@ timegm(struct tm *tm)
 #endif
 
 #if defined(__WIN32__)
-extern "C" CDECL char**
+char**
 rust_env_pairs() {
     return 0;
 }
 #else
-extern "C" CDECL char**
+char**
 rust_env_pairs() {
 #if defined(__APPLE__) && !(TARGET_OS_IPHONE)
     char **environ = *_NSGetEnviron();
@@ -72,18 +72,18 @@ rust_env_pairs() {
 }
 #endif
 
-extern "C" CDECL char*
+char*
 #if defined(__WIN32__)
 rust_list_dir_val(WIN32_FIND_DATA* entry_ptr) {
     return entry_ptr->cFileName;
 }
 #else
-rust_list_dir_val(dirent* entry_ptr) {
+rust_list_dir_val(struct dirent* entry_ptr) {
     return entry_ptr->d_name;
 }
 #endif
 
-extern "C" CDECL size_t
+size_t
 #if defined(__WIN32__)
 rust_list_dir_wfd_size() {
     return sizeof(WIN32_FIND_DATAW);
@@ -94,7 +94,7 @@ rust_list_dir_wfd_size() {
 }
 #endif
 
-extern "C" CDECL void*
+void*
 #if defined(__WIN32__)
 rust_list_dir_wfd_fp_buf(WIN32_FIND_DATAW* wfd) {
     if(wfd == NULL) {
@@ -110,7 +110,7 @@ rust_list_dir_wfd_fp_buf(void* wfd) {
 }
 #endif
 
-extern "C" CDECL int
+int
 rust_path_is_dir(const char *path) {
     struct stat buf;
     if (stat(path, &buf)) {
@@ -119,7 +119,7 @@ rust_path_is_dir(const char *path) {
     return S_ISDIR(buf.st_mode);
 }
 
-extern "C" CDECL int
+int
 #if defined(__WIN32__)
 rust_path_is_dir_u16(const wchar_t *path) {
     struct _stat buf;
@@ -137,7 +137,7 @@ rust_path_is_dir_u16(const void *path) {
 }
 #endif
 
-extern "C" CDECL int
+int
 rust_path_exists(const char *path) {
     struct stat buf;
     if (stat(path, &buf)) {
@@ -146,7 +146,7 @@ rust_path_exists(const char *path) {
     return 1;
 }
 
-extern "C" CDECL int
+int
 #if defined(__WIN32__)
 rust_path_exists_u16(const wchar_t *path) {
     struct _stat buf;
@@ -162,12 +162,12 @@ rust_path_exists_u16(const void *path) {
 }
 #endif
 
-extern "C" CDECL FILE* rust_get_stdin() {return stdin;}
-extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
-extern "C" CDECL FILE* rust_get_stderr() {return stderr;}
+FILE* rust_get_stdin() {return stdin;}
+FILE* rust_get_stdout() {return stdout;}
+FILE* rust_get_stderr() {return stderr;}
 
 #if defined(__WIN32__)
-extern "C" CDECL void
+void
 rust_get_time(int64_t *sec, int32_t *nsec) {
     FILETIME fileTime;
     GetSystemTimeAsFileTime(&fileTime);
@@ -186,7 +186,7 @@ rust_get_time(int64_t *sec, int32_t *nsec) {
     *nsec = (ns_since_1970 % 1000000) * 1000;
 }
 #else
-extern "C" CDECL void
+void
 rust_get_time(int64_t *sec, int32_t *nsec) {
 #ifdef __APPLE__
     struct timeval tv;
@@ -194,7 +194,7 @@ rust_get_time(int64_t *sec, int32_t *nsec) {
     *sec = tv.tv_sec;
     *nsec = tv.tv_usec * 1000;
 #else
-    timespec ts;
+    struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     *sec = ts.tv_sec;
     *nsec = ts.tv_nsec;
@@ -204,7 +204,7 @@ rust_get_time(int64_t *sec, int32_t *nsec) {
 
 const int64_t ns_per_s = 1000000000LL;
 
-extern "C" CDECL void
+void
 rust_precise_time_ns(uint64_t *ns) {
 
 #ifdef __APPLE__
@@ -227,23 +227,22 @@ rust_precise_time_ns(uint64_t *ns) {
     assert(query_result);
     *ns = (uint64_t)((ticks.QuadPart * ns_per_s) / ticks_per_s.QuadPart);
 #else
-    timespec ts;
+    struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     *ns = (uint64_t)(ts.tv_sec * ns_per_s + ts.tv_nsec);
 #endif
 }
 
-struct
-rust_vec
+typedef struct
 {
     size_t fill;    // in bytes; if zero, heapified
     size_t alloc;   // in bytes
     uint8_t data[0];
-};
+} rust_vec;
 
 typedef rust_vec rust_str;
 
-struct rust_tm {
+typedef struct {
     int32_t tm_sec;
     int32_t tm_min;
     int32_t tm_hour;
@@ -256,10 +255,10 @@ struct rust_tm {
     int32_t tm_gmtoff;
     rust_str *tm_zone;
     int32_t tm_nsec;
-};
+} rust_tm;
 
-void rust_tm_to_tm(rust_tm* in_tm, tm* out_tm) {
-    memset(out_tm, 0, sizeof(tm));
+void rust_tm_to_tm(rust_tm* in_tm, struct tm* out_tm) {
+    memset(out_tm, 0, sizeof(struct tm));
     out_tm->tm_sec = in_tm->tm_sec;
     out_tm->tm_min = in_tm->tm_min;
     out_tm->tm_hour = in_tm->tm_hour;
@@ -271,7 +270,7 @@ void rust_tm_to_tm(rust_tm* in_tm, tm* out_tm) {
     out_tm->tm_isdst = in_tm->tm_isdst;
 }
 
-void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
+void tm_to_rust_tm(struct tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
                    const char *zone, int32_t nsec) {
     out_tm->tm_sec = in_tm->tm_sec;
     out_tm->tm_min = in_tm->tm_min;
@@ -300,13 +299,13 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
 #define LOCALTIME(clock, result) localtime_s((result), (clock))
 #define TIMEGM(result) _mkgmtime64(result)
 #else
-struct tm* GMTIME(const time_t *clock, tm *result) {
+struct tm* GMTIME(const time_t *clock, struct tm *result) {
     struct tm* t = gmtime(clock);
     if (t == NULL || result == NULL) { return NULL; }
     *result = *t;
     return result;
 }
-struct tm* LOCALTIME(const time_t *clock, tm *result) {
+struct tm* LOCALTIME(const time_t *clock, struct tm *result) {
     struct tm* t = localtime(clock);
     if (t == NULL || result == NULL) { return NULL; }
     *result = *t;
@@ -321,23 +320,23 @@ struct tm* LOCALTIME(const time_t *clock, tm *result) {
 #define TIMEGM(result) timegm(result)
 #endif
 
-extern "C" CDECL void
+void
 rust_tzset() {
     TZSET();
 }
 
-extern "C" CDECL void
+void
 rust_gmtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
-    tm tm;
+    struct tm tm;
     time_t s = sec;
     GMTIME(&s, &tm);
 
     tm_to_rust_tm(&tm, timeptr, 0, "UTC", nsec);
 }
 
-extern "C" CDECL void
+void
 rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
-    tm tm;
+    struct tm tm;
     time_t s = sec;
     LOCALTIME(&s, &tm);
 
@@ -365,128 +364,47 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     tm_to_rust_tm(&tm, timeptr, gmtoff, zone, nsec);
 }
 
-extern "C" CDECL int64_t
+int64_t
 rust_timegm(rust_tm* timeptr) {
-    tm t;
+    struct tm t;
     rust_tm_to_tm(timeptr, &t);
     return TIMEGM(&t);
 }
 
-extern "C" CDECL int64_t
+int64_t
 rust_mktime(rust_tm* timeptr) {
-    tm t;
+    struct tm t;
     rust_tm_to_tm(timeptr, &t);
     return mktime(&t);
-}
-
-extern "C" lock_and_signal*
-rust_create_little_lock() {
-    return new lock_and_signal();
-}
-
-extern "C" void
-rust_destroy_little_lock(lock_and_signal *lock) {
-    delete lock;
-}
-
-extern "C" void
-rust_lock_little_lock(lock_and_signal *lock) {
-    lock->lock();
-}
-
-extern "C" bool
-rust_trylock_little_lock(lock_and_signal *lock) {
-    return lock->try_lock();
-}
-
-extern "C" void
-rust_unlock_little_lock(lock_and_signal *lock) {
-    lock->unlock();
-}
-
-extern "C" void
-rust_wait_little_lock(lock_and_signal *lock) {
-    lock->wait();
-}
-
-extern "C" void
-rust_signal_little_lock(lock_and_signal *lock) {
-    lock->signal();
 }
 
 #ifndef _WIN32
 #include <sys/types.h>
 #include <dirent.h>
 
-extern "C" DIR*
+DIR*
 rust_opendir(char *dirname) {
     return opendir(dirname);
 }
 
-extern "C" dirent*
+struct dirent*
 rust_readdir(DIR *dirp) {
     return readdir(dirp);
 }
 
 #else
 
-extern "C" void
+void
 rust_opendir() {
 }
 
-extern "C" void
+void
 rust_readdir() {
 }
 
 #endif
 
-#ifndef _WIN32
-typedef pthread_key_t tls_key;
-#else
-typedef DWORD tls_key;
-#endif
-
-// Initialize the TLS key used by the new scheduler
-extern "C" CDECL void
-rust_initialize_rt_tls_key(tls_key *key) {
-
-    static lock_and_signal init_lock;
-    static bool initialized = false;
-
-    scoped_lock with(init_lock);
-
-    if (!initialized) {
-
-#ifndef _WIN32
-        assert(!pthread_key_create(key, NULL));
-#else
-        *key = TlsAlloc();
-        assert(*key != TLS_OUT_OF_INDEXES);
-#endif
-
-        initialized = true;
-    }
-}
-
-typedef void *(rust_try_fn)(void*, void*);
-
-extern "C" CDECL uintptr_t
-rust_try(rust_try_fn f, void *fptr, void *env) {
-    try {
-        f(fptr, env);
-    } catch (uintptr_t token) {
-        assert(token != 0);
-        return token;
-    }
-    return 0;
-}
-
-extern "C" CDECL void
-rust_begin_unwind(uintptr_t token) {
-    throw token;
-}
-
-extern "C" CDECL uintptr_t
+uintptr_t
 rust_running_on_valgrind() {
     return RUNNING_ON_VALGRIND;
 }
@@ -533,66 +451,24 @@ get_num_cpus() {
 }
 #endif
 
-extern "C" CDECL uintptr_t
+uintptr_t
 rust_get_num_cpus() {
     return get_num_cpus();
 }
 
-static lock_and_signal global_args_lock;
-static uintptr_t global_args_ptr = 0;
-
-extern "C" CDECL void
-rust_take_global_args_lock() {
-    global_args_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_global_args_lock() {
-    global_args_lock.unlock();
-}
-
-extern "C" CDECL uintptr_t*
-rust_get_global_args_ptr() {
-    return &global_args_ptr;
-}
-
-static lock_and_signal env_lock;
-
-extern "C" CDECL void
-rust_take_env_lock() {
-    env_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_env_lock() {
-    env_lock.unlock();
-}
-
-static lock_and_signal dlerror_lock;
-
-extern "C" CDECL void
-rust_take_dlerror_lock() {
-    dlerror_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_dlerror_lock() {
-    dlerror_lock.unlock();
-}
-
-extern "C" CDECL unsigned int
+unsigned int
 rust_valgrind_stack_register(void *start, void *end) {
   return VALGRIND_STACK_REGISTER(start, end);
 }
 
-extern "C" CDECL void
+void
 rust_valgrind_stack_deregister(unsigned int id) {
   VALGRIND_STACK_DEREGISTER(id);
 }
 
 #if defined(__WIN32__)
 
-extern "C" CDECL void
+void
 rust_unset_sigprocmask() {
     // empty stub for windows to keep linker happy
 }
@@ -602,7 +478,7 @@ rust_unset_sigprocmask() {
 #include <signal.h>
 #include <unistd.h>
 
-extern "C" CDECL void
+void
 rust_unset_sigprocmask() {
     // this can't be safely converted to rust code because the
     // representation of sigset_t is platform-dependent
@@ -631,7 +507,7 @@ win32_require(LPCTSTR fn, BOOL ok) {
     }
 }
 
-extern "C" CDECL void
+void
 rust_win32_rand_acquire(HCRYPTPROV* phProv) {
     win32_require
         (_T("CryptAcquireContext"),
@@ -641,12 +517,12 @@ rust_win32_rand_acquire(HCRYPTPROV* phProv) {
                              CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
 
 }
-extern "C" CDECL void
+void
 rust_win32_rand_gen(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffer) {
     win32_require
         (_T("CryptGenRandom"), CryptGenRandom(hProv, dwLen, pbBuffer));
 }
-extern "C" CDECL void
+void
 rust_win32_rand_release(HCRYPTPROV hProv) {
     win32_require
         (_T("CryptReleaseContext"), CryptReleaseContext(hProv, 0));
@@ -657,20 +533,41 @@ rust_win32_rand_release(HCRYPTPROV hProv) {
 // these symbols are listed in rustrt.def.in, so they need to exist; but they
 // should never be called.
 
-extern "C" CDECL void
+void
 rust_win32_rand_acquire() {
     abort();
 }
-extern "C" CDECL void
+void
 rust_win32_rand_gen() {
     abort();
 }
-extern "C" CDECL void
+void
 rust_win32_rand_release() {
     abort();
 }
 
 #endif
+
+#if defined(__WIN32__)
+
+int
+rust_crit_section_size() { return sizeof(CRITICAL_SECTION); }
+int
+rust_pthread_mutex_t_size() { return 0; }
+int
+rust_pthread_cond_t_size() { return 0; }
+
+#else
+
+int
+rust_crit_section_size() { return 0; }
+int
+rust_pthread_mutex_t_size() { return sizeof(pthread_mutex_t); }
+int
+rust_pthread_cond_t_size() { return sizeof(pthread_cond_t); }
+
+#endif
+
 //
 // Local Variables:
 // mode: C++

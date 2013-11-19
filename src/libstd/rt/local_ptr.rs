@@ -21,17 +21,23 @@ use ptr;
 use cell::Cell;
 use option::{Option, Some, None};
 use unstable::finally::Finally;
+use unstable::mutex::{Mutex, MUTEX_INIT};
 use tls = rt::thread_local_storage;
 
 static mut RT_TLS_KEY: tls::Key = -1;
 
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
 pub fn init_tls_key() {
+    static mut lock: Mutex = MUTEX_INIT;
+    static mut initialized: bool = false;
+
     unsafe {
-        rust_initialize_rt_tls_key(&mut RT_TLS_KEY);
-        extern {
-            fn rust_initialize_rt_tls_key(key: *mut tls::Key);
+        lock.lock();
+        if !initialized {
+            tls::create(&mut RT_TLS_KEY);
+            initialized = true;
         }
+        lock.unlock();
     }
 }
 

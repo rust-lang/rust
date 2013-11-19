@@ -1141,22 +1141,10 @@ fn test_spawn_sched_childs_on_default_sched() {
     po.recv();
 }
 
-#[cfg(test)]
-mod testrt {
-    use libc;
-
-    extern {
-        pub fn rust_dbg_lock_create() -> *libc::c_void;
-        pub fn rust_dbg_lock_destroy(lock: *libc::c_void);
-        pub fn rust_dbg_lock_lock(lock: *libc::c_void);
-        pub fn rust_dbg_lock_unlock(lock: *libc::c_void);
-        pub fn rust_dbg_lock_wait(lock: *libc::c_void);
-        pub fn rust_dbg_lock_signal(lock: *libc::c_void);
-    }
-}
-
 #[test]
 fn test_spawn_sched_blocking() {
+    use unstable::mutex::Mutex;
+
     unsafe {
 
         // Testing that a task in one scheduler can block in foreign code
@@ -1165,16 +1153,18 @@ fn test_spawn_sched_blocking() {
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
 
-            let lock = testrt::rust_dbg_lock_create();
+            let mut lock = Mutex::new();
+            let lock2 = Cell::new(lock.clone());
 
             do spawn_sched(SingleThreaded) {
-                testrt::rust_dbg_lock_lock(lock);
+                let mut lock = lock2.take();
+                lock.lock();
 
                 start_ch.send(());
 
                 // Block the scheduler thread
-                testrt::rust_dbg_lock_wait(lock);
-                testrt::rust_dbg_lock_unlock(lock);
+                lock.wait();
+                lock.unlock();
 
                 fin_ch.send(());
             };
@@ -1201,11 +1191,11 @@ fn test_spawn_sched_blocking() {
             let child_ch = setup_po.recv();
             child_ch.send(20);
             pingpong(&parent_po, &child_ch);
-            testrt::rust_dbg_lock_lock(lock);
-            testrt::rust_dbg_lock_signal(lock);
-            testrt::rust_dbg_lock_unlock(lock);
+            lock.lock();
+            lock.signal();
+            lock.unlock();
             fin_po.recv();
-            testrt::rust_dbg_lock_destroy(lock);
+            lock.destroy();
         }
     }
 }
