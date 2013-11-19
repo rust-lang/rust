@@ -65,7 +65,7 @@ pub fn pat_is_binding(dm: resolve::DefMap, pat: @Pat) -> bool {
 pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @Pat) -> bool {
     match pat.node {
         PatIdent(*) => pat_is_binding(dm, pat),
-        PatWild => true,
+        PatWild | PatWildMulti => true,
         _ => false
     }
 }

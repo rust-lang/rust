@@ -1137,6 +1137,7 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
     use syntax::ast::*;
     match p.node {
         PatWild => ~"_",
+        PatWildMulti => ~"..",
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
         PatStruct(*) => fail!("tried to get argument name from pat_struct, \

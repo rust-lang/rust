@@ -337,6 +337,7 @@ pub enum BindingMode {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Pat_ {
     PatWild,
+    PatWildMulti,
     // A pat_ident may either be a new bound variable,
     // or a nullary enum (in which case the second field
     // is None).
