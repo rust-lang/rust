@@ -5,8 +5,9 @@
 # Sometimes android shell produce exitcode "1 : Text File Busy"
 # Retry after $WAIT seconds, expecting resource cleaned-up
 WAIT=10
-PATH=$1
-if [ -d "$PATH" ]
+TEST_PATH=$1
+BIN_PATH=/system/bin
+if [ -d "$TEST_PATH" ]
 then
     shift
     RUN=$1
@@ -17,10 +18,10 @@ then
 
         L_RET=1
         L_COUNT=0
-        cd $PATH
+        cd $TEST_PATH
         while [ $L_RET -eq 1 ]
         do
-            TEST_EXEC_ENV=22 LD_LIBRARY_PATH=$PATH $PATH/$RUN $@ 1>$PATH/$RUN.stdout 2>$PATH/$RUN.stderr
+            TEST_EXEC_ENV=22 LD_LIBRARY_PATH=$TEST_PATH PATH=$BIN_PATH:$TEST_PATH $TEST_PATH/$RUN $@ 1>$TEST_PATH/$RUN.stdout 2>$TEST_PATH/$RUN.stderr
             L_RET=$?
             if [ $L_COUNT -gt 0 ]
             then
@@ -30,7 +31,7 @@ then
             L_COUNT=$((L_COUNT+1))
         done
 
-        echo $L_RET > $PATH/$RUN.exitcode
+        echo $L_RET > $TEST_PATH/$RUN.exitcode
 
     fi
 fi
