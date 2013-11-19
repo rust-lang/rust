@@ -177,7 +177,7 @@ pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
 ///
 /// It is considered a runtime error to attempt to get a value which is already
 /// on loan via the `get_mut` method provided.
-pub fn get<T: 'static, U>(key: Key<T>, f: &fn(Option<&T>) -> U) -> U {
+pub fn get<T: 'static, U>(key: Key<T>, f: |Option<&T>| -> U) -> U {
     get_with(key, ImmLoan, f)
 }
 
@@ -188,7 +188,7 @@ pub fn get<T: 'static, U>(key: Key<T>, f: &fn(Option<&T>) -> U) -> U {
 /// It is considered a runtime error to attempt to get a value which is already
 /// on loan via this or the `get` methods. This is similar to how it's a runtime
 /// error to take two mutable loans on an `@mut` box.
-pub fn get_mut<T: 'static, U>(key: Key<T>, f: &fn(Option<&mut T>) -> U) -> U {
+pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
     do get_with(key, MutLoan) |x| {
         match x {
             None => f(None),
@@ -202,9 +202,12 @@ pub fn get_mut<T: 'static, U>(key: Key<T>, f: &fn(Option<&mut T>) -> U) -> U {
     }
 }
 
-fn get_with<T: 'static, U>(key: Key<T>,
-                           state: LoanState,
-                           f: &fn(Option<&T>) -> U) -> U {
+fn get_with<T:'static,
+            U>(
+            key: Key<T>,
+            state: LoanState,
+            f: |Option<&T>| -> U)
+            -> U {
     // This function must be extremely careful. Because TLS can store owned
     // values, and we must have some form of `get` function other than `pop`,
     // this function has to give a `&` reference back to the caller.
@@ -335,7 +338,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
 ///
 /// This function will have the same runtime errors as generated from `pop` and
 /// `set` (the key must not currently be on loan
-pub fn modify<T: 'static>(key: Key<T>, f: &fn(Option<T>) -> Option<T>) {
+pub fn modify<T: 'static>(key: Key<T>, f: |Option<T>| -> Option<T>) {
     match f(pop(key)) {
         Some(next) => { set(key, next); }
         None => {}

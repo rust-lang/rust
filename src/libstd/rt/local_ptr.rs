@@ -103,7 +103,7 @@ pub fn exists() -> bool {
 /// # Safety note
 ///
 /// Does not validate the pointer type.
-pub unsafe fn borrow<T>(f: &fn(&mut T)) {
+pub unsafe fn borrow<T>(f: |&mut T|) {
     let mut value = take();
 
     // XXX: Need a different abstraction from 'finally' here to avoid unsafety

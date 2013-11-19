@@ -56,7 +56,7 @@ impl<T> Clone for *mut T {
 
 /// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline]
-pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
+pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
     let mut i = 0;
     loop {
         if f(&(*offset(buf, i as int))) { return i; }
@@ -195,7 +195,7 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
 
   SAFETY NOTE: Pointer-arithmetic. Dragons be here.
 */
-pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
+pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     debug!("array_each_with_len: before iterate");
     if (arr as uint == 0) {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
@@ -217,7 +217,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
   pointer array. Barely less-dodgy Pointer Arithmetic.
   Dragons be here.
 */
-pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
+pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
     if (arr as uint == 0) {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }

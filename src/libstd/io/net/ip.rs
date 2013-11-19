@@ -81,7 +81,8 @@ impl<'self> Parser<'self> {
     }
 
     // Commit only if parser returns Some
-    fn read_atomically<T>(&mut self, cb: &fn(&mut Parser) -> Option<T>) -> Option<T> {
+    fn read_atomically<T>(&mut self, cb: |&mut Parser| -> Option<T>)
+                       -> Option<T> {
         let pos = self.pos;
         let r = cb(self);
         if r.is_none() {
@@ -91,14 +92,16 @@ impl<'self> Parser<'self> {
     }
 
     // Commit only if parser read till EOF
-    fn read_till_eof<T>(&mut self, cb: &fn(&mut Parser) -> Option<T>) -> Option<T> {
+    fn read_till_eof<T>(&mut self, cb: |&mut Parser| -> Option<T>)
+                     -> Option<T> {
         do self.read_atomically |p| {
             cb(p).filtered(|_| p.is_eof())
         }
     }
 
     // Return result of first successful parser
-    fn read_or<T>(&mut self, parsers: &[&fn(&mut Parser) -> Option<T>]) -> Option<T> {
+    fn read_or<T>(&mut self, parsers: &[|&mut Parser| -> Option<T>])
+               -> Option<T> {
         for pf in parsers.iter() {
             match self.read_atomically(|p: &mut Parser| (*pf)(p)) {
                 Some(r) => return Some(r),
@@ -109,12 +112,14 @@ impl<'self> Parser<'self> {
     }
 
     // Apply 3 parsers sequentially
-    fn read_seq_3<A, B, C>(&mut self,
-            pa: &fn(&mut Parser) -> Option<A>,
-            pb: &fn(&mut Parser) -> Option<B>,
-            pc: &fn(&mut Parser) -> Option<C>
-        ) -> Option<(A, B, C)>
-    {
+    fn read_seq_3<A,
+                  B,
+                  C>(
+                  &mut self,
+                  pa: |&mut Parser| -> Option<A>,
+                  pb: |&mut Parser| -> Option<B>,
+                  pc: |&mut Parser| -> Option<C>)
+                  -> Option<(A, B, C)> {
         do self.read_atomically |p| {
             let a = pa(p);
             let b = if a.is_some() { pb(p) } else { None };

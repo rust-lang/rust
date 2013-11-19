@@ -58,7 +58,7 @@ use num::FromPrimitive;
 /// }
 /// ```
 #[inline]
-pub fn all_values(blk: &fn(v: bool)) {
+pub fn all_values(blk: |v: bool|) {
     blk(true);
     blk(false);
 }

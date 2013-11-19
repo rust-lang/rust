@@ -38,7 +38,7 @@ impl<L, R> Either<L, R> {
     /// `value` is `Right(R)` then `f_right` is applied to its contents, and the
     /// result is returned.
     #[inline]
-    pub fn either<T>(&self, f_left: &fn(&L) -> T, f_right: &fn(&R) -> T) -> T {
+    pub fn either<T>(&self, f_left: |&L| -> T, f_right: |&R| -> T) -> T {
         match *self {
             Left(ref l) => f_left(l),
             Right(ref r) => f_right(r)

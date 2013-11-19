@@ -18,7 +18,7 @@ pub trait Local {
     fn put(value: ~Self);
     fn take() -> ~Self;
     fn exists(unused_value: Option<Self>) -> bool;
-    fn borrow<T>(f: &fn(&mut Self) -> T) -> T;
+    fn borrow<T>(f: |&mut Self| -> T) -> T;
     unsafe fn unsafe_take() -> ~Self;
     unsafe fn unsafe_borrow() -> *mut Self;
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
@@ -30,7 +30,7 @@ impl Local for Task {
     #[inline]
     fn take() -> ~Task { unsafe { local_ptr::take() } }
     fn exists(_: Option<Task>) -> bool { local_ptr::exists() }
-    fn borrow<T>(f: &fn(&mut Task) -> T) -> T {
+    fn borrow<T>(f: |&mut Task| -> T) -> T {
         let mut res: Option<T> = None;
         let res_ptr: *mut Option<T> = &mut res;
         unsafe {
@@ -78,7 +78,7 @@ impl Local for Scheduler {
             }
         }
     }
-    fn borrow<T>(f: &fn(&mut Scheduler) -> T) -> T {
+    fn borrow<T>(f: |&mut Scheduler| -> T) -> T {
         do Local::borrow |task: &mut Task| {
             match task.sched {
                 Some(~ref mut task) => {

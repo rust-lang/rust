@@ -85,7 +85,7 @@ impl num::Times for uint {
     /// use with integer literals of inferred integer-type as
     /// the self-value (eg. `do 100.times { ... }`).
     ///
-    fn times(&self, it: &fn()) {
+    fn times(&self, it: ||) {
         let mut i = *self;
         while i > 0 {
             it();
