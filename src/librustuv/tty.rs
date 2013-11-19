@@ -39,7 +39,8 @@ impl TtyWatcher {
         // Related:
         // - https://github.com/joyent/libuv/issues/982
         // - https://github.com/joyent/libuv/issues/988
-        if unsafe { uvll::guess_handle(fd) != uvll::UV_TTY as libc::c_int } {
+        let guess = unsafe { uvll::guess_handle(fd) };
+        if readable && guess != uvll::UV_TTY as libc::c_int {
             return Err(UvError(uvll::EBADF));
         }
 
@@ -99,6 +100,10 @@ impl RtioTTY for TtyWatcher {
             0 => Ok((width as int, height as int)),
             n => Err(uv_error_to_io_error(UvError(n)))
         }
+    }
+
+    fn isatty(&self) -> bool {
+        unsafe { uvll::guess_handle(self.fd) == uvll::UV_TTY as libc::c_int }
     }
 }
 
