@@ -535,8 +535,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// * For enums, iterates through the node IDs of the variants.
 ///
 /// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id(item: @item, callback: &fn(NodeId) -> bool)
-                          -> bool {
+fn each_auxiliary_node_id(item: @item, callback: |NodeId| -> bool) -> bool {
     let mut continue_ = true;
     match item.node {
         item_enum(ref enum_def, _) => {
@@ -912,7 +911,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                      index: @mut ~[entry<i64>]) {
         index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
     }
-    let add_to_index: &fn() = || add_to_index(item, ebml_w, index);
+    let add_to_index: || = || add_to_index(item, ebml_w, index);
 
     debug!("encoding info for item at {}",
            ecx.tcx.sess.codemap.span_to_str(item.span));
@@ -1412,7 +1411,7 @@ fn create_index<T:Clone + Hash + IterBytes + 'static>(
 fn encode_index<T:'static>(
                 ebml_w: &mut writer::Encoder,
                 buckets: ~[@~[entry<T>]],
-                write_fn: &fn(@mut MemWriter, &T)) {
+                write_fn: |@mut MemWriter, &T|) {
     ebml_w.start_tag(tag_index);
     let mut bucket_locs = ~[];
     ebml_w.start_tag(tag_index_buckets);

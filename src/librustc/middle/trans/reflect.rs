@@ -121,7 +121,7 @@ impl Reflector {
     pub fn bracketed(&mut self,
                      bracket_name: &str,
                      extra: &[ValueRef],
-                     inner: &fn(&mut Reflector)) {
+                     inner: |&mut Reflector|) {
         self.visit("enter_" + bracket_name, extra);
         inner(self);
         self.visit("leave_" + bracket_name, extra);

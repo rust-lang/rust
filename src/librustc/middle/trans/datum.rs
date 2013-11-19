@@ -524,7 +524,7 @@ impl Datum {
                        bcx: @mut Block,
                        ty: ty::t,
                        source: DatumCleanup,
-                       gep: &fn(ValueRef) -> ValueRef)
+                       gep: |ValueRef| -> ValueRef)
                        -> Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {

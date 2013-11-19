@@ -150,8 +150,8 @@ constraints will be satisfied.
 As a simple example, consider:
 
     enum Option<A> { Some(A), None }
-    enum OptionalFn<B> { Some(&fn(B)), None }
-    enum OptionalMap<C> { Some(&fn(C) -> C), None }
+    enum OptionalFn<B> { Some(|B|), None }
+    enum OptionalMap<C> { Some(|C| -> C), None }
 
 Here, we will generate the constraints:
 

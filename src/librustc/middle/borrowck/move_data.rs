@@ -412,9 +412,7 @@ impl MoveData {
         }
     }
 
-    fn each_base_path(&self,
-                      index: MovePathIndex,
-                      f: &fn(MovePathIndex) -> bool)
+    fn each_base_path(&self, index: MovePathIndex, f: |MovePathIndex| -> bool)
                       -> bool {
         let mut p = index;
         while p != InvalidMovePathIndex {
@@ -428,7 +426,8 @@ impl MoveData {
 
     fn each_extending_path(&self,
                            index: MovePathIndex,
-                           f: &fn(MovePathIndex) -> bool) -> bool {
+                           f: |MovePathIndex| -> bool)
+                           -> bool {
         if !f(index) {
             return false;
         }
@@ -446,7 +445,8 @@ impl MoveData {
 
     fn each_applicable_move(&self,
                             index0: MovePathIndex,
-                            f: &fn(MoveIndex) -> bool) -> bool {
+                            f: |MoveIndex| -> bool)
+                            -> bool {
         let mut ret = true;
         do self.each_extending_path(index0) |index| {
             let mut p = self.path(index).first_move;
@@ -505,7 +505,7 @@ impl FlowedMoveData {
 
     pub fn each_path_moved_by(&self,
                               id: ast::NodeId,
-                              f: &fn(&Move, @LoanPath) -> bool)
+                              f: |&Move, @LoanPath| -> bool)
                               -> bool {
         /*!
          * Iterates through each path moved by `id`
@@ -521,7 +521,7 @@ impl FlowedMoveData {
     pub fn each_move_of(&self,
                         id: ast::NodeId,
                         loan_path: @LoanPath,
-                        f: &fn(&Move, @LoanPath) -> bool)
+                        f: |&Move, @LoanPath| -> bool)
                         -> bool {
         /*!
          * Iterates through each move of `loan_path` (or some base path
@@ -587,7 +587,7 @@ impl FlowedMoveData {
     pub fn each_assignment_of(&self,
                               id: ast::NodeId,
                               loan_path: @LoanPath,
-                              f: &fn(&Assignment) -> bool)
+                              f: |&Assignment| -> bool)
                               -> bool {
         /*!
          * Iterates through every assignment to `loan_path` that

@@ -442,12 +442,12 @@ pub fn resolve_region(cx: @mut InferCtxt, r: ty::Region, modes: uint)
 }
 
 trait then {
-    fn then<T:Clone>(&self, f: &fn() -> Result<T,ty::type_err>)
+    fn then<T:Clone>(&self, f: || -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err>;
 }
 
 impl then for ures {
-    fn then<T:Clone>(&self, f: &fn() -> Result<T,ty::type_err>)
+    fn then<T:Clone>(&self, f: || -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
         self.and_then(|_i| f())
     }
@@ -467,11 +467,11 @@ impl<T> ToUres for cres<T> {
 }
 
 trait CresCompare<T> {
-    fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T>;
+    fn compare(&self, t: T, f: || -> ty::type_err) -> cres<T>;
 }
 
 impl<T:Clone + Eq> CresCompare<T> for cres<T> {
-    fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T> {
+    fn compare(&self, t: T, f: || -> ty::type_err) -> cres<T> {
         do (*self).clone().and_then |s| {
             if s == t {
                 (*self).clone()
@@ -549,7 +549,7 @@ impl InferCtxt {
     }
 
     /// Execute `f` and commit the bindings if successful
-    pub fn commit<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    pub fn commit<T,E>(@mut self, f: || -> Result<T,E>) -> Result<T,E> {
         assert!(!self.in_snapshot());
 
         debug!("commit()");
@@ -564,7 +564,7 @@ impl InferCtxt {
     }
 
     /// Execute `f`, unroll bindings on failure
-    pub fn try<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    pub fn try<T,E>(@mut self, f: || -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         let snapshot = self.start_snapshot();
         let r = f();
@@ -579,7 +579,7 @@ impl InferCtxt {
     }
 
     /// Execute `f` then unroll any bindings it creates
-    pub fn probe<T,E>(@mut self, f: &fn() -> Result<T,E>) -> Result<T,E> {
+    pub fn probe<T,E>(@mut self, f: || -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -721,7 +721,7 @@ impl InferCtxt {
     // errors.
     pub fn type_error_message_str(@mut self,
                                   sp: Span,
-                                  mk_msg: &fn(Option<~str>, ~str) -> ~str,
+                                  mk_msg: |Option<~str>, ~str| -> ~str,
                                   actual_ty: ~str,
                                   err: Option<&ty::type_err>) {
         self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
@@ -729,9 +729,9 @@ impl InferCtxt {
 
     pub fn type_error_message_str_with_expected(@mut self,
                                                 sp: Span,
-                                                mk_msg:
-                                                &fn(Option<~str>, ~str) ->
-                                                ~str,
+                                                mk_msg: |Option<~str>,
+                                                         ~str|
+                                                         -> ~str,
                                                 expected_ty: Option<ty::t>,
                                                 actual_ty: ~str,
                                                 err: Option<&ty::type_err>) {
@@ -760,7 +760,7 @@ impl InferCtxt {
 
     pub fn type_error_message(@mut self,
                               sp: Span,
-                              mk_msg: &fn(~str) -> ~str,
+                              mk_msg: |~str| -> ~str,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
@@ -813,11 +813,10 @@ impl InferCtxt {
     }
 }
 
-pub fn fold_regions_in_sig(
-    tcx: ty::ctxt,
-    fn_sig: &ty::FnSig,
-    fldr: &fn(r: ty::Region) -> ty::Region) -> ty::FnSig
-{
+pub fn fold_regions_in_sig(tcx: ty::ctxt,
+                           fn_sig: &ty::FnSig,
+                           fldr: |r: ty::Region| -> ty::Region)
+                           -> ty::FnSig {
     ty_fold::RegionFolder::regions(tcx, fldr).fold_sig(fn_sig)
 }
 

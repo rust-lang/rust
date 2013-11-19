@@ -417,8 +417,9 @@ impl<'self> Context<'self> {
      * current lint context, call the provided function, then reset the
      * lints in effect to their previous state.
      */
-    fn with_lint_attrs(&mut self, attrs: &[ast::Attribute],
-                       f: &fn(&mut Context)) {
+    fn with_lint_attrs(&mut self,
+                       attrs: &[ast::Attribute],
+                       f: |&mut Context|) {
         // Parse all of the lint attributes, and then add them all to the
         // current dictionary of lint information. Along the way, keep a history
         // of what we changed so we can roll everything back after invoking the
@@ -468,7 +469,7 @@ impl<'self> Context<'self> {
         }
     }
 
-    fn visit_ids(&self, f: &fn(&mut ast_util::IdVisitor<Context>)) {
+    fn visit_ids(&self, f: |&mut ast_util::IdVisitor<Context>|) {
         let mut v = ast_util::IdVisitor {
             operation: self,
             pass_through_items: false,
@@ -480,7 +481,8 @@ impl<'self> Context<'self> {
 
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::Attribute],
-                 f: &fn(@ast::MetaItem, level, @str) -> bool) -> bool {
+                 f: |@ast::MetaItem, level, @str| -> bool)
+                 -> bool {
     let xs = [allow, warn, deny, forbid];
     for &level in xs.iter() {
         let level_name = level_to_str(level);

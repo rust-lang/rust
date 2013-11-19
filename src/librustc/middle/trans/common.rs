@@ -769,7 +769,9 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-pub fn in_scope_cx(cx: @mut Block, scope_id: Option<ast::NodeId>, f: &fn(si: &mut ScopeInfo)) {
+pub fn in_scope_cx(cx: @mut Block,
+                   scope_id: Option<ast::NodeId>,
+                   f: |si: &mut ScopeInfo|) {
     let mut cur = cx;
     let mut cur_scope = cur.scope;
     loop {

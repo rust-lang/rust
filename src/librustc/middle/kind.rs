@@ -167,8 +167,9 @@ fn check_item(cx: &mut Context, item: @item) {
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the NodeId for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: &Context, id: NodeId,
-                            b: &fn(checker: &fn(&Context, @freevar_entry))) {
+fn with_appropriate_checker(cx: &Context,
+                            id: NodeId,
+                            b: |checker: |&Context, @freevar_entry||) {
     fn check_for_uniq(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
@@ -351,9 +352,10 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
 }
 
 // Calls "any_missing" if any bounds were missing.
-pub fn check_builtin_bounds(cx: &Context, ty: ty::t, bounds: ty::BuiltinBounds,
-                            any_missing: &fn(ty::BuiltinBounds))
-{
+pub fn check_builtin_bounds(cx: &Context,
+                            ty: ty::t,
+                            bounds: ty::BuiltinBounds,
+                            any_missing: |ty::BuiltinBounds|) {
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::EmptyBuiltinBounds();
     for bound in bounds.iter() {

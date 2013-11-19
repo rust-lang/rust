@@ -161,9 +161,7 @@ impl Coerce {
         }
     }
 
-    pub fn unpack_actual_value(&self,
-                               a: ty::t,
-                               f: &fn(&ty::sty) -> CoerceResult)
+    pub fn unpack_actual_value(&self, a: ty::t, f: |&ty::sty| -> CoerceResult)
                                -> CoerceResult {
         match resolve_type(self.infcx, a, try_resolve_tvar_shallow) {
             Ok(t) => {

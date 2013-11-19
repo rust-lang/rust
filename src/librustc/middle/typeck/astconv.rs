@@ -33,7 +33,7 @@
  * scopes and (b) the default region may change.  To understand case (a),
  * consider something like:
  *
- *   type foo = { x: &a.int, y: &fn(&a.int) }
+ *   type foo = { x: &a.int, y: |&a.int| }
  *
  * The type of `x` is an error because there is no region `a` in scope.
  * In the type of `y`, however, region `a` is considered a bound region
@@ -290,13 +290,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle first-class trait types.
-    fn mk_pointer<AC:AstConv,RS:RegionScope>(
-        this: &AC,
-        rscope: &RS,
-        a_seq_ty: &ast::mt,
-        vst: ty::vstore,
-        constr: &fn(ty::mt) -> ty::t) -> ty::t
-    {
+    fn mk_pointer<AC:AstConv,
+                  RS:RegionScope>(
+                  this: &AC,
+                  rscope: &RS,
+                  a_seq_ty: &ast::mt,
+                  vst: ty::vstore,
+                  constr: |ty::mt| -> ty::t)
+                  -> ty::t {
         let tcx = this.tcx();
         debug!("mk_pointer(vst={:?})", vst);
 
@@ -715,7 +716,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
                     ty::ReStatic
                 }
                 ast::BorrowedSigil => {
-                    // &fn() defaults as normal for an omitted lifetime:
+                    // || defaults as normal for an omitted lifetime:
                     opt_ast_region_to_region(this, rscope, span, opt_lifetime)
                 }
             }
