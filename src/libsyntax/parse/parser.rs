@@ -1273,15 +1273,17 @@ impl Parser {
     pub fn parse_box_or_uniq_pointee(&self,
                                      sigil: ast::Sigil,
                                      ctor: &fn(v: mt) -> ty_) -> ty_ {
-        // ~'foo fn() or ~fn() are parsed directly as fn types:
+        // ~'foo fn() or ~fn() are parsed directly as obsolete fn types:
         match *self.token {
             token::LIFETIME(*) => {
                 let lifetime = self.parse_lifetime();
+                self.obsolete(*self.last_span, ObsoleteBoxedClosure);
                 return self.parse_ty_closure(Some(sigil), Some(lifetime));
             }
 
-            token::IDENT(*) => {
+            token::IDENT(*) if sigil == ast::BorrowedSigil => {
                 if self.token_is_old_style_closure_keyword() {
+                    self.obsolete(*self.last_span, ObsoleteBoxedClosure);
                     return self.parse_ty_closure(Some(sigil), None);
                 }
             }
