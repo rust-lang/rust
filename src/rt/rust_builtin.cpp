@@ -168,7 +168,7 @@ extern "C" CDECL FILE* rust_get_stderr() {return stderr;}
 
 #if defined(__WIN32__)
 extern "C" CDECL void
-get_time(int64_t *sec, int32_t *nsec) {
+rust_get_time(int64_t *sec, int32_t *nsec) {
     FILETIME fileTime;
     GetSystemTimeAsFileTime(&fileTime);
 
@@ -187,7 +187,7 @@ get_time(int64_t *sec, int32_t *nsec) {
 }
 #else
 extern "C" CDECL void
-get_time(int64_t *sec, int32_t *nsec) {
+rust_get_time(int64_t *sec, int32_t *nsec) {
 #ifdef __APPLE__
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -205,7 +205,7 @@ get_time(int64_t *sec, int32_t *nsec) {
 const int64_t ns_per_s = 1000000000LL;
 
 extern "C" CDECL void
-precise_time_ns(uint64_t *ns) {
+rust_precise_time_ns(uint64_t *ns) {
 
 #ifdef __APPLE__
     uint64_t time = mach_absolute_time();

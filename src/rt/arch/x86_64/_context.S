@@ -55,9 +55,9 @@ First four arguments:
 */
 
 #if defined(__APPLE__)
-#define SWAP_REGISTERS _swap_registers
+#define SWAP_REGISTERS _rust_swap_registers
 #else
-#define SWAP_REGISTERS swap_registers
+#define SWAP_REGISTERS rust_swap_registers
 #endif
 
 // swap_registers(registers_t *oregs, registers_t *regs)
