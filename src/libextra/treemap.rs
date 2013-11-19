@@ -136,7 +136,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
     /// Iterate over the map and mutate the contained values
-    pub fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
+    pub fn mutate_values(&mut self, f: |&K, &mut V| -> bool) -> bool {
         mutate_values(&mut self.root, f)
     }
 
@@ -678,9 +678,12 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
     }
 }
 
-fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
-                                     f: &fn(&'r K, &'r mut V) -> bool)
-                                  -> bool {
+fn mutate_values<'r,
+                 K:TotalOrd,
+                 V>(
+                 node: &'r mut Option<~TreeNode<K,V>>,
+                 f: |&'r K, &'r mut V| -> bool)
+                 -> bool {
     match *node {
       Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
                      right: ref mut right, _}) => {
@@ -1400,8 +1403,10 @@ mod test_set {
         }
     }
 
-    fn check(a: &[int], b: &[int], expected: &[int],
-             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool) -> bool) {
+    fn check(a: &[int],
+             b: &[int],
+             expected: &[int],
+             f: |&TreeSet<int>, &TreeSet<int>, f: |&int| -> bool| -> bool) {
         let mut set_a = TreeSet::new();
         let mut set_b = TreeSet::new();
 

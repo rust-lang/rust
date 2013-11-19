@@ -36,7 +36,7 @@ pub trait EventLoop {
 
     /// The asynchronous I/O services. Not all event loops may provide one
     // FIXME(#9382) this is an awful interface
-    fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory));
+    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|);
 }
 
 pub trait RemoteCallback {
@@ -75,7 +75,7 @@ pub enum CloseBehavior {
     CloseAsynchronously,
 }
 
-pub fn with_local_io<T>(f: &fn(&mut IoFactory) -> Option<T>) -> Option<T> {
+pub fn with_local_io<T>(f: |&mut IoFactory| -> Option<T>) -> Option<T> {
     use rt::sched::Scheduler;
     use rt::local::Local;
     use io::native;

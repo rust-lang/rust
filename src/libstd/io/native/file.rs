@@ -23,7 +23,7 @@ use result::{Result, Ok, Err};
 use rt::rtio;
 use vec::ImmutableVector;
 
-fn keep_going(data: &[u8], f: &fn(*u8, uint) -> i64) -> i64 {
+fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
     #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
 
@@ -367,7 +367,7 @@ mod old_os {
     }
 
     /// Recursively walk a directory structure
-    pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
+    pub fn walk_dir(p: &Path, f: |&Path| -> bool) -> bool {
         let r = list_dir(p);
         r.iter().advance(|q| {
             let path = &p.join(q);

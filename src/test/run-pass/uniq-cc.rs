@@ -18,7 +18,7 @@ enum maybe_pointy {
 struct Pointy {
     a : maybe_pointy,
     c : ~int,
-    d : ~fn()->(),
+    d : proc()->(),
 }
 
 fn empty_pointy() -> @mut Pointy {

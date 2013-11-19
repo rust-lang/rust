@@ -74,6 +74,11 @@ impl TestDesc {
     }
 }
 
+/// Represents a benchmark function.
+pub trait TDynBenchFn {
+    fn run(&self, harness: &mut BenchHarness);
+}
+
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
@@ -81,10 +86,10 @@ impl TestDesc {
 pub enum TestFn {
     StaticTestFn(extern fn()),
     StaticBenchFn(extern fn(&mut BenchHarness)),
-    StaticMetricFn(~fn(&mut MetricMap)),
-    DynTestFn(~fn()),
-    DynMetricFn(~fn(&mut MetricMap)),
-    DynBenchFn(~fn(&mut BenchHarness))
+    StaticMetricFn(proc(&mut MetricMap)),
+    DynTestFn(proc()),
+    DynMetricFn(proc(&mut MetricMap)),
+    DynBenchFn(~TDynBenchFn)
 }
 
 impl TestFn {
@@ -710,8 +715,7 @@ type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
-             callback: &fn(e: TestEvent)) {
-
+             callback: |e: TestEvent|) {
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.map(|t| t.desc.clone());
 
@@ -859,7 +863,7 @@ pub fn run_test(force_ignore: bool,
 
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
-                      testfn: ~fn()) {
+                      testfn: proc()) {
         let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
             let mut task = task::task();
@@ -878,8 +882,8 @@ pub fn run_test(force_ignore: bool,
     }
 
     match testfn {
-        DynBenchFn(benchfn) => {
-            let bs = ::test::bench::benchmark(benchfn);
+        DynBenchFn(bencher) => {
+            let bs = ::test::bench::benchmark(|harness| bencher.run(harness));
             monitor_ch.send((desc, TrBench(bs)));
             return;
         }
@@ -1053,7 +1057,7 @@ impl MetricMap {
 
 impl BenchHarness {
     /// Callback for benchmark functions to run in their body.
-    pub fn iter(&mut self, inner:&fn()) {
+    pub fn iter(&mut self, inner: ||) {
         self.ns_start = precise_time_ns();
         let k = self.iterations;
         for _ in range(0u64, k) {
@@ -1078,7 +1082,7 @@ impl BenchHarness {
         }
     }
 
-    pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
+    pub fn bench_n(&mut self, n: u64, f: |&mut BenchHarness|) {
         self.iterations = n;
         debug!("running benchmark for {} iterations",
                n as uint);
@@ -1086,7 +1090,7 @@ impl BenchHarness {
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> stats::Summary {
+    pub fn auto_bench(&mut self, f: |&mut BenchHarness|) -> stats::Summary {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
@@ -1156,8 +1160,7 @@ impl BenchHarness {
 pub mod bench {
     use test::{BenchHarness, BenchSamples};
 
-    pub fn benchmark(f: &fn(&mut BenchHarness)) -> BenchSamples {
-
+    pub fn benchmark(f: |&mut BenchHarness|) -> BenchSamples {
         let mut bs = BenchHarness {
             iterations: 0,
             ns_start: 0,

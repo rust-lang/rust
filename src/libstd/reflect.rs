@@ -28,7 +28,7 @@ use unstable::raw;
  * then build a MovePtrAdaptor wrapped around your struct.
  */
 pub trait MovePtr {
-    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void);
+    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void);
     fn push_ptr(&mut self);
     fn pop_ptr(&mut self);
 }
@@ -478,11 +478,11 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_closure_ptr(&mut self, ck: uint) -> bool {
-        self.align_to::<~fn()>();
+        self.align_to::<proc()>();
         if ! self.inner.visit_closure_ptr(ck) {
             return false
         }
-        self.bump_past::<~fn()>();
+        self.bump_past::<proc()>();
         true
     }
 }

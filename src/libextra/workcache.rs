@@ -295,7 +295,12 @@ impl Context {
         Prep::new(self, fn_name)
     }
 
-    pub fn with_prep<'a, T>(&'a self, fn_name: &'a str, blk: &fn(p: &mut Prep) -> T) -> T {
+    pub fn with_prep<'a,
+                     T>(
+                     &'a self,
+                     fn_name: &'a str,
+                     blk: |p: &mut Prep| -> T)
+                     -> T {
         let mut p = self.prep(fn_name);
         blk(&mut p)
     }
@@ -394,14 +399,14 @@ impl<'self> Prep<'self> {
     pub fn exec<T:Send +
         Encodable<json::Encoder> +
         Decodable<json::Decoder>>(
-            &'self self, blk: ~fn(&mut Exec) -> T) -> T {
+            &'self self, blk: proc(&mut Exec) -> T) -> T {
         self.exec_work(blk).unwrap()
     }
 
     fn exec_work<T:Send +
         Encodable<json::Encoder> +
         Decodable<json::Decoder>>( // FIXME(#5121)
-            &'self self, blk: ~fn(&mut Exec) -> T) -> Work<'self, T> {
+            &'self self, blk: proc(&mut Exec) -> T) -> Work<'self, T> {
         let mut bo = Some(blk);
 
         debug!("exec_work: looking up {} and {:?}", self.fn_name,

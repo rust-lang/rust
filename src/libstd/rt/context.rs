@@ -25,7 +25,7 @@ pub static RED_ZONE: uint = 20 * 1024;
 // then misalign the regs again.
 pub struct Context {
     /// The context entry point, saved here for later destruction
-    priv start: Option<~~fn()>,
+    priv start: Option<~proc()>,
     /// Hold the registers while the task or scheduler is suspended
     priv regs: ~Registers,
     /// Lower bound and upper bound for the stack
@@ -41,18 +41,24 @@ impl Context {
         }
     }
 
-    /// Create a new context that will resume execution by running ~fn()
-    pub fn new(start: ~fn(), stack: &mut StackSegment) -> Context {
+    /// Create a new context that will resume execution by running proc()
+    pub fn new(start: proc(), stack: &mut StackSegment) -> Context {
         // FIXME #7767: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
         let start = ~start;
 
         // The C-ABI function that is the task entry point
-        extern fn task_start_wrapper(f: &~fn()) { (*f)() }
+        extern fn task_start_wrapper(f: &proc()) {
+            // XXX(pcwalton): This may be sketchy.
+            unsafe {
+                let f: &|| = transmute(f);
+                (*f)()
+            }
+        }
 
         let fp: *c_void = task_start_wrapper as *c_void;
-        let argp: *c_void = unsafe { transmute::<&~fn(), *c_void>(&*start) };
+        let argp: *c_void = unsafe { transmute::<&proc(), *c_void>(&*start) };
         let sp: *uint = stack.end();
         let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };
         // Save and then immediately load the current context,

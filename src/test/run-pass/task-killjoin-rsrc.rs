@@ -44,7 +44,7 @@ fn notify(ch: Chan<bool>, v: @mut bool) -> notify {
     }
 }
 
-fn joinable(f: ~fn()) -> Port<bool> {
+fn joinable(f: proc()) -> Port<bool> {
     fn wrapper(c: Chan<bool>, f: &fn()) {
         let b = @mut false;
         error!("wrapper: task=%? allocated v=%x",

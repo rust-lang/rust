@@ -69,7 +69,7 @@ enum StdSource {
     File(~RtioFileStream),
 }
 
-fn src<T>(fd: libc::c_int, readable: bool, f: &fn(StdSource) -> T) -> T {
+fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
     do with_local_io |io| {
         let fd = unsafe { libc::dup(fd) };
         match io.tty_open(fd, readable) {
@@ -121,7 +121,7 @@ pub fn stderr() -> StdWriter {
 //          // io1 aliases io2
 //      }
 //  }
-fn with_task_stdout(f: &fn(&mut Writer)) {
+fn with_task_stdout(f: |&mut Writer|) {
     use rt::local::Local;
     use rt::task::Task;
 

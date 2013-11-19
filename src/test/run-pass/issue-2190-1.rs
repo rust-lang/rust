@@ -11,7 +11,7 @@
 // xfail-test
 static generations: uint = 1024+256+128+49;
 
-fn child_no(x: uint) -> ~fn() {
+fn child_no(x: uint) -> proc() {
      || {
         if x < generations {
             task::spawn(child_no(x+1));

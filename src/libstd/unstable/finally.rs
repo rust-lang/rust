@@ -28,13 +28,13 @@ use ops::Drop;
 #[cfg(test)] use task::{failing, spawn};
 
 pub trait Finally<T> {
-    fn finally(&self, dtor: &fn()) -> T;
+    fn finally(&self, dtor: ||) -> T;
 }
 
 macro_rules! finally_fn {
     ($fnty:ty) => {
         impl<T> Finally<T> for $fnty {
-            fn finally(&self, dtor: &fn()) -> T {
+            fn finally(&self, dtor: ||) -> T {
                 let _d = Finallyalizer {
                     dtor: dtor
                 };
@@ -45,7 +45,7 @@ macro_rules! finally_fn {
 }
 
 impl<'self,T> Finally<T> for &'self fn() -> T {
-    fn finally(&self, dtor: &fn()) -> T {
+    fn finally(&self, dtor: ||) -> T {
         let _d = Finallyalizer {
             dtor: dtor
         };
@@ -54,7 +54,6 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
     }
 }
 
-finally_fn!(~fn() -> T)
 finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {
@@ -96,7 +95,7 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let closure: &fn() -> int = || 10;
+    let closure: || -> int = || 10;
     let i = do closure.finally { };
     assert_eq!(i, 10);
 }
@@ -107,14 +106,5 @@ fn test_compact() {
     fn but_always_run_this_function() { }
     do_some_fallible_work.finally(
         but_always_run_this_function);
-}
-
-#[test]
-fn test_owned() {
-    fn spawn_with_finalizer(f: ~fn()) {
-        do spawn { do f.finally { } }
-    }
-    let owned: ~fn() = || { };
-    spawn_with_finalizer(owned);
 }
 

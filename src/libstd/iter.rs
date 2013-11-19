@@ -433,7 +433,7 @@ pub trait Iterator<A> {
     /// range(0, 5).advance(|x| {print!("{} ", x); true});
     /// ```
     #[inline]
-    fn advance(&mut self, f: &fn(A) -> bool) -> bool {
+    fn advance(&mut self, f: |A| -> bool) -> bool {
         loop {
             match self.next() {
                 Some(x) => {
@@ -522,7 +522,7 @@ pub trait Iterator<A> {
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
-    fn fold<B>(&mut self, init: B, f: &fn(B, A) -> B) -> B {
+    fn fold<B>(&mut self, init: B, f: |B, A| -> B) -> B {
         let mut accum = init;
         loop {
             match self.next() {
@@ -558,7 +558,7 @@ pub trait Iterator<A> {
     /// assert!(!a.iter().all(|&x| *x > 2));
     /// ```
     #[inline]
-    fn all(&mut self, f: &fn(A) -> bool) -> bool {
+    fn all(&mut self, f: |A| -> bool) -> bool {
         for x in *self { if !f(x) { return false; } }
         true
     }
@@ -575,14 +575,14 @@ pub trait Iterator<A> {
     /// assert!(!it.any(|&x| *x == 3));
     /// ```
     #[inline]
-    fn any(&mut self, f: &fn(A) -> bool) -> bool {
+    fn any(&mut self, f: |A| -> bool) -> bool {
         for x in *self { if f(x) { return true; } }
         false
     }
 
     /// Return the first element satisfying the specified predicate
     #[inline]
-    fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
+    fn find(&mut self, predicate: |&A| -> bool) -> Option<A> {
         for x in *self {
             if predicate(&x) { return Some(x) }
         }
@@ -591,7 +591,7 @@ pub trait Iterator<A> {
 
     /// Return the index of the first element satisfying the specified predicate
     #[inline]
-    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+    fn position(&mut self, predicate: |A| -> bool) -> Option<uint> {
         let mut i = 0;
         for x in *self {
             if predicate(x) {
@@ -604,7 +604,7 @@ pub trait Iterator<A> {
 
     /// Count the number of elements satisfying the specified predicate
     #[inline]
-    fn count(&mut self, predicate: &fn(A) -> bool) -> uint {
+    fn count(&mut self, predicate: |A| -> bool) -> uint {
         let mut i = 0;
         for x in *self {
             if predicate(x) { i += 1 }
@@ -622,7 +622,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
-    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+    fn max_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |max: Option<(A, B)>, x| {
             let x_val = f(&x);
             match max {
@@ -646,7 +646,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
-    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+    fn min_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |min: Option<(A, B)>, x| {
             let x_val = f(&x);
             match min {
@@ -729,7 +729,7 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
     ///
     /// If no element matches, None is returned.
     #[inline]
-    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+    fn rposition(&mut self, predicate: |A| -> bool) -> Option<uint> {
         let (lower, upper) = self.size_hint();
         assert!(upper == Some(lower));
         let mut i = lower;
