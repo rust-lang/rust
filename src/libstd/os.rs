@@ -138,20 +138,18 @@ Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
+    use unstable::mutex::{Mutex, MUTEX_INIT};
     use unstable::finally::Finally;
+
+    static mut lock: Mutex = MUTEX_INIT;
 
     unsafe {
         return do (|| {
-            rust_take_env_lock();
+            lock.lock();
             f()
         }).finally {
-            rust_drop_env_lock();
+            lock.unlock();
         };
-    }
-
-    extern {
-        fn rust_take_env_lock();
-        fn rust_drop_env_lock();
     }
 }
 

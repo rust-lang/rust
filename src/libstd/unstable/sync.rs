@@ -11,12 +11,12 @@
 use cast;
 use cell::Cell;
 use comm;
-use libc;
 use ptr;
 use option::{Option,Some,None};
 use task;
 use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,Relaxed,SeqCst};
 use unstable::finally::Finally;
+use unstable::mutex::Mutex;
 use ops::Drop;
 use clone::Clone;
 use kinds::Send;
@@ -319,17 +319,14 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     }
 }
 
-#[allow(non_camel_case_types)] // runtime type
-type rust_little_lock = *libc::c_void;
-
 pub struct LittleLock {
-    priv l: rust_little_lock,
+    priv l: Mutex,
 }
 
 impl Drop for LittleLock {
     fn drop(&mut self) {
         unsafe {
-            rust_destroy_little_lock(self.l);
+            self.l.destroy();
         }
     }
 }
@@ -338,29 +335,31 @@ impl LittleLock {
     pub fn new() -> LittleLock {
         unsafe {
             LittleLock {
-                l: rust_create_little_lock()
+                l: Mutex::new()
             }
         }
     }
 
     pub unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
+        let this = cast::transmute_mut(self);
         do atomically {
-            rust_lock_little_lock(self.l);
+            this.l.lock();
             do (|| {
                 f()
             }).finally {
-                rust_unlock_little_lock(self.l);
+                this.l.unlock();
             }
         }
     }
 
     pub unsafe fn try_lock<T>(&self, f: &fn() -> T) -> Option<T> {
+        let this = cast::transmute_mut(self);
         do atomically {
-            if rust_trylock_little_lock(self.l) {
+            if this.l.trylock() {
                 Some(do (|| {
                     f()
                 }).finally {
-                    rust_unlock_little_lock(self.l);
+                    this.l.unlock();
                 })
             } else {
                 None
@@ -369,18 +368,20 @@ impl LittleLock {
     }
 
     pub unsafe fn signal(&self) {
-        rust_signal_little_lock(self.l);
+        let this = cast::transmute_mut(self);
+        this.l.signal();
     }
 
     pub unsafe fn lock_and_wait(&self, f: &fn() -> bool) {
+        let this = cast::transmute_mut(self);
         do atomically {
-            rust_lock_little_lock(self.l);
+            this.l.lock();
             do (|| {
                 if f() {
-                    rust_wait_little_lock(self.l);
+                    this.l.wait();
                 }
             }).finally {
-                rust_unlock_little_lock(self.l);
+                this.l.unlock();
             }
         }
     }
@@ -487,16 +488,6 @@ impl<T:Send> Exclusive<T> {
         let ExData { data: user_data, _ } = inner; // will destroy the LittleLock
         user_data
     }
-}
-
-extern {
-    fn rust_create_little_lock() -> rust_little_lock;
-    fn rust_destroy_little_lock(lock: rust_little_lock);
-    fn rust_trylock_little_lock(lock: rust_little_lock) -> bool;
-    fn rust_lock_little_lock(lock: rust_little_lock);
-    fn rust_unlock_little_lock(lock: rust_little_lock);
-    fn rust_signal_little_lock(lock: rust_little_lock);
-    fn rust_wait_little_lock(lock: rust_little_lock);
 }
 
 #[cfg(test)]

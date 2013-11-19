@@ -90,14 +90,18 @@ endif
 endif
 
 RUNTIME_CXXS_$(1)_$(2) := \
-              rt/sync/lock_and_signal.cpp \
-              rt/rust_builtin.cpp \
-              rt/rust_upcall.cpp \
-              rt/miniz.cpp \
-              rt/rust_android_dummy.cpp \
-              rt/rust_test_helpers.cpp
+	      rt/rust_cxx_glue.cpp
 
-RUNTIME_CS_$(1)_$(2) :=
+RUNTIME_CS_$(1)_$(2) := \
+              rt/rust_builtin.c \
+              rt/rust_upcall.c \
+              rt/miniz.c \
+              rt/rust_android_dummy.c \
+              rt/rust_test_helpers.c
+
+# stage0 remove this after the next snapshot
+%.cpp:
+	@touch tmp/foo.o
 
 RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/record_sp.S
@@ -115,7 +119,7 @@ ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 MORESTACK_OBJS_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
 
-$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.cpp $$(MKFILE_DEPS)
+$$(RT_BUILD_DIR_$(1)_$(2))/rust_cxx_glue.o: rt/rust_cxx_glue.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
                  $$(SNAP_DEFINES) $$(RUNTIME_CXXFLAGS_$(1)_$(2))) $$<
@@ -242,13 +246,13 @@ endif
 UV_SUPPORT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv_support)
 UV_SUPPORT_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/uv_support
 UV_SUPPORT_LIB_$(1) := $$(UV_SUPPORT_DIR_$(1))/$$(UV_SUPPORT_NAME_$(1))
-UV_SUPPORT_CS_$(1) := rt/rust_uv.cpp
-UV_SUPPORT_OBJS_$(1) := $$(UV_SUPPORT_CS_$(1):rt/%.cpp=$$(UV_SUPPORT_DIR_$(1))/%.o)
+UV_SUPPORT_CS_$(1) := rt/rust_uv.c
+UV_SUPPORT_OBJS_$(1) := $$(UV_SUPPORT_CS_$(1):rt/%.c=$$(UV_SUPPORT_DIR_$(1))/%.o)
 
-$$(UV_SUPPORT_DIR_$(1))/%.o: rt/%.cpp
+$$(UV_SUPPORT_DIR_$(1))/%.o: rt/%.c
 	@$$(call E, compile: $$@)
 	@mkdir -p $$(@D)
-	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, \
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
 		-I $$(S)src/libuv/include \
                  $$(RUNTIME_CFLAGS_$(1))) $$<
 
