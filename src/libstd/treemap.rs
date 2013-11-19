@@ -13,9 +13,12 @@
 //! `TotalOrd`.
 
 
-use std::util::{swap, replace};
-use std::iter::{Peekable};
-use std::cmp::Ordering;
+use container::{Container, Mutable, MutableMap, Set, MutableSet, Map};
+use util::{swap, replace};
+use cmp::{Ordering, TotalOrd, Eq, Ord, Greater, Less, Equal};
+use option::{Option, None, Some};
+use iter::{Peekable, Extendable, Iterator, FromIterator};
+use vec::{ImmutableVector, MutableVector, OwnedVector};
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -882,9 +885,15 @@ impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
 mod test_treemap {
 
     use super::*;
+    use iter::*;
 
-    use std::rand::Rng;
-    use std::rand;
+    use rand::Rng;
+    use rand;
+    use option::{Option, None, Some};
+    use cmp::{TotalOrd, Eq, Greater, Less};
+    use str::StrSlice;
+    use clone::Clone;
+    use num::Times;
 
     #[test]
     fn find_empty() {
@@ -1239,8 +1248,8 @@ mod test_treemap {
 #[cfg(test)]
 mod bench {
 
-    use super::*;
-    use test::BenchHarness;
+    use super::TreeMap;
+    use extra::test::BenchHarness;
     use container::bench::*;
 
     // Find seq
@@ -1300,6 +1309,7 @@ mod bench {
 mod test_set {
 
     use super::*;
+    use option::{Option, None, Some};
 
     #[test]
     fn test_clear() {

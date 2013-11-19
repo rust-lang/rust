@@ -104,3 +104,89 @@ pub trait MutableSet<T>: Set<T> + Mutable {
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool;
 }
+
+#[cfg(test)]
+pub mod bench {
+    use super::MutableMap;
+    use iter::*;
+    use vec;
+    use vec::ImmutableVector;
+    use rand;
+    use rand::Rng;
+    use option::{None, Some};
+    use extra::test::BenchHarness;
+
+    pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
+                                                  map: &mut M,
+                                                  bh: &mut BenchHarness) {
+        // setup
+        let mut rng = rand::XorShiftRng::new();
+
+        map.clear();
+        for _ in range(0, n) {
+            map.insert(rng.gen::<uint>() % n, 1);
+        }
+
+        // measure
+        do bh.iter {
+            let k = rng.gen::<uint>() % n;
+            map.insert(k, 1);
+            map.remove(&k);
+        }
+    }
+
+    pub fn insert_seq_n<M:MutableMap<uint,uint>>(n: uint,
+                                                 map: &mut M,
+                                                 bh: &mut BenchHarness) {
+        // setup
+        map.clear();
+        for i in range(0u, n) {
+            map.insert(i*2, 1);
+        }
+
+        // measure
+        let mut i = 1;
+        do bh.iter {
+            map.insert(i, 1);
+            map.remove(&i);
+            i = (i + 2) % n;
+        }
+    }
+
+    pub fn find_rand_n<M:MutableMap<uint,uint>>(n: uint,
+                                                map: &mut M,
+                                                bh: &mut BenchHarness) {
+        // setup
+        let mut rng = rand::XorShiftRng::new();
+        let mut keys = vec::from_fn(n, |_| rng.gen::<uint>() % n);
+
+        for k in keys.iter() {
+            map.insert(*k, 1);
+        }
+
+        rng.shuffle_mut(keys);
+
+        // measure
+        let mut i = 0;
+        do bh.iter {
+            map.find(&(keys[i]));
+            i = (i + 1) % n;
+        }
+    }
+
+    pub fn find_seq_n<M:MutableMap<uint,uint>>(n: uint,
+                                               map: &mut M,
+                                               bh: &mut BenchHarness) {
+        // setup
+        for i in range(0u, n) {
+            map.insert(i, 1);
+        }
+
+        // measure
+        let mut i = 0;
+        do bh.iter {
+            map.find(&i);
+            i = (i + 1) % n;
+        }
+     }
+}

@@ -1440,7 +1440,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[test] #[ignore]
     fn memory_map_file() {
         use result::{Ok, Err};
         use os::*;

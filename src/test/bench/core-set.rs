@@ -11,7 +11,7 @@
 extern mod extra;
 
 use extra::bitv::BitvSet;
-use extra::treemap::TreeSet;
+use std::treemap::TreeSet;
 use std::hashmap::HashSet;
 use std::os;
 use std::rand;

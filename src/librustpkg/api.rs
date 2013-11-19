@@ -22,10 +22,10 @@ pub use path_util::default_workspace;
 pub use source_control::{safe_git_clone, git_clone_url};
 
 use std::run;
+use std::treemap::TreeMap;
 use extra::arc::{Arc,RWArc};
 use extra::workcache;
 use extra::workcache::{Database, Logger, FreshnessMap};
-use extra::treemap::TreeMap;
 
 // A little sad -- duplicated from rustc::back::*
 #[cfg(target_arch = "arm")]
