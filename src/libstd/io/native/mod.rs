@@ -90,6 +90,24 @@ fn last_error() -> IoError {
     }
 }
 
+// unix has nonzero values as errors
+fn mkerr_libc(ret: libc::c_int) -> IoResult<()> {
+    if ret != 0 {
+        Err(last_error())
+    } else {
+        Ok(())
+    }
+}
+
+// windows has zero values as errors
+fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
+    if ret == 0 {
+        Err(last_error())
+    } else {
+        Ok(())
+    }
+}
+
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the
 /// native I/O functionality.
 pub struct IoFactory;
@@ -125,51 +143,51 @@ impl rtio::IoFactory for IoFactory {
         };
         ~file::FileDesc::new(fd, close) as ~RtioFileStream
     }
-    fn fs_open(&mut self, _path: &CString, _fm: io::FileMode, _fa: io::FileAccess)
+    fn fs_open(&mut self, path: &CString, fm: io::FileMode, fa: io::FileAccess)
         -> IoResult<~RtioFileStream> {
-        Err(unimpl())
+        file::open(path, fm, fa).map(|fd| ~fd as ~RtioFileStream)
     }
-    fn fs_unlink(&mut self, _path: &CString) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_unlink(&mut self, path: &CString) -> IoResult<()> {
+        file::unlink(path)
     }
-    fn fs_stat(&mut self, _path: &CString) -> IoResult<io::FileStat> {
-        Err(unimpl())
+    fn fs_stat(&mut self, path: &CString) -> IoResult<io::FileStat> {
+        file::stat(path)
     }
-    fn fs_mkdir(&mut self, _path: &CString,
-                _mode: io::FilePermission) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_mkdir(&mut self, path: &CString,
+                mode: io::FilePermission) -> IoResult<()> {
+        file::mkdir(path, mode)
     }
-    fn fs_chmod(&mut self, _path: &CString,
-                _mode: io::FilePermission) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_chmod(&mut self, path: &CString,
+                mode: io::FilePermission) -> IoResult<()> {
+        file::chmod(path, mode)
     }
-    fn fs_rmdir(&mut self, _path: &CString) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_rmdir(&mut self, path: &CString) -> IoResult<()> {
+        file::rmdir(path)
     }
-    fn fs_rename(&mut self, _path: &CString, _to: &CString) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()> {
+        file::rename(path, to)
     }
-    fn fs_readdir(&mut self, _path: &CString, _flags: c_int) -> IoResult<~[Path]> {
-        Err(unimpl())
+    fn fs_readdir(&mut self, path: &CString, _flags: c_int) -> IoResult<~[Path]> {
+        file::readdir(path)
     }
-    fn fs_lstat(&mut self, _path: &CString) -> IoResult<io::FileStat> {
-        Err(unimpl())
+    fn fs_lstat(&mut self, path: &CString) -> IoResult<io::FileStat> {
+        file::lstat(path)
     }
-    fn fs_chown(&mut self, _path: &CString, _uid: int, _gid: int) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_chown(&mut self, path: &CString, uid: int, gid: int) -> IoResult<()> {
+        file::chown(path, uid, gid)
     }
-    fn fs_readlink(&mut self, _path: &CString) -> IoResult<Path> {
-        Err(unimpl())
+    fn fs_readlink(&mut self, path: &CString) -> IoResult<Path> {
+        file::readlink(path)
     }
-    fn fs_symlink(&mut self, _src: &CString, _dst: &CString) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()> {
+        file::symlink(src, dst)
     }
-    fn fs_link(&mut self, _src: &CString, _dst: &CString) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_link(&mut self, src: &CString, dst: &CString) -> IoResult<()> {
+        file::link(src, dst)
     }
-    fn fs_utime(&mut self, _src: &CString, _atime: u64,
-                _mtime: u64) -> IoResult<()> {
-        Err(unimpl())
+    fn fs_utime(&mut self, src: &CString, atime: u64,
+                mtime: u64) -> IoResult<()> {
+        file::utime(src, atime, mtime)
     }
 
     // misc
@@ -183,14 +201,18 @@ impl rtio::IoFactory for IoFactory {
              io.move_iter().map(|p| p.map(|p| ~p as ~RtioPipe)).collect())
         })
     }
-    fn pipe_open(&mut self, _fd: c_int) -> IoResult<~RtioPipe> {
-        Err(unimpl())
+    fn pipe_open(&mut self, fd: c_int) -> IoResult<~RtioPipe> {
+        Ok(~file::FileDesc::new(fd, true) as ~RtioPipe)
     }
     fn tty_open(&mut self, fd: c_int, _readable: bool) -> IoResult<~RtioTTY> {
         if unsafe { libc::isatty(fd) } != 0 {
             Ok(~file::FileDesc::new(fd, true) as ~RtioTTY)
         } else {
-            Err(unimpl())
+            Err(IoError {
+                kind: io::MismatchedFileTypeForOperation,
+                desc: "file descriptor is not a TTY",
+                detail: None,
+            })
         }
     }
     fn signal(&mut self, _signal: Signum, _channel: SharedChan<Signum>)

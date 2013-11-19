@@ -391,7 +391,6 @@ mod test {
     // newtype struct autoderef weirdness
     #[test]
     fn test_buffered_stream() {
-        use rt;
         struct S;
 
         impl io::Writer for S {

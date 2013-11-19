@@ -316,12 +316,22 @@ impl Writer for StdWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rt::test::run_in_newsched_task;
 
     #[test]
-    fn smoke() {
+    fn smoke_uv() {
         // Just make sure we can acquire handles
         stdin();
         stdout();
         stderr();
+    }
+
+    #[test]
+    fn smoke_native() {
+        do run_in_newsched_task {
+            stdin();
+            stdout();
+            stderr();
+        }
     }
 }
