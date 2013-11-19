@@ -333,7 +333,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
 fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
     let pat = raw_pat(p);
     match pat.node {
-      PatWild => { None }
+      PatWild | PatWildMulti => { None }
       PatIdent(_, _, _) | PatEnum(_, _) => {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&DefVariant(_, id, _)) => Some(variant(id)),
@@ -369,7 +369,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
 fn is_wild(cx: &MatchCheckCtxt, p: @Pat) -> bool {
     let pat = raw_pat(p);
     match pat.node {
-      PatWild => { true }
+      PatWild | PatWildMulti => { true }
       PatIdent(_, _, _) => {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&DefVariant(_, _, _)) | Some(&DefStatic(*)) => { false }
@@ -532,6 +532,10 @@ fn wild() -> @Pat {
     @Pat {id: 0, node: PatWild, span: dummy_sp()}
 }
 
+fn wild_multi() -> @Pat {
+    @Pat {id: 0, node: PatWildMulti, span: dummy_sp()}
+}
+
 fn specialize(cx: &MatchCheckCtxt,
                   r: &[@Pat],
                   ctor_id: &ctor,
@@ -545,6 +549,9 @@ fn specialize(cx: &MatchCheckCtxt,
             match n {
             PatWild => {
                 Some(vec::append(vec::from_elem(arity, wild()), r.tail()))
+            }
+            PatWildMulti => {
+                Some(vec::append(vec::from_elem(arity, wild_multi()), r.tail()))
             }
             PatIdent(_, _, _) => {
                 match cx.tcx.def_map.find(&pat_id) {
@@ -849,7 +856,7 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
       PatIdent(_, _, Some(sub)) => {
         is_refutable(cx, sub)
       }
-      PatWild | PatIdent(_, _, None) => { false }
+      PatWild | PatWildMulti | PatIdent(_, _, None) => { false }
       PatLit(@Expr {node: ExprLit(@Spanned { node: lit_nil, _}), _}) => {
         // "()"
         false

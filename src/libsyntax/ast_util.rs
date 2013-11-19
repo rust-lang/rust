@@ -657,7 +657,7 @@ pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
                 slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
                 after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        PatWild | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
+        PatWild | PatWildMulti | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
         PatEnum(_, _) => {
             true
         }

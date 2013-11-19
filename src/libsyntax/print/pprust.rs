@@ -1613,6 +1613,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
      is that it doesn't matter */
     match pat.node {
       ast::PatWild => word(s.s, "_"),
+      ast::PatWildMulti => word(s.s, ".."),
       ast::PatIdent(binding_mode, ref path, sub) => {
           match binding_mode {
               ast::BindByRef(mutbl) => {
@@ -1701,7 +1702,12 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
         }
         for &p in slice.iter() {
             if !before.is_empty() { word_space(s, ","); }
-            word(s.s, "..");
+            match p {
+                @ast::Pat { node: ast::PatWildMulti, _ } => {
+                    // this case is handled by print_pat
+                }
+                _ => word(s.s, ".."),
+            }
             print_pat(s, p);
             if !after.is_empty() { word_space(s, ","); }
         }
