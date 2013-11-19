@@ -477,6 +477,7 @@ impl<'self, T:Send +
 
 
 #[test]
+#[cfg(not(target_os="android"))] // FIXME(#10455)
 fn test() {
     use std::{os, run};
     use std::io::fs;
