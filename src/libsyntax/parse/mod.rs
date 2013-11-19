@@ -177,19 +177,14 @@ pub fn parse_tts_from_source_str(
 // consumed all of the input before returning the function's
 // result.
 pub fn parse_from_source_str<T>(
-    f: &fn(&Parser) -> T,
-    name: @str, ss: codemap::FileSubstr,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @mut ParseSess
-) -> T {
-    let p = new_parser_from_source_substr(
-        sess,
-        cfg,
-        name,
-        ss,
-        source
-    );
+                             f: |&Parser| -> T,
+                             name: @str,
+                             ss: codemap::FileSubstr,
+                             source: @str,
+                             cfg: ast::CrateConfig,
+                             sess: @mut ParseSess)
+                             -> T {
+    let p = new_parser_from_source_substr(sess, cfg, name, ss, source);
     let r = f(&p);
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");

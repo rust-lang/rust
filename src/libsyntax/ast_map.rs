@@ -122,7 +122,7 @@ pub enum ast_node {
 }
 
 impl ast_node {
-    pub fn with_attrs<T>(&self, f: &fn(Option<&[Attribute]>) -> T) -> T {
+    pub fn with_attrs<T>(&self, f: |Option<&[Attribute]>| -> T) -> T {
         let attrs = match *self {
             node_item(i, _) => Some(i.attrs.as_slice()),
             node_foreign_item(fi, _, _, _) => Some(fi.attrs.as_slice()),
@@ -480,9 +480,8 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
     }
 }
 
-pub fn node_item_query<Result>(items: map, id: NodeId,
-                               query: &fn(@item) -> Result,
-                               error_msg: ~str) -> Result {
+pub fn node_item_query<Result>(items: map, id: NodeId, query: |@item| -> Result, error_msg: ~str)
+                       -> Result {
     match items.find(&id) {
         Some(&node_item(it, _)) => query(it),
         _ => fail!("{}", error_msg)

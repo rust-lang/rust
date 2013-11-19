@@ -184,7 +184,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
+    fn alloc_pod<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -241,7 +241,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
+    fn alloc_nonpod<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
@@ -263,7 +263,7 @@ impl Arena {
 
     // The external interface
     #[inline]
-    pub fn alloc<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
+    pub fn alloc<'a, T>(&'a self, op: || -> T) -> &'a T {
         unsafe {
             // XXX: Borrow check
             let this = transmute_mut(self);

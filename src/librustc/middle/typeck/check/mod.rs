@@ -1194,7 +1194,7 @@ impl FnCtxt {
 
     pub fn opt_node_ty_substs(&self,
                               id: ast::NodeId,
-                              f: &fn(&ty::substs) -> bool)
+                              f: |&ty::substs| -> bool)
                               -> bool {
         match self.inh.node_type_substs.find(&id) {
             Some(s) => f(s),
@@ -1257,8 +1257,7 @@ impl FnCtxt {
         infer::mk_subr(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
-    pub fn with_region_lb<R>(@mut self, lb: ast::NodeId, f: &fn() -> R)
-                             -> R {
+    pub fn with_region_lb<R>(@mut self, lb: ast::NodeId, f: || -> R) -> R {
         let old_region_lb = self.region_lb;
         self.region_lb = lb;
         let v = f();
@@ -1268,7 +1267,7 @@ impl FnCtxt {
 
     pub fn type_error_message(&self,
                               sp: Span,
-                              mk_msg: &fn(~str) -> ~str,
+                              mk_msg: |~str| -> ~str,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
@@ -1629,7 +1628,7 @@ fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
 pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::Expr,
                                expected: Option<ty::t>,
-                               unifier: &fn()) {
+                               unifier: ||) {
     debug!(">> typechecking");
 
     fn check_method_argument_types(
@@ -2014,7 +2013,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         args: ~[@ast::Expr],
                         deref_args: DerefArgs,
                         autoderef_receiver: AutoderefReceiverFlag,
-                        unbound_method: &fn(),
+                        unbound_method: ||,
                         _expected_result: Option<ty::t>
                        )
                      -> ty::t {
@@ -2198,10 +2197,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // through the `unpack` function.  It there is no expected type or
     // resolution is not possible (e.g., no constraints yet present), just
     // returns `none`.
-    fn unpack_expected<O>(fcx: @mut FnCtxt,
-                          expected: Option<ty::t>,
-                          unpack: &fn(&ty::sty) -> Option<O>)
-                          -> Option<O> {
+    fn unpack_expected<O>(
+                       fcx: @mut FnCtxt,
+                       expected: Option<ty::t>,
+                       unpack: |&ty::sty| -> Option<O>)
+                       -> Option<O> {
         match expected {
             Some(t) => {
                 match resolve_type(fcx.infcx(), t, force_tvar) {

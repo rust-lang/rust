@@ -2066,7 +2066,8 @@ fn mk_binding_alloca(mut bcx: @mut Block,
                      p_id: ast::NodeId,
                      path: &ast::Path,
                      binding_mode: IrrefutablePatternBindingMode,
-                     populate: &fn(@mut Block, ty::t, ValueRef) -> @mut Block) -> @mut Block {
+                     populate: |@mut Block, ty::t, ValueRef| -> @mut Block)
+                     -> @mut Block {
     let var_ty = node_id_type(bcx, p_id);
     let ident = ast_util::path_to_ident(path);
     let llval = alloc_ty(bcx, var_ty, bcx.ident(ident));

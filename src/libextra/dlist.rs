@@ -320,7 +320,7 @@ impl<T> DList<T> {
     /// or at the end.
     ///
     /// O(N)
-    pub fn insert_when(&mut self, elt: T, f: &fn(&T, &T) -> bool) {
+    pub fn insert_when(&mut self, elt: T, f: |&T, &T| -> bool) {
         {
             let mut it = self.mut_iter();
             loop {
@@ -339,7 +339,7 @@ impl<T> DList<T> {
     /// put `a` in the result if `f(a, b)` is true, else `b`.
     ///
     /// O(max(N, M))
-    pub fn merge(&mut self, mut other: DList<T>, f: &fn(&T, &T) -> bool) {
+    pub fn merge(&mut self, mut other: DList<T>, f: |&T, &T| -> bool) {
         {
             let mut it = self.mut_iter();
             loop {

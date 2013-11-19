@@ -47,48 +47,48 @@ pub trait Encoder {
     fn emit_str(&mut self, v: &str);
 
     // Compound types:
-    fn emit_enum(&mut self, name: &str, f: &fn(&mut Self));
+    fn emit_enum(&mut self, name: &str, f: |&mut Self|);
 
     fn emit_enum_variant(&mut self,
                          v_name: &str,
                          v_id: uint,
                          len: uint,
-                         f: &fn(&mut Self));
-    fn emit_enum_variant_arg(&mut self, a_idx: uint, f: &fn(&mut Self));
+                         f: |&mut Self|);
+    fn emit_enum_variant_arg(&mut self, a_idx: uint, f: |&mut Self|);
 
     fn emit_enum_struct_variant(&mut self,
                                 v_name: &str,
                                 v_id: uint,
                                 len: uint,
-                                f: &fn(&mut Self));
+                                f: |&mut Self|);
     fn emit_enum_struct_variant_field(&mut self,
                                       f_name: &str,
                                       f_idx: uint,
-                                      f: &fn(&mut Self));
+                                      f: |&mut Self|);
 
-    fn emit_struct(&mut self, name: &str, len: uint, f: &fn(&mut Self));
+    fn emit_struct(&mut self, name: &str, len: uint, f: |&mut Self|);
     fn emit_struct_field(&mut self,
                          f_name: &str,
                          f_idx: uint,
-                         f: &fn(&mut Self));
+                         f: |&mut Self|);
 
-    fn emit_tuple(&mut self, len: uint, f: &fn(&mut Self));
-    fn emit_tuple_arg(&mut self, idx: uint, f: &fn(&mut Self));
+    fn emit_tuple(&mut self, len: uint, f: |&mut Self|);
+    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Self|);
 
-    fn emit_tuple_struct(&mut self, name: &str, len: uint, f: &fn(&mut Self));
-    fn emit_tuple_struct_arg(&mut self, f_idx: uint, f: &fn(&mut Self));
+    fn emit_tuple_struct(&mut self, name: &str, len: uint, f: |&mut Self|);
+    fn emit_tuple_struct_arg(&mut self, f_idx: uint, f: |&mut Self|);
 
     // Specialized types:
-    fn emit_option(&mut self, f: &fn(&mut Self));
+    fn emit_option(&mut self, f: |&mut Self|);
     fn emit_option_none(&mut self);
-    fn emit_option_some(&mut self, f: &fn(&mut Self));
+    fn emit_option_some(&mut self, f: |&mut Self|);
 
-    fn emit_seq(&mut self, len: uint, f: &fn(this: &mut Self));
-    fn emit_seq_elt(&mut self, idx: uint, f: &fn(this: &mut Self));
+    fn emit_seq(&mut self, len: uint, f: |this: &mut Self|);
+    fn emit_seq_elt(&mut self, idx: uint, f: |this: &mut Self|);
 
-    fn emit_map(&mut self, len: uint, f: &fn(&mut Self));
-    fn emit_map_elt_key(&mut self, idx: uint, f: &fn(&mut Self));
-    fn emit_map_elt_val(&mut self, idx: uint, f: &fn(&mut Self));
+    fn emit_map(&mut self, len: uint, f: |&mut Self|);
+    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Self|);
+    fn emit_map_elt_val(&mut self, idx: uint, f: |&mut Self|);
 }
 
 pub trait Decoder {
@@ -111,59 +111,56 @@ pub trait Decoder {
     fn read_str(&mut self) -> ~str;
 
     // Compound types:
-    fn read_enum<T>(&mut self, name: &str, f: &fn(&mut Self) -> T) -> T;
+    fn read_enum<T>(&mut self, name: &str, f: |&mut Self| -> T) -> T;
 
     fn read_enum_variant<T>(&mut self,
                             names: &[&str],
-                            f: &fn(&mut Self, uint) -> T)
+                            f: |&mut Self, uint| -> T)
                             -> T;
     fn read_enum_variant_arg<T>(&mut self,
                                 a_idx: uint,
-                                f: &fn(&mut Self) -> T)
+                                f: |&mut Self| -> T)
                                 -> T;
 
     fn read_enum_struct_variant<T>(&mut self,
                                    names: &[&str],
-                                   f: &fn(&mut Self, uint) -> T)
+                                   f: |&mut Self, uint| -> T)
                                    -> T;
     fn read_enum_struct_variant_field<T>(&mut self,
                                          &f_name: &str,
                                          f_idx: uint,
-                                         f: &fn(&mut Self) -> T)
+                                         f: |&mut Self| -> T)
                                          -> T;
 
-    fn read_struct<T>(&mut self,
-                      s_name: &str,
-                      len: uint,
-                      f: &fn(&mut Self) -> T)
+    fn read_struct<T>(&mut self, s_name: &str, len: uint, f: |&mut Self| -> T)
                       -> T;
     fn read_struct_field<T>(&mut self,
                             f_name: &str,
                             f_idx: uint,
-                            f: &fn(&mut Self) -> T)
+                            f: |&mut Self| -> T)
                             -> T;
 
-    fn read_tuple<T>(&mut self, f: &fn(&mut Self, uint) -> T) -> T;
-    fn read_tuple_arg<T>(&mut self, a_idx: uint, f: &fn(&mut Self) -> T) -> T;
+    fn read_tuple<T>(&mut self, f: |&mut Self, uint| -> T) -> T;
+    fn read_tuple_arg<T>(&mut self, a_idx: uint, f: |&mut Self| -> T) -> T;
 
     fn read_tuple_struct<T>(&mut self,
                             s_name: &str,
-                            f: &fn(&mut Self, uint) -> T)
+                            f: |&mut Self, uint| -> T)
                             -> T;
     fn read_tuple_struct_arg<T>(&mut self,
                                 a_idx: uint,
-                                f: &fn(&mut Self) -> T)
+                                f: |&mut Self| -> T)
                                 -> T;
 
     // Specialized types:
-    fn read_option<T>(&mut self, f: &fn(&mut Self, bool) -> T) -> T;
+    fn read_option<T>(&mut self, f: |&mut Self, bool| -> T) -> T;
 
-    fn read_seq<T>(&mut self, f: &fn(&mut Self, uint) -> T) -> T;
-    fn read_seq_elt<T>(&mut self, idx: uint, f: &fn(&mut Self) -> T) -> T;
+    fn read_seq<T>(&mut self, f: |&mut Self, uint| -> T) -> T;
+    fn read_seq_elt<T>(&mut self, idx: uint, f: |&mut Self| -> T) -> T;
 
-    fn read_map<T>(&mut self, f: &fn(&mut Self, uint) -> T) -> T;
-    fn read_map_elt_key<T>(&mut self, idx: uint, f: &fn(&mut Self) -> T) -> T;
-    fn read_map_elt_val<T>(&mut self, idx: uint, f: &fn(&mut Self) -> T) -> T;
+    fn read_map<T>(&mut self, f: |&mut Self, uint| -> T) -> T;
+    fn read_map_elt_key<T>(&mut self, idx: uint, f: |&mut Self| -> T) -> T;
+    fn read_map_elt_val<T>(&mut self, idx: uint, f: |&mut Self| -> T) -> T;
 }
 
 pub trait Encodable<S:Encoder> {
@@ -892,11 +889,11 @@ impl<
 // In some cases, these should eventually be coded as traits.
 
 pub trait EncoderHelpers {
-    fn emit_from_vec<T>(&mut self, v: &[T], f: &fn(&mut Self, v: &T));
+    fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut Self, v: &T|);
 }
 
 impl<S:Encoder> EncoderHelpers for S {
-    fn emit_from_vec<T>(&mut self, v: &[T], f: &fn(&mut S, &T)) {
+    fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut S, &T|) {
         do self.emit_seq(v.len()) |this| {
             for (i, e) in v.iter().enumerate() {
                 do this.emit_seq_elt(i) |this| {
@@ -908,11 +905,11 @@ impl<S:Encoder> EncoderHelpers for S {
 }
 
 pub trait DecoderHelpers {
-    fn read_to_vec<T>(&mut self, f: &fn(&mut Self) -> T) -> ~[T];
+    fn read_to_vec<T>(&mut self, f: |&mut Self| -> T) -> ~[T];
 }
 
 impl<D:Decoder> DecoderHelpers for D {
-    fn read_to_vec<T>(&mut self, f: &fn(&mut D) -> T) -> ~[T] {
+    fn read_to_vec<T>(&mut self, f: |&mut D| -> T) -> ~[T] {
         do self.read_seq |this, len| {
             do vec::from_fn(len) |i| {
                 this.read_seq_elt(i, |this| f(this))

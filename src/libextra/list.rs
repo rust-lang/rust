@@ -44,7 +44,7 @@ pub fn from_vec<T:Clone + 'static>(v: &[T]) -> @List<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-pub fn foldl<T:Clone,U>(z: T, ls: @List<U>, f: &fn(&T, &U) -> T) -> T {
+pub fn foldl<T:Clone,U>(z: T, ls: @List<U>, f: |&T, &U| -> T) -> T {
     let mut accum: T = z;
     do iter(ls) |elt| { accum = f(&accum, elt);}
     accum
@@ -57,7 +57,7 @@ pub fn foldl<T:Clone,U>(z: T, ls: @List<U>, f: &fn(&T, &U) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pub fn find<T:Clone>(ls: @List<T>, f: &fn(&T) -> bool) -> Option<T> {
+pub fn find<T:Clone>(ls: @List<T>, f: |&T| -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
@@ -131,7 +131,7 @@ fn push<T:Clone>(ll: &mut @list<T>, vv: T) {
 */
 
 /// Iterate over a list
-pub fn iter<T>(l: @List<T>, f: &fn(&T)) {
+pub fn iter<T>(l: @List<T>, f: |&T|) {
     let mut cur = l;
     loop {
         cur = match *cur {
@@ -145,7 +145,7 @@ pub fn iter<T>(l: @List<T>, f: &fn(&T)) {
 }
 
 /// Iterate over a list
-pub fn each<T>(l: @List<T>, f: &fn(&T) -> bool) -> bool {
+pub fn each<T>(l: @List<T>, f: |&T| -> bool) -> bool {
     let mut cur = l;
     loop {
         cur = match *cur {
@@ -160,7 +160,7 @@ pub fn each<T>(l: @List<T>, f: &fn(&T) -> bool) -> bool {
 
 impl<T> MutList<T> {
     /// Iterate over a mutable list
-    pub fn each(@mut self, f: &fn(&mut T) -> bool) -> bool {
+    pub fn each(@mut self, f: |&mut T| -> bool) -> bool {
         let mut cur = self;
         loop {
             let borrowed = &mut *cur;

@@ -164,15 +164,17 @@ struct AncestorList(Option<Exclusive<AncestorNode>>);
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline]
-fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
+fn access_group<U>(x: &TaskGroupArc, blk: |TaskGroupInner| -> U) -> U {
     unsafe {
         x.with(blk)
     }
 }
 
 #[inline]
-fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
-                       blk: &fn(x: &mut AncestorNode) -> U) -> U {
+fn access_ancestors<U>(
+                    x: &Exclusive<AncestorNode>,
+                    blk: |x: &mut AncestorNode| -> U)
+                    -> U {
     unsafe {
         x.with(blk)
     }
@@ -197,17 +199,17 @@ fn incr_generation(_ancestors: &AncestorList) -> uint { 0 }
 //     is NOT called on the block that forward_blk broke on!).
 // (3) As a bonus, coalesces away all 'dead' taskgroup nodes in the list.
 fn each_ancestor(list:        &mut AncestorList,
-                 bail_blk:    &fn(TaskGroupInner),
-                 forward_blk: &fn(TaskGroupInner) -> bool)
-              -> bool {
+                 bail_blk:    |TaskGroupInner|,
+                 forward_blk: |TaskGroupInner| -> bool)
+                 -> bool {
     // "Kickoff" call - there was no last generation.
     return !coalesce(list, bail_blk, forward_blk, uint::max_value);
 
     // Recursively iterates, and coalesces afterwards if needed. Returns
     // whether or not unwinding is needed (i.e., !successful iteration).
     fn coalesce(list:            &mut AncestorList,
-                bail_blk:        &fn(TaskGroupInner),
-                forward_blk:     &fn(TaskGroupInner) -> bool,
+                bail_blk:        |TaskGroupInner|,
+                forward_blk:     |TaskGroupInner| -> bool,
                 last_generation: uint) -> bool {
         let (coalesce_this, early_break) =
             iterate(list, bail_blk, forward_blk, last_generation);
@@ -229,8 +231,8 @@ fn each_ancestor(list:        &mut AncestorList,
     //     True if the supplied block did 'break', here or in any recursive
     //     calls. If so, must call the unwinder on all previous nodes.
     fn iterate(ancestors:       &mut AncestorList,
-               bail_blk:        &fn(TaskGroupInner),
-               forward_blk:     &fn(TaskGroupInner) -> bool,
+               bail_blk:        |TaskGroupInner|,
+               forward_blk:     |TaskGroupInner| -> bool,
                last_generation: uint)
             -> (Option<AncestorList>, bool) {
         // At each step of iteration, three booleans are at play which govern
@@ -457,7 +459,7 @@ impl RuntimeGlue {
         };
     }
 
-    fn with_task_handle_and_failing(blk: &fn(&KillHandle, bool)) {
+    fn with_task_handle_and_failing(blk: |&KillHandle, bool|) {
         assert!(in_green_task_context());
         unsafe {
             // Can't use safe borrow, because the taskgroup destructor needs to
@@ -467,7 +469,7 @@ impl RuntimeGlue {
         }
     }
 
-    fn with_my_taskgroup<U>(blk: &fn(&Taskgroup) -> U) -> U {
+    fn with_my_taskgroup<U>(blk: |&Taskgroup| -> U) -> U {
         assert!(in_green_task_context());
         unsafe {
             // Can't use safe borrow, because creating new hashmaps for the
@@ -545,7 +547,7 @@ fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
     };
     if result {
         // Unwinding function in case any ancestral enlisting fails
-        let bail: &fn(TaskGroupInner) = |tg| { leave_taskgroup(tg, child, false) };
+        let bail: |TaskGroupInner| = |tg| { leave_taskgroup(tg, child, false) };
         // Attempt to join every ancestor group.
         result = do each_ancestor(ancestors, bail) |ancestor_tg| {
             // Enlist as a descendant, not as an actual member.

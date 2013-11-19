@@ -42,7 +42,7 @@ impl<'self> fold::ast_fold for Context<'self> {
 }
 
 pub fn strip_items(crate: ast::Crate,
-                   in_cfg: &fn(attrs: &[ast::Attribute]) -> bool)
+                   in_cfg: |attrs: &[ast::Attribute]| -> bool)
                    -> ast::Crate {
     let ctxt = Context {
         in_cfg: in_cfg,

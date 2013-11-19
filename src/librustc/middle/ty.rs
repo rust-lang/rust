@@ -247,7 +247,7 @@ pub enum AutoRef {
     /// Convert from @[]/~[]/&[] to &&[] (or str)
     AutoBorrowVecRef(Region, ast::Mutability),
 
-    /// Convert from @fn()/~fn()/&fn() to &fn()
+    /// Convert from @fn()/~fn()/|| to ||
     AutoBorrowFn(Region),
 
     /// Convert from T to *T
@@ -651,7 +651,7 @@ pub enum sty {
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(Sigil), // ptr to env for &fn, @fn, ~fn
+    ty_opaque_closure_ptr(Sigil), // ptr to env for ||, @fn, ~fn
     ty_unboxed_vec(mt),
 }
 
@@ -1348,11 +1348,11 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
 
 pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
-pub fn walk_ty(ty: t, f: &fn(t)) {
+pub fn walk_ty(ty: t, f: |t|) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
 
-pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
+pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     if !f(ty) {
         return;
     }
@@ -1382,25 +1382,19 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
 }
 
 // Folds types from the bottom up.
-pub fn fold_ty(cx: ctxt, t0: t, fldop: &fn(t) -> t) -> t {
+pub fn fold_ty(cx: ctxt, t0: t, fldop: |t| -> t) -> t {
     let mut f = ty_fold::BottomUpFolder {tcx: cx, fldop: fldop};
     f.fold_ty(t0)
 }
 
-pub fn walk_regions_and_ty(cx: ctxt,
-                           ty: t,
-                           fldr: &fn(r: Region),
-                           fldt: &fn(t: t))
+pub fn walk_regions_and_ty(cx: ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
                            -> t {
     ty_fold::RegionFolder::general(cx,
                                    |r| { fldr(r); r },
                                    |t| { fldt(t); t }).fold_ty(ty)
 }
 
-pub fn fold_regions(cx: ctxt,
-                    ty: t,
-                    fldr: &fn(r: Region) -> Region)
-                    -> t {
+pub fn fold_regions(cx: ctxt, ty: t, fldr: |r: Region| -> Region) -> t {
     ty_fold::RegionFolder::regions(cx, fldr).fold_ty(ty)
 }
 
@@ -1886,7 +1880,7 @@ impl TypeContents {
             *self & TC::ReachesAll)
     }
 
-    pub fn union<T>(v: &[T], f: &fn(&T) -> TypeContents) -> TypeContents {
+    pub fn union<T>(v: &[T], f: |&T| -> TypeContents) -> TypeContents {
         v.iter().fold(TC::None, |tc, t| tc | f(t))
     }
 
@@ -2223,7 +2217,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         fn each_inherited_builtin_bound(cx: ctxt,
                                         bounds: BuiltinBounds,
                                         traits: &[@TraitRef],
-                                        f: &fn(BuiltinBound)) {
+                                        f: |BuiltinBound|) {
             for bound in bounds.iter() {
                 f(bound);
             }
@@ -2351,10 +2345,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
     !subtypes_require(cx, &mut seen, r_ty, r_ty)
 }
 
-pub fn type_structurally_contains(cx: ctxt,
-                                  ty: t,
-                                  test: &fn(x: &sty) -> bool)
-                               -> bool {
+pub fn type_structurally_contains(cx: ctxt, ty: t, test: |x: &sty| -> bool)
+                                  -> bool {
     let sty = &get(ty).sty;
     debug!("type_structurally_contains: {}",
            ::util::ppaux::ty_to_str(cx, ty));
@@ -2969,7 +2961,7 @@ pub fn adjust_ty(cx: ctxt,
 }
 
 impl AutoRef {
-    pub fn map_region(&self, f: &fn(Region) -> Region) -> AutoRef {
+    pub fn map_region(&self, f: |Region| -> Region) -> AutoRef {
         match *self {
             ty::AutoPtr(r, m) => ty::AutoPtr(f(r), m),
             ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(f(r), m),
@@ -3525,11 +3517,10 @@ pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> ~[@TraitRef]
 }
 
 fn lookup_locally_or_in_crate_store<V:Clone>(
-    descr: &str,
-    def_id: ast::DefId,
-    map: &mut HashMap<ast::DefId, V>,
-    load_external: &fn() -> V) -> V
-{
+                                    descr: &str,
+                                    def_id: ast::DefId,
+                                    map: &mut HashMap<ast::DefId, V>,
+                                    load_external: || -> V) -> V {
     /*!
      * Helper for looking things up in the various maps
      * that are populated during typeck::collect (e.g.,
@@ -3961,7 +3952,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
 /// Iterate over meta_items of a definition.
 // (This should really be an iterator, but that would require csearch and
 // decoder to use iterators instead of higher-order functions.)
-pub fn each_attr(tcx: ctxt, did: DefId, f: &fn(@MetaItem) -> bool) -> bool {
+pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
     if is_local(did) {
         match tcx.items.find(&did.node) {
             Some(&ast_map::node_item(@ast::item {attrs: ref attrs, _}, _)) =>
@@ -4341,7 +4332,8 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::NodeId),
 // list.
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                         bounds: &[@TraitRef],
-                                        f: &fn(@TraitRef) -> bool) -> bool {
+                                        f: |@TraitRef| -> bool)
+                                        -> bool {
     for &bound_trait_ref in bounds.iter() {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];

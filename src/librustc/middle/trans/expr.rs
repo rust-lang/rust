@@ -1151,10 +1151,12 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
 // The optional node ID here is the node ID of the path identifying the enum
 // variant in use. If none, this cannot possibly an enum variant (so, if it
 // is and `node_id_opt` is none, this function fails).
-pub fn with_field_tys<R>(tcx: ty::ctxt,
-                         ty: ty::t,
-                         node_id_opt: Option<ast::NodeId>,
-                         op: &fn(ty::Disr, (&[ty::field])) -> R) -> R {
+pub fn with_field_tys<R>(
+                      tcx: ty::ctxt,
+                      ty: ty::t,
+                      node_id_opt: Option<ast::NodeId>,
+                      op: |ty::Disr, (&[ty::field])| -> R)
+                      -> R {
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
             op(0, struct_fields(tcx, did, substs))

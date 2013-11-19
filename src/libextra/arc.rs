@@ -220,7 +220,7 @@ impl<T:Send> MutexArc<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline]
-    pub unsafe fn unsafe_access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    pub unsafe fn unsafe_access<U>(&self, blk: |x: &mut T| -> U) -> U {
         let state = self.x.get();
         // Borrowck would complain about this if the function were
         // not already unsafe. See borrow_rwlock, far below.
@@ -234,8 +234,7 @@ impl<T:Send> MutexArc<T> {
     /// As unsafe_access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline]
     pub unsafe fn unsafe_access_cond<U>(&self,
-                                        blk: &fn(x: &mut T,
-                                                 c: &Condvar) -> U)
+                                        blk: |x: &mut T, c: &Condvar| -> U)
                                         -> U {
         let state = self.x.get();
         do (&(*state).lock).lock_cond |cond| {
@@ -284,15 +283,14 @@ impl<T:Freeze + Send> MutexArc<T> {
      * unsafe_access_cond.
      */
     #[inline]
-    pub fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    pub fn access<U>(&self, blk: |x: &mut T| -> U) -> U {
         unsafe { self.unsafe_access(blk) }
     }
 
     /// As unsafe_access_cond but safe and Freeze.
     #[inline]
     pub fn access_cond<U>(&self,
-                          blk: &fn(x: &mut T,
-                                   c: &Condvar) -> U)
+                          blk: |x: &mut T, c: &Condvar| -> U)
                           -> U {
         unsafe { self.unsafe_access_cond(blk) }
     }
@@ -389,7 +387,7 @@ impl<T:Freeze + Send> RWArc<T> {
      * poison the Arc, so subsequent readers and writers will both also fail.
      */
     #[inline]
-    pub fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    pub fn write<U>(&self, blk: |x: &mut T| -> U) -> U {
         unsafe {
             let state = self.x.get();
             do (*borrow_rwlock(state)).write {
@@ -403,7 +401,7 @@ impl<T:Freeze + Send> RWArc<T> {
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline]
     pub fn write_cond<U>(&self,
-                         blk: &fn(x: &mut T, c: &Condvar) -> U)
+                         blk: |x: &mut T, c: &Condvar| -> U)
                          -> U {
         unsafe {
             let state = self.x.get();
@@ -427,7 +425,7 @@ impl<T:Freeze + Send> RWArc<T> {
      * Failing will unlock the Arc while unwinding. However, unlike all other
      * access modes, this will not poison the Arc.
      */
-    pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
+    pub fn read<U>(&self, blk: |x: &T| -> U) -> U {
         unsafe {
             let state = self.x.get();
             do (*state).lock.read {
@@ -457,7 +455,7 @@ impl<T:Freeze + Send> RWArc<T> {
      * }
      * ```
      */
-    pub fn write_downgrade<U>(&self, blk: &fn(v: RWWriteMode<T>) -> U) -> U {
+    pub fn write_downgrade<U>(&self, blk: |v: RWWriteMode<T>| -> U) -> U {
         unsafe {
             let state = self.x.get();
             do (*borrow_rwlock(state)).write_downgrade |write_mode| {
@@ -539,7 +537,7 @@ pub struct RWReadMode<'self, T> {
 
 impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWArc in write mode.
-    pub fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
+    pub fn write<U>(&mut self, blk: |x: &mut T| -> U) -> U {
         match *self {
             RWWriteMode {
                 data: &ref mut data,
@@ -555,7 +553,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
 
     /// Access the pre-downgrade RWArc in write mode with a condvar.
     pub fn write_cond<U>(&mut self,
-                         blk: &fn(x: &mut T, c: &Condvar) -> U)
+                         blk: |x: &mut T, c: &Condvar| -> U)
                          -> U {
         match *self {
             RWWriteMode {
@@ -580,7 +578,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
 
 impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
     /// Access the post-downgrade rwlock in read mode.
-    pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
+    pub fn read<U>(&self, blk: |x: &T| -> U) -> U {
         match *self {
             RWReadMode {
                 data: data,

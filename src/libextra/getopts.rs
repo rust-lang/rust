@@ -768,9 +768,8 @@ pub mod groups {
     ///
     /// Fails during iteration if the string contains a non-whitespace
     /// sequence longer than the limit.
-    fn each_split_within<'a>(ss: &'a str,
-                             lim: uint,
-                             it: &fn(&'a str) -> bool) -> bool {
+    fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
+                         -> bool {
         // Just for fun, let's write this as a state machine:
 
         enum SplitWithinState {
@@ -795,14 +794,14 @@ pub mod groups {
         let mut lim = lim;
 
         let mut cont = true;
-        let slice: &fn() = || { cont = it(ss.slice(slice_start, last_end)) };
+        let slice: || = || { cont = it(ss.slice(slice_start, last_end)) };
 
         // if the limit is larger than the string, lower it to save cycles
         if (lim >= fake_i) {
             lim = fake_i;
         }
 
-        let machine: &fn((uint, char)) -> bool = |(i, c)| {
+        let machine: |(uint, char)| -> bool = |(i, c)| {
             let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
             let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
 

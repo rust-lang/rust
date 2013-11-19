@@ -715,8 +715,7 @@ type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
-             callback: &fn(e: TestEvent)) {
-
+             callback: |e: TestEvent|) {
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.map(|t| t.desc.clone());
 
@@ -1058,7 +1057,7 @@ impl MetricMap {
 
 impl BenchHarness {
     /// Callback for benchmark functions to run in their body.
-    pub fn iter(&mut self, inner:&fn()) {
+    pub fn iter(&mut self, inner: ||) {
         self.ns_start = precise_time_ns();
         let k = self.iterations;
         for _ in range(0u64, k) {
@@ -1083,7 +1082,7 @@ impl BenchHarness {
         }
     }
 
-    pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
+    pub fn bench_n(&mut self, n: u64, f: |&mut BenchHarness|) {
         self.iterations = n;
         debug!("running benchmark for {} iterations",
                n as uint);
@@ -1091,7 +1090,7 @@ impl BenchHarness {
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> stats::Summary {
+    pub fn auto_bench(&mut self, f: |&mut BenchHarness|) -> stats::Summary {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
@@ -1161,8 +1160,7 @@ impl BenchHarness {
 pub mod bench {
     use test::{BenchHarness, BenchSamples};
 
-    pub fn benchmark(f: &fn(&mut BenchHarness)) -> BenchSamples {
-
+    pub fn benchmark(f: |&mut BenchHarness|) -> BenchSamples {
         let mut bs = BenchHarness {
             iterations: 0,
             ns_start: 0,

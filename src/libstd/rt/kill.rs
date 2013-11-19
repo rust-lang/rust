@@ -369,7 +369,7 @@ impl BlockedTask {
 
 // So that KillHandle can be hashed in the taskgroup bookkeeping code.
 impl IterBytes for KillHandle {
-    fn iter_bytes(&self, lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
+    fn iter_bytes(&self, lsb0: bool, f: |buf: &[u8]| -> bool) -> bool {
         self.data.iter_bytes(lsb0, f)
     }
 }
@@ -525,9 +525,8 @@ impl KillHandle {
         // NB: Takes a pthread mutex -- 'blk' not allowed to reschedule.
         #[inline]
         fn add_lazy_tombstone(parent: &mut KillHandle,
-                              blk: &fn(Option<proc() -> bool>)
-                              -> proc() -> bool) {
-
+                              blk: |Option<proc() -> bool>| -> proc() -> bool)
+                              {
             let inner: &mut KillHandleInner = unsafe { &mut *parent.get() };
             unsafe {
                 do inner.graveyard_lock.lock {

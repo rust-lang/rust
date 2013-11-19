@@ -40,7 +40,7 @@ impl SmallBitv {
     pub fn bits_op(&mut self,
                    right_bits: uint,
                    nbits: uint,
-                   f: &fn(uint, uint) -> uint)
+                   f: |uint, uint| -> uint)
                    -> bool {
         let mask = small_mask(nbits);
         let old_b: uint = self.bits;
@@ -140,7 +140,7 @@ impl BigBitv {
     pub fn process(&mut self,
                    b: &BigBitv,
                    nbits: uint,
-                   op: &fn(uint, uint) -> uint)
+                   op: |uint, uint| -> uint)
                    -> bool {
         let len = b.storage.len();
         assert_eq!(self.storage.len(), len);
@@ -161,7 +161,7 @@ impl BigBitv {
     }
 
     #[inline]
-    pub fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
+    pub fn each_storage(&mut self, op: |v: &mut uint| -> bool) -> bool {
         self.storage.mut_iter().advance(|elt| op(elt))
     }
 
@@ -512,7 +512,7 @@ impl Bitv {
         true
     }
 
-    pub fn ones(&self, f: &fn(uint) -> bool) -> bool {
+    pub fn ones(&self, f: |uint| -> bool) -> bool {
         range(0u, self.nbits).advance(|i| !self.get(i) || f(i))
     }
 
@@ -542,7 +542,7 @@ pub fn from_bools(bools: &[bool]) -> Bitv {
  * Create a `Bitv` of the specified length where the value at each
  * index is `f(index)`.
  */
-pub fn from_fn(len: uint, f: &fn(index: uint) -> bool) -> Bitv {
+pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
     let mut bitv = Bitv::new(len, false);
     for i in range(0u, len) {
         bitv.set(i, f(i));
@@ -557,7 +557,7 @@ impl ops::Index<uint,bool> for Bitv {
 }
 
 #[inline]
-fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
+fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
     if bits == 0 {
         return true;
     }
@@ -675,7 +675,7 @@ impl BitvSet {
     }
 
     #[inline]
-    fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
+    fn other_op(&mut self, other: &BitvSet, f: |uint, uint| -> uint) {
         fn nbits(mut w: uint) -> uint {
             let mut bits = 0;
             for _ in range(0u, uint::bits) {
@@ -722,7 +722,7 @@ impl BitvSet {
         BitvSetIterator {set: self, next_idx: 0}
     }
 
-    pub fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+    pub fn difference(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
         for (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
                 return false
@@ -734,8 +734,8 @@ impl BitvSet {
         )
     }
 
-    pub fn symmetric_difference(&self, other: &BitvSet,
-                            f: &fn(&uint) -> bool) -> bool {
+    pub fn symmetric_difference(&self, other: &BitvSet, f: |&uint| -> bool)
+                                -> bool {
         for (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
                 return false
@@ -744,11 +744,11 @@ impl BitvSet {
         self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 
-    pub fn intersection(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+    pub fn intersection(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
         self.common_iter(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
     }
 
-    pub fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+    pub fn union(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
         for (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 | w2, |b| f(&b)) {
                 return false

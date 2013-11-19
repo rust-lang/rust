@@ -50,14 +50,14 @@ impl<T> OptVec<T> {
         *self = Vec(~[t]);
     }
 
-    pub fn map<U>(&self, op: &fn(&T) -> U) -> OptVec<U> {
+    pub fn map<U>(&self, op: |&T| -> U) -> OptVec<U> {
         match *self {
             Empty => Empty,
             Vec(ref v) => Vec(v.map(op))
         }
     }
 
-    pub fn map_move<U>(self, op: &fn(T) -> U) -> OptVec<U> {
+    pub fn map_move<U>(self, op: |T| -> U) -> OptVec<U> {
         match self {
             Empty => Empty,
             Vec(v) => Vec(v.move_iter().map(op).collect())
@@ -91,11 +91,11 @@ impl<T> OptVec<T> {
     }
 
     #[inline]
-    pub fn map_to_vec<B>(&self, op: &fn(&T) -> B) -> ~[B] {
+    pub fn map_to_vec<B>(&self, op: |&T| -> B) -> ~[B] {
         self.iter().map(op).collect()
     }
 
-    pub fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
+    pub fn mapi_to_vec<B>(&self, op: |uint, &T| -> B) -> ~[B] {
         let mut index = 0;
         self.map_to_vec(|a| {
             let i = index;

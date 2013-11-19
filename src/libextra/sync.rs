@@ -133,7 +133,7 @@ impl<Q:Send> Sem<Q> {
         }
     }
 
-    pub fn access<U>(&self, blk: &fn() -> U) -> U {
+    pub fn access<U>(&self, blk: || -> U) -> U {
         do task::unkillable {
             do (|| {
                 self.acquire();
@@ -305,8 +305,12 @@ impl<'self> Condvar<'self> {
 // something else next on success.
 #[inline]
 #[doc(hidden)]
-fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
-                        blk: &fn() -> U) -> U {
+fn check_cvar_bounds<U>(
+                     out_of_bounds: Option<uint>,
+                     id: uint,
+                     act: &str,
+                     blk: || -> U)
+                     -> U {
     match out_of_bounds {
         Some(0) =>
             fail!("{} with illegal ID {} - this lock has no condvars!", act, id),
@@ -320,7 +324,7 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
 impl Sem<~[WaitQueue]> {
     // The only other places that condvars get built are rwlock.write_cond()
     // and rwlock_write_mode.
-    pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
+    pub fn access_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
         do self.access {
             blk(&Condvar { sem: self, order: Nothing, token: NonCopyable::new() })
         }
@@ -361,7 +365,7 @@ impl Semaphore {
     pub fn release(&self) { (&self.sem).release() }
 
     /// Run a function with ownership of one of the semaphore's resources.
-    pub fn access<U>(&self, blk: &fn() -> U) -> U { (&self.sem).access(blk) }
+    pub fn access<U>(&self, blk: || -> U) -> U { (&self.sem).access(blk) }
 }
 
 /****************************************************************************
@@ -399,12 +403,12 @@ impl Mutex {
 
 
     /// Run a function with ownership of the mutex.
-    pub fn lock<U>(&self, blk: &fn() -> U) -> U {
+    pub fn lock<U>(&self, blk: || -> U) -> U {
         (&self.sem).access(blk)
     }
 
     /// Run a function with ownership of the mutex and a handle to a condvar.
-    pub fn lock_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
+    pub fn lock_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
         (&self.sem).access_cond(blk)
     }
 }
@@ -478,7 +482,7 @@ impl RWLock {
      * Run a function with the rwlock in read mode. Calls to 'read' from other
      * tasks may run concurrently with this one.
      */
-    pub fn read<U>(&self, blk: &fn() -> U) -> U {
+    pub fn read<U>(&self, blk: || -> U) -> U {
         unsafe {
             do task::unkillable {
                 do (&self.order_lock).access {
@@ -513,7 +517,7 @@ impl RWLock {
      * Run a function with the rwlock in write mode. No calls to 'read' or
      * 'write' from other tasks will run concurrently with this one.
      */
-    pub fn write<U>(&self, blk: &fn() -> U) -> U {
+    pub fn write<U>(&self, blk: || -> U) -> U {
         do task::unkillable {
             (&self.order_lock).acquire();
             do (&self.access_lock).access {
@@ -531,7 +535,7 @@ impl RWLock {
      * the waiting task is signalled. (Note: a writer that waited and then
      * was signalled might reacquire the lock before other waiting writers.)
      */
-    pub fn write_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
+    pub fn write_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
         // It's important to thread our order lock into the condvar, so that
         // when a cond.wait() wakes up, it uses it while reacquiring the
         // access lock. If we permitted a waking-up writer to "cut in line",
@@ -592,7 +596,7 @@ impl RWLock {
      * }
      * ```
      */
-    pub fn write_downgrade<U>(&self, blk: &fn(v: RWLockWriteMode) -> U) -> U {
+    pub fn write_downgrade<U>(&self, blk: |v: RWLockWriteMode| -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
         do task::unkillable {
@@ -671,9 +675,9 @@ pub struct RWLockReadMode<'self> { priv lock: &'self RWLock,
 
 impl<'self> RWLockWriteMode<'self> {
     /// Access the pre-downgrade rwlock in write mode.
-    pub fn write<U>(&self, blk: &fn() -> U) -> U { blk() }
+    pub fn write<U>(&self, blk: || -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
-    pub fn write_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
+    pub fn write_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
         // Need to make the condvar use the order lock when reacquiring the
         // access lock. See comment in RWLock::write_cond for why.
         blk(&Condvar { sem:        &self.lock.access_lock,
@@ -684,7 +688,7 @@ impl<'self> RWLockWriteMode<'self> {
 
 impl<'self> RWLockReadMode<'self> {
     /// Access the post-downgrade rwlock in read mode.
-    pub fn read<U>(&self, blk: &fn() -> U) -> U { blk() }
+    pub fn read<U>(&self, blk: || -> U) -> U { blk() }
 }
 
 /****************************************************************************
@@ -1060,7 +1064,7 @@ mod tests {
     #[cfg(test)]
     pub enum RWLockMode { Read, Write, Downgrade, DowngradeRead }
     #[cfg(test)]
-    fn lock_rwlock_in_mode(x: &RWLock, mode: RWLockMode, blk: &fn()) {
+    fn lock_rwlock_in_mode(x: &RWLock, mode: RWLockMode, blk: ||) {
         match mode {
             Read => x.read(blk),
             Write => x.write(blk),
@@ -1221,7 +1225,7 @@ mod tests {
                                              dg1: bool,
                                              dg2: bool) {
         // Much like the mutex broadcast test. Downgrade-enabled.
-        fn lock_cond(x: &RWLock, downgrade: bool, blk: &fn(c: &Condvar)) {
+        fn lock_cond(x: &RWLock, downgrade: bool, blk: |c: &Condvar|) {
             if downgrade {
                 do x.write_downgrade |mode| {
                     do mode.write_cond |c| { blk(c) }
