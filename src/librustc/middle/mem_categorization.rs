@@ -876,7 +876,7 @@ impl mem_categorization_ctxt {
         op(cmt, pat);
 
         match pat.node {
-          ast::PatWild => {
+          ast::PatWild | ast::PatWildMulti => {
             // _
           }
 

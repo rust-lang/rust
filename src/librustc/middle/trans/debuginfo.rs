@@ -2429,7 +2429,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::PatWild => {
+            ast::PatWild | ast::PatWildMulti => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
             }
 

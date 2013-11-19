@@ -97,7 +97,7 @@ impl CFGBuilder {
             ast::PatEnum(_, None) |
             ast::PatLit(*) |
             ast::PatRange(*) |
-            ast::PatWild => {
+            ast::PatWild | ast::PatWildMulti => {
                 self.add_node(pat.id, [pred])
             }
 

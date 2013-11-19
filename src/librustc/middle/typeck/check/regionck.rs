@@ -1219,7 +1219,7 @@ pub mod guarantor {
                rcx.fcx.pat_to_str(pat), guarantor);
 
         match pat.node {
-            ast::PatWild => {}
+            ast::PatWild | ast::PatWildMulti => {}
             ast::PatIdent(ast::BindByRef(_), _, opt_p) => {
                 link(rcx, pat.span, pat.id, guarantor);
 

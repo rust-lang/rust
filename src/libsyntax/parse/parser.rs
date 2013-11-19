@@ -43,7 +43,7 @@ use ast::{MutImmutable, MutMutable, mac_, mac_invoc_tt, matcher, match_nontermin
 use ast::{match_seq, match_tok, method, mt, BiMul, Mutability};
 use ast::{named_field, UnNeg, noreturn, UnNot, Pat, PatBox, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
-use ast::{PatTup, PatUniq, PatWild, private};
+use ast::{PatTup, PatUniq, PatWild, PatWildMulti, private};
 use ast::{BiRem, required};
 use ast::{ret_style, return_val, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, struct_def, struct_field};
@@ -2724,17 +2724,35 @@ impl Parser {
                 }
             }
 
-            let subpat = self.parse_pat();
             if is_slice {
-                match subpat {
-                    @ast::Pat { node: PatWild, _ } => (),
-                    @ast::Pat { node: PatIdent(_, _, _), _ } => (),
-                    @ast::Pat { span, _ } => self.span_fatal(
-                        span, "expected an identifier or `_`"
-                    )
+                if *self.token == token::COMMA || *self.token == token::RBRACKET {
+                    slice = Some(@ast::Pat {
+                        id: ast::DUMMY_NODE_ID,
+                        node: PatWildMulti,
+                        span: *self.span,
+                    })
+                } else {
+                    let subpat = self.parse_pat();
+                    match subpat {
+                        @ast::Pat { id, node: PatWild, span } => {
+                            // NOTE #5830 activate after snapshot
+                            // self.obsolete(*self.span, ObsoleteVecDotDotWildcard);
+                            slice = Some(@ast::Pat {
+                                id: id,
+                                node: PatWildMulti,
+                                span: span
+                            })
+                        },
+                        @ast::Pat { node: PatIdent(_, _, _), _ } => {
+                            slice = Some(subpat);
+                        }
+                        @ast::Pat { span, _ } => self.span_fatal(
+                            span, "expected an identifier or nothing"
+                        )
+                    }
                 }
-                slice = Some(subpat);
             } else {
+                let subpat = self.parse_pat();
                 if before_slice {
                     before.push(subpat);
                 } else {
@@ -2755,7 +2773,12 @@ impl Parser {
             if first { first = false; }
             else { self.expect(&token::COMMA); }
 
+            etc = *self.token == token::UNDERSCORE || *self.token == token::DOTDOT;
             if *self.token == token::UNDERSCORE {
+                // NOTE #5830 activate after snapshot
+                // self.obsolete(*self.span, ObsoleteStructWildcard);
+            }
+            if etc {
                 self.bump();
                 if *self.token != token::RBRACE {
                     self.fatal(
@@ -3016,9 +3039,19 @@ impl Parser {
                                     _ => false,
                                 }
                             };
-                            if is_star {
+                            let is_dotdot = do self.look_ahead(1) |t| {
+                                match *t {
+                                    token::DOTDOT => true,
+                                    _ => false,
+                                }
+                            };
+                            if is_star | is_dotdot {
                                 // This is a "top constructor only" pat
                                 self.bump();
+                                if is_star {
+                                    // NOTE #5830 activate after snapshot
+                                    // self.obsolete(*self.span, ObsoleteEnumWildcard);
+                                }
                                 self.bump();
                                 self.expect(&token::RPAREN);
                                 pat = PatEnum(enum_path, None);
