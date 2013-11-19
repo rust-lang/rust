@@ -11,7 +11,7 @@
 
 // check that the &int here does not cause us to think that `foo`
 // contains region pointers
-struct foo(~fn(x: &int));
+struct foo(proc(x: &int));
 
 fn take_foo(x: foo<'static>) {} //~ ERROR wrong number of lifetime parameters
 

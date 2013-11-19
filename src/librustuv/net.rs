@@ -1101,7 +1101,7 @@ mod test {
             let handle2 = Cell::new(sched2.make_handle());
             let tasksFriendHandle = Cell::new(sched2.make_handle());
 
-            let on_exit: ~fn(UnwindResult) = |exit_status| {
+            let on_exit: proc(UnwindResult) = |exit_status| {
                 handle1.take().send(Shutdown);
                 handle2.take().send(Shutdown);
                 assert!(exit_status.is_success());
@@ -1115,7 +1115,7 @@ mod test {
                 }
             }
 
-            let test_function: ~fn() = || {
+            let test_function: proc() = || {
                 let io = unsafe { local_io() };
                 let addr = next_test_ip4();
                 let maybe_socket = io.udp_bind(addr);

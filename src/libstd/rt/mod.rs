@@ -207,7 +207,7 @@ pub mod borrowck;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(argc: int, argv: **u8, main: ~fn()) -> int {
+pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 
     init(argc, argv);
     let exit_code = run(main);
@@ -221,7 +221,7 @@ pub fn start(argc: int, argv: **u8, main: ~fn()) -> int {
 ///
 /// This is appropriate for running code that must execute on the main thread,
 /// such as the platform event loop and GUI.
-pub fn start_on_main_thread(argc: int, argv: **u8, main: ~fn()) -> int {
+pub fn start_on_main_thread(argc: int, argv: **u8, main: proc()) -> int {
     init(argc, argv);
     let exit_code = run_on_main_thread(main);
     cleanup();
@@ -254,15 +254,15 @@ pub fn cleanup() {
 /// Configures the runtime according to the environment, by default
 /// using a task scheduler with the same number of threads as cores.
 /// Returns a process exit code.
-pub fn run(main: ~fn()) -> int {
+pub fn run(main: proc()) -> int {
     run_(main, false)
 }
 
-pub fn run_on_main_thread(main: ~fn()) -> int {
+pub fn run_on_main_thread(main: proc()) -> int {
     run_(main, true)
 }
 
-fn run_(main: ~fn(), use_main_sched: bool) -> int {
+fn run_(main: proc(), use_main_sched: bool) -> int {
     static DEFAULT_ERROR_CODE: int = 101;
 
     let nscheds = util::default_sched_threads();
@@ -341,7 +341,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // When the main task exits, after all the tasks in the main
     // task tree, shut down the schedulers and set the exit code.
     let handles = Cell::new(handles);
-    let on_exit: ~fn(UnwindResult) = |exit_success| {
+    let on_exit: proc(UnwindResult) = |exit_success| {
         unsafe {
             assert!(!(*exited_already.get()).swap(true, SeqCst),
                     "the runtime already exited");

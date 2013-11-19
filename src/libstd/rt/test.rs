@@ -64,28 +64,28 @@ pub fn new_test_sched() -> Scheduler {
     return sched;
 }
 
-pub fn run_in_uv_task(f: ~fn()) {
+pub fn run_in_uv_task(f: proc()) {
     let f = Cell::new(f);
     do run_in_bare_thread {
         run_in_uv_task_core(f.take());
     }
 }
 
-pub fn run_in_newsched_task(f: ~fn()) {
+pub fn run_in_newsched_task(f: proc()) {
     let f = Cell::new(f);
     do run_in_bare_thread {
         run_in_newsched_task_core(f.take());
     }
 }
 
-pub fn run_in_uv_task_core(f: ~fn()) {
+pub fn run_in_uv_task_core(f: proc()) {
 
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_uv_sched();
     let exit_handle = Cell::new(sched.make_handle());
 
-    let on_exit: ~fn(UnwindResult) = |exit_status| {
+    let on_exit: proc(UnwindResult) = |exit_status| {
         exit_handle.take().send(Shutdown);
         rtassert!(exit_status.is_success());
     };
@@ -95,13 +95,13 @@ pub fn run_in_uv_task_core(f: ~fn()) {
     sched.bootstrap(task);
 }
 
-pub fn run_in_newsched_task_core(f: ~fn()) {
+pub fn run_in_newsched_task_core(f: proc()) {
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_sched();
     let exit_handle = Cell::new(sched.make_handle());
 
-    let on_exit: ~fn(UnwindResult) = |exit_status| {
+    let on_exit: proc(UnwindResult) = |exit_status| {
         exit_handle.take().send(Shutdown);
         rtassert!(exit_status.is_success());
     };
@@ -195,7 +195,7 @@ pub fn prepare_for_lots_of_tests() {
 /// Create more than one scheduler and run a function in a task
 /// in one of the schedulers. The schedulers will stay alive
 /// until the function `f` returns.
-pub fn run_in_mt_newsched_task(f: ~fn()) {
+pub fn run_in_mt_newsched_task(f: proc()) {
     use os;
     use from_str::FromStr;
     use rt::sched::Shutdown;
@@ -245,7 +245,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         let handles = Cell::new(handles);
-        let on_exit: ~fn(UnwindResult) = |exit_status| {
+        let on_exit: proc(UnwindResult) = |exit_status| {
             let mut handles = handles.take();
             // Tell schedulers to exit
             for handle in handles.mut_iter() {
@@ -294,16 +294,16 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 }
 
 /// Test tasks will abort on failure instead of unwinding
-pub fn spawntask(f: ~fn()) {
+pub fn spawntask(f: proc()) {
     Scheduler::run_task(Task::build_child(None, f));
 }
 
 /// Create a new task and run it right now. Aborts on failure
-pub fn spawntask_later(f: ~fn()) {
+pub fn spawntask_later(f: proc()) {
     Scheduler::run_task_later(Task::build_child(None, f));
 }
 
-pub fn spawntask_random(f: ~fn()) {
+pub fn spawntask_random(f: proc()) {
     use rand::{Rand, rng};
 
     let mut rng = rng();
@@ -316,11 +316,11 @@ pub fn spawntask_random(f: ~fn()) {
     }
 }
 
-pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
+pub fn spawntask_try(f: proc()) -> Result<(),()> {
 
     let (port, chan) = oneshot();
     let chan = Cell::new(chan);
-    let on_exit: ~fn(UnwindResult) = |exit_status| chan.take().send(exit_status);
+    let on_exit: proc(UnwindResult) = |exit_status| chan.take().send(exit_status);
 
     let mut new_task = Task::build_root(None, f);
     new_task.death.on_exit = Some(on_exit);
@@ -333,7 +333,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
 }
 
 /// Spawn a new task in a new scheduler and return a thread handle.
-pub fn spawntask_thread(f: ~fn()) -> Thread {
+pub fn spawntask_thread(f: proc()) -> Thread {
 
     let f = Cell::new(f);
 
@@ -345,7 +345,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
 }
 
 /// Get a ~Task for testing purposes other than actually scheduling it.
-pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
+pub fn with_test_task(blk: proc(~Task) -> ~Task) {
     do run_in_bare_thread {
         let mut sched = ~new_test_sched();
         let task = blk(~Task::new_root(&mut sched.stack_pool, None, ||{}));

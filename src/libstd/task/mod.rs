@@ -195,7 +195,7 @@ pub struct TaskOpts {
 // FIXME (#3724): Replace the 'consumed' bit with move mode on self
 pub struct TaskBuilder {
     opts: TaskOpts,
-    priv gen_body: Option<~fn(v: ~fn()) -> ~fn()>,
+    priv gen_body: Option<proc(v: proc()) -> proc()>,
     priv can_not_copy: Option<util::NonCopyable>,
     priv consumed: bool,
 }
@@ -340,18 +340,18 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    pub fn add_wrapper(&mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) {
+    pub fn add_wrapper(&mut self, wrapper: proc(v: proc()) -> proc()) {
         let prev_gen_body = self.gen_body.take();
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
             None => {
-                let f: ~fn(~fn()) -> ~fn() = |body| body;
+                let f: proc(proc()) -> proc() = |body| body;
                 f
             }
         };
         let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
-            let f: ~fn(~fn()) -> ~fn() = |body| {
+            let f: proc(proc()) -> proc() = |body| {
                 let prev_gen_body = prev_gen_body.take();
                 wrapper(prev_gen_body(body))
             };
@@ -372,7 +372,7 @@ impl TaskBuilder {
      * When spawning into a new scheduler, the number of threads requested
      * must be greater than zero.
      */
-    pub fn spawn(&mut self, f: ~fn()) {
+    pub fn spawn(&mut self, f: proc()) {
         let gen_body = self.gen_body.take();
         let notify_chan = self.opts.notify_chan.take();
         let name = self.opts.name.take();
@@ -399,7 +399,7 @@ impl TaskBuilder {
     }
 
     /// Runs a task, while transferring ownership of one argument to the child.
-    pub fn spawn_with<A:Send>(&mut self, arg: A, f: ~fn(v: A)) {
+    pub fn spawn_with<A:Send>(&mut self, arg: A, f: proc(v: A)) {
         let arg = Cell::new(arg);
         do self.spawn {
             f(arg.take());
@@ -419,7 +419,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    pub fn try<T:Send>(&mut self, f: ~fn() -> T) -> Result<T, ~Any> {
+    pub fn try<T:Send>(&mut self, f: proc() -> T) -> Result<T, ~Any> {
         let (po, ch) = stream::<T>();
 
         let result = self.future_result();
@@ -468,20 +468,20 @@ pub fn default_task_opts() -> TaskOpts {
 /// the provided unique closure.
 ///
 /// This function is equivalent to `task().spawn(f)`.
-pub fn spawn(f: ~fn()) {
+pub fn spawn(f: proc()) {
     let mut task = task();
     task.spawn(f)
 }
 
 /// Creates a child task unlinked from the current one. If either this
 /// task or the child task fails, the other will not be killed.
-pub fn spawn_unlinked(f: ~fn()) {
+pub fn spawn_unlinked(f: proc()) {
     let mut task = task();
     task.unlinked();
     task.spawn(f)
 }
 
-pub fn spawn_supervised(f: ~fn()) {
+pub fn spawn_supervised(f: proc()) {
     /*!
      * Creates a child task supervised by the current one. If the child
      * task fails, the parent will not be killed, but if the parent fails,
@@ -498,13 +498,13 @@ pub fn spawn_supervised(f: ~fn()) {
 /// (Note that this convenience wrapper still uses linked-failure, so the
 /// child's children will still be killable by the parent. For the fastest
 /// possible spawn mode, use task::task().unlinked().indestructible().spawn.)
-pub fn spawn_indestructible(f: ~fn()) {
+pub fn spawn_indestructible(f: proc()) {
     let mut task = task();
     task.indestructible();
     task.spawn(f)
 }
 
-pub fn spawn_with<A:Send>(arg: A, f: ~fn(v: A)) {
+pub fn spawn_with<A:Send>(arg: A, f: proc(v: A)) {
     /*!
      * Runs a task, while transferring ownership of one argument to the
      * child.
@@ -519,7 +519,7 @@ pub fn spawn_with<A:Send>(arg: A, f: ~fn(v: A)) {
     task.spawn_with(arg, f)
 }
 
-pub fn spawn_sched(mode: SchedMode, f: ~fn()) {
+pub fn spawn_sched(mode: SchedMode, f: proc()) {
     /*!
      * Creates a new task on a new or existing scheduler.
      *
@@ -537,7 +537,7 @@ pub fn spawn_sched(mode: SchedMode, f: ~fn()) {
     task.spawn(f)
 }
 
-pub fn try<T:Send>(f: ~fn() -> T) -> Result<T, ~Any> {
+pub fn try<T:Send>(f: proc() -> T) -> Result<T, ~Any> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -1033,7 +1033,7 @@ fn test_add_wrapper() {
     let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
         let ch = Cell::new(ch.take());
-        let result: ~fn() = || {
+        let result: proc() = || {
             let ch = ch.take();
             body();
             ch.send(());
@@ -1201,7 +1201,7 @@ fn test_spawn_sched_blocking() {
 }
 
 #[cfg(test)]
-fn avoid_copying_the_body(spawnfn: &fn(v: ~fn())) {
+fn avoid_copying_the_body(spawnfn: &fn(v: proc())) {
     let (p, ch) = stream::<uint>();
 
     let x = ~1;
@@ -1327,7 +1327,7 @@ fn test_child_doesnt_ref_parent() {
     // (well, it would if the constant were 8000+ - I lowered it to be more
     // valgrind-friendly. try this at home, instead..!)
     static generations: uint = 16;
-    fn child_no(x: uint) -> ~fn() {
+    fn child_no(x: uint) -> proc() {
         return || {
             if x < generations {
                 let mut t = task();

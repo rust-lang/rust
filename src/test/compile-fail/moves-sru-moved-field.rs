@@ -1,4 +1,4 @@
-type Noncopyable = ~fn();
+type Noncopyable = proc();
 
 struct Foo {
     copied: int,

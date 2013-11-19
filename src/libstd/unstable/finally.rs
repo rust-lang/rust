@@ -54,7 +54,6 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
     }
 }
 
-finally_fn!(~fn() -> T)
 finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {
@@ -107,14 +106,5 @@ fn test_compact() {
     fn but_always_run_this_function() { }
     do_some_fallible_work.finally(
         but_always_run_this_function);
-}
-
-#[test]
-fn test_owned() {
-    fn spawn_with_finalizer(f: ~fn()) {
-        do spawn { do f.finally { } }
-    }
-    let owned: ~fn() = || { };
-    spawn_with_finalizer(owned);
 }
 

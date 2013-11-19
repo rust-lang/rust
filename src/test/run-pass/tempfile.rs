@@ -40,7 +40,7 @@ fn test_tempdir() {
 
 fn test_rm_tempdir() {
     let (rd, wr) = stream();
-    let f: ~fn() = || {
+    let f: proc() = || {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         wr.send(tmp.path().clone());
         fail!("fail to unwind past `tmp`");
@@ -52,7 +52,7 @@ fn test_rm_tempdir() {
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
     let cell = Cell::new(tmp);
-    let f: ~fn() = || {
+    let f: proc() = || {
         let _tmp = cell.take();
         fail!("fail to unwind past `tmp`");
     };
@@ -61,7 +61,7 @@ fn test_rm_tempdir() {
 
     let path;
     {
-        let f: ~fn() -> TempDir = || {
+        let f: proc() -> TempDir = || {
             TempDir::new("test_rm_tempdir").unwrap()
         };
         let tmp = task::try(f).expect("test_rm_tmdir");

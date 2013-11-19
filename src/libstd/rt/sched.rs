@@ -990,7 +990,9 @@ mod test {
                 assert!(Task::on_appropriate_sched());
             };
 
-            let on_exit: ~fn(UnwindResult) = |exit_status| rtassert!(exit_status.is_success());
+            let on_exit: proc(UnwindResult) = |exit_status| {
+                rtassert!(exit_status.is_success())
+            };
             task.death.on_exit = Some(on_exit);
 
             sched.bootstrap(task);

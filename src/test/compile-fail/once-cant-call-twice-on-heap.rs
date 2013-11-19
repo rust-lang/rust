@@ -16,7 +16,7 @@ extern mod extra;
 use extra::arc;
 use std::util;
 
-fn foo(blk: ~once fn()) {
+fn foo(blk: proc()) {
     blk();
     blk(); //~ ERROR use of moved value
 }
