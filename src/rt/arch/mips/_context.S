@@ -4,11 +4,11 @@
 #endif
 
 .text
-.globl swap_registers
+.globl rust_swap_registers
 .align 2
 .set nomips16
-.ent swap_registers
-swap_registers:
+.ent rust_swap_registers
+rust_swap_registers:
         .set noreorder
         .set nomacro
         .set noat
@@ -85,4 +85,4 @@ swap_registers:
 
         jr $31
         nop
-.end swap_registers
+.end rust_swap_registers

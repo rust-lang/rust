@@ -2,13 +2,13 @@ rust_dbg_abi_1
 rust_dbg_abi_2
 rust_dbg_static_mut
 rust_dbg_static_mut_check_four
-get_time
+rust_get_time
 rust_tzset
 rust_gmtime
 rust_localtime
 rust_timegm
 rust_mktime
-precise_time_ns
+rust_precise_time_ns
 rust_path_is_dir
 rust_path_is_dir_u16
 rust_path_exists
@@ -43,7 +43,7 @@ rust_signal_little_lock
 rust_wait_little_lock
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
-swap_registers
+rust_swap_registers
 rust_readdir
 rust_opendir
 rust_dbg_extern_identity_u32

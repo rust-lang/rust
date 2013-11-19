@@ -241,11 +241,11 @@ impl Drop for BasicPausible {
 
 fn time() -> Time {
     extern {
-        fn get_time(sec: &mut i64, nsec: &mut i32);
+        fn rust_get_time(sec: &mut i64, nsec: &mut i32);
     }
     let mut sec = 0;
     let mut nsec = 0;
-    unsafe { get_time(&mut sec, &mut nsec) }
+    unsafe { rust_get_time(&mut sec, &mut nsec) }
 
     Time { sec: sec as u64, nsec: nsec as u64 }
 }
