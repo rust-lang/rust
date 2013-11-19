@@ -39,7 +39,7 @@ pub fn string_to_parser(source_str: @str) -> Parser {
     p
 }
 
-fn with_error_checking_parse<T>(s: @str, f: &fn(&mut Parser) -> T) -> T {
+fn with_error_checking_parse<T>(s: @str, f: |&mut Parser| -> T) -> T {
     let mut p = string_to_parser(s);
     let x = f(&mut p);
     p.abort_if_errors();

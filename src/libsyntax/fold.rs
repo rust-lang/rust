@@ -381,7 +381,7 @@ pub trait ast_fold {
         }
     }
 
-    fn map_exprs(&self, f: &fn(@Expr) -> @Expr, es: &[@Expr]) -> ~[@Expr] {
+    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> ~[@Expr] {
         es.map(|x| f(*x))
     }
 

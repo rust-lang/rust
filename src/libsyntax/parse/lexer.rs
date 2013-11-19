@@ -216,16 +216,22 @@ fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
 /// Calls `f` with a string slice of the source text spanning from `start`
 /// up to but excluding `rdr.last_pos`, meaning the slice does not include
 /// the character `rdr.curr`.
-pub fn with_str_from<T>(rdr: @mut StringReader, start: BytePos, f: &fn(s: &str) -> T) -> T {
+pub fn with_str_from<T>(
+                     rdr: @mut StringReader,
+                     start: BytePos,
+                     f: |s: &str| -> T)
+                     -> T {
     with_str_from_to(rdr, start, rdr.last_pos, f)
 }
 
 /// Calls `f` with astring slice of the source text spanning from `start`
 /// up to but excluding `end`.
-fn with_str_from_to<T>(rdr: @mut StringReader,
-                       start: BytePos,
-                       end: BytePos,
-                       f: &fn(s: &str) -> T) -> T {
+fn with_str_from_to<T>(
+                    rdr: @mut StringReader,
+                    start: BytePos,
+                    end: BytePos,
+                    f: |s: &str| -> T)
+                    -> T {
     f(rdr.src.slice(
             byte_offset(rdr, start).to_uint(),
             byte_offset(rdr, end).to_uint()))

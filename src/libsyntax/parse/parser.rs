@@ -581,10 +581,8 @@ impl Parser {
     }
 
     // Parse a sequence bracketed by `|` and `|`, stopping before the `|`.
-    fn parse_seq_to_before_or<T>(&self,
-                                 sep: &token::Token,
-                                 f: &fn(&Parser) -> T)
-                                 -> ~[T] {
+    fn parse_seq_to_before_or<T>(&self, sep: &token::Token, f: |&Parser| -> T)
+                              -> ~[T] {
         let mut first = true;
         let mut vector = ~[];
         while *self.token != token::BINOP(token::OR) &&
@@ -619,10 +617,11 @@ impl Parser {
 
     // parse a sequence bracketed by '<' and '>', stopping
     // before the '>'.
-    pub fn parse_seq_to_before_gt<T>(&self,
-                                     sep: Option<token::Token>,
-                                     f: &fn(&Parser) -> T)
-                                     -> OptVec<T> {
+    pub fn parse_seq_to_before_gt<T>(
+                                  &self,
+                                  sep: Option<token::Token>,
+                                  f: |&Parser| -> T)
+                                  -> OptVec<T> {
         let mut first = true;
         let mut v = opt_vec::Empty;
         while *self.token != token::GT
@@ -639,10 +638,11 @@ impl Parser {
         return v;
     }
 
-    pub fn parse_seq_to_gt<T>(&self,
-                              sep: Option<token::Token>,
-                              f: &fn(&Parser) -> T)
-                              -> OptVec<T> {
+    pub fn parse_seq_to_gt<T>(
+                           &self,
+                           sep: Option<token::Token>,
+                           f: |&Parser| -> T)
+                           -> OptVec<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
         return v;
@@ -651,11 +651,12 @@ impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    pub fn parse_seq_to_end<T>(&self,
-                               ket: &token::Token,
-                               sep: SeqSep,
-                               f: &fn(&Parser) -> T)
-                               -> ~[T] {
+    pub fn parse_seq_to_end<T>(
+                            &self,
+                            ket: &token::Token,
+                            sep: SeqSep,
+                            f: |&Parser| -> T)
+                            -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
         val
@@ -664,11 +665,12 @@ impl Parser {
     // parse a sequence, not including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    pub fn parse_seq_to_before_end<T>(&self,
-                                      ket: &token::Token,
-                                      sep: SeqSep,
-                                      f: &fn(&Parser) -> T)
-                                      -> ~[T] {
+    pub fn parse_seq_to_before_end<T>(
+                                   &self,
+                                   ket: &token::Token,
+                                   sep: SeqSep,
+                                   f: |&Parser| -> T)
+                                   -> ~[T] {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
         while *self.token != *ket {
@@ -688,12 +690,13 @@ impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    pub fn parse_unspanned_seq<T>(&self,
-                                  bra: &token::Token,
-                                  ket: &token::Token,
-                                  sep: SeqSep,
-                                  f: &fn(&Parser) -> T)
-                                  -> ~[T] {
+    pub fn parse_unspanned_seq<T>(
+                               &self,
+                               bra: &token::Token,
+                               ket: &token::Token,
+                               sep: SeqSep,
+                               f: |&Parser| -> T)
+                               -> ~[T] {
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
@@ -702,12 +705,13 @@ impl Parser {
 
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
-    pub fn parse_seq<T>(&self,
-                        bra: &token::Token,
-                        ket: &token::Token,
-                        sep: SeqSep,
-                        f: &fn(&Parser) -> T)
-                        -> Spanned<~[T]> {
+    pub fn parse_seq<T>(
+                     &self,
+                     bra: &token::Token,
+                     ket: &token::Token,
+                     sep: SeqSep,
+                     f: |&Parser| -> T)
+                     -> Spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
@@ -765,8 +769,8 @@ impl Parser {
         }
         return (4 - *self.buffer_start) + *self.buffer_end;
     }
-    pub fn look_ahead<R>(&self, distance: uint, f: &fn(&token::Token) -> R)
-                         -> R {
+    pub fn look_ahead<R>(&self, distance: uint, f: |&token::Token| -> R)
+                      -> R {
         let dist = distance as int;
         while self.buffer_length() < dist {
             self.buffer[*self.buffer_end] = self.reader.next_token();
@@ -1272,7 +1276,8 @@ impl Parser {
     // parse the type following a @ or a ~
     pub fn parse_box_or_uniq_pointee(&self,
                                      sigil: ast::Sigil,
-                                     ctor: &fn(v: mt) -> ty_) -> ty_ {
+                                     ctor: |v: mt| -> ty_)
+                                     -> ty_ {
         // ~'foo fn() or ~fn() are parsed directly as obsolete fn types:
         match *self.token {
             token::LIFETIME(*) => {
@@ -2467,8 +2472,8 @@ impl Parser {
     // this is used both in parsing a lambda expr
     // and in parsing a block expr as e.g. in for...
     pub fn parse_lambda_expr_(&self,
-                              parse_decl: &fn() -> fn_decl,
-                              parse_body: &fn() -> @Expr)
+                              parse_decl: || -> fn_decl,
+                              parse_body: || -> @Expr)
                               -> @Expr {
         let lo = self.last_span.lo;
         let decl = parse_decl();
@@ -2513,10 +2518,11 @@ impl Parser {
     // parse a 'for' or 'do'.
     // the 'for' and 'do' expressions parse as calls, but look like
     // function calls followed by a closure expression.
-    pub fn parse_sugary_call_expr(&self, lo: BytePos,
+    pub fn parse_sugary_call_expr(&self,
+                                  lo: BytePos,
                                   keyword: ~str,
                                   sugar: CallSugar,
-                                  ctor: &fn(v: @Expr) -> Expr_)
+                                  ctor: |v: @Expr| -> Expr_)
                                   -> @Expr {
         // Parse the callee `foo` in
         //    for foo || {
@@ -3611,11 +3617,12 @@ impl Parser {
 
     // parse the argument list and result type of a function
     // that may have a self type.
-    fn parse_fn_decl_with_self(&self, parse_arg_fn: &fn(&Parser) -> arg)
-        -> (explicit_self, fn_decl) {
-
-        fn maybe_parse_explicit_self(cnstr: &fn(v: Mutability) -> ast::explicit_self_,
-                                     p: &Parser) -> ast::explicit_self_ {
+    fn parse_fn_decl_with_self(&self, parse_arg_fn: |&Parser| -> arg)
+                               -> (explicit_self, fn_decl) {
+        fn maybe_parse_explicit_self(cnstr: |v: Mutability| ->
+                                        ast::explicit_self_,
+                                     p: &Parser)
+                                     -> ast::explicit_self_ {
             // We need to make sure it isn't a type
             if p.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) ||
                 ((p.look_ahead(1, |t| token::is_keyword(keywords::Const, t)) ||
