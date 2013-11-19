@@ -655,7 +655,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                          span: Span,
                          expected: ty::t) {
     let fcx = pcx.fcx;
-    let check_inner: &fn(ty::mt) = |e_inner| {
+    let check_inner: |ty::mt| = |e_inner| {
         check_pat(pcx, inner, e_inner.ty);
         fcx.write_ty(pat_id, expected);
     };

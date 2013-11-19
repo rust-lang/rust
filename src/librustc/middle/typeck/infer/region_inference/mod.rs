@@ -359,9 +359,9 @@ impl RegionVarBindings {
                         a: Region,
                         b: Region,
                         origin: SubregionOrigin,
-                        relate: &fn(this: &mut RegionVarBindings,
-                                    old_r: Region,
-                                    new_r: Region))
+                        relate: |this: &mut RegionVarBindings,
+                                 old_r: Region,
+                                 new_r: Region|)
                         -> Region {
         let vars = TwoRegions { a: a, b: b };
         match self.combine_map(t).find(&vars) {
@@ -1254,7 +1254,7 @@ impl RegionVarBindings {
 
     fn iterate_until_fixed_point(&self,
                                  tag: &str,
-                                 body: &fn(constraint: &Constraint) -> bool) {
+                                 body: |constraint: &Constraint| -> bool) {
         let mut iteration = 0;
         let mut changed = true;
         while changed {

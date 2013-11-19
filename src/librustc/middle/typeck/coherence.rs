@@ -451,7 +451,7 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: &fn(@Impl)) {
+    pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
         match self.crate_context.tcx.trait_impls.find(&trait_def_id) {
             Some(impls) => {
                 for &im in impls.iter() {

@@ -510,11 +510,13 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         // Array for the arguments we will pass to the rust function.
         let mut llrust_args = ~[];
         let mut next_foreign_arg_counter: c_uint = 0;
-        let next_foreign_arg: &fn(pad: bool) -> c_uint = {
-            |pad: bool| {
-                next_foreign_arg_counter += if pad { 2 } else { 1 };
-                next_foreign_arg_counter - 1
-            }
+        let next_foreign_arg: |pad: bool| -> c_uint = |pad: bool| {
+            next_foreign_arg_counter += if pad {
+                2
+            } else {
+                1
+            };
+            next_foreign_arg_counter - 1
         };
 
         // If there is an out pointer on the foreign function

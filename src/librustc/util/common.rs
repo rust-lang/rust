@@ -17,7 +17,7 @@ use syntax::visit::Visitor;
 use std::hashmap::HashSet;
 use extra;
 
-pub fn time<T, U>(do_it: bool, what: &str, u: U, f: &fn(U) -> T) -> T {
+pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     if !do_it { return f(u); }
     let start = extra::time::precise_time_s();
     let rv = f(u);
@@ -26,7 +26,7 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: &fn(U) -> T) -> T {
     rv
 }
 
-pub fn indent<R>(op: &fn() -> R) -> R {
+pub fn indent<R>(op: || -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
     debug!(">>");
@@ -79,7 +79,7 @@ impl<'self> Visitor<()> for LoopQueryVisitor<'self> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: &fn(&ast::Expr_) -> bool) -> bool {
+pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
     let mut v = LoopQueryVisitor {
         p: p,
         flag: false,
@@ -102,7 +102,7 @@ impl<'self> Visitor<()> for BlockQueryVisitor<'self> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::Block, p: &fn(@ast::Expr) -> bool) -> bool {
+pub fn block_query(b: &ast::Block, p: |@ast::Expr| -> bool) -> bool {
     let mut v = BlockQueryVisitor {
         p: p,
         flag: false,

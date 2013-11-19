@@ -20,12 +20,11 @@ use util::ppaux;
 // Helper functions related to manipulating region types.
 
 pub fn replace_bound_regions_in_fn_sig(
-    tcx: ty::ctxt,
-    opt_self_ty: Option<ty::t>,
-    fn_sig: &ty::FnSig,
-    mapf: &fn(ty::BoundRegion) -> ty::Region)
-    -> (HashMap<ty::BoundRegion,ty::Region>, Option<ty::t>, ty::FnSig)
-{
+        tcx: ty::ctxt,
+        opt_self_ty: Option<ty::t>,
+        fn_sig: &ty::FnSig,
+        mapf: |ty::BoundRegion| -> ty::Region)
+        -> (HashMap<ty::BoundRegion,ty::Region>, Option<ty::t>, ty::FnSig) {
     debug!("replace_bound_regions_in_fn_sig(self_ty={}, fn_sig={})",
             opt_self_ty.repr(tcx),
             fn_sig.repr(tcx));
@@ -47,12 +46,10 @@ pub fn replace_bound_regions_in_fn_sig(
     (map, opt_self_ty, fn_sig)
 }
 
-pub fn relate_nested_regions(
-    tcx: ty::ctxt,
-    opt_region: Option<ty::Region>,
-    ty: ty::t,
-    relate_op: &fn(ty::Region, ty::Region))
-{
+pub fn relate_nested_regions(tcx: ty::ctxt,
+                             opt_region: Option<ty::Region>,
+                             ty: ty::t,
+                             relate_op: |ty::Region, ty::Region|) {
     /*!
      * This rather specialized function walks each region `r` that appear
      * in `ty` and invokes `relate_op(r_encl, r)` for each one.  `r_encl`

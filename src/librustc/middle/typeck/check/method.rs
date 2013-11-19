@@ -483,12 +483,13 @@ impl<'self> LookupContext<'self> {
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn push_inherent_candidates_from_bounds_inner(
-        &self,
-        bounds: &[@TraitRef],
-        mk_cand: &fn(trait_ref: @TraitRef, m: @ty::Method, method_num: uint,
-                     bound_num: uint) -> Candidate) {
-
+    fn push_inherent_candidates_from_bounds_inner(&self,
+                                                  bounds: &[@TraitRef],
+                                                  mk_cand: |tr: @TraitRef,
+                                                            m: @ty::Method,
+                                                            method_num: uint,
+                                                            bound_num: uint|
+                                                            -> Candidate) {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
@@ -783,12 +784,12 @@ impl<'self> LookupContext<'self> {
     }
 
     fn search_for_some_kind_of_autorefd_method(
-        &self,
-        kind: &fn(Region, ast::Mutability) -> ty::AutoRef,
-        autoderefs: uint,
-        mutbls: &[ast::Mutability],
-        mk_autoref_ty: &fn(ast::Mutability, ty::Region) -> ty::t)
-        -> Option<method_map_entry> {
+            &self,
+            kind: |Region, ast::Mutability| -> ty::AutoRef,
+            autoderefs: uint,
+            mutbls: &[ast::Mutability],
+            mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
+            -> Option<method_map_entry> {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region =

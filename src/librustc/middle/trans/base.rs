@@ -93,7 +93,7 @@ pub use middle::trans::context::task_llcx;
 
 local_data_key!(task_local_insn_key: ~[&'static str])
 
-pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
+pub fn with_insn_ctxt(blk: |&[&'static str]|) {
     do local_data::get(task_local_insn_key) |c| {
         match c {
             Some(ctx) => blk(*ctx),
@@ -787,10 +787,11 @@ pub fn cast_shift_const_rhs(op: ast::BinOp,
 }
 
 pub fn cast_shift_rhs(op: ast::BinOp,
-                      lhs: ValueRef, rhs: ValueRef,
-                      trunc: &fn(ValueRef, Type) -> ValueRef,
-                      zext: &fn(ValueRef, Type) -> ValueRef)
-                   -> ValueRef {
+                      lhs: ValueRef,
+                      rhs: ValueRef,
+                      trunc: |ValueRef, Type| -> ValueRef,
+                      zext: |ValueRef, Type| -> ValueRef)
+                      -> ValueRef {
     // Shifts may have any size int on the rhs
     unsafe {
         if ast_util::is_shift_binop(op) {
@@ -966,7 +967,7 @@ pub fn have_cached_lpad(bcx: @mut Block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: @mut Block, f: &fn(si: &mut ScopeInfo)) {
+pub fn in_lpad_scope_cx(bcx: @mut Block, f: |si: &mut ScopeInfo|) {
     let mut bcx = bcx;
     let mut cur_scope = bcx.scope;
     loop {
@@ -1430,7 +1431,8 @@ pub fn leave_block(bcx: @mut Block, out_of: @mut Block) -> @mut Block {
 pub fn with_scope(bcx: @mut Block,
                   opt_node_info: Option<NodeInfo>,
                   name: &str,
-                  f: &fn(@mut Block) -> @mut Block) -> @mut Block {
+                  f: |@mut Block| -> @mut Block)
+                  -> @mut Block {
     let _icx = push_ctxt("with_scope");
 
     debug!("with_scope(bcx={}, opt_node_info={:?}, name={})",
@@ -1448,7 +1450,8 @@ pub fn with_scope(bcx: @mut Block,
 pub fn with_scope_result(bcx: @mut Block,
                          opt_node_info: Option<NodeInfo>,
                          _name: &str,
-                         f: &fn(@mut Block) -> Result) -> Result {
+                         f: |@mut Block| -> Result)
+                         -> Result {
     let _icx = push_ctxt("with_scope_result");
 
     let scope = simple_block_scope(bcx.scope, opt_node_info);
@@ -1462,9 +1465,11 @@ pub fn with_scope_result(bcx: @mut Block,
     rslt(out_bcx, val)
 }
 
-pub fn with_scope_datumblock(bcx: @mut Block, opt_node_info: Option<NodeInfo>,
-                             name: &str, f: &fn(@mut Block) -> datum::DatumBlock)
-                          -> datum::DatumBlock {
+pub fn with_scope_datumblock(bcx: @mut Block,
+                             opt_node_info: Option<NodeInfo>,
+                             name: &str,
+                             f: |@mut Block| -> datum::DatumBlock)
+                             -> datum::DatumBlock {
     use middle::trans::datum::DatumBlock;
 
     let _icx = push_ctxt("with_scope_result");
@@ -1474,7 +1479,7 @@ pub fn with_scope_datumblock(bcx: @mut Block, opt_node_info: Option<NodeInfo>,
     DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
 }
 
-pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
+pub fn block_locals(b: &ast::Block, it: |@ast::Local|) {
     for s in b.stmts.iter() {
         match s.node {
           ast::StmtDecl(d, _) => {
@@ -1488,7 +1493,10 @@ pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
     }
 }
 
-pub fn with_cond(bcx: @mut Block, val: ValueRef, f: &fn(@mut Block) -> @mut Block) -> @mut Block {
+pub fn with_cond(bcx: @mut Block,
+                 val: ValueRef,
+                 f: |@mut Block| -> @mut Block)
+                 -> @mut Block {
     let _icx = push_ctxt("with_cond");
     let next_cx = base::sub_block(bcx, "next");
     let cond_cx = base::sub_block(bcx, "cond");
@@ -1885,7 +1893,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      id: ast::NodeId,
                      _attributes: &[ast::Attribute],
                      output_type: ty::t,
-                     maybe_load_env: &fn(@mut FunctionContext)) {
+                     maybe_load_env: |@mut FunctionContext|) {
     ccx.stats.n_closures += 1;
     let _icx = push_ctxt("trans_closure");
     set_uwtable(llfndecl);

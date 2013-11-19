@@ -82,8 +82,7 @@ pub fn have_crate_data(cstore: &CStore, cnum: ast::CrateNum) -> bool {
     cstore.metas.contains_key(&cnum)
 }
 
-pub fn iter_crate_data(cstore: &CStore,
-                       i: &fn(ast::CrateNum, @crate_metadata)) {
+pub fn iter_crate_data(cstore: &CStore, i: |ast::CrateNum, @crate_metadata|) {
     for (&k, &v) in cstore.metas.iter() {
         i(k, v);
     }

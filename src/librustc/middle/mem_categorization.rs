@@ -63,7 +63,7 @@ pub enum categorization {
     cat_rvalue(ast::NodeId),           // temporary val, argument is its scope
     cat_static_item,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
-    cat_stack_upvar(cmt),              // by ref upvar from &fn
+    cat_stack_upvar(cmt),              // by ref upvar from ||
     cat_local(ast::NodeId),            // local variable
     cat_arg(ast::NodeId),              // formal argument
     cat_deref(cmt, uint, PointerKind), // deref of a ptr
@@ -822,7 +822,7 @@ impl mem_categorization_ctxt {
     pub fn cat_pattern(&self,
                        cmt: cmt,
                        pat: @ast::Pat,
-                       op: &fn(cmt, @ast::Pat)) {
+                       op: |cmt, @ast::Pat|) {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
         //

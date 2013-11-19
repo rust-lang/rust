@@ -51,7 +51,7 @@ type Cmd = @crate_metadata;
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
 
-fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: u64) ->
+fn lookup_hash(d: ebml::Doc, eq_fn: |&[u8]| -> bool, hash: u64) ->
    Option<ebml::Doc> {
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
@@ -205,7 +205,7 @@ fn get_provided_source(d: ebml::Doc, cdata: Cmd) -> Option<ast::DefId> {
     }
 }
 
-fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
+fn each_reexport(d: ebml::Doc, f: |ebml::Doc| -> bool) -> bool {
     reader::tagged_docs(d, tag_items_data_item_reexport, f)
 }
 
@@ -509,7 +509,7 @@ pub fn def_like_to_def(def_like: DefLike) -> ast::Def {
 }
 
 /// Iterates over the language items in the given crate.
-pub fn each_lang_item(cdata: Cmd, f: &fn(ast::NodeId, uint) -> bool) -> bool {
+pub fn each_lang_item(cdata: Cmd, f: |ast::NodeId, uint| -> bool) -> bool {
     let root = reader::Doc(cdata.data);
     let lang_items = reader::get_doc(root, tag_lang_items);
     do reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
@@ -733,8 +733,9 @@ fn each_child_of_item_or_crate(intr: @ident_interner,
                                cdata: Cmd,
                                item_doc: ebml::Doc,
                                get_crate_data: GetCrateDataCb,
-                               callback: &fn(DefLike, ast::Ident,
-                                             ast::visibility)) {
+                               callback: |DefLike,
+                                          ast::Ident,
+                                          ast::visibility|) {
     // Iterate over all children.
     let _ = do reader::tagged_docs(item_doc, tag_mod_child) |child_info_doc| {
         let child_def_id = reader::with_doc_data(child_info_doc,
@@ -861,7 +862,7 @@ pub fn each_child_of_item(intr: @ident_interner,
                           cdata: Cmd,
                           id: ast::NodeId,
                           get_crate_data: GetCrateDataCb,
-                          callback: &fn(DefLike, ast::Ident, ast::visibility)) {
+                          callback: |DefLike, ast::Ident, ast::visibility|) {
     // Find the item.
     let root_doc = reader::Doc(cdata.data);
     let items = reader::get_doc(root_doc, tag_items);
@@ -881,8 +882,9 @@ pub fn each_child_of_item(intr: @ident_interner,
 pub fn each_top_level_item_of_crate(intr: @ident_interner,
                                     cdata: Cmd,
                                     get_crate_data: GetCrateDataCb,
-                                    callback: &fn(DefLike, ast::Ident,
-                                                  ast::visibility)) {
+                                    callback: |DefLike,
+                                               ast::Ident,
+                                               ast::visibility|) {
     let root_doc = reader::Doc(cdata.data);
     let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
     let crate_items_doc = reader::get_doc(misc_info_doc,
@@ -1201,8 +1203,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
 
 pub fn get_item_attrs(cdata: Cmd,
                       node_id: ast::NodeId,
-                      f: &fn(~[@ast::MetaItem])) {
-
+                      f: |~[@ast::MetaItem]|) {
     let item = lookup_item(node_id, cdata.data);
     do reader::tagged_docs(item, tag_attributes) |attributes| {
         do reader::tagged_docs(attributes, tag_attribute) |attribute| {
@@ -1474,7 +1475,7 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
     }
 }
 
-pub fn each_impl(cdata: Cmd, callback: &fn(ast::DefId)) {
+pub fn each_impl(cdata: Cmd, callback: |ast::DefId|) {
     let impls_doc = reader::get_doc(reader::Doc(cdata.data), tag_impls);
     let _ = do reader::tagged_docs(impls_doc, tag_impls_impl) |impl_doc| {
         callback(item_def_id(impl_doc, cdata));
@@ -1484,7 +1485,7 @@ pub fn each_impl(cdata: Cmd, callback: &fn(ast::DefId)) {
 
 pub fn each_implementation_for_type(cdata: Cmd,
                                     id: ast::NodeId,
-                                    callback: &fn(ast::DefId)) {
+                                    callback: |ast::DefId|) {
     let item_doc = lookup_item(id, cdata.data);
     do reader::tagged_docs(item_doc, tag_items_data_item_inherent_impl)
             |impl_doc| {
@@ -1496,7 +1497,7 @@ pub fn each_implementation_for_type(cdata: Cmd,
 
 pub fn each_implementation_for_trait(cdata: Cmd,
                                      id: ast::NodeId,
-                                     callback: &fn(ast::DefId)) {
+                                     callback: |ast::DefId|) {
     let item_doc = lookup_item(id, cdata.data);
 
     let _ = do reader::tagged_docs(item_doc,

@@ -386,8 +386,7 @@ pub fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: &fn() -> ~str)
-                       -> T {
+pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

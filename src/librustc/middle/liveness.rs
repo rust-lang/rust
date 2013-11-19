@@ -657,7 +657,7 @@ impl Liveness {
 
     pub fn pat_bindings(&self,
                         pat: @Pat,
-                        f: &fn(LiveNode, Variable, Span, NodeId)) {
+                        f: |LiveNode, Variable, Span, NodeId|) {
         let def_map = self.tcx.def_map;
         do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
@@ -668,7 +668,7 @@ impl Liveness {
 
     pub fn arm_pats_bindings(&self,
                              pats: &[@Pat],
-                             f: &fn(LiveNode, Variable, Span, NodeId)) {
+                             f: |LiveNode, Variable, Span, NodeId|) {
         // only consider the first pattern; any later patterns must have
         // the same bindings, and we also consider the first pattern to be
         // the "authoratative" set of ids
@@ -729,7 +729,7 @@ impl Liveness {
         self.assigned_on_entry(self.successors[*ln], var)
     }
 
-    pub fn indices(&self, ln: LiveNode, op: &fn(uint)) {
+    pub fn indices(&self, ln: LiveNode, op: |uint|) {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in range(0u, self.ir.num_vars) {
             op(node_base_idx + var_idx)
@@ -739,7 +739,7 @@ impl Liveness {
     pub fn indices2(&self,
                     ln: LiveNode,
                     succ_ln: LiveNode,
-                    op: &fn(uint, uint)) {
+                    op: |uint, uint|) {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));
         for var_idx in range(0u, self.ir.num_vars) {
@@ -750,7 +750,7 @@ impl Liveness {
     pub fn write_vars(&self,
                       wr: &mut io::Writer,
                       ln: LiveNode,
-                      test: &fn(uint) -> LiveNode) {
+                      test: |uint| -> LiveNode) {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
@@ -1406,12 +1406,13 @@ impl Liveness {
         cond_ln
     }
 
-    pub fn with_loop_nodes<R>(&self,
-                              loop_node_id: NodeId,
-                              break_ln: LiveNode,
-                              cont_ln: LiveNode,
-                              f: &fn() -> R)
-                              -> R {
+    pub fn with_loop_nodes<R>(
+                           &self,
+                           loop_node_id: NodeId,
+                           break_ln: LiveNode,
+                           cont_ln: LiveNode,
+                           f: || -> R)
+                           -> R {
       debug!("with_loop_nodes: {} {}", loop_node_id, *break_ln);
         self.loop_scope.push(loop_node_id);
         self.break_ln.insert(loop_node_id, break_ln);
