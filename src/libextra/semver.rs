@@ -145,8 +145,8 @@ condition! {
     bad_parse: () -> ();
 }
 
-fn take_nonempty_prefix<T: Iterator<char>>(rdr: &mut T,
-                        pred: &fn(char) -> bool) -> (~str, Option<char>) {
+fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
+                        -> (~str, Option<char>) {
     let mut buf = ~"";
     let mut ch = rdr.next();
     loop {
