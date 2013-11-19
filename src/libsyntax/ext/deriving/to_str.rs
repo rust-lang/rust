@@ -31,6 +31,7 @@ pub fn expand_deriving_to_str(cx: @ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: ~[],
                 ret_ty: Ptr(~Literal(Path::new_local("str")), Send),
+                inline: false,
                 const_nonmatching: false,
                 combine_substructure: to_str_substructure
             }

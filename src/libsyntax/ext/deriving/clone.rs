@@ -30,6 +30,7 @@ pub fn expand_deriving_clone(cx: @ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: ~[],
                 ret_ty: Self,
+                inline: true,
                 const_nonmatching: false,
                 combine_substructure: |c, s, sub| cs_clone("Clone", c, s, sub)
             }
@@ -55,6 +56,7 @@ pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: ~[],
                 ret_ty: Self,
+                inline: true,
                 const_nonmatching: false,
                 // cs_clone uses the ident passed to it, i.e. it will
                 // call deep_clone (not clone) here.

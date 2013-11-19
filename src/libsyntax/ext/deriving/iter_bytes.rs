@@ -33,6 +33,7 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                     Literal(Path::new(~["std", "to_bytes", "Cb"]))
                 ],
                 ret_ty: Literal(Path::new(~["bool"])),
+                inline: true,
                 const_nonmatching: false,
                 combine_substructure: iter_bytes_substructure
             }
