@@ -30,6 +30,7 @@ pub fn expand_deriving_default(cx: @ExtCtxt,
                 explicit_self: None,
                 args: ~[],
                 ret_ty: Self,
+                inline: true,
                 const_nonmatching: false,
                 combine_substructure: default_substructure
             },

@@ -39,6 +39,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
                         Borrowed(None, ast::MutMutable))
                 ],
                 ret_ty: Self,
+                inline: false,
                 const_nonmatching: false,
                 combine_substructure: rand_substructure
             }
