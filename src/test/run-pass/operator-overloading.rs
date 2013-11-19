@@ -69,6 +69,6 @@ pub fn main() {
     assert_eq!(q.y, !(p.y));
 
     // Issue #1733
-    let result: ~fn(int) = |_|();
+    let result: proc(int) = |_|();
     result(p[true]);
 }

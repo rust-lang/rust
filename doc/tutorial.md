@@ -1409,7 +1409,7 @@ pervasively in Rust code.
 
 ## Owned closures
 
-Owned closures, written `~fn` in analogy to the `~` pointer type,
+Owned closures, written `proc`,
 hold on to things that can safely be sent between
 processes. They copy the values they close over, much like managed
 closures, but they also own them: that is, no other code can access
@@ -1484,7 +1484,7 @@ parentheses, where it looks more like a typical block of
 code.
 
 `do` is a convenient way to create tasks with the `task::spawn`
-function.  `spawn` has the signature `spawn(fn: ~fn())`. In other
+function.  `spawn` has the signature `spawn(fn: proc())`. In other
 words, it is a function that takes an owned closure that takes no
 arguments.
 

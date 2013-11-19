@@ -4,7 +4,7 @@ use std::comm::Chan;
 use std::task;
 
 type RingBuffer = ~[f64];
-type SamplesFn = ~fn(samples: &RingBuffer);
+type SamplesFn = proc(samples: &RingBuffer);
 
 enum Msg
 {

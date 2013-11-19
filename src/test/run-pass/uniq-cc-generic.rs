@@ -19,11 +19,11 @@ enum maybe_pointy {
 
 struct Pointy {
     a : maybe_pointy,
-    d : ~fn() -> uint,
+    d : proc() -> uint,
 }
 
-fn make_uniq_closure<A:Send>(a: A) -> ~fn() -> uint {
-    let result: ~fn() -> uint = || ptr::to_unsafe_ptr(&a) as uint;
+fn make_uniq_closure<A:Send>(a: A) -> proc() -> uint {
+    let result: proc() -> uint = || ptr::to_unsafe_ptr(&a) as uint;
     result
 }
 

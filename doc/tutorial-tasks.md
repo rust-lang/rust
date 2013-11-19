@@ -91,7 +91,7 @@ _owned types_. The language leaves the implementation details to the standard
 library.
 
 The `spawn` function has a very simple type signature: `fn spawn(f:
-~fn())`. Because it accepts only owned closures, and owned closures
+proc())`. Because it accepts only owned closures, and owned closures
 contain only owned data, `spawn` can safely move the entire closure
 and all its associated state into an entirely different task for
 execution. Like any closure, the function passed to `spawn` may capture

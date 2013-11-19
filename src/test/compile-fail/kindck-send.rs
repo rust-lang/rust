@@ -47,7 +47,7 @@ fn test<'a,T,U:Send>(_: &'a int) {
 
     // but closure and object types can have lifetime bounds which make
     // them not ok (FIXME #5121)
-    // assert_send::<~fn:'a()>(); // ERROR does not fulfill `Send`
+    // assert_send::<proc:'a()>(); // ERROR does not fulfill `Send`
     // assert_send::<~Dummy:'a>(); // ERROR does not fulfill `Send`
 
     // unsafe ptrs are ok unless they point at unsendable things

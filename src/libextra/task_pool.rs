@@ -97,7 +97,7 @@ impl<T> TaskPool<T> {
 
 #[test]
 fn test_task_pool() {
-    let f: proc() -> proc(uint) -> uint = || {
+    let f: &fn() -> proc(uint) -> uint = || {
         let g: proc(uint) -> uint = |i| i;
         g
     };
