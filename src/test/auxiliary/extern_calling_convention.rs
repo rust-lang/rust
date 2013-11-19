@@ -12,16 +12,26 @@
 // functions.
 
 #[inline(never)]
+#[cfg(target_arch = "x86_64")]
 pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
     assert!(a == 1);
     assert!(b == 2);
     assert!(c == 3);
     assert!(d == 4);
-    
+
     println!("a: {:?}, b: {:?}, c: {:?}, d: {:?}",
              a, b, c, d)
 }
 
-fn main() {
-    foo(1, 2, 3, 4)
+#[inline(never)]
+#[cfg(target_arch = "x86")]
+#[cfg(target_arch = "arm")]
+pub extern fn foo(a: int, b: int, c: int, d: int) {
+    assert!(a == 1);
+    assert!(b == 2);
+    assert!(c == 3);
+    assert!(d == 4);
+
+    println!("a: {:?}, b: {:?}, c: {:?}, d: {:?}",
+             a, b, c, d)
 }
