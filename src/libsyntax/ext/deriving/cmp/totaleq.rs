@@ -34,6 +34,7 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["bool"])),
+                inline: true,
                 const_nonmatching: true,
                 combine_substructure: cs_equals
             }

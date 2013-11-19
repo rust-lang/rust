@@ -218,6 +218,9 @@ pub struct MethodDef<'self> {
     /// Return type
     ret_ty: Ty<'self>,
 
+    /// Whether to mark this as #[inline]
+    inline: bool,
+
     /// if the value of the nonmatching enums is independent of the
     /// actual enum variants, i.e. can use _ => .. match.
     const_nonmatching: bool,
@@ -553,11 +556,16 @@ impl<'self> MethodDef<'self> {
         let fn_decl = cx.fn_decl(args, ret_type);
         let body_block = cx.block_expr(body);
 
+        let attrs = if self.inline {
+            ~[cx.attribute(trait_span, cx.meta_word(trait_span, @"inline"))]
+        } else {
+            ~[]
+        };
 
         // Create the method.
         @ast::method {
             ident: method_ident,
-            attrs: ~[],
+            attrs: attrs,
             generics: fn_generics,
             explicit_self: explicit_self,
             purity: ast::impure_fn,
