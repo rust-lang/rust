@@ -11,7 +11,7 @@
 // xfail-test #2978
 
 struct Foo {
-    f: ~fn()
+    f: proc()
 }
 
 fn call(x: @Foo) {

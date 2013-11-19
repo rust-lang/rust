@@ -39,7 +39,7 @@ fn main() {
 
     let owned = ~5;
 
-    let closure: ~fn() = || {
+    let closure: proc() = || {
         zzz();
         do_something(&constant, &a_struct.a, owned);
     };

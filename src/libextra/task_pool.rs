@@ -23,7 +23,7 @@ use std::vec;
 #[cfg(test)] use std::task::SingleThreaded;
 
 enum Msg<T> {
-    Execute(~fn(&T)),
+    Execute(proc(&T)),
     Quit
 }
 
@@ -49,7 +49,7 @@ impl<T> TaskPool<T> {
     /// local data to be kept around in that task.
     pub fn new(n_tasks: uint,
                opt_sched_mode: Option<SchedMode>,
-               init_fn_factory: ~fn() -> ~fn(uint) -> T)
+               init_fn_factory: &fn() -> proc(uint) -> T)
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
@@ -57,7 +57,7 @@ impl<T> TaskPool<T> {
             let (port, chan) = comm::stream::<Msg<T>>();
             let init_fn = init_fn_factory();
 
-            let task_body: ~fn() = || {
+            let task_body: proc() = || {
                 let local_data = init_fn(i);
                 loop {
                     match port.recv() {
@@ -88,7 +88,7 @@ impl<T> TaskPool<T> {
 
     /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
-    pub fn execute(&mut self, f: ~fn(&T)) {
+    pub fn execute(&mut self, f: proc(&T)) {
         self.channels[self.next_index].send(Execute(f));
         self.next_index += 1;
         if self.next_index == self.channels.len() { self.next_index = 0; }
@@ -97,8 +97,8 @@ impl<T> TaskPool<T> {
 
 #[test]
 fn test_task_pool() {
-    let f: ~fn() -> ~fn(uint) -> uint = || {
-        let g: ~fn(uint) -> uint = |i| i;
+    let f: &fn() -> proc(uint) -> uint = || {
+        let g: proc(uint) -> uint = |i| i;
         g
     };
     let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
