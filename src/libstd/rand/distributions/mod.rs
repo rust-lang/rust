@@ -23,7 +23,7 @@ that do not need to record state.
 use iter::range;
 use option::{Some, None};
 use num;
-use rand::{Rng,Rand};
+use rand::{Rng, Rand, Open01};
 use clone::Clone;
 
 pub use self::range::Range;
@@ -276,10 +276,12 @@ impl Rand for StandardNormal {
             let mut x = 1.0f64;
             let mut y = 0.0f64;
 
-            // FIXME #7755: infinities?
             while -2.0 * y < x * x {
-                x = rng.gen::<f64>().ln() / ziggurat_tables::ZIG_NORM_R;
-                y = rng.gen::<f64>().ln();
+                let x_ = *rng.gen::<Open01<f64>>();
+                let y_ = *rng.gen::<Open01<f64>>();
+
+                x = x_.ln() / ziggurat_tables::ZIG_NORM_R;
+                y = y_.ln();
             }
 
             if u < 0.0 { x - ziggurat_tables::ZIG_NORM_R } else { ziggurat_tables::ZIG_NORM_R - x }
