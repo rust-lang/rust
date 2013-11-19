@@ -167,6 +167,7 @@ impl rtio::RtioTTY for FileDesc {
     fn get_winsize(&mut self) -> Result<(int, int), IoError> {
         Err(super::unimpl())
     }
+    fn isatty(&self) -> bool { false }
 }
 
 impl Drop for FileDesc {
