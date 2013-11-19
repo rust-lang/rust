@@ -74,7 +74,9 @@ pub struct UdpStream {
 }
 
 impl UdpStream {
-    pub fn as_socket<T>(&mut self, f: &fn(&mut UdpSocket) -> T) -> T { f(&mut self.socket) }
+    pub fn as_socket<T>(&mut self, f: |&mut UdpSocket| -> T) -> T {
+        f(&mut self.socket)
+    }
 
     pub fn disconnect(self) -> UdpSocket { self.socket }
 }

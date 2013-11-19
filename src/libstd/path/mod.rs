@@ -559,7 +559,7 @@ impl<'self, P: GenericPath> Display<'self, P> {
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// unicode replacement char. This involves allocation.
     #[inline]
-    pub fn with_str<T>(&self, f: &fn(&str) -> T) -> T {
+    pub fn with_str<T>(&self, f: |&str| -> T) -> T {
         let opt = if self.filename { self.path.filename_str() }
                   else { self.path.as_str() };
         match opt {

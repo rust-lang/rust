@@ -116,7 +116,7 @@ pub fn ReprVisitor<'a>(ptr: *c_void,
 
 impl<'self> MovePtr for ReprVisitor<'self> {
     #[inline]
-    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void) {
+    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void) {
         self.ptr = adjustment(self.ptr);
     }
     fn push_ptr(&mut self) {
@@ -131,7 +131,7 @@ impl<'self> ReprVisitor<'self> {
     // Various helpers for the TyVisitor impl
 
     #[inline]
-    pub fn get<T>(&mut self, f: &fn(&mut ReprVisitor, &T)) -> bool {
+    pub fn get<T>(&mut self, f: |&mut ReprVisitor, &T|) -> bool {
         unsafe {
             f(self, transmute::<*c_void,&T>(self.ptr));
         }

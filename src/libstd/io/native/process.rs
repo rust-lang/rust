@@ -432,7 +432,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
+fn with_argv<T>(prog: &str, args: &[~str], cb: |**libc::c_char| -> T) -> T {
     use vec;
 
     // We can't directly convert `str`s into `*char`s, as someone needs to hold
@@ -460,7 +460,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*c_void| -> T) -> T {
     use vec;
 
     // On posixy systems we can pass a char** for envp, which is a
@@ -490,7 +490,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
+fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -514,7 +514,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     }
 }
 
-fn with_dirp<T>(d: Option<&Path>, cb: &fn(*libc::c_char) -> T) -> T {
+fn with_dirp<T>(d: Option<&Path>, cb: |*libc::c_char| -> T) -> T {
     match d {
       Some(dir) => dir.with_c_str(|buf| cb(buf)),
       None => cb(ptr::null())

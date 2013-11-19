@@ -296,7 +296,7 @@ impl<T> Drop for UnsafeArc<T>{
  * synchronization whatsoever. It only makes sense to use for CPU-local issues.
  */
 // FIXME(#8140) should not be pub
-pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
+pub unsafe fn atomically<U>(f: || -> U) -> U {
     use rt::task::{Task, GreenTask, SchedTask};
     use rt::local::Local;
 
@@ -343,7 +343,7 @@ impl LittleLock {
         }
     }
 
-    pub unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
+    pub unsafe fn lock<T>(&self, f: || -> T) -> T {
         do atomically {
             rust_lock_little_lock(self.l);
             do (|| {
@@ -354,7 +354,7 @@ impl LittleLock {
         }
     }
 
-    pub unsafe fn try_lock<T>(&self, f: &fn() -> T) -> Option<T> {
+    pub unsafe fn try_lock<T>(&self, f: || -> T) -> Option<T> {
         do atomically {
             if rust_trylock_little_lock(self.l) {
                 Some(do (|| {
@@ -372,7 +372,7 @@ impl LittleLock {
         rust_signal_little_lock(self.l);
     }
 
-    pub unsafe fn lock_and_wait(&self, f: &fn() -> bool) {
+    pub unsafe fn lock_and_wait(&self, f: || -> bool) {
         do atomically {
             rust_lock_little_lock(self.l);
             do (|| {
@@ -432,7 +432,7 @@ impl<T:Send> Exclusive<T> {
     // accessing the provided condition variable) are prohibited while inside
     // the Exclusive. Supporting that is a work in progress.
     #[inline]
-    pub unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
+    pub unsafe fn with<U>(&self, f: |x: &mut T| -> U) -> U {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
@@ -446,14 +446,14 @@ impl<T:Send> Exclusive<T> {
     }
 
     #[inline]
-    pub unsafe fn with_imm<U>(&self, f: &fn(x: &T) -> U) -> U {
+    pub unsafe fn with_imm<U>(&self, f: |x: &T| -> U) -> U {
         do self.with |x| {
             f(cast::transmute_immut(x))
         }
     }
 
     #[inline]
-    pub unsafe fn hold_and_signal(&self, f: &fn(x: &mut T)) {
+    pub unsafe fn hold_and_signal(&self, f: |x: &mut T|) {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
@@ -467,7 +467,7 @@ impl<T:Send> Exclusive<T> {
     }
 
     #[inline]
-    pub unsafe fn hold_and_wait(&self, f: &fn(x: &T) -> bool) {
+    pub unsafe fn hold_and_wait(&self, f: |x: &T| -> bool) {
         let rec = self.x.get();
         do (*rec).lock.lock_and_wait {
             if (*rec).failed {

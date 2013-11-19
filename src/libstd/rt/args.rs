@@ -93,7 +93,7 @@ mod imp {
         })
     }
 
-    fn with_lock<T>(f: &fn() -> T) -> T {
+    fn with_lock<T>(f: || -> T) -> T {
         do (|| {
             unsafe {
                 rust_take_global_args_lock();

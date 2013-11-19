@@ -203,7 +203,7 @@ impl<T> RcMut<T> {
 impl<T> RcMut<T> {
     /// Fails if there is already a mutable borrow of the box
     #[inline]
-    pub fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
+    pub fn with_borrow<U>(&self, f: |&T| -> U) -> U {
         unsafe {
             assert!((*self.ptr).borrow != Mutable);
             let previous = (*self.ptr).borrow;
@@ -216,7 +216,7 @@ impl<T> RcMut<T> {
 
     /// Fails if there is already a mutable or immutable borrow of the box
     #[inline]
-    pub fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
+    pub fn with_mut_borrow<U>(&self, f: |&mut T| -> U) -> U {
         unsafe {
             assert_eq!((*self.ptr).borrow, Nothing);
             (*self.ptr).borrow = Mutable;

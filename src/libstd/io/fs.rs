@@ -75,7 +75,7 @@ pub struct File {
     priv last_nread: int,
 }
 
-fn io_raise<T>(f: &fn(io: &mut IoFactory) -> Result<T, IoError>) -> Option<T> {
+fn io_raise<T>(f: |io: &mut IoFactory| -> Result<T, IoError>) -> Option<T> {
     do with_local_io |io| {
         match f(io) {
             Ok(t) => Some(t),
@@ -499,7 +499,7 @@ pub fn rmdir(path: &Path) {
 ///     use std::io::fs;
 ///
 ///     // one possible implementation of fs::walk_dir only visiting files
-///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
+///     fn visit_dirs(dir: &Path, cb: |&Path|) {
 ///         if dir.is_dir() {
 ///             let contents = fs::readdir(dir).unwrap();
 ///             for entry in contents.iter() {

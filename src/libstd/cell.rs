@@ -71,12 +71,12 @@ impl<T> Cell<T> {
     }
 
     /// Calls a closure with a reference to the value.
-    pub fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
+    pub fn with_ref<R>(&self, op: |v: &T| -> R) -> R {
         do self.with_mut_ref |ptr| { op(ptr) }
     }
 
     /// Calls a closure with a mutable reference to the value.
-    pub fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
+    pub fn with_mut_ref<R>(&self, op: |v: &mut T| -> R) -> R {
         let mut v = Some(self.take());
         do (|| {
             op(v.get_mut_ref())
