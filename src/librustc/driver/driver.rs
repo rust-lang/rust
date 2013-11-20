@@ -85,11 +85,16 @@ pub fn default_configuration(sess: Session) ->
         abi::Mips =>   (@"big",    @"mips",   @"32")
     };
 
+    let fam = match sess.targ_cfg.os {
+        abi::OsWin32 => @"windows",
+        _ => @"unix"
+    };
+
     let mk = attr::mk_name_value_item_str;
     return ~[ // Target bindings.
-         attr::mk_word_item(os::FAMILY.to_managed()),
+         attr::mk_word_item(fam),
          mk(@"target_os", tos),
-         mk(@"target_family", os::FAMILY.to_managed()),
+         mk(@"target_family", fam),
          mk(@"target_arch", arch),
          mk(@"target_endian", end),
          mk(@"target_word_size", wordsz),

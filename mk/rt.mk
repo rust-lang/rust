@@ -24,21 +24,37 @@
 # working under these assumptions).
 
 # Hack for passing flags into LIBUV, see below.
-LIBUV_FLAGS_i386 = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
-LIBUV_FLAGS_x86_64 = -m64 -fPIC
-ifeq ($(OSTYPE_$(1)), linux-androideabi)
-LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
-else ifeq ($(OSTYPE_$(1)), apple-darwin)
-  ifeq ($(HOST_$(1)), arm)
-    IOS_SDK := $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
-    LIBUV_FLAGS_arm := -fPIC -std=gnu99 -I$(IOS_SDK)/usr/include -I$(IOS_SDK)/usr/include/c++/4.2.1
-  else
-    LIBUV_FLAGS_arm := -fPIC -std=gnu99
-  endif
+define DEF_LIBUV_FLAGS
+ifeq ($(HOST_$(1)), i386)
+	ifneq (,$(findstring mingw32,$(OSTYPE_$(1))))
+		# Don't add -fPIC since it's ignored for this target
+		# and it will just cause the build to fail due to -Werror
+		LIBUV_FLAGS_$(1) = -m32 -I$(S)src/etc/mingw-fix-include
+	else
+		LIBUV_FLAGS_$(1) = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
+	endif
+else ifeq ($(HOST_$(1)), x86_64)
+	ifneq (,$(findstring mingw32,$(OSTYPE_$(1))))
+		# Don't add -fPIC since it's ignored for this target
+		# and it will just cause the build to fail due to -Werror
+		LIBUV_FLAGS_$(1) = -m64
+	else
+		LIBUV_FLAGS_$(1) = -m64 -fPIC
+	endif
+else ifeq ($(HOST_$(1)), arm)
+	ifeq ($(OSTYPE_$(1)), apple-darwin)
+		IOS_SDK := $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
+		LIBUV_FLAGS_$(1) = -fPIC -std=gnu99 -I$(IOS_SDK)/usr/include -I$(IOS_SDK)/usr/include/c++/4.2.1
+	else
+		LIBUV_FLAGS_$(1) = -fPIC -std=gnu99
+	endif
+else ifeq ($(HOST_$(1)), mips)
+	LIBUV_FLAGS_$(1) = -fPIC -mips32r2 -msoft-float -mabi=32
 else
-LIBUV_FLAGS_arm = -fPIC -std=gnu99
+	LIBUV_FLAGS_$(1) = -fPIC -std=gnu99
 endif
-LIBUV_FLAGS_mips = -fPIC -mips32r2 -msoft-float -mabi=32
+endef
+$(foreach t,$(CFG_TARGET),$(eval $(call DEF_LIBUV_FLAGS,$(t))))
 
 # when we're doing a snapshot build, we intentionally degrade as many
 # features in libuv and the runtime as possible, to ease portability.
@@ -222,15 +238,15 @@ $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
-		CC="$$(CC) $$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		CC="$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) $$(LIBUV_FLAGS_$(1)) $$(SNAP_DEFINES)" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
 	$$(Q)$$(MAKE) -C $$(@D) \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1)) $$(LIBUV_FLAGS_$(1)) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1)) $$(LIBUV_FLAGS_$(1))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
