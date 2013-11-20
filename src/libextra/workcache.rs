@@ -373,7 +373,7 @@ impl<'self> Prep<'self> {
             None => fail!("missing freshness-function for '{}'", kind),
             Some(f) => (*f)(name, val)
         };
-        do self.ctxt.logger.write |lg| {
+        self.ctxt.logger.write(|lg| {
             if fresh {
                 lg.info(format!("{} {}:{} is fresh",
                              cat, kind, name));
@@ -381,7 +381,7 @@ impl<'self> Prep<'self> {
                 lg.info(format!("{} {}:{} is not fresh",
                              cat, kind, name))
             }
-        };
+        });
         fresh
     }
 
@@ -411,9 +411,9 @@ impl<'self> Prep<'self> {
 
         debug!("exec_work: looking up {} and {:?}", self.fn_name,
                self.declared_inputs);
-        let cached = do self.ctxt.db.read |db| {
+        let cached = self.ctxt.db.read(|db| {
             db.prepare(self.fn_name, &self.declared_inputs)
-        };
+        });
 
         match cached {
             Some((ref disc_in, ref disc_out, ref res))
@@ -432,7 +432,7 @@ impl<'self> Prep<'self> {
                 let blk = bo.take_unwrap();
                 let chan = Cell::new(chan);
 
-// What happens if the task fails?
+                // XXX: What happens if the task fails?
                 do task::spawn {
                     let mut exe = Exec {
                         discovered_inputs: WorkMap::new(),
@@ -467,13 +467,13 @@ impl<'self, T:Send +
             WorkFromTask(prep, port) => {
                 let (exe, v) = port.recv();
                 let s = json_encode(&v);
-                do prep.ctxt.db.write |db| {
+                prep.ctxt.db.write(|db| {
                     db.cache(prep.fn_name,
                              &prep.declared_inputs,
                              &exe.discovered_inputs,
                              &exe.discovered_outputs,
-                             s);
-                }
+                             s)
+                });
                 v
             }
         }
@@ -507,7 +507,7 @@ fn test() {
                           RWArc::new(Logger::new()),
                           Arc::new(TreeMap::new()));
 
-    let s = do cx.with_prep("test1") |prep| {
+    let s = cx.with_prep("test1", |prep| {
 
         let subcx = cx.clone();
         let pth = pth.clone();
@@ -529,7 +529,7 @@ fn test() {
             // FIXME (#9639): This needs to handle non-utf8 paths
             out.as_str().unwrap().to_owned()
         }
-    };
+    });
 
     println(s);
 }

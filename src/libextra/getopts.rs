@@ -726,9 +726,9 @@ pub mod groups {
             // here we just need to indent the start of the description
             let rowlen = row.char_len();
             if rowlen < 24 {
-                do (24 - rowlen).times {
+                (24 - rowlen).times(|| {
                     row.push_char(' ')
-                }
+                })
             } else {
                 row.push_str(desc_sep)
             }
@@ -742,10 +742,10 @@ pub mod groups {
 
             // FIXME: #5516 should be graphemes not codepoints
             let mut desc_rows = ~[];
-            do each_split_within(desc_normalized_whitespace, 54) |substr| {
+            each_split_within(desc_normalized_whitespace, 54, |substr| {
                 desc_rows.push(substr.to_owned());
                 true
-            };
+            });
 
             // FIXME: #5516 should be graphemes not codepoints
             // wrapped description
@@ -840,7 +840,7 @@ pub mod groups {
     fn test_split_within() {
         fn t(s: &str, i: uint, u: &[~str]) {
             let mut v = ~[];
-            do each_split_within(s, i) |s| { v.push(s.to_owned()); true };
+            each_split_within(s, i, |s| { v.push(s.to_owned()); true });
             assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("", 0, []);

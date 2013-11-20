@@ -310,9 +310,9 @@ impl Pattern {
      */
     pub fn matches_path(&self, path: &Path) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        do path.as_str().map_default(false) |s| {
+        path.as_str().map_default(false, |s| {
             self.matches(s)
-        }
+        })
     }
 
     /**
@@ -328,9 +328,9 @@ impl Pattern {
      */
     pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        do path.as_str().map_default(false) |s| {
+        path.as_str().map_default(false, |s| {
             self.matches_with(s, options)
-        }
+        })
     }
 
     fn matches_from(&self,

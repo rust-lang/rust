@@ -494,14 +494,14 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                     match op {
                         FormatDigit => {
                             let sign = if flags.sign { SignAll } else { SignNeg };
-                            do int_to_str_bytes_common(d, radix, sign) |c| {
+                            int_to_str_bytes_common(d, radix, sign, |c| {
                                 s.push(c);
-                            }
+                            })
                         }
                         _ => {
-                            do int_to_str_bytes_common(d as uint, radix, SignNone) |c| {
+                            int_to_str_bytes_common(d as uint, radix, SignNone, |c| {
                                 s.push(c);
-                            }
+                            })
                         }
                     };
                     if flags.precision > s.len() {

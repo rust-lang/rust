@@ -394,7 +394,7 @@ impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'self T> {
-        do self.iter.next().map |(value, _)| { value }
+        self.iter.next().map(|(value, _)| value)
     }
 }
 
@@ -402,7 +402,7 @@ impl<'self, T> Iterator<&'self T> for TreeSetRevIterator<'self, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'self T> {
-        do self.iter.next().map |(value, _)| { value }
+        self.iter.next().map(|(value, _)| value)
     }
 }
 

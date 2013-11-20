@@ -166,7 +166,9 @@ impl BigBitv {
     }
 
     #[inline]
-    pub fn negate(&mut self) { do self.each_storage |w| { *w = !*w; true }; }
+    pub fn negate(&mut self) {
+        self.each_storage(|w| { *w = !*w; true });
+    }
 
     #[inline]
     pub fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
@@ -358,26 +360,32 @@ impl Bitv {
     #[inline]
     pub fn clear(&mut self) {
         match self.rep {
-          Small(ref mut b) => b.clear(),
-          Big(ref mut s) => { do s.each_storage() |w| { *w = 0u; true }; }
+            Small(ref mut b) => b.clear(),
+            Big(ref mut s) => {
+                s.each_storage(|w| { *w = 0u; true });
+            }
         }
     }
 
     /// Set all bits to 1
     #[inline]
     pub fn set_all(&mut self) {
-      match self.rep {
-        Small(ref mut b) => b.set_all(),
-        Big(ref mut s) => { do s.each_storage() |w| { *w = !0u; true }; }
-      }
+        match self.rep {
+            Small(ref mut b) => b.set_all(),
+            Big(ref mut s) => {
+                s.each_storage(|w| { *w = !0u; true });
+            }
+        }
     }
 
     /// Invert all bits
     #[inline]
     pub fn negate(&mut self) {
-      match self.rep {
-        Small(ref mut b) => b.negate(),
-        Big(ref mut s) => { do s.each_storage() |w| { *w = !*w; true }; }
+        match self.rep {
+            Small(ref mut b) => b.negate(),
+            Big(ref mut s) => {
+                s.each_storage(|w| { *w = !*w; true });
+            }
       }
     }
 
@@ -651,10 +659,10 @@ impl BitvSet {
     /// Creates a new bit vector set from the given bit vector
     pub fn from_bitv(bitv: Bitv) -> BitvSet {
         let mut size = 0;
-        do bitv.ones |_| {
+        bitv.ones(|_| {
             size += 1;
             true
-        };
+        });
         let Bitv{rep, _} = bitv;
         match rep {
             Big(b) => BitvSet{ size: size, bitv: b },
@@ -786,7 +794,7 @@ impl Container for BitvSet {
 
 impl Mutable for BitvSet {
     fn clear(&mut self) {
-        do self.bitv.each_storage |w| { *w = 0; true };
+        self.bitv.each_storage(|w| { *w = 0; true });
         self.size = 0;
     }
 }
@@ -797,9 +805,7 @@ impl Set<uint> for BitvSet {
     }
 
     fn is_disjoint(&self, other: &BitvSet) -> bool {
-        do self.intersection(other) |_| {
-            false
-        }
+        self.intersection(other, |_| false)
     }
 
     fn is_subset(&self, other: &BitvSet) -> bool {
