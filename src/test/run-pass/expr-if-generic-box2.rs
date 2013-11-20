@@ -12,7 +12,7 @@
 
 // xfail-fast
 
-type compare<T> = &'static fn(T, T) -> bool;
+type compare<T> = 'static |T, T| -> bool;
 
 fn test_generic<T:Clone>(expected: T, not_expected: T, eq: compare<T>) {
     let actual: T = if true { expected.clone() } else { not_expected };

@@ -13,7 +13,7 @@ use syntax::fold::ast_fold;
 use syntax::{ast, fold, attr};
 
 struct Context<'self> {
-    in_cfg: &'self fn(attrs: &[ast::Attribute]) -> bool,
+    in_cfg: 'self |attrs: &[ast::Attribute]| -> bool,
 }
 
 // Support conditional compilation by transforming the AST, stripping out

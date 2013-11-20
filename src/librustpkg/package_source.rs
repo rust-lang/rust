@@ -348,7 +348,7 @@ impl PkgSrc {
         self.find_crates_with_filter(|_| true);
     }
 
-    pub fn find_crates_with_filter(&mut self, filter: &fn(&str) -> bool) {
+    pub fn find_crates_with_filter(&mut self, filter: |&str| -> bool) {
         use conditions::missing_pkg_files::cond;
 
         let prefix = self.start_dir.components().len();

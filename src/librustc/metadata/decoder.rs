@@ -74,7 +74,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: |&[u8]| -> bool, hash: u64) ->
     ret
 }
 
-pub type GetCrateDataCb<'self> = &'self fn(ast::CrateNum) -> Cmd;
+pub type GetCrateDataCb<'self> = 'self |ast::CrateNum| -> Cmd;
 
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
@@ -528,7 +528,7 @@ struct EachItemContext<'self> {
     cdata: Cmd,
     get_crate_data: GetCrateDataCb<'self>,
     path_builder: &'self mut ~str,
-    callback: &'self fn(&str, DefLike, ast::visibility) -> bool,
+    callback: 'self |&str, DefLike, ast::visibility| -> bool,
 }
 
 impl<'self> EachItemContext<'self> {
@@ -901,11 +901,11 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> ast_map::path {
     item_path(lookup_item(id, cdata.data))
 }
 
-pub type decode_inlined_item<'self> = &'self fn(
-    cdata: @cstore::crate_metadata,
-    tcx: ty::ctxt,
-    path: ast_map::path,
-    par_doc: ebml::Doc) -> Option<ast::inlined_item>;
+pub type decode_inlined_item<'self> = 'self |cdata: @cstore::crate_metadata,
+                                             tcx: ty::ctxt,
+                                             path: ast_map::path,
+                                             par_doc: ebml::Doc|
+                                             -> Option<ast::inlined_item>;
 
 pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt,
                           id: ast::NodeId,

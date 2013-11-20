@@ -294,7 +294,7 @@ Combine the values of all the fields together. The last argument is
 all the fields of all the structures, see above for details.
 */
 pub type CombineSubstructureFunc<'self> =
-    &'self fn(@ExtCtxt, Span, &Substructure) -> @Expr;
+    'self |@ExtCtxt, Span, &Substructure| -> @Expr;
 
 /**
 Deal with non-matching enum variants, the arguments are a list
@@ -302,10 +302,11 @@ representing each variant: (variant index, ast::variant instance,
 [variant fields]), and a list of the nonself args of the type
 */
 pub type EnumNonMatchFunc<'self> =
-    &'self fn(@ExtCtxt, Span,
-              &[(uint, ast::variant,
-                 ~[(Span, Option<Ident>, @Expr)])],
-              &[@Expr]) -> @Expr;
+    'self |@ExtCtxt,
+           Span,
+           &[(uint, ast::variant, ~[(Span, Option<Ident>, @Expr)])],
+           &[@Expr]|
+           -> @Expr;
 
 
 impl<'self> TraitDef<'self> {
