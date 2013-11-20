@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-type ErrPrinter = &fn(&str, &str);
+type ErrPrinter = |&str, &str|;
 
 fn example_err(prog: &str, arg: &str) {
     println!("{}: {}", prog, arg)

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    fn as_buf<T>(s: ~str, f: &fn(~str) -> T) -> T { f(s) }
+    fn as_buf<T>(s: ~str, f: |~str| -> T) -> T { f(s) }
     as_buf(~"foo", |foo: ~str| -> () error!("{}", foo) );
 }

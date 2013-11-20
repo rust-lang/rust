@@ -27,7 +27,7 @@ struct Results {
     delete_strings: f64
 }
 
-fn timed(result: &mut f64, op: &fn()) {
+fn timed(result: &mut f64, op: ||) {
     let start = extra::time::precise_time_s();
     op();
     let end = extra::time::precise_time_s();
@@ -36,13 +36,12 @@ fn timed(result: &mut f64, op: &fn()) {
 
 impl Results {
     pub fn bench_int<T:MutableSet<uint>,
-                 R: rand::Rng>(
-                 &mut self,
-                 rng: &mut R,
-                 num_keys: uint,
-                 rand_cap: uint,
-                 f: &fn() -> T) {
-        {
+                     R: rand::Rng>(
+                     &mut self,
+                     rng: &mut R,
+                     num_keys: uint,
+                     rand_cap: uint,
+                     f: || -> T) { {
             let mut set = f();
             do timed(&mut self.sequential_ints) {
                 for i in range(0u, num_keys) {
@@ -79,11 +78,11 @@ impl Results {
     }
 
     pub fn bench_str<T:MutableSet<~str>,
-                 R:rand::Rng>(
-                 &mut self,
-                 rng: &mut R,
-                 num_keys: uint,
-                 f: &fn() -> T) {
+                     R:rand::Rng>(
+                     &mut self,
+                     rng: &mut R,
+                     num_keys: uint,
+                     f: || -> T) {
         {
             let mut set = f();
             do timed(&mut self.sequential_strings) {

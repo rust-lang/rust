@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    fn f(i: &fn() -> uint) -> uint { i() }
+    fn f(i: || -> uint) -> uint { i() }
     let v = ~[-1.0, 0.0, 1.0, 2.0, 3.0];
     let z = do do v.iter().fold(f) |x, _y| { x } { 22u };
     assert_eq!(z, 22u);

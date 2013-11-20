@@ -10,11 +10,11 @@
 
 extern mod extra;
 
-fn asSendfn( f : proc()->uint ) -> uint {
+fn asSendfn(f: proc() -> uint) -> uint {
    return f();
 }
 
-fn asBlock( f : &fn()->uint ) -> uint {
+fn asBlock(f: || -> uint) -> uint {
    return f();
 }
 

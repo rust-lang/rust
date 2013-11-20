@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let f: &fn((int,int)) = |(x, y)| {
+    let f: |(int,int)| = |(x, y)| {
         assert_eq!(x, 1);
         assert_eq!(y, 2);
     };

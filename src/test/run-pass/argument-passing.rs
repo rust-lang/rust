@@ -21,7 +21,7 @@ fn f1(a: &mut X, b: &mut int, c: int) -> int {
     return r;
 }
 
-fn f2(a: int, f: &fn(int)) -> int { f(1); return a; }
+fn f2(a: int, f: |int|) -> int { f(1); return a; }
 
 pub fn main() {
     let mut a = X {x: 1};
