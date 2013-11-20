@@ -82,6 +82,7 @@ pub struct RefCell<T> {
     priv nc: NonCopyable
 }
 
+<<<<<<< HEAD
 // Values [1, MAX-1] represent the number of `Ref` active
 // (will not outgrow its range since `uint` is the size of the address space)
 type BorrowFlag = uint;

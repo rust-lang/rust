@@ -49,15 +49,15 @@ let my_string = "Hello, world!";
 // Allocate the C string with an explicit local that owns the string. The
 // `c_buffer` pointer will be deallocated when `my_c_string` goes out of scope.
 let my_c_string = my_string.to_c_str();
-do my_c_string.with_ref |c_buffer| {
+my_c_string.with_ref(|c_buffer| {
     unsafe { puts(c_buffer); }
-}
+})
 
 // Don't save off the allocation of the C string, the `c_buffer` will be
 // deallocated when this block returns!
-do my_string.with_c_str |c_buffer| {
+my_string.with_c_str(|c_buffer| {
     unsafe { puts(c_buffer); }
-}
+})
  ```
 
 */
@@ -262,14 +262,12 @@ static BUF_LEN: uint = 128;
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
         let mut cs = unsafe { self.to_c_str_unchecked() };
-        do cs.with_mut_ref |buf| {
-            check_for_null(*self, buf);
-        }
+        cs.with_mut_ref(|buf| check_for_null(*self, buf));
         cs
     }
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
-        do self.as_imm_buf |self_buf, self_len| {
+        self.as_imm_buf(|self_buf, self_len| {
             let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
             if buf.is_null() {
                 fail!("failed to allocate memory!");
@@ -279,7 +277,7 @@ impl<'self> ToCStr for &'self [u8] {
             *ptr::mut_offset(buf, self_len as int) = 0;
 
             CString::new(buf as *libc::c_char, true)
-        }
+        })
     }
 
     fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
@@ -298,13 +296,13 @@ unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
         vec::bytes::copy_memory(buf, v, v.len());
         buf[v.len()] = 0;
 
-        do buf.as_mut_buf |buf, _| {
+        buf.as_mut_buf(|buf, _| {
             if checked {
                 check_for_null(v, buf as *mut libc::c_char);
             }
 
             f(buf as *libc::c_char)
-        }
+        })
     } else if checked {
         v.to_c_str().with_ref(f)
     } else {
@@ -390,10 +388,10 @@ mod tests {
             let ptr = vec::raw::to_ptr(input);
             let expected = ["zero", "one"];
             let mut it = expected.iter();
-            let result = do from_c_multistring(ptr as *libc::c_char, None) |c| {
+            let result = from_c_multistring(ptr as *libc::c_char, None, |c| {
                 let cbytes = c.as_bytes().slice_to(c.len());
                 assert_eq!(cbytes, it.next().unwrap().as_bytes());
-            };
+            });
             assert_eq!(result, 2);
             assert!(it.next().is_none());
         }
@@ -401,13 +399,13 @@ mod tests {
 
     #[test]
     fn test_str_to_c_str() {
-        do "".to_c_str().with_ref |buf| {
+        "".to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*ptr::offset(buf, 0), 0);
             }
-        }
+        });
 
-        do "hello".to_c_str().with_ref |buf| {
+        "hello".to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*ptr::offset(buf, 0), 'h' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 1), 'e' as libc::c_char);
@@ -416,19 +414,19 @@ mod tests {
                 assert_eq!(*ptr::offset(buf, 4), 'o' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 5), 0);
             }
-        }
+        })
     }
 
     #[test]
     fn test_vec_to_c_str() {
         let b: &[u8] = [];
-        do b.to_c_str().with_ref |buf| {
+        b.to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*ptr::offset(buf, 0), 0);
             }
-        }
+        });
 
-        do bytes!("hello").to_c_str().with_ref |buf| {
+        let _ = bytes!("hello").to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*ptr::offset(buf, 0), 'h' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 1), 'e' as libc::c_char);
@@ -437,9 +435,9 @@ mod tests {
                 assert_eq!(*ptr::offset(buf, 4), 'o' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 5), 0);
             }
-        }
+        });
 
-        do bytes!("foo", 0xff).to_c_str().with_ref |buf| {
+        let _ = bytes!("foo", 0xff).to_c_str().with_ref(|buf| {
             unsafe {
                 assert_eq!(*ptr::offset(buf, 0), 'f' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 1), 'o' as libc::c_char);
@@ -447,7 +445,7 @@ mod tests {
                 assert_eq!(*ptr::offset(buf, 3), 0xff);
                 assert_eq!(*ptr::offset(buf, 4), 0);
             }
-        }
+        });
     }
 
     #[test]
@@ -500,18 +498,16 @@ mod tests {
         use c_str::null_byte::cond;
 
         let mut error_happened = false;
-        do cond.trap(|err| {
+        cond.trap(|err| {
             assert_eq!(err, bytes!("he", 0, "llo").to_owned())
             error_happened = true;
             Truncate
-        }).inside {
-            "he\x00llo".to_c_str()
-        };
+        }).inside(|| "he\x00llo".to_c_str());
         assert!(error_happened);
 
-        do cond.trap(|_| {
+        cond.trap(|_| {
             ReplaceWith('?' as libc::c_char)
-        }).inside(|| "he\x00llo".to_c_str()).with_ref |buf| {
+        }).inside(|| "he\x00llo".to_c_str()).with_ref(|buf| {
             unsafe {
                 assert_eq!(*buf.offset(0), 'h' as libc::c_char);
                 assert_eq!(*buf.offset(1), 'e' as libc::c_char);
@@ -521,13 +517,13 @@ mod tests {
                 assert_eq!(*buf.offset(5), 'o' as libc::c_char);
                 assert_eq!(*buf.offset(6), 0);
             }
-        }
+        })
     }
 
     #[test]
     fn test_to_c_str_unchecked() {
         unsafe {
-            do "he\x00llo".to_c_str_unchecked().with_ref |buf| {
+            "he\x00llo".to_c_str_unchecked().with_ref(|buf| {
                 assert_eq!(*buf.offset(0), 'h' as libc::c_char);
                 assert_eq!(*buf.offset(1), 'e' as libc::c_char);
                 assert_eq!(*buf.offset(2), 0);
@@ -535,7 +531,7 @@ mod tests {
                 assert_eq!(*buf.offset(4), 'l' as libc::c_char);
                 assert_eq!(*buf.offset(5), 'o' as libc::c_char);
                 assert_eq!(*buf.offset(6), 0);
-            }
+            })
         }
     }
 
@@ -579,7 +575,7 @@ mod bench {
 
     #[inline]
     fn check(s: &str, c_str: *libc::c_char) {
-        do s.as_imm_buf |s_buf, s_len| {
+        s.as_imm_buf(|s_buf, s_len| {
             for i in range(0, s_len) {
                 unsafe {
                     assert_eq!(
@@ -587,7 +583,7 @@ mod bench {
                         *ptr::offset(c_str, i as int));
                 }
             }
-        }
+        })
     }
 
     static s_short: &'static str = "Mary";
@@ -601,12 +597,10 @@ mod bench {
         Mary had a little lamb, Little lamb";
 
     fn bench_to_str(bh: &mut BenchHarness, s: &str) {
-        do bh.iter {
+        bh.iter(|| {
             let c_str = s.to_c_str();
-            do c_str.with_ref |c_str_buf| {
-                check(s, c_str_buf)
-            }
-        }
+            c_str.with_ref(|c_str_buf| check(s, c_str_buf))
+        })
     }
 
     #[bench]
@@ -625,12 +619,10 @@ mod bench {
     }
 
     fn bench_to_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
-        do bh.iter {
+        bh.iter(|| {
             let c_str = unsafe { s.to_c_str_unchecked() };
-            do c_str.with_ref |c_str_buf| {
-                check(s, c_str_buf)
-            }
-        }
+            c_str.with_ref(|c_str_buf| check(s, c_str_buf))
+        })
     }
 
     #[bench]
@@ -649,11 +641,9 @@ mod bench {
     }
 
     fn bench_with_c_str(bh: &mut BenchHarness, s: &str) {
-        do bh.iter {
-            do s.with_c_str |c_str_buf| {
-                check(s, c_str_buf)
-            }
-        }
+        bh.iter(|| {
+            s.with_c_str(|c_str_buf| check(s, c_str_buf))
+        })
     }
 
     #[bench]
@@ -672,13 +662,11 @@ mod bench {
     }
 
     fn bench_with_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
-        do bh.iter {
+        bh.iter(|| {
             unsafe {
-                do s.with_c_str_unchecked |c_str_buf| {
-                    check(s, c_str_buf)
-                }
+                s.with_c_str_unchecked(|c_str_buf| check(s, c_str_buf))
             }
-        }
+        })
     }
 
     #[bench]

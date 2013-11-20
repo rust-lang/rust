@@ -369,12 +369,12 @@ impl<A:IterBytes> ToBytes for A {
         use io::mem;
         use io::Writer;
 
-        do mem::with_mem_writer |wr| {
-            do self.iter_bytes(lsb0) |bytes| {
+        mem::with_mem_writer(|wr| {
+            self.iter_bytes(lsb0, |bytes| {
                 wr.write(bytes);
                 true
-            };
-        }
+            });
+        })
     }
 }
 

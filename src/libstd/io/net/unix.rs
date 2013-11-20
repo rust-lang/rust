@@ -59,7 +59,7 @@ impl UnixStream {
     ///     stream.write([1, 2, 3]);
     ///
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.unix_connect(&path.to_c_str()) {
                 Ok(s) => Some(UnixStream::new(s)),
                 Err(ioerr) => {
@@ -67,7 +67,7 @@ impl UnixStream {
                     None
                 }
             }
-        }
+        })
     }
 }
 
@@ -108,7 +108,7 @@ impl UnixListener {
     ///     }
     ///
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.unix_bind(&path.to_c_str()) {
                 Ok(s) => Some(UnixListener{ obj: s }),
                 Err(ioerr) => {
@@ -116,7 +116,7 @@ impl UnixListener {
                     None
                 }
             }
-        }
+        })
     }
 }
 

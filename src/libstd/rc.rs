@@ -168,6 +168,28 @@ impl<T> Drop for Rc<T> {
     }
 }
 
+impl<T> Clone for RcMut<T> {
+    /// Return a shallow copy of the reference counted pointer.
+    #[inline]
+    fn clone(&self) -> RcMut<T> {
+        unsafe {
+            (*self.ptr).count += 1;
+            RcMut{ptr: self.ptr}
+        }
+    }
+}
+
+impl<T: DeepClone> DeepClone for RcMut<T> {
+    /// Return a deep copy of the reference counted pointer.
+    #[inline]
+    fn deep_clone(&self) -> RcMut<T> {
+        self.with_borrow(|x| {
+            // FIXME: #6497: should avoid freeze (slow)
+            unsafe { RcMut::new_unchecked(x.deep_clone()) }
+        })
+    }
+}
+
 #[cfg(test)]
 mod test_rc {
     use super::*;
@@ -177,9 +199,9 @@ mod test_rc {
     fn test_clone() {
         let x = Rc::from_send(RefCell::new(5));
         let y = x.clone();
-        do x.borrow().with_mut |inner| {
+        x.borrow().with_mut(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().with(|v| *v), 20);
     }
 
@@ -187,9 +209,9 @@ mod test_rc {
     fn test_deep_clone() {
         let x = Rc::from_send(RefCell::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut |inner| {
+        x.borrow().with_mut(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().with(|v| *v), 5);
     }
 

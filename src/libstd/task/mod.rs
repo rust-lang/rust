@@ -432,12 +432,12 @@ pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             match task.name {
                 Some(ref name) => blk(Some(name.as_slice())),
                 None => blk(None)
             }
-        }
+        })
     } else {
         fail!("no task name exists in non-green task context")
     }
@@ -459,9 +459,7 @@ pub fn failing() -> bool {
 
     use rt::task::Task;
 
-    do Local::borrow |local: &mut Task| {
-        local.unwinder.unwinding
-    }
+    Local::borrow(|local: &mut Task| local.unwinder.unwinding)
 }
 
 // The following 8 tests test the following 2^3 combinations:

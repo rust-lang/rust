@@ -189,7 +189,7 @@ pub fn get<T: 'static, U>(key: Key<T>, f: |Option<&T>| -> U) -> U {
 /// on loan via this or the `get` methods. This is similar to how it's a runtime
 /// error to take two mutable loans on an `@mut` box.
 pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
-    do get_with(key, MutLoan) |x| {
+    get_with(key, MutLoan, |x| {
         match x {
             None => f(None),
             // We're violating a lot of compiler guarantees with this
@@ -199,7 +199,7 @@ pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
             // there is no need to be upset!
             Some(x) => { f(Some(unsafe { cast::transmute_mut(x) })) }
         }
-    }
+    })
 }
 
 fn get_with<T:'static,
