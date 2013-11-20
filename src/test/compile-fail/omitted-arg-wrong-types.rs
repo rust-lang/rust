@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test - #2093
-fn let_in<T>(x: T, f: &fn(T)) {}
+fn let_in<T>(x: T, f: |T|) {}
 
 fn main() {
     let_in(3u, |i| { assert!(i == 3); });

@@ -13,7 +13,7 @@ fn f(y: ~int) {
 }
 
 fn g() {
-    let _frob: &fn(~int) = |q| { *q = 2; }; //~ ERROR cannot assign
+    let _frob: |~int| = |q| { *q = 2; }; //~ ERROR cannot assign
 
 }
 

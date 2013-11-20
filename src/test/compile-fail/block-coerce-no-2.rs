@@ -15,7 +15,7 @@ fn main() {
     fn f(f: extern fn(extern fn(extern fn()))) {
     }
 
-    fn g(f: extern fn(&fn())) {
+    fn g(f: extern fn(||)) {
     }
 
     f(g);

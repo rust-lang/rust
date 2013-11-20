@@ -20,7 +20,7 @@ fn add_int(x: &mut Ints, v: int) {
     util::swap(&mut values, &mut x.values);
 }
 
-fn iter_ints(x: &Ints, f: &fn(x: &int) -> bool) -> bool {
+fn iter_ints(x: &Ints, f: |x: &int| -> bool) -> bool {
     let l = x.values.len();
     range(0u, l).advance(|i| f(&x.values[i]))
 }

@@ -11,7 +11,7 @@
 struct X(Either<(uint,uint),extern fn()>);
 
 impl X {
-    pub fn with(&self, blk: &fn(x: &Either<(uint,uint),extern fn()>)) {
+    pub fn with(&self, blk: |x: &Either<(uint,uint),extern fn()>|) {
         blk(&**self)
     }
 }

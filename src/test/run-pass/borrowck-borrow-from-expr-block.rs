@@ -13,7 +13,7 @@
 use std::borrow;
 use std::ptr;
 
-fn borrow(x: &int, f: &fn(x: &int)) {
+fn borrow(x: &int, f: |x: &int|) {
     f(x)
 }
 

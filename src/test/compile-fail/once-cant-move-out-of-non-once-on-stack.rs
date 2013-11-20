@@ -15,7 +15,7 @@ extern mod extra;
 use extra::arc;
 use std::util;
 
-fn foo(blk: &fn()) {
+fn foo(blk: ||) {
     blk();
     blk();
 }

@@ -11,7 +11,7 @@
 #[link(name="cci_iter_lib", vers="0.0")];
 
 #[inline]
-pub fn iter<T>(v: &[T], f: &fn(&T)) {
+pub fn iter<T>(v: &[T], f: |&T|) {
     let mut i = 0u;
     let n = v.len();
     while i < n {

@@ -15,7 +15,7 @@ extern {
     fn sprintf(s: *mut c_char, format: *c_char, ...) -> c_int;
 }
 
-unsafe fn check<T>(expected: &str, f: &fn(*mut c_char) -> T) {
+unsafe fn check<T>(expected: &str, f: |*mut c_char| -> T) {
     let mut x = [0i8, ..50];
     f(&mut x[0] as *mut c_char);
     let res = CString::new(&x[0], false);

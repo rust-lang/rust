@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore(_f: &fn<'z>(&'z int) -> &'z int) {}
+fn ignore(_f: <'z>|&'z int| -> &'z int) {}
 
 fn nested() {
     let y = 3;

@@ -24,7 +24,7 @@ fn a() {
     info!("{}", *q);
 }
 
-fn borrow(_x: &[int], _f: &fn()) {}
+fn borrow(_x: &[int], _f: ||) {}
 
 fn b() {
     // here we alias the mutable vector into an imm slice and try to

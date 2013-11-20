@@ -31,7 +31,7 @@ fn socket() -> socket {
     }
 }
 
-fn closure(f: &fn()) { f() }
+fn closure(f: ||) { f() }
 
 fn setsockopt_bytes(_sock: int) { }
 

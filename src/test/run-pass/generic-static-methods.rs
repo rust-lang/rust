@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait vec_utils<T> {
-    fn map_<U>(x: &Self, f: &fn(&T) -> U) -> ~[U];
+    fn map_<U>(x: &Self, f: |&T| -> U) -> ~[U];
 }
 
 impl<T> vec_utils<T> for ~[T] {
-    fn map_<U>(x: &~[T], f: &fn(&T) -> U) -> ~[U] {
+    fn map_<U>(x: &~[T], f: |&T| -> U) -> ~[U] {
         let mut r = ~[];
         for elt in x.iter() {
             r.push(f(elt));

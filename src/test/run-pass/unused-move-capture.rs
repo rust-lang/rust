@@ -10,6 +10,6 @@
 
 pub fn main() {
     let _x = ~1;
-    let lam_move: &fn() = || {};
+    let lam_move: || = || {};
     lam_move();
 }
