@@ -12,7 +12,7 @@
 
 fn foo(i: int) -> int { i + 1 }
 
-fn apply<A>(f: &fn(A) -> A, v: A) -> A { f(v) }
+fn apply<A>(f: |A| -> A, v: A) -> A { f(v) }
 
 pub fn main() {
     let f = {|i| foo(i)};

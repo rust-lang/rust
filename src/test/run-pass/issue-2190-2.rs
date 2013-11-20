@@ -10,19 +10,19 @@
 
 // xfail-test FIXME #2190
 mod a {
-    fn foo(f: &fn()) { f() }
+    fn foo(f: ||) { f() }
     fn bar() {}
     pub fn main() { foo(||bar()); }
 }
 
 mod b {
-    fn foo(f: Option<&fn()>) { f.iter(|x|x()) }
+    fn foo(f: Option<||>) { f.iter(|x|x()) }
     fn bar() {}
     pub fn main() { foo(Some(bar)); }
 }
 
 mod c {
-    fn foo(f: Option<&fn()>) { f.iter(|x|x()) }
+    fn foo(f: Option<||>) { f.iter(|x|x()) }
     fn bar() {}
     pub fn main() { foo(Some(||bar())); }
 }

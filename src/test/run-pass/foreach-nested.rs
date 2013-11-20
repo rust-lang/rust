@@ -11,7 +11,7 @@
 
 
 
-fn two(it: &fn(int)) { it(0); it(1); }
+fn two(it: |int|) { it(0); it(1); }
 
 pub fn main() {
     let mut a: ~[int] = ~[-1, -1, -1, -1];

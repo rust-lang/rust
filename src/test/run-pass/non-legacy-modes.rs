@@ -12,7 +12,7 @@ struct X {
     repr: int
 }
 
-fn apply<T>(x: T, f: &fn(T)) {
+fn apply<T>(x: T, f: |T|) {
     f(x);
 }
 

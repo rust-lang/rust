@@ -10,10 +10,10 @@
 
 fn f<T>(x: ~[T]) -> T { return x[0]; }
 
-fn g(act: &fn(~[int]) -> int) -> int { return act(~[1, 2, 3]); }
+fn g(act: |~[int]| -> int) -> int { return act(~[1, 2, 3]); }
 
 pub fn main() {
     assert_eq!(g(f), 1);
-    let f1: &fn(~[~str]) -> ~str = f;
+    let f1: |~[~str]| -> ~str = f;
     assert_eq!(f1(~[~"x", ~"y", ~"z"]), ~"x");
 }

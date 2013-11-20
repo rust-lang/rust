@@ -10,7 +10,7 @@
 
 use std::task;
 
-fn borrow(v: &int, f: &fn(x: &int)) {
+fn borrow(v: &int, f: |x: &int|) {
     f(v);
 }
 

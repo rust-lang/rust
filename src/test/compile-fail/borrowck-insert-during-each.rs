@@ -15,7 +15,7 @@ struct Foo {
 }
 
 impl Foo {
-    pub fn foo(&mut self, fun: &fn(&int)) {
+    pub fn foo(&mut self, fun: |&int|) {
         for f in self.n.iter() {
             fun(f);
         }

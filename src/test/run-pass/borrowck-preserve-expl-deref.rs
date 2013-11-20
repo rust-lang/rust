@@ -12,7 +12,7 @@
 
 use std::ptr;
 
-fn borrow(x: &int, f: &fn(x: &int)) {
+fn borrow(x: &int, f: |x: &int|) {
     let before = *x;
     f(x);
     let after = *x;

@@ -17,7 +17,7 @@
 fn borrow(_v: &int) {}
 fn borrow_mut(_v: &mut int) {}
 fn cond() -> bool { fail!() }
-fn for_func(_f: &fn() -> bool) { fail!() }
+fn for_func(_f: || -> bool) { fail!() }
 fn produce<T>() -> T { fail!(); }
 
 fn inc(v: &mut ~int) {

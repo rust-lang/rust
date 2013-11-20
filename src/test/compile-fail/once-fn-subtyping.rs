@@ -11,7 +11,7 @@
 #[feature(once_fns)];
 fn main() {
     let f: &once fn() = ||();
-    let g: &fn() = f;  //~ ERROR mismatched types
-    let h: &fn() = ||();
+    let g: || = f;  //~ ERROR mismatched types
+    let h: || = ||();
     let i: &once fn() = h;  // ok
 }

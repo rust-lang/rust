@@ -22,7 +22,7 @@ use std::task;
 use std::cell;
 
 trait Pet {
-    fn name(&self, blk: &fn(&str));
+    fn name(&self, blk: |&str|);
     fn num_legs(&self) -> uint;
     fn of_good_pedigree(&self) -> bool;
 }
@@ -44,19 +44,19 @@ struct Goldfyshe {
 }
 
 impl Pet for Catte {
-    fn name(&self, blk: &fn(&str)) { blk(self.name) }
+    fn name(&self, blk: |&str|) { blk(self.name) }
     fn num_legs(&self) -> uint { 4 }
     fn of_good_pedigree(&self) -> bool { self.num_whiskers >= 4 }
 }
 impl Pet for Dogge {
-    fn name(&self, blk: &fn(&str)) { blk(self.name) }
+    fn name(&self, blk: |&str|) { blk(self.name) }
     fn num_legs(&self) -> uint { 4 }
     fn of_good_pedigree(&self) -> bool {
         self.bark_decibels < 70 || self.tricks_known > 20
     }
 }
 impl Pet for Goldfyshe {
-    fn name(&self, blk: &fn(&str)) { blk(self.name) }
+    fn name(&self, blk: |&str|) { blk(self.name) }
     fn num_legs(&self) -> uint { 0 }
     fn of_good_pedigree(&self) -> bool { self.swim_speed >= 500 }
 }

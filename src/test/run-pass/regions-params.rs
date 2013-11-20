@@ -12,7 +12,7 @@
 
 fn region_identity<'r>(x: &'r uint) -> &'r uint { x }
 
-fn apply<T>(t: T, f: &fn(T) -> T) -> T { f(t) }
+fn apply<T>(t: T, f: |T| -> T) -> T { f(t) }
 
 fn parameterized(x: &uint) -> uint {
     let z = apply(x, ({|y|

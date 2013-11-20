@@ -10,7 +10,7 @@
 
 fn bare() {}
 
-fn likes_block(f: &fn()) { f() }
+fn likes_block(f: ||) { f() }
 
 pub fn main() {
     likes_block(bare);

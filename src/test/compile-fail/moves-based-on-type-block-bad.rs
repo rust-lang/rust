@@ -8,7 +8,7 @@ enum E {
     Baz
 }
 
-fn f(s: &S, g: &fn(&S)) {
+fn f(s: &S, g: |&S|) {
     g(s)
 }
 

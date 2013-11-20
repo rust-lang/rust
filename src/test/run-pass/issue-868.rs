@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T>(g: &fn() -> T) -> T { g() }
+fn f<T>(g: || -> T) -> T { g() }
 
 pub fn main() {
   let _x = f( | | { 10 });

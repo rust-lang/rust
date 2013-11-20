@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn with_int(f: &fn(x: &int)) {
+fn with_int(f: |x: &int|) {
     let x = 3;
     f(&x);
 }
