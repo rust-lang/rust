@@ -49,3 +49,4 @@ rust_get_test_int
 rust_pthread_mutex_t_size
 rust_pthread_cond_t_size
 rust_crit_section_size
+_Unwind_Resume
