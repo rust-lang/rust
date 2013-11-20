@@ -57,6 +57,11 @@ pub trait C { //~ ERROR: missing documentation
 #[allow(missing_doc)] pub trait D {}
 
 impl Foo {
+    pub fn foo() {}
+    fn bar() {}
+}
+
+impl PubFoo {
     pub fn foo() {} //~ ERROR: missing documentation
     /// dox
     pub fn foo1() {}
