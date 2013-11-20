@@ -36,7 +36,7 @@ fn innocent_looking_victim() {
     }
 }
 
-fn conspirator(f: &fn(&R, bool)) {
+fn conspirator(f: |&R, bool|) {
     let r = R {c: f};
     f(&r, false) //~ ERROR use of moved value
 }

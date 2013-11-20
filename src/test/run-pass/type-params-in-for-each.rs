@@ -13,7 +13,7 @@ struct S<T> {
     b: uint,
 }
 
-fn range_(lo: uint, hi: uint, it: &fn(uint)) {
+fn range_(lo: uint, hi: uint, it: |uint|) {
     let mut lo_ = lo;
     while lo_ < hi { it(lo_); lo_ += 1u; }
 }

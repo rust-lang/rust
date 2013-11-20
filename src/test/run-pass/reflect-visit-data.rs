@@ -22,7 +22,7 @@ use std::unstable::raw::Vec;
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
-    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void);
+    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void);
 }
 
 /// Helper function for alignment calculation.
@@ -471,7 +471,7 @@ struct Stuff {
 }
 
 impl my_visitor {
-    pub fn get<T:Clone>(&mut self, f: &fn(T)) {
+    pub fn get<T:Clone>(&mut self, f: |T|) {
         unsafe {
             f((*(self.ptr1 as *T)).clone());
         }
@@ -490,7 +490,7 @@ impl my_visitor {
 struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
-    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void) {
+    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }

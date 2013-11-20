@@ -62,6 +62,6 @@ fn main() {
     check_pp(expr3,  pprust::print_expr, "2 - 23 + 7");
 }
 
-fn check_pp<T>(expr: T, f: &fn(pprust::ps, T), expect: str) {
+fn check_pp<T>(expr: T, f: |pprust::ps, T|, expect: str) {
     fail!();
 }

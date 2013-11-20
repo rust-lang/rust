@@ -19,7 +19,7 @@ pub fn main() {
     assert_eq!(sum, 45);
 }
 
-fn first_ten(it: &fn(int)) {
+fn first_ten(it: |int|) {
     let mut i: int = 0;
     while i < 10 { info!("first_ten"); it(i); i = i + 1; }
 }

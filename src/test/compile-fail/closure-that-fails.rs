@@ -1,4 +1,4 @@
-fn foo(f: &fn() -> !) {}
+fn foo(f: || -> !) {}
 
 fn main() {
     // Type inference didn't use to be able to handle this:

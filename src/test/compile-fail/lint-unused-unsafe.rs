@@ -18,7 +18,7 @@ mod foo {
     }
 }
 
-fn callback<T>(_f: &fn() -> T) -> T { fail!() }
+fn callback<T>(_f: || -> T) -> T { fail!() }
 unsafe fn unsf() {}
 
 fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block

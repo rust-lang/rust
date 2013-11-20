@@ -11,7 +11,7 @@
 // Regression test for issue #5239
 
 pub fn main() { 
-    let _f: &fn(int) -> int = |ref x: int| { *x };
+    let _f: |int| -> int = |ref x: int| { *x };
     let foo = 10;
     assert!(_f(foo) == 10);
 }

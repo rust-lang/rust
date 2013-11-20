@@ -13,7 +13,7 @@
 
 enum thing { a, b, c, }
 
-fn foo(it: &fn(int)) { it(10); }
+fn foo(it: |int|) { it(10); }
 
 pub fn main() {
     let mut x = true;

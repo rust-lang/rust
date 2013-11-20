@@ -40,7 +40,7 @@ fn main() {
     bench!(argv, is_utf8_multibyte);
 }
 
-fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
+fn maybe_run_test(argv: &[~str], name: ~str, test: ||) {
     let mut run_test = false;
 
     if os::getenv("RUST_BENCH").is_some() {

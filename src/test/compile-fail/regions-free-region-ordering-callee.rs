@@ -30,7 +30,7 @@ fn ordering3<'a, 'b>(x: &'a uint, y: &'b uint) -> &'a &'b uint {
     fail!();
 }
 
-fn ordering4<'a, 'b>(a: &'a uint, b: &'b uint, x: &fn(&'a &'b uint)) {
+fn ordering4<'a, 'b>(a: &'a uint, b: &'b uint, x: |&'a &'b uint|) {
     let z: Option<&'a &'b uint> = None;
 }
 

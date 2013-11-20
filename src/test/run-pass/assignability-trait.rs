@@ -13,17 +13,17 @@
 // it.
 
 trait iterable<A> {
-    fn iterate(&self, blk: &fn(x: &A) -> bool) -> bool;
+    fn iterate(&self, blk: |x: &A| -> bool) -> bool;
 }
 
 impl<'self,A> iterable<A> for &'self [A] {
-    fn iterate(&self, f: &fn(x: &A) -> bool) -> bool {
+    fn iterate(&self, f: |x: &A| -> bool) -> bool {
         self.iter().advance(f)
     }
 }
 
 impl<A> iterable<A> for ~[A] {
-    fn iterate(&self, f: &fn(x: &A) -> bool) -> bool {
+    fn iterate(&self, f: |x: &A| -> bool) -> bool {
         self.iter().advance(f)
     }
 }
