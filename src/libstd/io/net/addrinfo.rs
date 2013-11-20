@@ -97,7 +97,7 @@ pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
 ///      consumption just yet.
 fn lookup(hostname: Option<&str>, servname: Option<&str>,
           hint: Option<Hint>) -> Option<~[Info]> {
-    do with_local_io |io| {
+    with_local_io(|io| {
         match io.get_host_addresses(hostname, servname, hint) {
             Ok(i) => Some(i),
             Err(ioerr) => {
@@ -105,7 +105,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>,
                 None
             }
         }
-    }
+    })
 }
 
 #[cfg(test)]

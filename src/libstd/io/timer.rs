@@ -60,7 +60,7 @@ impl Timer {
     /// for a number of milliseconds, or to possibly create channels which will
     /// get notified after an amount of time has passed.
     pub fn new() -> Option<Timer> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.timer_init() {
                 Ok(t) => Some(Timer { obj: t }),
                 Err(ioerr) => {
@@ -70,7 +70,7 @@ impl Timer {
                 }
             }
 
-        }
+        })
     }
 
     /// Blocks the current task for `msecs` milliseconds.

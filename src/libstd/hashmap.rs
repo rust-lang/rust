@@ -110,7 +110,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                 k: &K)
                              -> SearchResult {
         let mut ret = TableFull;
-        do self.bucket_sequence(hash) |i| {
+        self.bucket_sequence(hash, |i| {
             match self.buckets[i] {
                 Some(ref bkt) if bkt.hash == hash && *k == bkt.key => {
                     ret = FoundEntry(i); false
@@ -118,7 +118,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                 None => { ret = FoundHole(i); false }
                 _ => true,
             }
-        };
+        });
         ret
     }
 
@@ -128,7 +128,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                                   k: &Q)
                                                -> SearchResult {
         let mut ret = TableFull;
-        do self.bucket_sequence(hash) |i| {
+        self.bucket_sequence(hash, |i| {
             match self.buckets[i] {
                 Some(ref bkt) if bkt.hash == hash && k.equiv(&bkt.key) => {
                     ret = FoundEntry(i); false
@@ -136,7 +136,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                 None => { ret = FoundHole(i); false }
                 _ => true,
             }
-        };
+        });
         ret
     }
 
@@ -236,9 +236,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let len_buckets = self.buckets.len();
         let bucket = self.buckets[idx].take();
 
-        let value = do bucket.map |bucket| {
-            bucket.value
-        };
+        let value = bucket.map(|bucket| bucket.value);
 
         /* re-inserting buckets may cause changes in size, so remember
         what our new size is ahead of time before we start insertions */
@@ -500,12 +498,12 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn eq(&self, other: &HashMap<K, V>) -> bool {
         if self.len() != other.len() { return false; }
 
-        do self.iter().all |(key, value)| {
+        self.iter().all(|(key, value)| {
             match other.find(key) {
                 None => false,
                 Some(v) => value == v
             }
-        }
+        })
     }
 
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }

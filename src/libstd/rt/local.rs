@@ -34,10 +34,10 @@ impl Local for Task {
         let mut res: Option<T> = None;
         let res_ptr: *mut Option<T> = &mut res;
         unsafe {
-            do local_ptr::borrow |task| {
+            local_ptr::borrow(|task| {
                 let result = f(task);
                 *res_ptr = Some(result);
-            }
+            })
         }
         match res {
             Some(r) => { r }
@@ -57,10 +57,10 @@ impl Local for Task {
 impl Local for Scheduler {
     fn put(value: ~Scheduler) {
         let value = Cell::new(value);
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             let task = task;
             task.sched = Some(value.take());
-        };
+        });
     }
     #[inline]
     fn take() -> ~Scheduler {
@@ -71,15 +71,15 @@ impl Local for Scheduler {
         }
     }
     fn exists(_: Option<Scheduler>) -> bool {
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             match task.sched {
                 Some(ref _task) => true,
                 None => false
             }
-        }
+        })
     }
     fn borrow<T>(f: |&mut Scheduler| -> T) -> T {
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             match task.sched {
                 Some(~ref mut task) => {
                     f(task)
@@ -88,7 +88,7 @@ impl Local for Scheduler {
                     rtabort!("no scheduler")
                 }
             }
-        }
+        })
     }
     unsafe fn unsafe_take() -> ~Scheduler { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut Scheduler {
