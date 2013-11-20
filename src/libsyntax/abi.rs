@@ -23,6 +23,7 @@ pub enum Abi {
     Stdcall,
     Fastcall,
     Aapcs,
+    Win64,
 
     // Multiplatform ABIs second
     Rust,
@@ -73,6 +74,8 @@ static AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Stdcall, name: "stdcall", abi_arch: Archs(IntelBits)},
     AbiData {abi: Fastcall, name:"fastcall", abi_arch: Archs(IntelBits)},
     AbiData {abi: Aapcs, name: "aapcs", abi_arch: Archs(ArmBits)},
+    AbiData {abi: Win64, name: "win64",
+             abi_arch: Archs(1 << (X86_64 as uint))},
 
     // Cross-platform ABIs
     //
