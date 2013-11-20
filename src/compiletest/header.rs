@@ -102,7 +102,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     !val
 }
 
-fn iter_header(testfile: &Path, it: &fn(&str) -> bool) -> bool {
+fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     use std::io::buffered::BufferedReader;
     use std::io::File;
 
