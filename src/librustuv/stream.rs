@@ -123,9 +123,9 @@ impl StreamWatcher {
                 let mut wcx = WriteContext { result: 0, task: None, };
                 req.defuse(); // uv callback now owns this request
 
-                do wait_until_woken_after(&mut wcx.task) {
+                wait_until_woken_after(&mut wcx.task, || {
                     req.set_data(&wcx);
-                }
+                });
                 self.last_write_req = Some(Request::wrap(req.handle));
                 match wcx.result {
                     0 => Ok(()),

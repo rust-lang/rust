@@ -42,11 +42,11 @@ fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: |*sockaddr| -> T) -> T {
 
     let ip = addr.ip.to_str();
     let addr = ip.with_c_str(|p| unsafe { malloc(p, addr.port as c_int) });
-    do (|| {
+    (|| {
         f(addr)
-    }).finally {
+    }).finally(|| {
         unsafe { libc::free(addr) };
-    }
+    })
 }
 
 pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
@@ -88,9 +88,9 @@ pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
 fn test_ip4_conversion() {
     use std::rt;
     let ip4 = rt::test::next_test_ip4();
-    do socket_addr_as_sockaddr(ip4) |addr| {
+    socket_addr_as_sockaddr(ip4, |addr| {
         assert_eq!(ip4, sockaddr_to_socket_addr(addr));
-    }
+    })
 }
 
 #[cfg(test)]
@@ -98,9 +98,9 @@ fn test_ip4_conversion() {
 fn test_ip6_conversion() {
     use std::rt;
     let ip6 = rt::test::next_test_ip6();
-    do socket_addr_as_sockaddr(ip6) |addr| {
+    socket_addr_as_sockaddr(ip6, |addr| {
         assert_eq!(ip6, sockaddr_to_socket_addr(addr));
-    }
+    })
 }
 
 enum SocketNameKind {
@@ -176,7 +176,7 @@ impl TcpWatcher {
         struct Ctx { status: c_int, task: Option<BlockedTask> }
 
         let tcp = TcpWatcher::new(loop_);
-        let ret = do socket_addr_as_sockaddr(address) |addr| {
+        let ret = socket_addr_as_sockaddr(address, |addr| {
             let mut req = Request::new(uvll::UV_CONNECT);
             let result = unsafe {
                 uvll::uv_tcp_connect(req.handle, tcp.handle, addr,
@@ -196,7 +196,7 @@ impl TcpWatcher {
                 }
                 n => Err(UvError(n))
             }
-        };
+        });
 
         return match ret {
             Ok(()) => Ok(tcp),
@@ -286,8 +286,7 @@ impl Drop for TcpWatcher {
 
 impl TcpListener {
     pub fn bind(loop_: &mut Loop, address: SocketAddr)
-        -> Result<~TcpListener, UvError>
-    {
+                -> Result<~TcpListener, UvError> {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
         assert_eq!(unsafe {
             uvll::uv_tcp_init(loop_.handle, handle)
@@ -419,8 +418,7 @@ pub struct UdpWatcher {
 
 impl UdpWatcher {
     pub fn bind(loop_: &Loop, address: SocketAddr)
-        -> Result<UdpWatcher, UvError>
-    {
+                -> Result<UdpWatcher, UvError> {
         let udp = UdpWatcher {
             handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
             home: get_handle_to_current_scheduler!(),
@@ -473,9 +471,9 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                     buf: Some(slice_to_uv_buf(buf)),
                     result: None,
                 };
-                do wait_until_woken_after(&mut cx.task) {
+                wait_until_woken_after(&mut cx.task, || {
                     unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
-                }
+                });
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>
                         Err(uv_error_to_io_error(UvError(n as c_int))),
@@ -545,9 +543,9 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             0 => {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { task: None, result: 0 };
-                do wait_until_woken_after(&mut cx.task) {
+                wait_until_woken_after(&mut cx.task, || {
                     req.set_data(&cx);
-                }
+                });
                 match cx.result {
                     0 => Ok(()),
                     n => Err(uv_error_to_io_error(UvError(n)))
@@ -570,22 +568,22 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            do multi.to_str().with_c_str |m_addr| {
+            multi.to_str().with_c_str(|m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
                                             m_addr, ptr::null(),
                                             uvll::UV_JOIN_GROUP)
-            }
+            })
         })
     }
 
     fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
-            do multi.to_str().with_c_str |m_addr| {
+            multi.to_str().with_c_str(|m_addr| {
                 uvll::uv_udp_set_membership(self.handle,
                                             m_addr, ptr::null(),
                                             uvll::UV_LEAVE_GROUP)
-            }
+            })
         })
     }
 
@@ -1101,11 +1099,11 @@ mod test {
             };
 
             unsafe fn local_io() -> &'static mut IoFactory {
-                do Local::borrow |sched: &mut Scheduler| {
+                Local::borrow(|sched: &mut Scheduler| {
                     let mut io = None;
                     sched.event_loop.io(|i| io = Some(i));
                     cast::transmute(io.unwrap())
-                }
+                })
             }
 
             let test_function: proc() = || {
@@ -1117,14 +1115,14 @@ mod test {
 
                 // block self on sched1
                 let scheduler: ~Scheduler = Local::take();
-                do scheduler.deschedule_running_task_and_then |_, task| {
+                scheduler.deschedule_running_task_and_then(|_, task| {
                     // unblock task
-                    do task.wake().map |task| {
+                    task.wake().map(|task| {
                         // send self to sched2
                         tasksFriendHandle.take().send(TaskFromFriend(task));
-                    };
+                    });
                     // sched1 should now sleep since it has nothing else to do
-                }
+                })
                 // sched2 will wake up and get the task as we do nothing else,
                 // the function ends and the socket goes out of scope sched2
                 // will start to run the destructor the destructor will first

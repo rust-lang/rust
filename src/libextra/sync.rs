@@ -104,16 +104,16 @@ impl<Q:Send> Sem<Q> {
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
-            do (**self).with |state| {
+            (**self).with(|state| {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe, enqueue ourself, and tell
                     // outer scope we need to block.
                     waiter_nobe = Some(state.waiters.wait_end());
                 }
-            }
+            });
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
-            /* do 1000.times { task::deschedule(); } */
+            /* 1000.times(|| task::deschedule()); */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
                 let _ = waiter_nobe.unwrap().recv();
@@ -123,22 +123,22 @@ impl<Q:Send> Sem<Q> {
 
     pub fn release(&self) {
         unsafe {
-            do (**self).with |state| {
+            (**self).with(|state| {
                 state.count += 1;
                 if state.count <= 0 {
                     state.waiters.signal();
                 }
-            }
+            })
         }
     }
 
     pub fn access<U>(&self, blk: || -> U) -> U {
-        do (|| {
+        (|| {
             self.acquire();
             blk()
-        }).finally {
+        }).finally(|| {
             self.release();
-        }
+        })
     }
 }
 
@@ -147,9 +147,7 @@ impl Sem<~[WaitQueue]> {
     fn new_and_signal(count: int, num_condvars: uint)
         -> Sem<~[WaitQueue]> {
         let mut queues = ~[];
-        do num_condvars.times {
-            queues.push(WaitQueue::new());
-        }
+        num_condvars.times(|| queues.push(WaitQueue::new()));
         Sem::new(count, queues)
     }
 }
@@ -205,7 +203,7 @@ impl<'self> Condvar<'self> {
         let mut out_of_bounds = None;
         // Release lock, 'atomically' enqueuing ourselves in so doing.
         unsafe {
-            do (**self.sem).with |state| {
+            (**self.sem).with(|state| {
                 if condvar_id < state.blocked.len() {
                     // Drop the lock.
                     state.count += 1;
@@ -218,18 +216,18 @@ impl<'self> Condvar<'self> {
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
-            }
+            })
         }
 
         // If deschedule checks start getting inserted anywhere, we can be
         // killed before or after enqueueing.
-        do check_cvar_bounds(out_of_bounds, condvar_id, "cond.wait_on()") {
+        check_cvar_bounds(out_of_bounds, condvar_id, "cond.wait_on()", || {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
-            do (|| {
+            (|| {
                 let _ = WaitEnd.take_unwrap().recv();
-            }).finally {
+            }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
                     Just(lock) => do lock.access {
@@ -239,8 +237,8 @@ impl<'self> Condvar<'self> {
                         self.sem.acquire();
                     },
                 }
-            }
-        }
+            })
+        })
     }
 
     /// Wake up a blocked task. Returns false if there was no blocked task.
@@ -251,16 +249,17 @@ impl<'self> Condvar<'self> {
         unsafe {
             let mut out_of_bounds = None;
             let mut result = false;
-            do (**self.sem).with |state| {
+            (**self.sem).with(|state| {
                 if condvar_id < state.blocked.len() {
                     result = state.blocked[condvar_id].signal();
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
-            }
-            do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
-                result
-            }
+            });
+            check_cvar_bounds(out_of_bounds,
+                              condvar_id,
+                              "cond.signal_on()",
+                              || result)
         }
     }
 
@@ -272,7 +271,7 @@ impl<'self> Condvar<'self> {
         let mut out_of_bounds = None;
         let mut queue = None;
         unsafe {
-            do (**self.sem).with |state| {
+            (**self.sem).with(|state| {
                 if condvar_id < state.blocked.len() {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
@@ -282,11 +281,14 @@ impl<'self> Condvar<'self> {
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
-            }
-            do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
+            });
+            check_cvar_bounds(out_of_bounds,
+                              condvar_id,
+                              "cond.signal_on()",
+                              || {
                 let queue = queue.take_unwrap();
                 queue.broadcast()
-            }
+            })
         }
     }
 }
@@ -315,9 +317,13 @@ impl Sem<~[WaitQueue]> {
     // The only other places that condvars get built are rwlock.write_cond()
     // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
-        do self.access {
-            blk(&Condvar { sem: self, order: Nothing, token: NonCopyable })
-        }
+        self.access(|| {
+            blk(&Condvar {
+                sem: self,
+                order: Nothing,
+                token: NonCopyable
+            })
+        })
     }
 }
 
@@ -474,17 +480,17 @@ impl RWLock {
      */
     pub fn read<U>(&self, blk: || -> U) -> U {
         unsafe {
-            do (&self.order_lock).access {
+            (&self.order_lock).access(|| {
                 let state = &mut *self.state.get();
                 let old_count = state.read_count.fetch_add(1, atomics::Acquire);
                 if old_count == 0 {
                     (&self.access_lock).acquire();
                     state.read_mode = true;
                 }
-            }
-            do (|| {
+            });
+            (|| {
                 blk()
-            }).finally {
+            }).finally(|| {
                 let state = &mut *self.state.get();
                 assert!(state.read_mode);
                 let old_count = state.read_count.fetch_sub(1, atomics::Release);
@@ -497,7 +503,7 @@ impl RWLock {
                     // this access MUST NOT go inside the exclusive access.
                     (&self.access_lock).release();
                 }
-            }
+            })
         }
     }
 
@@ -507,10 +513,10 @@ impl RWLock {
      */
     pub fn write<U>(&self, blk: || -> U) -> U {
         (&self.order_lock).acquire();
-        do (&self.access_lock).access {
+        (&self.access_lock).access(|| {
             (&self.order_lock).release();
             blk()
-        }
+        })
     }
 
     /**
@@ -547,12 +553,12 @@ impl RWLock {
         // The astute reader will also note that making waking writers use the
         // order_lock is better for not starving readers.
         (&self.order_lock).acquire();
-        do (&self.access_lock).access_cond |cond| {
+        (&self.access_lock).access_cond(|cond| {
             (&self.order_lock).release();
             let opt_lock = Just(&self.order_lock);
             blk(&Condvar { sem: cond.sem, order: opt_lock,
                            token: NonCopyable })
-        }
+        })
     }
 
     /**
@@ -582,9 +588,9 @@ impl RWLock {
         (&self.order_lock).acquire();
         (&self.access_lock).acquire();
         (&self.order_lock).release();
-        do (|| {
+        (|| {
             blk(RWLockWriteMode { lock: self, token: NonCopyable })
-        }).finally {
+        }).finally(|| {
             let writer_or_last_reader;
             // Check if we're releasing from read mode or from write mode.
             let state = unsafe { &mut *self.state.get() };
@@ -609,7 +615,7 @@ impl RWLock {
                 // Nobody left inside; release the "reader cloud" lock.
                 (&self.access_lock).release();
             }
-        }
+        })
     }
 
     /// To be called inside of the write_downgrade block.

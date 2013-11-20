@@ -57,8 +57,8 @@ impl Process {
             }
         }
 
-        let ret = do with_argv(config.program, config.args) |argv| {
-            do with_env(config.env) |envp| {
+        let ret = with_argv(config.program, config.args, |argv| {
+            with_env(config.env, |envp| {
                 let options = uvll::uv_process_options_t {
                     exit_cb: on_exit,
                     file: unsafe { *argv },
@@ -88,8 +88,8 @@ impl Process {
                     0 => Ok(process.install()),
                     err => Err(UvError(err)),
                 }
-            }
-        };
+            })
+        });
 
         match ret {
             Ok(p) => Ok((p, ret_io)),

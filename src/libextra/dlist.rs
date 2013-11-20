@@ -165,14 +165,14 @@ impl<T> DList<T> {
     /// Remove the first Node and return it, or None if the list is empty
     #[inline]
     fn pop_front_node(&mut self) -> Option<~Node<T>> {
-        do self.list_head.take().map |mut front_node| {
+        self.list_head.take().map(|mut front_node| {
             self.length -= 1;
             match front_node.next.take() {
                 Some(node) => self.list_head = link_with_prev(node, Rawlink::none()),
                 None => self.list_tail = Rawlink::none()
             }
             front_node
-        }
+        })
     }
 
     /// Add a Node last in the list
@@ -191,14 +191,14 @@ impl<T> DList<T> {
     /// Remove the last Node and return it, or None if the list is empty
     #[inline]
     fn pop_back_node(&mut self) -> Option<~Node<T>> {
-        do self.list_tail.resolve().map_default(None) |tail| {
+        self.list_tail.resolve().map_default(None, |tail| {
             self.length -= 1;
             self.list_tail = tail.prev;
             match tail.prev.resolve() {
                 None => self.list_head.take(),
                 Some(tail_prev) => tail_prev.next.take()
             }
-        }
+        })
     }
 }
 
@@ -270,9 +270,9 @@ impl<T> DList<T> {
     /// If the list is empty, do nothing.
     #[inline]
     pub fn rotate_forward(&mut self) {
-        do self.pop_back_node().map |tail| {
+        self.pop_back_node().map(|tail| {
             self.push_front_node(tail)
-        };
+        });
     }
 
     /// Move the first element to the back of the list.
@@ -280,9 +280,9 @@ impl<T> DList<T> {
     /// If the list is empty, do nothing.
     #[inline]
     pub fn rotate_backward(&mut self) {
-        do self.pop_front_node().map |head| {
+        self.pop_front_node().map(|head| {
             self.push_back_node(head)
-        };
+        });
     }
 
     /// Add all elements from `other` to the end of the list
@@ -444,11 +444,11 @@ impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
         if self.nelem == 0 {
             return None;
         }
-        do self.head.as_ref().map |head| {
+        self.head.as_ref().map(|head| {
             self.nelem -= 1;
             self.head = &head.next;
             &head.value
-        }
+        })
     }
 
     #[inline]
@@ -464,11 +464,11 @@ impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
             return None;
         }
         let tmp = self.tail.resolve_immut(); // FIXME: #3511: shouldn't need variable
-        do tmp.as_ref().map |prev| {
+        tmp.as_ref().map(|prev| {
             self.nelem -= 1;
             self.tail = prev.prev;
             &prev.value
-        }
+        })
     }
 }
 
@@ -480,14 +480,14 @@ impl<'self, A> Iterator<&'self mut A> for MutDListIterator<'self, A> {
         if self.nelem == 0 {
             return None;
         }
-        do self.head.resolve().map |next| {
+        self.head.resolve().map(|next| {
             self.nelem -= 1;
             self.head = match next.next {
                 Some(ref mut node) => Rawlink::some(&mut **node),
                 None => Rawlink::none(),
             };
             &mut next.value
-        }
+        })
     }
 
     #[inline]
@@ -502,11 +502,11 @@ impl<'self, A> DoubleEndedIterator<&'self mut A> for MutDListIterator<'self, A> 
         if self.nelem == 0 {
             return None;
         }
-        do self.tail.resolve().map |prev| {
+        self.tail.resolve().map(|prev| {
             self.nelem -= 1;
             self.tail = prev.prev;
             &mut prev.value
-        }
+        })
     }
 }
 

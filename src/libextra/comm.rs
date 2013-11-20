@@ -114,10 +114,10 @@ impl<T: Send> GenericPort<T> for SyncPort<T> {
     }
 
     fn try_recv(&self) -> Option<T> {
-        do self.duplex_stream.try_recv().map |val| {
+        self.duplex_stream.try_recv().map(|val| {
             self.duplex_stream.try_send(());
             val
-        }
+        })
     }
 }
 

@@ -46,7 +46,7 @@ pub fn from_vec<T:Clone + 'static>(v: &[T]) -> @List<T> {
  */
 pub fn foldl<T:Clone,U>(z: T, ls: @List<U>, f: |&T, &U| -> T) -> T {
     let mut accum: T = z;
-    do iter(ls) |elt| { accum = f(&accum, elt);}
+    iter(ls, |elt| accum = f(&accum, elt));
     accum
 }
 
@@ -73,9 +73,9 @@ pub fn find<T:Clone>(ls: @List<T>, f: |&T| -> bool) -> Option<T> {
 /// Returns true if a list contains an element with the given value
 pub fn has<T:Eq>(ls: @List<T>, elt: T) -> bool {
     let mut found = false;
-    do each(ls) |e| {
+    each(ls, |e| {
         if *e == elt { found = true; false } else { true }
-    };
+    });
     return found;
 }
 

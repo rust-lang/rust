@@ -29,7 +29,7 @@ macro_rules! uvdebug (
 
 // get a handle for the current scheduler
 macro_rules! get_handle_to_current_scheduler(
-    () => (do Local::borrow |sched: &mut Scheduler| { sched.make_handle() })
+    () => (Local::borrow(|sched: &mut Scheduler| sched.make_handle()))
 )
 
 pub fn dumb_println(args: &fmt::Arguments) {
