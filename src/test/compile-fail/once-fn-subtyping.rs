@@ -10,8 +10,8 @@
 
 #[feature(once_fns)];
 fn main() {
-    let f: &once fn() = ||();
+    let f: once || = ||();
     let g: || = f;  //~ ERROR mismatched types
     let h: || = ||();
-    let i: &once fn() = h;  // ok
+    let i: once || = h;  // ok
 }

@@ -1286,7 +1286,7 @@ impl Parser {
                 return self.parse_ty_closure(Some(sigil), Some(lifetime));
             }
 
-            token::IDENT(*) if sigil == ast::BorrowedSigil => {
+            token::IDENT(*) => {
                 if self.token_is_old_style_closure_keyword() {
                     self.obsolete(*self.last_span, ObsoleteBoxedClosure);
                     return self.parse_ty_closure(Some(sigil), None);
@@ -1311,6 +1311,7 @@ impl Parser {
         let opt_lifetime = self.parse_opt_lifetime();
 
         if self.token_is_old_style_closure_keyword() {
+            self.obsolete(*self.last_span, ObsoleteClosureType);
             return self.parse_ty_closure(Some(BorrowedSigil), opt_lifetime);
         }
 

@@ -161,7 +161,7 @@ impl EventLoop for UvEventLoop {
         ~AsyncWatcher::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory)) {
+    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|) {
         f(&mut self.uvio as &mut IoFactory)
     }
 }

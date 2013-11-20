@@ -148,7 +148,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
 }
 
 /// Converts the program and arguments to the argv array expected by libuv
-fn with_argv<T>(prog: &str, args: &[~str], f: &fn(**libc::c_char) -> T) -> T {
+fn with_argv<T>(prog: &str, args: &[~str], f: |**libc::c_char| -> T) -> T {
     // First, allocation space to put all the C-strings (we need to have
     // ownership of them somewhere
     let mut c_strs = vec::with_capacity(args.len() + 1);
@@ -167,7 +167,7 @@ fn with_argv<T>(prog: &str, args: &[~str], f: &fn(**libc::c_char) -> T) -> T {
 }
 
 /// Converts the environment to the env array expected by libuv
-fn with_env<T>(env: Option<&[(~str, ~str)]>, f: &fn(**libc::c_char) -> T) -> T {
+fn with_env<T>(env: Option<&[(~str, ~str)]>, f: |**libc::c_char| -> T) -> T {
     let env = match env {
         Some(s) => s,
         None => { return f(ptr::null()); }
