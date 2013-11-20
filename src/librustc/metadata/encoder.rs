@@ -52,10 +52,10 @@ use std::cast;
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
 
-pub type encode_inlined_item<'self> = &'self fn(ecx: &EncodeContext,
-                                   ebml_w: &mut writer::Encoder,
-                                   path: &[ast_map::path_elt],
-                                   ii: ast::inlined_item);
+pub type encode_inlined_item<'self> = 'self |ecx: &EncodeContext,
+                                             ebml_w: &mut writer::Encoder,
+                                             path: &[ast_map::path_elt],
+                                             ii: ast::inlined_item|;
 
 pub struct EncodeParams<'self> {
     diag: @mut span_handler,

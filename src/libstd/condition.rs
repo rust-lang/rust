@@ -104,7 +104,7 @@ impl<T, U> Condition<T, U> {
     /// // use `trap`'s inside method to register the handler and then run a
     /// // block of code with the handler registered
     /// ```
-    pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
+    pub fn trap<'a>(&'a self, h: 'a |T| -> U) -> Trap<'a, T, U> {
         let h: Closure = unsafe { ::cast::transmute(h) };
         let prev = local_data::get(self.key, |k| k.map(|x| *x));
         let h = @Handler { handle: h, prev: prev };
@@ -181,7 +181,7 @@ impl<'self, T, U> Trap<'self, T, U> {
     /// };
     /// assert_eq!(result, 7);
     /// ```
-    pub fn inside<V>(&self, inner: &'self fn() -> V) -> V {
+    pub fn inside<V>(&self, inner: 'self || -> V) -> V {
         let _g = Guard { cond: self.cond };
         debug!("Trap: pushing handler to TLS");
         local_data::set(self.cond.key, self.handler);

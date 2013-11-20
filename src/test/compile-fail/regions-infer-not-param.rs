@@ -14,12 +14,12 @@ struct direct<'self> {
 
 struct indirect1 {
     // Here the lifetime parameter of direct is bound by the fn()
-    g: &'static fn(direct)
+    g: 'static |direct|
 }
 
 struct indirect2<'self> {
     // But here it is set to 'self
-    g: &'static fn(direct<'self>)
+    g: 'static |direct<'self>|
 }
 
 fn take_direct(p: direct) -> direct { p } //~ ERROR mismatched types

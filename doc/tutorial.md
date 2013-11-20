@@ -1366,7 +1366,7 @@ Rust also supports _closures_, functions that can access variables in
 the enclosing scope.
 
 ~~~~
-fn call_closure_with_ten(b: &fn(int)) { b(10); }
+fn call_closure_with_ten(b: |int|) { b(10); }
 
 let captured_var = 20;
 let closure = |arg| println!("captured_var={}, arg={}", captured_var, arg);
@@ -1390,7 +1390,7 @@ let square = |x: int| -> uint { (x * x) as uint };
 ~~~~
 
 There are several forms of closure, each with its own role. The most
-common, called a _stack closure_, has type `&fn` and can directly
+common, called a _stack closure_, has type `||` and can directly
 access local variables in the enclosing scope.
 
 ~~~~
@@ -1420,13 +1420,13 @@ for spawning [tasks][tasks].
 
 Rust closures have a convenient subtyping property: you can pass any kind of
 closure (as long as the arguments and return types match) to functions
-that expect a `&fn()`. Thus, when writing a higher-order function that
+that expect a `||`. Thus, when writing a higher-order function that
 only calls its function argument, and does nothing else with it, you
-should almost always declare the type of that argument as `&fn()`. That way,
+should almost always declare the type of that argument as `||`. That way,
 callers may pass any kind of closure.
 
 ~~~~
-fn call_twice(f: &fn()) { f(); f(); }
+fn call_twice(f: ||) { f(); f(); }
 let closure = || { "I'm a closure, and it doesn't matter what type I am"; };
 fn function() { "I'm a normal function"; }
 call_twice(closure);
@@ -1446,7 +1446,7 @@ Consider this function that iterates over a vector of
 integers, passing in a pointer to each integer in the vector:
 
 ~~~~
-fn each(v: &[int], op: &fn(v: &int)) {
+fn each(v: &[int], op: |v: &int|) {
    let mut n = 0;
    while n < v.len() {
        op(&v[n]);
@@ -1460,7 +1460,7 @@ argument, we can write it in a way that has a pleasant, block-like
 structure.
 
 ~~~~
-# fn each(v: &[int], op: &fn(v: &int)) { }
+# fn each(v: &[int], op: |v: &int|) { }
 # fn do_some_work(i: &int) { }
 each([1, 2, 3], |n| {
     do_some_work(n);
@@ -1471,7 +1471,7 @@ This is such a useful pattern that Rust has a special form of function
 call that can be written more like a built-in control structure:
 
 ~~~~
-# fn each(v: &[int], op: &fn(v: &int)) { }
+# fn each(v: &[int], op: |v: &int|) { }
 # fn do_some_work(i: &int) { }
 do each([1, 2, 3]) |n| {
     do_some_work(n);
@@ -1650,7 +1650,7 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: |v: &T| -> U) -> ~[U] {
     let mut accumulator = ~[];
     for element in vector.iter() {
         accumulator.push(function(element));

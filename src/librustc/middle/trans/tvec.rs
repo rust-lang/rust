@@ -539,7 +539,8 @@ pub fn get_base_and_len(bcx: @mut Block, llval: ValueRef, vec_ty: ty::t) -> (Val
     }
 }
 
-pub type iter_vec_block<'self> = &'self fn(@mut Block, ValueRef, ty::t) -> @mut Block;
+pub type iter_vec_block<'self> = 'self |@mut Block, ValueRef, ty::t|
+                                        -> @mut Block;
 
 pub fn iter_vec_loop(bcx: @mut Block,
                      data_ptr: ValueRef,
