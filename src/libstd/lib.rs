@@ -133,6 +133,7 @@ pub mod owned;
 pub mod managed;
 pub mod borrow;
 pub mod rc;
+pub mod gc;
 
 
 /* Core language traits */
