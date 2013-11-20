@@ -88,10 +88,10 @@ impl RtioTimer for TimerWatcher {
         let _f = ForbidUnwind::new("timer");
 
         let sched: ~Scheduler = Local::take();
-        do sched.deschedule_running_task_and_then |_sched, task| {
+        sched.deschedule_running_task_and_then(|_sched, task| {
             self.action = Some(WakeTask(task));
             self.start(msecs, 0);
-        }
+        });
         self.stop();
     }
 

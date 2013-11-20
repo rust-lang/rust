@@ -74,12 +74,12 @@ impl PipeWatcher {
     pub fn connect(loop_: &Loop, name: &CString) -> Result<PipeWatcher, UvError>
     {
         struct Ctx { task: Option<BlockedTask>, result: libc::c_int, }
-        return do task::unkillable {
+        return task::unkillable(|| {
             let mut cx = Ctx { task: None, result: 0 };
             let mut req = Request::new(uvll::UV_CONNECT);
             let pipe = PipeWatcher::new(loop_, false);
 
-            do wait_until_woken_after(&mut cx.task) {
+            wait_until_woken_after(&mut cx.task, || {
                 unsafe {
                     uvll::uv_pipe_connect(req.handle,
                                           pipe.handle(),
@@ -88,13 +88,12 @@ impl PipeWatcher {
                 }
                 req.set_data(&cx);
                 req.defuse(); // uv callback now owns this request
-            }
+            });
             match cx.result {
                 0 => Ok(pipe),
                 n => Err(UvError(n))
             }
-
-        };
+        });
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {;
             let req = Request::wrap(req);
@@ -153,7 +152,7 @@ extern fn pipe_close_cb(handle: *uvll::uv_handle_t) {
 
 impl PipeListener {
     pub fn bind(loop_: &Loop, name: &CString) -> Result<~PipeListener, UvError> {
-        do task::unkillable {
+        task::unkillable(|| {
             let pipe = PipeWatcher::new(loop_, false);
             match unsafe {
                 uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p))
@@ -171,7 +170,7 @@ impl PipeListener {
                 }
                 n => Err(UvError(n))
             }
-        }
+        })
     }
 }
 

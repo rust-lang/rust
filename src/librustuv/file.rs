@@ -87,13 +87,13 @@ impl FsRequest {
     pub fn read(loop_: &Loop, fd: c_int, buf: &mut [u8], offset: i64)
         -> Result<int, UvError>
     {
-        do execute(|req, cb| unsafe {
+        execute(|req, cb| unsafe {
             uvll::uv_fs_read(loop_.handle, req,
                              fd, vec::raw::to_ptr(buf) as *c_void,
                              buf.len() as size_t, offset, cb)
-        }).map |req| {
+        }).map(|req| {
             req.get_result() as int
-        }
+        })
     }
 
     pub fn mkdir(loop_: &Loop, path: &CString, mode: c_int)
@@ -143,24 +143,25 @@ impl FsRequest {
             let mut paths = ~[];
             let path = CString::new(path.with_ref(|p| p), false);
             let parent = Path::new(path);
-            do c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
-                                         Some(req.get_result() as uint)) |rel| {
+            c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
+                                      Some(req.get_result() as uint),
+                                      |rel| {
                 let p = rel.as_bytes();
                 paths.push(parent.join(p.slice_to(rel.len())));
-            };
+            });
             paths
         })
     }
 
     pub fn readlink(loop_: &Loop, path: &CString) -> Result<Path, UvError> {
-        do execute(|req, cb| unsafe {
+        execute(|req, cb| unsafe {
             uvll::uv_fs_readlink(loop_.handle, req,
                                  path.with_ref(|p| p), cb)
-        }).map |req| {
+        }).map(|req| {
             Path::new(unsafe {
                 CString::new(req.get_ptr() as *libc::c_char, false)
             })
-        }
+        })
     }
 
     pub fn chown(loop_: &Loop, path: &CString, uid: int, gid: int)
@@ -298,7 +299,7 @@ impl Drop for FsRequest {
 fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
     -> Result<FsRequest, UvError>
 {
-    return do task::unkillable {
+    return task::unkillable(|| {
         let mut req = FsRequest {
             fired: false,
             req: unsafe { uvll::malloc_req(uvll::UV_FS) }
@@ -307,9 +308,9 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
             0 => {
                 req.fired = true;
                 let mut slot = None;
-                do wait_until_woken_after(&mut slot) {
+                wait_until_woken_after(&mut slot, || {
                     unsafe { uvll::set_data_for_req(req.req, &slot) }
-                }
+                });
                 match req.get_result() {
                     n if n < 0 => Err(UvError(n)),
                     _ => Ok(req),
@@ -318,7 +319,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
             n => Err(UvError(n))
 
         }
-    };
+    });
 
     extern fn fs_cb(req: *uvll::uv_fs_t) {
         let slot: &mut Option<BlockedTask> = unsafe {

@@ -80,11 +80,11 @@ impl StreamWatcher {
                     result: 0,
                     task: None,
                 };
-                do wait_until_woken_after(&mut rcx.task) {
+                wait_until_woken_after(&mut rcx.task, || {
                     unsafe {
                         uvll::set_data_for_uv_handle(self.handle, &rcx)
                     }
-                }
+                });
                 match rcx.result {
                     n if n < 0 => Err(UvError(n as c_int)),
                     n => Ok(n as uint),
@@ -118,9 +118,9 @@ impl StreamWatcher {
                 let mut wcx = WriteContext { result: 0, task: None, };
                 req.defuse(); // uv callback now owns this request
 
-                do wait_until_woken_after(&mut wcx.task) {
+                wait_until_woken_after(&mut wcx.task, || {
                     req.set_data(&wcx);
-                }
+                });
                 self.last_write_req = Some(Request::wrap(req.handle));
                 match wcx.result {
                     0 => Ok(()),

@@ -297,12 +297,12 @@ impl<T: FromStr + Clone + Integer + Ord>
             return None
         }
         let a_option: Option<T> = FromStr::from_str(split[0]);
-        do a_option.and_then |a| {
+        a_option.and_then(|a| {
             let b_option: Option<T> = FromStr::from_str(split[1]);
-            do b_option.and_then |b| {
+            b_option.and_then(|b| {
                 Some(Ratio::new(a.clone(), b.clone()))
-            }
-        }
+            })
+        })
     }
 }
 impl<T: FromStrRadix + Clone + Integer + Ord>
@@ -315,13 +315,13 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
         } else {
             let a_option: Option<T> = FromStrRadix::from_str_radix(split[0],
                                                                    radix);
-            do a_option.and_then |a| {
+            a_option.and_then(|a| {
                 let b_option: Option<T> =
                     FromStrRadix::from_str_radix(split[1], radix);
-                do b_option.and_then |b| {
+                b_option.and_then(|b| {
                     Some(Ratio::new(a.clone(), b.clone()))
-                }
-            }
+                })
+            })
         }
     }
 }

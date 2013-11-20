@@ -53,7 +53,7 @@ impl<T> TaskPool<T> {
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
-        let channels = do vec::from_fn(n_tasks) |i| {
+        let channels = vec::from_fn(n_tasks, |i| {
             let (port, chan) = comm::stream::<Msg<T>>();
             let init_fn = init_fn_factory();
 
@@ -81,7 +81,7 @@ impl<T> TaskPool<T> {
             }
 
             chan
-        };
+        });
 
         return TaskPool { channels: channels, next_index: 0 };
     }
