@@ -94,9 +94,7 @@ impl<'self> Parser<'self> {
     // Commit only if parser read till EOF
     fn read_till_eof<T>(&mut self, cb: |&mut Parser| -> Option<T>)
                      -> Option<T> {
-        do self.read_atomically |p| {
-            cb(p).filtered(|_| p.is_eof())
-        }
+        self.read_atomically(|p| cb(p).filtered(|_| p.is_eof()))
     }
 
     // Return result of first successful parser
@@ -120,7 +118,7 @@ impl<'self> Parser<'self> {
                   pb: |&mut Parser| -> Option<B>,
                   pc: |&mut Parser| -> Option<C>)
                   -> Option<(A, B, C)> {
-        do self.read_atomically |p| {
+        self.read_atomically(|p| {
             let a = pa(p);
             let b = if a.is_some() { pb(p) } else { None };
             let c = if b.is_some() { pc(p) } else { None };
@@ -128,7 +126,7 @@ impl<'self> Parser<'self> {
                 (Some(a), Some(b), Some(c)) => Some((a, b, c)),
                 _ => None
             }
-        }
+        })
     }
 
     // Read next char
@@ -144,9 +142,9 @@ impl<'self> Parser<'self> {
 
     // Return char and advance iff next char is equal to requested
     fn read_given_char(&mut self, c: char) -> Option<char> {
-        do self.read_atomically |p| {
+        self.read_atomically(|p| {
             p.read_char().filtered(|&next| next == c)
-        }
+        })
     }
 
     // Read digit
@@ -165,9 +163,9 @@ impl<'self> Parser<'self> {
             }
         }
 
-        do self.read_atomically |p| {
+        self.read_atomically(|p| {
             p.read_char().and_then(|c| parse_digit(c, radix))
-        }
+        })
     }
 
     fn read_number_impl(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
@@ -195,9 +193,7 @@ impl<'self> Parser<'self> {
 
     // Read number, failing if max_digits of number value exceeded
     fn read_number(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
-        do self.read_atomically |p| {
-            p.read_number_impl(radix, max_digits, upto)
-        }
+        self.read_atomically(|p| p.read_number_impl(radix, max_digits, upto))
     }
 
     fn read_ipv4_addr_impl(&mut self) -> Option<IpAddr> {
@@ -220,9 +216,7 @@ impl<'self> Parser<'self> {
 
     // Read IPv4 address
     fn read_ipv4_addr(&mut self) -> Option<IpAddr> {
-        do self.read_atomically |p| {
-            p.read_ipv4_addr_impl()
-        }
+        self.read_atomically(|p| p.read_ipv4_addr_impl())
     }
 
     fn read_ipv6_addr_impl(&mut self) -> Option<IpAddr> {
@@ -238,13 +232,13 @@ impl<'self> Parser<'self> {
             let mut i = 0;
             while i < limit {
                 if i < limit - 1 {
-                    let ipv4 = do p.read_atomically |p| {
+                    let ipv4 = p.read_atomically(|p| {
                         if i == 0 || p.read_given_char(':').is_some() {
                             p.read_ipv4_addr()
                         } else {
                             None
                         }
-                    };
+                    });
                     match ipv4 {
                         Some(Ipv4Addr(a, b, c, d)) => {
                             groups[i + 0] = (a as u16 << 8) | (b as u16);
@@ -255,13 +249,13 @@ impl<'self> Parser<'self> {
                     }
                 }
 
-                let group = do p.read_atomically |p| {
+                let group = p.read_atomically(|p| {
                     if i == 0 || p.read_given_char(':').is_some() {
                         p.read_number(16, 4, 0x10000).map(|n| n as u16)
                     } else {
                         None
                     }
-                };
+                });
                 match group {
                     Some(g) => groups[i] = g,
                     None => return (i, false)
@@ -296,9 +290,7 @@ impl<'self> Parser<'self> {
     }
 
     fn read_ipv6_addr(&mut self) -> Option<IpAddr> {
-        do self.read_atomically |p| {
-            p.read_ipv6_addr_impl()
-        }
+        self.read_atomically(|p| p.read_ipv6_addr_impl())
     }
 
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
@@ -330,17 +322,13 @@ impl<'self> Parser<'self> {
 
 impl FromStr for IpAddr {
     fn from_str(s: &str) -> Option<IpAddr> {
-        do Parser::new(s).read_till_eof |p| {
-            p.read_ip_addr()
-        }
+        Parser::new(s).read_till_eof(|p| p.read_ip_addr())
     }
 }
 
 impl FromStr for SocketAddr {
     fn from_str(s: &str) -> Option<SocketAddr> {
-        do Parser::new(s).read_till_eof |p| {
-            p.read_socket_addr()
-        }
+        Parser::new(s).read_till_eof(|p| p.read_socket_addr())
     }
 }
 

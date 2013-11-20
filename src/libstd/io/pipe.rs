@@ -44,7 +44,7 @@ impl PipeStream {
     /// If the pipe cannot be created, an error will be raised on the
     /// `io_error` condition.
     pub fn open(fd: file::fd_t) -> Option<PipeStream> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.pipe_open(fd) {
                 Ok(obj) => Some(PipeStream { obj: obj }),
                 Err(e) => {
@@ -52,7 +52,7 @@ impl PipeStream {
                     None
                 }
             }
-        }
+        })
     }
 
     pub fn new(inner: ~RtioPipe) -> PipeStream {

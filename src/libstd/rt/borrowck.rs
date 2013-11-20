@@ -35,9 +35,7 @@ pub struct BorrowRecord {
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
-    do Local::borrow |task: &mut Task| {
-        task.borrow_list.take()
-    }
+    Local::borrow(|task: &mut Task| task.borrow_list.take())
 }
 
 fn swap_task_borrow_list(f: |~[BorrowRecord]| -> ~[BorrowRecord]) {
@@ -47,9 +45,7 @@ fn swap_task_borrow_list(f: |~[BorrowRecord]| -> ~[BorrowRecord]) {
     };
     let borrows = f(borrows);
     let borrows = Cell::new(borrows);
-    do Local::borrow |task: &mut Task| {
-        task.borrow_list = Some(borrows.take());
-    }
+    Local::borrow(|task: &mut Task| task.borrow_list = Some(borrows.take()))
 }
 
 pub fn clear_task_borrow_list() {
@@ -64,9 +60,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) -> 
     match try_take_task_borrow_list() {
         None => { // not recording borrows
             let msg = "borrowed";
-            do msg.with_c_str |msg_p| {
-                task::begin_unwind_raw(msg_p, file, line);
-            }
+            msg.with_c_str(|msg_p| task::begin_unwind_raw(msg_p, file, line))
         }
         Some(borrow_list) => { // recording borrows
             let mut msg = ~"borrowed";
@@ -80,9 +74,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) -> 
                     sep = " and at ";
                 }
             }
-            do msg.with_c_str |msg_p| {
-                task::begin_unwind_raw(msg_p, file, line)
-            }
+            msg.with_c_str(|msg_p| task::begin_unwind_raw(msg_p, file, line))
         }
     }
 }
@@ -158,33 +150,35 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
         // was not borrowed before
         let a = a as *mut raw::Box<()>;
         debug_borrow("record_borrow:", a, old_ref_count, 0, file, line);
-        do swap_task_borrow_list |borrow_list| {
+        swap_task_borrow_list(|borrow_list| {
             let mut borrow_list = borrow_list;
             borrow_list.push(BorrowRecord {box: a, file: file, line: line});
             borrow_list
-        }
+        })
     }
 }
 
-pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
-                              file: *c_char, line: size_t) {
+pub unsafe fn unrecord_borrow(a: *u8,
+                              old_ref_count: uint,
+                              file: *c_char,
+                              line: size_t) {
     if (old_ref_count & ALL_BITS) == 0 {
         // was not borrowed before, so we should find the record at
         // the end of the list
         let a = a as *mut raw::Box<()>;
         debug_borrow("unrecord_borrow:", a, old_ref_count, 0, file, line);
-        do swap_task_borrow_list |borrow_list| {
+        swap_task_borrow_list(|borrow_list| {
             let mut borrow_list = borrow_list;
             assert!(!borrow_list.is_empty());
             let br = borrow_list.pop();
             if br.box != a || br.file != file || br.line != line {
                 let err = format!("wrong borrow found, br={:?}", br);
-                do err.with_c_str |msg_p| {
+                err.with_c_str(|msg_p| {
                     task::begin_unwind_raw(msg_p, file, line)
-                }
+                })
             }
             borrow_list
-        }
+        })
     }
 }
 

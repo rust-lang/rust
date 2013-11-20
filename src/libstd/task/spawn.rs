@@ -248,9 +248,9 @@ fn each_ancestor(list:        &mut AncestorList,
 
         // The map defaults to None, because if ancestors is None, we're at
         // the end of the list, which doesn't make sense to coalesce.
-        do ancestors.as_ref().map_default((None,false)) |ancestor_arc| {
+        ancestors.as_ref().map_default((None,false), |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
-            do access_ancestors(ancestor_arc) |nobe| {
+            access_ancestors(ancestor_arc, |nobe| {
                 // Argh, but we couldn't give it to coalesce() otherwise.
                 let forward_blk = forward_blk.take();
                 // Check monotonicity
@@ -261,7 +261,7 @@ fn each_ancestor(list:        &mut AncestorList,
                 let mut nobe_is_dead = false;
                 let do_continue =
                     // NB: Takes a lock! (this ancestor node's parent group)
-                    do access_group(&nobe.parent_group) |tg_opt| {
+                    access_group(&nobe.parent_group, |tg_opt| {
                         // Decide whether this group is dead. Note that the
                         // group being *dead* is disjoint from it *failing*.
                         nobe_is_dead = match *tg_opt {
@@ -274,7 +274,7 @@ fn each_ancestor(list:        &mut AncestorList,
                         // but that's ok because, by virtue of the group being
                         // dead, nobody will ever kill-all (for) over it.)
                         if nobe_is_dead { true } else { forward_blk(tg_opt) }
-                    };
+                    });
                 /*##########################################################*
                  * Step 2: Recurse on the rest of the list; maybe coalescing.
                  *##########################################################*/
@@ -290,9 +290,9 @@ fn each_ancestor(list:        &mut AncestorList,
                  * Step 3: Maybe unwind; compute return info for our caller.
                  *##########################################################*/
                 if need_unwind && !nobe_is_dead {
-                    do access_group(&nobe.parent_group) |tg_opt| {
+                    access_group(&nobe.parent_group, |tg_opt| {
                         bail_blk(tg_opt)
-                    }
+                    })
                 }
                 // Decide whether our caller should unwind.
                 need_unwind = need_unwind || !do_continue;
@@ -305,8 +305,8 @@ fn each_ancestor(list:        &mut AncestorList,
                 } else {
                     (None, need_unwind)
                 }
-            }
-        }
+            })
+        })
     }
 }
 
@@ -323,7 +323,7 @@ impl Drop for Taskgroup {
     // Runs on task exit.
     fn drop(&mut self) {
         // If we are failing, the whole taskgroup needs to die.
-        do RuntimeGlue::with_task_handle_and_failing |me, failing| {
+        RuntimeGlue::with_task_handle_and_failing(|me, failing| {
             if failing {
                 for x in self.notifier.mut_iter() {
                     x.task_result = Some(Failure(~LinkedFailure as ~Any));
@@ -332,25 +332,23 @@ impl Drop for Taskgroup {
                 // other task in the group will see 'tg' as none, which
                 // indicates the whole taskgroup is failing (and forbids
                 // new spawns from succeeding).
-                let tg = do access_group(&self.tasks) |tg| { tg.take() };
+                let tg = access_group(&self.tasks, |tg| tg.take());
                 // It's safe to send kill signals outside the lock, because
                 // we have a refcount on all kill-handles in the group.
                 kill_taskgroup(tg, me);
             } else {
                 // Remove ourselves from the group(s).
-                do access_group(&self.tasks) |tg| {
-                    leave_taskgroup(tg, me, true);
-                }
+                access_group(&self.tasks, |tg| leave_taskgroup(tg, me, true));
             }
             // It doesn't matter whether this happens before or after dealing
             // with our own taskgroup, so long as both happen before we die.
             // We remove ourself from every ancestor we can, so no cleanup; no
             // break.
-            do each_ancestor(&mut self.ancestors, |_| {}) |ancestor_group| {
+            each_ancestor(&mut self.ancestors, |_| {}, |ancestor_group| {
                 leave_taskgroup(ancestor_group, me, false);
                 true
-            };
-        }
+            });
+        })
     }
 }
 
@@ -398,27 +396,27 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: KillHandle,
                            is_member: bool) -> bool {
     let me = Cell::new(me); // :(
     // If 'None', the group was failing. Can't enlist.
-    do state.as_mut().map_default(false) |group| {
+    state.as_mut().map_default(false, |group| {
         (if is_member {
             &mut group.members
         } else {
             &mut group.descendants
         }).insert(me.take());
         true
-    }
+    })
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn leave_taskgroup(state: TaskGroupInner, me: &KillHandle, is_member: bool) {
     let me = Cell::new(me); // :(
     // If 'None', already failing and we've already gotten a kill signal.
-    do state.as_mut().map |group| {
+    state.as_mut().map(|group| {
         (if is_member {
             &mut group.members
         } else {
             &mut group.descendants
         }).remove(me.take());
-    };
+    });
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
@@ -426,7 +424,7 @@ fn kill_taskgroup(state: Option<TaskGroupData>, me: &KillHandle) {
     // Might already be None, if somebody is failing simultaneously.
     // That's ok; only one task needs to do the dirty work. (Might also
     // see 'None' if somebody already failed and we got a kill signal.)
-    do state.map |TaskGroupData { members: members, descendants: descendants }| {
+    state.map(|TaskGroupData { members: members, descendants: descendants }| {
         for sibling in members.move_iter() {
             // Skip self - killing ourself won't do much good.
             if &sibling != me {
@@ -437,7 +435,7 @@ fn kill_taskgroup(state: Option<TaskGroupData>, me: &KillHandle) {
             assert!(&child != me);
             RuntimeGlue::kill_task(child);
         }
-    };
+    });
     // (note: multiple tasks may reach this point)
 }
 
@@ -451,12 +449,12 @@ fn taskgroup_key() -> local_data::Key<@@mut Taskgroup> {
 struct RuntimeGlue;
 impl RuntimeGlue {
     fn kill_task(mut handle: KillHandle) {
-        do handle.kill().map |killed_task| {
+        handle.kill().map(|killed_task| {
             let killed_task = Cell::new(killed_task);
-            do Local::borrow |sched: &mut Scheduler| {
+            Local::borrow(|sched: &mut Scheduler| {
                 sched.enqueue_task(killed_task.take());
-            }
-        };
+            })
+        });
     }
 
     fn with_task_handle_and_failing(blk: |&KillHandle, bool|) {
@@ -502,7 +500,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     if linked || supervised {
         // with_my_taskgroup will lazily initialize the parent's taskgroup if
         // it doesn't yet exist. We don't want to call it in the unlinked case.
-        do RuntimeGlue::with_my_taskgroup |spawner_group| {
+        RuntimeGlue::with_my_taskgroup(|spawner_group| {
             let ancestors = AncestorList(spawner_group.ancestors.as_ref().map(|x| x.clone()));
             if linked {
                 // Child is in the same group as spawner.
@@ -530,7 +528,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 };
                 Some((g, a))
             }
-        }
+        })
     } else {
         None
     }
@@ -542,23 +540,23 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
                ancestors: &mut AncestorList) -> bool {
     // Join this taskgroup.
-    let mut result = do access_group(child_arc) |child_tg| {
+    let mut result = access_group(child_arc, |child_tg| {
         enlist_in_taskgroup(child_tg, child.clone(), true) // member
-    };
+    });
     if result {
         // Unwinding function in case any ancestral enlisting fails
         let bail: |TaskGroupInner| = |tg| { leave_taskgroup(tg, child, false) };
         // Attempt to join every ancestor group.
-        result = do each_ancestor(ancestors, bail) |ancestor_tg| {
+        result = each_ancestor(ancestors, bail, |ancestor_tg| {
             // Enlist as a descendant, not as an actual member.
             // Descendants don't kill ancestor groups on failure.
             enlist_in_taskgroup(ancestor_tg, child.clone(), false)
-        };
+        });
         // If any ancestor group fails, need to exit this group too.
         if !result {
-            do access_group(child_arc) |child_tg| {
+            access_group(child_arc, |child_tg| {
                 leave_taskgroup(child_tg, child, true); // member
-            }
+            })
         }
     }
     result
@@ -574,9 +572,9 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
-        let enlist_success = do child_data.take().map_default(true) |child_data| {
+        let enlist_success = child_data.take().map_default(true, |child_data| {
             let child_data = Cell::new(child_data); // :(
-            do Local::borrow |me: &mut Task| {
+            Local::borrow(|me: &mut Task| {
                 let (child_tg, ancestors) = child_data.take();
                 let mut ancestors = ancestors;
                 let handle = me.death.kill_handle.get_ref();
@@ -589,14 +587,14 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
                 } else {
                     false
                 }
-            }
-        };
+            })
+        });
 
         // Should be run after the local-borrowed task is returned.
         let f_cell = Cell::new(f);
         if enlist_success {
             if indestructible {
-                do unkillable { f_cell.take()() }
+                unkillable(|| f_cell.take()())
             } else {
                 f_cell.take()()
             }

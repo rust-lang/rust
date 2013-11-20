@@ -72,17 +72,15 @@ impl<T> Cell<T> {
 
     /// Calls a closure with a reference to the value.
     pub fn with_ref<R>(&self, op: |v: &T| -> R) -> R {
-        do self.with_mut_ref |ptr| { op(ptr) }
+        self.with_mut_ref(|ptr| op(ptr))
     }
 
     /// Calls a closure with a mutable reference to the value.
     pub fn with_mut_ref<R>(&self, op: |v: &mut T| -> R) -> R {
         let mut v = Some(self.take());
-        do (|| {
+        (|| {
             op(v.get_mut_ref())
-        }).finally {
-            self.put_back(v.take_unwrap());
-        }
+        }).finally(|| self.put_back(v.take_unwrap()))
     }
 }
 
@@ -115,7 +113,7 @@ fn test_put_back_non_empty() {
 fn test_with_ref() {
     let good = 6;
     let c = Cell::new(~[1, 2, 3, 4, 5, 6]);
-    let l = do c.with_ref() |v| { v.len() };
+    let l = c.with_ref(|v| v.len());
     assert_eq!(l, good);
 }
 
@@ -124,7 +122,7 @@ fn test_with_mut_ref() {
     let good = ~[1, 2, 3];
     let v = ~[1, 2];
     let c = Cell::new(v);
-    do c.with_mut_ref() |v| { v.push(3); }
+    c.with_mut_ref(|v| v.push(3));
     let v = c.take();
     assert_eq!(v, good);
 }

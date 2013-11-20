@@ -237,9 +237,9 @@ impl Scheduler {
             // Our scheduler must be in the task before the event loop
             // is started.
             let self_sched = Cell::new(self);
-            do Local::borrow |stask: &mut Task| {
+            Local::borrow(|stask: &mut Task| {
                 stask.sched = Some(self_sched.take());
-            };
+            });
 
             (*event_loop).run();
         }
@@ -539,9 +539,7 @@ impl Scheduler {
     /// As enqueue_task, but with the possibility for the blocked task to
     /// already have been killed.
     pub fn enqueue_blocked_task(&mut self, blocked_task: BlockedTask) {
-        do blocked_task.wake().map |task| {
-            self.enqueue_task(task);
-        };
+        blocked_task.wake().map(|task| self.enqueue_task(task));
     }
 
     // * Core Context Switching Functions
@@ -647,9 +645,9 @@ impl Scheduler {
     // * Context Swapping Helpers - Here be ugliness!
 
     pub fn resume_task_immediately(~self, task: ~Task) {
-        do self.change_task_context(task) |sched, stask| {
+        self.change_task_context(task, |sched, stask| {
             sched.sched_task = Some(stask);
-        }
+        })
     }
 
     fn resume_task_immediately_cl(sched: ~Scheduler,
@@ -690,20 +688,20 @@ impl Scheduler {
                                          f: |&mut Scheduler, BlockedTask|) {
         // This is where we convert the BlockedTask-taking closure into one
         // that takes just a Task, and is aware of the block-or-killed protocol.
-        do self.change_task_context(next_task) |sched, task| {
+        self.change_task_context(next_task, |sched, task| {
             // Task might need to receive a kill signal instead of blocking.
             // We can call the "and_then" only if it blocks successfully.
             match BlockedTask::try_block(task) {
                 Left(killed_task) => sched.enqueue_task(killed_task),
                 Right(blocked_task) => f(sched, blocked_task),
             }
-        }
+        })
     }
 
     fn switch_task(sched: ~Scheduler, task: ~Task) {
-        do sched.switch_running_tasks_and_then(task) |sched, last_task| {
+        sched.switch_running_tasks_and_then(task, |sched, last_task| {
             sched.enqueue_blocked_task(last_task);
-        };
+        });
     }
 
     // * Task Context Helpers
@@ -714,10 +712,10 @@ impl Scheduler {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();
-        do self.change_task_context(stask) |sched, mut dead_task| {
+        self.change_task_context(stask, |sched, mut dead_task| {
             let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
-        }
+        })
     }
 
     pub fn run_task(task: ~Task) {
@@ -727,9 +725,9 @@ impl Scheduler {
 
     pub fn run_task_later(next_task: ~Task) {
         let next_task = Cell::new(next_task);
-        do Local::borrow |sched: &mut Scheduler| {
+        Local::borrow(|sched: &mut Scheduler| {
             sched.enqueue_task(next_task.take());
-        };
+        });
     }
 
     /// Yield control to the scheduler, executing another task. This is guaranteed
@@ -740,9 +738,9 @@ impl Scheduler {
         self.yield_check_count = reset_yield_check(&mut self.rng);
         // Tell the scheduler to start stealing on the next iteration
         self.steal_for_yield = true;
-        do self.deschedule_running_task_and_then |sched, task| {
+        self.deschedule_running_task_and_then(|sched, task| {
             sched.enqueue_blocked_task(task);
-        }
+        })
     }
 
     pub fn maybe_yield(mut ~self) {
@@ -861,9 +859,9 @@ fn new_sched_rng() -> XorShiftRng {
     use iter::Iterator;
     use rand::SeedableRng;
 
-    let fd = do "/dev/urandom".with_c_str |name| {
+    let fd = "/dev/urandom".with_c_str(|name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }
-    };
+    });
     if fd == -1 {
         rtabort!("could not open /dev/urandom for reading.")
     }
@@ -871,13 +869,13 @@ fn new_sched_rng() -> XorShiftRng {
     let mut seeds = [0u32, .. 4];
     let size = mem::size_of_val(&seeds);
     loop {
-        let nbytes = do seeds.as_mut_buf |buf, _| {
+        let nbytes = seeds.as_mut_buf(|buf, _| {
             unsafe {
                 libc::read(fd,
                            buf as *mut libc::c_void,
                            size as libc::size_t)
             }
-        };
+        });
         rtassert!(nbytes as uint == size);
 
         if !seeds.iter().all(|x| *x == 0) {

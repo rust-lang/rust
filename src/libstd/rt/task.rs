@@ -145,7 +145,7 @@ impl Task {
                              -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
-        do Local::borrow |running_task: &mut Task| {
+        Local::borrow(|running_task: &mut Task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
                                                          stack_size,
@@ -153,7 +153,7 @@ impl Task {
                                                          f.take());
             running_task.sched = Some(sched);
             new_task
-        }
+        })
     }
 
     pub fn build_child(stack_size: Option<uint>, f: proc()) -> ~Task {
@@ -166,7 +166,7 @@ impl Task {
                             -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
-        do Local::borrow |running_task: &mut Task| {
+        Local::borrow(|running_task: &mut Task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
                                                  stack_size,
@@ -174,7 +174,7 @@ impl Task {
                                                  f.take());
             running_task.sched = Some(sched);
             new_task
-        }
+        })
     }
 
     pub fn build_root(stack_size: Option<uint>, f: proc()) -> ~Task {
@@ -287,10 +287,10 @@ impl Task {
 
         // The only try/catch block in the world. Attempt to run the task's
         // client-specified code and catch any failures.
-        do self.unwinder.try {
+        self.unwinder.try(|| {
 
             // Run the task main function, then do some cleanup.
-            do f.finally {
+            f.finally(|| {
 
                 // First, destroy task-local storage. This may run user dtors.
                 //
@@ -327,8 +327,8 @@ impl Task {
                     None => {}
                 }
                 self.logger.take();
-            }
-        }
+            })
+        });
 
         // Cleanup the dynamic borrowck debugging info
         borrowck::clear_task_borrow_list();
@@ -375,7 +375,7 @@ impl Task {
     // Grab both the scheduler and the task from TLS and check if the
     // task is executing on an appropriate scheduler.
     pub fn on_appropriate_sched() -> bool {
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             let sched_id = task.sched.get_ref().sched_id();
             let sched_run_anything = task.sched.get_ref().run_anything;
             match task.task_type {
@@ -394,7 +394,7 @@ impl Task {
                     rtabort!("type error: expected: GreenTask, found: SchedTask");
                 }
             }
-        }
+        })
     }
 }
 
@@ -442,9 +442,9 @@ impl Coroutine {
             unsafe {
 
                 // Again - might work while safe, or it might not.
-                do Local::borrow |sched: &mut Scheduler| {
+                Local::borrow(|sched: &mut Scheduler| {
                     sched.run_cleanup_job();
-                }
+                });
 
                 // To call the run method on a task we need a direct
                 // reference to it. The task is in TLS, so we can
@@ -453,7 +453,7 @@ impl Coroutine {
                 // need to unsafe_borrow.
                 let task: *mut Task = Local::unsafe_borrow();
 
-                do (*task).run {
+                (*task).run(|| {
                     // N.B. Removing `start` from the start wrapper
                     // closure by emptying a cell is critical for
                     // correctness. The ~Task pointer, and in turn the
@@ -466,7 +466,7 @@ impl Coroutine {
                     // scope while the task is still running.
                     let start = start_cell.take();
                     start();
-                };
+                });
             }
 
             // We remove the sched from the Task in TLS right now.
@@ -595,7 +595,7 @@ pub extern "C" fn rust_stack_exhausted() {
         //  #2361 - possible implementation of not using landing pads
 
         if in_green_task_context() {
-            do Local::borrow |task: &mut Task| {
+            Local::borrow(|task: &mut Task| {
                 let n = task.name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
 
                 // See the message below for why this is not emitted to the
@@ -604,7 +604,7 @@ pub extern "C" fn rust_stack_exhausted() {
                 // call would happen to initialized it (calling out to libuv),
                 // and the FFI call needs 2MB of stack when we just ran out.
                 rterrln!("task '{}' has overflowed its stack", n);
-            }
+            })
         } else {
             rterrln!("stack overflow in non-task context");
         }

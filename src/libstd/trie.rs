@@ -488,7 +488,7 @@ pub struct TrieSetIterator<'self> {
 
 impl<'self> Iterator<uint> for TrieSetIterator<'self> {
     fn next(&mut self) -> Option<uint> {
-        do self.iter.next().map |(key, _)| { key }
+        self.iter.next().map(|(key, _)| key)
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
@@ -583,12 +583,12 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        do m.each |k, v| {
+        m.each(|k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n += 1;
             true
-        };
+        });
     }
 
     #[test]
@@ -600,7 +600,7 @@ mod test_map {
         }
 
         let mut n = uint::max_value - 10000;
-        do m.each |k, v| {
+        m.each(|k, v| {
             if n == uint::max_value - 5000 { false } else {
                 assert!(n < uint::max_value - 5000);
 
@@ -609,7 +609,7 @@ mod test_map {
                 n += 1;
                 true
             }
-        };
+        });
     }
 
     #[test]
@@ -623,12 +623,12 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        do m.each_reverse |k, v| {
+        m.each_reverse(|k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
             true
-        };
+        });
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod test_map {
         }
 
         let mut n = uint::max_value - 1;
-        do m.each_reverse |k, v| {
+        m.each_reverse(|k, v| {
             if n == uint::max_value - 5000 { false } else {
                 assert!(n > uint::max_value - 5000);
 
@@ -649,7 +649,7 @@ mod test_map {
                 n -= 1;
                 true
             }
-        };
+        });
     }
 
     #[test]
@@ -766,11 +766,11 @@ mod test_set {
 
         let mut i = 0;
 
-        do trie.each |x| {
+        trie.each(|x| {
             assert_eq!(expected[i], *x);
             i += 1;
             true
-        };
+        });
     }
 
     #[test]

@@ -68,9 +68,9 @@ impl<T> Tube<T> {
                 assert!(self.p.refcount() > 1); // There better be somebody to wake us up
                 assert!((*state).blocked_task.is_none());
                 let sched: ~Scheduler = Local::take();
-                do sched.deschedule_running_task_and_then |_, task| {
+                sched.deschedule_running_task_and_then(|_, task| {
                     (*state).blocked_task = Some(task);
-                }
+                });
                 rtdebug!("waking after tube recv");
                 let buf = &mut (*state).buf;
                 assert!(!buf.is_empty());

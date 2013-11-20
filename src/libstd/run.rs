@@ -228,20 +228,20 @@ impl Process {
         //      SchedHandle structures to not get destroyed, meaning that
         //      there's always an async watcher available.
         do task::spawn_unlinked {
-            do io::ignore_io_error {
+            io::ignore_io_error(|| {
                 match error.take() {
                     Some(ref mut e) => ch.send((2, e.read_to_end())),
                     None => ch.send((2, ~[]))
                 }
-            }
+            })
         }
         do task::spawn_unlinked {
-            do io::ignore_io_error {
+            io::ignore_io_error(|| {
                 match output.take() {
                     Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
                     None => ch_clone.send((1, ~[]))
                 }
-            }
+            })
         }
 
         let status = self.finish();

@@ -164,14 +164,14 @@ impl<T: Send> ChanOne<T> {
                     // Port is blocked. Wake it up.
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     if do_resched {
-                        do recvr.wake().map |woken_task| {
+                        recvr.wake().map(|woken_task| {
                             Scheduler::run_task(woken_task);
-                        };
+                        });
                     } else {
                         let recvr = Cell::new(recvr);
-                        do Local::borrow |sched: &mut Scheduler| {
+                        Local::borrow(|sched: &mut Scheduler| {
                             sched.enqueue_blocked_task(recvr.take());
-                        }
+                        })
                     }
                 }
             }
@@ -208,9 +208,9 @@ impl<T: Send> PortOne<T> {
             // No data available yet.
             // Switch to the scheduler to put the ~Task into the Packet state.
             let sched: ~Scheduler = Local::take();
-            do sched.deschedule_running_task_and_then |sched, task| {
+            sched.deschedule_running_task_and_then(|sched, task| {
                 self.block_on(sched, task);
-            }
+            })
         }
 
         // Task resumes.
@@ -386,9 +386,9 @@ impl<T: Send> Drop for ChanOne<T> {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     rtassert!((*self.packet()).payload.is_none());
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
-                    do recvr.wake().map |woken_task| {
+                    recvr.wake().map(|woken_task| {
                         Scheduler::run_task(woken_task);
-                    };
+                    });
                 }
             }
         }
@@ -489,7 +489,7 @@ impl<T: Send> GenericPort<T> for Port<T> {
     }
 
     fn try_recv(&self) -> Option<T> {
-        do self.next.take_opt().map_default(None) |pone| {
+        self.next.take_opt().map_default(None, |pone| {
             match pone.try_recv() {
                 Some(StreamPayload { val, next }) => {
                     self.next.put_back(next);
@@ -497,7 +497,7 @@ impl<T: Send> GenericPort<T> for Port<T> {
                 }
                 None => None
             }
-        }
+        })
     }
 }
 
@@ -514,18 +514,18 @@ impl<T: Send> Peekable<T> for Port<T> {
 impl<'self, T: Send> SelectInner for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
-        do self.next.with_mut_ref |pone| { pone.optimistic_check() }
+        self.next.with_mut_ref(|pone| pone.optimistic_check())
     }
 
     #[inline]
     fn block_on(&mut self, sched: &mut Scheduler, task: BlockedTask) -> bool {
         let task = Cell::new(task);
-        do self.next.with_mut_ref |pone| { pone.block_on(sched, task.take()) }
+        self.next.with_mut_ref(|pone| pone.block_on(sched, task.take()))
     }
 
     #[inline]
     fn unblock_from(&mut self) -> bool {
-        do self.next.with_mut_ref |pone| { pone.unblock_from() }
+        self.next.with_mut_ref(|pone| pone.unblock_from())
     }
 }
 

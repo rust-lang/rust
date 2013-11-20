@@ -530,9 +530,7 @@ pub struct Display<'self, P> {
 
 impl<'self, P: GenericPath> fmt::Default for Display<'self, P> {
     fn fmt(d: &Display<P>, f: &mut fmt::Formatter) {
-        do d.with_str |s| {
-            f.pad(s)
-        }
+        d.with_str(|s| f.pad(s))
     }
 }
 

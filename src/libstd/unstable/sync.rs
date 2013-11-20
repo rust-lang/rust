@@ -135,7 +135,7 @@ impl<T: Send> UnsafeArc<T> {
     /// block; otherwise, an unwrapping task can be killed by linked failure.
     pub fn unwrap(self) -> T {
         let this = Cell::new(self); // argh
-        do task::unkillable {
+        task::unkillable(|| {
             unsafe {
                 let mut this = this.take();
                 // The ~ dtor needs to run if this code succeeds.
@@ -165,8 +165,8 @@ impl<T: Send> UnsafeArc<T> {
                         // Unlike the above one, this cell is necessary. It will get
                         // taken either in the do block or in the finally block.
                         let c2_and_data = Cell::new((c2,data));
-                        do (|| {
-                            do task::rekillable { p1.take().recv(); }
+                        (|| {
+                            task::rekillable(|| p1.take().recv());
                             // Got here. Back in the 'unkillable' without getting killed.
                             let (c2, data) = c2_and_data.take();
                             c2.send(true);
@@ -175,7 +175,7 @@ impl<T: Send> UnsafeArc<T> {
                             // user_data
                             let mut data = data;
                             data.data.take_unwrap()
-                        }).finally {
+                        }).finally(|| {
                             if task::failing() {
                                 // Killed during wait. Because this might happen while
                                 // someone else still holds a reference, we can't free
@@ -186,7 +186,7 @@ impl<T: Send> UnsafeArc<T> {
                             } else {
                                 assert!(c2_and_data.is_empty());
                             }
-                        }
+                        })
                     }
                 } else {
                     // If 'put' returns the server end back to us, we were rejected;
@@ -195,7 +195,7 @@ impl<T: Send> UnsafeArc<T> {
                     fail!("Another task is already unwrapping this Arc!");
                 }
             }
-        }
+        })
     }
 
     /// As unwrap above, but without blocking. Returns 'UnsafeArcSelf(self)' if this is
@@ -259,7 +259,7 @@ impl<T> Drop for UnsafeArc<T>{
                 match data.unwrapper.take(Acquire) {
                     Some(~(message,response)) => {
                         let cell = Cell::new((message, response, data));
-                        do task::unkillable {
+                        task::unkillable(|| {
                             let (message, response, data) = cell.take();
                             // Send 'ready' and wait for a response.
                             message.send(());
@@ -270,7 +270,7 @@ impl<T> Drop for UnsafeArc<T>{
                             } else {
                                 // Other task was killed. drop glue takes over.
                             }
-                        }
+                        })
                     }
                     None => {
                         // drop glue takes over.
@@ -305,12 +305,10 @@ pub unsafe fn atomically<U>(f: || -> U) -> U {
         Some(t) => {
             match (*t).task_type {
                 GreenTask(_) => {
-                    do (|| {
+                    (|| {
                         (*t).death.inhibit_deschedule();
                         f()
-                    }).finally {
-                        (*t).death.allow_deschedule();
-                    }
+                    }).finally(|| (*t).death.allow_deschedule())
                 }
                 SchedTask => f()
             }
@@ -342,29 +340,21 @@ impl LittleLock {
 
     pub unsafe fn lock<T>(&self, f: || -> T) -> T {
         let this = cast::transmute_mut(self);
-        do atomically {
+        atomically(|| {
             this.l.lock();
-            do (|| {
-                f()
-            }).finally {
-                this.l.unlock();
-            }
-        }
+            (|| f()).finally(|| this.l.unlock())
+        })
     }
 
     pub unsafe fn try_lock<T>(&self, f: || -> T) -> Option<T> {
         let this = cast::transmute_mut(self);
-        do atomically {
+        atomically(|| {
             if this.l.trylock() {
-                Some(do (|| {
-                    f()
-                }).finally {
-                    this.l.unlock();
-                })
+                Some((|| f()).finally(|| this.l.unlock()))
             } else {
                 None
             }
-        }
+        })
     }
 
     pub unsafe fn signal(&self) {
@@ -374,16 +364,14 @@ impl LittleLock {
 
     pub unsafe fn lock_and_wait(&self, f: || -> bool) {
         let this = cast::transmute_mut(self);
-        do atomically {
+        atomically(|| {
             this.l.lock();
-            do (|| {
+            (|| {
                 if f() {
                     this.l.wait();
                 }
-            }).finally {
-                this.l.unlock();
-            }
-        }
+            }).finally(|| this.l.unlock());
+        })
     }
 }
 
@@ -435,7 +423,7 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn with<U>(&self, f: |x: &mut T| -> U) -> U {
         let rec = self.x.get();
-        do (*rec).lock.lock {
+        (*rec).lock.lock(|| {
             if (*rec).failed {
                 fail!("Poisoned Exclusive::new - another task failed inside!");
             }
@@ -443,20 +431,18 @@ impl<T:Send> Exclusive<T> {
             let result = f(&mut (*rec).data);
             (*rec).failed = false;
             result
-        }
+        })
     }
 
     #[inline]
     pub unsafe fn with_imm<U>(&self, f: |x: &T| -> U) -> U {
-        do self.with |x| {
-            f(cast::transmute_immut(x))
-        }
+        self.with(|x| f(cast::transmute_immut(x)))
     }
 
     #[inline]
     pub unsafe fn hold_and_signal(&self, f: |x: &mut T|) {
         let rec = self.x.get();
-        do (*rec).lock.lock {
+        (*rec).lock.lock(|| {
             if (*rec).failed {
                 fail!("Poisoned Exclusive::new - another task failed inside!");
             }
@@ -464,13 +450,13 @@ impl<T:Send> Exclusive<T> {
             f(&mut (*rec).data);
             (*rec).failed = false;
             (*rec).lock.signal();
-        }
+        })
     }
 
     #[inline]
     pub unsafe fn hold_and_wait(&self, f: |x: &T| -> bool) {
         let rec = self.x.get();
-        do (*rec).lock.lock_and_wait {
+        (*rec).lock.lock_and_wait(|| {
             if (*rec).failed {
                 fail!("Poisoned Exclusive::new - another task failed inside!");
             }
@@ -478,7 +464,7 @@ impl<T:Send> Exclusive<T> {
             let result = f(&(*rec).data);
             (*rec).failed = false;
             result
-        }
+        })
     }
 
     pub fn unwrap(self) -> T {
@@ -512,7 +498,7 @@ mod tests {
     fn test_atomically() {
         // NB. The whole runtime will abort on an 'atomic-sleep' violation,
         // so we can't really test for the converse behaviour.
-        unsafe { do atomically { } } task::deschedule(); // oughtn't fail
+        unsafe { atomically(|| ()) } task::deschedule(); // oughtn't fail
     }
 
     #[test]
@@ -532,9 +518,7 @@ mod tests {
 
                 do task::spawn || {
                     for _ in range(0u, count) {
-                        do total.with |count| {
-                            **count += 1;
-                        }
+                        total.with(|count| **count += 1);
                     }
                     chan.send(());
                 }
@@ -542,9 +526,7 @@ mod tests {
 
             for f in futures.iter() { f.recv() }
 
-            do total.with |total| {
-                assert!(**total == num_tasks * count)
-            };
+            total.with(|total| assert!(**total == num_tasks * count));
         }
     }
 
@@ -556,13 +538,9 @@ mod tests {
             let x = Exclusive::new(1);
             let x2 = x.clone();
             do task::try || {
-                do x2.with |one| {
-                    assert_eq!(*one, 2);
-                }
+                x2.with(|one| assert_eq!(*one, 2))
             };
-            do x.with |one| {
-                assert_eq!(*one, 1);
-            }
+            x.with(|one| assert_eq!(*one, 1));
         }
     }
 
@@ -646,7 +624,7 @@ mod tests {
         let x2 = Cell::new(x.clone());
         do task::spawn {
             let x2 = x2.take();
-            unsafe { do x2.with |_hello| { } }
+            unsafe { x2.with(|_hello| ()); }
             task::deschedule();
         }
         assert!(x.unwrap() == ~~"hello");
@@ -690,11 +668,11 @@ mod tests {
             let x = Exclusive::new(~~"hello");
             let x2 = x.clone();
             do task::spawn {
-                do 10.times { task::deschedule(); } // try to let the unwrapper go
+                10.times(|| task::deschedule()); // try to let the unwrapper go
                 fail!(); // punt it awake from its deadlock
             }
             let _z = x.unwrap();
-            unsafe { do x2.with |_hello| { } }
+            unsafe { x2.with(|_hello| { }) }
         };
         assert!(result.is_err());
     }

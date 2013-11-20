@@ -60,10 +60,10 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     let p = Cell::new(p);
     let c = Cell::new(c);
 
-    do (|| {
+    (|| {
         let c = Cell::new(c.take());
         let sched: ~Scheduler = Local::take();
-        do sched.deschedule_running_task_and_then |sched, task| {
+        sched.deschedule_running_task_and_then(|sched, task| {
             let task_handles = task.make_selectable(ports.len());
 
             for (index, (port, task_handle)) in
@@ -77,14 +77,14 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
 
             let c = Cell::new(c.take());
             do sched.event_loop.callback { c.take().send_deferred(()) }
-        }
-    }).finally {
+        })
+    }).finally(|| {
         let p = Cell::new(p.take());
         // Unkillable is necessary not because getting killed is dangerous here,
         // but to force the recv not to use the same kill-flag that we used for
         // selecting. Otherwise a user-sender could spuriously wakeup us here.
-        do task::unkillable { p.take().recv(); }
-    }
+        task::unkillable(|| p.take().recv());
+    });
 
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
     // If the success index wasn't reset, 'take' will just take all of them.

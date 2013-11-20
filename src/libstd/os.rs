@@ -58,7 +58,7 @@ static BUF_BYTES : uint = 2048u;
 #[cfg(unix)]
 pub fn getcwd() -> Path {
     let mut buf = [0 as libc::c_char, ..BUF_BYTES];
-    do buf.as_mut_buf |buf, len| {
+    buf.as_mut_buf(|buf, len| {
         unsafe {
             if libc::getcwd(buf, len as size_t).is_null() {
                 fail!()
@@ -66,7 +66,7 @@ pub fn getcwd() -> Path {
 
             Path::new(CString::new(buf as *c_char, false))
         }
-    }
+    })
 }
 
 #[cfg(windows)]
@@ -74,13 +74,13 @@ pub fn getcwd() -> Path {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
     let mut buf = [0 as u16, ..BUF_BYTES];
-    do buf.as_mut_buf |buf, len| {
+    buf.as_mut_buf(|buf, len| {
         unsafe {
             if libc::GetCurrentDirectoryW(len as DWORD, buf) == 0 as DWORD {
                 fail!();
             }
         }
-    }
+    });
     Path::new(str::from_utf16(buf))
 }
 
@@ -104,7 +104,7 @@ pub mod win32 {
             while !done {
                 let mut k: DWORD = 0;
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                do buf.as_mut_buf |b, _sz| {
+                buf.as_mut_buf(|b, _sz| {
                     k = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
                         done = true;
@@ -115,7 +115,7 @@ pub mod win32 {
                     } else {
                         done = true;
                     }
-                }
+                });
                 if k != 0 && done {
                     let sub = buf.slice(0, k as uint);
                     res = option::Some(str::from_utf16(sub));
@@ -144,12 +144,10 @@ fn with_env_lock<T>(f: || -> T) -> T {
     static mut lock: Mutex = MUTEX_INIT;
 
     unsafe {
-        return do (|| {
+        return (|| {
             lock.lock();
             f()
-        }).finally {
-            lock.unlock();
-        };
+        }).finally(|| lock.unlock());
     }
 }
 
@@ -172,9 +170,9 @@ pub fn env() -> ~[(~str,~str)] {
                        os::last_os_error());
             }
             let mut result = ~[];
-            do c_str::from_c_multistring(ch as *libc::c_char, None) |cstr| {
+            c_str::from_c_multistring(ch as *libc::c_char, None, |cstr| {
                 result.push(cstr.as_str().unwrap().to_owned());
-            };
+            });
             FreeEnvironmentStringsA(ch);
             result
         }
@@ -207,10 +205,10 @@ pub fn env() -> ~[(~str,~str)] {
             }
             pairs
         }
-        do with_env_lock {
+        with_env_lock(|| {
             let unparsed_environ = get_env_pairs();
             env_convert(unparsed_environ)
-        }
+        })
     }
 }
 
@@ -219,16 +217,14 @@ pub fn env() -> ~[(~str,~str)] {
 /// None if the variable isn't set.
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
-        do with_env_lock {
-            let s = do n.with_c_str |buf| {
-                libc::getenv(buf)
-            };
+        with_env_lock(|| {
+            let s = n.with_c_str(|buf| libc::getenv(buf));
             if s.is_null() {
                 None
             } else {
                 Some(str::raw::from_c_str(s))
             }
-        }
+        })
     }
 }
 
@@ -237,14 +233,14 @@ pub fn getenv(n: &str) -> Option<~str> {
 /// None if the variable isn't set.
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
-        do with_env_lock {
+        with_env_lock(|| {
             use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
-            do as_utf16_p(n) |u| {
-                do fill_utf16_buf_and_decode() |buf, sz| {
+            as_utf16_p(n, |u| {
+                fill_utf16_buf_and_decode(|buf, sz| {
                     libc::GetEnvironmentVariableW(u, buf, sz)
-                }
-            }
-        }
+                })
+            })
+        })
     }
 }
 
@@ -254,13 +250,13 @@ pub fn getenv(n: &str) -> Option<~str> {
 /// process
 pub fn setenv(n: &str, v: &str) {
     unsafe {
-        do with_env_lock {
-            do n.with_c_str |nbuf| {
-                do v.with_c_str |vbuf| {
+        with_env_lock(|| {
+            n.with_c_str(|nbuf| {
+                v.with_c_str(|vbuf| {
                     libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
-                }
-            }
-        }
+                })
+            })
+        })
     }
 }
 
@@ -270,14 +266,14 @@ pub fn setenv(n: &str, v: &str) {
 /// process
 pub fn setenv(n: &str, v: &str) {
     unsafe {
-        do with_env_lock {
+        with_env_lock(|| {
             use os::win32::as_utf16_p;
-            do as_utf16_p(n) |nbuf| {
-                do as_utf16_p(v) |vbuf| {
+            as_utf16_p(n, |nbuf| {
+                as_utf16_p(v, |vbuf| {
                     libc::SetEnvironmentVariableW(nbuf, vbuf);
-                }
-            }
-        }
+                })
+            })
+        })
     }
 }
 
@@ -286,22 +282,22 @@ pub fn unsetenv(n: &str) {
     #[cfg(unix)]
     fn _unsetenv(n: &str) {
         unsafe {
-            do with_env_lock {
-                do n.with_c_str |nbuf| {
+            with_env_lock(|| {
+                n.with_c_str(|nbuf| {
                     libc::funcs::posix01::unistd::unsetenv(nbuf);
-                }
-            }
+                })
+            })
         }
     }
     #[cfg(windows)]
     fn _unsetenv(n: &str) {
         unsafe {
-            do with_env_lock {
+            with_env_lock(|| {
                 use os::win32::as_utf16_p;
-                do as_utf16_p(n) |nbuf| {
+                as_utf16_p(n, |nbuf| {
                     libc::SetEnvironmentVariableW(nbuf, ptr::null());
-                }
-            }
+                })
+            })
         }
     }
 
@@ -372,10 +368,10 @@ pub fn self_exe_path() -> Option<Path> {
             if err != 0 { return None; }
             if sz == 0 { return None; }
             let mut v: ~[u8] = vec::with_capacity(sz as uint);
-            let err = do v.as_mut_buf |buf,_| {
+            let err = v.as_mut_buf(|buf,_| {
                 sysctl(vec::raw::to_ptr(mib), mib.len() as ::libc::c_uint,
                        buf as *mut c_void, &mut sz, ptr::null(), 0u as size_t)
-            };
+            });
             if err != 0 { return None; }
             if sz == 0 { return None; }
             vec::raw::set_len(&mut v, sz as uint - 1); // chop off trailing NUL
@@ -403,9 +399,9 @@ pub fn self_exe_path() -> Option<Path> {
             _NSGetExecutablePath(ptr::mut_null(), &mut sz);
             if sz == 0 { return None; }
             let mut v: ~[u8] = vec::with_capacity(sz as uint);
-            let err = do v.as_mut_buf |buf,_| {
+            let err = v.as_mut_buf(|buf, _| {
                 _NSGetExecutablePath(buf as *mut i8, &mut sz)
-            };
+            });
             if err != 0 { return None; }
             vec::raw::set_len(&mut v, sz as uint - 1); // chop off trailing NUL
             Some(v)
@@ -416,9 +412,9 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~[u8]> {
         unsafe {
             use os::win32::fill_utf16_buf_and_decode;
-            do fill_utf16_buf_and_decode() |buf, sz| {
+            fill_utf16_buf_and_decode(|buf, sz| {
                 libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
-            }.map(|s| s.into_bytes())
+            }).map(|s| s.into_bytes())
         }
     }
 
@@ -452,13 +448,13 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do getenv("USERPROFILE").and_then |p| {
+        getenv("USERPROFILE").and_then(|p| {
             if !p.is_empty() {
                 Path::new_opt(p)
             } else {
                 None
             }
-        }
+        })
     }
 }
 
@@ -536,19 +532,19 @@ pub fn change_dir(p: &Path) -> bool {
     fn chdir(p: &Path) -> bool {
         unsafe {
             use os::win32::as_utf16_p;
-            return do as_utf16_p(p.as_str().unwrap()) |buf| {
+            return as_utf16_p(p.as_str().unwrap(), |buf| {
                 libc::SetCurrentDirectoryW(buf) != (0 as libc::BOOL)
-            };
+            });
         }
     }
 
     #[cfg(unix)]
     fn chdir(p: &Path) -> bool {
-        do p.with_c_str |buf| {
+        p.with_c_str(|buf| {
             unsafe {
                 libc::chdir(buf) == (0 as c_int)
             }
-        }
+        })
     }
 }
 
@@ -637,7 +633,7 @@ pub fn last_os_error() -> ~str {
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
 
-        do buf.as_mut_buf |buf, len| {
+        buf.as_mut_buf(|buf, len| {
             unsafe {
                 if strerror_r(errno() as c_int, buf, len as size_t) < 0 {
                     fail!("strerror_r failure");
@@ -645,7 +641,7 @@ pub fn last_os_error() -> ~str {
 
                 str::raw::from_c_str(buf as *c_char)
             }
-        }
+        })
     }
 
     #[cfg(windows)]
@@ -678,7 +674,7 @@ pub fn last_os_error() -> ~str {
         let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
 
         unsafe {
-            do buf.as_mut_buf |buf, len| {
+            buf.as_mut_buf(|buf, len| {
                 let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
                                          FORMAT_MESSAGE_IGNORE_INSERTS,
                                          ptr::mut_null(),
@@ -690,7 +686,7 @@ pub fn last_os_error() -> ~str {
                 if res == 0 {
                     fail!("[{}] FormatMessage failure", errno());
                 }
-            }
+            });
 
             str::from_utf16(buf)
         }
@@ -1466,13 +1462,11 @@ mod tests {
         let size = MemoryMap::granularity() * 2;
 
         let fd = unsafe {
-            let fd = do path.with_c_str |path| {
+            let fd = path.with_c_str(|path| {
                 open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
-            };
+            });
             lseek_(fd, size);
-            do "x".with_c_str |x| {
-                assert!(write(fd, x as *c_void, 1) == 1);
-            }
+            "x".with_c_str(|x| assert!(write(fd, x as *c_void, 1) == 1));
             fd
         };
         let chunk = match MemoryMap::new(size / 2, [
@@ -1491,7 +1485,7 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
-        do io::ignore_io_error { fs::unlink(&path); }
+        io::ignore_io_error(|| fs::unlink(&path));
     }
 
     // More recursive_mkdir tests are in extra::tempfile

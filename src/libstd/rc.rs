@@ -256,10 +256,10 @@ impl<T: DeepClone> DeepClone for RcMut<T> {
     /// Return a deep copy of the reference counted pointer.
     #[inline]
     fn deep_clone(&self) -> RcMut<T> {
-        do self.with_borrow |x| {
+        self.with_borrow(|x| {
             // FIXME: #6497: should avoid freeze (slow)
             unsafe { RcMut::new_unchecked(x.deep_clone()) }
-        }
+        })
     }
 }
 

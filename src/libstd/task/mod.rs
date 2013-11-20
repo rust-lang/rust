@@ -558,12 +558,12 @@ pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             match task.name {
                 Some(ref name) => blk(Some(name.as_slice())),
                 None => blk(None)
             }
-        }
+        })
     } else {
         fail!("no task name exists in non-green task context")
     }
@@ -585,9 +585,7 @@ pub fn failing() -> bool {
 
     use rt::task::Task;
 
-    do Local::borrow |local: &mut Task| {
-        local.unwinder.unwinding
-    }
+    Local::borrow(|local: &mut Task| local.unwinder.unwinding)
 }
 
 /**
@@ -612,12 +610,12 @@ pub fn unkillable<U>(f: || -> U) -> U {
         if in_green_task_context() {
             // The inhibits/allows might fail and need to borrow the task.
             let t: *mut Task = Local::unsafe_borrow();
-            do (|| {
+            (|| {
                 (*t).death.inhibit_kill((*t).unwinder.unwinding);
                 f()
-            }).finally {
+            }).finally(|| {
                 (*t).death.allow_kill((*t).unwinder.unwinding);
-            }
+            })
         } else {
             // FIXME(#3095): This should be an rtabort as soon as the scheduler
             // no longer uses a workqueue implemented with an Exclusive.
@@ -646,12 +644,12 @@ pub fn rekillable<U>(f: || -> U) -> U {
     unsafe {
         if in_green_task_context() {
             let t: *mut Task = Local::unsafe_borrow();
-            do (|| {
+            (|| {
                 (*t).death.allow_kill((*t).unwinder.unwinding);
                 f()
-            }).finally {
+            }).finally(|| {
                 (*t).death.inhibit_kill((*t).unwinder.unwinding);
-            }
+            })
         } else {
             // FIXME(#3095): As in unkillable().
             f()

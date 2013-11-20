@@ -481,7 +481,7 @@ impl KillHandle {
             // our own tombstone, to be unwrapped later.
             UnsafeArcSelf(this) => {
                 let this = Cell::new(this); // :(
-                do add_lazy_tombstone(parent) |other_tombstones| {
+                add_lazy_tombstone(parent, |other_tombstones| {
                     let this = Cell::new(this.take()); // :(
                     let others = Cell::new(other_tombstones); // :(
                     || {
@@ -493,7 +493,7 @@ impl KillHandle {
                                 inner.child_tombstones.take().map_default(true, |f| f())
                         }
                     }
-                }
+                })
             }
 
             // Whether or not all children exited, one or more already failed.
@@ -506,7 +506,7 @@ impl KillHandle {
             UnsafeArcT(KillHandleInner { any_child_failed: false,
                                          child_tombstones: Some(f), _ }) => {
                 let f = Cell::new(f); // :(
-                do add_lazy_tombstone(parent) |other_tombstones| {
+                add_lazy_tombstone(parent, |other_tombstones| {
                     let f = Cell::new(f.take()); // :(
                     let others = Cell::new(other_tombstones); // :(
                     || {
@@ -514,7 +514,7 @@ impl KillHandle {
                         others.take().map_default(true, |f| f()) &&
                             f.take()()
                     }
-                }
+                })
             }
 
             // All children exited, none failed. Nothing to do!
@@ -529,11 +529,11 @@ impl KillHandle {
                               {
             let inner: &mut KillHandleInner = unsafe { &mut *parent.get() };
             unsafe {
-                do inner.graveyard_lock.lock {
+                inner.graveyard_lock.lock(|| {
                     // Update the current "head node" of the lazy list.
                     inner.child_tombstones =
                         Some(blk(util::replace(&mut inner.child_tombstones, None)));
-                }
+                })
             }
         }
     }
@@ -584,7 +584,7 @@ impl Death {
         let mut result = Cell::new(result);
 
         // Step 1. Decide if we need to collect child failures synchronously.
-        do self.on_exit.take().map |on_exit| {
+        self.on_exit.take().map(|on_exit| {
             if success {
                 // We succeeded, but our children might not. Need to wait for them.
                 let mut inner = self.kill_handle.take_unwrap().unwrap();
@@ -601,26 +601,26 @@ impl Death {
                 }
             }
             on_exit(result.take());
-        };
+        });
 
         // Step 2. Possibly alert possibly-watching parent to failure status.
         // Note that as soon as parent_handle goes out of scope, the parent
         // can successfully unwrap its handle and collect our reported status.
-        do self.watching_parent.take().map |mut parent_handle| {
+        self.watching_parent.take().map(|mut parent_handle| {
             if success {
                 // Our handle might be None if we had an exit callback, and
                 // already unwrapped it. But 'success' being true means no
                 // child failed, so there's nothing to do (see below case).
-                do self.kill_handle.take().map |own_handle| {
+                self.kill_handle.take().map(|own_handle| {
                     own_handle.reparent_children_to(&mut parent_handle);
-                };
+                });
             } else {
                 // Can inform watching parent immediately that we failed.
                 // (Note the importance of non-failing tasks NOT writing
                 // 'false', which could obscure another task's failure.)
                 parent_handle.notify_immediate_failure();
             }
-        };
+        });
 
         // Can't use allow_kill directly; that would require the kill handle.
         rtassert!(self.unkillable == 1);
