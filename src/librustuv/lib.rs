@@ -196,7 +196,7 @@ impl Drop for ForbidUnwind {
     }
 }
 
-fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: &fn()) {
+fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: ||) {
     let _f = ForbidUnwind::new("wait_until_woken_after");
     unsafe {
         assert!((*slot).is_none());

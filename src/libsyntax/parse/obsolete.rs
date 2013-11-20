@@ -43,6 +43,7 @@ pub enum ObsoleteSyntax {
     ObsoleteStructWildcard,
     ObsoleteVecDotDotWildcard,
     ObsoleteBoxedClosure,
+    ObsoleteClosureType,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -133,6 +134,11 @@ impl ParserObsoleteMethods for Parser {
                 "managed or owned closure",
                 "managed closures have been removed and owned closures are \
                  now written `proc()`"
+            ),
+            ObsoleteClosureType => (
+                "closure type",
+                "closures are now written `|A| -> B` rather than `&fn(A) -> \
+                 B`."
             ),
         };
 
