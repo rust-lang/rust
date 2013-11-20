@@ -477,7 +477,7 @@ fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::Pat) {
     }
 }
 
-type enter_pat<'self> = &'self fn(@ast::Pat) -> Option<~[@ast::Pat]>;
+type enter_pat<'self> = 'self |@ast::Pat| -> Option<~[@ast::Pat]>;
 
 fn enter_match<'r>(bcx: @mut Block,
                        dm: DefMap,

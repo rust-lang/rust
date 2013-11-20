@@ -335,7 +335,7 @@ fn mkdir(path: &Path) {
 /// things like ".." to components which preserve the "top down" hierarchy of a
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
-fn clean_srcpath(src: &[u8], f: &fn(&str)) {
+fn clean_srcpath(src: &[u8], f: |&str|) {
     let p = Path::new(src);
     if p.as_vec() != bytes!(".") {
         for c in p.str_component_iter().map(|x|x.unwrap()) {
@@ -645,7 +645,7 @@ impl<'self> Cache {
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
-    fn recurse<T>(&mut self, s: ~str, f: &fn(&mut Context) -> T) -> T {
+    fn recurse<T>(&mut self, s: ~str, f: |&mut Context| -> T) -> T {
         if s.len() == 0 {
             fail!("what {:?}", self);
         }
@@ -767,7 +767,7 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item(&mut self, item: clean::Item, f: &fn(&mut Context, clean::Item)) {
+    fn item(&mut self, item: clean::Item, f: |&mut Context, clean::Item|) {
         fn render(w: io::File, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {
             // A little unfortunate that this is done like this, but it sure

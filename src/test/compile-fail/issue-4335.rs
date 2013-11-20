@@ -10,7 +10,9 @@
 
 fn id<T>(t: T) -> T { t }
 
-fn f<'r, T>(v: &'r T) -> &'r fn()->T { id::<&'r fn()->T>(|| *v) } //~ ERROR cannot infer an appropriate lifetime
+fn f<'r, T>(v: &'r T) -> 'r || -> T {
+    id(|| *v) //~ ERROR cannot infer an appropriate lifetime
+}
 
 fn main() {
     let v = &5;

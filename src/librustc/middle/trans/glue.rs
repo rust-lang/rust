@@ -642,7 +642,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     return inf;
 }
 
-pub type glue_helper<'self> = &'self fn(@mut Block, ValueRef, ty::t) -> @mut Block;
+pub type glue_helper<'self> = 'self |@mut Block, ValueRef, ty::t|
+                                     -> @mut Block;
 
 pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
                             name: &str) -> ValueRef {

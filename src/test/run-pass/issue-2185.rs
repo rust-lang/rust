@@ -18,7 +18,7 @@
 //
 // Running /usr/local/bin/rustc:
 // issue-2185.rs:24:0: 26:1 error: conflicting implementations for a trait
-// issue-2185.rs:24 impl iterable<uint> for &'static fn(|uint|) {
+// issue-2185.rs:24 impl iterable<uint> for 'static ||uint|| {
 // issue-2185.rs:25     fn iter(&self, blk: |v: uint|) { self( |i| blk(i) ) }
 // issue-2185.rs:26 }
 // issue-2185.rs:20:0: 22:1 note: note conflicting implementation here
