@@ -22,7 +22,7 @@ use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
 
-pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
+pub type Cb<'self> = 'self |buf: &[u8]| -> bool;
 
 ///
 /// A trait to implement in order to make a type hashable;

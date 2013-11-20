@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct r<'self> {
-    field: &'self fn()
+    field: 'self ||
 }
 
 pub fn main() {

@@ -148,8 +148,8 @@ fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
 }
 
 fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
-        root: &fn(&render::Cache, &[~str]) -> Option<~str>,
-        info: &fn(&render::Cache) -> Option<(~[~str], &'static str)>) {
+        root: |&render::Cache, &[~str]| -> Option<~str>,
+        info: |&render::Cache| -> Option<(~[~str], &'static str)>) {
     // The generics will get written to both the title and link
     let mut generics = ~"";
     let last = path.segments.last();

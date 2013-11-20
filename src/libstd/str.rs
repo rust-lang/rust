@@ -322,7 +322,7 @@ impl CharEq for char {
     fn only_ascii(&self) -> bool { (*self as uint) < 128 }
 }
 
-impl<'self> CharEq for &'self fn(char) -> bool {
+impl<'self> CharEq for 'self |char| -> bool {
     #[inline]
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
