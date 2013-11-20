@@ -35,7 +35,7 @@ use uvll::sockaddr;
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
 
-fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: &fn(*sockaddr) -> T) -> T {
+fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: |*sockaddr| -> T) -> T {
     let malloc = match addr.ip {
         Ipv4Addr(*) => uvll::rust_malloc_ip4_addr,
         Ipv6Addr(*) => uvll::rust_malloc_ip6_addr,

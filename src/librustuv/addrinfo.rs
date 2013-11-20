@@ -120,7 +120,7 @@ impl Drop for Addrinfo {
     }
 }
 
-fn each_ai_flag(_f: &fn(c_int, ai::Flag)) {
+fn each_ai_flag(_f: |c_int, ai::Flag|) {
     /* XXX: do we really want to support these?
     unsafe {
         f(uvll::rust_AI_ADDRCONFIG(), ai::AddrConfig);

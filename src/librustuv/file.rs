@@ -295,7 +295,7 @@ impl Drop for FsRequest {
     }
 }
 
-fn execute(f: &fn(*uvll::uv_fs_t, uvll::uv_fs_cb) -> c_int)
+fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
     -> Result<FsRequest, UvError>
 {
     return do task::unkillable {
@@ -329,9 +329,8 @@ fn execute(f: &fn(*uvll::uv_fs_t, uvll::uv_fs_cb) -> c_int)
     }
 }
 
-fn execute_nop(f: &fn(*uvll::uv_fs_t, uvll::uv_fs_cb) -> c_int)
-    -> Result<(), UvError>
-{
+fn execute_nop(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
+    -> Result<(), UvError> {
     execute(f).map(|_| {})
 }
 
