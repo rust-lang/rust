@@ -326,7 +326,7 @@ impl Sem<~[WaitQueue]> {
     // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
         do self.access {
-            blk(&Condvar { sem: self, order: Nothing, token: NonCopyable::new() })
+            blk(&Condvar { sem: self, order: Nothing, token: NonCopyable })
         }
     }
 }
@@ -569,7 +569,7 @@ impl RWLock {
                 do task::rekillable {
                     let opt_lock = Just(&self.order_lock);
                     blk(&Condvar { sem: cond.sem, order: opt_lock,
-                                   token: NonCopyable::new() })
+                                   token: NonCopyable })
                 }
             }
         }
@@ -605,7 +605,7 @@ impl RWLock {
             (&self.order_lock).release();
             do (|| {
                 do task::rekillable {
-                    blk(RWLockWriteMode { lock: self, token: NonCopyable::new() })
+                    blk(RWLockWriteMode { lock: self, token: NonCopyable })
                 }
             }).finally {
                 let writer_or_last_reader;
@@ -662,7 +662,7 @@ impl RWLock {
                 }
             }
         }
-        RWLockReadMode { lock: token.lock, token: NonCopyable::new() }
+        RWLockReadMode { lock: token.lock, token: NonCopyable }
     }
 }
 
@@ -682,7 +682,7 @@ impl<'self> RWLockWriteMode<'self> {
         // access lock. See comment in RWLock::write_cond for why.
         blk(&Condvar { sem:        &self.lock.access_lock,
                        order: Just(&self.lock.order_lock),
-                       token: NonCopyable::new() })
+                       token: NonCopyable })
     }
 }
 
