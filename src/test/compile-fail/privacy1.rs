@@ -31,6 +31,12 @@ mod bar {
         fn bar2(&self) {}
     }
 
+    trait B {
+        fn foo() -> Self;
+    }
+
+    impl B for int { fn foo() -> int { 3 } }
+
     pub enum Enum {
         priv Priv,
         Pub
@@ -108,6 +114,10 @@ mod foo {
         ::bar::baz::A.bar2();   //~ ERROR: struct `A` is inaccessible
                                 //~^ ERROR: method `bar2` is private
                                 //~^^ NOTE: module `baz` is private
+
+        let _: int =
+        ::bar::B::foo();        //~ ERROR: method `foo` is inaccessible
+                                //~^ NOTE: trait `B` is private
         ::lol();
 
         ::bar::Priv; //~ ERROR: variant `Priv` is private

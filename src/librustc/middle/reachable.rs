@@ -22,7 +22,7 @@ use middle::privacy;
 use std::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, is_local, local_def};
+use syntax::ast_util::{def_id_of_def, is_local};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::visit::Visitor;
@@ -310,47 +310,13 @@ impl ReachableContext {
                         }
                     }
 
-                    // Implementations of exported structs/enums need to get
-                    // added to the worklist (as all their methods should be
-                    // accessible)
-                    ast::item_struct(*) | ast::item_enum(*) => {
-                        let def = local_def(item.id);
-                        let impls = match self.tcx.inherent_impls.find(&def) {
-                            Some(&impls) => impls,
-                            None => return
-                        };
-                        for imp in impls.iter() {
-                            if is_local(imp.did) {
-                                self.worklist.push(imp.did.node);
-                            }
-                        }
-                    }
-
-                    // Propagate through this impl
-                    ast::item_impl(_, _, _, ref methods) => {
-                        for method in methods.iter() {
-                            self.worklist.push(method.id);
-                        }
-                    }
-
-                    // Default methods of exported traits need to all be
-                    // accessible.
-                    ast::item_trait(_, _, ref methods) => {
-                        for method in methods.iter() {
-                            match *method {
-                                ast::required(*) => {}
-                                ast::provided(ref method) => {
-                                    self.worklist.push(method.id);
-                                }
-                            }
-                        }
-                    }
-
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
-                    // worklist
+                    // worklist, as determined by the privacy pass
                     ast::item_static(*) | ast::item_ty(*) |
-                        ast::item_mod(*) | ast::item_foreign_mod(*) => {}
+                    ast::item_mod(*) | ast::item_foreign_mod(*) |
+                    ast::item_impl(*) | ast::item_trait(*) |
+                    ast::item_struct(*) | ast::item_enum(*) => {}
 
                     _ => {
                         self.tcx.sess.span_bug(item.span,
