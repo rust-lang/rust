@@ -1131,9 +1131,8 @@ block.
 let fptr: extern "C" fn() -> ~[int] = new_vec;
 ~~~~
 
-Extern functions may be called from Rust code, but
-caution must be taken with respect to the size of the stack
-segment, just as when calling an extern function normally.
+Extern functions may be called directly from Rust code as Rust uses large,
+contiguous stack segments like C.
 
 ### Type definitions
 
@@ -3597,9 +3596,9 @@ and releases them back to its environment when they are no longer needed.
 The default implementation of the service-provider interface
 consists of the C runtime functions `malloc` and `free`.
 
-The runtime memory-management system, in turn, supplies Rust tasks
-with facilities for allocating, extending and releasing stacks,
-as well as allocating and freeing heap data.
+The runtime memory-management system, in turn, supplies Rust tasks with
+facilities for allocating releasing stacks, as well as allocating and freeing
+heap data.
 
 ### Built in types
 
@@ -3762,7 +3761,6 @@ have come and gone during the course of Rust's development:
 
 Additional specific influences can be seen from the following languages:
 
-* The stack-growth implementation of Go.
 * The structural algebraic types and compilation manager of SML.
 * The attribute and assembly systems of C#.
 * The references and deterministic destructor system of C++.
