@@ -74,11 +74,11 @@ pub fn trans_if(bcx: @mut Block,
                 None => {}
             }
             // if true { .. } [else { .. }]
-            return do with_scope(bcx, thn.info(), "if_true_then") |bcx| {
+            return with_scope(bcx, thn.info(), "if_true_then", |bcx| {
                 let bcx_out = trans_block(bcx, thn, dest);
                 debuginfo::clear_source_location(bcx.fcx);
                 trans_block_cleanups(bcx_out, block_cleanups(bcx))
-            }
+            })
         } else {
             let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
             trans.visit_block(thn, ());
@@ -86,11 +86,14 @@ pub fn trans_if(bcx: @mut Block,
             match els {
                 // if false { .. } else { .. }
                 Some(elexpr) => {
-                    return do with_scope(bcx, elexpr.info(), "if_false_then") |bcx| {
+                    return with_scope(bcx,
+                                      elexpr.info(),
+                                      "if_false_then",
+                                      |bcx| {
                         let bcx_out = trans_if_else(bcx, elexpr, dest);
                         debuginfo::clear_source_location(bcx.fcx);
                         trans_block_cleanups(bcx_out, block_cleanups(bcx))
-                    }
+                    })
                 }
                 // if false { .. }
                 None => return bcx,

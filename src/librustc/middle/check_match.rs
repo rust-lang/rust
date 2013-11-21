@@ -134,13 +134,13 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 }
             };
 
-            do walk_pat(*pat) |p| {
+            walk_pat(*pat, |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
                                                    use the is_nan method in a guard instead");
                 }
                 true
-            };
+            });
 
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
@@ -275,14 +275,14 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
-                let max_len = do m.rev_iter().fold(0) |max_len, r| {
+                let max_len = m.rev_iter().fold(0, |max_len, r| {
                   match r[0].node {
                     PatVec(ref before, _, ref after) => {
                       num::max(before.len() + after.len(), max_len)
                     }
                     _ => max_len
                   }
-                };
+                });
                 for n in iter::range(0u, max_len + 1) {
                   match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                     not_useful => (),
@@ -454,14 +454,14 @@ fn missing_ctor(cx: &MatchCheckCtxt,
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
         // Find the lengths and slices of all vector patterns.
-        let vec_pat_lens = do m.iter().filter_map |r| {
+        let vec_pat_lens = m.iter().filter_map(|r| {
             match r[0].node {
                 PatVec(ref before, ref slice, ref after) => {
                     Some((before.len() + after.len(), slice.is_some()))
                 }
                 _ => None
             }
-        }.collect::<~[(uint, bool)]>();
+        }).collect::<~[(uint, bool)]>();
 
         // Sort them by length such that for patterns of the same length,
         // those with a destructured slice come first.
@@ -886,7 +886,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let mut by_ref_span = None;
     let mut any_by_move = false;
     for pat in pats.iter() {
-        do pat_bindings(def_map, *pat) |bm, id, span, _path| {
+        pat_bindings(def_map, *pat, |bm, id, span, _path| {
             match bm {
                 BindByRef(_) => {
                     by_ref_span = Some(span);
@@ -897,7 +897,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     }
                 }
             }
-        }
+        })
     }
 
     let check_move: |&Pat, Option<@Pat>| = |p, sub| {
@@ -925,7 +925,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     for pat in pats.iter() {
-        do walk_pat(*pat) |p| {
+        walk_pat(*pat, |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
                     PatIdent(_, _, sub) => {
@@ -943,6 +943,6 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 }
             }
             true
-        };
+        });
     }
 }

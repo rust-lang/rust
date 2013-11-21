@@ -290,9 +290,9 @@ impl Datum {
                 ByRef(_) => {
                     let cast = PointerCast(bcx, dst, val_ty(self.val));
                     let cmp = ICmp(bcx, lib::llvm::IntNE, cast, self.val);
-                    do with_cond(bcx, cmp) |bcx| {
+                    with_cond(bcx, cmp, |bcx| {
                         self.copy_to_no_check(bcx, action, dst)
-                    }
+                    })
                 }
                 ByValue => {
                     self.copy_to_no_check(bcx, action, dst)

@@ -22,9 +22,9 @@ pub type PatIdMap = HashMap<Ident, NodeId>;
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: resolve::DefMap, pat: &Pat) -> PatIdMap {
     let mut map = HashMap::new();
-    do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
+    pat_bindings(dm, pat, |_bm, p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
-    };
+    });
     map
 }
 
@@ -75,7 +75,7 @@ pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_bindings(dm: resolve::DefMap,
                     pat: &Pat,
                     it: |BindingMode, NodeId, Span, &Path|) {
-    do walk_pat(pat) |p| {
+    walk_pat(pat, |p| {
         match p.node {
           PatIdent(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {
             it(binding_mode, p.id, p.span, pth);
@@ -83,7 +83,7 @@ pub fn pat_bindings(dm: resolve::DefMap,
           _ => {}
         }
         true
-    };
+    });
 }
 
 pub fn pat_binding_ids(dm: resolve::DefMap, pat: &Pat) -> ~[NodeId] {
@@ -96,13 +96,13 @@ pub fn pat_binding_ids(dm: resolve::DefMap, pat: &Pat) -> ~[NodeId] {
 /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(*)`.
 pub fn pat_contains_bindings(dm: resolve::DefMap, pat: &Pat) -> bool {
     let mut contains_bindings = false;
-    do walk_pat(pat) |p| {
+    walk_pat(pat, |p| {
         if pat_is_binding(dm, p) {
             contains_bindings = true;
             false // there's at least one binding, can short circuit now.
         } else {
             true
         }
-    };
+    });
     contains_bindings
 }

@@ -51,11 +51,11 @@ fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     unsafe {
         let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
         let mut y: *i32 = transmute(input.unsafe_ref(0));
-        do dst.len().times() {
+        dst.len().times(|| {
             *x = to_be32(*y);
             x = x.offset(1);
             y = y.offset(1);
-        }
+        })
     }
 }
 
@@ -613,9 +613,7 @@ mod bench {
     pub fn sha1_10(bh: & mut BenchHarness) {
         let mut sh = Sha1::new();
         let bytes = [1u8, ..10];
-        do bh.iter {
-            sh.input(bytes);
-        }
+        bh.iter(|| sh.input(bytes));
         bh.bytes = bytes.len() as u64;
     }
 
@@ -623,9 +621,7 @@ mod bench {
     pub fn sha1_1k(bh: & mut BenchHarness) {
         let mut sh = Sha1::new();
         let bytes = [1u8, ..1024];
-        do bh.iter {
-            sh.input(bytes);
-        }
+        bh.iter(|| sh.input(bytes));
         bh.bytes = bytes.len() as u64;
     }
 
@@ -633,9 +629,7 @@ mod bench {
     pub fn sha1_64k(bh: & mut BenchHarness) {
         let mut sh = Sha1::new();
         let bytes = [1u8, ..65536];
-        do bh.iter {
-            sh.input(bytes);
-        }
+        bh.iter(|| sh.input(bytes));
         bh.bytes = bytes.len() as u64;
     }
 }

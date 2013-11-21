@@ -109,14 +109,14 @@ fn render(w: &mut io::Writer, s: &str) {
         let markdown = sd_markdown_new(extensions, 16, &callbacks,
                                        &options as *html_renderopt as *libc::c_void);
 
-        do s.as_imm_buf |data, len| {
+        s.as_imm_buf(|data, len| {
             sd_markdown_render(ob, data, len as libc::size_t, markdown);
-        }
+        });
         sd_markdown_free(markdown);
 
-        do vec::raw::buf_as_slice((*ob).data, (*ob).size as uint) |buf| {
+        vec::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
             w.write(buf);
-        }
+        });
 
         bufrelease(ob);
     }

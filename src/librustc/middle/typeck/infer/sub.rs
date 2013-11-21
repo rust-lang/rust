@@ -167,13 +167,13 @@ impl Combine for Sub {
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
         let (skol_map, _, b_sig) = {
-            do replace_bound_regions_in_fn_sig(self.infcx.tcx, None, b) |br| {
+            replace_bound_regions_in_fn_sig(self.infcx.tcx, None, b, |br| {
                 let skol = self.infcx.region_vars.new_skolemized(br);
                 debug!("Bound region {} skolemized to {:?}",
                        bound_region_to_str(self.infcx.tcx, "", false, br),
                        skol);
                 skol
-            }
+            })
         };
 
         debug!("a_sig={}", a_sig.inf_str(self.infcx));

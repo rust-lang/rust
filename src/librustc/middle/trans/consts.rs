@@ -100,9 +100,9 @@ fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr]) -> (ValueR
 
 fn const_addr_of(cx: &mut CrateContext, cv: ValueRef) -> ValueRef {
     unsafe {
-        let gv = do "const".with_c_str |name| {
+        let gv = "const".with_c_str(|name| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
-        };
+        });
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetGlobalConstant(gv, True);
         SetLinkage(gv, PrivateLinkage);
@@ -191,12 +191,12 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
         Some(@ty::AutoDerefRef(ref adj)) => {
             let mut ty = ety;
             let mut maybe_ptr = None;
-            do adj.autoderefs.times {
+            adj.autoderefs.times(|| {
                 let (dv, dt) = const_deref(cx, llconst, ty, false);
                 maybe_ptr = Some(llconst);
                 llconst = dv;
                 ty = dt;
-            }
+            });
 
             match adj.autoref {
                 None => { }
@@ -385,10 +385,10 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
               let bt = ty::expr_ty_adjusted(cx.tcx, base);
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, base);
-              do expr::with_field_tys(cx.tcx, bt, None) |discr, field_tys| {
+              expr::with_field_tys(cx.tcx, bt, None, |discr, field_tys| {
                   let ix = ty::field_idx_strict(cx.tcx, field.name, field_tys);
                   (adt::const_get_field(cx, brepr, bv, discr, ix), inlineable)
-              }
+              })
           }
 
           ast::ExprIndex(_, base, index) => {
@@ -504,8 +504,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                 None => None
               };
 
-              do expr::with_field_tys(tcx, ety, Some(e.id))
-                  |discr, field_tys| {
+              expr::with_field_tys(tcx, ety, Some(e.id), |discr, field_tys| {
                   let cs = field_tys.iter().enumerate()
                       .map(|(ix, &field_ty)| {
                       match fs.iter().find(|f| field_ty.ident.name == f.ident.node.name) {
@@ -524,7 +523,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                   let (cs, inlineable) = vec::unzip(cs.move_iter());
                   (adt::trans_const(cx, repr, discr, cs),
                    inlineable.iter().fold(true, |a, &b| a && b))
-              }
+              })
           }
           ast::ExprVec(ref es, ast::MutImmutable) => {
             let (v, _, inlineable) = const_vec(cx, e, *es);
@@ -541,9 +540,9 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
               ast::ExprVec(ref es, ast::MutImmutable) => {
                 let (cv, llunitty, _) = const_vec(cx, e, *es);
                 let llty = val_ty(cv);
-                let gv = do "const".with_c_str |name| {
+                let gv = "const".with_c_str(|name| {
                     llvm::LLVMAddGlobal(cx.llmod, llty.to_ref(), name)
-                };
+                });
                 llvm::LLVMSetInitializer(gv, cv);
                 llvm::LLVMSetGlobalConstant(gv, True);
                 SetLinkage(gv, PrivateLinkage);

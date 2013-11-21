@@ -125,14 +125,14 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
     debug!("checking impl with self type {:?}", ty::get(self_ty).sty);
-    do check_builtin_bounds(cx, self_ty, trait_def.bounds) |missing| {
+    check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
         cx.tcx.sess.span_err(self_type.span,
             format!("the type `{}', which does not fulfill `{}`, cannot implement this \
                   trait", ty_to_str(cx.tcx, self_ty), missing.user_string(cx.tcx)));
         cx.tcx.sess.span_note(self_type.span,
             format!("types implementing this trait must fulfill `{}`",
                  trait_def.bounds.user_string(cx.tcx)));
-    }
+    });
 
     // If this is a destructor, check kinds.
     if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
@@ -255,12 +255,12 @@ fn check_fn(
     fn_id: NodeId) {
 
     // Check kinds on free variables:
-    do with_appropriate_checker(cx, fn_id) |chk| {
+    with_appropriate_checker(cx, fn_id, |chk| {
         let r = freevars::get_freevars(cx.tcx, fn_id);
         for fv in r.iter() {
             chk(cx, *fv);
         }
-    }
+    });
 
     visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());
 }
@@ -374,20 +374,23 @@ pub fn check_typaram_bounds(cx: &Context,
                     ty: ty::t,
                     type_param_def: &ty::TypeParameterDef)
 {
-    do check_builtin_bounds(cx, ty, type_param_def.bounds.builtin_bounds) |missing| {
+    check_builtin_bounds(cx,
+                         ty,
+                         type_param_def.bounds.builtin_bounds,
+                         |missing| {
         cx.tcx.sess.span_err(
             sp,
             format!("instantiating a type parameter with an incompatible type \
                   `{}`, which does not fulfill `{}`",
                  ty_to_str(cx.tcx, ty),
                  missing.user_string(cx.tcx)));
-    }
+    });
 }
 
 pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
-    do check_builtin_bounds(cx, ty, bounds) |missing| {
+    check_builtin_bounds(cx, ty, bounds, |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
         // Emit a less mysterious error message in this case.
         match referenced_ty {
@@ -404,18 +407,18 @@ pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
             sp,
             format!("this closure's environment must satisfy `{}`",
                  bounds.user_string(cx.tcx)));
-    }
+    });
 }
 
 pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
-    do check_builtin_bounds(cx, ty, bounds) |missing| {
+    check_builtin_bounds(cx, ty, bounds, |missing| {
         cx.tcx.sess.span_err(sp,
             format!("cannot pack type `{}`, which does not fulfill \
                   `{}`, as a trait bounded by {}",
                  ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
                  bounds.user_string(cx.tcx)));
-    }
+    });
 }
 
 fn is_nullary_variant(cx: &Context, ex: @Expr) -> bool {
