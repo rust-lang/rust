@@ -1527,7 +1527,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
                 unsafe {
                     raw::set_len(self, ln - 1u);
-                    Some(ptr::read_ptr(valptr))
+                    Some(ptr::read_ptr(&*valptr))
                 }
             }
         }
