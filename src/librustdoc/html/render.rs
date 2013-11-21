@@ -466,14 +466,15 @@ impl DocFolder for Cache {
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types
         match item.inner {
-            clean::StructItem(ref s)   => self.generics(&s.generics),
-            clean::EnumItem(ref e)     => self.generics(&e.generics),
-            clean::FunctionItem(ref f) => self.generics(&f.generics),
-            clean::TypedefItem(ref t)  => self.generics(&t.generics),
-            clean::TraitItem(ref t)    => self.generics(&t.generics),
-            clean::ImplItem(ref i)     => self.generics(&i.generics),
-            clean::TyMethodItem(ref i) => self.generics(&i.generics),
-            clean::MethodItem(ref i)   => self.generics(&i.generics),
+            clean::StructItem(ref s)          => self.generics(&s.generics),
+            clean::EnumItem(ref e)            => self.generics(&e.generics),
+            clean::FunctionItem(ref f)        => self.generics(&f.generics),
+            clean::TypedefItem(ref t)         => self.generics(&t.generics),
+            clean::TraitItem(ref t)           => self.generics(&t.generics),
+            clean::ImplItem(ref i)            => self.generics(&i.generics),
+            clean::TyMethodItem(ref i)        => self.generics(&i.generics),
+            clean::MethodItem(ref i)          => self.generics(&i.generics),
+            clean::ForeignFunctionItem(ref f) => self.generics(&f.generics),
             _ => {}
         }
 
