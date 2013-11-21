@@ -104,14 +104,14 @@ pub fn lookup(name: &str) -> Option<Abi> {
 
     let mut res = None;
 
-    do each_abi |abi| {
+    each_abi(|abi| {
         if name == abi.data().name {
             res = Some(abi);
             false
         } else {
             true
         }
-    };
+    });
     res
 }
 
@@ -217,21 +217,21 @@ impl AbiSet {
 
         let mut res = None;
 
-        do self.each |abi| {
+        self.each(|abi| {
             let data = abi.data();
             match data.abi_arch {
                 Archs(a) if (a & arch.bit()) != 0 => { res = Some(abi); false }
                 Archs(_) => { true }
                 RustArch | AllArch => { res = Some(abi); false }
             }
-        };
+        });
 
         res.map(|r| r.for_target(os, arch))
     }
 
     pub fn check_valid(&self) -> Option<(Abi, Abi)> {
         let mut abis = ~[];
-        do self.each |abi| { abis.push(abi); true };
+        self.each(|abi| { abis.push(abi); true });
 
         for (i, abi) in abis.iter().enumerate() {
             let data = abi.data();
@@ -285,10 +285,10 @@ impl ToStr for Abi {
 impl ToStr for AbiSet {
     fn to_str(&self) -> ~str {
         let mut strs = ~[];
-        do self.each |abi| {
+        self.each(|abi| {
             strs.push(abi.data().name);
             true
-        };
+        });
         format!("\"{}\"", strs.connect(" "))
     }
 }
