@@ -560,10 +560,6 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast_ty.span,
             "found `ty_infer` in unexpected place");
       }
-      ast::ty_mac(_) => {
-        tcx.sess.span_bug(ast_ty.span,
-                          "found `ty_mac` in unexpected place");
-      }
     };
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_resolved(typ));

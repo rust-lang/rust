@@ -459,9 +459,6 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
           print_expr(s, e);
           word(s.s, ")");
       }
-      ast::ty_mac(_) => {
-          fail!("print_type doesn't know how to print a ty_mac");
-      }
       ast::ty_infer => {
           fail!("print_type shouldn't see a ty_infer");
       }

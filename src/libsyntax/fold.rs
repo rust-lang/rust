@@ -277,7 +277,6 @@ pub trait ast_fold {
             ty_fixed_length_vec(ref mt, e) => {
                 ty_fixed_length_vec(fold_mt(mt, self), self.fold_expr(e))
             }
-            ty_mac(ref mac) => ty_mac(self.fold_mac(mac)),
             ty_typeof(expr) => ty_typeof(self.fold_expr(expr)),
         };
         Ty {
