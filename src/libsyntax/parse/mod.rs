@@ -349,7 +349,7 @@ mod test {
     }
 
     // produce a codemap::span
-    fn sp (a: uint, b: uint) -> Span {
+    fn sp(a: u32, b: u32) -> Span {
         Span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
     }
 
