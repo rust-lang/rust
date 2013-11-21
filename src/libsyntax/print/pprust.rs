@@ -703,7 +703,7 @@ pub fn print_struct(s: @ps,
     if ast_util::struct_def_is_tuple_like(struct_def) {
         if !struct_def.fields.is_empty() {
             popen(s);
-            do commasep(s, inconsistent, struct_def.fields) |s, field| {
+            commasep(s, inconsistent, struct_def.fields, |s, field| {
                 match field.node.kind {
                     ast::named_field(*) => fail!("unexpected named field"),
                     ast::unnamed_field => {
@@ -711,7 +711,7 @@ pub fn print_struct(s: @ps,
                         print_type(s, &field.node.ty);
                     }
                 }
-            }
+            });
             pclose(s);
         }
         word(s.s, ";");
@@ -1698,9 +1698,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
       }
       ast::PatVec(ref before, slice, ref after) => {
         word(s.s, "[");
-        do commasep(s, inconsistent, *before) |s, &p| {
-            print_pat(s, p);
-        }
+        commasep(s, inconsistent, *before, |s, &p| print_pat(s, p));
         for &p in slice.iter() {
             if !before.is_empty() { word_space(s, ","); }
             match p {
@@ -1712,9 +1710,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
             print_pat(s, p);
             if !after.is_empty() { word_space(s, ","); }
         }
-        do commasep(s, inconsistent, *after) |s, &p| {
-            print_pat(s, p);
-        }
+        commasep(s, inconsistent, *after, |s, &p| print_pat(s, p));
         word(s.s, "]");
       }
     }
@@ -1936,9 +1932,9 @@ pub fn print_view_path(s: @ps, vp: &ast::view_path) {
       ast::view_path_list(ref path, ref idents, _) => {
         print_path(s, path, false);
         word(s.s, "::{");
-        do commasep(s, inconsistent, (*idents)) |s, w| {
+        commasep(s, inconsistent, (*idents), |s, w| {
             print_ident(s, w.node.name);
-        }
+        });
         word(s.s, "}");
       }
     }
@@ -2052,9 +2048,7 @@ pub fn print_ty_fn(s: @ps,
     match id { Some(id) => { word(s.s, " "); print_ident(s, id); } _ => () }
 
     if opt_sigil != Some(ast::BorrowedSigil) {
-        do opt_bounds.as_ref().map |bounds| {
-            print_bounds(s, bounds, true);
-        };
+        opt_bounds.as_ref().map(|bounds| print_bounds(s, bounds, true));
     }
 
     match generics { Some(g) => print_generics(s, g), _ => () }
@@ -2156,9 +2150,7 @@ pub fn print_literal(s: @ps, lit: &ast::lit) {
       ast::lit_str(st, style) => print_string(s, st, style),
       ast::lit_char(ch) => {
           let mut res = ~"'";
-          do char::from_u32(ch).unwrap().escape_default |c| {
-              res.push_char(c);
-          }
+          char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
           res.push_char('\'');
           word(s.s, res);
       }

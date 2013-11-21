@@ -742,12 +742,12 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
                                "format argument must be a string literal.");
 
     let mut err = false;
-    do parse::parse_error::cond.trap(|m| {
+    parse::parse_error::cond.trap(|m| {
         if !err {
             err = true;
             ecx.span_err(efmt.span, m);
         }
-    }).inside {
+    }).inside(|| {
         for piece in parse::Parser::new(fmt) {
             if !err {
                 cx.verify_piece(&piece);
@@ -755,7 +755,7 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
                 cx.pieces.push(piece);
             }
         }
-    }
+    });
     if err { return MRExpr(efmt) }
 
     // Make sure that all arguments were used and all arguments have types.

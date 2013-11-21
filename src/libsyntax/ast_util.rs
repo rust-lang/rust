@@ -254,12 +254,12 @@ pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
 }
 
 pub fn public_methods(ms: ~[@method]) -> ~[@method] {
-    do ms.move_iter().filter |m| {
+    ms.move_iter().filter(|m| {
         match m.vis {
             public => true,
             _   => false
         }
-    }.collect()
+    }).collect()
 }
 
 // extract a TypeMethod from a trait_method. if the trait_method is

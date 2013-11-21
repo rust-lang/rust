@@ -76,9 +76,9 @@ fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
                     }
                 }
                 Named(ref fields) => {
-                    let zero_fields = do fields.map |&(ident, span)| {
+                    let zero_fields = fields.map(|&(ident, span)| {
                         cx.field_imm(span, ident, zero_call(span))
-                    };
+                    });
                     cx.expr_struct_ident(span, substr.type_ident, zero_fields)
                 }
             }

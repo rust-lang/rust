@@ -187,12 +187,12 @@ pub trait ast_fold {
             }
             PatStruct(ref pth, ref fields, etc) => {
                 let pth_ = self.fold_path(pth);
-                let fs = do fields.map |f| {
+                let fs = fields.map(|f| {
                     ast::FieldPat {
                         ident: f.ident,
                         pat: self.fold_pat(f.pat)
                     }
-                };
+                });
                 PatStruct(pth_, fs, etc)
             }
             PatTup(ref elts) => PatTup(elts.map(|x| self.fold_pat(*x))),
@@ -455,7 +455,7 @@ fn fold_arg_<T:ast_fold>(a: &arg, fld: &T) -> arg {
 // build a new vector of tts by appling the ast_fold's fold_ident to
 // all of the identifiers in the token trees.
 pub fn fold_tts<T:ast_fold>(tts: &[token_tree], fld: &T) -> ~[token_tree] {
-    do tts.map |tt| {
+    tts.map(|tt| {
         match *tt {
             tt_tok(span, ref tok) =>
             tt_tok(span,maybe_fold_ident(tok,fld)),
@@ -468,7 +468,7 @@ pub fn fold_tts<T:ast_fold>(tts: &[token_tree], fld: &T) -> ~[token_tree] {
             tt_nonterminal(sp,ref ident) =>
             tt_nonterminal(sp,fld.fold_ident(*ident))
         }
-    }
+    })
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
@@ -601,11 +601,11 @@ fn fold_field<T:ast_fold>(f: TypeField, folder: &T) -> TypeField {
 
 fn fold_opt_bounds<T:ast_fold>(b: &Option<OptVec<TyParamBound>>, folder: &T)
                                -> Option<OptVec<TyParamBound>> {
-    do b.as_ref().map |bounds| {
-        do bounds.map |bound| {
+    b.as_ref().map(|bounds| {
+        bounds.map(|bound| {
             fold_ty_param_bound(bound, folder)
-        }
-    }
+        })
+    })
 }
 
 fn fold_variant_arg_<T:ast_fold>(va: &variant_arg, folder: &T)
@@ -660,9 +660,9 @@ pub fn noop_fold_item_underscore<T:ast_fold>(i: &item_, folder: &T) -> item_ {
         item_enum(ref enum_definition, ref generics) => {
             item_enum(
                 ast::enum_def {
-                    variants: do enum_definition.variants.map |x| {
+                    variants: enum_definition.variants.map(|x| {
                         folder.fold_variant(x)
-                    },
+                    }),
                 },
                 fold_generics(generics, folder))
         }
@@ -678,12 +678,12 @@ pub fn noop_fold_item_underscore<T:ast_fold>(i: &item_, folder: &T) -> item_ {
             )
         }
         item_trait(ref generics, ref traits, ref methods) => {
-            let methods = do methods.map |method| {
+            let methods = methods.map(|method| {
                 match *method {
                     required(ref m) => required(folder.fold_type_method(m)),
                     provided(method) => provided(folder.fold_method(method))
                 }
-            };
+            });
             item_trait(fold_generics(generics, folder),
                        traits.map(|p| fold_trait_ref(p, folder)),
                        methods)

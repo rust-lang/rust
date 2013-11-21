@@ -74,7 +74,7 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
             in_items
         }
         MetaList(_, ref titems) => {
-            do titems.rev_iter().fold(in_items) |in_items, &titem| {
+            titems.rev_iter().fold(in_items, |in_items, &titem| {
                 match titem.node {
                     MetaNameValue(tname, _) |
                     MetaList(tname, _) |
@@ -112,7 +112,7 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                         }
                     }
                 }
-            }
+            })
         }
     }
 }
