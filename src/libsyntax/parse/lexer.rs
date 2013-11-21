@@ -247,7 +247,7 @@ pub fn bump(rdr: &mut StringReader) {
         let last_char = rdr.curr;
         let next = rdr.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
-        rdr.pos = rdr.pos + BytePos(byte_offset_diff);
+        rdr.pos = rdr.pos + Pos::from_uint(byte_offset_diff);
         rdr.curr = next.ch;
         rdr.col = rdr.col + CharPos(1u);
         if last_char == '\n' {
@@ -257,7 +257,7 @@ pub fn bump(rdr: &mut StringReader) {
 
         if byte_offset_diff > 1 {
             rdr.filemap.record_multibyte_char(
-                BytePos(current_byte_offset), byte_offset_diff);
+                Pos::from_uint(current_byte_offset), byte_offset_diff);
         }
     } else {
         rdr.curr = unsafe { transmute(-1u32) }; // FIXME: #8971: unsound
@@ -333,7 +333,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_bpos = rdr.pos - BytePos(3u);
+                let start_bpos = rdr.pos - BytePos(3);
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     bump(rdr);
                 }
@@ -387,7 +387,7 @@ fn consume_block_comment(rdr: @mut StringReader)
                       -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
     let is_doc_comment = rdr.curr == '*' || rdr.curr == '!';
-    let start_bpos = rdr.pos - BytePos(if is_doc_comment {3u} else {2u});
+    let start_bpos = rdr.pos - BytePos(if is_doc_comment {3} else {2});
 
     let mut level: int = 1;
     while level > 0 {
@@ -815,7 +815,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                                // Byte offsetting here is okay because the
                                // character before position `start` is an
                                // ascii single quote.
-                               start - BytePos(1u),
+                               start - BytePos(1),
                                rdr.last_pos,
                                ~"unterminated character constant");
         }

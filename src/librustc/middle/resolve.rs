@@ -29,7 +29,7 @@ use syntax::parse::token;
 use syntax::parse::token::{ident_interner, interner_get};
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
-use syntax::codemap::{Span, dummy_sp, BytePos};
+use syntax::codemap::{Span, dummy_sp, Pos};
 use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -2624,7 +2624,7 @@ impl Resolver {
                     if "???" == module_name {
                         let span = Span {
                             lo: span.lo,
-                            hi: span.lo + BytePos(segment_name.len()),
+                            hi: span.lo + Pos::from_uint(segment_name.len()),
                             expn_info: span.expn_info,
                         };
                         self.resolve_error(span,
