@@ -103,7 +103,7 @@ fn cs_clone(
         },
         _ => {
             // struct-like
-            let fields = do all_fields.map |field| {
+            let fields = all_fields.map(|field| {
                 let ident = match field.name {
                     Some(i) => i,
                     None => cx.span_bug(span,
@@ -111,7 +111,7 @@ fn cs_clone(
                                              name))
                 };
                 cx.field_imm(span, ident, subcall(field.self_))
-            };
+            });
 
             if fields.is_empty() {
                 // no fields, so construct like `None`

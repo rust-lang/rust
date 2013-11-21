@@ -370,9 +370,9 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {
-        let new_params = do generics.ty_params.map |ty_param| {
+        let new_params = generics.ty_params.map(|ty_param| {
             ast::TyParam { bounds: opt_vec::Empty, ..*ty_param }
-        };
+        });
         Generics {
             ty_params: new_params,
             .. (*generics).clone()
@@ -883,9 +883,9 @@ impl AstBuilder for @ExtCtxt {
 
     fn view_use_list(&self, sp: Span, vis: ast::visibility,
                      path: ~[ast::Ident], imports: &[ast::Ident]) -> ast::view_item {
-        let imports = do imports.map |id| {
+        let imports = imports.map(|id| {
             respan(sp, ast::path_list_ident_ { name: *id, id: ast::DUMMY_NODE_ID })
-        };
+        });
 
         self.view_use(sp, vis,
                       ~[@respan(sp,

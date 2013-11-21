@@ -24,19 +24,19 @@ would generate two implementations like:
 
 impl<S:extra::serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
-        do s.emit_struct("Node", 1) {
+        s.emit_struct("Node", 1, || {
             s.emit_field("id", 0, || s.emit_uint(self.id))
-        }
+        })
     }
 }
 
 impl<D:Decoder> Decodable for node_id {
     fn decode(d: &D) -> Node {
-        do d.read_struct("Node", 1) {
+        d.read_struct("Node", 1, || {
             Node {
                 id: d.read_field(~"x", 0, || decode(d))
             }
-        }
+        })
     }
 }
 
@@ -53,10 +53,10 @@ would yield functions like:
         T: Encodable<S>
     > spanned<T>: Encodable<S> {
         fn encode<S:Encoder>(s: &S) {
-            do s.emit_rec {
+            s.emit_rec(|| {
                 s.emit_field("node", 0, || self.node.encode(s));
                 s.emit_field("span", 1, || self.span.encode(s));
-            }
+            })
         }
     }
 
@@ -65,12 +65,12 @@ would yield functions like:
         T: Decodable<D>
     > spanned<T>: Decodable<D> {
         fn decode(d: &D) -> spanned<T> {
-            do d.read_rec {
+            d.read_rec(|| {
                 {
                     node: d.read_field(~"node", 0, || decode(d)),
                     span: d.read_field(~"span", 1, || decode(d)),
                 }
-            }
+            })
         }
     }
 */
