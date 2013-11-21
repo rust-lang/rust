@@ -444,17 +444,17 @@ mod tests {
     fn test_rand_sample() {
         let mut rand_sample = RandSample::<ConstRand>;
 
-        assert_eq!(*rand_sample.sample(task_rng()), 0);
-        assert_eq!(*rand_sample.ind_sample(task_rng()), 0);
+        assert_eq!(*rand_sample.sample(&mut task_rng()), 0);
+        assert_eq!(*rand_sample.ind_sample(&mut task_rng()), 0);
     }
 
     #[test]
     fn test_normal() {
         let mut norm = Normal::new(10.0, 10.0);
-        let rng = task_rng();
+        let mut rng = task_rng();
         for _ in range(0, 1000) {
-            norm.sample(rng);
-            norm.ind_sample(rng);
+            norm.sample(&mut rng);
+            norm.ind_sample(&mut rng);
         }
     }
     #[test]
@@ -466,10 +466,10 @@ mod tests {
     #[test]
     fn test_exp() {
         let mut exp = Exp::new(10.0);
-        let rng = task_rng();
+        let mut rng = task_rng();
         for _ in range(0, 1000) {
-            assert!(exp.sample(rng) >= 0.0);
-            assert!(exp.ind_sample(rng) >= 0.0);
+            assert!(exp.sample(&mut rng) >= 0.0);
+            assert!(exp.ind_sample(&mut rng) >= 0.0);
         }
     }
     #[test]
