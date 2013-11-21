@@ -330,10 +330,10 @@ impl get_and_find_region for isr_alist {
 
     fn find(&self, br: ty::BoundRegion) -> Option<ty::Region> {
         let mut ret = None;
-        do list::each(*self) |isr| {
+        list::each(*self, |isr| {
             let (isr_br, isr_r) = *isr;
             if isr_br == br { ret = Some(isr_r); false } else { true }
-        };
+        });
         ret
     }
 }

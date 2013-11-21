@@ -135,9 +135,9 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
-            let mut ftys = do fields.map |field| {
+            let mut ftys = fields.map(|field| {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
-            };
+            });
             let packed = ty::lookup_packed(cx.tcx, def_id);
             let dtor = ty::ty_dtor(cx.tcx, def_id).has_drop_flag();
             if dtor { ftys.push(ty::mk_bool()); }
@@ -259,12 +259,12 @@ impl Case {
 }
 
 fn get_cases(tcx: ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> ~[Case] {
-    do ty::enum_variants(tcx, def_id).map |vi| {
-        let arg_tys = do vi.args.map |&raw_ty| {
+    ty::enum_variants(tcx, def_id).map(|vi| {
+        let arg_tys = vi.args.map(|&raw_ty| {
             ty::subst(tcx, substs, raw_ty)
-        };
+        });
         Case { discr: vi.disr_val, tys: arg_tys }
-    }
+    })
 }
 
 
@@ -659,9 +659,7 @@ fn struct_field_ptr(bcx: @mut Block, st: &Struct, val: ValueRef, ix: uint,
     let ccx = bcx.ccx();
 
     let val = if needs_cast {
-        let fields = do st.fields.map |&ty| {
-            type_of::type_of(ccx, ty)
-        };
+        let fields = st.fields.map(|&ty| type_of::type_of(ccx, ty));
         let real_ty = Type::struct_(fields, st.packed);
         PointerCast(bcx, val, real_ty.ptr_to())
     } else {
@@ -725,10 +723,10 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             } else {
                 assert_eq!(vals.len(), 0);
-                let vals = do nonnull.fields.iter().enumerate().map |(i, &ty)| {
+                let vals = nonnull.fields.iter().enumerate().map(|(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
-                }.collect::<~[ValueRef]>();
+                }).collect::<~[ValueRef]>();
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             }
         }

@@ -193,17 +193,15 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
     debug!("matching {} metadata requirements against {} items",
            local_metas.len(), extern_metas.len());
 
-    do local_metas.iter().all |needed| {
-        attr::contains(extern_metas, *needed)
-    }
+    local_metas.iter().all(|needed| attr::contains(extern_metas, *needed))
 }
 
 fn get_metadata_section(os: Os,
                         filename: &Path) -> Option<@~[u8]> {
     unsafe {
-        let mb = do filename.with_c_str |buf| {
+        let mb = filename.with_c_str(|buf| {
             llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-        };
+        });
         if mb as int == 0 { return option::None::<@~[u8]>; }
         let of = match mk_object_file(mb) {
             option::Some(of) => of,
@@ -224,19 +222,19 @@ fn get_metadata_section(os: Os,
                        vlen);
                 let minsz = num::min(vlen, csz);
                 let mut version_ok = false;
-                do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
+                vec::raw::buf_as_slice(cvbuf, minsz, |buf0| {
                     version_ok = (buf0 ==
                                   encoder::metadata_encoding_version);
-                }
+                });
                 if !version_ok { return None; }
 
                 let cvbuf1 = ptr::offset(cvbuf, vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
+                vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
                     let inflated = flate::inflate_bytes(bytes);
                     found = Some(@(inflated));
-                }
+                });
                 if found != None {
                     return found;
                 }

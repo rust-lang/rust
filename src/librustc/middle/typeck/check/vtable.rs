@@ -132,7 +132,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     // ty is the value supplied for the type parameter A...
     let mut param_result = ~[];
 
-    do ty::each_bound_trait_and_supertraits(tcx, type_param_bounds.trait_bounds) |trait_ref| {
+    ty::each_bound_trait_and_supertraits(tcx, type_param_bounds.trait_bounds, |trait_ref| {
         // ...and here trait_ref is each bound that was declared on A,
         // expressed in terms of the type parameters.
 
@@ -161,7 +161,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
             }
         }
         true
-    };
+    });
 
     debug!("lookup_vtables_for_param result(\
             location_info={:?}, \
@@ -291,7 +291,7 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
 
     let mut n_bound = 0;
     let mut ret = None;
-    do ty::each_bound_trait_and_supertraits(tcx, bounds) |bound_trait_ref| {
+    ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
         debug!("checking bounds trait {}",
                bound_trait_ref.repr(vcx.tcx()));
 
@@ -309,7 +309,7 @@ fn lookup_vtable_from_bounds(vcx: &VtableContext,
             n_bound += 1;
             true
         }
-    };
+    });
     ret
 }
 
@@ -483,12 +483,12 @@ fn fixup_substs(vcx: &VtableContext,
                          ty::RegionTraitStore(ty::ReStatic),
                          ast::MutImmutable,
                          ty::EmptyBuiltinBounds());
-    do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
+    fixup_ty(vcx, location_info, t, is_early).map(|t_f| {
         match ty::get(t_f).sty {
           ty::ty_trait(_, ref substs_f, _, _, _) => (*substs_f).clone(),
           _ => fail!("t_f should be a trait")
         }
-    }
+    })
 }
 
 fn fixup_ty(vcx: &VtableContext,
@@ -560,7 +560,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
     let cx = fcx.ccx;
     match ex.node {
       ast::ExprPath(*) => {
-        do fcx.opt_node_ty_substs(ex.id) |substs| {
+        fcx.opt_node_ty_substs(ex.id, |substs| {
             debug!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
             let def = cx.tcx.def_map.get_copy(&ex.id);
@@ -580,7 +580,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                 }
             }
             true
-        };
+        });
       }
 
       ast::ExprParen(e) => {
