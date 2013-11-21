@@ -606,7 +606,7 @@ impl Parser {
             token::GT => self.bump(),
             token::BINOP(token::SHR) => self.replace_token(
                 token::GT,
-                self.span.lo + BytePos(1u),
+                self.span.lo + BytePos(1),
                 self.span.hi
             ),
             _ => self.fatal(format!("expected `{}`, found `{}`",

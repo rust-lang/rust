@@ -2119,7 +2119,7 @@ pub fn maybe_print_trailing_comment(s: @ps, span: codemap::Span,
         if (*cmnt).style != comments::trailing { return; }
         let span_line = cm.lookup_char_pos(span.hi);
         let comment_line = cm.lookup_char_pos((*cmnt).pos);
-        let mut next = (*cmnt).pos + BytePos(1u);
+        let mut next = (*cmnt).pos + BytePos(1);
         match next_pos { None => (), Some(p) => next = p }
         if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
                span_line.line == comment_line.line {

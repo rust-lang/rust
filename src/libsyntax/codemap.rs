@@ -29,9 +29,11 @@ pub trait Pos {
     fn to_uint(&self) -> uint;
 }
 
-/// A byte offset
+/// A byte offset. Keep this small (currently 32-bits), as AST contains
+/// a lot of them.
 #[deriving(Clone, Eq, IterBytes, Ord)]
-pub struct BytePos(uint);
+pub struct BytePos(u32);
+
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
@@ -42,8 +44,8 @@ pub struct CharPos(uint);
 // have been unsuccessful
 
 impl Pos for BytePos {
-    fn from_uint(n: uint) -> BytePos { BytePos(n) }
-    fn to_uint(&self) -> uint { **self }
+    fn from_uint(n: uint) -> BytePos { BytePos(n as u32) }
+    fn to_uint(&self) -> uint { **self as uint }
 }
 
 impl Add<BytePos, BytePos> for BytePos {
@@ -278,7 +280,7 @@ impl CodeMap {
 
         let filemap = @FileMap {
             name: filename, substr: substr, src: src,
-            start_pos: BytePos(start_pos),
+            start_pos: Pos::from_uint(start_pos),
             lines: @mut ~[],
             multibyte_chars: @mut ~[],
         };
