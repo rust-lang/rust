@@ -161,27 +161,25 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
         None => {
             // Variable declarations without initializers are considered "moves":
             let tcx = this.bccx.tcx;
-            do pat_util::pat_bindings(tcx.def_map, local.pat)
-                |_, id, span, _| {
+            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
                 gather_moves::gather_decl(this.bccx,
                                           this.move_data,
                                           id,
                                           span,
                                           id);
-            }
+            })
         }
         Some(init) => {
             // Variable declarations with initializers are considered "assigns":
             let tcx = this.bccx.tcx;
-            do pat_util::pat_bindings(tcx.def_map, local.pat)
-                |_, id, span, _| {
+            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
                 gather_moves::gather_assignment(this.bccx,
                                                 this.move_data,
                                                 id,
                                                 span,
                                                 @LpVar(id),
                                                 id);
-            }
+            });
             let init_cmt = this.bccx.cat_expr(init);
             this.gather_pat(init_cmt, local.pat, None);
         }
@@ -692,7 +690,7 @@ impl<'self> GatherLoanCtxt<'self> {
          * moves (non-`ref` bindings with linear type).
          */
 
-        do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
+        self.bccx.cat_pattern(discr_cmt, root_pat, |cmt, pat| {
             match pat.node {
               ast::PatIdent(bm, _, _) if self.pat_is_binding(pat) => {
                 match bm {
@@ -781,7 +779,7 @@ impl<'self> GatherLoanCtxt<'self> {
 
               _ => {}
             }
-        }
+        })
     }
 
     pub fn vec_slice_info(&self, pat: @ast::Pat, slice_ty: ty::t)

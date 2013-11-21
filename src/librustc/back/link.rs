@@ -72,13 +72,13 @@ pub fn WriteOutputFile(
         Output: &Path,
         FileType: lib::llvm::FileType) {
     unsafe {
-        do Output.with_c_str |Output| {
+        Output.with_c_str(|Output| {
             let result = llvm::LLVMRustWriteOutputFile(
                     Target, PM, M, Output, FileType);
             if !result {
                 llvm_err(sess, ~"Could not write output");
             }
-        }
+        })
     }
 }
 
@@ -130,12 +130,12 @@ pub mod jit {
             for cratepath in r.iter() {
                 debug!("linking: {}", cratepath.display());
 
-                do cratepath.with_c_str |buf_t| {
+                cratepath.with_c_str(|buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
                     debug!("linked: {}", cratepath.display());
-                }
+                })
             }
 
             // We custom-build a JIT execution engine via some rust wrappers
@@ -149,9 +149,9 @@ pub mod jit {
             // Next, we need to get a handle on the _rust_main function by
             // looking up it's corresponding ValueRef and then requesting that
             // the execution engine compiles the function.
-            let fun = do "_rust_main".with_c_str |entry| {
+            let fun = "_rust_main".with_c_str(|entry| {
                 llvm::LLVMGetNamedFunction(m, entry)
-            };
+            });
             if fun.is_null() {
                 llvm::LLVMDisposeExecutionEngine(ee);
                 llvm::LLVMContextDispose(c);
@@ -248,9 +248,9 @@ pub mod write {
             llvm::LLVMInitializeMipsAsmParser();
 
             if sess.opts.save_temps {
-                do output.with_extension("no-opt.bc").with_c_str |buf| {
+                output.with_extension("no-opt.bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                }
+                })
             }
 
             configure_llvm(sess);
@@ -263,9 +263,9 @@ pub mod write {
             };
             let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
 
-            let tm = do sess.targ_cfg.target_strs.target_triple.with_c_str |T| {
-                do sess.opts.target_cpu.with_c_str |CPU| {
-                    do sess.opts.target_feature.with_c_str |Features| {
+            let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
+                sess.opts.target_cpu.with_c_str(|CPU| {
+                    sess.opts.target_feature.with_c_str(|Features| {
                         llvm::LLVMRustCreateTargetMachine(
                             T, CPU, Features,
                             lib::llvm::CodeModelDefault,
@@ -274,9 +274,9 @@ pub mod write {
                             true,
                             use_softfp
                         )
-                    }
-                }
-            };
+                    })
+                })
+            });
 
             // Create the two optimizing pass managers. These mirror what clang
             // does, and are by populated by LLVM's default PassManagerBuilder.
@@ -288,7 +288,7 @@ pub mod write {
             // If we're verifying or linting, add them to the function pass
             // manager.
             let addpass = |pass: &str| {
-                do pass.with_c_str |s| { llvm::LLVMRustAddPass(fpm, s) }
+                pass.with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
             };
             if !sess.no_verify() { assert!(addpass("verify")); }
             if sess.lint_llvm()  { assert!(addpass("lint"));   }
@@ -300,11 +300,11 @@ pub mod write {
             }
 
             for pass in sess.opts.custom_passes.iter() {
-                do pass.with_c_str |s| {
+                pass.with_c_str(|s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
                         sess.warn(format!("Unknown pass {}, ignoring", *pass));
                     }
-                }
+                })
             }
 
             // Finally, run the actual optimization passes
@@ -316,9 +316,9 @@ pub mod write {
             llvm::LLVMDisposePassManager(mpm);
 
             if sess.opts.save_temps {
-                do output.with_extension("bc").with_c_str |buf| {
+                output.with_extension("bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                }
+                })
             }
 
             if sess.opts.jit {
@@ -337,14 +337,14 @@ pub mod write {
                 match output_type {
                     output_type_none => {}
                     output_type_bitcode => {
-                        do output.with_c_str |buf| {
+                        output.with_c_str(|buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                        }
+                        })
                     }
                     output_type_llvm_assembly => {
-                        do output.with_c_str |output| {
+                        output.with_c_str(|output| {
                             llvm::LLVMRustPrintModule(cpm, llmod, output)
-                        }
+                        })
                     }
                     output_type_assembly => {
                         WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::AssemblyFile);
@@ -415,9 +415,9 @@ pub mod write {
             add(*arg);
         }
 
-        do llvm_args.as_imm_buf |p, len| {
+        llvm_args.as_imm_buf(|p, len| {
             llvm::LLVMRustSetLLVMOptions(len as c_int, p);
-        }
+        })
     }
 
     unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,
@@ -736,7 +736,7 @@ pub fn sanitize(s: &str) -> ~str {
 
             _ => {
                 let mut tstr = ~"";
-                do char::escape_unicode(c) |c| { tstr.push_char(c); }
+                char::escape_unicode(c, |c| tstr.push_char(c));
                 result.push_char('$');
                 result.push_str(tstr.slice_from(1));
             }

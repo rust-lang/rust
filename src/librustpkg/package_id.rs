@@ -87,10 +87,10 @@ impl PkgId {
 
     pub fn hash(&self) -> ~str {
         // FIXME (#9639): hash should take a &[u8] so we can hash the real path
-        do self.path.display().with_str |s| {
+        self.path.display().with_str(|s| {
             let vers = self.version.to_str();
             format!("{}-{}-{}", s, hash(s + vers), vers)
-        }
+        })
     }
 
     pub fn short_name_with_version(&self) -> ~str {

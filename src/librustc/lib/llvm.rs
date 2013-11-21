@@ -1844,9 +1844,9 @@ pub struct TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let lltd = do string_rep.with_c_str |buf| {
+    let lltd = string_rep.with_c_str(|buf| {
         unsafe { llvm::LLVMCreateTargetData(buf) }
-    };
+    });
 
     TargetData {
         lltd: lltd,

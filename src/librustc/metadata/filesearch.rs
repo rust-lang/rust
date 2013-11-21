@@ -118,7 +118,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 }
 
 pub fn search(filesearch: @FileSearch, pick: pick) {
-    do filesearch.for_each_lib_search_path() |lib_search_path| {
+    filesearch.for_each_lib_search_path(|lib_search_path| {
         debug!("searching {}", lib_search_path.display());
         match io::result(|| fs::readdir(lib_search_path)) {
             Ok(files) => {
@@ -140,7 +140,7 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
             }
             Err(*) => FileDoesntMatch,
         }
-    };
+    });
 }
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {

@@ -81,21 +81,19 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &CrateSetup)
             -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
-            attrs: do item.attrs.iter().filter_map |attr| {
+            attrs: item.attrs.iter().filter_map(|attr| {
                 if "main" != attr.name() {
                     Some(*attr)
                 } else {
                     None
                 }
-            }.collect(),
+            }).collect(),
             .. (*item).clone()
         }
     }
 
     fold::noop_fold_mod(&ast::_mod {
-        items: do m.items.map |item| {
-            strip_main(*item)
-        },
+        items: m.items.map(|item| strip_main(*item)),
         .. (*m).clone()
     }, fold)
 }
@@ -493,21 +491,21 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         // and the `PkgSrc` constructor will detect that;
                         // or else it's already in a workspace and we'll build into that
                         // workspace
-                        let pkg_src = do cond.trap(|_| {
+                        let pkg_src = cond.trap(|_| {
                                  // Nonexistent package? Then print a better error
                                  error(format!("Package {} depends on {}, but I don't know \
                                                how to find it",
                                                self.parent.path.display(),
                                                pkg_id.path.display()));
                                  fail!()
-                        }).inside {
+                        }).inside(|| {
                             PkgSrc::new(source_workspace.clone(),
                                         dest_workspace.clone(),
                                         // Use the rust_path_hack to search for dependencies iff
                                         // we were already using it
                                         self.context.context.use_rust_path_hack,
                                         pkg_id.clone())
-                        };
+                        });
                         let (outputs_disc, inputs_disc) =
                             self.context.install(
                                 pkg_src,

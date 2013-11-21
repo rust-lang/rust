@@ -318,22 +318,22 @@ mod test {
     fn each_node() {
         let graph = create_graph();
         let expected = ["A", "B", "C", "D", "E", "F"];
-        do graph.each_node |idx, node| {
+        graph.each_node(|idx, node| {
             assert_eq!(&expected[*idx], graph.node_data(idx));
             assert_eq!(expected[*idx], node.data);
             true
-        };
+        });
     }
 
     #[test]
     fn each_edge() {
         let graph = create_graph();
         let expected = ["AB", "BC", "BD", "DE", "EC", "FB"];
-        do graph.each_edge |idx, edge| {
+        graph.each_edge(|idx, edge| {
             assert_eq!(&expected[*idx], graph.edge_data(idx));
             assert_eq!(expected[*idx], edge.data);
             true
-        };
+        });
     }
 
     fn test_adjacent_edges<N:Eq,E:Eq>(graph: &Graph<N,E>,
@@ -344,7 +344,7 @@ mod test {
         assert_eq!(graph.node_data(start_index), &start_data);
 
         let mut counter = 0;
-        do graph.each_incoming_edge(start_index) |edge_index, edge| {
+        graph.each_incoming_edge(start_index, |edge_index, edge| {
             assert_eq!(graph.edge_data(edge_index), &edge.data);
             assert!(counter < expected_incoming.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
@@ -358,11 +358,11 @@ mod test {
             }
             counter += 1;
             true
-        };
+        });
         assert_eq!(counter, expected_incoming.len());
 
         let mut counter = 0;
-        do graph.each_outgoing_edge(start_index) |edge_index, edge| {
+        graph.each_outgoing_edge(start_index, |edge_index, edge| {
             assert_eq!(graph.edge_data(edge_index), &edge.data);
             assert!(counter < expected_outgoing.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
@@ -376,7 +376,7 @@ mod test {
             }
             counter += 1;
             true
-        };
+        });
         assert_eq!(counter, expected_outgoing.len());
     }
 

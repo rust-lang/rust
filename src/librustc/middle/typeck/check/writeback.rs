@@ -180,7 +180,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         let mut ret = Some(t);
-        do fcx.opt_node_ty_substs(id) |substs| {
+        fcx.opt_node_ty_substs(id, |substs| {
           let mut new_tps = ~[];
           for subst in substs.tps.iter() {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
@@ -190,7 +190,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
           }
           write_substs_to_tcx(tcx, id, new_tps);
           ret.is_some()
-        };
+        });
         ret
       }
     }

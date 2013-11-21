@@ -616,7 +616,7 @@ impl VisitContext {
          * into itself or not based on its type and annotation.
          */
 
-        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, path| {
+        pat_bindings(self.tcx.def_map, pat, |bm, id, _span, path| {
             let binding_moves = match bm {
                 BindByRef(_) => false,
                 BindByValue(_) => {
@@ -635,7 +635,7 @@ impl VisitContext {
             if binding_moves {
                 self.move_maps.moves_map.insert(id);
             }
-        }
+        })
     }
 
     pub fn use_receiver(&mut self,
@@ -664,14 +664,14 @@ impl VisitContext {
         let mut ret = None;
         for arm in arms.iter() {
             for &pat in arm.pats.iter() {
-                let cont = do ast_util::walk_pat(pat) |p| {
+                let cont = ast_util::walk_pat(pat, |p| {
                     if moves_map.contains(&p.id) {
                         ret = Some(p);
                         false
                     } else {
                         true
                     }
-                };
+                });
                 if !cont { return ret }
             }
         }

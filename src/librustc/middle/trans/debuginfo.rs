@@ -254,8 +254,7 @@ pub fn create_local_var_metadata(bcx: @mut Block,
     let cx = bcx.ccx();
     let def_map = cx.tcx.def_map;
 
-    do pat_util::pat_bindings(def_map, local.pat) |_, node_id, span, path_ref| {
-
+    pat_util::pat_bindings(def_map, local.pat, |_, node_id, span, path_ref| {
         let var_ident = ast_util::path_to_ident(path_ref);
         let var_type = node_id_type(bcx, node_id);
 
@@ -276,7 +275,7 @@ pub fn create_local_var_metadata(bcx: @mut Block,
                       DirectVariable { alloca: llptr },
                       LocalVariable,
                       span);
-    }
+    })
 }
 
 /// Creates debug information for a variable captured in a closure.
@@ -449,8 +448,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
     let def_map = cx.tcx.def_map;
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
-    do pat_util::pat_bindings(def_map, arg.pat) |_, node_id, span, path_ref| {
-
+    pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
         let llptr = match bcx.fcx.llargs.find_copy(&node_id) {
             Some(v) => v,
             None => {
@@ -481,7 +479,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
                       DirectVariable { alloca: llptr },
                       ArgumentVariable(argument_index),
                       span);
-    }
+    })
 }
 
 /// Sets the current debug location at the beginning of the span.
@@ -655,27 +653,28 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
     let scope_line = get_scope_line(cx, top_level_block, loc.line);
 
-    let fn_metadata = do function_name.with_c_str |function_name| {
-                      do linkage_name.with_c_str |linkage_name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateFunction(
-                DIB(cx),
-                containing_scope,
-                function_name,
-                linkage_name,
-                file_metadata,
-                loc.line as c_uint,
-                function_type_metadata,
-                false,
-                true,
-                scope_line as c_uint,
-                FlagPrototyped as c_uint,
-                cx.sess.opts.optimize != session::No,
-                llfn,
-                template_parameters,
-                ptr::null())
-        }
-    }};
+    let fn_metadata = function_name.with_c_str(|function_name| {
+                          linkage_name.with_c_str(|linkage_name| {
+            unsafe {
+                llvm::LLVMDIBuilderCreateFunction(
+                    DIB(cx),
+                    containing_scope,
+                    function_name,
+                    linkage_name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    function_type_metadata,
+                    false,
+                    true,
+                    scope_line as c_uint,
+                    FlagPrototyped as c_uint,
+                    cx.sess.opts.optimize != session::No,
+                    llfn,
+                    template_parameters,
+                    ptr::null())
+            }
+        })
+    });
 
     // Initialize fn debug context (including scope map and namespace map)
     let mut fn_debug_context = ~FunctionDebugContextData {
@@ -685,7 +684,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         source_locations_enabled: false,
     };
 
-    let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
+    let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
     populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
 
     return FunctionDebugContext(fn_debug_context);
@@ -780,7 +779,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
                 let ident = special_idents::type_self;
 
-                let param_metadata = do token::ident_to_str(&ident).with_c_str |name| {
+                let param_metadata = token::ident_to_str(&ident).with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -791,7 +790,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                             0,
                             0)
                     }
-                };
+                });
 
                 template_params.push(param_metadata);
             }
@@ -818,7 +817,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             // Again, only create type information if extra_debuginfo is enabled
             if cx.sess.opts.extra_debuginfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
-                let param_metadata = do token::ident_to_str(&ident).with_c_str |name| {
+                let param_metadata = token::ident_to_str(&ident).with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -829,7 +828,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                             0,
                             0)
                     }
-                };
+                });
                 template_params.push(param_metadata);
             }
         }
@@ -875,24 +874,28 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     let work_dir = cx.sess.working_dir.as_str().unwrap();
     let producer = format!("rustc version {}", env!("CFG_VERSION"));
 
-    do crate_name.with_c_str |crate_name| {
-    do work_dir.with_c_str |work_dir| {
-    do producer.with_c_str |producer| {
-    do "".with_c_str |flags| {
-    do "".with_c_str |split_name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateCompileUnit(
-                dcx.builder,
-                DW_LANG_RUST,
-                crate_name,
-                work_dir,
-                producer,
-                cx.sess.opts.optimize != session::No,
-                flags,
-                0,
-                split_name);
-        }
-    }}}}};
+    crate_name.with_c_str(|crate_name| {
+        work_dir.with_c_str(|work_dir| {
+            producer.with_c_str(|producer| {
+                "".with_c_str(|flags| {
+                    "".with_c_str(|split_name| {
+                        unsafe {
+                            llvm::LLVMDIBuilderCreateCompileUnit(
+                                dcx.builder,
+                                DW_LANG_RUST,
+                                crate_name,
+                                work_dir,
+                                producer,
+                                cx.sess.opts.optimize != session::No,
+                                flags,
+                                0,
+                                split_name);
+                        }
+                    })
+                })
+            })
+        })
+    });
 }
 
 fn declare_local(bcx: @mut Block,
@@ -917,7 +920,7 @@ fn declare_local(bcx: @mut Block,
         CapturedVariable => 0
     } as c_uint;
 
-    let (var_alloca, var_metadata) = do name.with_c_str |name| {
+    let (var_alloca, var_metadata) = name.with_c_str(|name| {
         match variable_access {
             DirectVariable { alloca } => (
                 alloca,
@@ -952,7 +955,7 @@ fn declare_local(bcx: @mut Block,
                 }
             )
         }
-    };
+    });
 
     set_debug_location(cx, DebugLocation::new(scope_metadata, loc.line, *loc.col));
     unsafe {
@@ -992,12 +995,13 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
         };
 
     let file_metadata =
-        do file_name.with_c_str |file_name| {
-        do work_dir.with_c_str |work_dir| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name, work_dir)
-            }
-        }};
+        file_name.with_c_str(|file_name| {
+            work_dir.with_c_str(|work_dir| {
+                unsafe {
+                    llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name, work_dir)
+                }
+            })
+        });
 
     debug_context(cx).created_files.insert(full_path.to_owned(), file_metadata);
     return file_metadata;
@@ -1053,7 +1057,7 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
 
     let llvm_type = type_of::type_of(cx, t);
     let (size, align) = size_and_align_of(cx, llvm_type);
-    let ty_metadata = do name.with_c_str |name| {
+    let ty_metadata = name.with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),
@@ -1062,7 +1066,7 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
                 bytes_to_bits(align),
                 encoding)
         }
-    };
+    });
 
     return ty_metadata;
 }
@@ -1074,7 +1078,7 @@ fn pointer_type_metadata(cx: &mut CrateContext,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = ppaux::ty_to_str(cx.tcx, pointer_type);
-    let ptr_metadata = do name.with_c_str |name| {
+    let ptr_metadata = name.with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
                 DIB(cx),
@@ -1083,7 +1087,7 @@ fn pointer_type_metadata(cx: &mut CrateContext,
                 bytes_to_bits(pointer_align),
                 name)
         }
-    };
+    });
     return ptr_metadata;
 }
 
@@ -1100,7 +1104,7 @@ struct StructMemberDescriptionFactory {
 impl MemberDescriptionFactory for StructMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &mut CrateContext)
                                   -> ~[MemberDescription] {
-        do self.fields.map |field| {
+        self.fields.map(|field| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
                 @""
             } else {
@@ -1113,7 +1117,7 @@ impl MemberDescriptionFactory for StructMemberDescriptionFactory {
                 type_metadata: type_metadata(cx, field.mt.ty, self.span),
                 offset: ComputedMemberOffset,
             }
-        }
+        })
     }
 }
 
@@ -1210,14 +1214,14 @@ struct TupleMemberDescriptionFactory {
 impl MemberDescriptionFactory for TupleMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &mut CrateContext)
                                   -> ~[MemberDescription] {
-        do self.component_types.map |&component_type| {
+        self.component_types.map(|&component_type| {
             MemberDescription {
                 name: @"",
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
             }
-        }
+        })
     }
 }
 
@@ -1267,10 +1271,10 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
             _ => cx.sess.bug("unreachable")
         };
 
-        do struct_defs
+        struct_defs
             .iter()
             .enumerate()
-            .map |(i, struct_def)| {
+            .map(|(i, struct_def)| {
                 let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
                     describe_variant(cx,
                                      struct_def,
@@ -1295,7 +1299,7 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
                     type_metadata: variant_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
                 }
-        }.collect()
+        }).collect()
     }
 }
 
@@ -1308,7 +1312,7 @@ struct EnumVariantMemberDescriptionFactory {
 impl MemberDescriptionFactory for EnumVariantMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &mut CrateContext)
                                   -> ~[MemberDescription] {
-        do self.args.iter().enumerate().map |(i, &(name, ty))| {
+        self.args.iter().enumerate().map(|(i, &(name, ty))| {
             MemberDescription {
                 name: name,
                 llvm_type: type_of::type_of(cx, ty),
@@ -1318,7 +1322,7 @@ impl MemberDescriptionFactory for EnumVariantMemberDescriptionFactory {
                 },
                 offset: ComputedMemberOffset,
             }
-        }.collect()
+        }).collect()
     }
 }
 
@@ -1360,8 +1364,8 @@ fn describe_variant(cx: &mut CrateContext,
 
     // Get the argument names from the enum variant info
     let mut arg_names = match variant_info.arg_names {
-        Some(ref names) => do names.map |ident| { token::ident_to_str(ident) },
-        None => do variant_info.args.map |_| { @"" }
+        Some(ref names) => names.map(|ident| token::ident_to_str(ident)),
+        None => variant_info.args.map(|_| @"")
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field
@@ -1420,14 +1424,14 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
             let name: &str = token::ident_to_str(&v.name);
             let discriminant_value = v.disr_val as c_ulonglong;
 
-            do name.with_c_str |name| {
+            name.with_c_str(|name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateEnumerator(
                         DIB(cx),
                         name,
                         discriminant_value)
                 }
-            }
+            })
         })
         .collect();
 
@@ -1436,7 +1440,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
         let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
         let discriminant_base_type_metadata = type_metadata(cx, adt::ty_of_inttype(inttype),
                                                             codemap::dummy_sp());
-        do enum_name.with_c_str |enum_name| {
+        enum_name.with_c_str(|enum_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateEnumerationType(
                     DIB(cx),
@@ -1449,7 +1453,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
                     create_DIArray(DIB(cx), enumerators_metadata),
                     discriminant_base_type_metadata)
             }
-        }
+        })
     };
 
     let type_rep = adt::represent_type(cx, enum_type);
@@ -1482,7 +1486,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
             let enum_llvm_type = type_of::type_of(cx, enum_type);
             let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
 
-            let enum_metadata = do enum_name.with_c_str |enum_name| {
+            let enum_metadata = enum_name.with_c_str(|enum_name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateUnionType(
                     DIB(cx),
@@ -1495,7 +1499,8 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
                     0, // Flags
                     ptr::null(),
                     0) // RuntimeLang
-            }};
+                }
+            });
 
             UnfinishedMetadata {
                 cache_id: cache_id_for_type(enum_type),
@@ -1605,7 +1610,7 @@ fn set_members_of_composite_type(cx: &mut CrateContext,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
-            do member_description.name.with_c_str |member_name| {
+            member_description.name.with_c_str(|member_name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateMemberType(
                         DIB(cx),
@@ -1619,7 +1624,7 @@ fn set_members_of_composite_type(cx: &mut CrateContext,
                         0,
                         member_description.type_metadata)
                 }
-            }
+            })
         })
         .collect();
 
@@ -1649,27 +1654,29 @@ fn create_struct_stub(cx: &mut CrateContext,
     };
 
     return unsafe {
-        do struct_type_name.with_c_str |name| {
-        do unique_id.with_c_str |unique_id| {
-            // LLVMDIBuilderCreateStructType() wants an empty array. A null pointer will lead to
-            // hard to trace and debug LLVM assertions later on in llvm/lib/IR/Value.cpp
-            let empty_array = create_DIArray(DIB(cx), []);
+        struct_type_name.with_c_str(|name| {
+            unique_id.with_c_str(|unique_id| {
+                // LLVMDIBuilderCreateStructType() wants an empty array. A null pointer will lead to
+                // hard to trace and debug LLVM assertions later on in llvm/lib/IR/Value.cpp
+                let empty_array = create_DIArray(DIB(cx), []);
 
-            llvm::LLVMDIBuilderCreateStructType(
-                DIB(cx),
-                containing_scope,
-                name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(struct_size),
-                bytes_to_bits(struct_align),
-                0,
-                ptr::null(),
-                empty_array,
-                0,
-                ptr::null(),
-                unique_id)
-    }}};
+                llvm::LLVMDIBuilderCreateStructType(
+                    DIB(cx),
+                    containing_scope,
+                    name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    bytes_to_bits(struct_size),
+                    bytes_to_bits(struct_align),
+                    0,
+                    ptr::null(),
+                    empty_array,
+                    0,
+                    ptr::null(),
+                    unique_id)
+            })
+        })
+    };
 }
 
 fn boxed_type_metadata(cx: &mut CrateContext,
@@ -1979,7 +1986,7 @@ fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
     debug!("unimplemented_type_metadata: {:?}", ty::get(t));
 
     let name = ppaux::ty_to_str(cx.tcx, t);
-    let metadata = do format!("NYI<{}>", name).with_c_str |name| {
+    let metadata = format!("NYI<{}>", name).with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),
@@ -1988,7 +1995,7 @@ fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
                 8_u64,
                 DW_ATE_unsigned as c_uint)
             }
-        };
+        });
 
     return metadata;
 }
@@ -2261,10 +2268,10 @@ fn populate_scope_map(cx: &mut CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely with variable
     // shadowing.
     for &arg_pat in arg_pats.iter() {
-        do pat_util::pat_bindings(def_map, arg_pat) |_, _, _, path_ref| {
+        pat_util::pat_bindings(def_map, arg_pat, |_, _, _, path_ref| {
             let ident = ast_util::path_to_ident(path_ref);
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata, ident: Some(ident) });
-        }
+        })
     }
 
     walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
@@ -2550,11 +2557,13 @@ fn populate_scope_map(cx: &mut CrateContext,
             ast::ExprIf(@ref cond_exp, ref then_block, ref opt_else_exp) => {
                 walk_expr(cx, cond_exp, scope_stack, scope_map);
 
-                do with_new_scope(cx, then_block.span, scope_stack, scope_map) |cx,
-                                                                                scope_stack,
-                                                                                scope_map| {
+                with_new_scope(cx,
+                               then_block.span,
+                               scope_stack,
+                               scope_map,
+                               |cx, scope_stack, scope_map| {
                     walk_block(cx, then_block, scope_stack, scope_map);
-                }
+                });
 
                 match *opt_else_exp {
                     Some(@ref else_exp) => walk_expr(cx, else_exp, scope_stack, scope_map),
@@ -2565,11 +2574,13 @@ fn populate_scope_map(cx: &mut CrateContext,
             ast::ExprWhile(@ref cond_exp, ref loop_body) => {
                 walk_expr(cx, cond_exp, scope_stack, scope_map);
 
-                do with_new_scope(cx, loop_body.span, scope_stack, scope_map) |cx,
-                                                                               scope_stack,
-                                                                               scope_map| {
+                with_new_scope(cx,
+                               loop_body.span,
+                               scope_stack,
+                               scope_map,
+                               |cx, scope_stack, scope_map| {
                     walk_block(cx, loop_body, scope_stack, scope_map);
-                }
+                })
             }
 
             ast::ExprForLoop(_, _, _, _) => {
@@ -2584,24 +2595,28 @@ fn populate_scope_map(cx: &mut CrateContext,
 
             ast::ExprLoop(ref block, _) |
             ast::ExprBlock(ref block)   => {
-                do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
-                                                                           scope_stack,
-                                                                           scope_map| {
+                with_new_scope(cx,
+                               block.span,
+                               scope_stack,
+                               scope_map,
+                               |cx, scope_stack, scope_map| {
                     walk_block(cx, block, scope_stack, scope_map);
-                }
+                })
             }
 
             ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, _ }, ref block) |
             ast::ExprProc(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
-                do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
-                                                                           scope_stack,
-                                                                           scope_map| {
+                with_new_scope(cx,
+                               block.span,
+                               scope_stack,
+                               scope_map,
+                               |cx, scope_stack, scope_map| {
                     for &ast::arg { pat: pattern, _ } in inputs.iter() {
                         walk_pattern(cx, pattern, scope_stack, scope_map);
                     }
 
                     walk_block(cx, block, scope_stack, scope_map);
-                }
+                })
             }
 
             // ast::expr_loop_body(@ref inner_exp) |
@@ -2646,9 +2661,11 @@ fn populate_scope_map(cx: &mut CrateContext,
                 for arm_ref in arms.iter() {
                     let arm_span = arm_ref.pats[0].span;
 
-                    do with_new_scope(cx, arm_span, scope_stack, scope_map) |cx,
-                                                                             scope_stack,
-                                                                             scope_map| {
+                    with_new_scope(cx,
+                                   arm_span,
+                                   scope_stack,
+                                   scope_map,
+                                   |cx, scope_stack, scope_map| {
                         for &pat in arm_ref.pats.iter() {
                             walk_pattern(cx, pat, scope_stack, scope_map);
                         }
@@ -2658,7 +2675,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                         }
 
                         walk_block(cx, &arm_ref.body, scope_stack, scope_map);
-                    }
+                    })
                 }
             }
 
@@ -2769,14 +2786,14 @@ fn namespace_for_item(cx: &mut CrateContext,
                 let namespace_name = token::ident_to_str(&ident);
 
                 let namespace_metadata = unsafe {
-                    do namespace_name.with_c_str |namespace_name| {
+                    namespace_name.with_c_str(|namespace_name| {
                         llvm::LLVMDIBuilderCreateNameSpace(
                             DIB(cx),
                             parent_scope,
                             namespace_name,
                             ptr::null(), // cannot reconstruct file ...
                             0)           // ... or line information, but that's not so important.
-                    }
+                    })
                 };
 
                 let node = @NamespaceTreeNode {

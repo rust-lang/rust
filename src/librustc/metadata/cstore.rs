@@ -159,9 +159,9 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         });
     }
 
-    let sorted = do extra::sort::merge_sort(result) |a, b| {
+    let sorted = extra::sort::merge_sort(result, |a, b| {
         (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
-    };
+    });
 
     debug!("sorted:");
     for x in sorted.iter() {

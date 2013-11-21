@@ -438,10 +438,10 @@ pub fn make_closure_glue(cx: @mut Block,
         ast::OwnedSigil | ast::ManagedSigil => {
             let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
             let box_ptr_v = Load(cx, box_cell_v);
-            do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
+            with_cond(cx, IsNotNull(cx, box_ptr_v), |bcx| {
                 let closure_ty = ty::mk_opaque_closure_ptr(tcx, sigil);
                 glue_fn(bcx, box_cell_v, closure_ty)
-            }
+            })
         }
     }
 }
@@ -481,7 +481,7 @@ pub fn make_opaque_cbox_free_glue(
     }
 
     let ccx = bcx.ccx();
-    do with_cond(bcx, IsNotNull(bcx, cbox)) |bcx| {
+    with_cond(bcx, IsNotNull(bcx, cbox), |bcx| {
         // Load the type descr found in the cbox
         let lltydescty = ccx.tydesc_type.ptr_to();
         let cbox = Load(bcx, cbox);
@@ -498,5 +498,5 @@ pub fn make_opaque_cbox_free_glue(
         glue::trans_exchange_free(bcx, cbox);
 
         bcx
-    }
+    })
 }

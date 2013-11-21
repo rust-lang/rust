@@ -290,10 +290,7 @@ pub fn common_supertype(cx: @mut InferCtxt,
         values: Types(expected_found(a_is_expected, a, b))
     };
 
-    let result = do cx.commit {
-        cx.lub(a_is_expected, trace).tys(a, b)
-    };
-
+    let result = cx.commit(|| cx.lub(a_is_expected, trace).tys(a, b));
     match result {
         Ok(t) => t,
         Err(ref err) => {
@@ -310,28 +307,28 @@ pub fn mk_subty(cx: @mut InferCtxt,
                 b: ty::t)
              -> ures {
     debug!("mk_subty({} <: {})", a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.commit {
+    indent(|| {
+        cx.commit(|| {
             let trace = TypeTrace {
                 origin: origin,
                 values: Types(expected_found(a_is_expected, a, b))
             };
             cx.sub(a_is_expected, trace).tys(a, b)
-        }
-    }.to_ures()
+        })
+    }).to_ures()
 }
 
 pub fn can_mk_subty(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty({} <: {})", a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.probe {
+    indent(|| {
+        cx.probe(|| {
             let trace = TypeTrace {
                 origin: Misc(codemap::dummy_sp()),
                 values: Types(expected_found(true, a, b))
             };
             cx.sub(true, trace).tys(a, b)
-        }
-    }.to_ures()
+        })
+    }).to_ures()
 }
 
 pub fn mk_subr(cx: @mut InferCtxt,
@@ -352,16 +349,16 @@ pub fn mk_eqty(cx: @mut InferCtxt,
                b: ty::t)
             -> ures {
     debug!("mk_eqty({} <: {})", a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.commit {
+    indent(|| {
+        cx.commit(|| {
             let trace = TypeTrace {
                 origin: origin,
                 values: Types(expected_found(a_is_expected, a, b))
             };
             let suber = cx.sub(a_is_expected, trace);
             eq_tys(&suber, a, b)
-        }
-    }.to_ures()
+        })
+    }).to_ures()
 }
 
 pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
@@ -373,16 +370,16 @@ pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.commit {
+    indent(|| {
+        cx.commit(|| {
             let trace = TypeTrace {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a, b))
             };
             let suber = cx.sub(a_is_expected, trace);
             suber.trait_refs(a, b)
-        }
-    }.to_ures()
+        })
+    }).to_ures()
 }
 
 fn expected_found<T>(a_is_expected: bool,
@@ -402,28 +399,28 @@ pub fn mk_coercety(cx: @mut InferCtxt,
                    b: ty::t)
                 -> CoerceResult {
     debug!("mk_coercety({} -> {})", a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.commit {
+    indent(|| {
+        cx.commit(|| {
             let trace = TypeTrace {
                 origin: origin,
                 values: Types(expected_found(a_is_expected, a, b))
             };
             Coerce(cx.combine_fields(a_is_expected, trace)).tys(a, b)
-        }
-    }
+        })
+    })
 }
 
 pub fn can_mk_coercety(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_coercety({} -> {})", a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.probe {
+    indent(|| {
+        cx.probe(|| {
             let trace = TypeTrace {
                 origin: Misc(codemap::dummy_sp()),
                 values: Types(expected_found(true, a, b))
             };
             Coerce(cx.combine_fields(true, trace)).tys(a, b)
-        }
-    }.to_ures()
+        })
+    }).to_ures()
 }
 
 // See comment on the type `resolve_state` below
@@ -472,13 +469,13 @@ trait CresCompare<T> {
 
 impl<T:Clone + Eq> CresCompare<T> for cres<T> {
     fn compare(&self, t: T, f: || -> ty::type_err) -> cres<T> {
-        do (*self).clone().and_then |s| {
+        (*self).clone().and_then(|s| {
             if s == t {
                 (*self).clone()
             } else {
                 Err(f())
             }
-        }
+        })
     }
 }
 
@@ -553,14 +550,14 @@ impl InferCtxt {
         assert!(!self.in_snapshot());
 
         debug!("commit()");
-        do indent {
+        indent(|| {
             let r = self.try(|| f());
 
             self.ty_var_bindings.bindings.truncate(0);
             self.int_var_bindings.bindings.truncate(0);
             self.region_vars.commit();
             r
-        }
+        })
     }
 
     /// Execute `f`, unroll bindings on failure
@@ -581,12 +578,12 @@ impl InferCtxt {
     /// Execute `f` then unroll any bindings it creates
     pub fn probe<T,E>(@mut self, f: || -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
-        do indent {
+        indent(|| {
             let snapshot = self.start_snapshot();
             let r = f();
             self.rollback_to(&snapshot);
             r
-        }
+        })
     }
 }
 
@@ -737,12 +734,12 @@ impl InferCtxt {
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
-        let error_str = do err.map_default(~"") |t_err| {
+        let error_str = err.map_default(~"", |t_err| {
             format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
-        };
-        let resolved_expected = do expected_ty.map |e_ty| {
+        });
+        let resolved_expected = expected_ty.map(|e_ty| {
             self.resolve_type_vars_if_possible(e_ty)
-        };
+        });
         if !resolved_expected.map_default(false, |e| { ty::type_is_error(e) }) {
             match resolved_expected {
                 None => self.tcx.sess.span_err(sp,

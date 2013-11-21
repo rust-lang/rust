@@ -264,9 +264,9 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
         // Represents [A',B',C']
         let num_trait_bounds = trait_ty_generics.type_param_defs.len();
-        let non_shifted_trait_tps = do vec::from_fn(num_trait_bounds) |i| {
+        let non_shifted_trait_tps = vec::from_fn(num_trait_bounds, |i| {
             ty::mk_param(tcx, i, trait_ty_generics.type_param_defs[i].def_id)
-        };
+        });
 
         // Represents [D']
         let self_param = ty::mk_param(tcx, num_trait_bounds,
@@ -274,10 +274,10 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
         // Represents [E',F',G']
         let num_method_bounds = m.generics.type_param_defs.len();
-        let shifted_method_tps = do vec::from_fn(num_method_bounds) |i| {
+        let shifted_method_tps = vec::from_fn(num_method_bounds, |i| {
             ty::mk_param(tcx, i + num_trait_bounds + 1,
                          m.generics.type_param_defs[i].def_id)
-        };
+        });
 
         // Convert the regions 'a, 'b, 'c defined on the trait into
         // bound regions on the fn.
