@@ -3162,7 +3162,7 @@ Borrowed pointers (`&`)
     Borrowed pointers arise by (automatic) conversion from owning pointers, managed pointers,
     or by applying the borrowing operator `&` to some other value,
     including [lvalues, rvalues or temporaries](#lvalues-rvalues-and-temporaries).
-    Borrowed pointers are written `&content`, or in some cases `&f/content` for some lifetime-variable `f`,
+    Borrowed pointers are written `&content`, or in some cases `&'f content` for some lifetime-variable `f`,
     for example `&int` means a borrowed pointer to an integer.
     Copying a borrowed pointer is a "shallow" operation:
     it involves only copying the pointer itself.
