@@ -155,7 +155,7 @@ pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
  * Reads the value from `*src` and returns it. Does not copy `*src`.
  */
 #[inline(always)]
-pub unsafe fn read_ptr<T>(src: *mut T) -> T {
+pub unsafe fn read_ptr<T>(src: *T) -> T {
     let mut tmp: T = intrinsics::uninit();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
@@ -168,7 +168,7 @@ pub unsafe fn read_ptr<T>(src: *mut T) -> T {
 #[inline(always)]
 pub unsafe fn read_and_zero_ptr<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
-    let tmp = read_ptr(dest);
+    let tmp = read_ptr(&*dest);
 
     // Now zero out `dest`:
     zero_memory(dest, 1);
