@@ -520,14 +520,20 @@ then
     fi
 fi
 
+BIN_SUF=
+if [ $CFG_OSTYPE = "pc-mingw32" ]
+then
+    BIN_SUF=.exe
+fi
+
 if [ ! -z "$CFG_ENABLE_LOCAL_RUST" ]
 then
-    if [ ! -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc ]
+    if [ ! -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} ]
     then
         err "no local rust to use"
     else
-        LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc --version`
-        step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: " $LRV
+        LRV=`${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} --version`
+        step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
     fi
 fi
 
