@@ -3889,25 +3889,25 @@ mod bench {
     #[bench]
     fn push(bh: &mut BenchHarness) {
         let mut vec: ~[uint] = ~[0u];
-        do bh.iter() {
+        bh.iter(|| {
             vec.push(0);
-        }
+        })
     }
 
     #[bench]
     fn starts_with_same_vector(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
-        do bh.iter() {
+        bh.iter(|| {
             vec.starts_with(vec);
-        }
+        })
     }
 
     #[bench]
     fn starts_with_single_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = ~[0u];
-        do bh.iter() {
+        bh.iter(|| {
             vec.starts_with(vec);
-        }
+        })
     }
 
     #[bench]
@@ -3915,25 +3915,25 @@ mod bench {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         let mut match_vec: ~[uint] = vec::from_fn(99, |i| i);
         match_vec.push(0);
-        do bh.iter() {
+        bh.iter(|| {
             vec.starts_with(match_vec);
-        }
+        })
     }
 
     #[bench]
     fn ends_with_same_vector(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
-        do bh.iter() {
+        bh.iter(|| {
             vec.ends_with(vec);
-        }
+        })
     }
 
     #[bench]
     fn ends_with_single_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = ~[0u];
-        do bh.iter() {
+        bh.iter(|| {
             vec.ends_with(vec);
-        }
+        })
     }
 
     #[bench]
@@ -3941,16 +3941,16 @@ mod bench {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         let mut match_vec: ~[uint] = vec::from_fn(100, |i| i);
         match_vec[0] = 200;
-        do bh.iter() {
+        bh.iter(|| {
             vec.starts_with(match_vec);
-        }
+        })
     }
 
     #[bench]
     fn contains_last_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
-        do bh.iter() {
+        bh.iter(|| {
                 vec.contains(&99u);
-        }
+        })
     }
 }

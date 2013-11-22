@@ -500,7 +500,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
 
             blk.push(0);
 
-            blk.as_imm_buf(|p, _len| unsafe { cb(cast::transmute(p)) });
+            blk.as_imm_buf(|p, _len| unsafe { cb(cast::transmute(p)) })
         }
         _ => cb(ptr::mut_null())
     }

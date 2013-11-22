@@ -61,9 +61,9 @@ mod tests {
     fn test_clone() {
         let x = Gc::new(Cell::new(5));
         let y = x.clone();
-        do x.borrow().with_mut_ref |inner| {
+        x.borrow().with_mut_ref(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().take(), 20);
     }
 
@@ -71,9 +71,9 @@ mod tests {
     fn test_deep_clone() {
         let x = Gc::new(Cell::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut_ref |inner| {
+        x.borrow().with_mut_ref(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().take(), 5);
     }
 
