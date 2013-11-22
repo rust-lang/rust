@@ -180,7 +180,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
         let notify_chan = Cell::new(notify_chan);
-        let on_exit: proc(UnwindResult) = |task_result| {
+        let on_exit: proc(UnwindResult) = proc(task_result) {
             notify_chan.take().send(task_result)
         };
         task.death.on_exit = Some(on_exit);

@@ -22,7 +22,7 @@ pub fn main() {
     while (i > 0) {
         info!("{}", i);
         let ch = ch.clone();
-        task::spawn({let i = i; || child(i, &ch)});
+        task::spawn({let i = i; proc() child(i, &ch)});
         i = i - 1;
     }
 

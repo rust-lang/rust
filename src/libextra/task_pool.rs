@@ -57,7 +57,7 @@ impl<T> TaskPool<T> {
             let (port, chan) = comm::stream::<Msg<T>>();
             let init_fn = init_fn_factory();
 
-            let task_body: proc() = || {
+            let task_body: proc() = proc() {
                 let local_data = init_fn(i);
                 loop {
                     match port.recv() {
@@ -98,11 +98,11 @@ impl<T> TaskPool<T> {
 #[test]
 fn test_task_pool() {
     let f: || -> proc(uint) -> uint = || {
-        let g: proc(uint) -> uint = |i| i;
+        let g: proc(uint) -> uint = proc(i) i;
         g
     };
     let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
     8.times(|| {
-        pool.execute(|i| println!("Hello from thread {}!", *i));
+        pool.execute(proc(i) println!("Hello from thread {}!", *i));
     })
 }

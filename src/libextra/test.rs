@@ -912,7 +912,7 @@ pub fn run_test(force_ignore: bool,
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
-        StaticTestFn(f) => run_test_inner(desc, monitor_ch, || f())
+        StaticTestFn(f) => run_test_inner(desc, monitor_ch, proc() f())
     }
 }
 
@@ -1209,7 +1209,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1227,7 +1227,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1245,7 +1245,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1263,7 +1263,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1318,7 +1318,7 @@ mod tests {
                     ignore: true,
                     should_fail: false,
                 },
-                testfn: DynTestFn(|| {}),
+                testfn: DynTestFn(proc() {}),
             },
             TestDescAndFn {
                 desc: TestDesc {
@@ -1326,7 +1326,7 @@ mod tests {
                     ignore: false,
                     should_fail: false
                 },
-                testfn: DynTestFn(|| {}),
+                testfn: DynTestFn(proc() {}),
             },
         ];
         let filtered = filter_tests(&opts, tests);

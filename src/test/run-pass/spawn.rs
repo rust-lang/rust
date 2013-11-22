@@ -13,7 +13,7 @@ extern mod extra;
 use std::task;
 
 pub fn main() {
-    task::spawn(|| child(10) );
+    task::spawn(proc() child(10) );
 }
 
 fn child(i: int) { error!("{}", i); assert!((i == 10)); }

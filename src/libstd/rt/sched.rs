@@ -979,7 +979,7 @@ mod test {
                 assert!(Task::on_appropriate_sched());
             };
 
-            let on_exit: proc(UnwindResult) = |exit_status| {
+            let on_exit: proc(UnwindResult) = proc(exit_status) {
                 rtassert!(exit_status.is_success())
             };
             task.death.on_exit = Some(on_exit);
@@ -1193,12 +1193,15 @@ mod test {
 
                 let thread = do Thread::start {
                     let mut sched = sched.take();
-                    let bootstrap_task = ~Task::new_root(&mut sched.stack_pool, None, ||());
+                    let bootstrap_task =
+                        ~Task::new_root(&mut sched.stack_pool,
+                                        None,
+                                        proc()());
                     sched.bootstrap(bootstrap_task);
                 };
 
                 let mut stack_pool = StackPool::new();
-                let task = ~Task::new_root(&mut stack_pool, None, ||());
+                let task = ~Task::new_root(&mut stack_pool, None, proc()());
                 handle.send(TaskFromFriend(task));
 
                 handle.send(Shutdown);

@@ -25,7 +25,7 @@ fn empty_pointy() -> @mut Pointy {
     return @mut Pointy {
         a : none,
         c : ~22,
-        d : || {},
+        d : proc() {},
     }
 }
 

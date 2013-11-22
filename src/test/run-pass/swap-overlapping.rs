@@ -18,7 +18,7 @@ pub fn main() {
             name: DynTestName(~"test"),
             should_fail: false
         },
-        testfn: DynTestFn(|| ()),
+        testfn: DynTestFn(proc() ()),
     };
     do_swap(&mut test);
 }

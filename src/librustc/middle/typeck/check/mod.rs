@@ -2905,8 +2905,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         _match::check_match(fcx, expr, discrim, *arms);
       }
       ast::ExprFnBlock(ref decl, ref body) => {
-        check_expr_fn(fcx, expr, None,
-                      decl, body, Vanilla, expected);
+        check_expr_fn(fcx,
+                      expr,
+                      Some(ast::BorrowedSigil),
+                      decl,
+                      body,
+                      Vanilla,
+                      expected);
       }
       ast::ExprProc(ref decl, ref body) => {
         check_expr_fn(fcx,
