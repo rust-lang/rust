@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast feature doesn't work.
+
+#[feature(non_ascii_idents)];
+
 use std::num;
 
 pub fn main() {
