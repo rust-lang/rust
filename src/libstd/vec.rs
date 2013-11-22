@@ -3862,10 +3862,10 @@ mod bench {
     }
 
     #[bench]
-    fn add(b: &mut BenchHarness) {
+    fn add(bh: &mut BenchHarness) {
         let xs: &[int] = [5, ..10];
         let ys: &[int] = [5, ..10];
-        do b.iter() {
+        do bh.iter() {
             xs + ys;
         }
     }
@@ -3883,6 +3883,74 @@ mod bench {
         let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
         do bh.iter {
             xss.connect_vec(&0);
+        }
+    }
+
+    #[bench]
+    fn push(bh: &mut BenchHarness) {
+        let mut vec: ~[uint] = ~[0u];
+        do bh.iter() {
+            vec.push(0);
+        }
+    }
+
+    #[bench]
+    fn starts_with_same_vector(bh: &mut BenchHarness) {
+        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        do bh.iter() {
+            vec.starts_with(vec);
+        }
+    }
+
+    #[bench]
+    fn starts_with_single_element(bh: &mut BenchHarness) {
+        let vec: ~[uint] = ~[0u];
+        do bh.iter() {
+            vec.starts_with(vec);
+        }
+    }
+
+    #[bench]
+    fn starts_with_diff_one_element_at_end(bh: &mut BenchHarness) {
+        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        let mut match_vec: ~[uint] = vec::from_fn(99, |i| i);
+        match_vec.push(0);
+        do bh.iter() {
+            vec.starts_with(match_vec);
+        }
+    }
+
+    #[bench]
+    fn ends_with_same_vector(bh: &mut BenchHarness) {
+        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        do bh.iter() {
+            vec.ends_with(vec);
+        }
+    }
+
+    #[bench]
+    fn ends_with_single_element(bh: &mut BenchHarness) {
+        let vec: ~[uint] = ~[0u];
+        do bh.iter() {
+            vec.ends_with(vec);
+        }
+    }
+
+    #[bench]
+    fn ends_with_diff_one_element_at_beginning(bh: &mut BenchHarness) {
+        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        let mut match_vec: ~[uint] = vec::from_fn(100, |i| i);
+        match_vec[0] = 200;
+        do bh.iter() {
+            vec.starts_with(match_vec);
+        }
+    }
+
+    #[bench]
+    fn contains_last_element(bh: &mut BenchHarness) {
+        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        do bh.iter() {
+                vec.contains(&99u);
         }
     }
 }
