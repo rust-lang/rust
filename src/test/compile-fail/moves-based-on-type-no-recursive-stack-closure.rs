@@ -21,7 +21,7 @@ struct R<'self> {
 
 fn innocent_looking_victim() {
     let mut x = Some(~"hello");
-    do conspirator |f, writer| {
+    conspirator(|f, writer| {
         if writer {
             x = None;
         } else {
@@ -33,7 +33,7 @@ fn innocent_looking_victim() {
                 None => fail!("oops"),
             }
         }
-    }
+    })
 }
 
 fn conspirator(f: |&R, bool|) {

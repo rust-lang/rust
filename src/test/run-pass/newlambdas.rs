@@ -17,6 +17,6 @@ fn g(_g: ||) { }
 pub fn main() {
     assert_eq!(f(10, |a| a), 10);
     g(||());
-    assert_eq!(do f(10) |a| { a }, 10);
-    do g() { }
+    assert_eq!(f(10, |a| a), 10);
+    g(||{});
 }

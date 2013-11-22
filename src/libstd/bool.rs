@@ -53,9 +53,9 @@ use num::FromPrimitive;
 /// # Examples
 ///
 /// ```
-/// do std::bool::all_values |x: bool| {
+/// std::bool::all_values(|x: bool| {
 ///     println(x.to_str());
-/// }
+/// })
 /// ```
 #[inline]
 pub fn all_values(blk: |v: bool|) {
@@ -396,9 +396,9 @@ mod tests {
 
     #[test]
     fn test_bool_from_str() {
-        do all_values |v| {
+        all_values(|v| {
             assert!(Some(v) == FromStr::from_str(v.to_str()))
-        }
+        });
     }
 
     #[test]
@@ -409,11 +409,11 @@ mod tests {
 
     #[test]
     fn test_bool_to_bit() {
-        do all_values |v| {
+        all_values(|v| {
             assert_eq!(v.to_bit::<u8>(), if v { 1u8 } else { 0u8 });
             assert_eq!(v.to_bit::<uint>(), if v { 1u } else { 0u });
             assert_eq!(v.to_bit::<int>(), if v { 1i } else { 0i });
-        }
+        });
     }
 
     #[test]

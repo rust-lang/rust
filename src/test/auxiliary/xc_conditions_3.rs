@@ -15,7 +15,7 @@ condition! {
 }
 
 pub fn guard(k: extern fn() -> int, x: int) -> int {
-    do oops::cond.trap(|i| i*x).inside {
+    oops::cond.trap(|i| i*x).inside(|| {
         k()
-    }
+    })
 }

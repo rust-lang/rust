@@ -211,7 +211,7 @@ mod test {
         do run_in_uv_task {
             let (ports, _) = unzip(range(0u, 10).map(|_| stream::<int>()));
             let (port, chan) = stream();
-            do 10.times { chan.send(31337); }
+            10.times(|| { chan.send(31337); });
             let mut ports = ports;
             let mut port = Some(port);
             let order = [5u,0,4,3,2,6,9,8,7,1];
@@ -276,7 +276,7 @@ mod test {
 
             do run_in_uv_task {
                 // A bit of stress, since ordinarily this is just smoke and mirrors.
-                do 4.times {
+                4.times(|| {
                     let send_on_chans = send_on_chans.clone();
                     do task::spawn {
                         let mut ports = ~[];
@@ -294,7 +294,7 @@ mod test {
                         // nondeterministic result, but should succeed
                         select(ports);
                     }
-                }
+                })
             }
         }
     }

@@ -333,47 +333,57 @@ mod test {
     #[bench]
     fn bench_capacity(b: &mut bh) {
         let x = @[1, 2, 3];
-        b.iter(|| capacity(x));
+        b.iter(|| {
+            let _ = capacity(x);
+        });
     }
 
     #[bench]
     fn bench_build_sized(b: &mut bh) {
         let len = 64;
-        do b.iter {
+        b.iter(|| {
             build(Some(len), |push| for i in range(0, 1024) { push(i) });
-        }
+        });
     }
 
     #[bench]
     fn bench_build(b: &mut bh) {
-        do b.iter {
+        b.iter(|| {
             for i in range(0, 95) {
                 build(None, |push| push(i));
             }
-        }
+        });
     }
 
     #[bench]
     fn bench_append(b: &mut bh) {
         let lhs = @[7, ..128];
         let rhs = range(0, 256).to_owned_vec();
-        b.iter(|| append(lhs, rhs))
+        b.iter(|| {
+            let _ = append(lhs, rhs);
+        })
     }
 
     #[bench]
     fn bench_map(b: &mut bh) {
         let elts = range(0, 256).to_owned_vec();
-        b.iter(|| map(elts, |x| x*2))
+        b.iter(|| {
+            let _ = map(elts, |x| x*2);
+        })
     }
 
     #[bench]
     fn bench_from_fn(b: &mut bh) {
-        b.iter(|| from_fn(1024, |x| x));
+        b.iter(|| {
+            let _ = from_fn(1024, |x| x);
+        });
     }
 
     #[bench]
     fn bench_from_elem(b: &mut bh) {
-        b.iter(|| from_elem(1024, 0u64));
+        b.iter(|| {
+            let _ = from_elem(1024, 0u64);
+        });
     }
 
     #[bench]
@@ -387,12 +397,16 @@ mod test {
     #[bench]
     fn bench_to_managed(b: &mut bh) {
         let elts = range(0, 1024).to_owned_vec();
-        b.iter(|| to_managed(elts));
+        b.iter(|| {
+            let _ = to_managed(elts);
+        });
     }
 
     #[bench]
     fn bench_clone(b: &mut bh) {
         let elts = to_managed(range(0, 1024).to_owned_vec());
-        b.iter(|| elts.clone());
+        b.iter(|| {
+            let _ = elts.clone();
+        });
     }
 }

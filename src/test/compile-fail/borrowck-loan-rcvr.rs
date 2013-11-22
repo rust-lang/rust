@@ -30,9 +30,9 @@ fn a() {
     p.impurem();
 
     // But in this case we do not honor the loan:
-    do p.blockm {
+    p.blockm(|| {
         p.x = 10; //~ ERROR cannot assign
-    }
+    })
 }
 
 fn b() {
@@ -52,9 +52,9 @@ fn c() {
     q.impurem();
 
     // ...but we still detect errors statically when we can.
-    do q.blockm {
+    q.blockm(|| {
         q.x = 10; //~ ERROR cannot assign
-    }
+    })
 }
 
 fn main() {

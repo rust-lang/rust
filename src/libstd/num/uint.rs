@@ -244,6 +244,6 @@ pub fn test_times() {
     use num::Times;
     let ten = 10 as uint;
     let mut accum = 0;
-    do ten.times { accum += 1; }
+    ten.times(|| { accum += 1; });
     assert!((accum == 10));
 }

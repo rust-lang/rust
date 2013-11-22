@@ -22,12 +22,12 @@ pub fn main() {
     // actually working.
     //let bt0 = sys::frame_address();
     //info!("%?", bt0);
-    do iter(~[1u, 2u, 3u]) |i| {
+    iter(~[1u, 2u, 3u], |i| {
         println!("{}", i);
 
         //let bt1 = sys::frame_address();
         //info!("%?", bt1);
 
         //assert!(bt0 != bt1);
-    }
+    })
 }

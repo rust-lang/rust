@@ -276,11 +276,11 @@ mod test {
     #[test]
     fn read_byte_error() {
         let mut reader = ErroringReader;
-        do io_error::cond.trap(|_| {
-        }).inside {
+        io_error::cond.trap(|_| {
+        }).inside(|| {
             let byte = reader.read_byte();
             assert!(byte == None);
-        }
+        });
     }
 
     #[test]
@@ -303,10 +303,10 @@ mod test {
     fn bytes_error() {
         let reader = ErroringReader;
         let mut it = reader.bytes();
-        do io_error::cond.trap(|_| ()).inside {
+        io_error::cond.trap(|_| ()).inside(|| {
             let byte = it.next();
             assert!(byte == None);
-        }
+        })
     }
 
     #[test]
@@ -328,10 +328,10 @@ mod test {
     #[test]
     fn read_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
-        do io_error::cond.trap(|_| {
-        }).inside {
+        io_error::cond.trap(|_| {
+        }).inside(|| {
             assert!(reader.read_bytes(4) == ~[10, 11]);
-        }
+        })
     }
 
     #[test]
@@ -356,11 +356,11 @@ mod test {
     fn push_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
-        do io_error::cond.trap(|_| {
-        }).inside {
+        io_error::cond.trap(|_| {
+        }).inside(|| {
             reader.push_bytes(&mut buf, 4);
             assert!(buf == ~[8, 9, 10, 11]);
-        }
+        })
     }
 
     #[test]
@@ -369,9 +369,9 @@ mod test {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        do io_error::cond.trap(|_| { } ).inside {
+        io_error::cond.trap(|_| { } ).inside(|| {
             reader.push_bytes(&mut buf, 4);
-        }
+        });
         assert!(buf == ~[8, 9, 10]);
     }
 
@@ -384,13 +384,13 @@ mod test {
             count: 0,
         };
         let buf = @mut ~[8, 9];
-        do (|| {
+        (|| {
             reader.push_bytes(&mut *buf, 4);
-        }).finally {
+        }).finally(|| {
             // NB: Using rtassert here to trigger abort on failure since this is a should_fail test
             // FIXME: #7049 This fails because buf is still borrowed
             //rtassert!(*buf == ~[8, 9, 10]);
-        }
+        })
     }
 
     #[test]

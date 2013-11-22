@@ -186,13 +186,13 @@ mod tests {
     fn bind_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
-            do io_error::cond.trap(|e| {
+            io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
                 called = true;
-            }).inside {
+            }).inside(|| {
                 let listener = UnixListener::bind(&("path/to/nowhere"));
                 assert!(listener.is_none());
-            }
+            });
             assert!(called);
         }
     }
@@ -201,13 +201,13 @@ mod tests {
     fn connect_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
-            do io_error::cond.trap(|e| {
+            io_error::cond.trap(|e| {
                 assert_eq!(e.kind, OtherIoError);
                 called = true;
-            }).inside {
+            }).inside(|| {
                 let stream = UnixStream::connect(&("path/to/nowhere"));
                 assert!(stream.is_none());
-            }
+            });
             assert!(called);
         }
     }
@@ -240,13 +240,13 @@ mod tests {
             let buf = [0];
             let mut stop = false;
             while !stop{
-                do io_error::cond.trap(|e| {
+                io_error::cond.trap(|e| {
                     assert!(e.kind == BrokenPipe || e.kind == NotConnected,
                             "unknown error {:?}", e);
                     stop = true;
-                }).inside {
+                }).inside(|| {
                     server.write(buf);
-                }
+                })
             }
         }, |_client| {
             // drop the client
@@ -266,20 +266,20 @@ mod tests {
             do spawntask {
                 let mut acceptor = UnixListener::bind(&path1).listen();
                 chan.take().send(());
-                do times.times {
+                times.times(|| {
                     let mut client = acceptor.accept();
                     let mut buf = [0];
                     client.read(buf);
                     assert_eq!(buf[0], 100);
-                }
+                })
             }
 
             do spawntask {
                 port.take().recv();
-                do times.times {
+                times.times(|| {
                     let mut stream = UnixStream::connect(&path2);
                     stream.write([100]);
-                }
+                })
             }
         }
     }

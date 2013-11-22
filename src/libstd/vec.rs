@@ -3878,13 +3878,17 @@ mod bench {
     #[bench]
     fn concat(bh: &mut BenchHarness) {
         let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
-        bh.iter(|| xss.concat_vec());
+        bh.iter(|| {
+            let _ = xss.concat_vec();
+        });
     }
 
     #[bench]
     fn connect(bh: &mut BenchHarness) {
         let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
-        bh.iter(|| xss.connect_vec(&0));
+        bh.iter(|| {
+            let _ = xss.connect_vec(&0);
+        });
     }
 
     #[bench]

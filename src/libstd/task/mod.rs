@@ -477,9 +477,9 @@ fn test_unnamed_task() {
 
     do run_in_uv_task {
         do spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.is_none());
-            }
+            })
         }
     }
 }
@@ -492,9 +492,9 @@ fn test_owned_named_task() {
         let mut t = task();
         t.name(~"ada lovelace");
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -507,9 +507,9 @@ fn test_static_named_task() {
         let mut t = task();
         t.name("ada lovelace");
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -522,9 +522,9 @@ fn test_send_named_task() {
         let mut t = task();
         t.name("ada lovelace".into_send_str());
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -606,9 +606,9 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    do Local::borrow |sched: &mut ::rt::sched::Scheduler| {
+    Local::borrow(|sched: &mut ::rt::sched::Scheduler| {
         sched.sched_id() as int
-    }
+    })
 }
 
 #[test]
@@ -666,7 +666,7 @@ fn test_spawn_sched_blocking() {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        do 20u.times {
+        20u.times(|| {
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
 
@@ -713,7 +713,7 @@ fn test_spawn_sched_blocking() {
             lock.unlock();
             fin_po.recv();
             lock.destroy();
-        }
+        })
     }
 }
 
@@ -740,21 +740,21 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         let builder = task();
         do builder.spawn || {
             f();
         }
-    }
+    })
 }
 
 #[test]
 fn test_avoid_copying_the_body_try() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         do try || {
             f()
         };
-    }
+    })
 }
 
 #[test]

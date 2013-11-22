@@ -311,11 +311,11 @@ mod bench {
 
     #[bench]
     fn alloc_managed_small(bh: &mut BenchHarness) {
-        bh.iter(|| @10);
+        bh.iter(|| { @10; });
     }
 
     #[bench]
     fn alloc_managed_big(bh: &mut BenchHarness) {
-        bh.iter(|| @[10, ..1000]);
+        bh.iter(|| { @[10, ..1000]; });
     }
 }

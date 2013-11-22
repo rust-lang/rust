@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn add(x: proc(f64) -> f64) -> f64 {
+    x(10.0)
+}
+
 pub fn main() {
-    let v = ~[-1.0, 0.0, 1.0, 2.0, 3.0];
-
     // Trailing expressions don't require parentheses:
-    let y = do v.iter().fold(0.0) |x, y| { x + *y } + 10.0;
+    let y = do add |x| { x + 10.0 } + 10.0;
 
-    assert_eq!(y, 15.0);
+    assert_eq!(y, 30.0);
 }

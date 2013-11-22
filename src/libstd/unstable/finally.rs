@@ -15,11 +15,11 @@ stack closures that emulates Java-style try/finally blocks.
 # Example
 
  ```
-do || {
+(|| {
     ...
-}.finally {
+}).finally(|| {
     always_run_this();
-}
+})
  ```
 */
 
@@ -70,13 +70,13 @@ impl<'self> Drop for Finallyalizer<'self> {
 #[test]
 fn test_success() {
     let mut i = 0;
-    do (|| {
+    (|| {
         i = 10;
-    }).finally {
+    }).finally(|| {
         assert!(!failing());
         assert_eq!(i, 10);
         i = 20;
-    }
+    });
     assert_eq!(i, 20);
 }
 
@@ -84,19 +84,19 @@ fn test_success() {
 #[should_fail]
 fn test_fail() {
     let mut i = 0;
-    do (|| {
+    (|| {
         i = 10;
         fail!();
-    }).finally {
+    }).finally(|| {
         assert!(failing());
         assert_eq!(i, 10);
-    }
+    })
 }
 
 #[test]
 fn test_retval() {
     let closure: || -> int = || 10;
-    let i = do closure.finally { };
+    let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }
 

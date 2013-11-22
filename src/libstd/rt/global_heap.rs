@@ -103,15 +103,15 @@ mod bench {
 
     #[bench]
     fn alloc_owned_small(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             ~10;
-        }
+        })
     }
 
     #[bench]
     fn alloc_owned_big(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             ~[10, ..1000];
-        }
+        })
     }
 }

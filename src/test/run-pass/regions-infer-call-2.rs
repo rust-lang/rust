@@ -15,7 +15,7 @@ fn with<T>(f: |x: &int| -> T) -> T {
 }
 
 fn has_one<'a>(x: &'a int) -> int {
-    do with |y| { takes_two(x, y) }
+    with(|y| takes_two(x, y))
 }
 
 pub fn main() {
