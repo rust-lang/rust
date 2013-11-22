@@ -3968,7 +3968,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
 
     } else {
         match name {
-            "abort"  => (0, ~[], ty::mk_bot()),
+            "abort" => (0, ~[], ty::mk_bot()),
+            "breakpoint" => (0, ~[], ty::mk_nil()),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1u, ~[], ty::mk_uint()),
             "init" => (1u, ~[], param(ccx, 0u)),
