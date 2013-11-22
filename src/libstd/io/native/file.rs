@@ -278,6 +278,7 @@ impl rtio::RtioFileStream for FileDesc {
         self.seek(orig_pos as i64, io::SeekSet);
         return ret;
     }
+
     #[cfg(unix)]
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
         super::mkerr_libc(unsafe {
@@ -480,7 +481,7 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
 pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     fn prune(root: &CString, dirs: ~[Path]) -> ~[Path] {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
-        let root = Path::new(root);
+        let root = Path::init(root);
 
         dirs.move_iter().filter(|path| {
             path.as_vec() != bytes!(".") && path.as_vec() != bytes!("..")
@@ -505,7 +506,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
                     let cstr = CString::new(rust_list_dir_val(entry_ptr), false);
-                    paths.push(Path::new(cstr));
+                    paths.push(Path::init(cstr));
                     entry_ptr = readdir(dir_ptr);
                 }
                 closedir(dir_ptr);
@@ -536,7 +537,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                 fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void) -> *u16;
             }
             let p = CString::new(p.with_ref(|p| p), false);
-            let p = Path::new(p);
+            let p = Path::init(p);
             let star = p.join("*");
             as_utf16_p(star.as_str().unwrap(), |path_ptr| {
                 let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
@@ -553,7 +554,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                             let fp_vec = vec::from_buf(
                                 fp_buf, wcslen(fp_buf) as uint);
                             let fp_str = str::from_utf16(fp_vec);
-                            paths.push(Path::new(fp_str));
+                            paths.push(Path::init(fp_str));
                         }
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
@@ -683,7 +684,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             }
         });
         let ret = match ret {
-            Some(s) => Ok(Path::new(s)),
+            Some(s) => Ok(Path::init(s)),
             None => Err(super::last_error()),
         };
         unsafe { libc::CloseHandle(handle) };
@@ -707,7 +708,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             n => {
                 assert!(n > 0);
                 unsafe { vec::raw::set_len(&mut buf, n as uint); }
-                Ok(Path::new(buf))
+                Ok(Path::init(buf))
             }
         }
     }
@@ -770,7 +771,7 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
     };
 
     io::FileStat {
-        path: Path::new(path),
+        path: Path::init(path),
         size: stat.st_size as u64,
         kind: kind,
         perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,
@@ -819,7 +820,7 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
     fn gen(_stat: &libc::stat) -> u64 { 0 }
 
     io::FileStat {
-        path: Path::new(path),
+        path: Path::init(path),
         size: stat.st_size as u64,
         kind: kind,
         perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,

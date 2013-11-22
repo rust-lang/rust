@@ -148,7 +148,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> ~str {
     let install_prefix = env!("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(target_triple);
-    let mut path = Path::new(install_prefix);
+    let mut path = Path::init(install_prefix);
     path.push(&tlib);
     let path = os::make_absolute(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths

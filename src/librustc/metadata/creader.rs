@@ -143,7 +143,7 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
           let meta_items = match path_opt {
               None => meta_items.clone(),
               Some((p, _path_str_style)) => {
-                  let p_path = Path::new(p);
+                  let p_path = Path::init(p);
                   match p_path.filestem_str() {
                       None|Some("") =>
                           e.diag.span_bug(i.span, "Bad package path in `extern mod` item"),
@@ -275,7 +275,7 @@ fn resolve_crate(e: @mut Env,
         };
         let (lident, ldata) = loader::load_library_crate(&load_ctxt);
 
-        let cfilename = Path::new(lident);
+        let cfilename = Path::init(lident);
         let cdata = ldata;
 
         let attrs = decoder::get_crate_attributes(cdata);

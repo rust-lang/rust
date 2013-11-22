@@ -95,7 +95,7 @@ impl Process {
         let (err_pipe, err_fd) = get_io(config.io, &mut ret_io, 2);
 
         let env = config.env.map(|a| a.to_owned());
-        let cwd = config.cwd.map(|a| Path::new(a));
+        let cwd = config.cwd.map(|a| Path::init(a));
         let res = spawn_process_os(config.program, config.args, env,
                                    cwd.as_ref(), in_fd, out_fd, err_fd);
 

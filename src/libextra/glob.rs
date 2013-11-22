@@ -90,7 +90,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
 
     // calculate root this way to handle volume-relative Windows paths correctly
     let mut root = os::getcwd();
-    let pat_root = Path::new(pattern).root_path();
+    let pat_root = Path::init(pattern).root_path();
     if pat_root.is_some() {
         if check_windows_verbatim(pat_root.get_ref()) {
             // XXX: How do we want to handle verbatim paths? I'm inclined to return nothing,
@@ -766,9 +766,9 @@ mod test {
 
     #[test]
     fn test_matches_path() {
-        // on windows, (Path::new("a/b").as_str().unwrap() == "a\\b"), so this
+        // on windows, (Path::init("a/b").as_str().unwrap() == "a\\b"), so this
         // tests that / and \ are considered equivalent on windows
-        assert!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
+        assert!(Pattern::new("a/b").matches_path(&Path::init("a/b")));
     }
 }
 

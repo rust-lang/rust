@@ -383,7 +383,7 @@ pub fn next_test_unix() -> Path {
     if cfg!(unix) {
         os::tmpdir().join(rand::task_rng().gen_ascii_str(20))
     } else {
-        Path::new(r"\\.\pipe\" + rand::task_rng().gen_ascii_str(20))
+        Path::init(r"\\.\pipe\" + rand::task_rng().gen_ascii_str(20))
     }
 }
 

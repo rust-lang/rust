@@ -82,7 +82,7 @@ pub fn expand_include(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
     let p = parse::new_sub_parser_from_file(
         cx.parse_sess(), cx.cfg(),
-        &res_rel_file(cx, sp, &Path::new(file)), sp);
+        &res_rel_file(cx, sp, &Path::init(file)), sp);
     base::MRExpr(p.parse_expr())
 }
 
@@ -90,7 +90,7 @@ pub fn expand_include(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
-    let file = res_rel_file(cx, sp, &Path::new(file));
+    let file = res_rel_file(cx, sp, &Path::init(file));
     let bytes = match io::result(|| File::open(&file).read_to_end()) {
         Err(e) => {
             cx.span_fatal(sp, format!("couldn't read {}: {}",
@@ -112,7 +112,7 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     use std::at_vec;
 
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
-    let file = res_rel_file(cx, sp, &Path::new(file));
+    let file = res_rel_file(cx, sp, &Path::init(file));
     match io::result(|| File::open(&file).read_to_end()) {
         Err(e) => {
             cx.span_fatal(sp, format!("couldn't read {}: {}",
@@ -156,7 +156,7 @@ fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
 fn res_rel_file(cx: @ExtCtxt, sp: codemap::Span, arg: &Path) -> Path {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
-        let mut cu = Path::new(cx.codemap().span_to_filename(sp));
+        let mut cu = Path::init(cx.codemap().span_to_filename(sp));
         cu.pop();
         cu.push(arg);
         cu
