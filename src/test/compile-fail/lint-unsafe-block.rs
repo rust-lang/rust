@@ -10,11 +10,20 @@
 
 #[allow(unused_unsafe)];
 #[deny(unsafe_block)];
+#[feature(macro_rules)];
 
 unsafe fn allowed() {}
 
 #[allow(unsafe_block)] fn also_allowed() { unsafe {} }
 
+macro_rules! unsafe_in_macro {
+    () => {
+        unsafe {} //~ ERROR: usage of an `unsafe` block
+    }
+}
+
 fn main() {
     unsafe {} //~ ERROR: usage of an `unsafe` block
+
+    unsafe_in_macro!()
 }
