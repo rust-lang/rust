@@ -366,22 +366,41 @@ pub fn ty_of_inttype(ity: IntType) -> ty::t {
 
 
 /**
- * Returns the fields of a struct for the given representation.
- * All nominal types are LLVM structs, in order to be able to use
- * forward-declared opaque types to prevent circularity in `type_of`.
+ * LLVM-level types are a little complicated.
+ *
+ * C-like enums need to be actual ints, not wrapped in a struct,
+ * because that changes the ABI on some platforms (see issue #10308).
+ *
+ * For nominal types, in some cases, we need to use LLVM named structs
+ * and fill in the actual contents in a second pass to prevent
+ * unbounded recursion; see also the comments in `trans::type_of`.
  */
-pub fn fields_of(cx: &mut CrateContext, r: &Repr) -> ~[Type] {
-    generic_fields_of(cx, r, false)
+pub fn type_of(cx: &mut CrateContext, r: &Repr) -> Type {
+    generic_type_of(cx, r, None, false)
 }
-/// Like `fields_of`, but for `type_of::sizing_type_of` (q.v.).
-pub fn sizing_fields_of(cx: &mut CrateContext, r: &Repr) -> ~[Type] {
-    generic_fields_of(cx, r, true)
+pub fn sizing_type_of(cx: &mut CrateContext, r: &Repr) -> Type {
+    generic_type_of(cx, r, None, true)
 }
-fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
+pub fn incomplete_type_of(cx: &mut CrateContext, r: &Repr, name: &str) -> Type {
+    generic_type_of(cx, r, Some(name), false)
+}
+pub fn finish_type_of(cx: &mut CrateContext, r: &Repr, llty: &mut Type) {
     match *r {
-        CEnum(ity, _, _) => ~[ll_inttype(cx, ity)],
-        Univariant(ref st, _dtor) => struct_llfields(cx, st, sizing),
-        NullablePointer{ nonnull: ref st, _ } => struct_llfields(cx, st, sizing),
+        CEnum(*) | General(*) => { }
+        Univariant(ref st, _) | NullablePointer{ nonnull: ref st, _ } =>
+            llty.set_struct_body(struct_llfields(cx, st, false), st.packed)
+    }
+}
+
+fn generic_type_of(cx: &mut CrateContext, r: &Repr, name: Option<&str>, sizing: bool) -> Type {
+    match *r {
+        CEnum(ity, _, _) => ll_inttype(cx, ity),
+        Univariant(ref st, _) | NullablePointer{ nonnull: ref st, _ } => {
+            match name {
+                None => Type::struct_(struct_llfields(cx, st, sizing), st.packed),
+                Some(name) => { assert_eq!(sizing, false); Type::named_struct(name) }
+            }
+        }
         General(ity, ref sts) => {
             // We need a representation that has:
             // * The alignment of the most-aligned field
@@ -394,8 +413,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             // more of its own type, then use alignment-sized ints to get the rest
             // of the size.
             //
-            // Note: if/when we start exposing SIMD vector types (or f80, on some
-            // platforms that have it), this will need some adjustment.
+            // FIXME #10604: this breaks when vector types are present.
             let size = sts.iter().map(|st| st.size).max().unwrap();
             let most_aligned = sts.iter().max_by(|st| st.align).unwrap();
             let align = most_aligned.align;
@@ -411,9 +429,17 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             assert_eq!(machine::llalign_of_min(cx, pad_ty) as u64, align);
             let align_units = (size + align - 1) / align;
             assert_eq!(align % discr_size, 0);
-            ~[discr_ty,
+            let fields = ~[discr_ty,
               Type::array(&discr_ty, align / discr_size - 1),
-              Type::array(&pad_ty, align_units - 1)]
+              Type::array(&pad_ty, align_units - 1)];
+            match name {
+                None => Type::struct_(fields, false),
+                Some(name) => {
+                    let mut llty = Type::named_struct(name);
+                    llty.set_struct_body(fields, false);
+                    llty
+                }
+            }
         }
     }
 }
@@ -460,7 +486,8 @@ pub fn trans_get_discr(bcx: @mut Block, r: &Repr, scrutinee: ValueRef, cast_to: 
             signed = ity.is_signed();
         }
         General(ity, ref cases) => {
-            val = load_discr(bcx, ity, scrutinee, 0, (cases.len() - 1) as Disr);
+            let ptr = GEPi(bcx, scrutinee, [0, 0]);
+            val = load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr);
             signed = ity.is_signed();
         }
         Univariant(*) => {
@@ -487,9 +514,8 @@ fn nullable_bitdiscr(bcx: @mut Block, nonnull: &Struct, nndiscr: Disr, ptrfield:
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: @mut Block, ity: IntType, scrutinee: ValueRef, min: Disr, max: Disr)
+fn load_discr(bcx: @mut Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     -> ValueRef {
-    let ptr = GEPi(bcx, scrutinee, [0, 0]);
     let llty = ll_inttype(bcx.ccx(), ity);
     assert_eq!(val_ty(ptr), llty.ptr_to());
     let bits = machine::llbitsize_of_real(bcx.ccx(), llty);
@@ -546,7 +572,7 @@ pub fn trans_start_init(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr) {
         CEnum(ity, min, max) => {
             assert_discr_in_range(ity, min, max, discr);
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  GEPi(bcx, val, [0, 0]))
+                  val)
         }
         General(ity, _) => {
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
