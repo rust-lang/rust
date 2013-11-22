@@ -88,7 +88,7 @@ pub use self::util::set_exit_status;
 pub use self::util::default_sched_threads;
 
 // Re-export of the functionality in the kill module
-pub use self::kill::{KillHandle, BlockedTask};
+pub use self::kill::BlockedTask;
 
 // XXX: these probably shouldn't be public...
 #[doc(hidden)]

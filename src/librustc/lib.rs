@@ -338,7 +338,6 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
     let ch_capture = ch.clone();
     let mut task_builder = task::task();
     task_builder.name("rustc");
-    task_builder.supervised();
 
     // XXX: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.

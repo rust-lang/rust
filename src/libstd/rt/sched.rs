@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use either::{Left, Right};
 use option::{Option, Some, None};
 use cast::{transmute, transmute_mut_region, transmute_mut_unsafe};
 use clone::Clone;
@@ -621,9 +620,6 @@ impl Scheduler {
         unsafe {
             let task: *mut Task = Local::unsafe_borrow();
             (*task).sched.get_mut_ref().run_cleanup_job();
-
-            // Must happen after running the cleanup job (of course).
-            (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
 
@@ -689,14 +685,9 @@ impl Scheduler {
     pub fn switch_running_tasks_and_then(~self, next_task: ~Task,
                                          f: |&mut Scheduler, BlockedTask|) {
         // This is where we convert the BlockedTask-taking closure into one
-        // that takes just a Task, and is aware of the block-or-killed protocol.
+        // that takes just a Task
         do self.change_task_context(next_task) |sched, task| {
-            // Task might need to receive a kill signal instead of blocking.
-            // We can call the "and_then" only if it blocks successfully.
-            match BlockedTask::try_block(task) {
-                Left(killed_task) => sched.enqueue_task(killed_task),
-                Right(blocked_task) => f(sched, blocked_task),
-            }
+            f(sched, BlockedTask::block(task))
         }
     }
 

@@ -137,7 +137,6 @@ pub fn rendezvous<T: Send>() -> (SyncPort<T>, SyncChan<T>) {
 mod test {
     use comm::{DuplexStream, rendezvous};
     use std::rt::test::run_in_uv_task;
-    use std::task::spawn_unlinked;
 
 
     #[test]
@@ -177,7 +176,7 @@ mod test {
     #[test]
     fn send_and_fail_and_try_recv() {
         let (port, chan) = rendezvous();
-        do spawn_unlinked {
+        do spawn {
             chan.duplex_stream.send(()); // Can't access this field outside this module
             fail!()
         }
@@ -187,7 +186,7 @@ mod test {
     #[test]
     fn try_send_and_recv_then_fail_before_ack() {
         let (port, chan) = rendezvous();
-        do spawn_unlinked {
+        do spawn {
             port.duplex_stream.recv();
             fail!()
         }
@@ -198,7 +197,7 @@ mod test {
     #[should_fail]
     fn send_and_recv_then_fail_before_ack() {
         let (port, chan) = rendezvous();
-        do spawn_unlinked {
+        do spawn {
             port.duplex_stream.recv();
             fail!()
         }

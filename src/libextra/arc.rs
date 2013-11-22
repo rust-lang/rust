@@ -655,7 +655,7 @@ mod tests {
         let arc2 = ~arc.clone();
         let (p, c) = comm::stream();
 
-        do task::spawn_unlinked || {
+        do spawn {
             let _ = p.recv();
             do arc2.access_cond |one, cond| {
                 cond.signal();

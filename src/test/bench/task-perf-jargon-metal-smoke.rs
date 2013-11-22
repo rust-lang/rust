@@ -28,7 +28,7 @@ fn child_generation(gens_left: uint, c: comm::Chan<()>) {
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
     let c = Cell::new(c);
-    do task::spawn_supervised {
+    do spawn {
         let c = c.take();
         if gens_left & 1 == 1 {
             task::deschedule(); // shake things up a bit

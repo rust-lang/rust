@@ -21,7 +21,6 @@ use rt::local::Local;
 use rt::rtio::EventLoop;
 use rt::sched::Scheduler;
 use rt::shouldnt_be_public::{SelectInner, SelectPortInner};
-use task;
 use unstable::finally::Finally;
 use vec::{OwnedVector, MutableVector};
 
@@ -79,11 +78,10 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
             do sched.event_loop.callback { c.take().send_deferred(()) }
         }
     }).finally {
-        let p = Cell::new(p.take());
         // Unkillable is necessary not because getting killed is dangerous here,
         // but to force the recv not to use the same kill-flag that we used for
         // selecting. Otherwise a user-sender could spuriously wakeup us here.
-        do task::unkillable { p.take().recv(); }
+        p.take().recv();
     }
 
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
@@ -230,9 +228,9 @@ mod test {
     }
 
     #[test]
-    fn select_unkillable() {
+    fn select_simple() {
         do run_in_uv_task {
-            do task::unkillable { select_helper(2, [1]) }
+            select_helper(2, [1])
         }
     }
 
@@ -240,36 +238,27 @@ mod test {
 
     #[test]
     fn select_blocking() {
-        select_blocking_helper(true);
-        select_blocking_helper(false);
+        do run_in_uv_task {
+            let (p1,_c) = oneshot();
+            let (p2,c2) = oneshot();
+            let mut ports = [p1,p2];
 
-        fn select_blocking_helper(killable: bool) {
-            do run_in_uv_task {
-                let (p1,_c) = oneshot();
-                let (p2,c2) = oneshot();
-                let mut ports = [p1,p2];
+            let (p3,c3) = oneshot();
+            let (p4,c4) = oneshot();
 
-                let (p3,c3) = oneshot();
-                let (p4,c4) = oneshot();
-
-                let x = Cell::new((c2, p3, c4));
-                do task::spawn {
-                    let (c2, p3, c4) = x.take();
-                    p3.recv();   // handshake parent
-                    c4.send(()); // normal receive
-                    task::deschedule();
-                    c2.send(()); // select receive
-                }
-
-                // Try to block before child sends on c2.
-                c3.send(());
-                p4.recv();
-                if killable {
-                    assert!(select(ports) == 1);
-                } else {
-                    do task::unkillable { assert!(select(ports) == 1); }
-                }
+            let x = Cell::new((c2, p3, c4));
+            do task::spawn {
+                let (c2, p3, c4) = x.take();
+                p3.recv();   // handshake parent
+                c4.send(()); // normal receive
+                task::deschedule();
+                c2.send(()); // select receive
             }
+
+            // Try to block before child sends on c2.
+            c3.send(());
+            p4.recv();
+            assert!(select(ports) == 1);
         }
     }
 
@@ -277,16 +266,12 @@ mod test {
     fn select_racing_senders() {
         static NUM_CHANS: uint = 10;
 
-        select_racing_senders_helper(true,  ~[0,1,2,3,4,5,6,7,8,9]);
-        select_racing_senders_helper(false, ~[0,1,2,3,4,5,6,7,8,9]);
-        select_racing_senders_helper(true,  ~[0,1,2]);
-        select_racing_senders_helper(false, ~[0,1,2]);
-        select_racing_senders_helper(true,  ~[3,4,5,6]);
-        select_racing_senders_helper(false, ~[3,4,5,6]);
-        select_racing_senders_helper(true,  ~[7,8,9]);
-        select_racing_senders_helper(false, ~[7,8,9]);
+        select_racing_senders_helper(~[0,1,2,3,4,5,6,7,8,9]);
+        select_racing_senders_helper(~[0,1,2]);
+        select_racing_senders_helper(~[3,4,5,6]);
+        select_racing_senders_helper(~[7,8,9]);
 
-        fn select_racing_senders_helper(killable: bool, send_on_chans: ~[uint]) {
+        fn select_racing_senders_helper(send_on_chans: ~[uint]) {
             use rt::test::spawntask_random;
 
             do run_in_uv_task {
@@ -307,45 +292,10 @@ mod test {
                             }
                         }
                         // nondeterministic result, but should succeed
-                        if killable {
-                            select(ports);
-                        } else {
-                            do task::unkillable { select(ports); }
-                        }
+                        select(ports);
                     }
                 }
             }
-        }
-    }
-
-    #[test]
-    fn select_killed() {
-        do run_in_uv_task {
-            let (success_p, success_c) = oneshot::<bool>();
-            let success_c = Cell::new(success_c);
-            do task::try {
-                let success_c = Cell::new(success_c.take());
-                do task::unkillable {
-                    let (p,c) = oneshot();
-                    let c = Cell::new(c);
-                    do task::spawn {
-                        let (dead_ps, dead_cs) = unzip(range(0u, 5).map(|_| oneshot::<()>()));
-                        let mut ports = dead_ps;
-                        select(ports); // should get killed; nothing should leak
-                        c.take().send(()); // must not happen
-                        // Make sure dead_cs doesn't get closed until after select.
-                        let _ = dead_cs;
-                    }
-                    do task::spawn {
-                        fail!(); // should kill sibling awake
-                    }
-
-                    // wait for killed selector to close (NOT send on) its c.
-                    // hope to send 'true'.
-                    success_c.take().send(p.try_recv().is_none());
-                }
-            };
-            assert!(success_p.recv());
         }
     }
 }

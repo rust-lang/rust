@@ -21,7 +21,6 @@ use io;
 use libc::{pid_t, c_int};
 use libc;
 use prelude::*;
-use task;
 
 /**
  * A value representing a child process.
@@ -221,13 +220,7 @@ impl Process {
         let ch = SharedChan::new(ch);
         let ch_clone = ch.clone();
 
-        // FIXME(#910, #8674): right now I/O is incredibly brittle when it comes
-        //      to linked failure, so these tasks must be spawn so they're not
-        //      affected by linked failure. If these are removed, then the
-        //      runtime may never exit because linked failure will cause some
-        //      SchedHandle structures to not get destroyed, meaning that
-        //      there's always an async watcher available.
-        do task::spawn_unlinked {
+        do spawn {
             do io::ignore_io_error {
                 match error.take() {
                     Some(ref mut e) => ch.send((2, e.read_to_end())),
@@ -235,7 +228,7 @@ impl Process {
                 }
             }
         }
-        do task::spawn_unlinked {
+        do spawn {
             do io::ignore_io_error {
                 match output.take() {
                     Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
