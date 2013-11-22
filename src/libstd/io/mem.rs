@@ -331,12 +331,12 @@ mod test {
         writer.write([0]);
 
         let mut called = false;
-        do io_error::cond.trap(|err| {
+        io_error::cond.trap(|err| {
             assert_eq!(err.kind, OtherIoError);
             called = true;
-        }).inside {
+        }).inside(|| {
             writer.write([0, 0]);
-        }
+        });
         assert!(called);
     }
 

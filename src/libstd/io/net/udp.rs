@@ -116,14 +116,14 @@ mod test {
     fn bind_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
-            do io_error::cond.trap(|e| {
+            io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
                 called = true;
-            }).inside {
+            }).inside(|| {
                 let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let socket = UdpSocket::bind(addr);
                 assert!(socket.is_none());
-            }
+            });
             assert!(called);
         }
     }

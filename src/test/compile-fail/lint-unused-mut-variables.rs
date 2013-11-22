@@ -35,9 +35,9 @@ fn main() {
     let mut a = ~[];
     a.push(3);
     let mut a = ~[];
-    do callback {
+    callback(|| {
         a.push(3);
-    }
+    });
     let (mut a, b) = (1, 2);
     a = 34;
 

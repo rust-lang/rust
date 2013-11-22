@@ -25,8 +25,8 @@ impl xcc::Thunk<xcc::Color> for SThunk {
 }
 
 pub fn main() {
-    do xcc::oops::cond.trap(|_| xcc::Red).inside {
+    xcc::oops::cond.trap(|_| xcc::Red).inside(|| {
         let t = SThunk { x : 10 };
         assert_eq!(xcc::callback(t), xcc::Red)
-    }
+    })
 }

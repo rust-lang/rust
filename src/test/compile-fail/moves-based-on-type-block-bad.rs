@@ -15,12 +15,12 @@ fn f(s: &S, g: |&S|) {
 fn main() {
     let s = S { x: ~Bar(~42) };
     loop {
-        do f(&s) |hellothere| {
+        f(&s, |hellothere| {
             match hellothere.x {
                 ~Foo(_) => {}
                 ~Bar(x) => println(x.to_str()), //~ ERROR cannot move out
                 ~Baz => {}
             }
-        }
+        })
     }
 }

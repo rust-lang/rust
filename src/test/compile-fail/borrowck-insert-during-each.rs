@@ -23,9 +23,9 @@ impl Foo {
 }
 
 fn bar(f: &mut Foo) {
-  do f.foo |a| {
+  f.foo(|a| {
     f.n.insert(*a); //~ ERROR cannot borrow
-  }
+  })
 }
 
 fn main() {

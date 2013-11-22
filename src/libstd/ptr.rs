@@ -492,28 +492,28 @@ pub mod ptr_tests {
     fn test_position() {
         use libc::c_char;
 
-        do "hello".with_c_str |p| {
+        "hello".with_c_str(|p| {
             unsafe {
                 assert!(2u == position(p, |c| *c == 'l' as c_char));
                 assert!(4u == position(p, |c| *c == 'o' as c_char));
                 assert!(5u == position(p, |c| *c == 0 as c_char));
             }
-        }
+        })
     }
 
     #[test]
     fn test_buf_len() {
-        do "hello".with_c_str |p0| {
-            do "there".with_c_str |p1| {
-                do "thing".with_c_str |p2| {
+        "hello".with_c_str(|p0| {
+            "there".with_c_str(|p1| {
+                "thing".with_c_str(|p2| {
                     let v = ~[p0, p1, p2, null()];
-                    do v.as_imm_buf |vp, len| {
+                    v.as_imm_buf(|vp, len| {
                         assert_eq!(unsafe { buf_len(vp) }, 3u);
                         assert_eq!(len, 4u);
-                    }
-                }
-            }
-        }
+                    })
+                })
+            })
+        })
     }
 
     #[test]
@@ -621,23 +621,23 @@ pub mod ptr_tests {
                 one, two, three
             ];
 
-            do arr.as_imm_buf |arr_ptr, arr_len| {
+            arr.as_imm_buf(|arr_ptr, arr_len| {
                 let mut ctr = 0;
                 let mut iteration_count = 0;
-                do array_each_with_len(arr_ptr, arr_len) |e| {
+                array_each_with_len(arr_ptr, arr_len, |e| {
                      let actual = str::raw::from_c_str(e);
-                     let expected = do expected_arr[ctr].with_ref |buf| {
+                     let expected = expected_arr[ctr].with_ref(|buf| {
                          str::raw::from_c_str(buf)
-                     };
+                     });
                      debug!(
                          "test_ptr_array_each_with_len e: {}, a: {}",
                          expected, actual);
                      assert_eq!(actual, expected);
                      ctr += 1;
                      iteration_count += 1;
-                 }
+                });
                 assert_eq!(iteration_count, 3u);
-            }
+            })
         }
     }
 
@@ -658,23 +658,23 @@ pub mod ptr_tests {
                 one, two, three
             ];
 
-            do arr.as_imm_buf |arr_ptr, _| {
+            arr.as_imm_buf(|arr_ptr, _| {
                 let mut ctr = 0;
                 let mut iteration_count = 0;
-                do array_each(arr_ptr) |e| {
+                array_each(arr_ptr, |e| {
                      let actual = str::raw::from_c_str(e);
-                     let expected = do expected_arr[ctr].with_ref |buf| {
+                     let expected = expected_arr[ctr].with_ref(|buf| {
                          str::raw::from_c_str(buf)
-                     };
+                     });
                      debug!(
                          "test_ptr_array_each e: {}, a: {}",
                          expected, actual);
                      assert_eq!(actual, expected);
                      ctr += 1;
                      iteration_count += 1;
-                 }
+                });
                 assert_eq!(iteration_count, 3);
-            }
+            })
         }
     }
 

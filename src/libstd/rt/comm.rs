@@ -1013,7 +1013,7 @@ mod test {
 
             total.times(|| {
                 port.recv();
-            })
+            });
         }
     }
 
@@ -1041,7 +1041,7 @@ mod test {
 
             total.times(|| {
                 end_port.recv();
-            })
+            });
         }
     }
 
@@ -1071,7 +1071,7 @@ mod test {
                     do spawntask_random {
                         chan_clone.send(());
                     }
-                })
+                });
             }
             let end_chan_clone = end_chan.clone();
             do spawntask_random {
@@ -1082,7 +1082,7 @@ mod test {
                         let recvd = port_clone.try_recv().is_some();
                         end_chan_clone.send(recvd);
                     }
-                })
+                });
             }
 
             let mut recvd = 0;
@@ -1112,12 +1112,12 @@ mod test {
                 let pipe_clone = pipe.clone();
                 let end_chan_clone = end_chan.clone();
                 do spawntask_random {
-                    do msgs.times {
+                    msgs.times(|| {
                         pipe_clone.send(());
-                    }
-                    do msgs.times {
+                    });
+                    msgs.times(|| {
                         pipe_clone.recv();
-                    }
+                    });
                 }
 
                 end_chan_clone.send(());
@@ -1125,7 +1125,7 @@ mod test {
 
             total.times(|| {
                 end_port.recv();
-            })
+            });
         }
     }
 

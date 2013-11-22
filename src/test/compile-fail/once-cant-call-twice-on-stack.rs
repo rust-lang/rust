@@ -23,8 +23,8 @@ fn foo(blk: once ||) {
 
 fn main() {
     let x = arc::Arc::new(true);
-    do foo {
+    foo(|| {
         assert!(*x.get());
         util::ignore(x);
-    }
+    })
 }

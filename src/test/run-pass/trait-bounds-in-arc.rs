@@ -93,9 +93,9 @@ fn check_legs(arc: arc::Arc<~[~Pet:Freeze+Send]>) {
 }
 fn check_names(arc: arc::Arc<~[~Pet:Freeze+Send]>) {
     for pet in arc.get().iter() {
-        do pet.name |name| {
+        pet.name(|name| {
             assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
-        }
+        })
     }
 }
 fn check_pedigree(arc: arc::Arc<~[~Pet:Freeze+Send]>) {

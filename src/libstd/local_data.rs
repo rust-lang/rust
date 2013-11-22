@@ -479,19 +479,19 @@ mod tests {
         static key: Key<~int> = &Key;
         set(key, ~1);
 
-        do get(key) |v| {
-            do get(key) |v| {
-                do get(key) |v| {
+        get(key, |v| {
+            get(key, |v| {
+                get(key, |v| {
                     assert_eq!(**v.unwrap(), 1);
-                }
+                });
                 assert_eq!(**v.unwrap(), 1);
-            }
+            });
             assert_eq!(**v.unwrap(), 1);
-        }
+        });
         set(key, ~2);
-        do get(key) |v| {
+        get(key, |v| {
             assert_eq!(**v.unwrap(), 2);
-        }
+        })
     }
 
     #[test]
@@ -499,13 +499,13 @@ mod tests {
         static key: Key<int> = &Key;
         set(key, 1);
 
-        do get_mut(key) |v| {
+        get_mut(key, |v| {
             *v.unwrap() = 2;
-        }
+        });
 
-        do get(key) |v| {
+        get(key, |v| {
             assert_eq!(*v.unwrap(), 2);
-        }
+        })
     }
 
     #[test]
@@ -533,9 +533,9 @@ mod tests {
     fn test_nested_get_set1() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get(key) |_| {
+        get(key, |_| {
             set(key, 4);
-        }
+        })
     }
 
     #[test]
@@ -543,9 +543,9 @@ mod tests {
     fn test_nested_get_mut2() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get(key) |_| {
+        get(key, |_| {
             get_mut(key, |_| {})
-        }
+        })
     }
 
     #[test]
@@ -553,9 +553,9 @@ mod tests {
     fn test_nested_get_mut3() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get_mut(key) |_| {
+        get_mut(key, |_| {
             get(key, |_| {})
-        }
+        })
     }
 
     #[test]
@@ -563,8 +563,8 @@ mod tests {
     fn test_nested_get_mut4() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get_mut(key) |_| {
+        get_mut(key, |_| {
             get_mut(key, |_| {})
-        }
+        })
     }
 }

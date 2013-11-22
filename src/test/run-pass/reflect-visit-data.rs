@@ -37,16 +37,12 @@ impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     pub fn bump(&mut self, sz: uint) {
-      do self.inner.move_ptr() |p| {
-            ((p as uint) + sz) as *c_void
-      };
+      self.inner.move_ptr(|p| ((p as uint) + sz) as *c_void)
     }
 
     #[inline(always)]
     pub fn align(&mut self, a: uint) {
-      do self.inner.move_ptr() |p| {
-            align(p as uint, a) as *c_void
-      };
+      self.inner.move_ptr(|p| align(p as uint, a) as *c_void)
     }
 
     #[inline(always)]
@@ -501,15 +497,11 @@ impl TyVisitor for my_visitor {
     fn visit_bot(&mut self) -> bool { true }
     fn visit_nil(&mut self) -> bool { true }
     fn visit_bool(&mut self) -> bool {
-        do self.get::<bool>() |b| {
-            self.vals.push(b.to_str());
-        };
+        self.get::<bool>(|b| self.vals.push(b.to_str()));
         true
     }
     fn visit_int(&mut self) -> bool {
-        do self.get::<int>() |i| {
-            self.vals.push(i.to_str());
-        };
+        self.get::<int>(|i| self.vals.push(i.to_str()));
         true
     }
     fn visit_i8(&mut self) -> bool { true }

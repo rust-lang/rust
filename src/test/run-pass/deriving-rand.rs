@@ -34,10 +34,10 @@ enum D {
 
 fn main() {
     // check there's no segfaults
-    do 20.times {
+    20.times(|| {
         rand::random::<A>();
         rand::random::<B>();
         rand::random::<C>();
         rand::random::<D>();
-    }
+    })
 }
