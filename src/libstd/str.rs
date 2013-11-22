@@ -3966,19 +3966,25 @@ mod bench {
                         Lorem ipsum dolor sit amet, consectetur. ");
 
         assert_eq!(100, s.len());
-        bh.iter(|| is_utf8(s));
+        bh.iter(|| {
+            let _ = is_utf8(s);
+        });
     }
 
     #[bench]
     fn is_utf8_100_multibyte(bh: &mut BenchHarness) {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
-        bh.iter(|| is_utf8(s));
+        bh.iter(|| {
+            let _ = is_utf8(s);
+        });
     }
 
     #[bench]
     fn bench_with_capacity(bh: &mut BenchHarness) {
-        bh.iter(|| with_capacity(100));
+        bh.iter(|| {
+            let _ = with_capacity(100);
+        });
     }
 
     #[bench]

@@ -224,14 +224,14 @@ mod test {
     fn nested_trap_test_inner() {
         let mut inner_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_trap_test_inner: in handler");
             inner_trapped = true;
             0
-        }).inside {
+        }).inside(|| {
             debug!("nested_trap_test_inner: in protected block");
             trouble(1);
-        }
+        });
 
         assert!(inner_trapped);
     }
@@ -240,14 +240,14 @@ mod test {
     fn nested_trap_test_outer() {
         let mut outer_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_trap_test_outer: in handler");
             outer_trapped = true; 0
-        }).inside {
+        }).inside(|| {
             debug!("nested_guard_test_outer: in protected block");
             nested_trap_test_inner();
             trouble(1);
-        }
+        });
 
         assert!(outer_trapped);
     }
@@ -255,16 +255,16 @@ mod test {
     fn nested_reraise_trap_test_inner() {
         let mut inner_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_inner: in handler");
             inner_trapped = true;
             let i = 10;
             debug!("nested_reraise_trap_test_inner: handler re-raising");
             sadness::cond.raise(i)
-        }).inside {
+        }).inside(|| {
             debug!("nested_reraise_trap_test_inner: in protected block");
             trouble(1);
-        }
+        });
 
         assert!(inner_trapped);
     }
@@ -273,13 +273,13 @@ mod test {
     fn nested_reraise_trap_test_outer() {
         let mut outer_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_outer: in handler");
             outer_trapped = true; 0
-        }).inside {
+        }).inside(|| {
             debug!("nested_reraise_trap_test_outer: in protected block");
             nested_reraise_trap_test_inner();
-        }
+        });
 
         assert!(outer_trapped);
     }
@@ -288,13 +288,13 @@ mod test {
     fn test_default() {
         let mut trapped = false;
 
-        do sadness::cond.trap(|j| {
+        sadness::cond.trap(|j| {
             debug!("test_default: in handler");
             sadness::cond.raise_default(j, || { trapped=true; 5 })
-        }).inside {
+        }).inside(|| {
             debug!("test_default: in protected block");
             trouble(1);
-        }
+        });
 
         assert!(trapped);
     }
@@ -312,12 +312,12 @@ mod test {
             #[test]
             fn test_conditions_are_public() {
                 let mut trapped = false;
-                do sadness::cond.trap(|_| {
+                sadness::cond.trap(|_| {
                     trapped = true;
                     0
-                }).inside {
+                }).inside(|| {
                     sadness::cond.raise(0);
-                }
+                });
                 assert!(trapped);
             }
         }

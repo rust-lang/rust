@@ -18,11 +18,11 @@ pub fn main() {
     //let bt0 = sys::frame_address();
     //info!("%?", bt0);
 
-    do 3u.to(10u) |i| {
+    3u.to(10u, |i| {
         println!("{}", i);
 
         //let bt1 = sys::frame_address();
         //info!("%?", bt1);
         //assert!(bt0 == bt1);
-    }
+    })
 }

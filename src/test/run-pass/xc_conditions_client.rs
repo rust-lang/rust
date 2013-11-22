@@ -33,8 +33,8 @@ use xc_conditions::trouble;
 // there's no cross-crate-ness to test in that case.
 
 pub fn main() {
-    do oops::cond.trap(|_i| 12345).inside {
+    oops::cond.trap(|_i| 12345).inside(|| {
         let x = trouble();
         assert_eq!(x,12345);
-    }
+    })
 }

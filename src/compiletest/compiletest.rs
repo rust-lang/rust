@@ -266,12 +266,12 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
         let file = file.clone();
         debug!("inspecting file {}", file.display());
         if is_test(config, &file) {
-            let t = do make_test(config, &file) {
+            let t = make_test(config, &file, || {
                 match config.mode {
                     mode_codegen => make_metrics_test_closure(config, &file),
                     _ => make_test_closure(config, &file)
                 }
-            };
+            });
             tests.push(t)
         }
     }

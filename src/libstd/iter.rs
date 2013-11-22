@@ -2674,13 +2674,13 @@ mod tests {
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do v.iter().rposition |_elt| {
+        v.iter().rposition(|_elt| {
             if i == 2 {
                 fail!()
             }
             i += 1;
             false
-        };
+        });
     }
 
 

@@ -182,9 +182,9 @@ mod test {
             let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
             Local::put(task);
 
-            let res = do Local::borrow |_task: &mut Task| {
+            let res = Local::borrow(|_task: &mut Task| {
                 true
-            };
+            });
             assert!(res)
                 let task: ~Task = Local::take();
             cleanup_task(task);

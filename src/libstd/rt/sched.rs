@@ -1185,7 +1185,7 @@ mod test {
         use util;
 
         do run_in_bare_thread {
-            do stress_factor().times {
+            stress_factor().times(|| {
                 let sleepers = SleeperList::new();
                 let queue = WorkQueue::new();
                 let queues = ~[queue.clone()];
@@ -1214,7 +1214,7 @@ mod test {
                 util::ignore(handle);
 
                 thread.join();
-            }
+            })
         }
     }
 
@@ -1227,14 +1227,14 @@ mod test {
 
         do run_in_mt_newsched_task {
             let mut ports = ~[];
-            do 10.times {
+            10.times(|| {
                 let (port, chan) = oneshot();
                 let chan_cell = Cell::new(chan);
                 do spawntask_later {
                     chan_cell.take().send(());
                 }
                 ports.push(port);
-            }
+            });
 
             while !ports.is_empty() {
                 ports.pop().recv();
@@ -1324,7 +1324,7 @@ mod test {
     fn dont_starve_1() {
         use rt::comm::oneshot;
 
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_mt_newsched_task {
                 let (port, chan) = oneshot();
 
@@ -1336,14 +1336,14 @@ mod test {
 
                 chan.send(());
             }
-        }
+        })
     }
 
     #[test]
     fn dont_starve_2() {
         use rt::comm::oneshot;
 
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot();
                 let (_port2, chan2) = stream();
@@ -1358,7 +1358,7 @@ mod test {
 
                 chan.send(());
             }
-        }
+        })
     }
 
     // Regression test for a logic bug that would cause single-threaded schedulers
@@ -1369,7 +1369,7 @@ mod test {
         use num::Times;
 
         do spawn_sched(SingleThreaded) {
-            do 5.times { deschedule(); }
+            5.times(|| { deschedule(); })
         }
         do spawn { }
         do spawn { }

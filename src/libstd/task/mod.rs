@@ -673,7 +673,7 @@ fn test_kill_unkillable_task() {
             do task::spawn {
                 fail!();
             }
-            do task::unkillable { }
+            task::unkillable(|| { })
         };
     }
 }
@@ -687,13 +687,13 @@ fn test_kill_rekillable_task() {
     // 'unkillable' unwind correctly in conjunction with each other.
     do run_in_uv_task {
         do task::try {
-            do task::unkillable {
-                do task::rekillable {
+            task::unkillable(|| {
+                task::rekillable(|| {
                     do task::spawn {
                         fail!();
                     }
-                }
-            }
+                })
+            })
         };
     }
 }
@@ -702,13 +702,13 @@ fn test_kill_rekillable_task() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_rekillable_not_nested() {
-    do rekillable {
+    rekillable(|| {
         // This should fail before
         // receiving anything since
         // this block should be nested
         // into a unkillable block.
         deschedule();
-    }
+    })
 }
 
 
@@ -717,14 +717,14 @@ fn test_rekillable_not_nested() {
 fn test_rekillable_nested_failure() {
 
     let result = do task::try {
-        do unkillable {
-            do rekillable {
+        unkillable(|| {
+            rekillable(|| {
                 let (port,chan) = comm::stream();
                 do task::spawn { chan.send(()); fail!(); }
                 port.recv(); // wait for child to exist
                 port.recv(); // block forever, expect to get killed.
-            }
-        }
+            })
+        })
     };
     assert!(result.is_err());
 }
@@ -761,7 +761,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
             let ch = ch.clone();
             do spawn_unlinked {
                 // Give middle task a chance to fail-but-not-kill-us.
-                do 16.times { task::deschedule(); }
+                16.times(|| { task::deschedule(); });
                 ch.send(()); // If killed first, grandparent hangs.
             }
             fail!(); // Shouldn't kill either (grand)parent or (grand)child.
@@ -784,7 +784,7 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do run_in_uv_task {
         do spawn_supervised { fail!(); }
         // Give child a chance to fail-but-not-kill-us.
-        do 16.times { task::deschedule(); }
+        16.times(|| { task::deschedule(); });
     }
 }
 #[ignore(reason = "linked failure")]
@@ -893,7 +893,7 @@ fn test_spawn_failure_propagate_grandchild() {
             do spawn_supervised {
                 do spawn_supervised { block_forever(); }
             }
-            do 16.times { task::deschedule(); }
+            16.times(|| { task::deschedule(); });
             fail!();
         };
         assert!(result.is_err());
@@ -910,7 +910,7 @@ fn test_spawn_failure_propagate_secondborn() {
             do spawn_supervised {
                 do spawn { block_forever(); } // linked
             }
-            do 16.times { task::deschedule(); }
+            16.times(|| { task::deschedule(); });
             fail!();
         };
         assert!(result.is_err());
@@ -927,7 +927,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             do spawn { // linked
                 do spawn_supervised { block_forever(); }
             }
-            do 16.times { task::deschedule(); }
+            16.times(|| { task::deschedule(); });
             fail!();
         };
         assert!(result.is_err());
@@ -944,7 +944,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             do spawn { // linked
                 do spawn { block_forever(); } // linked
             }
-            do 16.times { task::deschedule(); }
+            16.times(|| { task::deschedule(); });
             fail!();
         };
         assert!(result.is_err());
@@ -957,9 +957,9 @@ fn test_unnamed_task() {
 
     do run_in_uv_task {
         do spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.is_none());
-            }
+            })
         }
     }
 }
@@ -972,9 +972,9 @@ fn test_owned_named_task() {
         let mut t = task();
         t.name(~"ada lovelace");
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -987,9 +987,9 @@ fn test_static_named_task() {
         let mut t = task();
         t.name("ada lovelace");
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -1002,9 +1002,9 @@ fn test_send_named_task() {
         let mut t = task();
         t.name("ada lovelace".into_send_str());
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -1087,9 +1087,9 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    do Local::borrow |sched: &mut ::rt::sched::Scheduler| {
+    Local::borrow(|sched: &mut ::rt::sched::Scheduler| {
         sched.sched_id() as int
-    }
+    })
 }
 
 #[test]
@@ -1147,7 +1147,7 @@ fn test_spawn_sched_blocking() {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        do 20u.times {
+        20u.times(|| {
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
 
@@ -1194,7 +1194,7 @@ fn test_spawn_sched_blocking() {
             lock.unlock();
             fin_po.recv();
             lock.destroy();
-        }
+        })
     }
 }
 
@@ -1221,30 +1221,30 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         let mut builder = task();
         do builder.spawn || {
             f();
         }
-    }
+    })
 }
 
 #[test]
 fn test_avoid_copying_the_body_try() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         do try || {
             f()
         };
-    }
+    })
 }
 
 #[test]
 fn test_avoid_copying_the_body_unlinked() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         do spawn_unlinked || {
             f();
         }
-    }
+    })
 }
 
 #[ignore(reason = "linked failure")]
@@ -1255,7 +1255,7 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn_unlinked {
-        do 10.times { deschedule() }
+        10.times(|| { deschedule() });
         ch.send(());
     }
 
@@ -1267,7 +1267,7 @@ fn test_unkillable() {
     }
 
     unsafe {
-        do unkillable {
+        unkillable(|| {
             let p = ~0;
             let pp: *uint = cast::transmute(p);
 
@@ -1275,7 +1275,7 @@ fn test_unkillable() {
             po.recv();
 
             let _p: ~int = cast::transmute(pp);
-        }
+        })
     }
 
     // Now we can be killed
@@ -1290,7 +1290,7 @@ fn test_unkillable_nested() {
 
     // We want to do this after failing
     do spawn_unlinked || {
-        do 10.times { deschedule() }
+        10.times(|| { deschedule() });
         ch.send(());
     }
 
@@ -1302,8 +1302,8 @@ fn test_unkillable_nested() {
     }
 
     unsafe {
-        do unkillable {
-            do unkillable {} // Here's the difference from the previous test.
+        unkillable(|| {
+            unkillable(|| {}); // Here's the difference from the previous test.
             let p = ~0;
             let pp: *uint = cast::transmute(p);
 
@@ -1311,7 +1311,7 @@ fn test_unkillable_nested() {
             po.recv();
 
             let _p: ~int = cast::transmute(pp);
-        }
+        })
     }
 
     // Now we can be killed
@@ -1388,11 +1388,11 @@ fn test_indestructible() {
                 let mut t = task();
                 t.unwatched();
                 do t.spawn {
-                    do (|| {
+                    (|| {
                         p1.recv(); // would deadlock if not killed
-                    }).finally {
+                    }).finally(|| {
                         c2.send(());
-                    };
+                    });
                 }
                 let mut t = task();
                 t.unwatched();

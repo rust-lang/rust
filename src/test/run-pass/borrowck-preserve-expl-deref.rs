@@ -23,7 +23,7 @@ struct F { f: ~int }
 
 pub fn main() {
     let mut x = @F {f: ~3};
-    do borrow((*x).f) |b_x| {
+    borrow((*x).f, |b_x| {
         assert_eq!(*b_x, 3);
         assert_eq!(ptr::to_unsafe_ptr(&(*x.f)), ptr::to_unsafe_ptr(&(*b_x)));
         x = @F {f: ~4};
@@ -32,5 +32,5 @@ pub fn main() {
                ptr::to_unsafe_ptr(&(*b_x)) as uint);
         assert_eq!(*b_x, 3);
         assert!(ptr::to_unsafe_ptr(&(*x.f)) != ptr::to_unsafe_ptr(&(*b_x)));
-    }
+    })
 }

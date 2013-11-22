@@ -115,9 +115,9 @@ mod test_rc {
     fn test_clone() {
         let x = Rc::from_send(Cell::new(5));
         let y = x.clone();
-        do x.borrow().with_mut_ref |inner| {
+        x.borrow().with_mut_ref(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().take(), 20);
     }
 
@@ -125,9 +125,9 @@ mod test_rc {
     fn test_deep_clone() {
         let x = Rc::from_send(Cell::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut_ref |inner| {
+        x.borrow().with_mut_ref(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().take(), 5);
     }
 
@@ -271,24 +271,24 @@ mod test_rc_mut {
     fn test_clone() {
         let x = RcMut::from_send(5);
         let y = x.clone();
-        do x.with_mut_borrow |value| {
+        x.with_mut_borrow(|value| {
             *value = 20;
-        }
-        do y.with_borrow |value| {
+        });
+        y.with_borrow(|value| {
             assert_eq!(*value, 20);
-        }
+        });
     }
 
     #[test]
     fn test_deep_clone() {
         let x = RcMut::new(5);
         let y = x.deep_clone();
-        do x.with_mut_borrow |value| {
+        x.with_mut_borrow(|value| {
             *value = 20;
-        }
-        do y.with_borrow |value| {
+        });
+        y.with_borrow(|value| {
             assert_eq!(*value, 5);
-        }
+        });
     }
 
     #[test]
@@ -296,15 +296,15 @@ mod test_rc_mut {
         let x = RcMut::from_send(5);
         let y = x.clone();
 
-        do x.with_borrow |a| {
+        x.with_borrow(|a| {
             assert_eq!(*a, 5);
-            do y.with_borrow |b| {
+            y.with_borrow(|b| {
                 assert_eq!(*b, 5);
-                do x.with_borrow |c| {
+                x.with_borrow(|c| {
                     assert_eq!(*c, 5);
-                }
-            }
-        }
+                })
+            })
+        })
     }
 
     #[test]
@@ -312,28 +312,28 @@ mod test_rc_mut {
         let x = RcMut::new(5);
         let y = x.clone();
 
-        do y.with_mut_borrow |a| {
+        y.with_mut_borrow(|a| {
             assert_eq!(*a, 5);
             *a = 6;
-        }
+        });
 
-        do x.with_borrow |a| {
+        x.with_borrow(|a| {
             assert_eq!(*a, 6);
-        }
+        })
     }
 
     #[test]
     fn release_immutable() {
         let x = RcMut::from_send(5);
-        do x.with_borrow |_| {}
-        do x.with_mut_borrow |_| {}
+        x.with_borrow(|_| {});
+        x.with_mut_borrow(|_| {});
     }
 
     #[test]
     fn release_mutable() {
         let x = RcMut::new(5);
-        do x.with_mut_borrow |_| {}
-        do x.with_borrow |_| {}
+        x.with_mut_borrow(|_| {});
+        x.with_borrow(|_| {});
     }
 
     #[test]
@@ -342,10 +342,10 @@ mod test_rc_mut {
         let x = RcMut::from_send(5);
         let y = x.clone();
 
-        do x.with_borrow |_| {
-            do y.with_mut_borrow |_| {
-            }
-        }
+        x.with_borrow(|_| {
+            y.with_mut_borrow(|_| {
+            });
+        });
     }
 
     #[test]
@@ -354,10 +354,10 @@ mod test_rc_mut {
         let x = RcMut::new(5);
         let y = x.clone();
 
-        do x.with_mut_borrow |_| {
-            do y.with_mut_borrow |_| {
-            }
-        }
+        x.with_mut_borrow(|_| {
+            y.with_mut_borrow(|_| {
+            });
+        });
     }
 
     #[test]
@@ -366,10 +366,10 @@ mod test_rc_mut {
         let x = RcMut::from_send(5);
         let y = x.clone();
 
-        do x.with_mut_borrow |_| {
-            do y.with_borrow |_| {
-            }
-        }
+        x.with_mut_borrow(|_| {
+            y.with_borrow(|_| {
+            });
+        });
     }
 
     #[test]
@@ -378,9 +378,9 @@ mod test_rc_mut {
         let x = RcMut::new(5);
         let y = x.clone();
 
-        do x.with_borrow |_| {
-            do x.with_borrow |_| {}
-            do y.with_mut_borrow |_| {}
-        }
+        x.with_borrow(|_| {
+            x.with_borrow(|_| {});
+            y.with_mut_borrow(|_| {});
+        });
     }
 }

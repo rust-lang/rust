@@ -22,11 +22,11 @@ mod libc {
 
 fn strlen(str: ~str) -> uint {
     // C string is terminated with a zero
-    do str.with_c_str |buf| {
+    str.with_c_str(|buf| {
         unsafe {
             libc::my_strlen(buf) as uint
         }
-    }
+    })
 }
 
 pub fn main() {

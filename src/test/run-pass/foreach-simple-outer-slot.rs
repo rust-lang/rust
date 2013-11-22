@@ -13,7 +13,7 @@
 
 pub fn main() {
     let mut sum: int = 0;
-    do first_ten |i| { info!("main"); info!("{}", i); sum = sum + i; }
+    first_ten(|i| { info!("main"); info!("{}", i); sum = sum + i; });
     info!("sum");
     info!("{}", sum);
     assert_eq!(sum, 45);

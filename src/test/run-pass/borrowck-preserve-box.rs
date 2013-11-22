@@ -21,7 +21,7 @@ fn borrow(x: &int, f: |x: &int|) {
 
 pub fn main() {
     let mut x = @3;
-    do borrow(x) |b_x| {
+    borrow(x, |b_x| {
         assert_eq!(*b_x, 3);
         assert_eq!(ptr::to_unsafe_ptr(&(*x)), ptr::to_unsafe_ptr(&(*b_x)));
         x = @22;
@@ -30,5 +30,5 @@ pub fn main() {
                ptr::to_unsafe_ptr(&(*b_x)) as uint);
         assert_eq!(*b_x, 3);
         assert!(ptr::to_unsafe_ptr(&(*x)) != ptr::to_unsafe_ptr(&(*b_x)));
-    }
+    })
 }

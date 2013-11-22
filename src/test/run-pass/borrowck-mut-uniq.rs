@@ -30,10 +30,10 @@ pub fn main() {
     add_int(ints, 22);
     add_int(ints, 44);
 
-    do iter_ints(ints) |i| {
+    iter_ints(ints, |i| {
         error!("int = {}", *i);
         true
-    };
+    });
 
     error!("ints={:?}", ints);
 }

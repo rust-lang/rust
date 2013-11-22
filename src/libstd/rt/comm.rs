@@ -229,9 +229,9 @@ impl<T: Send> SelectInner for PortOne<T> {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
         use rand::{Rand};
-        let actually_check = do Local::borrow |sched: &mut Scheduler| {
+        let actually_check = Local::borrow(|sched: &mut Scheduler| {
             Rand::rand(&mut sched.rng)
-        };
+        });
         if actually_check {
             unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
         } else {
@@ -868,7 +868,7 @@ mod test {
     #[test]
     fn oneshot_multi_thread_close_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let port_cell = Cell::new(port);
@@ -878,13 +878,13 @@ mod test {
                 let _chan = chan;
                 thread.join();
             }
-        }
+        })
     }
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let chan_cell = Cell::new(chan);
@@ -899,13 +899,13 @@ mod test {
                 thread1.join();
                 thread2.join();
             }
-        }
+        })
     }
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let chan_cell = Cell::new(chan);
@@ -926,13 +926,13 @@ mod test {
                 thread1.join();
                 thread2.join();
             }
-        }
+        })
     }
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<~int>();
                 let chan_cell = Cell::new(chan);
@@ -946,13 +946,13 @@ mod test {
                 thread1.join();
                 thread2.join();
             }
-        }
+        })
     }
 
     #[test]
     fn stream_send_recv_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_mt_newsched_task {
                 let (port, chan) = stream::<~int>();
 
@@ -981,7 +981,7 @@ mod test {
                     };
                 }
             }
-        }
+        })
     }
 
     #[test]
@@ -989,8 +989,8 @@ mod test {
         // Regression test that we don't run out of stack in scheduler context
         do run_in_newsched_task {
             let (port, chan) = stream();
-            do 10000.times { chan.send(()) }
-            do 10000.times { port.recv() }
+            10000.times(|| { chan.send(()) });
+            10000.times(|| { port.recv() });
         }
     }
 
@@ -1001,16 +1001,16 @@ mod test {
             let (port, chan) = stream();
             let chan = SharedChan::new(chan);
             let total = stress_factor() + 100;
-            do total.times {
+            total.times(|| {
                 let chan_clone = chan.clone();
                 do spawntask_random {
                     chan_clone.send(());
                 }
-            }
+            });
 
-            do total.times {
+            total.times(|| {
                 port.recv();
-            }
+            });
         }
     }
 
@@ -1023,22 +1023,22 @@ mod test {
             let end_chan = SharedChan::new(end_chan);
             let port = SharedPort::new(port);
             let total = stress_factor() + 100;
-            do total.times {
+            total.times(|| {
                 let end_chan_clone = end_chan.clone();
                 let port_clone = port.clone();
                 do spawntask_random {
                     port_clone.recv();
                     end_chan_clone.send(());
                 }
-            }
+            });
 
-            do total.times {
+            total.times(|| {
                 chan.send(());
-            }
+            });
 
-            do total.times {
+            total.times(|| {
                 end_port.recv();
-            }
+            });
         }
     }
 
@@ -1063,29 +1063,29 @@ mod test {
             let send_total = 10;
             let recv_total = 20;
             do spawntask_random {
-                do send_total.times {
+                send_total.times(|| {
                     let chan_clone = chan.clone();
                     do spawntask_random {
                         chan_clone.send(());
                     }
-                }
+                });
             }
             let end_chan_clone = end_chan.clone();
             do spawntask_random {
-                do recv_total.times {
+                recv_total.times(|| {
                     let port_clone = port.clone();
                     let end_chan_clone = end_chan_clone.clone();
                     do spawntask_random {
                         let recvd = port_clone.try_recv().is_some();
                         end_chan_clone.send(recvd);
                     }
-                }
+                });
             }
 
             let mut recvd = 0;
-            do recv_total.times {
+            recv_total.times(|| {
                 recvd += if end_port.recv() { 1 } else { 0 };
-            }
+            });
 
             assert!(recvd == send_total);
         }
@@ -1104,25 +1104,25 @@ mod test {
             let pipe = megapipe();
             let total = stress_factor() + 10;
             let mut rng = rand::rng();
-            do total.times {
+            total.times(|| {
                 let msgs = rng.gen_range(0u, 10);
                 let pipe_clone = pipe.clone();
                 let end_chan_clone = end_chan.clone();
                 do spawntask_random {
-                    do msgs.times {
+                    msgs.times(|| {
                         pipe_clone.send(());
-                    }
-                    do msgs.times {
+                    });
+                    msgs.times(|| {
                         pipe_clone.recv();
-                    }
+                    });
                 }
 
                 end_chan_clone.send(());
-            }
+            });
 
-            do total.times {
+            total.times(|| {
                 end_port.recv();
-            }
+            });
         }
     }
 
@@ -1149,13 +1149,13 @@ mod test {
 
             let cs = Cell::new((cone, cstream, cshared, mp));
             unsafe {
-                do atomically {
+                atomically(|| {
                     let (cone, cstream, cshared, mp) = cs.take();
                     cone.send_deferred(());
                     cstream.send_deferred(());
                     cshared.send_deferred(());
                     mp.send_deferred(());
-                }
+                })
             }
         }
     }

@@ -20,7 +20,7 @@ pub fn main() {
         let x = Some(unstable::sync::Exclusive::new(true));
         match x {
             Some(ref z) if z.with(|b| *b) => {
-                do z.with |b| { assert!(*b); }
+                z.with(|b| assert!(*b));
             },
             _ => fail!()
         }

@@ -56,9 +56,9 @@ pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
 
     let sym = unsafe {
         let module = dl::open_internal();
-        let sym = do "__rust_crate_map_toplevel".with_c_str |buf| {
+        let sym = "__rust_crate_map_toplevel".with_c_str(|buf| {
             dl::symbol(module, buf)
-        };
+        });
         dl::close(module);
         sym
     };
@@ -136,10 +136,10 @@ mod tests {
 
         let mut cnt = 0;
         unsafe {
-            do iter_crate_map(&root_crate) |entry| {
+            iter_crate_map(&root_crate, |entry| {
                 assert!(*entry.log_level == 3);
                 cnt += 1;
-            }
+            });
             assert!(cnt == 1);
         }
     }
@@ -178,10 +178,10 @@ mod tests {
 
         let mut cnt = 0;
         unsafe {
-            do iter_crate_map(&root_crate) |entry| {
+            iter_crate_map(&root_crate, |entry| {
                 assert!(*entry.log_level == cnt);
                 cnt += 1;
-            }
+            });
             assert!(cnt == 4);
         }
     }
