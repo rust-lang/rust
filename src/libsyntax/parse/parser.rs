@@ -4216,10 +4216,10 @@ impl Parser {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::item_, ~[ast::Attribute]) {
-        let mut prefix = Path::new(self.sess.cm.span_to_filename(*self.span));
+        let mut prefix = Path::init(self.sess.cm.span_to_filename(*self.span));
         prefix.pop();
         let mod_path_stack = &*self.mod_path_stack;
-        let mod_path = Path::new(".").join_many(*mod_path_stack);
+        let mod_path = Path::init(".").join_many(*mod_path_stack);
         let dir_path = prefix.join(&mod_path);
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {

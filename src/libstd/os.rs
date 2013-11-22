@@ -64,7 +64,7 @@ pub fn getcwd() -> Path {
                 fail!()
             }
 
-            Path::new(CString::new(buf as *c_char, false))
+            Path::init(CString::new(buf as *c_char, false))
         }
     })
 }
@@ -81,7 +81,7 @@ pub fn getcwd() -> Path {
             }
         }
     });
-    Path::new(str::from_utf16(buf))
+    Path::init(str::from_utf16(buf))
 }
 
 #[cfg(windows)]
@@ -384,7 +384,7 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~[u8]> {
         use std::io;
 
-        match io::result(|| io::fs::readlink(&Path::new("/proc/self/exe"))) {
+        match io::result(|| io::fs::readlink(&Path::init("/proc/self/exe"))) {
             Ok(Some(path)) => Some(path.as_vec().to_owned()),
             Ok(None) | Err(..) => None
         }
@@ -418,7 +418,7 @@ pub fn self_exe_path() -> Option<Path> {
         }
     }
 
-    load_self().and_then(|path| Path::new_opt(path).map(|mut p| { p.pop(); p }))
+    load_self().and_then(|path| Path::init_opt(path).map(|mut p| { p.pop(); p }))
 }
 
 /**
@@ -437,7 +437,7 @@ pub fn self_exe_path() -> Option<Path> {
 pub fn homedir() -> Option<Path> {
     // FIXME (#7188): getenv needs a ~[u8] variant
     return match getenv("HOME") {
-        Some(ref p) if !p.is_empty() => Path::new_opt(p.as_slice()),
+        Some(ref p) if !p.is_empty() => Path::init_opt(p.as_slice()),
         _ => secondary()
     };
 
@@ -450,7 +450,7 @@ pub fn homedir() -> Option<Path> {
     fn secondary() -> Option<Path> {
         getenv("USERPROFILE").and_then(|p| {
             if !p.is_empty() {
-                Path::new_opt(p)
+                Path::init_opt(p)
             } else {
                 None
             }
@@ -479,7 +479,7 @@ pub fn tmpdir() -> Path {
                 if x.is_empty() {
                     None
                 } else {
-                    Path::new_opt(x)
+                    Path::init_opt(x)
                 },
             _ => None
         }
@@ -488,9 +488,9 @@ pub fn tmpdir() -> Path {
     #[cfg(unix)]
     fn lookup() -> Path {
         if cfg!(target_os = "android") {
-            Path::new("/data/tmp")
+            Path::init("/data/tmp")
         } else {
-            getenv_nonempty("TMPDIR").unwrap_or(Path::new("/tmp"))
+            getenv_nonempty("TMPDIR").unwrap_or(Path::init("/tmp"))
         }
     }
 
@@ -499,7 +499,7 @@ pub fn tmpdir() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
                 getenv_nonempty("USERPROFILE").or(
-                   getenv_nonempty("WINDIR")))).unwrap_or(Path::new("C:\\Windows"))
+                   getenv_nonempty("WINDIR")))).unwrap_or(Path::init("C:\\Windows"))
     }
 }
 
@@ -1366,13 +1366,13 @@ mod tests {
 
     #[test]
     fn test() {
-        assert!((!Path::new("test-path").is_absolute()));
+        assert!((!Path::init("test-path").is_absolute()));
 
         let cwd = getcwd();
         debug!("Current working directory: {}", cwd.display());
 
-        debug!("{:?}", make_absolute(&Path::new("test-path")));
-        debug!("{:?}", make_absolute(&Path::new("/usr/bin")));
+        debug!("{:?}", make_absolute(&Path::init("test-path")));
+        debug!("{:?}", make_absolute(&Path::init("/usr/bin")));
     }
 
     #[test]
@@ -1381,7 +1381,7 @@ mod tests {
         let oldhome = getenv("HOME");
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::init("/home/MountainView")));
 
         setenv("HOME", "");
         assert!(os::homedir().is_none());
@@ -1402,16 +1402,16 @@ mod tests {
         assert!(os::homedir().is_none());
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::init("/home/MountainView")));
 
         setenv("HOME", "");
 
         setenv("USERPROFILE", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::init("/home/MountainView")));
 
         setenv("HOME", "/home/MountainView");
         setenv("USERPROFILE", "/home/PaloAlto");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path::init("/home/MountainView")));
 
         for s in oldhome.iter() { setenv("HOME", *s) }
         for s in olduserprofile.iter() { setenv("USERPROFILE", *s) }

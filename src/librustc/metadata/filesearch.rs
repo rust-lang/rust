@@ -145,7 +145,7 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
     let dir = libdir();
-    let mut p = Path::new(dir.as_slice());
+    let mut p = Path::init(dir.as_slice());
     assert!(p.is_relative());
     p.push("rustc");
     p.push(target_triple);
@@ -199,7 +199,7 @@ pub fn rust_path() -> ~[Path] {
         Some(env_path) => {
             let env_path_components: ~[&str] =
                 env_path.split_str(PATH_ENTRY_SEPARATOR).collect();
-            env_path_components.map(|&s| Path::new(s))
+            env_path_components.map(|&s| Path::init(s))
         }
         None => ~[]
     };

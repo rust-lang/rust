@@ -248,7 +248,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
             let src = str::from_utf8(io::stdin().read_to_end());
             str_input(src.to_managed())
         } else {
-            file_input(Path::new(ifile))
+            file_input(Path::init(ifile))
         }
       }
       _ => early_error(demitter, "multiple input filenames provided")
@@ -256,8 +256,8 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
 
     let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
-    let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
-    let ofile = matches.opt_str("o").map(|o| Path::new(o));
+    let odir = matches.opt_str("out-dir").map(|o| Path::init(o));
+    let ofile = matches.opt_str("o").map(|o| Path::init(o));
     let cfg = build_configuration(sess);
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
         parse_pretty(sess, a)

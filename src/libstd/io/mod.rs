@@ -450,7 +450,7 @@ pub trait Reader {
     ///
     /// # Example
     ///
-    ///     let reader = File::open(&Path::new("foo.txt"))
+    ///     let reader = File::open(&Path::init("foo.txt"))
     ///     while !reader.eof() {
     ///         println(reader.read_line());
     ///     }
