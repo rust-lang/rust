@@ -9,21 +9,21 @@
 // except according to those terms.
 
 use std::rc::Rc;
-use std::mutable::Mut;
+use std::cell::RefCell;
 
 trait Foo
 {
-    fn set(&mut self, v: Rc<Mut<A>>);
+    fn set(&mut self, v: Rc<RefCell<A>>);
 }
 
 struct B
 {
-    v: Option<Rc<Mut<A>>>
+    v: Option<Rc<RefCell<A>>>
 }
 
 impl Foo for B
 {
-    fn set(&mut self, v: Rc<Mut<A>>)
+    fn set(&mut self, v: Rc<RefCell<A>>)
     {
         self.v = Some(v);
     }
@@ -37,7 +37,7 @@ struct A
 fn main()
 {
     let a = A {v: ~B{v: None} as ~Foo}; //~ ERROR cannot pack type `~B`, which does not fulfill `Send`
-    let v = Rc::from_send(Mut::new(a));
+    let v = Rc::from_send(RefCell::new(a));
     let w = v.clone();
     let b = v.borrow();
     let mut b = b.borrow_mut();

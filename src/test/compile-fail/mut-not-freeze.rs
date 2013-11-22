@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mutable::Mut;
+use std::cell::RefCell;
 
 fn f<T: Freeze>(_: T) {}
 
 fn main() {
-    let x = Mut::new(0);
+    let x = RefCell::new(0);
     f(x); //~ ERROR: which does not fulfill `Freeze`
 }
