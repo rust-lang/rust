@@ -1398,6 +1398,29 @@ impl Parser {
         }
     }
 
+    fn concat_adjacent_str_lit(&self, concat_str: &mut ~str) {
+        match *self.token {
+            token::LIT_STR(s) => {
+                self.bump();
+                concat_str.push_str(self.id_to_str(s));
+                self.concat_adjacent_str_lit(concat_str);
+            }
+            _ => ()
+        }
+    }
+
+    fn parse_str_lit(&self, s: ast::Ident) -> lit_ {
+        let s = match *self.token {
+            token::LIT_STR(_) => {
+                let mut concat_str = self.id_to_str(s).to_owned();
+                self.concat_adjacent_str_lit(&mut concat_str);
+                token::str_to_ident(concat_str)
+            }
+            _ => s
+        };
+        lit_str(self.id_to_str(s), ast::CookedStr)
+    }
+
     // matches token_lit = LIT_INT | ...
     pub fn lit_from_token(&self, tok: &token::Token) -> lit_ {
         match *tok {
@@ -1408,7 +1431,7 @@ impl Parser {
             token::LIT_FLOAT(s, ft) => lit_float(self.id_to_str(s), ft),
             token::LIT_FLOAT_UNSUFFIXED(s) =>
                 lit_float_unsuffixed(self.id_to_str(s)),
-            token::LIT_STR(s) => lit_str(self.id_to_str(s), ast::CookedStr),
+            token::LIT_STR(s) => self.parse_str_lit(s),
             token::LIT_STR_RAW(s, n) => lit_str(self.id_to_str(s), ast::RawStr(n)),
             token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
             _ => { self.unexpected_last(tok); }
