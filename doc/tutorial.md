@@ -890,9 +890,7 @@ calling the destructor, and the owner determines whether the object is mutable.
 
 Ownership is recursive, so mutability is inherited recursively and a destructor
 destroys the contained tree of owned objects. Variables are top-level owners
-and destroy the contained object when they go out of scope. A box managed by
-the garbage collector starts a new ownership tree, and the destructor is called
-when it is collected.
+and destroy the contained object when they go out of scope.
 
 ~~~~
 // the struct owns the objects contained in the `x` and `y` fields
@@ -1007,51 +1005,6 @@ let r = ~13;
 let mut s = r; // box becomes mutable
 *s += 1;
 let t = s; // box becomes immutable
-~~~~
-
-# Managed boxes
-
-A managed box (`@`) is a heap allocation with the lifetime managed by a
-task-local garbage collector. It will be destroyed at some point after there
-are no references left to the box, no later than the end of the task. Managed
-boxes lack an owner, so they start a new ownership tree and don't inherit
-mutability. They do own the contained object, and mutability is defined by the
-type of the managed box (`@` or `@mut`). An object containing a managed box is
-not `Owned`, and can't be sent between tasks.
-
-~~~~
-let a = @5; // immutable
-
-let mut b = @5; // mutable variable, immutable box
-b = @10;
-
-let c = @mut 5; // immutable variable, mutable box
-*c = 10;
-
-let mut d = @mut 5; // mutable variable, mutable box
-*d += 5;
-d = @mut 15;
-~~~~
-
-A mutable variable and an immutable variable can refer to the same box, given
-that their types are compatible. Mutability of a box is a property of its type,
-however, so for example a mutable handle to an immutable box cannot be
-assigned a reference to a mutable box.
-
-~~~~
-let a = @1;     // immutable box
-let b = @mut 2; // mutable box
-
-let mut c : @int;       // declare a variable with type managed immutable int
-let mut d : @mut int;   // and one of type managed mutable int
-
-c = a;          // box type is the same, okay
-d = b;          // box type is the same, okay
-~~~~
-
-~~~~ {.xfail-test}
-// but b cannot be assigned to c, or a to d
-c = b;          // error
 ~~~~
 
 # Borrowed pointers
@@ -1346,6 +1299,52 @@ defined in [`std::vec`] and [`std::str`].
 
 [`std::vec`]: std/vec/index.html
 [`std::str`]: std/str/index.html
+
+# Ownership escape hatches
+
+Ownership can cleanly describe tree-like data structures, and borrowed pointers provide non-owning
+references. However, more flexibility is often desired and Rust provides ways to escape from strict
+single parent ownership.
+
+The standard library provides the `std::rc::Rc` pointer type to express *shared ownership* over a
+reference counted box. As soon as all of the `Rc` pointers go out of scope, the box and the
+contained value are destroyed.
+
+~~~
+use std::rc::Rc;
+
+// A fixed-size array allocated in a reference-counted box
+let x = Rc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+let y = x.clone(); // a new owner
+let z = x; // this moves `x` into `z`, rather than creating a new owner
+
+assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+let mut a = Rc::new([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]); // the variable is mutable, but not the box
+a = z;
+~~~
+
+A garbage collected pointer is provided via `std::gc::Gc`, with a task-local garbage collector
+having ownership of the box. It allows the creation of cycles, and the individual `Gc` pointers do
+not have a destructor.
+
+~~~
+use std::gc::Gc;
+
+// A fixed-size array allocated in a garbage-collected box
+let x = Gc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+let y = x; // does not perform a move, unlike with `Rc`
+let z = x;
+
+assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+~~~
+
+With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,
+it's possible to use *dynamic* mutability via types like `std::cell::Cell` where freezing is handled
+via dynamic checks and can fail at runtime.
+
+The `Rc` and `Gc` types are not sendable, so they cannot be used to share memory between tasks. Safe
+immutable and mutable shared memory is provided by the `extra::arc` module.
 
 # Closures
 
