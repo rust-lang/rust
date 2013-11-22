@@ -20,7 +20,6 @@ use std::rt::rtio;
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
 use std::str;
-use std::task;
 use std::vec;
 
 use stream::StreamWatcher;
@@ -176,34 +175,32 @@ impl TcpWatcher {
     {
         struct Ctx { status: c_int, task: Option<BlockedTask> }
 
-        return do task::unkillable {
-            let tcp = TcpWatcher::new(loop_);
-            let ret = do socket_addr_as_sockaddr(address) |addr| {
-                let mut req = Request::new(uvll::UV_CONNECT);
-                let result = unsafe {
-                    uvll::uv_tcp_connect(req.handle, tcp.handle, addr,
-                                         connect_cb)
-                };
-                match result {
-                    0 => {
-                        req.defuse(); // uv callback now owns this request
-                        let mut cx = Ctx { status: 0, task: None };
-                        do wait_until_woken_after(&mut cx.task) {
-                            req.set_data(&cx);
-                        }
-                        match cx.status {
-                            0 => Ok(()),
-                            n => Err(UvError(n)),
-                        }
-                    }
-                    n => Err(UvError(n))
-                }
+        let tcp = TcpWatcher::new(loop_);
+        let ret = do socket_addr_as_sockaddr(address) |addr| {
+            let mut req = Request::new(uvll::UV_CONNECT);
+            let result = unsafe {
+                uvll::uv_tcp_connect(req.handle, tcp.handle, addr,
+                                     connect_cb)
             };
-
-            match ret {
-                Ok(()) => Ok(tcp),
-                Err(e) => Err(e),
+            match result {
+                0 => {
+                    req.defuse(); // uv callback now owns this request
+                    let mut cx = Ctx { status: 0, task: None };
+                    do wait_until_woken_after(&mut cx.task) {
+                        req.set_data(&cx);
+                    }
+                    match cx.status {
+                        0 => Ok(()),
+                        n => Err(UvError(n)),
+                    }
+                }
+                n => Err(UvError(n))
             }
+        };
+
+        return match ret {
+            Ok(()) => Ok(tcp),
+            Err(e) => Err(e),
         };
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
@@ -291,25 +288,23 @@ impl TcpListener {
     pub fn bind(loop_: &mut Loop, address: SocketAddr)
         -> Result<~TcpListener, UvError>
     {
-        do task::unkillable {
-            let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
-            assert_eq!(unsafe {
-                uvll::uv_tcp_init(loop_.handle, handle)
-            }, 0);
-            let l = ~TcpListener {
-                home: get_handle_to_current_scheduler!(),
-                handle: handle,
-                closing_task: None,
-                outgoing: Tube::new(),
-            };
-            let res = socket_addr_as_sockaddr(address, |addr| unsafe {
-                uvll::uv_tcp_bind(l.handle, addr)
-            });
-            match res {
-                0 => Ok(l.install()),
-                n => Err(UvError(n))
-            }
-        }
+        let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
+        assert_eq!(unsafe {
+            uvll::uv_tcp_init(loop_.handle, handle)
+        }, 0);
+        let l = ~TcpListener {
+            home: get_handle_to_current_scheduler!(),
+            handle: handle,
+            closing_task: None,
+            outgoing: Tube::new(),
+        };
+        let res = socket_addr_as_sockaddr(address, |addr| unsafe {
+            uvll::uv_tcp_bind(l.handle, addr)
+        });
+        return match res {
+            0 => Ok(l.install()),
+            n => Err(UvError(n))
+        };
     }
 }
 
@@ -426,22 +421,20 @@ impl UdpWatcher {
     pub fn bind(loop_: &Loop, address: SocketAddr)
         -> Result<UdpWatcher, UvError>
     {
-        do task::unkillable {
-            let udp = UdpWatcher {
-                handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
-                home: get_handle_to_current_scheduler!(),
-            };
-            assert_eq!(unsafe {
-                uvll::uv_udp_init(loop_.handle, udp.handle)
-            }, 0);
-            let result = socket_addr_as_sockaddr(address, |addr| unsafe {
-                uvll::uv_udp_bind(udp.handle, addr, 0u32)
-            });
-            match result {
-                0 => Ok(udp),
-                n => Err(UvError(n)),
-            }
-        }
+        let udp = UdpWatcher {
+            handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
+            home: get_handle_to_current_scheduler!(),
+        };
+        assert_eq!(unsafe {
+            uvll::uv_udp_init(loop_.handle, udp.handle)
+        }, 0);
+        let result = socket_addr_as_sockaddr(address, |addr| unsafe {
+            uvll::uv_udp_bind(udp.handle, addr, 0u32)
+        });
+        return match result {
+            0 => Ok(udp),
+            n => Err(UvError(n)),
+        };
     }
 }
 
@@ -1123,16 +1116,14 @@ mod test {
                 assert!(maybe_socket.is_ok());
 
                 // block self on sched1
-                do task::unkillable { // FIXME(#8674)
-                    let scheduler: ~Scheduler = Local::take();
-                    do scheduler.deschedule_running_task_and_then |_, task| {
-                        // unblock task
-                        do task.wake().map |task| {
-                            // send self to sched2
-                            tasksFriendHandle.take().send(TaskFromFriend(task));
-                        };
-                        // sched1 should now sleep since it has nothing else to do
-                    }
+                let scheduler: ~Scheduler = Local::take();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    // unblock task
+                    do task.wake().map |task| {
+                        // send self to sched2
+                        tasksFriendHandle.take().send(TaskFromFriend(task));
+                    };
+                    // sched1 should now sleep since it has nothing else to do
                 }
                 // sched2 will wake up and get the task as we do nothing else,
                 // the function ends and the socket goes out of scope sched2
@@ -1180,7 +1171,7 @@ mod test {
         let chan = Cell::new(chan);
         let addr = next_test_ip4();
 
-        do task::spawn_unlinked { // please no linked failure
+        do spawn {
             let w = TcpListener::bind(local_loop(), addr).unwrap();
             let mut w = w.listen().unwrap();
             chan.take().send(());

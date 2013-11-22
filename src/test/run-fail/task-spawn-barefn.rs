@@ -15,7 +15,7 @@ use std::task;
 fn main() {
     // the purpose of this test is to make sure that task::spawn()
     // works when provided with a bare function:
-    task::spawn(startfn);
+    task::try(startfn).unwrap();
 }
 
 fn startfn() {

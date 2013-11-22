@@ -954,10 +954,10 @@ mod tests {
 
     use std::f64;
     use std::result::{Err, Ok};
-    use std::libc;
 
     #[cfg(windows)]
     fn set_time_zone() {
+        use std::libc;
         // Windows crt doesn't see any environment variable set by
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.

@@ -402,22 +402,6 @@ freeing memory along the way---and then exits. Unlike exceptions in C++,
 exceptions in Rust are unrecoverable within a single task: once a task fails,
 there is no way to "catch" the exception.
 
-All tasks are, by default, _linked_ to each other. That means that the fates
-of all tasks are intertwined: if one fails, so do all the others.
-
-~~~{.xfail-test .linked-failure}
-# use std::task::spawn;
-# use std::task;
-# fn do_some_work() { loop { task::yield() } }
-# do task::try {
-// Create a child task that fails
-do spawn { fail!() }
-
-// This will also fail because the task we spawned failed
-do_some_work();
-# };
-~~~
-
 While it isn't possible for a task to recover from failure, tasks may notify
 each other of failure. The simplest way of handling task failure is with the
 `try` function, which is similar to `spawn`, but immediately blocks waiting
@@ -464,101 +448,7 @@ it trips, indicates an unrecoverable logic error); in other cases you
 might want to contain the failure at a certain boundary (perhaps a
 small piece of input from the outside world, which you happen to be
 processing in parallel, is malformed and its processing task can't
-proceed). Hence, you will need different _linked failure modes_.
-
-## Failure modes
-
-By default, task failure is _bidirectionally linked_, which means that if
-either task fails, it kills the other one.
-
-~~~{.xfail-test .linked-failure}
-# use std::task;
-# use std::comm::oneshot;
-# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
-# do task::try {
-do spawn {
-    do spawn {
-        fail!();  // All three tasks will fail.
-    }
-    sleep_forever();  // Will get woken up by force, then fail
-}
-sleep_forever();  // Will get woken up by force, then fail
-# };
-~~~
-
-If you want parent tasks to be able to kill their children, but do not want a
-parent to fail automatically if one of its child task fails, you can call
-`task::spawn_supervised` for _unidirectionally linked_ failure. The
-function `task::try`, which we saw previously, uses `spawn_supervised`
-internally, with additional logic to wait for the child task to finish
-before returning. Hence:
-
-~~~{.xfail-test .linked-failure}
-# use std::comm::{stream, Chan, Port};
-# use std::comm::oneshot;
-# use std::task::{spawn, try};
-# use std::task;
-# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
-# do task::try {
-let (receiver, sender): (Port<int>, Chan<int>) = stream();
-do spawn {  // Bidirectionally linked
-    // Wait for the supervised child task to exist.
-    let message = receiver.recv();
-    // Kill both it and the parent task.
-    assert!(message != 42);
-}
-do try {  // Unidirectionally linked
-    sender.send(42);
-    sleep_forever();  // Will get woken up by force
-}
-// Flow never reaches here -- parent task was killed too.
-# };
-~~~
-
-Supervised failure is useful in any situation where one task manages
-multiple fallible child tasks, and the parent task can recover
-if any child fails. On the other hand, if the _parent_ (supervisor) fails,
-then there is nothing the children can do to recover, so they should
-also fail.
-
-Supervised task failure propagates across multiple generations even if
-an intermediate generation has already exited:
-
-~~~{.xfail-test .linked-failure}
-# use std::task;
-# use std::comm::oneshot;
-# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
-# fn wait_for_a_while() { for _ in range(0, 1000u) { task::yield() } }
-# do task::try::<int> {
-do task::spawn_supervised {
-    do task::spawn_supervised {
-        sleep_forever();  // Will get woken up by force, then fail
-    }
-    // Intermediate task immediately exits
-}
-wait_for_a_while();
-fail!();  // Will kill grandchild even if child has already exited
-# };
-~~~
-
-Finally, tasks can be configured to not propagate failure to each
-other at all, using `task::spawn_unlinked` for _isolated failure_.
-
-~~~{.xfail-test .linked-failure}
-# use std::task;
-# fn random() -> uint { 100 }
-# fn sleep_for(i: uint) { for _ in range(0, i) { task::yield() } }
-# do task::try::<()> {
-let (time1, time2) = (random(), random());
-do task::spawn_unlinked {
-    sleep_for(time2);  // Won't get forced awake
-    fail!();
-}
-sleep_for(time1);  // Won't get forced awake
-fail!();
-// It will take MAX(time1,time2) for the program to finish.
-# };
-~~~
+proceed).
 
 ## Creating a task with a bi-directional communication path
 

@@ -44,11 +44,6 @@ pub trait HomingIO {
     fn go_to_IO_home(&mut self) -> uint {
         use std::rt::sched::RunOnce;
 
-        unsafe {
-            let task: *mut Task = Local::unsafe_borrow();
-            (*task).death.inhibit_kill((*task).unwinder.unwinding);
-        }
-
         let _f = ForbidUnwind::new("going home");
 
         let current_sched_id = do Local::borrow |sched: &mut Scheduler| {
@@ -127,11 +122,6 @@ impl Drop for HomingMissile {
         }
 
         util::ignore(f);
-
-        unsafe {
-            let task: *mut Task = Local::unsafe_borrow();
-            (*task).death.allow_kill((*task).unwinder.unwinding);
-        }
     }
 }
 

@@ -135,65 +135,63 @@ impl<T: Send> UnsafeArc<T> {
     /// block; otherwise, an unwrapping task can be killed by linked failure.
     pub fn unwrap(self) -> T {
         let this = Cell::new(self); // argh
-        do task::unkillable {
-            unsafe {
-                let mut this = this.take();
-                // The ~ dtor needs to run if this code succeeds.
-                let mut data: ~ArcData<T> = cast::transmute(this.data);
-                // Set up the unwrap protocol.
-                let (p1,c1) = comm::oneshot(); // ()
-                let (p2,c2) = comm::oneshot(); // bool
-                // Try to put our server end in the unwrapper slot.
-                // This needs no barrier -- it's protected by the release barrier on
-                // the xadd, and the acquire+release barrier in the destructor's xadd.
-                if data.unwrapper.fill(~(c1,p2), Relaxed).is_none() {
-                    // Got in. Tell this handle's destructor not to run (we are now it).
-                    this.data = ptr::mut_null();
-                    // Drop our own reference.
-                    let old_count = data.count.fetch_sub(1, Release);
-                    assert!(old_count >= 1);
-                    if old_count == 1 {
-                        // We were the last owner. Can unwrap immediately.
-                        // AtomicOption's destructor will free the server endpoint.
+        unsafe {
+            let mut this = this.take();
+            // The ~ dtor needs to run if this code succeeds.
+            let mut data: ~ArcData<T> = cast::transmute(this.data);
+            // Set up the unwrap protocol.
+            let (p1,c1) = comm::oneshot(); // ()
+            let (p2,c2) = comm::oneshot(); // bool
+            // Try to put our server end in the unwrapper slot.
+            // This needs no barrier -- it's protected by the release barrier on
+            // the xadd, and the acquire+release barrier in the destructor's xadd.
+            if data.unwrapper.fill(~(c1,p2), Relaxed).is_none() {
+                // Got in. Tell this handle's destructor not to run (we are now it).
+                this.data = ptr::mut_null();
+                // Drop our own reference.
+                let old_count = data.count.fetch_sub(1, Release);
+                assert!(old_count >= 1);
+                if old_count == 1 {
+                    // We were the last owner. Can unwrap immediately.
+                    // AtomicOption's destructor will free the server endpoint.
+                    // FIXME(#3224): it should be like this
+                    // let ~ArcData { data: user_data, _ } = data;
+                    // user_data
+                    data.data.take_unwrap()
+                } else {
+                    // The *next* person who sees the refcount hit 0 will wake us.
+                    let p1 = Cell::new(p1); // argh
+                    // Unlike the above one, this cell is necessary. It will get
+                    // taken either in the do block or in the finally block.
+                    let c2_and_data = Cell::new((c2,data));
+                    do (|| {
+                        p1.take().recv();
+                        // Got here. Back in the 'unkillable' without getting killed.
+                        let (c2, data) = c2_and_data.take();
+                        c2.send(true);
                         // FIXME(#3224): it should be like this
                         // let ~ArcData { data: user_data, _ } = data;
                         // user_data
+                        let mut data = data;
                         data.data.take_unwrap()
-                    } else {
-                        // The *next* person who sees the refcount hit 0 will wake us.
-                        let p1 = Cell::new(p1); // argh
-                        // Unlike the above one, this cell is necessary. It will get
-                        // taken either in the do block or in the finally block.
-                        let c2_and_data = Cell::new((c2,data));
-                        do (|| {
-                            do task::rekillable { p1.take().recv(); }
-                            // Got here. Back in the 'unkillable' without getting killed.
+                    }).finally {
+                        if task::failing() {
+                            // Killed during wait. Because this might happen while
+                            // someone else still holds a reference, we can't free
+                            // the data now; the "other" last refcount will free it.
                             let (c2, data) = c2_and_data.take();
-                            c2.send(true);
-                            // FIXME(#3224): it should be like this
-                            // let ~ArcData { data: user_data, _ } = data;
-                            // user_data
-                            let mut data = data;
-                            data.data.take_unwrap()
-                        }).finally {
-                            if task::failing() {
-                                // Killed during wait. Because this might happen while
-                                // someone else still holds a reference, we can't free
-                                // the data now; the "other" last refcount will free it.
-                                let (c2, data) = c2_and_data.take();
-                                c2.send(false);
-                                cast::forget(data);
-                            } else {
-                                assert!(c2_and_data.is_empty());
-                            }
+                            c2.send(false);
+                            cast::forget(data);
+                        } else {
+                            assert!(c2_and_data.is_empty());
                         }
                     }
-                } else {
-                    // If 'put' returns the server end back to us, we were rejected;
-                    // someone else was trying to unwrap. Avoid guaranteed deadlock.
-                    cast::forget(data);
-                    fail!("Another task is already unwrapping this Arc!");
                 }
+            } else {
+                // If 'put' returns the server end back to us, we were rejected;
+                // someone else was trying to unwrap. Avoid guaranteed deadlock.
+                cast::forget(data);
+                fail!("Another task is already unwrapping this Arc!");
             }
         }
     }
@@ -259,17 +257,15 @@ impl<T> Drop for UnsafeArc<T>{
                 match data.unwrapper.take(Acquire) {
                     Some(~(message,response)) => {
                         let cell = Cell::new((message, response, data));
-                        do task::unkillable {
-                            let (message, response, data) = cell.take();
-                            // Send 'ready' and wait for a response.
-                            message.send(());
-                            // Unkillable wait. Message guaranteed to come.
-                            if response.recv() {
-                                // Other task got the data.
-                                cast::forget(data);
-                            } else {
-                                // Other task was killed. drop glue takes over.
-                            }
+                        let (message, response, data) = cell.take();
+                        // Send 'ready' and wait for a response.
+                        message.send(());
+                        // Unkillable wait. Message guaranteed to come.
+                        if response.recv() {
+                            // Other task got the data.
+                            cast::forget(data);
+                        } else {
+                            // Other task was killed. drop glue takes over.
                         }
                     }
                     None => {
@@ -677,25 +673,5 @@ mod tests {
         }
         assert!(x.unwrap() == ~~"hello");
         assert!(res.recv().is_ok());
-    }
-
-    #[test]
-    fn exclusive_new_unwrap_deadlock() {
-        // This is not guaranteed to get to the deadlock before being killed,
-        // but it will show up sometimes, and if the deadlock were not there,
-        // the test would nondeterministically fail.
-        let result = do task::try {
-            // a task that has two references to the same Exclusive::new will
-            // deadlock when it unwraps. nothing to be done about that.
-            let x = Exclusive::new(~~"hello");
-            let x2 = x.clone();
-            do task::spawn {
-                do 10.times { task::deschedule(); } // try to let the unwrapper go
-                fail!(); // punt it awake from its deadlock
-            }
-            let _z = x.unwrap();
-            unsafe { do x2.with |_hello| { } }
-        };
-        assert!(result.is_err());
     }
 }
