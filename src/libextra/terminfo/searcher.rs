@@ -29,7 +29,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
 
     // Find search directory
     match getenv("TERMINFO") {
-        Some(dir) => dirs_to_search.push(Path::new(dir)),
+        Some(dir) => dirs_to_search.push(Path::init(dir)),
         None => {
             if homedir.is_some() {
                 // ncurses compatability;
@@ -38,17 +38,17 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
             match getenv("TERMINFO_DIRS") {
                 Some(dirs) => for i in dirs.split(':') {
                     if i == "" {
-                        dirs_to_search.push(Path::new("/usr/share/terminfo"));
+                        dirs_to_search.push(Path::init("/usr/share/terminfo"));
                     } else {
-                        dirs_to_search.push(Path::new(i.to_owned()));
+                        dirs_to_search.push(Path::init(i.to_owned()));
                     }
                 },
                 // Found nothing, use the default paths
                 // /usr/share/terminfo is the de facto location, but it seems
                 // Ubuntu puts it in /lib/terminfo
                 None => {
-                    dirs_to_search.push(Path::new("/usr/share/terminfo"));
-                    dirs_to_search.push(Path::new("/lib/terminfo"));
+                    dirs_to_search.push(Path::init("/usr/share/terminfo"));
+                    dirs_to_search.push(Path::init("/lib/terminfo"));
                 }
             }
         }

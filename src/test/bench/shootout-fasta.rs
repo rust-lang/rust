@@ -123,7 +123,7 @@ fn main() {
     };
 
     let writer = if os::getenv("RUST_BENCH").is_some() {
-        let file = File::create(&Path::new("./shootout-fasta.data"));
+        let file = File::create(&Path::init("./shootout-fasta.data"));
         @mut file as @mut io::Writer
     } else {
         @mut io::stdout() as @mut io::Writer
