@@ -168,9 +168,9 @@ mod test {
         do run_in_uv_task {
             let (port, chan) = rendezvous();
             do spawn {
-                do 1000000.times { chan.send(()) }
+                1000000.times(|| { chan.send(()) })
             }
-            do 1000000.times { port.recv() }
+            1000000.times(|| { port.recv() })
         }
     }
 

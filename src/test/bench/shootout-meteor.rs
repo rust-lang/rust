@@ -18,7 +18,7 @@ fn iterate<'a, T>(x: T, f: 'a |&T| -> T) -> Iterate<'a, T> {
     Iterate {f: f, next: x}
 }
 struct Iterate<'self, T> {
-    priv f: &'self |&T| -> T,
+    priv f: 'self |&T| -> T,
     priv next: T
 }
 impl<'self, T> Iterator<T> for Iterate<'self, T> {

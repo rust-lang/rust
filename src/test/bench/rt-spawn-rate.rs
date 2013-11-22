@@ -26,8 +26,8 @@ fn main() {
         100000
     };
 
-    do n.times {
+    n.times(|| {
         do spawn || {};
-    }
+    })
 
 }

@@ -811,24 +811,24 @@ mod bench {
 
     #[bench]
     pub fn create_uuids(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             Uuid::new_v4();
-        }
+        })
     }
 
     #[bench]
     pub fn uuid_to_str(bh: &mut BenchHarness) {
         let u = Uuid::new_v4();
-        do bh.iter {
+        bh.iter(|| {
             u.to_str();
-        }
+        })
     }
 
     #[bench]
     pub fn parse_str(bh: &mut BenchHarness) {
         let s = "urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4";
-        do bh.iter {
+        bh.iter(|| {
             Uuid::parse_string(s);
-        }
+        })
     }
 }

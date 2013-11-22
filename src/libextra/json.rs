@@ -1487,33 +1487,33 @@ mod tests {
     fn test_write_enum() {
         let animal = Dog;
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = Encoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"\"Dog\""
         );
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"\"Dog\""
         );
 
         let animal = Frog(~"Henry", 349);
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = Encoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"\
             [\n  \
                 \"Frog\",\n  \
@@ -1526,33 +1526,33 @@ mod tests {
     #[test]
     fn test_write_some() {
         let value = Some(~"jodhpurs");
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = Encoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"\"jodhpurs\"");
 
         let value = Some(~"jodhpurs");
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = PrettyEncoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"\"jodhpurs\"");
     }
 
     #[test]
     fn test_write_none() {
         let value: Option<~str> = None;
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = Encoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"null");
 
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = Encoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"null");
     }
 

@@ -29,20 +29,20 @@ type pipe = arc::MutexArc<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
     unsafe {
-        do p.access_cond |state, cond| {
+        p.access_cond(|state, cond| {
             state.push(msg);
             cond.signal();
-        }
+        })
     }
 }
 fn recv(p: &pipe) -> uint {
     unsafe {
-        do p.access_cond |state, cond| {
+        p.access_cond(|state, cond| {
             while state.is_empty() {
                 cond.wait();
             }
             state.pop()
-        }
+        })
     }
 }
 

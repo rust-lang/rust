@@ -1362,18 +1362,18 @@ mod tests {
     fn test_small_clear() {
         let mut b = Bitv::new(14, true);
         b.clear();
-        do b.ones |i| {
+        b.ones(|i| {
             fail!("found 1 at {:?}", i)
-        };
+        });
     }
 
     #[test]
     fn test_big_clear() {
         let mut b = Bitv::new(140, true);
         b.clear();
-        do b.ones |i| {
+        b.ones(|i| {
             fail!("found 1 at {:?}", i)
-        };
+        });
     }
 
     #[test]
@@ -1408,11 +1408,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
-        do a.intersection(&b) |x| {
+        a.intersection(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1432,11 +1432,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 500];
-        do a.difference(&b) |x| {
+        a.difference(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1458,11 +1458,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
-        do a.symmetric_difference(&b) |x| {
+        a.symmetric_difference(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1487,11 +1487,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
-        do a.union(&b) |x| {
+        a.union(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1538,27 +1538,27 @@ mod tests {
     fn bench_uint_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = 0 as uint;
-        do b.iter {
+        b.iter(|| {
             bitv |= (1 << ((r.next_u32() as uint) % uint::bits));
-        }
+        })
     }
 
     #[bench]
     fn bench_small_bitv_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = SmallBitv::new(uint::bits);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::bits, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_big_bitv_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = BigBitv::new(~[0]);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::bits, true);
-        }
+        })
     }
 
     #[bench]
@@ -1567,87 +1567,87 @@ mod tests {
         let mut storage = ~[];
         storage.grow(BENCH_BITS / uint::bits, &0u);
         let mut bitv = BigBitv::new(storage);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = Bitv::new(BENCH_BITS, false);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = Bitv::new(uint::bits, false);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::bits, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_set_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
-        do b.iter {
+        b.iter(|| {
             bitv.insert((r.next_u32() as uint) % uint::bits);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_set_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
-        do b.iter {
+        b.iter(|| {
             bitv.insert((r.next_u32() as uint) % BENCH_BITS);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_big_union(b: &mut BenchHarness) {
         let mut b1 = Bitv::new(BENCH_BITS, false);
         let b2 = Bitv::new(BENCH_BITS, false);
-        do b.iter {
+        b.iter(|| {
             b1.union(&b2);
-        }
+        })
     }
 
     #[bench]
     fn bench_btv_small_iter(b: &mut BenchHarness) {
         let bitv = Bitv::new(uint::bits, false);
-        do b.iter {
+        b.iter(|| {
             let mut _sum = 0;
             for pres in bitv.iter() {
                 _sum += pres as uint;
             }
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_big_iter(b: &mut BenchHarness) {
         let bitv = Bitv::new(BENCH_BITS, false);
-        do b.iter {
+        b.iter(|| {
             let mut _sum = 0;
             for pres in bitv.iter() {
                 _sum += pres as uint;
             }
-        }
+        })
     }
 
     #[bench]
     fn bench_bitvset_iter(b: &mut BenchHarness) {
         let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
                                               |idx| {idx % 3 == 0}));
-        do b.iter {
+        b.iter(|| {
             let mut _sum = 0;
             for idx in bitv.iter() {
                 _sum += idx;
             }
-        }
+        })
     }
 }

@@ -1123,14 +1123,14 @@ mod test {
                 // block self on sched1
                 task::unkillable(|| { // FIXME(#8674)
                     let scheduler: ~Scheduler = Local::take();
-                    do scheduler.deschedule_running_task_and_then |_, task| {
+                    scheduler.deschedule_running_task_and_then(|_, task| {
                         // unblock task
-                        do task.wake().map |task| {
+                        task.wake().map(|task| {
                             // send self to sched2
                             tasksFriendHandle.take().send(TaskFromFriend(task));
-                        };
+                        });
                         // sched1 should now sleep since it has nothing else to do
-                    }
+                    })
                 });
                 // sched2 will wake up and get the task as we do nothing else,
                 // the function ends and the socket goes out of scope sched2
