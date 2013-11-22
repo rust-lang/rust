@@ -169,7 +169,7 @@ fn main() {
     let sizes = ~[1u,2,3,4,6,12,18];
     let mut streams = vec::from_fn(sizes.len(), |_| Some(stream::<~str>()));
     let mut from_child = ~[];
-    let to_child   = do sizes.iter().zip(streams.mut_iter()).map |(sz, stream_ref)| {
+    let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
         let stream = util::replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
@@ -183,7 +183,7 @@ fn main() {
         }
 
         to_child
-    }.collect::<~[Chan<~[u8]>]>();
+    }).collect::<~[Chan<~[u8]>]>();
 
 
    // latch stores true after we've started

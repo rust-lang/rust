@@ -48,9 +48,9 @@ fn with_error_checking_parse<T>(s: @str, f: |&mut Parser| -> T) -> T {
 
 // parse a string, return a crate.
 pub fn string_to_crate (source_str : @str) -> ast::Crate {
-    do with_error_checking_parse(source_str) |p| {
+    with_error_checking_parse(source_str, |p| {
         p.parse_crate_mod()
-    }
+    })
 }
 
 // parse a string, return a crate and the ParseSess
@@ -61,23 +61,23 @@ pub fn string_to_crate_and_sess (source_str : @str) -> (ast::Crate,@mut ParseSes
 
 // parse a string, return an expr
 pub fn string_to_expr (source_str : @str) -> @ast::Expr {
-    do with_error_checking_parse(source_str) |p| {
+    with_error_checking_parse(source_str, |p| {
         p.parse_expr()
-    }
+    })
 }
 
 // parse a string, return an item
 pub fn string_to_item (source_str : @str) -> Option<@ast::item> {
-    do with_error_checking_parse(source_str) |p| {
+    with_error_checking_parse(source_str, |p| {
         p.parse_item(~[])
-    }
+    })
 }
 
 // parse a string, return a stmt
 pub fn string_to_stmt(source_str : @str) -> @ast::Stmt {
-    do with_error_checking_parse(source_str) |p| {
+    with_error_checking_parse(source_str, |p| {
         p.parse_stmt(~[])
-    }
+    })
 }
 
 // parse a string, return a pat. Uses "irrefutable"... which doesn't

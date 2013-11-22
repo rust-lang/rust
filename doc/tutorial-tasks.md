@@ -253,13 +253,13 @@ might look like the example below.
 # use std::vec;
 
 // Create a vector of ports, one for each child task
-let ports = do vec::from_fn(3) |init_val| {
+let ports = vec::from_fn(3, |init_val| {
     let (port, chan) = stream();
     do spawn {
         chan.send(some_expensive_computation(init_val));
     }
     port
-};
+});
 
 // Wait on each port, accumulating the results
 let result = ports.iter().fold(0, |accum, port| accum + port.recv() );

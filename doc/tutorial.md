@@ -1439,19 +1439,14 @@ call_twice(function);
 
 ## Do syntax
 
-The `do` expression provides a way to treat higher-order functions
-(functions that take closures as arguments) as control structures.
+The `do` expression makes it easier to call functions that take procedures
+as arguments.
 
-Consider this function that iterates over a vector of
-integers, passing in a pointer to each integer in the vector:
+Consider this function that takes a procedure:
 
 ~~~~
-fn each(v: &[int], op: |v: &int|) {
-   let mut n = 0;
-   while n < v.len() {
-       op(&v[n]);
-       n += 1;
-   }
+fn call_it(op: proc(v: int)) {
+    op(10)
 }
 ~~~~
 
@@ -1460,26 +1455,24 @@ argument, we can write it in a way that has a pleasant, block-like
 structure.
 
 ~~~~
-# fn each(v: &[int], op: |v: &int|) { }
-# fn do_some_work(i: &int) { }
-each([1, 2, 3], |n| {
-    do_some_work(n);
+# fn call_it(op: proc(v: int)) { }
+call_it(proc(n) {
+    println(n.to_str());
 });
 ~~~~
 
 This is such a useful pattern that Rust has a special form of function
-call that can be written more like a built-in control structure:
+call for these functions.
 
 ~~~~
-# fn each(v: &[int], op: |v: &int|) { }
-# fn do_some_work(i: &int) { }
-do each([1, 2, 3]) |n| {
-    do_some_work(n);
+# fn call_it(op: proc(v: int)) { }
+do call_it() |n| {
+    println(n.to_str());
 }
 ~~~~
 
 The call is prefixed with the keyword `do` and, instead of writing the
-final closure inside the argument list, it appears outside of the
+final procedure inside the argument list, it appears outside of the
 parentheses, where it looks more like a typical block of
 code.
 

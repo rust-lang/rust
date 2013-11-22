@@ -571,15 +571,15 @@ impl RWLock {
      * # Example
      *
      * ```rust
-     * do lock.write_downgrade |mut write_token| {
-     *     do write_token.write_cond |condvar| {
+     * lock.write_downgrade(|mut write_token| {
+     *     write_token.write_cond(|condvar| {
      *         ... exclusive access ...
-     *     }
+     *     });
      *     let read_token = lock.downgrade(write_token);
-     *     do read_token.read {
+     *     read_token.read(|| {
      *         ... shared access ...
-     *     }
-     * }
+     *     })
+     * })
      * ```
      */
     pub fn write_downgrade<U>(&self, blk: |v: RWLockWriteMode| -> U) -> U {
@@ -698,20 +698,20 @@ mod tests {
     #[test]
     fn test_sem_basic() {
         let s = Semaphore::new(1);
-        do s.access { }
+        s.access(|| { })
     }
     #[test]
     fn test_sem_as_mutex() {
         let s = Semaphore::new(1);
         let s2 = s.clone();
         do task::spawn {
-            do s2.access {
-                do 5.times { task::deschedule(); }
-            }
+            s2.access(|| {
+                5.times(|| { task::deschedule(); })
+            })
         }
-        do s.access {
-            do 5.times { task::deschedule(); }
-        }
+        s.access(|| {
+            5.times(|| { task::deschedule(); })
+        })
     }
     #[test]
     fn test_sem_as_cvar() {
@@ -723,7 +723,7 @@ mod tests {
             s2.acquire();
             c.send(());
         }
-        do 5.times { task::deschedule(); }
+        5.times(|| { task::deschedule(); });
         s.release();
         let _ = p.recv();
 
@@ -732,7 +732,7 @@ mod tests {
         let s = Semaphore::new(0);
         let s2 = s.clone();
         do task::spawn {
-            do 5.times { task::deschedule(); }
+            5.times(|| { task::deschedule(); });
             s2.release();
             let _ = p.recv();
         }
@@ -748,15 +748,15 @@ mod tests {
         let (p1,c1) = comm::stream();
         let (p2,c2) = comm::stream();
         do task::spawn {
-            do s2.access {
+            s2.access(|| {
                 let _ = p2.recv();
                 c1.send(());
-            }
+            })
         }
-        do s.access {
+        s.access(|| {
             c2.send(());
             let _ = p1.recv();
-        }
+        })
     }
     #[test]
     fn test_sem_runtime_friendly_blocking() {
@@ -767,16 +767,16 @@ mod tests {
             let s2 = s.clone();
             let (p, c) = comm::stream();
             let child_data = Cell::new((s2, c));
-            do s.access {
+            s.access(|| {
                 let (s2, c) = child_data.take();
                 do task::spawn {
                     c.send(());
-                    do s2.access { }
+                    s2.access(|| { });
                     c.send(());
                 }
                 let _ = p.recv(); // wait for child to come alive
-                do 5.times { task::deschedule(); } // let the child contend
-            }
+                5.times(|| { task::deschedule(); }); // let the child contend
+            });
             let _ = p.recv(); // wait for child to be done
         }
     }
@@ -809,13 +809,13 @@ mod tests {
         }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
-            do n.times {
-                do m.lock {
+            n.times(|| {
+                m.lock(|| {
                     let oldval = *sharedstate;
                     task::deschedule();
                     *sharedstate = oldval + 1;
-                }
-            }
+                })
+            })
         }
     }
     #[test]
@@ -823,31 +823,31 @@ mod tests {
         let m = Mutex::new();
 
         // Child wakes up parent
-        do m.lock_cond |cond| {
+        m.lock_cond(|cond| {
             let m2 = m.clone();
             do task::spawn {
-                do m2.lock_cond |cond| {
+                m2.lock_cond(|cond| {
                     let woken = cond.signal();
                     assert!(woken);
-                }
+                })
             }
             cond.wait();
-        }
+        });
         // Parent wakes up child
         let (port,chan) = comm::stream();
         let m3 = m.clone();
         do task::spawn {
-            do m3.lock_cond |cond| {
+            m3.lock_cond(|cond| {
                 chan.send(());
                 cond.wait();
                 chan.send(());
-            }
+            })
         }
         let _ = port.recv(); // Wait until child gets in the mutex
-        do m.lock_cond |cond| {
+        m.lock_cond(|cond| {
             let woken = cond.signal();
             assert!(woken);
-        }
+        });
         let _ = port.recv(); // Wait until child wakes up
     }
     #[cfg(test)]
@@ -855,25 +855,25 @@ mod tests {
         let m = Mutex::new();
         let mut ports = ~[];
 
-        do num_waiters.times {
+        num_waiters.times(|| {
             let mi = m.clone();
             let (port, chan) = comm::stream();
             ports.push(port);
             do task::spawn {
-                do mi.lock_cond |cond| {
+                mi.lock_cond(|cond| {
                     chan.send(());
                     cond.wait();
                     chan.send(());
-                }
+                })
             }
-        }
+        });
 
         // wait until all children get in the mutex
         for port in ports.iter() { let _ = port.recv(); }
-        do m.lock_cond |cond| {
+        m.lock_cond(|cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
-        }
+        });
         // wait until all children wake up
         for port in ports.iter() { let _ = port.recv(); }
     }
@@ -890,11 +890,11 @@ mod tests {
         let m = Mutex::new();
         let m2 = m.clone();
         do task::try {
-            do m.lock_cond |_x| { }
+            m.lock_cond(|_x| { })
         };
-        do m2.lock_cond |cond| {
+        m2.lock_cond(|cond| {
             assert!(!cond.signal());
-        }
+        })
     }
     #[test]
     fn test_mutex_killed_simple() {
@@ -903,13 +903,13 @@ mod tests {
         let m2 = m.clone();
 
         let result: result::Result<(), ~Any> = do task::try {
-            do m2.lock {
+            m2.lock(|| {
                 fail!();
-            }
+            })
         };
         assert!(result.is_err());
         // child task must have finished by the time try returns
-        do m.lock { }
+        m.lock(|| { })
     }
     #[ignore(reason = "linked failure")]
     #[test]
@@ -926,17 +926,17 @@ mod tests {
                 task::deschedule();
                 fail!();
             }
-            do m2.lock_cond |cond| {
+            m2.lock_cond(|cond| {
                 c.send(()); // tell sibling go ahead
                 cond.wait(); // block forever
-            }
+            })
         };
         assert!(result.is_err());
         // child task must have finished by the time try returns
-        do m.lock_cond |cond| {
+        m.lock_cond(|cond| {
             let woken = cond.signal();
             assert!(!woken);
-        }
+        })
     }
     #[ignore(reason = "linked failure")]
     #[test]
@@ -949,30 +949,30 @@ mod tests {
 
         let result: result::Result<(), ~Any> = do task::try {
             let mut sibling_convos = ~[];
-            do 2.times {
+            2.times(|| {
                 let (p, c) = comm::stream();
                 let c = Cell::new(c);
                 sibling_convos.push(p);
                 let mi = m2.clone();
                 // spawn sibling task
                 do task::spawn { // linked
-                    do mi.lock_cond |cond| {
+                    mi.lock_cond(|cond| {
                         let c = c.take();
                         c.send(()); // tell sibling to go ahead
-                        do (|| {
+                        (|| {
                             cond.wait(); // block forever
-                        }).finally {
+                        }).finally(|| {
                             error!("task unwinding and sending");
                             c.send(());
                             error!("task unwinding and done sending");
-                        }
-                    }
+                        })
+                    })
                 }
-            }
+            });
             for p in sibling_convos.iter() {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
-            do m2.lock { }
+            m2.lock(|| { });
             c.send(sibling_convos); // let parent wait on all children
             fail!();
         };
@@ -980,24 +980,24 @@ mod tests {
         // child task must have finished by the time try returns
         let r = p.recv();
         for p in r.iter() { p.recv(); } // wait on all its siblings
-        do m.lock_cond |cond| {
+        m.lock_cond(|cond| {
             let woken = cond.broadcast();
             assert_eq!(woken, 0);
-        }
+        })
     }
     #[test]
     fn test_mutex_cond_signal_on_0() {
         // Tests that signal_on(0) is equivalent to signal().
         let m = Mutex::new();
-        do m.lock_cond |cond| {
+        m.lock_cond(|cond| {
             let m2 = m.clone();
             do task::spawn {
-                do m2.lock_cond |cond| {
+                m2.lock_cond(|cond| {
                     cond.signal_on(0);
-                }
+                })
             }
             cond.wait();
-        }
+        })
     }
     #[test]
     fn test_mutex_different_conds() {
@@ -1006,17 +1006,17 @@ mod tests {
             let m2 = m.clone();
             let (p, c) = comm::stream();
             do task::spawn {
-                do m2.lock_cond |cond| {
+                m2.lock_cond(|cond| {
                     c.send(());
                     cond.wait_on(1);
-                }
+                })
             }
             let _ = p.recv();
-            do m.lock_cond |cond| {
+            m.lock_cond(|cond| {
                 if !cond.signal_on(0) {
                     fail!(); // success; punt sibling awake.
                 }
-            }
+            })
         };
         assert!(result.is_err());
     }
@@ -1024,17 +1024,17 @@ mod tests {
     fn test_mutex_no_condvars() {
         let result = do task::try {
             let m = Mutex::new_with_condvars(0);
-            do m.lock_cond |cond| { cond.wait(); }
+            m.lock_cond(|cond| { cond.wait(); })
         };
         assert!(result.is_err());
         let result = do task::try {
             let m = Mutex::new_with_condvars(0);
-            do m.lock_cond |cond| { cond.signal(); }
+            m.lock_cond(|cond| { cond.signal(); })
         };
         assert!(result.is_err());
         let result = do task::try {
             let m = Mutex::new_with_condvars(0);
-            do m.lock_cond |cond| { cond.broadcast(); }
+            m.lock_cond(|cond| { cond.broadcast(); })
         };
         assert!(result.is_err());
     }
@@ -1049,14 +1049,14 @@ mod tests {
             Read => x.read(blk),
             Write => x.write(blk),
             Downgrade =>
-                do x.write_downgrade |mode| {
-                    do mode.write { blk() };
-                },
+                x.write_downgrade(|mode| {
+                    mode.write(|| { blk() });
+                }),
             DowngradeRead =>
-                do x.write_downgrade |mode| {
+                x.write_downgrade(|mode| {
                     let mode = x.downgrade(mode);
-                    do mode.read { blk() };
-                },
+                    mode.read(|| { blk() });
+                }),
         }
     }
     #[cfg(test)]
@@ -1086,13 +1086,13 @@ mod tests {
 
         fn access_shared(sharedstate: &mut int, x: &RWLock, mode: RWLockMode,
                          n: uint) {
-            do n.times {
-                do lock_rwlock_in_mode(x, mode) {
+            n.times(|| {
+                lock_rwlock_in_mode(x, mode, || {
                     let oldval = *sharedstate;
                     task::deschedule();
                     *sharedstate = oldval + 1;
-                }
-            }
+                })
+            })
         }
     }
     #[test]
@@ -1122,24 +1122,24 @@ mod tests {
             if !make_mode2_go_first {
                 let _ = p2.recv(); // parent sends to us once it locks, or ...
             }
-            do lock_rwlock_in_mode(&x2, mode2) {
+            lock_rwlock_in_mode(&x2, mode2, || {
                 if make_mode2_go_first {
                     c1.send(()); // ... we send to it once we lock
                 }
                 let _ = p2.recv();
                 c1.send(());
-            }
+            })
         }
         if make_mode2_go_first {
             let _ = p1.recv(); // child sends to us once it locks, or ...
         }
-        do lock_rwlock_in_mode(x, mode1) {
+        lock_rwlock_in_mode(x, mode1, || {
             if !make_mode2_go_first {
                 c2.send(()); // ... we send to it once we lock
             }
             c2.send(());
             let _ = p1.recv();
-        }
+        })
     }
     #[test]
     fn test_rwlock_readers_and_readers() {
@@ -1154,16 +1154,16 @@ mod tests {
     fn test_rwlock_downgrade_unlock() {
         // Tests that downgrade can unlock the lock in both modes
         let x = RWLock::new();
-        do lock_rwlock_in_mode(&x, Downgrade) { }
+        lock_rwlock_in_mode(&x, Downgrade, || { });
         test_rwlock_handshake(&x, Read, Read, false);
         let y = RWLock::new();
-        do lock_rwlock_in_mode(&y, DowngradeRead) { }
+        lock_rwlock_in_mode(&y, DowngradeRead, || { });
         test_rwlock_exclusion(&y, Write, Write);
     }
     #[test]
     fn test_rwlock_read_recursive() {
         let x = RWLock::new();
-        do x.read { do x.read { } }
+        x.read(|| { x.read(|| { }) })
     }
     #[test]
     fn test_rwlock_cond_wait() {
@@ -1171,34 +1171,34 @@ mod tests {
         let x = RWLock::new();
 
         // Child wakes up parent
-        do x.write_cond |cond| {
+        x.write_cond(|cond| {
             let x2 = x.clone();
             do task::spawn {
-                do x2.write_cond |cond| {
+                x2.write_cond(|cond| {
                     let woken = cond.signal();
                     assert!(woken);
-                }
+                })
             }
             cond.wait();
-        }
+        });
         // Parent wakes up child
         let (port, chan) = comm::stream();
         let x3 = x.clone();
         do task::spawn {
-            do x3.write_cond |cond| {
+            x3.write_cond(|cond| {
                 chan.send(());
                 cond.wait();
                 chan.send(());
-            }
+            })
         }
         let _ = port.recv(); // Wait until child gets in the rwlock
-        do x.read { } // Must be able to get in as a reader in the meantime
-        do x.write_cond |cond| { // Or as another writer
+        x.read(|| { }); // Must be able to get in as a reader in the meantime
+        x.write_cond(|cond| { // Or as another writer
             let woken = cond.signal();
             assert!(woken);
-        }
+        });
         let _ = port.recv(); // Wait until child wakes up
-        do x.read { } // Just for good measure
+        x.read(|| { }); // Just for good measure
     }
     #[cfg(test)]
     fn test_rwlock_cond_broadcast_helper(num_waiters: uint,
@@ -1207,35 +1207,35 @@ mod tests {
         // Much like the mutex broadcast test. Downgrade-enabled.
         fn lock_cond(x: &RWLock, downgrade: bool, blk: |c: &Condvar|) {
             if downgrade {
-                do x.write_downgrade |mode| {
-                    do mode.write_cond |c| { blk(c) }
-                }
+                x.write_downgrade(|mode| {
+                    mode.write_cond(|c| { blk(c) });
+                });
             } else {
-                do x.write_cond |c| { blk(c) }
+                x.write_cond(|c| { blk(c) });
             }
         }
         let x = RWLock::new();
         let mut ports = ~[];
 
-        do num_waiters.times {
+        num_waiters.times(|| {
             let xi = x.clone();
             let (port, chan) = comm::stream();
             ports.push(port);
             do task::spawn {
-                do lock_cond(&xi, dg1) |cond| {
+                lock_cond(&xi, dg1, |cond| {
                     chan.send(());
                     cond.wait();
                     chan.send(());
-                }
+                })
             }
-        }
+        });
 
         // wait until all children get in the mutex
         for port in ports.iter() { let _ = port.recv(); }
-        do lock_cond(&x, dg2) |cond| {
+        lock_cond(&x, dg2, |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
-        }
+        });
         // wait until all children wake up
         for port in ports.iter() { let _ = port.recv(); }
     }
@@ -1257,13 +1257,13 @@ mod tests {
         let x2 = x.clone();
 
         let result: result::Result<(), ~Any> = do task::try || {
-            do lock_rwlock_in_mode(&x2, mode1) {
+            lock_rwlock_in_mode(&x2, mode1, || {
                 fail!();
-            }
+            })
         };
         assert!(result.is_err());
         // child task must have finished by the time try returns
-        do lock_rwlock_in_mode(&x, mode2) { }
+        lock_rwlock_in_mode(&x, mode2, || { })
     }
     #[test]
     fn test_rwlock_reader_killed_writer() {
@@ -1301,12 +1301,12 @@ mod tests {
         // Tests that you can't downgrade with a different rwlock's token.
         let x = RWLock::new();
         let y = RWLock::new();
-        do x.write_downgrade |xwrite| {
+        x.write_downgrade(|xwrite| {
             let mut xopt = Some(xwrite);
-            do y.write_downgrade |_ywrite| {
+            y.write_downgrade(|_ywrite| {
                 y.downgrade(xopt.take_unwrap());
                 error!("oops, y.downgrade(x) should have failed!");
-            }
-        }
+            })
+        })
     }
 }
