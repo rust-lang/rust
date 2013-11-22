@@ -25,10 +25,9 @@ use unstable::sync::UnsafeArc;
 use util;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable, SendDeferred};
-use cell::Cell;
+use cell::{Cell, RefCell};
 use clone::Clone;
 use tuple::ImmutableTuple;
-use mutable::Mut;
 
 /// A combined refcount / BlockedTask-as-uint pointer.
 ///
@@ -433,20 +432,20 @@ type StreamPortOne<T> = PortOne<StreamPayload<T>>;
 
 /// A channel with unbounded size.
 pub struct Chan<T> {
-    // FIXME #5372. Using Mut because we don't take &mut self
-    next: Mut<StreamChanOne<T>>
+    // FIXME #5372. Using RefCell because we don't take &mut self
+    next: RefCell<StreamChanOne<T>>
 }
 
 /// An port with unbounded size.
 pub struct Port<T> {
-    // FIXME #5372. Using Mut because we don't take &mut self
-    next: Mut<Option<StreamPortOne<T>>>
+    // FIXME #5372. Using RefCell because we don't take &mut self
+    next: RefCell<Option<StreamPortOne<T>>>
 }
 
 pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
     let (pone, cone) = oneshot();
-    let port = Port { next: Mut::new(Some(pone)) };
-    let chan = Chan { next: Mut::new(cone) };
+    let port = Port { next: RefCell::new(Some(pone)) };
+    let chan = Chan { next: RefCell::new(cone) };
     return (port, chan);
 }
 

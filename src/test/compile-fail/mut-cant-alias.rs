@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mutable::Mut;
+use std::cell::RefCell;
 
 fn main() {
-    let m = Mut::new(0);
+    let m = RefCell::new(0);
     let mut b = m.borrow_mut();
     let b1 = b.get();
     let b2 = b.get(); //~ ERROR cannot borrow `b` as mutable more than once at a time

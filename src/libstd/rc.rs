@@ -21,7 +21,7 @@ use unstable::intrinsics::transmute;
 use ops::Drop;
 use kinds::{Freeze, Send};
 use clone::{Clone, DeepClone};
-use mutable::Mut;
+use cell::RefCell;
 
 struct RcBox<T> {
     value: T,
@@ -55,10 +55,10 @@ impl<T: Send> Rc<T> {
     }
 }
 
-impl<T: Freeze> Rc<Mut<T>> {
-    /// Construct a new reference-counted box from a `Mut`-wrapped `Freeze` value
+impl<T: Freeze> Rc<RefCell<T>> {
+    /// Construct a new reference-counted box from a `RefCell`-wrapped `Freeze` value
     #[inline]
-    pub fn from_mut(value: Mut<T>) -> Rc<Mut<T>> {
+    pub fn from_mut(value: RefCell<T>) -> Rc<RefCell<T>> {
         unsafe {
             Rc::new_unchecked(value)
         }
@@ -116,11 +116,11 @@ impl<T> Drop for Rc<T> {
 #[cfg(test)]
 mod test_rc {
     use super::*;
-    use mutable::Mut;
+    use cell::RefCell;
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(Mut::new(5));
+        let x = Rc::from_send(RefCell::new(5));
         let y = x.clone();
         do x.borrow().with_mut |inner| {
             *inner = 20;
@@ -130,7 +130,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(Mut::new(5));
+        let x = Rc::from_send(RefCell::new(5));
         let y = x.deep_clone();
         do x.borrow().with_mut |inner| {
             *inner = 20;
@@ -161,6 +161,6 @@ mod test_rc {
     #[test]
     fn test_from_mut() {
         let a = 10;
-        let _x = Rc::from_mut(Mut::new(&a));
+        let _x = Rc::from_mut(RefCell::new(&a));
     }
 }
