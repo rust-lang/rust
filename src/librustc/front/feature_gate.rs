@@ -23,6 +23,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
+use syntax::parse::token;
 
 use driver::session::Session;
 
@@ -36,6 +37,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("once_fns", Active),
     ("asm", Active),
     ("managed_boxes", Active),
+    ("non_ascii_idents", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -76,6 +78,15 @@ impl Context {
 }
 
 impl Visitor<()> for Context {
+    fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
+        let s = token::ident_to_str(&id);
+
+        if !s.is_ascii() {
+            self.gate_feature("non_ascii_idents", sp,
+                              "non-ascii idents are not fully supported.");
+        }
+    }
+
     fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
         match i.node {
             ast::view_item_use(ref paths) => {
