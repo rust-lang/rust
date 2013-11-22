@@ -297,14 +297,14 @@ fn test_arena_destructors_fail() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        do arena.alloc { @i };
+        arena.alloc(|| { @i });
         // Allocate something with funny size and alignment, to keep
         // things interesting.
-        do arena.alloc { [0u8, 1u8, 2u8] };
+        arena.alloc(|| { [0u8, 1u8, 2u8] });
     }
     // Now, fail while allocating
-    do arena.alloc::<@int> {
+    arena.alloc::<@int>(|| {
         // Now fail.
         fail!();
-    };
+    });
 }

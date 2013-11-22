@@ -28,11 +28,11 @@ fn item_check(t: &Tree) -> int {
 
 fn bottom_up_tree<'r>(arena: &'r Arena, item: int, depth: int) -> &'r Tree<'r> {
     if depth > 0 {
-        do arena.alloc {
+        arena.alloc(|| {
             Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
                  bottom_up_tree(arena, 2 * item, depth - 1),
                  item)
-        }
+        })
     } else {arena.alloc(|| Nil)}
 }
 

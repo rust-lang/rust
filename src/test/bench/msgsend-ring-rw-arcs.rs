@@ -28,18 +28,18 @@ use std::uint;
 type pipe = arc::RWArc<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
-    do p.write_cond |state, cond| {
+    p.write_cond(|state, cond| {
         state.push(msg);
         cond.signal();
-    }
+    })
 }
 fn recv(p: &pipe) -> uint {
-    do p.write_cond |state, cond| {
+    p.write_cond(|state, cond| {
         while state.is_empty() {
             cond.wait();
         }
         state.pop()
-    }
+    })
 }
 
 fn init() -> (pipe,pipe) {

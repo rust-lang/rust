@@ -2615,19 +2615,27 @@ mod bench {
 
     #[bench]
     fn factorial_100(bh: &mut BenchHarness) {
-        bh.iter(|| factorial(100));
+        bh.iter(|| {
+            factorial(100);
+        });
     }
 
     #[bench]
     fn fib_100(bh: &mut BenchHarness) {
-        bh.iter(|| fib(100));
+        bh.iter(|| {
+            fib(100);
+        });
     }
 
     #[bench]
     fn to_str(bh: &mut BenchHarness) {
         let fac = factorial(100);
         let fib = fib(100);
-        bh.iter(|| fac.to_str());
-        bh.iter(|| fib.to_str());
+        bh.iter(|| {
+            fac.to_str();
+        });
+        bh.iter(|| {
+            fib.to_str();
+        });
     }
 }

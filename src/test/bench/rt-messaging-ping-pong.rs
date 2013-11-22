@@ -37,26 +37,25 @@ fn ping_pong_bench(n: uint, m: uint) {
         do spawntask_later() || {
             let chan = ca.take();
             let port = pb.take();
-            do n.times {
+            n.times(|| {
                 chan.send(());
                 port.recv();
-            }
+            })
         }
 
         do spawntask_later() || {
             let chan = cb.take();
             let port = pa.take();
-            do n.times {
+            n.times(|| {
                 port.recv();
                 chan.send(());
-            }
+            })
         }
     }
 
-    do m.times {
+    m.times(|| {
         run_pair(n)
-    }
-
+    })
 }
 
 

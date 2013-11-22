@@ -1031,11 +1031,11 @@ mod tests {
 
     #[test]
     fn test_fuzz() {
-        do 25.times {
+        25.times(|| {
             fuzz_test(3);
             fuzz_test(16);
             fuzz_test(189);
-        }
+        })
     }
 
     #[cfg(test)]
@@ -1078,43 +1078,43 @@ mod tests {
     #[bench]
     fn bench_collect_into(b: &mut test::BenchHarness) {
         let v = &[0, ..64];
-        do b.iter {
+        b.iter(|| {
             let _: DList<int> = v.iter().map(|x| *x).collect();
-        }
+        })
     }
 
     #[bench]
     fn bench_push_front(b: &mut test::BenchHarness) {
         let mut m: DList<int> = DList::new();
-        do b.iter {
+        b.iter(|| {
             m.push_front(0);
-        }
+        })
     }
 
     #[bench]
     fn bench_push_back(b: &mut test::BenchHarness) {
         let mut m: DList<int> = DList::new();
-        do b.iter {
+        b.iter(|| {
             m.push_back(0);
-        }
+        })
     }
 
     #[bench]
     fn bench_push_back_pop_back(b: &mut test::BenchHarness) {
         let mut m: DList<int> = DList::new();
-        do b.iter {
+        b.iter(|| {
             m.push_back(0);
             m.pop_back();
-        }
+        })
     }
 
     #[bench]
     fn bench_push_front_pop_front(b: &mut test::BenchHarness) {
         let mut m: DList<int> = DList::new();
-        do b.iter {
+        b.iter(|| {
             m.push_front(0);
             m.pop_front();
-        }
+        })
     }
 
     #[bench]
@@ -1122,9 +1122,9 @@ mod tests {
         let mut m: DList<int> = DList::new();
         m.push_front(0);
         m.push_front(1);
-        do b.iter {
+        b.iter(|| {
             m.rotate_forward();
-        }
+        })
     }
 
     #[bench]
@@ -1132,41 +1132,41 @@ mod tests {
         let mut m: DList<int> = DList::new();
         m.push_front(0);
         m.push_front(1);
-        do b.iter {
+        b.iter(|| {
             m.rotate_backward();
-        }
+        })
     }
 
     #[bench]
     fn bench_iter(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
-        do b.iter {
+        b.iter(|| {
             assert!(m.iter().len() == 128);
-        }
+        })
     }
     #[bench]
     fn bench_iter_mut(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
-        do b.iter {
+        b.iter(|| {
             assert!(m.mut_iter().len() == 128);
-        }
+        })
     }
     #[bench]
     fn bench_iter_rev(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
-        do b.iter {
+        b.iter(|| {
             assert!(m.rev_iter().len() == 128);
-        }
+        })
     }
     #[bench]
     fn bench_iter_mut_rev(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
-        do b.iter {
+        b.iter(|| {
             assert!(m.mut_rev_iter().len() == 128);
-        }
+        })
     }
 }

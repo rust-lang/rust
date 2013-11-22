@@ -384,7 +384,7 @@ fn executable_exists(repo: &Path, short_name: &str) -> bool {
 fn test_executable_exists(repo: &Path, short_name: &str) -> bool {
     debug!("test_executable_exists: repo = {}, short_name = {}", repo.display(), short_name);
     let exec = built_test_in_workspace(&PkgId::new(short_name), repo);
-    exec.map_default(false, |exec| exec.exists() && is_rwx(&exec));
+    exec.map_default(false, |exec| exec.exists() && is_rwx(&exec))
 }
 
 fn remove_executable_file(p: &PkgId, workspace: &Path) {
