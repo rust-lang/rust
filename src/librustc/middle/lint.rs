@@ -75,6 +75,7 @@ pub enum lint {
     type_limits,
     type_overflow,
     unused_unsafe,
+    unsafe_block,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -234,6 +235,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unused_unsafe,
         desc: "unnecessary use of an `unsafe` block",
         default: warn
+    }),
+
+    ("unsafe_block",
+     LintSpec {
+        lint: unsafe_block,
+        desc: "usage of an `unsafe` block",
+        default: allow
     }),
 
     ("unused_variable",
@@ -870,14 +878,23 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
 
 fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
     match e.node {
-        // Don't warn about generated blocks, that'll just pollute the
-        // output.
+        // Don't warn about generated blocks, that'll just pollute the output.
         ast::ExprBlock(ref blk) => {
             if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
                 !cx.tcx.used_unsafe.contains(&blk.id) {
                 cx.span_lint(unused_unsafe, blk.span,
                              "unnecessary `unsafe` block");
             }
+        }
+        _ => ()
+    }
+}
+
+fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
+    match e.node {
+        // Don't warn about generated blocks, that'll just pollute the output.
+        ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock(ast::UserProvided) => {
+            cx.span_lint(unsafe_block, blk.span, "usage of an `unsafe` block");
         }
         _ => ()
     }
@@ -1126,6 +1143,7 @@ impl<'self> Visitor<()> for Context<'self> {
         check_while_true_expr(self, e);
         check_stability(self, e);
         check_unused_unsafe(self, e);
+        check_unsafe_block(self, e);
         check_unnecessary_allocation(self, e);
         check_heap_expr(self, e);
 
