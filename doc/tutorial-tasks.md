@@ -76,7 +76,7 @@ fn print_message() { println("I am running in a different task!"); }
 spawn(print_message);
 
 // Print something more profound in a different task using a lambda expression
-spawn( || println("I am also running in a different task!") );
+spawn(proc() println("I am also running in a different task!") );
 
 // The canonical way to spawn is using `do` notation
 do spawn {
@@ -278,7 +278,7 @@ fn fib(n: u64) -> u64 {
     12586269025
 }
 
-let mut delayed_fib = extra::future::Future::spawn (|| fib(50) );
+let mut delayed_fib = extra::future::Future::spawn(proc() fib(50));
 make_a_sandwich();
 println!("fib(50) = {:?}", delayed_fib.get())
 ~~~

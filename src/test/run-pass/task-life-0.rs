@@ -13,7 +13,7 @@ extern mod extra;
 use std::task;
 
 pub fn main() {
-    task::spawn(|| child(~"Hello") );
+    task::spawn(proc() child(~"Hello") );
 }
 
 fn child(_s: ~str) {

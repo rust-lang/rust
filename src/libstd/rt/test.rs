@@ -83,10 +83,11 @@ pub fn run_in_uv_task_core(f: proc()) {
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_uv_sched();
-    let exit_handle = Cell::new(sched.make_handle());
+    let exit_handle = sched.make_handle();
 
-    let on_exit: proc(UnwindResult) = |exit_status| {
-        exit_handle.take().send(Shutdown);
+    let on_exit: proc(UnwindResult) = proc(exit_status: UnwindResult) {
+        let mut exit_handle = exit_handle;
+        exit_handle.send(Shutdown);
         rtassert!(exit_status.is_success());
     };
     let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
@@ -99,10 +100,11 @@ pub fn run_in_newsched_task_core(f: proc()) {
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_sched();
-    let exit_handle = Cell::new(sched.make_handle());
+    let exit_handle = sched.make_handle();
 
-    let on_exit: proc(UnwindResult) = |exit_status| {
-        exit_handle.take().send(Shutdown);
+    let on_exit: proc(UnwindResult) = proc(exit_status: UnwindResult) {
+        let mut exit_handle = exit_handle;
+        exit_handle.send(Shutdown);
         rtassert!(exit_status.is_success());
     };
     let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
@@ -244,10 +246,10 @@ pub fn run_in_mt_newsched_task(f: proc()) {
             scheds.push(sched);
         }
 
-        let handles = Cell::new(handles);
-        let on_exit: proc(UnwindResult) = |exit_status| {
-            let mut handles = handles.take();
+        let handles = handles;  // Work around not being able to capture mut
+        let on_exit: proc(UnwindResult) = proc(exit_status: UnwindResult) {
             // Tell schedulers to exit
+            let mut handles = handles;
             for handle in handles.mut_iter() {
                 handle.send(Shutdown);
             }
@@ -319,8 +321,9 @@ pub fn spawntask_random(f: proc()) {
 pub fn spawntask_try(f: proc()) -> Result<(),()> {
 
     let (port, chan) = oneshot();
-    let chan = Cell::new(chan);
-    let on_exit: proc(UnwindResult) = |exit_status| chan.take().send(exit_status);
+    let on_exit: proc(UnwindResult) = proc(exit_status) {
+        chan.send(exit_status)
+    };
 
     let mut new_task = Task::build_root(None, f);
     new_task.death.on_exit = Some(on_exit);
@@ -348,7 +351,9 @@ pub fn spawntask_thread(f: proc()) -> Thread {
 pub fn with_test_task(blk: proc(~Task) -> ~Task) {
     do run_in_bare_thread {
         let mut sched = ~new_test_sched();
-        let task = blk(~Task::new_root(&mut sched.stack_pool, None, ||{}));
+        let task = blk(~Task::new_root(&mut sched.stack_pool,
+                                       None,
+                                       proc() {}));
         cleanup_task(task);
     }
 }

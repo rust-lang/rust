@@ -345,7 +345,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
         task_builder.opts.stack_size = Some(STACK_SIZE);
     }
 
-    match task_builder.try(|| {
+    match task_builder.try(proc() {
         let ch = ch_capture.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
@@ -403,6 +403,6 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
-    monitor(|demitter| run_compiler(owned_args, demitter));
+    monitor(proc(demitter) run_compiler(owned_args, demitter));
     0
 }

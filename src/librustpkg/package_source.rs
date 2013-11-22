@@ -412,7 +412,7 @@ impl PkgSrc {
                 let sub_deps = deps.clone();
                 let inputs = inputs_to_discover.map(|&(ref k, ref p)|
                                                     (k.clone(), p.as_str().unwrap().to_owned()));
-                prep.exec(|exec| {
+                prep.exec(proc(exec) {
                     for &(ref kind, ref p) in inputs.iter() {
                         let pth = Path::new(p.clone());
                         exec.discover_input(*kind, *p, if *kind == ~"file" {
