@@ -711,8 +711,9 @@ impl Context {
             let mut task = task::task();
             task.unlinked(); // we kill things manually
             task.name(format!("worker{}", i));
-            task.spawn_with(cache.clone(),
-                            |cache| worker(cache, &port, &chan, &prog_chan));
+            task.spawn_with(cache.clone(), proc(cache) {
+                worker(cache, &port, &chan, &prog_chan)
+            });
 
             fn worker(cache: RWArc<Cache>,
                       port: &SharedPort<Work>,

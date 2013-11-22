@@ -474,7 +474,7 @@ impl CtxMethods for BuildContext {
                     let psp = package_script_path.clone();
                     let ws = workspace.clone();
                     let pid = pkgid.clone();
-                    prep.exec(|exec| {
+                    prep.exec(proc(exec) {
                         let mut pscript = PkgScript::parse(subsysroot.clone(),
                                                            psp.clone(),
                                                            &ws,
@@ -636,7 +636,7 @@ impl CtxMethods for BuildContext {
             let sub_target_ex = target_exec.clone();
             let sub_target_lib = target_lib.clone();
             let sub_build_inputs = build_inputs.to_owned();
-            prep.exec(|exe_thing| {
+            prep.exec(proc(exe_thing) {
                 let mut outputs = ~[];
                 // Declare all the *inputs* to the declared input too, as inputs
                 for executable in subex.iter() {

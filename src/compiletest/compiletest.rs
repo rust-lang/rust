@@ -333,7 +333,7 @@ pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     let config = Cell::new((*config).clone());
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
-    test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
+    test::DynTestFn(proc() { runtest::run(config.take(), testfile.take()) })
 }
 
 pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
@@ -341,5 +341,7 @@ pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::Test
     let config = Cell::new((*config).clone());
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
-    test::DynMetricFn(|mm| { runtest::run_metrics(config.take(), testfile.take(), mm) })
+    test::DynMetricFn(proc(mm) {
+        runtest::run_metrics(config.take(), testfile.take(), mm)
+    })
 }

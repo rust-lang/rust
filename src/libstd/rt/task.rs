@@ -436,7 +436,7 @@ impl Coroutine {
 
     fn build_start_wrapper(start: proc()) -> proc() {
         let start_cell = Cell::new(start);
-        let wrapper: proc() = || {
+        let wrapper: proc() = proc() {
             // First code after swap to this new context. Run our
             // cleanup job.
             unsafe {
@@ -726,10 +726,10 @@ mod test {
     #[test]
     fn unwind() {
         do run_in_newsched_task() {
-            let result = spawntask_try(||());
+            let result = spawntask_try(proc()());
             rtdebug!("trying first assert");
             assert!(result.is_ok());
-            let result = spawntask_try(|| fail!());
+            let result = spawntask_try(proc() fail!());
             rtdebug!("trying second assert");
             assert!(result.is_err());
         }
@@ -789,7 +789,7 @@ mod test {
     fn linked_failure() {
         do run_in_newsched_task() {
             let res = do spawntask_try {
-                spawntask_random(|| fail!());
+                spawntask_random(proc() fail!());
             };
             assert!(res.is_err());
         }

@@ -22,7 +22,7 @@ pub fn main() {
     let mut expected = 0u;
     for i in range(0u, n) {
         let ch = ch.clone();
-        task::spawn(|| child(&ch, i) );
+        task::spawn(proc() child(&ch, i) );
         expected += i;
     }
 

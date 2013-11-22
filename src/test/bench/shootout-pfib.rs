@@ -46,7 +46,7 @@ fn fib(n: int) -> int {
 
     let (p, ch) = stream();
     let ch = SharedChan::new(ch);
-    let _t = task::spawn(|| pfib(&ch, n) );
+    let _t = task::spawn(proc() pfib(&ch, n) );
     p.recv()
 }
 

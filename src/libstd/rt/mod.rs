@@ -340,14 +340,14 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
 
     // When the main task exits, after all the tasks in the main
     // task tree, shut down the schedulers and set the exit code.
-    let handles = Cell::new(handles);
-    let on_exit: proc(UnwindResult) = |exit_success| {
+    let handles = handles;
+    let on_exit: proc(UnwindResult) = proc(exit_success) {
         unsafe {
             assert!(!(*exited_already.get()).swap(true, SeqCst),
                     "the runtime already exited");
         }
 
-        let mut handles = handles.take();
+        let mut handles = handles;
         for handle in handles.mut_iter() {
             handle.send(Shutdown);
         }

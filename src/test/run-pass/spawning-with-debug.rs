@@ -18,5 +18,5 @@ use std::task;
 fn main() {
     let mut t = task::task();
     t.sched_mode(task::SingleThreaded);
-    t.spawn(|| ());
+    t.spawn(proc() ());
 }

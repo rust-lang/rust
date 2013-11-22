@@ -568,7 +568,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
     let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
     let indestructible = opts.indestructible;
 
-    let child_wrapper: proc() = || {
+    let child_wrapper: proc() = proc() {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
@@ -685,7 +685,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
         let notify_chan = Cell::new(notify_chan);
-        let on_exit: proc(UnwindResult) = |task_result| {
+        let on_exit: proc(UnwindResult) = proc(task_result) {
             notify_chan.take().send(task_result)
         };
         task.death.on_exit = Some(on_exit);

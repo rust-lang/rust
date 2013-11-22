@@ -134,7 +134,7 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -146,11 +146,11 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -163,7 +163,7 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
 
             unsafe {
@@ -179,7 +179,7 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
 
             let res = Local::borrow(|_task: &mut Task| {

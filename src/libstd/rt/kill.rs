@@ -480,11 +480,11 @@ impl KillHandle {
             // Couldn't unwrap; children still alive. Reparent entire handle as
             // our own tombstone, to be unwrapped later.
             UnsafeArcSelf(this) => {
-                let this = Cell::new(this); // :(
+                let this = Cell::new(this);
                 add_lazy_tombstone(parent, |other_tombstones| {
-                    let this = Cell::new(this.take()); // :(
-                    let others = Cell::new(other_tombstones); // :(
-                    || {
+                    let this = Cell::new(this.take());
+                    let others = Cell::new(other_tombstones);
+                    proc() {
                         // Prefer to check tombstones that were there first,
                         // being "more fair" at the expense of tail-recursion.
                         others.take().map_default(true, |f| f()) && {
@@ -505,11 +505,11 @@ impl KillHandle {
             // don't want to wait on now. Give them to our parent.
             UnsafeArcT(KillHandleInner { any_child_failed: false,
                                          child_tombstones: Some(f), _ }) => {
-                let f = Cell::new(f); // :(
+                let f = Cell::new(f);
                 add_lazy_tombstone(parent, |other_tombstones| {
-                    let f = Cell::new(f.take()); // :(
-                    let others = Cell::new(other_tombstones); // :(
-                    || {
+                    let f = Cell::new(f.take());
+                    let others = Cell::new(other_tombstones);
+                    proc() {
                         // Prefer fairness to tail-recursion, as in above case.
                         others.take().map_default(true, |f| f()) &&
                             f.take()()

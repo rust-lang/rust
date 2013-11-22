@@ -345,13 +345,13 @@ impl TaskBuilder {
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
             None => {
-                let f: proc(proc()) -> proc() = |body| body;
+                let f: proc(proc()) -> proc() = proc(body) body;
                 f
             }
         };
         let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
-            let f: proc(proc()) -> proc() = |body| {
+            let f: proc(proc()) -> proc() = proc(body) {
                 let prev_gen_body = prev_gen_body.take();
                 wrapper(prev_gen_body(body))
             };
@@ -1031,7 +1031,7 @@ fn test_add_wrapper() {
     let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
         let ch = Cell::new(ch.take());
-        let result: proc() = || {
+        let result: proc() = proc() {
             let ch = ch.take();
             body();
             ch.send(());
@@ -1326,7 +1326,7 @@ fn test_child_doesnt_ref_parent() {
     // valgrind-friendly. try this at home, instead..!)
     static generations: uint = 16;
     fn child_no(x: uint) -> proc() {
-        return || {
+        return proc() {
             if x < generations {
                 let mut t = task();
                 t.unwatched();
@@ -1344,7 +1344,7 @@ fn test_simple_newsched_spawn() {
     use rt::test::run_in_uv_task;
 
     do run_in_uv_task {
-        spawn(||())
+        spawn(proc()())
     }
 }
 

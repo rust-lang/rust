@@ -214,29 +214,29 @@ mod tests {
 
     #[test]
     fn smoke() {
-        smalltest(|mut server| {
+        smalltest(proc(mut server) {
             let mut buf = [0];
             server.read(buf);
             assert!(buf[0] == 99);
-        }, |mut client| {
+        }, proc(mut client) {
             client.write([99]);
         })
     }
 
     #[test]
     fn read_eof() {
-        smalltest(|mut server| {
+        smalltest(proc(mut server) {
             let mut buf = [0];
             assert!(server.read(buf).is_none());
             assert!(server.read(buf).is_none());
-        }, |_client| {
+        }, proc(_client) {
             // drop the client
         })
     }
 
     #[test]
     fn write_begone() {
-        smalltest(|mut server| {
+        smalltest(proc(mut server) {
             let buf = [0];
             let mut stop = false;
             while !stop{
@@ -248,7 +248,7 @@ mod tests {
                     server.write(buf);
                 })
             }
-        }, |_client| {
+        }, proc(_client) {
             // drop the client
         })
     }

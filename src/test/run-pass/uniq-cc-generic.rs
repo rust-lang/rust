@@ -23,7 +23,7 @@ struct Pointy {
 }
 
 fn make_uniq_closure<A:Send>(a: A) -> proc() -> uint {
-    let result: proc() -> uint = || ptr::to_unsafe_ptr(&a) as uint;
+    let result: proc() -> uint = proc() ptr::to_unsafe_ptr(&a) as uint;
     result
 }
 
