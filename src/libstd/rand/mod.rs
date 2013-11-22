@@ -577,11 +577,24 @@ impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
     }
 }
 static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
+type TaskRngInner = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
 /// The task-local RNG.
-pub type TaskRng = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
+#[no_send]
+pub struct TaskRng {
+    // This points into TLS (specifically, it points to the endpoint
+    // of a ~ stored in TLS, to make it robust against TLS moving
+    // things internally) and so this struct cannot be legally
+    // transferred between tasks *and* it's unsafe to deallocate the
+    // RNG other than when a task is finished.
+    //
+    // The use of unsafe code here is OK if the invariants above are
+    // satisfied; and it allows us to avoid (unnecessarily) using a
+    // GC'd or RC'd pointer.
+    priv rng: *mut TaskRngInner
+}
 
 // used to make space in TLS for a random number generator
-local_data_key!(TASK_RNG_KEY: @mut TaskRng)
+local_data_key!(TASK_RNG_KEY: ~TaskRngInner)
 
 /// Retrieve the lazily-initialized task-local random number
 /// generator, seeded by the system. Intended to be used in method
@@ -594,34 +607,34 @@ local_data_key!(TASK_RNG_KEY: @mut TaskRng)
 /// if the operating system random number generator is rigged to give
 /// the same sequence always. If absolute consistency is required,
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
-pub fn task_rng() -> @mut TaskRng {
-    let r = local_data::get(TASK_RNG_KEY, |k| k.map(|k| *k));
-    match r {
+pub fn task_rng() -> TaskRng {
+    local_data::get_mut(TASK_RNG_KEY, |rng| match rng {
         None => {
-            let rng = @mut reseeding::ReseedingRng::new(StdRng::new(),
+            let mut rng = ~reseeding::ReseedingRng::new(StdRng::new(),
                                                         TASK_RNG_RESEED_THRESHOLD,
                                                         TaskRngReseeder);
+            let ptr = &mut *rng as *mut TaskRngInner;
+
             local_data::set(TASK_RNG_KEY, rng);
-            rng
+
+            TaskRng { rng: ptr }
         }
-        Some(rng) => rng
-    }
+        Some(rng) => TaskRng { rng: &mut **rng }
+    })
 }
 
-// Allow direct chaining with `task_rng`
-impl<R: Rng> Rng for @mut R {
-    #[inline]
+impl Rng for TaskRng {
     fn next_u32(&mut self) -> u32 {
-        (**self).next_u32()
+        unsafe { (*self.rng).next_u32() }
     }
-    #[inline]
+
     fn next_u64(&mut self) -> u64 {
-        (**self).next_u64()
+        unsafe { (*self.rng).next_u64() }
     }
 
     #[inline]
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        (**self).fill_bytes(bytes);
+        unsafe { (*self.rng).fill_bytes(bytes) }
     }
 }
 
