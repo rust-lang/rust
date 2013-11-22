@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_integers() {
-        let rng = task_rng();
+        let mut rng = task_rng();
         macro_rules! t (
             ($($ty:ty),*) => {{
                 $(
@@ -193,9 +193,9 @@ mod tests {
                    for &(low, high) in v.iter() {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in range(0, 1000) {
-                            let v = sampler.sample(rng);
+                            let v = sampler.sample(&mut rng);
                             assert!(low <= v && v < high);
-                            let v = sampler.ind_sample(rng);
+                            let v = sampler.ind_sample(&mut rng);
                             assert!(low <= v && v < high);
                         }
                     }
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_floats() {
-        let rng = task_rng();
+        let mut rng = task_rng();
         macro_rules! t (
             ($($ty:ty),*) => {{
                 $(
@@ -219,9 +219,9 @@ mod tests {
                    for &(low, high) in v.iter() {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in range(0, 1000) {
-                            let v = sampler.sample(rng);
+                            let v = sampler.sample(&mut rng);
                             assert!(low <= v && v < high);
-                            let v = sampler.ind_sample(rng);
+                            let v = sampler.ind_sample(&mut rng);
                             assert!(low <= v && v < high);
                         }
                     }
