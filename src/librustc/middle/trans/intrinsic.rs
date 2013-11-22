@@ -228,6 +228,11 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             Call(bcx, llfn, [], []);
             Unreachable(bcx);
         }
+        "breakpoint" => {
+            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.debugtrap"));
+            Call(bcx, llfn, [], []);
+            RetVoid(bcx);
+        }
         "size_of" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
