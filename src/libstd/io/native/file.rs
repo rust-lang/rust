@@ -576,7 +576,9 @@ pub fn unlink(p: &CString) -> IoResult<()> {
     #[cfg(windows)]
     fn os_unlink(p: &CString) -> IoResult<()> {
         super::mkerr_winbool(unsafe {
-            as_utf16_p(p.as_str().unwrap(), |buf| libc::DeleteFileW(buf));
+            as_utf16_p(p.as_str().unwrap(), |buf| {
+                libc::DeleteFileW(buf)
+            })
         })
     }
 

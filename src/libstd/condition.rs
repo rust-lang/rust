@@ -30,14 +30,14 @@ This macro declares an inner module called `my_error` with one static variable,
 parameters are used for, an example usage of this condition would be:
 
 ```rust
-do my_error::cond.trap(|raised_int| {
+my_error::cond.trap(|raised_int| {
 
     // the condition `my_error` was raised on, and the value it raised is stored
     // in `raised_int`. This closure must return a `~str` type (as specified in
     // the declaration of the condition
     if raised_int == 3 { ~"three" } else { ~"oh well" }
 
-}).inside {
+}).inside(|| {
 
     // The condition handler above is installed for the duration of this block.
     // That handler will override any previous handler, but the previous handler
@@ -50,7 +50,7 @@ do my_error::cond.trap(|raised_int| {
     println(my_error::cond.raise(3)); // prints "three"
     println(my_error::cond.raise(4)); // prints "oh well"
 
-}
+})
  ```
 
 Condition handling is useful in cases where propagating errors is either to
@@ -176,9 +176,9 @@ impl<'self, T, U> Trap<'self, T, U> {
     /// ```rust
     /// condition! { my_error: int -> int; }
     ///
-    /// let result = do my_error::cond.trap(|error| error + 3).inside {
+    /// let result = my_error::cond.trap(|error| error + 3).inside(|| {
     ///     my_error::cond.raise(4)
-    /// };
+    /// });
     /// assert_eq!(result, 7);
     /// ```
     pub fn inside<V>(&self, inner: 'self || -> V) -> V {
