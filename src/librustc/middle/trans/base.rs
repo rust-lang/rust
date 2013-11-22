@@ -2759,6 +2759,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
          [i8p, Type::i8(), Type::i64(), Type::i32(), Type::i1()], Type::void());
 
     ifn!(intrinsics, "llvm.trap", [], Type::void());
+    ifn!(intrinsics, "llvm.debugtrap", [], Type::void());
     ifn!(intrinsics, "llvm.frameaddress", [Type::i32()], i8p);
 
     ifn!(intrinsics, "llvm.powi.f32", [Type::f32(), Type::i32()], Type::f32());
