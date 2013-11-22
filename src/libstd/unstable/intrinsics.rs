@@ -176,6 +176,10 @@ extern "rust-intrinsic" {
     /// Abort the execution of the process.
     pub fn abort() -> !;
 
+    /// Execute a breakpoint trap, for inspection by a debugger.
+    #[cfg(not(stage0))]
+    pub fn breakpoint();
+
     /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     /// Atomic compare and exchange, acquire ordering.
