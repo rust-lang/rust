@@ -48,7 +48,7 @@ impl Thread {
                 let f: ~proc() = cast::transmute(trampoline);
                 (*f)();
             }
-            unsafe { cast::transmute(0) }
+            unsafe { cast::transmute(0 as rust_thread_return) }
         }
 
         let native = native_thread_create(thread_start, ~main);
