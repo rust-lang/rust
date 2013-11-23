@@ -167,11 +167,11 @@ fn main() {
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || {
-            let s: HashSet<uint> = HashSet::new();
+            let s: HashSet<uint> = HashSet::init();
             s
         });
         results.bench_str(&mut rng, num_keys, || {
-            let s: HashSet<~str> = HashSet::new();
+            let s: HashSet<~str> = HashSet::init();
             s
         });
         write_results("std::hashmap::HashSet", &results);

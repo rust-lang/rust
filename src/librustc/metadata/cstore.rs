@@ -48,8 +48,8 @@ type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 
 pub fn mk_cstore(intr: @ident_interner) -> CStore {
     return CStore {
-        metas: HashMap::new(),
-        extern_mod_crate_map: HashMap::new(),
+        metas: HashMap::init(),
+        extern_mod_crate_map: HashMap::init(),
         used_crate_files: ~[],
         used_libraries: ~[],
         used_link_args: ~[],

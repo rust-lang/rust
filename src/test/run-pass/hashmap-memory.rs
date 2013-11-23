@@ -39,7 +39,7 @@ mod map_reduce {
     }
 
     fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
-        let intermediates = @mut HashMap::new();
+        let intermediates = @mut HashMap::init();
 
         fn emit(im: &mut HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
                 _val: ~str) {
@@ -69,7 +69,7 @@ mod map_reduce {
 
         let mut reducers: HashMap<~str, int>;
 
-        reducers = HashMap::new();
+        reducers = HashMap::init();
 
         start_mappers(ctrl_chan, inputs.clone());
 

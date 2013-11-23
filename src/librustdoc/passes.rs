@@ -55,7 +55,7 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
 /// crate, specified by the `xcrate` flag.
 pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
-    let mut retained = HashSet::new();
+    let mut retained = HashSet::init();
     let crate = Cell::new(crate);
     let exported_items = local_data::get(super::analysiskey, |analysis| {
         analysis.unwrap().exported_items.clone()

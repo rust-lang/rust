@@ -498,9 +498,9 @@ pub fn resolve_crate(sess: Session,
                      crate: &ast::Crate) -> @mut RegionMaps
 {
     let region_maps = @mut RegionMaps {
-        scope_map: HashMap::new(),
-        free_region_map: HashMap::new(),
-        cleanup_scopes: HashSet::new(),
+        scope_map: HashMap::init(),
+        free_region_map: HashMap::init(),
+        cleanup_scopes: HashSet::init(),
     };
     let cx = Context {parent: None,
                       var_parent: None};

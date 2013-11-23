@@ -322,7 +322,7 @@ fn search_for_vtable(vcx: &VtableContext,
     let tcx = vcx.tcx();
 
     let mut found = ~[];
-    let mut impls_seen = HashSet::new();
+    let mut impls_seen = HashSet::init();
 
     // Load the implementations from external metadata if necessary.
     ty::populate_implementations_for_trait_if_necessary(tcx,

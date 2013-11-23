@@ -952,11 +952,11 @@ type type_cache = @mut HashMap<ast::DefId, ty_param_bounds_and_ty>;
 pub type node_type_table = @mut HashMap<uint,t>;
 
 fn mk_rcache() -> creader_cache {
-    return @mut HashMap::new();
+    return @mut HashMap::init();
 }
 
 pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
-    @mut HashMap::new()
+    @mut HashMap::init()
 }
 
 pub fn mk_ctxt(s: session::Session,
@@ -969,51 +969,51 @@ pub fn mk_ctxt(s: session::Session,
             -> ctxt {
     @ctxt_ {
         named_region_map: named_region_map,
-        item_variance_map: @mut HashMap::new(),
+        item_variance_map: @mut HashMap::init(),
         diag: s.diagnostic(),
-        interner: @mut HashMap::new(),
+        interner: @mut HashMap::init(),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
         cstore: s.cstore,
         sess: s,
         def_map: dm,
         region_maps: region_maps,
-        node_types: @mut HashMap::new(),
-        node_type_substs: @mut HashMap::new(),
-        trait_refs: @mut HashMap::new(),
-        trait_defs: @mut HashMap::new(),
+        node_types: @mut HashMap::init(),
+        node_type_substs: @mut HashMap::init(),
+        trait_refs: @mut HashMap::init(),
+        trait_defs: @mut HashMap::init(),
         items: amap,
-        intrinsic_defs: @mut HashMap::new(),
+        intrinsic_defs: @mut HashMap::init(),
         freevars: freevars,
-        tcache: @mut HashMap::new(),
+        tcache: @mut HashMap::init(),
         rcache: mk_rcache(),
         short_names_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
-        tc_cache: @mut HashMap::new(),
-        ast_ty_to_ty_cache: @mut HashMap::new(),
-        enum_var_cache: @mut HashMap::new(),
-        methods: @mut HashMap::new(),
-        trait_method_def_ids: @mut HashMap::new(),
-        trait_methods_cache: @mut HashMap::new(),
-        impl_trait_cache: @mut HashMap::new(),
-        ty_param_defs: @mut HashMap::new(),
-        adjustments: @mut HashMap::new(),
+        tc_cache: @mut HashMap::init(),
+        ast_ty_to_ty_cache: @mut HashMap::init(),
+        enum_var_cache: @mut HashMap::init(),
+        methods: @mut HashMap::init(),
+        trait_method_def_ids: @mut HashMap::init(),
+        trait_methods_cache: @mut HashMap::init(),
+        impl_trait_cache: @mut HashMap::init(),
+        ty_param_defs: @mut HashMap::init(),
+        adjustments: @mut HashMap::init(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        provided_method_sources: @mut HashMap::new(),
-        supertraits: @mut HashMap::new(),
-        destructor_for_type: @mut HashMap::new(),
-        destructors: @mut HashSet::new(),
-        trait_impls: @mut HashMap::new(),
-        inherent_impls:  @mut HashMap::new(),
-        impls:  @mut HashMap::new(),
-        used_unsafe: @mut HashSet::new(),
-        used_mut_nodes: @mut HashSet::new(),
-        impl_vtables: @mut HashMap::new(),
-        populated_external_types: @mut HashSet::new(),
-        populated_external_traits: @mut HashSet::new(),
+        provided_method_sources: @mut HashMap::init(),
+        supertraits: @mut HashMap::init(),
+        destructor_for_type: @mut HashMap::init(),
+        destructors: @mut HashSet::init(),
+        trait_impls: @mut HashMap::init(),
+        inherent_impls:  @mut HashMap::init(),
+        impls:  @mut HashMap::init(),
+        used_unsafe: @mut HashSet::init(),
+        used_mut_nodes: @mut HashSet::init(),
+        impl_vtables: @mut HashMap::init(),
+        populated_external_types: @mut HashSet::init(),
+        populated_external_traits: @mut HashSet::init(),
 
-        extern_const_statics: @mut HashMap::new(),
-        extern_const_variants: @mut HashMap::new(),
+        extern_const_statics: @mut HashMap::init(),
+        extern_const_variants: @mut HashMap::init(),
      }
 }
 
@@ -1661,7 +1661,7 @@ pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
       None => ()
     }
 
-    let mut tycache = HashSet::new();
+    let mut tycache = HashSet::init();
     let needs_unwind_cleanup =
         type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
     cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
@@ -1932,7 +1932,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         None => {}
     }
 
-    let mut cache = HashMap::new();
+    let mut cache = HashMap::init();
     let result = tc_ty(cx, ty, &mut cache);
     cx.tc_cache.insert(ty_id, result);
     return result;
@@ -4335,7 +4335,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                         f: |@TraitRef| -> bool)
                                         -> bool {
     for &bound_trait_ref in bounds.iter() {
-        let mut supertrait_set = HashMap::new();
+        let mut supertrait_set = HashMap::init();
         let mut trait_refs = ~[];
         let mut i = 0;
 

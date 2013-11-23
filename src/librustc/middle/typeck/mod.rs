@@ -454,8 +454,8 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
-        method_map: @mut HashMap::new(),
-        vtable_map: @mut HashMap::new(),
+        method_map: @mut HashMap::init(),
+        vtable_map: @mut HashMap::init(),
         tcx: tcx
     };
 

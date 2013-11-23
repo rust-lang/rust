@@ -11,6 +11,6 @@
 use std::hashmap::HashMap;
 
 pub fn main() {
-    let mut x = HashMap::new();
+    let mut x = HashMap::init();
     x.insert((@"abc", 0), 0);
 }

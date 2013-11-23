@@ -48,7 +48,7 @@ pub fn crate(sess: session::Session,
              -> @mut NamedRegionMap {
     let mut ctxt = LifetimeContext {
         sess: sess,
-        named_region_map: @mut HashMap::new()
+        named_region_map: @mut HashMap::init()
     };
     visit::walk_crate(&mut ctxt, crate, &RootScope);
     sess.abort_if_errors();

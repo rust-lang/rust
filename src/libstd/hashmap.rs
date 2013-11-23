@@ -319,7 +319,7 @@ impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
 
 impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Create an empty HashMap
-    pub fn new() -> HashMap<K, V> {
+    pub fn empty() -> HashMap<K, V> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
@@ -631,7 +631,7 @@ impl<K: Eq + Hash, V> Extendable<(K, V)> for HashMap<K, V> {
 }
 
 impl<K: Eq + Hash, V> Default for HashMap<K, V> {
-    fn default() -> HashMap<K, V> { HashMap::new() }
+    fn default() -> HashMap<K, V> { HashMap::init() }
 }
 
 /// An implementation of a hash set using the underlying representation of a
@@ -689,7 +689,7 @@ impl<T:Hash + Eq> MutableSet<T> for HashSet<T> {
 
 impl<T:Hash + Eq> HashSet<T> {
     /// Create an empty HashSet
-    pub fn new() -> HashSet<T> {
+    pub fn empty() -> HashSet<T> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
@@ -794,7 +794,7 @@ impl<K: Eq + Hash> Extendable<K> for HashSet<K> {
 }
 
 impl<K: Eq + Hash> Default for HashSet<K> {
-    fn default() -> HashSet<K> { HashSet::new() }
+    fn default() -> HashSet<K> { HashSet::init() }
 }
 
 // `Repeat` is used to feed the filter closure an explicit capture
@@ -818,7 +818,7 @@ mod test_map {
 
     #[test]
     fn test_insert() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 4));
         assert_eq!(*m.get(&1), 2);
@@ -827,7 +827,7 @@ mod test_map {
 
     #[test]
     fn test_find_mut() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         assert!(m.insert(1, 12));
         assert!(m.insert(2, 8));
         assert!(m.insert(5, 14));
@@ -840,7 +840,7 @@ mod test_map {
 
     #[test]
     fn test_insert_overwrite() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         assert!(m.insert(1, 2));
         assert_eq!(*m.get(&1), 2);
         assert!(!m.insert(1, 3));
@@ -880,7 +880,7 @@ mod test_map {
 
     #[test]
     fn test_pop() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         m.insert(1, 2);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
@@ -888,7 +888,7 @@ mod test_map {
 
     #[test]
     fn test_swap() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         assert_eq!(m.swap(1, 2), None);
         assert_eq!(m.swap(1, 3), Some(2));
         assert_eq!(m.swap(1, 4), Some(3));
@@ -896,21 +896,21 @@ mod test_map {
 
     #[test]
     fn test_find_or_insert() {
-        let mut m: HashMap<int,int> = HashMap::new();
+        let mut m: HashMap<int,int> = HashMap::init();
         assert_eq!(*m.find_or_insert(1, 2), 2);
         assert_eq!(*m.find_or_insert(1, 3), 2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
-        let mut m: HashMap<int,int> = HashMap::new();
+        let mut m: HashMap<int,int> = HashMap::init();
         assert_eq!(*m.find_or_insert_with(1, |_| 2), 2);
         assert_eq!(*m.find_or_insert_with(1, |_| 3), 2);
     }
 
     #[test]
     fn test_insert_or_update_with() {
-        let mut m: HashMap<int,int> = HashMap::new();
+        let mut m: HashMap<int,int> = HashMap::init();
         assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
         assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
@@ -918,7 +918,7 @@ mod test_map {
     #[test]
     fn test_move_iter() {
         let hm = {
-            let mut hm = HashMap::new();
+            let mut hm = HashMap::init();
 
             hm.insert('a', 1);
             hm.insert('b', 2);
@@ -946,7 +946,7 @@ mod test_map {
 
     #[test]
     fn test_find() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         assert!(m.find(&1).is_none());
         m.insert(1, 2);
         match m.find(&1) {
@@ -957,12 +957,12 @@ mod test_map {
 
     #[test]
     fn test_eq() {
-        let mut m1 = HashMap::new();
+        let mut m1 = HashMap::init();
         m1.insert(1, 2);
         m1.insert(2, 3);
         m1.insert(3, 4);
 
-        let mut m2 = HashMap::new();
+        let mut m2 = HashMap::init();
         m2.insert(1, 2);
         m2.insert(2, 3);
 
@@ -975,7 +975,7 @@ mod test_map {
 
     #[test]
     fn test_expand() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
 
         assert_eq!(m.len(), 0);
         assert!(m.is_empty());
@@ -993,7 +993,7 @@ mod test_map {
 
     #[test]
     fn test_find_equiv() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
 
         let (foo, bar, baz) = (1,2,3);
         m.insert(~"foo", foo);
@@ -1029,8 +1029,8 @@ mod test_set {
 
     #[test]
     fn test_disjoint() {
-        let mut xs = HashSet::new();
-        let mut ys = HashSet::new();
+        let mut xs = HashSet::init();
+        let mut ys = HashSet::init();
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
         assert!(xs.insert(5));
@@ -1051,13 +1051,13 @@ mod test_set {
 
     #[test]
     fn test_subset_and_superset() {
-        let mut a = HashSet::new();
+        let mut a = HashSet::init();
         assert!(a.insert(0));
         assert!(a.insert(5));
         assert!(a.insert(11));
         assert!(a.insert(7));
 
-        let mut b = HashSet::new();
+        let mut b = HashSet::init();
         assert!(b.insert(0));
         assert!(b.insert(7));
         assert!(b.insert(19));
@@ -1080,7 +1080,7 @@ mod test_set {
 
     #[test]
     fn test_iterate() {
-        let mut a = HashSet::new();
+        let mut a = HashSet::init();
         for i in range(0u, 32) {
             assert!(a.insert(i));
         }
@@ -1093,8 +1093,8 @@ mod test_set {
 
     #[test]
     fn test_intersection() {
-        let mut a = HashSet::new();
-        let mut b = HashSet::new();
+        let mut a = HashSet::init();
+        let mut b = HashSet::init();
 
         assert!(a.insert(11));
         assert!(a.insert(1));
@@ -1123,8 +1123,8 @@ mod test_set {
 
     #[test]
     fn test_difference() {
-        let mut a = HashSet::new();
-        let mut b = HashSet::new();
+        let mut a = HashSet::init();
+        let mut b = HashSet::init();
 
         assert!(a.insert(1));
         assert!(a.insert(3));
@@ -1146,8 +1146,8 @@ mod test_set {
 
     #[test]
     fn test_symmetric_difference() {
-        let mut a = HashSet::new();
-        let mut b = HashSet::new();
+        let mut a = HashSet::init();
+        let mut b = HashSet::init();
 
         assert!(a.insert(1));
         assert!(a.insert(3));
@@ -1172,8 +1172,8 @@ mod test_set {
 
     #[test]
     fn test_union() {
-        let mut a = HashSet::new();
-        let mut b = HashSet::new();
+        let mut a = HashSet::init();
+        let mut b = HashSet::init();
 
         assert!(a.insert(1));
         assert!(a.insert(3));
@@ -1214,7 +1214,7 @@ mod test_set {
     #[test]
     fn test_move_iter() {
         let hs = {
-            let mut hs = HashSet::new();
+            let mut hs = HashSet::init();
 
             hs.insert('a');
             hs.insert('b');
@@ -1228,12 +1228,12 @@ mod test_set {
 
     #[test]
     fn test_eq() {
-        let mut s1 = HashSet::new();
+        let mut s1 = HashSet::init();
         s1.insert(1);
         s1.insert(2);
         s1.insert(3);
 
-        let mut s2 = HashSet::new();
+        let mut s2 = HashSet::init();
         s2.insert(1);
         s2.insert(2);
 

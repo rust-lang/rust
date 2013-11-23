@@ -1688,9 +1688,9 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           llself: None,
           personality: None,
           caller_expects_out_pointer: uses_outptr,
-          llargs: @mut HashMap::new(),
-          lllocals: @mut HashMap::new(),
-          llupvars: @mut HashMap::new(),
+          llargs: @mut HashMap::init(),
+          lllocals: @mut HashMap::init(),
+          llupvars: @mut HashMap::init(),
           id: id,
           param_substs: param_substs,
           span: sp,
@@ -2747,7 +2747,7 @@ macro_rules! ifn (
 
 pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     let i8p = Type::i8p();
-    let mut intrinsics = HashMap::new();
+    let mut intrinsics = HashMap::init();
 
     ifn!(intrinsics, "llvm.memcpy.p0i8.p0i8.i32",
          [i8p, i8p, Type::i32(), Type::i32(), Type::i1()], Type::void());

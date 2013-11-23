@@ -104,7 +104,7 @@ fn main() {
 
     {
         let mut rng: IsaacRng = SeedableRng::from_seed(&[1, 1, 1, 1, 1, 1, 1]);
-        let mut set = HashSet::new();
+        let mut set = HashSet::init();
         while set.len() != n_keys {
             let next = rng.gen();
             if set.insert(next) {
@@ -136,18 +136,18 @@ fn main() {
     println("\nHashMap:");
 
     {
-        let mut map: HashMap<uint,uint> = HashMap::new();
+        let mut map: HashMap<uint,uint> = HashMap::init();
         ascending(&mut map, n_keys);
     }
 
     {
-        let mut map: HashMap<uint,uint> = HashMap::new();
+        let mut map: HashMap<uint,uint> = HashMap::init();
         descending(&mut map, n_keys);
     }
 
     {
         println(" Random integers:");
-        let mut map: HashMap<uint,uint> = HashMap::new();
+        let mut map: HashMap<uint,uint> = HashMap::init();
         vector(&mut map, n_keys, rand);
     }
 

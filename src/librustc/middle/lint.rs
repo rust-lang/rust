@@ -320,7 +320,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
   '-' to '_' in command-line flags
  */
 pub fn get_lint_dict() -> LintDict {
-    let mut map = HashMap::new();
+    let mut map = HashMap::init();
     for &(k, v) in lint_table.iter() {
         map.insert(k, v);
     }

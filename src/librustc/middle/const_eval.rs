@@ -116,11 +116,11 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             None => {}
         }
         let maps = astencode::Maps {
-            root_map: @mut HashMap::new(),
-            method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
-            write_guard_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new()
+            root_map: @mut HashMap::init(),
+            method_map: @mut HashMap::init(),
+            vtable_map: @mut HashMap::init(),
+            write_guard_map: @mut HashSet::init(),
+            capture_map: @mut HashMap::init()
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a,
@@ -159,11 +159,11 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             None => {}
         }
         let maps = astencode::Maps {
-            root_map: @mut HashMap::new(),
-            method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
-            write_guard_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new()
+            root_map: @mut HashMap::init(),
+            method_map: @mut HashMap::init(),
+            vtable_map: @mut HashMap::init(),
+            write_guard_map: @mut HashSet::init(),
+            capture_map: @mut HashMap::init()
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
@@ -280,7 +280,7 @@ pub fn process_crate(crate: &ast::Crate,
                      tcx: ty::ctxt) {
     let mut v = ConstEvalVisitor {
         tcx: tcx,
-        ccache: HashMap::new(),
+        ccache: HashMap::init(),
     };
     visit::walk_crate(&mut v, crate, ());
     tcx.sess.abort_if_errors();

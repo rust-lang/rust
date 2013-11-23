@@ -116,9 +116,9 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_origins: ~[],
         values: Cell::new_empty(),
-        constraints: HashMap::new(),
-        lubs: HashMap::new(),
-        glbs: HashMap::new(),
+        constraints: HashMap::init(),
+        lubs: HashMap::init(),
+        glbs: HashMap::init(),
         skolemization_count: 0,
         bound_count: 0,
         undo_log: ~[]
@@ -1180,7 +1180,7 @@ impl RegionVarBindings {
             dup_found: bool
         }
         let mut state = WalkState {
-            set: HashSet::new(),
+            set: HashSet::init(),
             stack: ~[orig_node_idx],
             result: ~[],
             dup_found: false

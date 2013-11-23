@@ -29,7 +29,7 @@ pub fn replace_bound_regions_in_fn_sig(
             opt_self_ty.repr(tcx),
             fn_sig.repr(tcx));
 
-    let mut map = HashMap::new();
+    let mut map = HashMap::init();
     let (fn_sig, opt_self_ty) = {
         let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
                 debug!("region r={}", r.to_str());

@@ -222,7 +222,7 @@ pub fn parse(file: &mut io::Reader,
 
     debug!("term names: {:?}", term_names);
 
-    let mut bools_map = HashMap::new();
+    let mut bools_map = HashMap::init();
     if bools_bytes != 0 {
         for i in range(0, bools_bytes) {
             let b = file.read_byte().unwrap();
@@ -243,7 +243,7 @@ pub fn parse(file: &mut io::Reader,
         file.read_byte(); // compensate for padding
     }
 
-    let mut numbers_map = HashMap::new();
+    let mut numbers_map = HashMap::init();
     if numbers_count != 0 {
         for i in range(0, numbers_count) {
             let n = file.read_le_u16();
@@ -256,7 +256,7 @@ pub fn parse(file: &mut io::Reader,
 
     debug!("numbers: {:?}", numbers_map);
 
-    let mut string_map = HashMap::new();
+    let mut string_map = HashMap::init();
 
     if string_offsets_count != 0 {
         let mut string_offsets = vec::with_capacity(10);

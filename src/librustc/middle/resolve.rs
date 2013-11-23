@@ -311,7 +311,7 @@ struct Rib {
 impl Rib {
     fn new(kind: RibKind) -> Rib {
         Rib {
-            bindings: @mut HashMap::new(),
+            bindings: @mut HashMap::init(),
             self_binding: @mut None,
             kind: kind
         }
@@ -489,11 +489,11 @@ impl Module {
             def_id: def_id,
             kind: kind,
             is_public: is_public,
-            children: @mut HashMap::new(),
+            children: @mut HashMap::init(),
             imports: @mut ~[],
-            external_module_children: @mut HashMap::new(),
-            anonymous_children: @mut HashMap::new(),
-            import_resolutions: @mut HashMap::new(),
+            external_module_children: @mut HashMap::init(),
+            anonymous_children: @mut HashMap::init(),
+            import_resolutions: @mut HashMap::init(),
             glob_count: 0,
             resolved_import_count: 0,
             populated: !external,
@@ -752,7 +752,7 @@ impl PrimitiveTypeTable {
 
 fn PrimitiveTypeTable() -> PrimitiveTypeTable {
     let mut table = PrimitiveTypeTable {
-        primitive_types: HashMap::new()
+        primitive_types: HashMap::init()
     };
 
     table.intern("bool",    ty_bool);
@@ -807,8 +807,8 @@ fn Resolver(session: Session,
 
         graph_root: graph_root,
 
-        method_map: @mut HashMap::new(),
-        structs: HashSet::new(),
+        method_map: @mut HashMap::init(),
+        structs: HashSet::init(),
 
         unresolved_imports: 0,
 
@@ -826,12 +826,12 @@ fn Resolver(session: Session,
 
         namespaces: ~[ TypeNS, ValueNS ],
 
-        def_map: @mut HashMap::new(),
-        export_map2: @mut HashMap::new(),
-        trait_map: HashMap::new(),
-        used_imports: HashSet::new(),
-        external_exports: HashSet::new(),
-        last_private: HashMap::new(),
+        def_map: @mut HashMap::init(),
+        export_map2: @mut HashMap::init(),
+        trait_map: HashMap::init(),
+        used_imports: HashSet::init(),
+        external_exports: HashSet::init(),
+        last_private: HashMap::init(),
 
         emit_errors: true,
         intr: session.intr()
@@ -1343,7 +1343,7 @@ impl Resolver {
                                                              get_module());
 
                 // Add the names of all the methods to the trait info.
-                let mut method_names = HashMap::new();
+                let mut method_names = HashMap::init();
                 for method in methods.iter() {
                     let ty_m = trait_method_to_ty_method(method);
 
@@ -1383,7 +1383,7 @@ impl Resolver {
                 let def_id = local_def(item.id);
                 for (name, _) in method_names.iter() {
                     if !self.method_map.contains_key(name) {
-                        self.method_map.insert(*name, HashSet::new());
+                        self.method_map.insert(*name, HashSet::init());
                     }
                     match self.method_map.find_mut(name) {
                         Some(s) => { s.insert(def_id); },
@@ -1676,7 +1676,7 @@ impl Resolver {
 
               let method_def_ids =
                 get_trait_method_def_ids(self.session.cstore, def_id);
-              let mut interned_method_names = HashSet::new();
+              let mut interned_method_names = HashSet::init();
               for &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
                       get_method_name_and_explicit_self(self.session.cstore,
@@ -1697,7 +1697,7 @@ impl Resolver {
               }
               for name in interned_method_names.iter() {
                   if !self.method_map.contains_key(name) {
-                      self.method_map.insert(*name, HashSet::new());
+                      self.method_map.insert(*name, HashSet::init());
                   }
                   match self.method_map.find_mut(name) {
                       Some(s) => { s.insert(def_id); },
@@ -3877,7 +3877,7 @@ impl Resolver {
                           id: NodeId,
                           generics: &Generics,
                           fields: &[@struct_field]) {
-        let mut ident_map: HashMap<ast::Ident,@struct_field> = HashMap::new();
+        let mut ident_map: HashMap<ast::Ident,@struct_field> = HashMap::init();
         for &field in fields.iter() {
             match field.node.kind {
                 named_field(ident, _) => {
@@ -4048,7 +4048,7 @@ impl Resolver {
     // that expands into an or-pattern where one 'x' was from the
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: @Pat) -> BindingMap {
-        let mut result = HashMap::new();
+        let mut result = HashMap::init();
         pat_bindings(self.def_map, pat, |binding_mode, _id, sp, path| {
             let name = mtwt_resolve(path_to_ident(path));
             result.insert(name,
@@ -4102,7 +4102,7 @@ impl Resolver {
     fn resolve_arm(&mut self, arm: &Arm) {
         self.value_ribs.push(@Rib::new(NormalRibKind));
 
-        let bindings_list = @mut HashMap::new();
+        let bindings_list = @mut HashMap::init();
         for pattern in arm.pats.iter() {
             self.resolve_pattern(*pattern, RefutableMode, Some(bindings_list));
         }

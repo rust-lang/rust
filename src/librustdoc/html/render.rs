@@ -208,7 +208,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         dst: dst,
         current: ~[],
         root_path: ~"",
-        sidebar: HashMap::new(),
+        sidebar: HashMap::init(),
         layout: layout::Layout {
             logo: ~"",
             favicon: ~"",
@@ -240,15 +240,15 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
 
     // Crawl the crate to build various caches used for the output
     let mut cache = Cache {
-        impls: HashMap::new(),
-        typarams: HashMap::new(),
-        paths: HashMap::new(),
-        traits: HashMap::new(),
-        implementors: HashMap::new(),
+        impls: HashMap::init(),
+        typarams: HashMap::init(),
+        paths: HashMap::init(),
+        traits: HashMap::init(),
+        implementors: HashMap::init(),
         stack: ~[],
         parent_stack: ~[],
         search_index: ~[],
-        extern_locations: HashMap::new(),
+        extern_locations: HashMap::init(),
     };
     cache.stack.push(crate.name.clone());
     crate = cache.fold_crate(crate);
@@ -297,7 +297,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         mkdir(&dst);
         let mut folder = SourceCollector {
             dst: dst,
-            seen: HashSet::new(),
+            seen: HashSet::init(),
             cx: &mut cx,
         };
         crate = folder.fold_crate(crate);
@@ -1600,7 +1600,7 @@ impl<'self> fmt::Default for Sidebar<'self> {
 }
 
 fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
-    let mut map = HashMap::new();
+    let mut map = HashMap::init();
     for item in m.items.iter() {
         let short = shortty(item);
         let myname = match item.name {

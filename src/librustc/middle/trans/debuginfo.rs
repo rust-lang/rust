@@ -155,10 +155,10 @@ impl CrateDebugContext {
             llcontext: llcontext,
             builder: builder,
             current_debug_location: UnknownLocation,
-            created_files: HashMap::new(),
-            created_types: HashMap::new(),
-            namespace_map: HashMap::new(),
-            composite_types_completed: HashSet::new(),
+            created_files: HashMap::init(),
+            created_types: HashMap::init(),
+            namespace_map: HashMap::init(),
+            composite_types_completed: HashSet::init(),
         };
     }
 }
@@ -678,7 +678,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
     // Initialize fn debug context (including scope map and namespace map)
     let mut fn_debug_context = ~FunctionDebugContextData {
-        scope_map: HashMap::new(),
+        scope_map: HashMap::init(),
         fn_metadata: fn_metadata,
         argument_counter: 1,
         source_locations_enabled: false,

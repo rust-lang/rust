@@ -210,7 +210,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
           }
         }
     }
-    let mut ret_val = HashMap::new();
+    let mut ret_val = HashMap::init();
     for m in ms.iter() { n_rec(p_s, m, res, &mut ret_val) }
     ret_val
 }

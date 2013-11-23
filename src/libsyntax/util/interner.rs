@@ -24,7 +24,7 @@ pub struct Interner<T> {
 impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
-            map: @mut HashMap::new(),
+            map: @mut HashMap::init(),
             vect: @mut ~[],
         }
     }
@@ -86,7 +86,7 @@ pub struct StrInterner {
 impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
-            map: @mut HashMap::new(),
+            map: @mut HashMap::init(),
             vect: @mut ~[],
         }
     }

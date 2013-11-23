@@ -156,7 +156,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> ~str {
 }
 
 pub fn minimize_rpaths(rpaths: &[~str]) -> ~[~str] {
-    let mut set = HashSet::new();
+    let mut set = HashSet::init();
     let mut minimized = ~[];
     for rpath in rpaths.iter() {
         if set.insert(rpath.as_slice()) {

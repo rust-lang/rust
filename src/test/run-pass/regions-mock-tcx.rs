@@ -47,7 +47,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
            -> TypeContext<'tcx, 'ast> {
         TypeContext { ty_arena: ty_arena,
                       types: ~[],
-                      type_table: HashMap::new(),
+                      type_table: HashMap::init(),
 
                       ast_arena: ast_arena,
                       ast_counter: 0 }

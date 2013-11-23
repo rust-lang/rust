@@ -334,7 +334,7 @@ impl<'self> Visitor<()> for LanguageItemVisitor<'self> {
 
 impl LanguageItemCollector {
     pub fn new(session: Session) -> LanguageItemCollector {
-        let mut item_refs = HashMap::new();
+        let mut item_refs = HashMap::init();
 
         item_refs.insert("freeze", FreezeTraitLangItem as uint);
         item_refs.insert("send", SendTraitLangItem as uint);

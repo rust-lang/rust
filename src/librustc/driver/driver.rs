@@ -843,7 +843,7 @@ pub fn build_session_(sopts: @session::options,
         filesearch: filesearch,
         building_library: @mut false,
         working_dir: os::getcwd(),
-        lints: @mut HashMap::new(),
+        lints: @mut HashMap::init(),
         node_id: @mut 1
     }
 }

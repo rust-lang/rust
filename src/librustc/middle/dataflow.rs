@@ -142,7 +142,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             tcx: tcx,
             method_map: method_map,
             words_per_id: words_per_id,
-            nodeid_to_bitset: HashMap::new(),
+            nodeid_to_bitset: HashMap::init(),
             bits_per_id: bits_per_id,
             oper: oper,
             gens: gens,

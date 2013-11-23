@@ -775,8 +775,8 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
 pub fn new_sctable_internal() -> SCTable {
     SCTable {
         table: ~[EmptyCtxt,IllegalCtxt],
-        mark_memo: HashMap::new(),
-        rename_memo: HashMap::new()
+        mark_memo: HashMap::init(),
+        rename_memo: HashMap::init()
     }
 }
 
@@ -822,7 +822,7 @@ pub fn get_resolve_table() -> @mut ResolveTable {
     local_data_key!(resolve_table_key: @@mut ResolveTable)
     match local_data::get(resolve_table_key, |k| k.map(|k| *k)) {
         None => {
-            let new_table = @@mut HashMap::new();
+            let new_table = @@mut HashMap::init();
             local_data::set(resolve_table_key,new_table);
             *new_table
         },
@@ -1111,7 +1111,7 @@ mod test {
     #[test] fn resolve_tests () {
         let a = 40;
         let mut t = new_sctable_internal();
-        let mut rt = HashMap::new();
+        let mut rt = HashMap::init();
         // - ctxt is MT
         assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
         // - simple ignored marks
@@ -1175,7 +1175,7 @@ mod test {
 
     #[test] fn resolve_table_hashing_tests() {
         let mut t = new_sctable_internal();
-        let mut rt = HashMap::new();
+        let mut rt = HashMap::init();
         assert_eq!(rt.len(),0);
         resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
         assert_eq!(rt.len(),1);

@@ -132,7 +132,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
-    let impl_dups = @mut HashSet::new();
+    let impl_dups = @mut HashSet::init();
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,

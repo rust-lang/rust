@@ -263,9 +263,9 @@ fn IrMaps(tcx: ty::ctxt,
         capture_map: capture_map,
         num_live_nodes: 0,
         num_vars: 0,
-        live_node_map: HashMap::new(),
-        variable_map: HashMap::new(),
-        capture_info_map: HashMap::new(),
+        live_node_map: HashMap::init(),
+        variable_map: HashMap::init(),
+        capture_info_map: HashMap::init(),
         var_kinds: ~[],
         lnks: ~[],
     }
@@ -603,8 +603,8 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                    invalid_users()),
         loop_scope: @mut ~[],
-        break_ln: @mut HashMap::new(),
-        cont_ln: @mut HashMap::new()
+        break_ln: @mut HashMap::init(),
+        cont_ln: @mut HashMap::init()
     }
 }
 

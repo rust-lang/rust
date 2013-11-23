@@ -209,7 +209,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
         } as @SyntaxExpanderTTItemTrait,
         None))
     }
-    let mut syntax_expanders = HashMap::new();
+    let mut syntax_expanders = HashMap::init();
     // NB identifier starts with space, and can't conflict with legal idents
     syntax_expanders.insert(intern(&" block"),
                             @BlockInfo(BlockInfo{
@@ -529,7 +529,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
 
     // add a new frame to the environment (functionally)
     pub fn push_frame (@mut self) -> @mut MapChain<K,V> {
-        @mut ConsMapChain(~HashMap::new() ,self)
+        @mut ConsMapChain(~HashMap::init() ,self)
     }
 
 // no need for pop, it'll just be functional.
@@ -645,7 +645,7 @@ mod test {
 
     #[test]
     fn testenv() {
-        let mut a = HashMap::new();
+        let mut a = HashMap::init();
         a.insert (@"abc",@15);
         let m = MapChain::new(~a);
         m.insert (@"def",@16);

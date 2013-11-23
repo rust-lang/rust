@@ -351,7 +351,7 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It) -> O
 
 pub fn require_unique_names(diagnostic: @mut span_handler,
                             metas: &[@MetaItem]) {
-    let mut set = HashSet::new();
+    let mut set = HashSet::init();
     for meta in metas.iter() {
         let name = meta.name();
 

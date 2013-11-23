@@ -21,7 +21,7 @@ pub type PatIdMap = HashMap<Ident, NodeId>;
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: resolve::DefMap, pat: @Pat) -> PatIdMap {
-    let mut map = HashMap::new();
+    let mut map = HashMap::init();
     pat_bindings(dm, pat, |_bm, p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
     });

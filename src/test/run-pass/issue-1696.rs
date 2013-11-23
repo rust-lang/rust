@@ -13,7 +13,7 @@
 use std::hashmap::HashMap;
 
 pub fn main() {
-    let mut m = HashMap::new();
+    let mut m = HashMap::init();
     m.insert("foo".as_bytes().to_owned(), "bar".as_bytes().to_owned());
     error!("{:?}", m);
 }

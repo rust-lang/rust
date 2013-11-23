@@ -20,7 +20,7 @@ use std::hashmap::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];
-  let mut m: req::header_map = HashMap::new();
+  let mut m: req::header_map = HashMap::init();
   m.insert(~"METHOD", @mut v);
   request::<int>(&m);
 }

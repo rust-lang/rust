@@ -72,7 +72,7 @@ pub fn check_loans(bccx: &BorrowckCtxt,
         dfcx_loans: dfcx_loans,
         move_data: @move_data,
         all_loans: all_loans,
-        reported: @mut HashSet::new(),
+        reported: @mut HashSet::init(),
     };
 
     clcx.visit_block(body, ());

@@ -59,7 +59,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
             up: option::None
         },
         interpolations: match interp { /* just a convienience */
-            None => HashMap::new(),
+            None => HashMap::init(),
             Some(x) => x
         },
         repeat_idx: ~[],

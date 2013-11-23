@@ -166,11 +166,11 @@ impl MoveData {
     pub fn new() -> MoveData {
         MoveData {
             paths: ~[],
-            path_map: HashMap::new(),
+            path_map: HashMap::init(),
             moves: ~[],
             path_assignments: ~[],
             var_assignments: ~[],
-            assignee_ids: HashSet::new(),
+            assignee_ids: HashSet::init(),
         }
     }
 

@@ -258,13 +258,13 @@ impl Inherited {
            -> Inherited {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
-            locals: @mut HashMap::new(),
+            locals: @mut HashMap::init(),
             param_env: param_env,
-            node_types: @mut HashMap::new(),
-            node_type_substs: @mut HashMap::new(),
-            adjustments: @mut HashMap::new(),
-            method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
+            node_types: @mut HashMap::init(),
+            node_type_substs: @mut HashMap::init(),
+            adjustments: @mut HashMap::init(),
+            method_map: @mut HashMap::init(),
+            vtable_map: @mut HashMap::init(),
         }
     }
 }
@@ -535,7 +535,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::Ident, Span)]) {
-    let mut field_names = HashMap::new();
+    let mut field_names = HashMap::init();
 
     for p in fields.iter() {
         let (id, sp) = *p;
@@ -2386,7 +2386,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                       check_completeness: bool)  {
         let tcx = fcx.ccx.tcx;
 
-        let mut class_field_map = HashMap::new();
+        let mut class_field_map = HashMap::init();
         let mut fields_found = 0;
         for field in field_types.iter() {
             class_field_map.insert(field.name, (field.id, false));

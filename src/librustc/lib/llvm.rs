@@ -1775,8 +1775,8 @@ pub struct TypeNames {
 impl TypeNames {
     pub fn new() -> TypeNames {
         TypeNames {
-            type_names: HashMap::new(),
-            named_types: HashMap::new()
+            type_names: HashMap::init(),
+            named_types: HashMap::init()
         }
     }
 

@@ -104,7 +104,7 @@ struct TaskSet(HashSet<KillHandle>);
 impl TaskSet {
     #[inline]
     fn new() -> TaskSet {
-        TaskSet(HashSet::new())
+        TaskSet(HashSet::init())
     }
     #[inline]
     fn insert(&mut self, task: KillHandle) {

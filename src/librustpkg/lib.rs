@@ -840,7 +840,7 @@ pub fn main_args(args: &[~str]) -> int {
         target: target,
         target_cpu: target_cpu,
         additional_library_paths:
-            HashSet::new(), // No way to set this from the rustpkg command line
+            HashSet::init(), // No way to set this from the rustpkg command line
         experimental_features: experimental_features
     };
 

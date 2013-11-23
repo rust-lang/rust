@@ -20,7 +20,7 @@ use std::hashmap::HashMap;
 use std::option::Some;
 
 pub fn main() {
-    let mut map: HashMap<SendStr, uint> = HashMap::new();
+    let mut map: HashMap<SendStr, uint> = HashMap::init();
     assert!(map.insert(SendStrStatic("foo"), 42));
     assert!(!map.insert(SendStrOwned(~"foo"), 42));
     assert!(!map.insert(SendStrStatic("foo"), 42));

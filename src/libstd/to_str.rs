@@ -227,8 +227,8 @@ mod tests {
 
     #[test]
     fn test_hashmap() {
-        let mut table: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::new();
-        let empty: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::new();
+        let mut table: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::init();
+        let empty: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::init();
 
         table.insert(3, StructWithToStrWithoutEqOrHash { value: 4 });
         table.insert(1, StructWithToStrWithoutEqOrHash { value: 2 });
@@ -241,8 +241,8 @@ mod tests {
 
     #[test]
     fn test_hashset() {
-        let mut set: HashSet<int> = HashSet::new();
-        let empty_set: HashSet<int> = HashSet::new();
+        let mut set: HashSet<int> = HashSet::init();
+        let empty_set: HashSet<int> = HashSet::init();
 
         set.insert(1);
         set.insert(2);

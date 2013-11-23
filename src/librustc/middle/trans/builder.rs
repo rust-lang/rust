@@ -57,7 +57,7 @@ impl Builder {
                 // Build version of path with cycles removed.
 
                 // Pass 1: scan table mapping str -> rightmost pos.
-                let mut mm = HashMap::new();
+                let mut mm = HashMap::init();
                 let len = v.len();
                 let mut i = 0u;
                 while i < len {

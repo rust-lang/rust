@@ -82,9 +82,9 @@ pub fn check_crate(
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
         root_map: root_map(),
-        loan_map: @mut HashMap::new(),
-        write_guard_map: @mut HashSet::new(),
-        stmt_map: @mut HashSet::new(),
+        loan_map: @mut HashMap::init(),
+        write_guard_map: @mut HashSet::init(),
+        stmt_map: @mut HashSet::init(),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -417,7 +417,7 @@ pub struct RootInfo {
 pub type root_map = @mut HashMap<root_map_key, RootInfo>;
 
 pub fn root_map() -> root_map {
-    return @mut HashMap::new();
+    return @mut HashMap::init();
 }
 
 pub enum DynaFreezeKind {

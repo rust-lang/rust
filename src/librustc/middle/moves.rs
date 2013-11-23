@@ -212,9 +212,9 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new(),
-            moved_variables_set: @mut HashSet::new()
+            moves_map: @mut HashSet::init(),
+            capture_map: @mut HashMap::init(),
+            moved_variables_set: @mut HashSet::init()
         }
     };
     let visit_cx = &mut visit_cx;

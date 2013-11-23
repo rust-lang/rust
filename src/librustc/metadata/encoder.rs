@@ -1771,7 +1771,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         non_inlineable_statics,
         _
     } = parms;
-    let type_abbrevs = @mut HashMap::new();
+    let type_abbrevs = @mut HashMap::init();
     let stats = @mut stats;
     let ecx = EncodeContext {
         diag: diag,

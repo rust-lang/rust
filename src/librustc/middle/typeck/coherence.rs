@@ -662,7 +662,7 @@ impl CoherenceChecker {
     // Adds implementations and traits from external crates to the coherence
     // info.
     pub fn add_external_crates(&self) {
-        let mut impls_seen = HashSet::new();
+        let mut impls_seen = HashSet::init();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         iter_crate_data(crate_store, |crate_number, _crate_metadata| {

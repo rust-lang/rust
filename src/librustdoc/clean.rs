@@ -78,7 +78,7 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
                                 find_linkage_metas(self.attrs), "name");
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
-        let mut externs = HashMap::new();
+        let mut externs = HashMap::init();
         cstore::iter_crate_data(cx.sess.cstore, |n, meta| {
             externs.insert(n, meta.clean());
         });

@@ -203,7 +203,7 @@ impl Context {
         self.nest_level += 1;
         match *m {
             parse::Plural(_, ref arms, ref default) => {
-                let mut seen_cases = HashSet::new();
+                let mut seen_cases = HashSet::init();
                 self.verify_arg_type(pos, Unsigned);
                 for arm in arms.iter() {
                     if !seen_cases.insert(arm.selector) {
@@ -226,7 +226,7 @@ impl Context {
             }
             parse::Select(ref arms, ref default) => {
                 self.verify_arg_type(pos, String);
-                let mut seen_cases = HashSet::new();
+                let mut seen_cases = HashSet::init();
                 for arm in arms.iter() {
                     if !seen_cases.insert(arm.selector) {
                         self.ecx.span_err(self.fmtsp,
@@ -722,9 +722,9 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
         ecx: ecx,
         args: ~[],
         arg_types: ~[],
-        names: HashMap::new(),
-        name_positions: HashMap::new(),
-        name_types: HashMap::new(),
+        names: HashMap::init(),
+        name_positions: HashMap::init(),
+        name_types: HashMap::init(),
         nest_level: 0,
         next_arg: 0,
         pieces: ~[],

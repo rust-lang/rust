@@ -35,7 +35,7 @@ pub fn construct(tcx: ty::ctxt,
                  method_map: typeck::method_map,
                  blk: &ast::Block) -> CFG {
     let mut cfg_builder = CFGBuilder {
-        exit_map: HashMap::new(),
+        exit_map: HashMap::init(),
         graph: graph::Graph::new(),
         tcx: tcx,
         method_map: method_map,

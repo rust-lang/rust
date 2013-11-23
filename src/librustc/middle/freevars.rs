@@ -90,7 +90,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block)
     -> freevar_info {
-    let seen = @mut HashMap::new();
+    let seen = @mut HashMap::init();
     let refs = @mut ~[];
 
     let mut v = CollectFreevarsVisitor {
@@ -124,7 +124,7 @@ impl Visitor<()> for AnnotateFreevarsVisitor {
 // one pass. This could be improved upon if it turns out to matter.
 pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
    freevar_map {
-    let freevars = @mut HashMap::new();
+    let freevars = @mut HashMap::init();
 
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,

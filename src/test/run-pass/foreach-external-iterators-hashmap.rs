@@ -11,7 +11,7 @@
 use std::hashmap::HashMap;
 
 pub fn main() {
-    let mut h = HashMap::new();
+    let mut h = HashMap::init();
     let kvs = [(1, 10), (2, 20), (3, 30)];
     for &(k,v) in kvs.iter() {
         h.insert(k,v);

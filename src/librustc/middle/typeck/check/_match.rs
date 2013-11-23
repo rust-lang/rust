@@ -295,13 +295,13 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let mut field_map = HashMap::new();
+    let mut field_map = HashMap::init();
     for (i, class_field) in class_fields.iter().enumerate() {
         field_map.insert(class_field.name, i);
     }
 
     // Typecheck each field.
-    let mut found_fields = HashSet::new();
+    let mut found_fields = HashSet::init();
     for field in fields.iter() {
         match field_map.find(&field.ident.name) {
             Some(&index) => {

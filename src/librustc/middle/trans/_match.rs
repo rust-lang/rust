@@ -1833,7 +1833,7 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::Pat) -> BindingsMap {
     // from the various alternatives.
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
-    let mut bindings_map = HashMap::new();
+    let mut bindings_map = HashMap::init();
     pat_bindings(tcx.def_map, pat, |bm, p_id, span, path| {
         let ident = path_to_ident(path);
         let variable_ty = node_id_type(bcx, p_id);

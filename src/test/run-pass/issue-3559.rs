@@ -25,7 +25,7 @@ fn check_strs(actual: &str, expected: &str) -> bool
 
 fn tester()
 {
-    let mut table = std::hashmap::HashMap::new();
+    let mut table = std::hashmap::HashMap::init();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
     assert!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be

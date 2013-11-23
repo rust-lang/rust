@@ -228,7 +228,7 @@ impl RustcFlags {
             save_temps: false,
             target: None,
             target_cpu: None,
-            additional_library_paths: HashSet::new(),
+            additional_library_paths: HashSet::init(),
             experimental_features: None
         }
     }

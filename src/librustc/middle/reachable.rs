@@ -174,7 +174,7 @@ impl ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
-            reachable_symbols: @mut HashSet::new(),
+            reachable_symbols: @mut HashSet::init(),
             worklist: @mut ~[],
         }
     }
@@ -253,7 +253,7 @@ impl ReachableContext {
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&self) {
         let mut visitor = self.init_visitor();
-        let mut scanned = HashSet::new();
+        let mut scanned = HashSet::init();
         while self.worklist.len() > 0 {
             let search_item = self.worklist.pop();
             if scanned.contains(&search_item) {

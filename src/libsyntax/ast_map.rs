@@ -373,7 +373,7 @@ impl Visitor<()> for Ctx {
 
 pub fn map_crate(diag: @mut span_handler, c: &Crate) -> map {
     let cx = @mut Ctx {
-        map: @mut HashMap::new(),
+        map: @mut HashMap::init(),
         path: ~[],
         diag: diag,
     };

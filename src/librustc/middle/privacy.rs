@@ -950,9 +950,9 @@ pub fn check_crate(tcx: ty::ctxt,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap,
                    crate: &ast::Crate) -> ExportedItems {
-    let mut parents = HashMap::new();
-    let mut path_all_public_items = HashSet::new();
-    let mut exported_items = HashSet::new();
+    let mut parents = HashMap::init();
+    let mut path_all_public_items = HashSet::init();
+    let mut exported_items = HashSet::init();
 
     // First, figure out who everyone's parent is
     {

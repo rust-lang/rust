@@ -245,7 +245,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
  */
 pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
     let mut rdr = BufReader::new(s);
-    let mut m = HashMap::new();
+    let mut m = HashMap::init();
     let mut key = ~"";
     let mut value = ~"";
     let mut parsing_key = true;
@@ -1086,18 +1086,18 @@ mod tests {
 
     #[test]
     fn test_encode_form_urlencoded() {
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         assert_eq!(encode_form_urlencoded(&m), ~"");
 
         m.insert(~"", ~[]);
         m.insert(~"foo", ~[]);
         assert_eq!(encode_form_urlencoded(&m), ~"");
 
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         m.insert(~"foo", ~[~"bar", ~"123"]);
         assert_eq!(encode_form_urlencoded(&m), ~"foo=bar&foo=123");
 
-        let mut m = HashMap::new();
+        let mut m = HashMap::init();
         m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
         assert!(encode_form_urlencoded(&m) ==
             ~"foo+bar=abc&foo+bar=12+%3D+34");

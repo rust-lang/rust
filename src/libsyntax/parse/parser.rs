@@ -307,7 +307,7 @@ pub fn Parser(sess: @mut ParseSess,
         tokens_consumed: @mut 0,
         restriction: @mut UNRESTRICTED,
         quote_depth: @mut 0,
-        obsolete_set: @mut HashSet::new(),
+        obsolete_set: @mut HashSet::init(),
         mod_path_stack: @mut ~[],
         open_braces: @mut ~[],
         non_copyable: util::NonCopyable

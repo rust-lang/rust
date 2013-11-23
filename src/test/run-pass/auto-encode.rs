@@ -172,13 +172,13 @@ pub fn main() {
 //    test_ebml(&'a');
 
     println("Hi4");
-    let mut a = HashMap::new();
+    let mut a = HashMap::init();
     test_ebml(&a);
     a.insert(1, 2);
     println("Hi4");
     test_ebml(&a);
 
-//    let mut a = HashSet::new();
+//    let mut a = HashSet::init();
 //    test_ebml(&a);
 //    a.insert(1);
 //    test_ebml(&a);

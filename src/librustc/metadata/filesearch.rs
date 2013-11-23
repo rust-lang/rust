@@ -53,7 +53,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
         fn sysroot(&self) -> @Path { self.sysroot }
 
         fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
-            let mut visited_dirs = HashSet::new();
+            let mut visited_dirs = HashSet::init();
             let mut found = false;
 
             debug!("filesearch: searching additional lib search paths [{:?}]",

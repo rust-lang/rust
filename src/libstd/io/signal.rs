@@ -98,7 +98,7 @@ impl Listener {
         Listener {
             chan: SharedChan::new(chan),
             port: port,
-            handles: hashmap::HashMap::new(),
+            handles: hashmap::HashMap::init(),
         }
     }
 

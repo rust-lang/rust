@@ -3056,7 +3056,7 @@ mod tests {
         }
         {
             // check that we have N! unique permutations
-            let mut set = hashmap::HashSet::new();
+            let mut set = hashmap::HashSet::init();
             let v = ['A', 'B', 'C', 'D', 'E', 'F'];
             for perm in v.permutations_iter() {
                 set.insert(perm);

@@ -368,7 +368,7 @@ pub fn basic_options() -> @options {
         save_temps: false,
         jit: false,
         output_type: link::output_type_exe,
-        addl_lib_search_paths: @mut HashSet::new(),
+        addl_lib_search_paths: @mut HashSet::init(),
         linker: None,
         linker_args: ~[],
         maybe_sysroot: None,
