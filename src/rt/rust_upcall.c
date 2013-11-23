@@ -35,16 +35,6 @@ struct _Unwind_Exception;
 #   endif
 #endif
 
-#if __USING_SJLJ_EXCEPTIONS__
-void _Unwind_SjLj_Resume(struct _Unwind_Exception* exception_object);
-
-void _Unwind_Resume(struct _Unwind_Exception* exception_object) {
-    _Unwind_SjLj_Resume(exception_object);
-}
-#else
-extern void _Unnwind_Resume(struct _Unwind_Exception* exception_object);
-#endif
-
 _Unwind_Reason_Code
 PERSONALITY_FUNC(int version,
                      _Unwind_Action actions,
