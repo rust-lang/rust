@@ -180,7 +180,7 @@ impl<'self> AsciiCast<&'self [Ascii]> for &'self str {
 
     #[inline]
     fn is_ascii(&self) -> bool {
-        self.byte_iter().all(|b| b.is_ascii())
+        self.bytes().all(|b| b.is_ascii())
     }
 }
 
@@ -394,7 +394,7 @@ unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> ~str {
-    let bytes = string.byte_iter().map(|b| map[b]).to_owned_vec();
+    let bytes = string.bytes().map(|b| map[b]).to_owned_vec();
 
     str::raw::from_utf8_owned(bytes)
 }
@@ -498,8 +498,8 @@ mod tests {
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
-        assert!("banana".iter().all(|c| c.is_ascii()));
-        assert!(!"ประเทศไทย中华Việt Nam".iter().all(|c| c.is_ascii()));
+        assert!("banana".chars().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
     }
 
     #[test]

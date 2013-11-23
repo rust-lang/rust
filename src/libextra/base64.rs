@@ -193,7 +193,7 @@ impl<'self> FromBase64 for &'self str {
         let mut buf: u32 = 0;
         let mut modulus = 0;
 
-        let mut it = self.byte_iter().enumerate();
+        let mut it = self.bytes().enumerate();
         for (idx, byte) in it {
             let val = byte as u32;
 

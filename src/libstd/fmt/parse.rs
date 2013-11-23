@@ -196,7 +196,7 @@ impl<'self> Parser<'self> {
     pub fn new<'a>(s: &'a str) -> Parser<'a> {
         Parser {
             input: s,
-            cur: s.char_offset_iter(),
+            cur: s.char_indices(),
             depth: 0,
         }
     }

@@ -4586,7 +4586,7 @@ impl Parser {
                 self.bump();
                 let the_string = ident_to_str(&s);
                 let mut abis = AbiSet::empty();
-                for word in the_string.word_iter() {
+                for word in the_string.words() {
                     match abi::lookup(word) {
                         Some(abi) => {
                             if abis.contains(abi) {

@@ -757,7 +757,7 @@ pub fn build_session_options(binary: @str,
     }).move_iter().collect();
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
-        a.split_iter(' ').map(|arg| arg.to_owned()).collect()
+        a.split(' ').map(|arg| arg.to_owned()).collect()
     });
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"), demitter);
@@ -767,7 +767,7 @@ pub fn build_session_options(binary: @str,
     let custom_passes = match matches.opt_str("passes") {
         None => ~[],
         Some(s) => {
-            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
+            s.split(|c: char| c == ' ' || c == ',').map(|s| {
                 s.trim().to_owned()
             }).collect()
         }
@@ -775,7 +775,7 @@ pub fn build_session_options(binary: @str,
     let llvm_args = match matches.opt_str("llvm-args") {
         None => ~[],
         Some(s) => {
-            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
+            s.split(|c: char| c == ' ' || c == ',').map(|s| {
                 s.trim().to_owned()
             }).collect()
         }

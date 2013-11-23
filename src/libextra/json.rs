@@ -59,7 +59,7 @@ pub struct Error {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for c in s.iter() {
+    for c in s.chars() {
         match c {
           '"' => escaped.push_str("\\\""),
           '\\' => escaped.push_str("\\\\"),
@@ -559,7 +559,7 @@ impl<T : Iterator<char>> Parser<T> {
     }
 
     fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
-        if ident.iter().all(|c| c == self.next_char()) {
+        if ident.chars().all(|c| c == self.next_char()) {
             self.bump();
             Ok(value)
         } else {
@@ -844,13 +844,13 @@ impl<T : Iterator<char>> Parser<T> {
 /// Decodes a json value from an `&mut io::Reader`
 pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, Error> {
     let s = str::from_utf8(rdr.read_to_end());
-    let mut parser = Parser(~s.iter());
+    let mut parser = Parser(~s.chars());
     parser.parse()
 }
 
 /// Decodes a json value from a string
 pub fn from_str(s: &str) -> Result<Json, Error> {
-    let mut parser = Parser(~s.iter());
+    let mut parser = Parser(~s.chars());
     parser.parse()
 }
 
@@ -930,7 +930,7 @@ impl serialize::Decoder for Decoder {
     fn read_char(&mut self) -> char {
         let s = self.read_str();
         {
-            let mut it = s.iter();
+            let mut it = s.chars();
             match (it.next(), it.next()) {
                 // exactly one character
                 (Some(c), None) => return c,

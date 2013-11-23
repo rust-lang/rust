@@ -77,7 +77,7 @@ pub fn dumb_println(args: &fmt::Arguments) {
 
 pub fn abort(msg: &str) -> ! {
     let msg = if !msg.is_empty() { msg } else { "aborted" };
-    let hash = msg.iter().fold(0, |accum, val| accum + (val as uint) );
+    let hash = msg.chars().fold(0, |accum, val| accum + (val as uint) );
     let quote = match hash % 10 {
         0 => "
 It was from the artists and poets that the pertinent answers came, and I

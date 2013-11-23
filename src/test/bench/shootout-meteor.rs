@@ -128,7 +128,7 @@ fn make_masks() -> ~[~[~[u64]]] {
         let mut cur_piece = ~[];
         for dy in range(0, 10) {
             for dx in range(0, 5) {
-                let masks = 
+                let masks =
                     trans.iter()
                     .filter_map(|t| mask(dy, dx, id, *t))
                     .collect();
@@ -192,7 +192,7 @@ fn to_utf8(raw_sol: &List<u64>) -> ~str {
 
 // Prints a solution in ~str form.
 fn print_sol(sol: &str) {
-    for (i, c) in sol.iter().enumerate() {
+    for (i, c) in sol.chars().enumerate() {
         if (i) % 5 == 0 {println("");}
         if (i + 5) % 10 == 0 {print(" ");}
         print!("{} ", c);
@@ -220,7 +220,7 @@ fn handle_sol(raw_sol: &List<u64>, data: &mut Data) -> bool {
     // reverse order, i.e. the board rotated by half a turn.
     data.nb += 2;
     let sol1 = to_utf8(raw_sol);
-    let sol2: ~str = sol1.iter().invert().collect();
+    let sol2: ~str = sol1.chars().invert().collect();
 
     if data.nb == 2 {
         data.min = sol1.clone();

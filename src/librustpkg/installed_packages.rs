@@ -59,7 +59,7 @@ pub fn has_library(p: &Path) -> Option<~str> {
     for path in files.iter() {
         if path.extension_str() == Some(os::consts::DLL_EXTENSION) {
             let stuff : &str = path.filestem_str().expect("has_library: weird path");
-            let mut stuff2 = stuff.split_str_iter(&"-");
+            let mut stuff2 = stuff.split_str("-");
             let stuff3: ~[&str] = stuff2.collect();
             // argh
             let chars_to_drop = os::consts::DLL_PREFIX.len();

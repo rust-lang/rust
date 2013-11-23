@@ -198,7 +198,7 @@ pub fn rust_path() -> ~[Path] {
     let mut env_rust_path: ~[Path] = match get_rust_path() {
         Some(env_path) => {
             let env_path_components: ~[&str] =
-                env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
+                env_path.split_str(PATH_ENTRY_SEPARATOR).collect();
             env_path_components.map(|&s| Path::new(s))
         }
         None => ~[]

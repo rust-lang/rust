@@ -17,7 +17,7 @@ use rt::env;
 use rt::local::Local;
 use rt::task;
 use rt::task::Task;
-use str::{OwnedStr, StrSlice};
+use str::OwnedStr;
 use str;
 use uint;
 use unstable::raw;

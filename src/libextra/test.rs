@@ -313,7 +313,7 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
     match maybestr {
         None => None,
         Some(s) => {
-            match s.split_iter('.').to_owned_vec() {
+            match s.split('.').to_owned_vec() {
                 [a, b] => match (from_str::<uint>(a), from_str::<uint>(b)) {
                     (Some(a), Some(b)) => Some((a,b)),
                     _ => None

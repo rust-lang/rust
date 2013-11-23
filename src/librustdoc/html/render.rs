@@ -338,7 +338,7 @@ fn mkdir(path: &Path) {
 fn clean_srcpath(src: &[u8], f: &fn(&str)) {
     let p = Path::new(src);
     if p.as_vec() != bytes!(".") {
-        for c in p.str_component_iter().map(|x|x.unwrap()) {
+        for c in p.str_components().map(|x|x.unwrap()) {
             if ".." == c {
                 f("up");
             } else {
@@ -1621,7 +1621,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
 
 impl<'self> fmt::Default for Source<'self> {
     fn fmt(s: &Source<'self>, fmt: &mut fmt::Formatter) {
-        let lines = s.line_iter().len();
+        let lines = s.lines().len();
         let mut cols = 0;
         let mut tmp = lines;
         while tmp > 0 {
