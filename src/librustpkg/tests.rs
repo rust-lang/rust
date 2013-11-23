@@ -457,7 +457,7 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
     let test_output = str::from_utf8(p_output.output);
-    for s in test_output.split_iter('\n') {
+    for s in test_output.split('\n') {
         result.push(s.to_owned());
     }
     result
@@ -471,7 +471,7 @@ fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~
         Success(r) => r
     };
     let test_output = str::from_utf8(p_output.output);
-    for s in test_output.split_iter('\n') {
+    for s in test_output.split('\n') {
         result.push(s.to_owned());
     }
     result

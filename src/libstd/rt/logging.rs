@@ -63,8 +63,8 @@ fn parse_log_level(level: &str) -> Option<u32> {
 /// Also supports string log levels of error, warn, info, and debug
 fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
     let mut dirs = ~[];
-    for s in spec.split_iter(',') {
-        let parts: ~[&str] = s.split_iter('=').collect();
+    for s in spec.split(',') {
+        let parts: ~[&str] = s.split('=').collect();
         let mut log_level;
         let mut name = Some(parts[0].to_owned());
         match parts.len() {

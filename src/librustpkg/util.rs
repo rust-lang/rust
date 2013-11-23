@@ -177,7 +177,7 @@ pub fn compile_input(context: &BuildContext,
                      cfgs: &[~str],
                      opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
-    assert!(in_file.component_iter().nth(1).is_some());
+    assert!(in_file.components().nth(1).is_some());
     let input = driver::file_input(in_file.clone());
     debug!("compile_input: {} / {:?}", in_file.display(), what);
     // tjc: by default, use the package ID name as the link name

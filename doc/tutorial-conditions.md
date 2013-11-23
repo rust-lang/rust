@@ -82,7 +82,7 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
 
         // 2. Split the line into fields ("words").
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
 
         // 3. Match the vector of fields against a vector pattern.
         match fields {
@@ -295,7 +295,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -396,7 +396,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -473,7 +473,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -551,7 +551,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -647,7 +647,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -787,7 +787,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
 
             // Delegate parsing ints to helper function that will

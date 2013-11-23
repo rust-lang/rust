@@ -383,11 +383,11 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     if num_check_lines > 0 {
         // Allow check lines to leave parts unspecified (e.g., uninitialized
         // bits in the wrong case of an enum) with the notation "[...]".
-        let check_fragments: ~[~[&str]] = check_lines.map(|s| s.split_str_iter("[...]").collect());
+        let check_fragments: ~[~[&str]] = check_lines.map(|s| s.split_str("[...]").collect());
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for line in ProcRes.stdout.line_iter() {
+        for line in ProcRes.stdout.lines() {
             let mut rest = line.trim();
             let mut first = true;
             let mut failed = false;
@@ -439,7 +439,7 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for line in ProcRes.stderr.line_iter() {
+    for line in ProcRes.stderr.lines() {
         if line.contains(*next_err_pat) {
             debug!("found error pattern {}", *next_err_pat);
             next_err_idx += 1u;
@@ -483,7 +483,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     }).collect::<~[~str]>();
 
     fn to_lower( s : &str ) -> ~str {
-        let i = s.iter();
+        let i = s.chars();
         let c : ~[char] = i.map( |c| {
             if c.is_ascii() {
                 c.to_ascii().to_lower().to_char()
@@ -512,7 +512,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line in ProcRes.stderr.line_iter() {
+    for line in ProcRes.stderr.lines() {
         let mut was_expected = false;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
@@ -777,7 +777,7 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
 fn split_maybe_args(argstr: &Option<~str>) -> ~[~str] {
     match *argstr {
         Some(ref s) => {
-            s.split_iter(' ')
+            s.split(' ')
                 .filter_map(|s| if s.is_whitespace() {None} else {Some(s.to_owned())})
                 .collect()
         }
@@ -896,7 +896,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     // get bare program string
-    let mut tvec: ~[~str] = args.prog.split_iter('/').map(|ts| ts.to_owned()).collect();
+    let mut tvec: ~[~str] = args.prog.split('/').map(|ts| ts.to_owned()).collect();
     let prog_short = tvec.pop();
 
     // copy to target
@@ -939,7 +939,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
                      Some(~""));
 
     let mut exitcode : int = 0;
-    for c in exitcode_out.iter() {
+    for c in exitcode_out.chars() {
         if !c.is_digit() { break; }
         exitcode = exitcode * 10 + match c {
             '0' .. '9' => c as int - ('0' as int),
@@ -1089,7 +1089,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 fn count_extracted_lines(p: &Path) -> uint {
     let x = File::open(&p.with_extension("ll")).read_to_end();
     let x = str::from_utf8_owned(x);
-    x.line_iter().len()
+    x.lines().len()
 }
 
 

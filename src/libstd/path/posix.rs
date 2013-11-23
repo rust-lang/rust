@@ -233,8 +233,8 @@ impl GenericPath for Path {
         if self.is_absolute() != other.is_absolute() {
             false
         } else {
-            let mut ita = self.component_iter();
-            let mut itb = other.component_iter();
+            let mut ita = self.components();
+            let mut itb = other.components();
             if bytes!(".") == self.repr {
                 return itb.next() != Some(bytes!(".."));
             }
@@ -261,8 +261,8 @@ impl GenericPath for Path {
                 None
             }
         } else {
-            let mut ita = self.component_iter();
-            let mut itb = base.component_iter();
+            let mut ita = self.components();
+            let mut itb = base.components();
             let mut comps = ~[];
             loop {
                 match (ita.next(), itb.next()) {
@@ -293,8 +293,8 @@ impl GenericPath for Path {
 
     fn ends_with_path(&self, child: &Path) -> bool {
         if !child.is_relative() { return false; }
-        let mut selfit = self.rev_component_iter();
-        let mut childit = child.rev_component_iter();
+        let mut selfit = self.rev_components();
+        let mut childit = child.rev_components();
         loop {
             match (selfit.next(), childit.next()) {
                 (Some(a), Some(b)) => if a != b { return false; },
@@ -367,11 +367,11 @@ impl Path {
     /// Does not distinguish between absolute and relative paths, e.g.
     /// /a/b/c and a/b/c yield the same set of components.
     /// A path of "/" yields no components. A path of "." yields one component.
-    pub fn component_iter<'a>(&'a self) -> ComponentIter<'a> {
+    pub fn components<'a>(&'a self) -> ComponentIter<'a> {
         let v = if self.repr[0] == sep_byte {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
-        let mut ret = v.split_iter(is_sep_byte);
+        let mut ret = v.split(is_sep_byte);
         if v.is_empty() {
             // consume the empty "" component
             ret.next();
@@ -380,12 +380,12 @@ impl Path {
     }
 
     /// Returns an iterator that yields each component of the path in reverse.
-    /// See component_iter() for details.
-    pub fn rev_component_iter<'a>(&'a self) -> RevComponentIter<'a> {
+    /// See components() for details.
+    pub fn rev_components<'a>(&'a self) -> RevComponentIter<'a> {
         let v = if self.repr[0] == sep_byte {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
-        let mut ret = v.rsplit_iter(is_sep_byte);
+        let mut ret = v.rsplit(is_sep_byte);
         if v.is_empty() {
             // consume the empty "" component
             ret.next();
@@ -394,15 +394,15 @@ impl Path {
     }
 
     /// Returns an iterator that yields each component of the path as Option<&str>.
-    /// See component_iter() for details.
-    pub fn str_component_iter<'a>(&'a self) -> StrComponentIter<'a> {
-        self.component_iter().map(str::from_utf8_slice_opt)
+    /// See components() for details.
+    pub fn str_components<'a>(&'a self) -> StrComponentIter<'a> {
+        self.components().map(str::from_utf8_slice_opt)
     }
 
     /// Returns an iterator that yields each component of the path in reverse as Option<&str>.
-    /// See component_iter() for details.
-    pub fn rev_str_component_iter<'a>(&'a self) -> RevStrComponentIter<'a> {
-        self.rev_component_iter().map(str::from_utf8_slice_opt)
+    /// See components() for details.
+    pub fn rev_str_components<'a>(&'a self) -> RevStrComponentIter<'a> {
+        self.rev_components().map(str::from_utf8_slice_opt)
     }
 }
 
@@ -414,7 +414,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
     let mut comps: ~[&'a [u8]] = ~[];
     let mut n_up = 0u;
     let mut changed = false;
-    for comp in v.split_iter(is_sep_byte) {
+    for comp in v.split(is_sep_byte) {
         if comp.is_empty() { changed = true }
         else if comp == bytes!(".") { changed = true }
         else if comp == bytes!("..") {
@@ -1245,33 +1245,33 @@ mod tests {
     }
 
     #[test]
-    fn test_component_iter() {
+    fn test_components_iter() {
         macro_rules! t(
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let comps = path.component_iter().to_owned_vec();
+                    let comps = path.components().to_owned_vec();
                     let exp: &[&str] = $exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).to_owned_vec();
-                    assert!(comps == exps, "component_iter: Expected {:?}, found {:?}",
+                    assert!(comps == exps, "components: Expected {:?}, found {:?}",
                             comps, exps);
-                    let comps = path.rev_component_iter().to_owned_vec();
+                    let comps = path.rev_components().to_owned_vec();
                     let exps = exps.move_rev_iter().to_owned_vec();
-                    assert!(comps == exps, "rev_component_iter: Expected {:?}, found {:?}",
+                    assert!(comps == exps, "rev_components: Expected {:?}, found {:?}",
                             comps, exps);
                 }
             );
             (v: [$($arg:expr),+], [$([$($exp:expr),*]),*]) => (
                 {
                     let path = Path::new(b!($($arg),+));
-                    let comps = path.component_iter().to_owned_vec();
+                    let comps = path.components().to_owned_vec();
                     let exp: &[&[u8]] = [$(b!($($exp),*)),*];
-                    assert!(comps.as_slice() == exp, "component_iter: Expected {:?}, found {:?}",
+                    assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
-                    let comps = path.rev_component_iter().to_owned_vec();
+                    let comps = path.rev_components().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_component_iter: Expected {:?}, found {:?}",
+                            "rev_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             )
@@ -1294,20 +1294,20 @@ mod tests {
     }
 
     #[test]
-    fn test_str_component_iter() {
+    fn test_str_components() {
         macro_rules! t(
             (v: [$($arg:expr),+], $exp:expr) => (
                 {
                     let path = Path::new(b!($($arg),+));
-                    let comps = path.str_component_iter().to_owned_vec();
+                    let comps = path.str_components().to_owned_vec();
                     let exp: &[Option<&str>] = $exp;
                     assert!(comps.as_slice() == exp,
-                            "str_component_iter: Expected {:?}, found {:?}",
+                            "str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
-                    let comps = path.rev_str_component_iter().to_owned_vec();
+                    let comps = path.rev_str_components().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_str_component_iter: Expected {:?}, found {:?}",
+                            "rev_str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             )
@@ -1316,7 +1316,7 @@ mod tests {
         t!(v: ["a/b/c"], [Some("a"), Some("b"), Some("c")]);
         t!(v: ["/", 0xff, "/a/", 0x80], [None, Some("a"), None]);
         t!(v: ["../../foo", 0xcd, "bar"], [Some(".."), Some(".."), None]);
-        // str_component_iter is a wrapper around component_iter, so no need to do
+        // str_components is a wrapper around components, so no need to do
         // the full set of tests
     }
 }

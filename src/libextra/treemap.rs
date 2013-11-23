@@ -170,7 +170,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
-    pub fn lower_bound_iter<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+    pub fn lower_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
         let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
         loop {
             match iter.node {
@@ -194,7 +194,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
     /// If all keys in map are not greater than `k` an empty iterator is returned.
-    pub fn upper_bound_iter<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+    pub fn upper_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
         let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
         loop {
             match iter.node {
@@ -526,15 +526,15 @@ impl<T: TotalOrd> TreeSet<T> {
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     #[inline]
-    pub fn lower_bound_iter<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.lower_bound_iter(v)}
+    pub fn lower_bound<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
+        TreeSetIterator{iter: self.map.lower_bound(v)}
     }
 
     /// Get a lazy iterator pointing to the first value greater than `v`.
     /// If all elements in the set are not greater than `v` empty iterator is returned.
     #[inline]
-    pub fn upper_bound_iter<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.upper_bound_iter(v)}
+    pub fn upper_bound<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
+        TreeSetIterator{iter: self.map.upper_bound(v)}
     }
 
     /// Visit the values (in-order) representing the difference
@@ -1095,19 +1095,19 @@ mod test_treemap {
         }
 
         for i in range(1, 198) {
-            let mut lb_it = m.lower_bound_iter(&i);
+            let mut lb_it = m.lower_bound(&i);
             let (&k, &v) = lb_it.next().unwrap();
             let lb = i + i % 2;
             assert_eq!(lb, k);
             assert_eq!(lb * 2, v);
 
-            let mut ub_it = m.upper_bound_iter(&i);
+            let mut ub_it = m.upper_bound(&i);
             let (&k, &v) = ub_it.next().unwrap();
             let ub = i + 2 - i % 2;
             assert_eq!(ub, k);
             assert_eq!(ub * 2, v);
         }
-        let mut end_it = m.lower_bound_iter(&199);
+        let mut end_it = m.lower_bound(&199);
         assert_eq!(end_it.next(), None);
     }
 

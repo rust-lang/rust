@@ -91,7 +91,7 @@ impl<'self> FromHex for &'self str {
         let mut modulus = 0;
         let mut buf = 0u8;
 
-        for (idx, byte) in self.byte_iter().enumerate() {
+        for (idx, byte) in self.bytes().enumerate() {
             buf <<= 4;
 
             match byte as char {

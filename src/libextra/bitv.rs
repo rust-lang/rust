@@ -413,7 +413,7 @@ impl Bitv {
     }
 
     #[inline]
-    pub fn rev_liter<'a>(&'a self) -> Invert<BitvIterator<'a>> {
+    pub fn rev_iter<'a>(&'a self) -> Invert<BitvIterator<'a>> {
         self.iter().invert()
     }
 
@@ -723,38 +723,38 @@ impl BitvSet {
     }
 
     pub fn difference(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
-        for (i, w1, w2) in self.common_iter(other) {
+        for (i, w1, w2) in self.commons(other) {
             if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
                 return false
             }
         };
         /* everything we have that they don't also shows up */
-        self.outlier_iter(other).advance(|(mine, i, w)|
+        self.outliers(other).advance(|(mine, i, w)|
             !mine || iterate_bits(i, w, |b| f(&b))
         )
     }
 
     pub fn symmetric_difference(&self, other: &BitvSet, f: |&uint| -> bool)
                                 -> bool {
-        for (i, w1, w2) in self.common_iter(other) {
+        for (i, w1, w2) in self.commons(other) {
             if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
                 return false
             }
         };
-        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+        self.outliers(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 
     pub fn intersection(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
-        self.common_iter(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
+        self.commons(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
     }
 
     pub fn union(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
-        for (i, w1, w2) in self.common_iter(other) {
+        for (i, w1, w2) in self.commons(other) {
             if !iterate_bits(i, w1 | w2, |b| f(&b)) {
                 return false
             }
         };
-        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+        self.outliers(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 }
 
@@ -763,12 +763,12 @@ impl cmp::Eq for BitvSet {
         if self.size != other.size {
             return false;
         }
-        for (_, w1, w2) in self.common_iter(other) {
+        for (_, w1, w2) in self.commons(other) {
             if w1 != w2 {
                 return false;
             }
         }
-        for (_, _, w) in self.outlier_iter(other) {
+        for (_, _, w) in self.outliers(other) {
             if w != 0 {
                 return false;
             }
@@ -803,7 +803,7 @@ impl Set<uint> for BitvSet {
     }
 
     fn is_subset(&self, other: &BitvSet) -> bool {
-        for (_, w1, w2) in self.common_iter(other) {
+        for (_, w1, w2) in self.commons(other) {
             if w1 & w2 != w1 {
                 return false;
             }
@@ -811,7 +811,7 @@ impl Set<uint> for BitvSet {
         /* If anything is not ours, then everything is not ours so we're
            definitely a subset in that case. Otherwise if there's any stray
            ones that 'other' doesn't have, we're not a subset. */
-        for (mine, _, w) in self.outlier_iter(other) {
+        for (mine, _, w) in self.outliers(other) {
             if !mine {
                 return true;
             } else if w != 0 {
@@ -865,7 +865,7 @@ impl BitvSet {
     /// both have in common. The three yielded arguments are (bit location,
     /// w1, w2) where the bit location is the number of bits offset so far,
     /// and w1/w2 are the words coming from the two vectors self, other.
-    fn common_iter<'a>(&'a self, other: &'a BitvSet)
+    fn commons<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), &'a ~[uint]), (uint, uint, uint),
                Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<&'a ~[uint]>>> {
         let min = num::min(self.bitv.storage.len(), other.bitv.storage.len());
@@ -881,7 +881,7 @@ impl BitvSet {
     /// The yielded arguments are a `bool`, the bit offset, and a word. The `bool`
     /// is true if the word comes from `self`, and `false` if it comes from
     /// `other`.
-    fn outlier_iter<'a>(&'a self, other: &'a BitvSet)
+    fn outliers<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), uint), (bool, uint, uint),
                Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<uint>>> {
         let slen = self.bitv.storage.len();

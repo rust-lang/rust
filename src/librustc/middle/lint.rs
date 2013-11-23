@@ -936,7 +936,7 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
             // check for lowercase letters rather than non-uppercase
             // ones (some scripts don't have a concept of
             // upper/lowercase)
-            if s.iter().any(|c| c.is_lowercase()) {
+            if s.chars().any(|c| c.is_lowercase()) {
                 cx.span_lint(non_uppercase_statics, it.span,
                              "static constant should have an uppercase identifier");
             }
@@ -952,7 +952,7 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
             // last identifier alone is right choice for this lint.
             let ident = path.segments.last().identifier;
             let s = cx.tcx.sess.str_of(ident);
-            if s.iter().any(|c| c.is_lowercase()) {
+            if s.chars().any(|c| c.is_lowercase()) {
                 cx.span_lint(non_uppercase_pattern_statics, path.span,
                              "static constant in pattern should be all caps");
             }

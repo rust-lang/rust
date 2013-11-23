@@ -20,7 +20,7 @@ appropriate platform-specific path variant.
 Both `PosixPath` and `WindowsPath` implement a trait `GenericPath`, which
 contains the set of methods that behave the same for both paths. They each also
 implement some methods that could not be expressed in `GenericPath`, yet behave
-identically for both path flavors, such as `.component_iter()`.
+identically for both path flavors, such as `.components()`.
 
 The three main design goals of this module are 1) to avoid unnecessary
 allocation, 2) to behave the same regardless of which flavor of path is being

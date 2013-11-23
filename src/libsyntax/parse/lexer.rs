@@ -318,7 +318,7 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
 
 pub fn is_line_non_doc_comment(s: &str) -> bool {
     let s = s.trim_right();
-    s.len() > 3 && s.iter().all(|ch| ch == '/')
+    s.len() > 3 && s.chars().all(|ch| ch == '/')
 }
 
 // PRECONDITION: rdr.curr is not whitespace
@@ -379,7 +379,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
 
 pub fn is_block_non_doc_comment(s: &str) -> bool {
     assert!(s.len() >= 1u);
-    s.slice(1u, s.len() - 1u).iter().all(|ch| ch == '*')
+    s.slice(1u, s.len() - 1u).chars().all(|ch| ch == '*')
 }
 
 // might return a sugared-doc-attr

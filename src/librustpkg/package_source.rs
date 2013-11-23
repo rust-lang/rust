@@ -132,7 +132,7 @@ impl PkgSrc {
             None => {
                 // See if any of the prefixes of this package ID form a valid package ID
                 // That is, is this a package ID that points into the middle of a workspace?
-                for (prefix, suffix) in id.prefixes_iter() {
+                for (prefix, suffix) in id.prefixes() {
                     let package_id = PkgId::new(prefix.as_str().unwrap());
                     let path = build_dir.join(&package_id.path);
                     debug!("in loop: checking if {} is a directory", path.display());
@@ -183,7 +183,7 @@ impl PkgSrc {
                                 || d.is_ancestor_of(&versionize(&id.path, &id.version)) {
                                 // Strip off the package ID
                                 source_workspace = d.clone();
-                                for _ in id.path.component_iter() {
+                                for _ in id.path.components() {
                                     source_workspace.pop();
                                 }
                                 // Strip off the src/ part
@@ -279,7 +279,7 @@ impl PkgSrc {
                 Some(local.clone())
             }
             DirToUse(clone_target) => {
-                if pkgid.path.component_iter().nth(1).is_none() {
+                if pkgid.path.components().nth(1).is_none() {
                     // If a non-URL, don't bother trying to fetch
                     return None;
                 }
@@ -329,7 +329,7 @@ impl PkgSrc {
     }
 
     pub fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
-        let mut it = p.component_iter().peekable();
+        let mut it = p.components().peekable();
         if prefix > 0 {
             it.nth(prefix-1); // skip elements
         }
@@ -351,7 +351,7 @@ impl PkgSrc {
     pub fn find_crates_with_filter(&mut self, filter: &fn(&str) -> bool) {
         use conditions::missing_pkg_files::cond;
 
-        let prefix = self.start_dir.component_iter().len();
+        let prefix = self.start_dir.components().len();
         debug!("Matching against {}", self.id.short_name);
         for pth in fs::walk_dir(&self.start_dir) {
             let maybe_known_crate_set = match pth.filename_str() {

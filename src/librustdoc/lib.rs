@@ -215,12 +215,12 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
                         default_passes = false;
                     }
                     clean::NameValue(~"passes", ref value) => {
-                        for pass in value.word_iter() {
+                        for pass in value.words() {
                             passes.push(pass.to_owned());
                         }
                     }
                     clean::NameValue(~"plugins", ref value) => {
-                        for p in value.word_iter() {
+                        for p in value.words() {
                             plugins.push(p.to_owned());
                         }
                     }

@@ -157,7 +157,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     // This requires that atomic intrinsics follow a specific naming pattern:
     // "atomic_<operation>[_<ordering>], and no ordering means SeqCst
     if name.starts_with("atomic_") {
-        let split : ~[&str] = name.split_iter('_').collect();
+        let split : ~[&str] = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
         let order = if split.len() == 2 {
             lib::llvm::SequentiallyConsistent
