@@ -378,13 +378,11 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, main.take());
         main_task.name = Some(SendStrStatic("<main>"));
         main_task.death.on_exit = Some(on_exit.take());
-        let main_task_cell = Cell::new(main_task);
 
         let sched = scheds.pop();
-        let sched_cell = Cell::new(sched);
+        let main_task = main_task;
         let thread = do Thread::start {
-            let sched = sched_cell.take();
-            sched.bootstrap(main_task_cell.take());
+            sched.bootstrap(main_task);
         };
         threads.push(thread);
     }
@@ -392,9 +390,8 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
     // Run each remaining scheduler in a thread.
     for sched in scheds.move_rev_iter() {
         rtdebug!("creating regular schedulers");
-        let sched_cell = Cell::new(sched);
         let thread = do Thread::start {
-            let mut sched = sched_cell.take();
+            let mut sched = sched;
             let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("boostraping a non-primary scheduler");
             };

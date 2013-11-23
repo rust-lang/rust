@@ -121,9 +121,9 @@ mod test {
             let tube_clone = Cell::new(tube_clone);
             let sched: ~Scheduler = Local::take();
             sched.deschedule_running_task_and_then(|sched, task| {
-                let tube_clone = Cell::new(tube_clone.take());
+                let tube_clone = tube_clone.take();
                 do sched.event_loop.callback {
-                    let mut tube_clone = tube_clone.take();
+                    let mut tube_clone = tube_clone;
                     // The task should be blocked on this now and
                     // sending will wake it up.
                     tube_clone.send(1);

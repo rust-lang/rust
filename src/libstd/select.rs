@@ -61,9 +61,9 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     let c = Cell::new(c);
 
     (|| {
-        let c = Cell::new(c.take());
         let sched: ~Scheduler = Local::take();
         sched.deschedule_running_task_and_then(|sched, task| {
+            let c = c.take();
             let task_handles = task.make_selectable(ports.len());
 
             for (index, (port, task_handle)) in
@@ -75,8 +75,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
                 }
             }
 
-            let c = Cell::new(c.take());
-            do sched.event_loop.callback { c.take().send_deferred(()) }
+            do sched.event_loop.callback { c.send_deferred(()) }
         })
     }).finally(|| {
         let p = Cell::new(p.take());
@@ -252,9 +251,7 @@ mod test {
                 let (p3,c3) = oneshot();
                 let (p4,c4) = oneshot();
 
-                let x = Cell::new((c2, p3, c4));
                 do task::spawn {
-                    let (c2, p3, c4) = x.take();
                     p3.recv();   // handshake parent
                     c4.send(()); // normal receive
                     task::deschedule();
@@ -299,10 +296,9 @@ mod test {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {
-                                let c = Cell::new(c);
                                 do spawntask_random {
                                     task::deschedule();
-                                    c.take().send(());
+                                    c.send(());
                                 }
                             }
                         }
@@ -322,17 +318,15 @@ mod test {
     fn select_killed() {
         do run_in_uv_task {
             let (success_p, success_c) = oneshot::<bool>();
-            let success_c = Cell::new(success_c);
             do task::try {
-                let success_c = Cell::new(success_c.take());
+                let success_c = Cell::new(success_c);
                 task::unkillable(|| {
                     let (p,c) = oneshot();
-                    let c = Cell::new(c);
                     do task::spawn {
                         let (dead_ps, dead_cs) = unzip(range(0u, 5).map(|_| oneshot::<()>()));
                         let mut ports = dead_ps;
                         select(ports); // should get killed; nothing should leak
-                        c.take().send(()); // must not happen
+                        c.send(()); // must not happen
                         // Make sure dead_cs doesn't get closed until after select.
                         let _ = dead_cs;
                     }

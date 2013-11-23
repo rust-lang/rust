@@ -55,7 +55,6 @@
 
 use prelude::*;
 
-use cell::Cell;
 use comm::{stream, Chan, GenericChan, GenericPort, Port, Peekable};
 use result::{Result, Ok, Err};
 use rt::in_green_task_context;
@@ -349,10 +348,8 @@ impl TaskBuilder {
                 f
             }
         };
-        let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
             let f: proc(proc()) -> proc() = proc(body) {
-                let prev_gen_body = prev_gen_body.take();
                 wrapper(prev_gen_body(body))
             };
             f
@@ -400,9 +397,8 @@ impl TaskBuilder {
 
     /// Runs a task, while transferring ownership of one argument to the child.
     pub fn spawn_with<A:Send>(&mut self, arg: A, f: proc(v: A)) {
-        let arg = Cell::new(arg);
         do self.spawn {
-            f(arg.take());
+            f(arg);
         }
     }
 
@@ -1028,11 +1024,8 @@ struct Wrapper {
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
     let mut b0 = task();
-    let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
-        let ch = Cell::new(ch.take());
         let result: proc() = proc() {
-            let ch = ch.take();
             body();
             ch.send(());
         };
@@ -1123,12 +1116,9 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = get_sched_id();
 
-    let ch = Cell::new(ch);
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = get_sched_id();
-        let ch = Cell::new(ch.take());
         do spawn {
-            let ch = ch.take();
             let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
             assert_eq!(child_sched_id, default_id);
@@ -1152,10 +1142,10 @@ fn test_spawn_sched_blocking() {
             let (fin_po, fin_ch) = stream();
 
             let mut lock = Mutex::new();
-            let lock2 = Cell::new(lock.clone());
+            let lock2 = lock.clone();
 
             do spawn_sched(SingleThreaded) {
-                let mut lock = lock2.take();
+                let mut lock = lock2;
                 lock.lock();
 
                 start_ch.send(());

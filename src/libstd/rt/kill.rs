@@ -483,11 +483,10 @@ impl KillHandle {
                 let this = Cell::new(this);
                 add_lazy_tombstone(parent, |other_tombstones| {
                     let this = Cell::new(this.take());
-                    let others = Cell::new(other_tombstones);
                     proc() {
                         // Prefer to check tombstones that were there first,
                         // being "more fair" at the expense of tail-recursion.
-                        others.take().map_default(true, |f| f()) && {
+                        other_tombstones.map_default(true, |f| f()) && {
                             let mut inner = this.take().unwrap();
                             (!inner.any_child_failed) &&
                                 inner.child_tombstones.take().map_default(true, |f| f())
@@ -508,10 +507,9 @@ impl KillHandle {
                 let f = Cell::new(f);
                 add_lazy_tombstone(parent, |other_tombstones| {
                     let f = Cell::new(f.take());
-                    let others = Cell::new(other_tombstones);
                     proc() {
                         // Prefer fairness to tail-recursion, as in above case.
-                        others.take().map_default(true, |f| f()) &&
+                        other_tombstones.map_default(true, |f| f()) &&
                             f.take()()
                     }
                 })
@@ -878,9 +876,8 @@ mod test {
             let mut handle = make_kill_handle();
             assert!(handle.kill().is_none());
             assert!(handle.killed());
-            let handle_cell = Cell::new(handle);
             let result = do spawntask_try {
-                handle_cell.take().inhibit_kill(false);
+                handle.inhibit_kill(false);
             };
             assert!(result.is_err());
         }
@@ -893,9 +890,8 @@ mod test {
             handle.inhibit_kill(false);
             assert!(handle.kill().is_none());
             assert!(!handle.killed());
-            let handle_cell = Cell::new(handle);
             let result = do spawntask_try {
-                handle_cell.take().allow_kill(false);
+                handle.allow_kill(false);
             };
             assert!(result.is_err());
         }

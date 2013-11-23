@@ -1022,7 +1022,7 @@ mod test {
                 queues.clone(),
                 sleepers.clone());
 
-            let normal_handle = Cell::new(normal_sched.make_handle());
+            let normal_handle = normal_sched.make_handle();
 
             let friend_handle = normal_sched.make_handle();
 
@@ -1035,7 +1035,7 @@ mod test {
                 false,
                 Some(friend_handle));
 
-            let special_handle = Cell::new(special_sched.make_handle());
+            let special_handle = special_sched.make_handle();
 
             let t1_handle = special_sched.make_handle();
             let t4_handle = special_sched.make_handle();
@@ -1066,26 +1066,19 @@ mod test {
             };
             rtdebug!("task4 id: **{}**", borrow::to_uint(task4));
 
-            let task1 = Cell::new(task1);
-            let task2 = Cell::new(task2);
-            let task3 = Cell::new(task3);
-            let task4 = Cell::new(task4);
-
             // Signal from the special task that we are done.
             let (port, chan) = oneshot::<()>();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
 
             let normal_task = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
                 rtdebug!("*about to submit task2*");
-                Scheduler::run_task(task2.take());
+                Scheduler::run_task(task2);
                 rtdebug!("*about to submit task4*");
-                Scheduler::run_task(task4.take());
+                Scheduler::run_task(task4);
                 rtdebug!("*normal_task done*");
-                port.take().recv();
-                let mut nh = normal_handle.take();
+                port.recv();
+                let mut nh = normal_handle;
                 nh.send(Shutdown);
-                let mut sh = special_handle.take();
+                let mut sh = special_handle;
                 sh.send(Shutdown);
             };
 
@@ -1093,27 +1086,22 @@ mod test {
 
             let special_task = ~do Task::new_root(&mut special_sched.stack_pool, None) {
                 rtdebug!("*about to submit task1*");
-                Scheduler::run_task(task1.take());
+                Scheduler::run_task(task1);
                 rtdebug!("*about to submit task3*");
-                Scheduler::run_task(task3.take());
+                Scheduler::run_task(task3);
                 rtdebug!("*done with special_task*");
-                chan.take().send(());
+                chan.send(());
             };
 
             rtdebug!("special task: {}", borrow::to_uint(special_task));
 
-            let special_sched = Cell::new(special_sched);
-            let normal_sched = Cell::new(normal_sched);
-            let special_task = Cell::new(special_task);
-            let normal_task = Cell::new(normal_task);
-
             let normal_thread = do Thread::start {
-                normal_sched.take().bootstrap(normal_task.take());
+                normal_sched.bootstrap(normal_task);
                 rtdebug!("finished with normal_thread");
             };
 
             let special_thread = do Thread::start {
-                special_sched.take().bootstrap(special_task.take());
+                special_sched.bootstrap(special_task);
                 rtdebug!("finished with special_sched");
             };
 
@@ -1152,20 +1140,16 @@ mod test {
 
         do run_in_bare_thread {
             let (port, chan) = oneshot::<()>();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
 
             let thread_one = do Thread::start {
-                let chan = Cell::new(chan.take());
                 do run_in_newsched_task_core {
-                    chan.take().send(());
+                    chan.send(());
                 }
             };
 
             let thread_two = do Thread::start {
-                let port = Cell::new(port.take());
                 do run_in_newsched_task_core {
-                    port.take().recv();
+                    port.recv();
                 }
             };
 
@@ -1198,10 +1182,8 @@ mod test {
 
                 let mut handle = sched.make_handle();
 
-                let sched = Cell::new(sched);
-
                 let thread = do Thread::start {
-                    let mut sched = sched.take();
+                    let mut sched = sched;
                     let bootstrap_task =
                         ~Task::new_root(&mut sched.stack_pool,
                                         None,
@@ -1232,9 +1214,8 @@ mod test {
             let mut ports = ~[];
             10.times(|| {
                 let (port, chan) = oneshot();
-                let chan_cell = Cell::new(chan);
                 do spawntask_later {
-                    chan_cell.take().send(());
+                    chan.send(());
                 }
                 ports.push(port);
             });

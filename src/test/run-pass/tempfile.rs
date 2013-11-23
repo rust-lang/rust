@@ -24,7 +24,6 @@ extern mod extra;
 use extra::tempfile::TempDir;
 use std::os;
 use std::task;
-use std::cell::Cell;
 use std::io;
 use std::io::fs;
 
@@ -51,9 +50,8 @@ fn test_rm_tempdir() {
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
-    let cell = Cell::new(tmp);
     let f: proc() = proc() {
-        let _tmp = cell.take();
+        let _tmp = tmp;
         fail!("fail to unwind past `tmp`");
     };
     task::try(f);
