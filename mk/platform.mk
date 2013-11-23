@@ -231,7 +231,7 @@ CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
 CFG_STATIC_LIB_NAME_x86_64-apple-darwin=lib$(1).a
 CFG_LIB_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_x86_64-apple-darwin := -Wall -g -fPIC -m64 -arch x86_64
+CFG_GCCISH_CFLAGS_x86_64-apple-darwin := -Wall -Werror -g -fPIC -m64 -arch x86_64
 CFG_GCCISH_CXXFLAGS_x86_64-apple-darwin := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_x86_64-apple-darwin := -dynamiclib -pthread  -framework CoreServices -m64
 CFG_GCCISH_DEF_FLAG_x86_64-apple-darwin := -Wl,-exported_symbols_list,
@@ -257,7 +257,7 @@ CFG_LIB_NAME_i686-apple-darwin=lib$(1).dylib
 CFG_STATIC_LIB_NAME_i686-apple-darwin=lib$(1).a
 CFG_LIB_GLOB_i686-apple-darwin=lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_i686-apple-darwin=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_i686-apple-darwin := -Wall -g -fPIC -m32 -arch i386
+CFG_GCCISH_CFLAGS_i686-apple-darwin := -Wall -Werror -g -fPIC -m32 -arch i386
 CFG_GCCISH_CXXFLAGS_i686-apple-darwin := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-apple-darwin := -dynamiclib -pthread  -framework CoreServices -m32
 CFG_GCCISH_DEF_FLAG_i686-apple-darwin := -Wl,-exported_symbols_list,
@@ -396,7 +396,7 @@ CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_i686-pc-mingw32=$(1).lib
 CFG_LIB_GLOB_i686-pc-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-pc-mingw32=$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -g -m32 -march=i686 -D_WIN32_WINNT=0x0600 -I$(CFG_SRC_DIR)src/etc/mingw-fix-include
+CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -m32 -march=i686 -D_WIN32_WINNT=0x0600 -I$(CFG_SRC_DIR)src/etc/mingw-fix-include
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g -m32
 CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
@@ -452,7 +452,7 @@ CFG_LIB_NAME_i686-w64-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_i686-w64-mingw32=$(1).lib
 CFG_LIB_GLOB_i686-w64-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-w64-mingw32=$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_i686-w64-mingw32 := -Wall -g -m32 -D_WIN32_WINNT=0x0600
+CFG_GCCISH_CFLAGS_i686-w64-mingw32 := -Wall -Werror -g -m32 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CXXFLAGS_i686-w64-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-w64-mingw32 := -shared -g -m32
 CFG_GCCISH_DEF_FLAG_i686-w64-mingw32 :=
@@ -480,7 +480,7 @@ CFG_LIB_NAME_x86_64-w64-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_x86_64-w64-mingw32=$(1).lib
 CFG_LIB_GLOB_x86_64-w64-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_x86_64-w64-mingw32=$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_x86_64-w64-mingw32 := -Wall -g -m64 -D_WIN32_WINNT=0x0600
+CFG_GCCISH_CFLAGS_x86_64-w64-mingw32 := -Wall -Werror -g -m64 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CXXFLAGS_x86_64-w64-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_x86_64-w64-mingw32 := -shared -g -m64
 CFG_GCCISH_DEF_FLAG_x86_64-w64-mingw32 :=
