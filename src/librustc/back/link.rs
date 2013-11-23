@@ -1072,6 +1072,13 @@ pub fn link_args(sess: Session,
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
+    if sess.targ_cfg.os == abi::OsLinux {
+        // GNU-style linkers will use this to omit linking to libraries which don't actually fulfill
+        // any relocations, but only for libraries which follow this flag. Thus, use it before
+        // specifing libraries to link to.
+        args.push(~"-Wl,--as-needed");
+    }
+
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
     for l in used_libs.iter() { args.push(~"-l" + *l); }
@@ -1091,6 +1098,12 @@ pub fn link_args(sess: Session,
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == abi::OsLinux {
+        // GNU-style linkers supports optimization with -O. --gc-sections removes metadata and
+        // potentially other useful things, so don't include it.
+        if sess.opts.optimize == session::Default || sess.opts.optimize == session::Aggressive {
+            args.push(~"-Wl,-O");
+        }
+
         args.push_all([~"-lrt", ~"-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
