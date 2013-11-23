@@ -732,12 +732,12 @@ pub mod types {
 
                 pub type LPCWSTR = *WCHAR;
                 pub type LPCSTR = *CHAR;
-                pub type LPCTSTR = *CHAR;
-                pub type LPTCH = *CHAR;
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
-                pub type LPTSTR = *mut CHAR;
+
+                pub type LPWCH = *mut WCHAR;
+                pub type LPCH = *mut CHAR;
 
                 // Not really, but opaque to us.
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
@@ -760,9 +760,9 @@ pub mod types {
 
                 pub struct STARTUPINFO {
                     cb: DWORD,
-                    lpReserved: LPTSTR,
-                    lpDesktop: LPTSTR,
-                    lpTitle: LPTSTR,
+                    lpReserved: LPWSTR,
+                    lpDesktop: LPWSTR,
+                    lpTitle: LPWSTR,
                     dwX: DWORD,
                     dwY: DWORD,
                     dwXSize: DWORD,
@@ -908,12 +908,9 @@ pub mod types {
 
                 pub type LPCWSTR = *WCHAR;
                 pub type LPCSTR = *CHAR;
-                pub type LPCTSTR = *CHAR;
-                pub type LPTCH = *CHAR;
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
-                pub type LPTSTR = *mut CHAR;
 
                 // Not really, but opaque to us.
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
@@ -936,9 +933,9 @@ pub mod types {
 
                 pub struct STARTUPINFO {
                     cb: DWORD,
-                    lpReserved: LPTSTR,
-                    lpDesktop: LPTSTR,
-                    lpTitle: LPTSTR,
+                    lpReserved: LPWSTR,
+                    lpDesktop: LPWSTR,
+                    lpTitle: LPWSTR,
                     dwX: DWORD,
                     dwY: DWORD,
                     dwXSize: DWORD,
@@ -3515,8 +3512,8 @@ pub mod funcs {
         pub mod kernel32 {
             use libc::types::os::arch::c95::{c_uint};
             use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE};
-            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCTSTR,
-                                               LPTSTR, LPTCH, LPDWORD, LPVOID,
+            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCSTR, LPSTR, LPCH,
+                                               LPDWORD, LPVOID,
                                                LPCVOID, LPOVERLAPPED};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
                                                LPPROCESS_INFORMATION,
@@ -3532,8 +3529,8 @@ pub mod funcs {
                                                -> DWORD;
                 pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
                                                -> BOOL;
-                pub fn GetEnvironmentStringsA() -> LPTCH;
-                pub fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
+                pub fn GetEnvironmentStringsA() -> LPCH;
+                pub fn FreeEnvironmentStringsA(env_ptr: LPCH) -> BOOL;
                 pub fn GetModuleFileNameW(hModule: HMODULE,
                                           lpFilename: LPWSTR,
                                           nSize: DWORD)
@@ -3572,8 +3569,8 @@ pub mod funcs {
                                    dwProcessId: DWORD)
                                    -> HANDLE;
                 pub fn GetCurrentProcess() -> HANDLE;
-                pub fn CreateProcessA(lpApplicationName: LPCTSTR,
-                                      lpCommandLine: LPTSTR,
+                pub fn CreateProcessA(lpApplicationName: LPCSTR,
+                                      lpCommandLine: LPSTR,
                                       lpProcessAttributes:
                                       LPSECURITY_ATTRIBUTES,
                                       lpThreadAttributes:
@@ -3581,7 +3578,7 @@ pub mod funcs {
                                       bInheritHandles: BOOL,
                                       dwCreationFlags: DWORD,
                                       lpEnvironment: LPVOID,
-                                      lpCurrentDirectory: LPCTSTR,
+                                      lpCurrentDirectory: LPCSTR,
                                       lpStartupInfo: LPSTARTUPINFO,
                                       lpProcessInformation:
                                       LPPROCESS_INFORMATION)
@@ -3621,7 +3618,7 @@ pub mod funcs {
                                           flProtect: DWORD,
                                           dwMaximumSizeHigh: DWORD,
                                           dwMaximumSizeLow: DWORD,
-                                          lpName: LPCTSTR)
+                                          lpName: LPCWSTR)
                                           -> HANDLE;
                 pub fn MapViewOfFile(hFileMappingObject: HANDLE,
                                      dwDesiredAccess: DWORD,
