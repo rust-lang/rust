@@ -17,7 +17,7 @@
 
 use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
-use cmp::{Eq, Equiv};
+use cmp::{Eq, Equiv, TotalEq};
 use default::Default;
 use hash::Hash;
 use iter::{Iterator, FromIterator, Extendable};
@@ -511,6 +511,12 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     }
 
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
+}
+
+impl<K:Hash + Eq,V:Eq> TotalEq for HashMap<K, V> {
+  fn equals(&self, other: &HashMap<K, V>) -> bool {
+    self == other
+  }
 }
 
 impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
