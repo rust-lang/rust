@@ -329,7 +329,7 @@ CFG_LDPATH_arm-unknown-linux-gnueabihf :=
 CFG_RUN_arm-unknown-linux-gnueabihf=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabihf=$(call CFG_RUN_arm-unknown-linux-gnueabihf,,$(2))
 RUSTC_FLAGS_arm-unknown-linux-gnueabihf :=
-RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabihf := --linker=$(CROSS_PREFIX_arm-unknown-linux-gnueabihf)$(CC_arm-unknown-linux-gnueabihf)
+RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabihf := --linker=$(CROSS_PREFIX_arm-unknown-linux-gnueabihf)$(CXX_arm-unknown-linux-gnueabihf)
 
 # arm-unknown-linux-gnueabi configuration
 CROSS_PREFIX_arm-unknown-linux-gnueabi=arm-linux-gnueabi-
@@ -358,7 +358,7 @@ CFG_LDPATH_arm-unknown-linux-gnueabi :=
 CFG_RUN_arm-unknown-linux-gnueabi=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabi=$(call CFG_RUN_arm-unknown-linux-gnueabi,,$(2))
 RUSTC_FLAGS_arm-unknown-linux-gnueabi :=
-RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi := --linker=$(CROSS_PREFIX_arm-unknown-linux-gnueabi)$(CC_arm-unknown-linux-gnueabi)
+RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi := --linker=$(CROSS_PREFIX_arm-unknown-linux-gnueabi)$(CXX_arm-unknown-linux-gnueabi)
 
 # mips-unknown-linux-gnu configuration
 CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
@@ -468,7 +468,7 @@ CFG_PATH_MUNGE_i686-w64-mingw32 :=
 CFG_LDPATH_i686-w64-mingw32 :=$(CFG_LDPATH_i686-w64-mingw32):$(PATH)
 CFG_RUN_i686-w64-mingw32=PATH="$(CFG_LDPATH_i686-w64-mingw32):$(1)" $(2)
 CFG_RUN_TARG_i686-w64-mingw32=$(call CFG_RUN_i686-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
-RUSTC_CROSS_FLAGS_i686-w64-mingw32 := --linker=$(CROSS_PREFIX_i686-w64-mingw32)$(CC_i686-w64-mingw32)
+RUSTC_CROSS_FLAGS_i686-w64-mingw32 := --linker=$(CROSS_PREFIX_i686-w64-mingw32)$(CXX_i686-w64-mingw32)
 
 # x86_64-w64-mingw32 configuration
 CROSS_PREFIX_x86_64-w64-mingw32=x86_64-w64-mingw32-
@@ -496,7 +496,7 @@ CFG_PATH_MUNGE_x86_64-w64-mingw32 :=
 CFG_LDPATH_x86_64-w64-mingw32 :=$(CFG_LDPATH_x86_64-w64-mingw32):$(PATH)
 CFG_RUN_x86_64-w64-mingw32=PATH="$(CFG_LDPATH_x86_64-w64-mingw32):$(1)" $(2)
 CFG_RUN_TARG_x86_64-w64-mingw32=$(call CFG_RUN_x86_64-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
-RUSTC_CROSS_FLAGS_x86_64-w64-mingw32 := --linker=$(CROSS_PREFIX_x86_64-w64-mingw32)$(CC_x86_64-w64-mingw32)
+RUSTC_CROSS_FLAGS_x86_64-w64-mingw32 := --linker=$(CROSS_PREFIX_x86_64-w64-mingw32)$(CXX_x86_64-w64-mingw32)
 
 # x86_64-unknown-freebsd configuration
 CC_x86_64-unknown-freebsd=$(CC)
