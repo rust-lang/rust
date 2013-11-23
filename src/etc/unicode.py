@@ -5,7 +5,7 @@
 # code covering the core properties. Since this is a pretty rare event we
 # just store this out-of-line and check the unicode.rs file into git.
 #
-# The emitted code is "the minimum we think is necessary for libcore", that
+# The emitted code is "the minimum we think is necessary for libstd", that
 # is, to support basic operations of the compiler and "most nontrivial rust
 # programs". It is not meant to be a complete implementation of unicode.
 # For that we recommend you use a proper binding to libicu.
@@ -144,7 +144,7 @@ def emit_bsearch_range_table(f):
         use cmp::{Equal, Less, Greater};
         use vec::ImmutableVector;
         use option::None;
-        (do r.bsearch |&(lo,hi)| {
+        r.bsearch(|&(lo,hi)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
@@ -302,14 +302,14 @@ def emit_decomp_module(f, canon, compat, combine):
         ix += 1
     f.write("\n    ];\n")
 
-    f.write("    pub fn canonical(c: char, i: &fn(char)) "
+    f.write("    pub fn canonical(c: char, i: |char|) "
         + "{ d(c, i, false); }\n\n")
-    f.write("    pub fn compatibility(c: char, i: &fn(char)) "
+    f.write("    pub fn compatibility(c: char, i: |char|) "
             +"{ d(c, i, true); }\n\n")
     f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
         + "        bsearch_range_value_table(c, combining_class_table)\n"
         + "    }\n\n")
-    f.write("    fn d(c: char, i: &fn(char), k: bool) {\n")
+    f.write("    fn d(c: char, i: |char|, k: bool) {\n")
     f.write("        use iter::Iterator;\n");
 
     f.write("        if c <= '\\x7f' { i(c); return; }\n")
