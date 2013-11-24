@@ -230,12 +230,8 @@ impl<'self> Condvar<'self> {
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
-                    Just(lock) => do lock.access {
-                        self.sem.acquire();
-                    },
-                    Nothing => {
-                        self.sem.acquire();
-                    },
+                    Just(lock) => lock.access(|| self.sem.acquire()),
+                    Nothing => self.sem.acquire(),
                 }
             })
         })

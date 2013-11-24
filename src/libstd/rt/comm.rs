@@ -990,11 +990,11 @@ mod test {
     #[test]
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
-        run_in_newsched_task(|| {
+        do run_in_newsched_task {
             let (port, chan) = stream();
             10000.times(|| { chan.send(()) });
             10000.times(|| { port.recv() });
-        })
+        }
     }
 
     #[test]

@@ -76,7 +76,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
 
             let c = Cell::new(c.take());
             do sched.event_loop.callback { c.take().send_deferred(()) }
-        }
+        })
     }).finally(|| {
         // Unkillable is necessary not because getting killed is dangerous here,
         // but to force the recv not to use the same kill-flag that we used for

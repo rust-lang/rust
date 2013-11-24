@@ -15,7 +15,7 @@ use std::uint;
 fn f(n: uint) {
     let mut i = 0u;
     while i < n {
-        task::try(|| g() );
+        task::try(proc() g());
         i += 1u;
     }
 }

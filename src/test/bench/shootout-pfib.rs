@@ -37,9 +37,9 @@ fn fib(n: int) -> int {
             let (pp, cc) = stream();
             let cc = SharedChan::new(cc);
             let ch = cc.clone();
-            task::spawn(|| pfib(&ch, n - 1) );
+            task::spawn(proc() pfib(&ch, n - 1));
             let ch = cc.clone();
-            task::spawn(|| pfib(&ch, n - 2) );
+            task::spawn(proc() pfib(&ch, n - 2));
             c.send(pp.recv() + pp.recv());
         }
     }

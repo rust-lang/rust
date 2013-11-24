@@ -50,7 +50,7 @@ pub fn main() {
         prep.declare_input("file",
                            foo_c_name.as_str().unwrap().to_owned(),
                            digest_file_with_date(&foo_c_name));
-        let out_path = prep.exec(|exec| {
+        let out_path = do prep.exec |exec| {
             let out_path = api::build_library_in_workspace(exec,
                                                            &mut sub_cx.clone(),
                                                            "cdep",
@@ -60,7 +60,7 @@ pub fn main() {
                                                            "foo");
             let out_p = Path::new(out_path);
             out_p.as_str().unwrap().to_owned()
-        });
+        };
         out_path
     });
     let out_lib_path = Path::new(out_lib_path);
