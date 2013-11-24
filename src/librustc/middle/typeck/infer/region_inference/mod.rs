@@ -24,7 +24,6 @@ use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
 use util::ppaux::{Repr};
 
-use std::cell::Cell;
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
@@ -106,16 +105,15 @@ pub struct RegionVarBindings {
     undo_log: ~[UndoLogEntry],
 
     // This contains the results of inference.  It begins as an empty
-    // cell and only acquires a value after inference is complete.
-    // We use a cell vs a mutable option to circumvent borrowck errors.
-    values: Cell<~[VarValue]>,
+    // option and only acquires a value after inference is complete.
+    values: Option<~[VarValue]>,
 }
 
 pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
         var_origins: ~[],
-        values: Cell::new_empty(),
+        values: None,
         constraints: HashMap::new(),
         lubs: HashMap::new(),
         glbs: HashMap::new(),
@@ -226,7 +224,7 @@ impl RegionVarBindings {
                           constraint: Constraint,
                           origin: SubregionOrigin) {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_empty());
+        assert!(self.values.is_none());
 
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
@@ -242,7 +240,7 @@ impl RegionVarBindings {
                           sub: Region,
                           sup: Region) {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_empty());
+        assert!(self.values.is_none());
 
         debug!("RegionVarBindings: make_subregion({:?}, {:?})", sub, sup);
         match (sub, sup) {
@@ -277,7 +275,7 @@ impl RegionVarBindings {
                        b: Region)
                        -> Region {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_empty());
+        assert!(self.values.is_none());
 
         debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -300,7 +298,7 @@ impl RegionVarBindings {
                        b: Region)
                        -> Region {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_empty());
+        assert!(self.values.is_none());
 
         debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -319,14 +317,14 @@ impl RegionVarBindings {
     }
 
     pub fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
-        if self.values.is_empty() {
-            self.tcx.sess.span_bug(
+        let v = match self.values {
+            None => self.tcx.sess.span_bug(
                 self.var_origins[rid.to_uint()].span(),
                 format!("Attempt to resolve region variable before values have \
-                      been computed!"));
-        }
+                      been computed!")),
+            Some(ref values) => values[rid.to_uint()]
+        };
 
-        let v = self.values.with_ref(|values| values[rid.to_uint()]);
         debug!("RegionVarBindings: resolve_var({:?}={})={:?}",
                rid, rid.to_uint(), v);
         match v {
@@ -482,7 +480,7 @@ impl RegionVarBindings {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = opt_vec::Empty;
         let v = self.infer_variable_values(&mut errors);
-        self.values.put_back(v);
+        self.values = Some(v);
         errors
     }
 }
