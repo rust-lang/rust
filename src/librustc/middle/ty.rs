@@ -259,6 +259,9 @@ pub enum AutoRef {
 
 pub type ctxt = @ctxt_;
 
+/// The data structure to keep track of all the information that typechecker
+/// generates so that so that it can be reused and doesn't have to be redone
+/// later on.
 struct ctxt_ {
     diag: @mut syntax::diagnostic::span_handler,
     interner: @mut HashMap<intern_key, ~t_box_>,
@@ -296,6 +299,8 @@ struct ctxt_ {
     trait_refs: @mut HashMap<NodeId, @TraitRef>,
     trait_defs: @mut HashMap<DefId, @TraitDef>,
 
+    /// Despite its name, `items` does not only map NodeId to an item but
+    /// also to expr/stmt/local/arg/etc
     items: ast_map::map,
     intrinsic_defs: @mut HashMap<ast::DefId, t>,
     freevars: freevars::freevar_map,
