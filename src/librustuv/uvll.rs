@@ -724,5 +724,5 @@ extern {
 extern {}
 
 #[cfg(target_os = "win32")]
-#[link_args = "-lWs2_32 -lpsapi -liphlpapi"]
+#[link_args = "-lws2_32 -lpsapi -liphlpapi"]
 extern {}

@@ -25,14 +25,14 @@ typedef int _Unwind_Action;
 struct _Unwind_Context;
 struct _Unwind_Exception;
 
-#ifdef __SEH__
-#  define PERSONALITY_FUNC __gxx_personality_seh0
+#if __USING_SJLJ_EXCEPTIONS__
+#   define PERSONALITY_FUNC __gxx_personality_sj0
 #else
-#  ifdef __USING_SJLJ_EXCEPTIONS__
-#    define PERSONALITY_FUNC __gxx_personality_sjlj
-#  else
-#    define PERSONALITY_FUNC __gxx_personality_v0
-#  endif
+#   ifdef __SEH__
+#       define PERSONALITY_FUNC __gxx_personality_seh0
+#   else
+#       define PERSONALITY_FUNC __gxx_personality_v0
+#   endif
 #endif
 
 _Unwind_Reason_Code
