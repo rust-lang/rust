@@ -55,26 +55,26 @@ impl<T: DeepClone + Send + 'static> DeepClone for Gc<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cell::Cell;
+    use cell::RefCell;
 
     #[test]
     fn test_clone() {
-        let x = Gc::new(Cell::new(5));
+        let x = Gc::new(RefCell::new(5));
         let y = x.clone();
-        do x.borrow().with_mut_ref |inner| {
+        do x.borrow().with_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 20);
+        assert_eq!(y.borrow().with(|x| *x), 20);
     }
 
     #[test]
     fn test_deep_clone() {
-        let x = Gc::new(Cell::new(5));
+        let x = Gc::new(RefCell::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut_ref |inner| {
+        do x.borrow().with_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 5);
+        assert_eq!(y.borrow().with(|x| *x), 5);
     }
 
     #[test]

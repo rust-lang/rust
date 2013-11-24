@@ -9,13 +9,10 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-use std::rc::Rc;
-
-fn o<T: Send>(_: &T) {}
-fn c<T: Freeze>(_: &T) {}
 
 fn main() {
-    let x = Rc::from_send(RefCell::new(0));
-    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Send`
-    c(&x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Freeze`
+    let m = RefCell::new(0);
+    let mut b = m.borrow_mut();
+    let b1 = b.get();
+    let b2 = b.get(); //~ ERROR cannot borrow `b` as mutable more than once at a time
 }
