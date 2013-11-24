@@ -13,7 +13,7 @@
 #[allow(missing_doc)];
 
 
-use std::io;
+use std::io::{Decorator, Writer};
 
 #[cfg(not(target_os = "win32"))] use std::os;
 #[cfg(not(target_os = "win32"))] use terminfo::*;
@@ -94,21 +94,21 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 }
 
 #[cfg(not(target_os = "win32"))]
-pub struct Terminal {
+pub struct Terminal<T> {
     priv num_colors: u16,
-    priv out: @mut io::Writer,
+    priv out: T,
     priv ti: ~TermInfo
 }
 
 #[cfg(target_os = "win32")]
-pub struct Terminal {
+pub struct Terminal<T> {
     priv num_colors: u16,
-    priv out: @mut io::Writer,
+    priv out: T,
 }
 
 #[cfg(not(target_os = "win32"))]
-impl Terminal {
-    pub fn new(out: @mut io::Writer) -> Result<Terminal, ~str> {
+impl<T: Writer> Terminal<T> {
+    pub fn new(out: T) -> Result<Terminal<T>, ~str> {
         let term = os::getenv("TERM");
         if term.is_none() {
             return Err(~"TERM environment variable undefined");
@@ -138,7 +138,7 @@ impl Terminal {
     /// the corresponding normal color will be used instead.
     ///
     /// Returns true if the color was set, false otherwise.
-    pub fn fg(&self, color: color::Color) -> bool {
+    pub fn fg(&mut self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
@@ -158,7 +158,7 @@ impl Terminal {
     /// the corresponding normal color will be used instead.
     ///
     /// Returns true if the color was set, false otherwise.
-    pub fn bg(&self, color: color::Color) -> bool {
+    pub fn bg(&mut self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
@@ -175,7 +175,7 @@ impl Terminal {
 
     /// Sets the given terminal attribute, if supported.
     /// Returns true if the attribute was supported, false otherwise.
-    pub fn attr(&self, attr: attr::Attr) -> bool {
+    pub fn attr(&mut self, attr: attr::Attr) -> bool {
         match attr {
             attr::ForegroundColor(c) => self.fg(c),
             attr::BackgroundColor(c) => self.bg(c),
@@ -210,7 +210,7 @@ impl Terminal {
     }
 
     /// Resets all terminal attributes and color to the default.
-    pub fn reset(&self) {
+    pub fn reset(&mut self) {
         let mut cap = self.ti.strings.find_equiv(&("sgr0"));
         if cap.is_none() {
             // are there any terminals that have color/attrs and not sgr0?
@@ -242,20 +242,20 @@ impl Terminal {
 }
 
 #[cfg(target_os = "win32")]
-impl Terminal {
-    pub fn new(out: @mut io::Writer) -> Result<Terminal, ~str> {
+impl<T: Writer> Terminal<T> {
+    pub fn new(out: T) -> Result<Terminal<T>, ~str> {
         return Ok(Terminal {out: out, num_colors: 0});
     }
 
-    pub fn fg(&self, _color: color::Color) -> bool {
+    pub fn fg(&mut self, _color: color::Color) -> bool {
         false
     }
 
-    pub fn bg(&self, _color: color::Color) -> bool {
+    pub fn bg(&mut self, _color: color::Color) -> bool {
         false
     }
 
-    pub fn attr(&self, _attr: attr::Attr) -> bool {
+    pub fn attr(&mut self, _attr: attr::Attr) -> bool {
         false
     }
 
@@ -264,5 +264,29 @@ impl Terminal {
     }
 
     pub fn reset(&self) {
+    }
+}
+
+impl<T: Writer> Decorator<T> for Terminal<T> {
+    fn inner(self) -> T {
+        self.out
+    }
+
+    fn inner_ref<'a>(&'a self) -> &'a T {
+        &self.out
+    }
+
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut T {
+        &mut self.out
+    }
+}
+
+impl<T: Writer> Writer for Terminal<T> {
+    fn write(&mut self, buf: &[u8]) {
+        self.out.write(buf);
+    }
+
+    fn flush(&mut self) {
+        self.out.flush();
     }
 }
