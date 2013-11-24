@@ -23,23 +23,6 @@
 # fit the experimental data (i.e., I was able to get the system
 # working under these assumptions).
 
-# Hack for passing flags into LIBUV, see below.
-LIBUV_FLAGS_i386 = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
-LIBUV_FLAGS_x86_64 = -m64 -fPIC
-ifeq ($(OSTYPE_$(1)), linux-androideabi)
-LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
-else ifeq ($(OSTYPE_$(1)), apple-darwin)
-  ifeq ($(HOST_$(1)), arm)
-    IOS_SDK := $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
-    LIBUV_FLAGS_arm := -fPIC -std=gnu99 -I$(IOS_SDK)/usr/include -I$(IOS_SDK)/usr/include/c++/4.2.1
-  else
-    LIBUV_FLAGS_arm := -fPIC -std=gnu99
-  endif
-else
-LIBUV_FLAGS_arm = -fPIC -std=gnu99
-endif
-LIBUV_FLAGS_mips = -fPIC -mips32r2 -msoft-float -mabi=32
-
 # when we're doing a snapshot build, we intentionally degrade as many
 # features in libuv and the runtime as possible, to ease portability.
 
@@ -209,6 +192,9 @@ LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv/$$(LIBUV_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
 
+# libuv triggers a few warnings on some platforms
+LIBUV_CFLAGS_$(1) := $(subst -Werror,,$(CFG_GCCISH_CFLAGS_$(1)))
+
 $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
 	(cd $(S)src/libuv/ && \
 	 $$(CFG_PYTHON) ./gyp_uv.py -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
@@ -222,15 +208,17 @@ $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
-		CC="$$(CC) $$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
+		CC="$$(CC_$(1)) $$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
+		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
 	$$(Q)$$(MAKE) -C $$(@D) \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
