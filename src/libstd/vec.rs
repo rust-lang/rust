@@ -863,11 +863,11 @@ pub trait ImmutableVector<'self, T> {
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.
-    fn splitn(self, n: uint, pred: |&T| -> bool) -> SplitIterator<'self, T>;
+    fn splitn(self, n: uint, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.
-    fn rsplit(self, pred: |&T| -> bool) -> RSplitIterator<'self, T>;
+    fn rsplit(self, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and

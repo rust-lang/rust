@@ -150,14 +150,14 @@ mod imp {
             assert!(take() == Some(expected.clone()));
             assert!(take() == None);
 
-            do (|| {
-            }).finally {
+            (|| {
+            }).finally(|| {
                 // Restore the actual global state.
                 match saved_value {
                     Some(ref args) => put(args.clone()),
                     None => ()
                 }
-            }
+            })
         }
     }
 }

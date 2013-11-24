@@ -135,7 +135,7 @@ impl<T: Send> UnsafeArc<T> {
     /// block; otherwise, an unwrapping task can be killed by linked failure.
     pub fn unwrap(self) -> T {
         unsafe {
-            let mut this = this;
+            let mut this = self;
             // The ~ dtor needs to run if this code succeeds.
             let mut data: ~ArcData<T> = cast::transmute(this.data);
             // Set up the unwrap protocol.
@@ -192,7 +192,7 @@ impl<T: Send> UnsafeArc<T> {
                 cast::forget(data);
                 fail!("Another task is already unwrapping this Arc!");
             }
-        })
+        }
     }
 
     /// As unwrap above, but without blocking. Returns 'UnsafeArcSelf(self)' if this is

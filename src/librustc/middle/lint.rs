@@ -1204,17 +1204,17 @@ impl<'self> Visitor<()> for Context<'self> {
     }
 
     fn visit_foreign_item(&mut self, it: @ast::foreign_item, _: ()) {
-        do self.with_lint_attrs(it.attrs) |cx| {
+        self.with_lint_attrs(it.attrs, |cx| {
             check_attrs_usage(cx, it.attrs);
             visit::walk_foreign_item(cx, it, ());
-        }
+        })
     }
 
     fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
-        do self.with_lint_attrs(i.attrs) |cx| {
+        self.with_lint_attrs(i.attrs, |cx| {
             check_attrs_usage(cx, i.attrs);
             visit::walk_view_item(cx, i, ());
-        }
+        })
     }
 
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {

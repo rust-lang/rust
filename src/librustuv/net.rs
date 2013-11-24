@@ -186,9 +186,9 @@ impl TcpWatcher {
                 0 => {
                     req.defuse(); // uv callback now owns this request
                     let mut cx = Ctx { status: 0, task: None };
-                    do wait_until_woken_after(&mut cx.task) {
+                    wait_until_woken_after(&mut cx.task, || {
                         req.set_data(&cx);
-                    }
+                    });
                     match cx.status {
                         0 => Ok(()),
                         n => Err(UvError(n)),
