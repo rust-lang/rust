@@ -22,6 +22,7 @@ use ops::Drop;
 use kinds::{Freeze, Send};
 use clone::{Clone, DeepClone};
 use cell::RefCell;
+use cmp::{Eq, TotalEq, Ord, TotalOrd, Ordering};
 
 struct RcBox<T> {
     value: T,
@@ -79,6 +80,60 @@ impl<T> Rc<T> {
     #[inline]
     pub fn borrow<'r>(&'r self) -> &'r T {
         unsafe { &(*self.ptr).value }
+    }
+
+    /// Determine if two reference-counted pointers point to the same object
+    #[inline]
+    pub fn ptr_eq(&self, other: &Rc<T>) -> bool {
+        self.ptr == other.ptr
+    }
+}
+
+impl<T: Eq> Eq for Rc<T> {
+    #[inline]
+    fn eq(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value == (*other.ptr).value }
+    }
+
+    #[inline]
+    fn ne(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value != (*other.ptr).value }
+    }
+}
+
+impl<T: TotalEq> TotalEq for Rc<T> {
+    #[inline]
+    fn equals(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value.equals(&(*other.ptr).value) }
+    }
+}
+
+impl<T: Ord> Ord for Rc<T> {
+    #[inline]
+    fn lt(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value < (*other.ptr).value }
+    }
+
+    #[inline]
+    fn le(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value <= (*other.ptr).value }
+    }
+
+    #[inline]
+    fn ge(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value >= (*other.ptr).value }
+    }
+
+    #[inline]
+    fn gt(&self, other: &Rc<T>) -> bool {
+        unsafe { (*self.ptr).value > (*other.ptr).value }
+    }
+}
+
+impl<T: TotalOrd> TotalOrd for Rc<T> {
+    #[inline]
+    fn cmp(&self, other: &Rc<T>) -> Ordering {
+        unsafe { (*self.ptr).value.cmp(&(*other.ptr).value) }
     }
 }
 
