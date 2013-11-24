@@ -1099,9 +1099,10 @@ pub fn link_args(sess: Session,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers supports optimization with -O. --gc-sections removes metadata and
-        // potentially other useful things, so don't include it.
+        // potentially other useful things, so don't include it. GNU ld doesn't need a numeric
+        // argument, but other linkers do.
         if sess.opts.optimize == session::Default || sess.opts.optimize == session::Aggressive {
-            args.push(~"-Wl,-O");
+            args.push(~"-Wl,-O1");
         }
 
         args.push_all([~"-lrt", ~"-ldl"]);
