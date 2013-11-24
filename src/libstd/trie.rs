@@ -373,7 +373,8 @@ fn chunk(n: uint, idx: uint) -> uint {
 
 fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
     match *child {
-        External(_, ref mut value) => Some(value),
+        External(stored, ref mut value) if stored == key => Some(value),
+        External(*) => None,
         Internal(ref mut x) => find_mut(&mut x.children[chunk(key, idx)], key, idx + 1),
         Nothing => None
     }
@@ -534,6 +535,16 @@ mod test_map {
             None => fail!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
+    }
+
+    #[test]
+    fn test_find_mut_missing() {
+        let mut m = TrieMap::new();
+        assert!(m.find_mut(&0).is_none());
+        assert!(m.insert(1, 12));
+        assert!(m.find_mut(&0).is_none());
+        assert!(m.insert(2, 8));
+        assert!(m.find_mut(&0).is_none());
     }
 
     #[test]
