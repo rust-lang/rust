@@ -804,7 +804,7 @@ impl<T : Iterator<char>> Parser<T> {
         while !self.eof() {
             self.parse_whitespace();
 
-            if self.ch != '"' {
+            if self.ch != '\"' {
                 return self.error(~"key must be a string");
             }
 
@@ -866,12 +866,34 @@ pub fn Decoder(json: Json) -> Decoder {
     }
 }
 
+impl Decoder {
+    fn err(&self, msg: &str) -> ! {
+        fail!("JSON decode error: {}", msg);
+    }
+    fn missing_field(&self, field: &str, object: ~Object) -> ! {
+        self.err(format!("missing required '{}' field in object: {}",
+                         field, Object(object).to_str()))
+    }
+    fn expected(&self, expected: &str, found: &Json) -> ! {
+        let found_s = match *found {
+            Null => "null",
+            List(*) => "list",
+            Object(*) => "object",
+            Number(*) => "number",
+            String(*) => "string",
+            Boolean(*) => "boolean"
+        };
+        self.err(format!("expected {expct} but found {fnd}: {val}",
+                         expct=expected, fnd=found_s, val=found.to_str()))
+    }
+}
+
 impl serialize::Decoder for Decoder {
     fn read_nil(&mut self) -> () {
         debug!("read_nil");
         match self.stack.pop() {
             Null => (),
-            value => fail!("not a null: {:?}", value)
+            value => self.expected("null", &value)
         }
     }
 
@@ -891,7 +913,7 @@ impl serialize::Decoder for Decoder {
         debug!("read_bool");
         match self.stack.pop() {
             Boolean(b) => b,
-            value => fail!("not a boolean: {:?}", value)
+            value => self.expected("boolean", &value)
         }
     }
 
@@ -899,25 +921,30 @@ impl serialize::Decoder for Decoder {
         debug!("read_f64");
         match self.stack.pop() {
             Number(f) => f,
-            value => fail!("not a number: {:?}", value)
+            value => self.expected("number", &value)
         }
     }
     fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
     fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
 
     fn read_char(&mut self) -> char {
-        let mut v = ~[];
         let s = self.read_str();
-        for c in s.iter() { v.push(c) }
-        if v.len() != 1 { fail!("string must have one character") }
-        v[0]
+        {
+            let mut it = s.iter();
+            match (it.next(), it.next()) {
+                // exactly one character
+                (Some(c), None) => return c,
+                _ => ()
+            }
+        }
+        self.expected("single character string", &String(s))
     }
 
     fn read_str(&mut self) -> ~str {
         debug!("read_str");
         match self.stack.pop() {
             String(s) => s,
-            json => fail!("not a string: {:?}", json)
+            value => self.expected("string", &value)
         }
     }
 
@@ -933,26 +960,34 @@ impl serialize::Decoder for Decoder {
         debug!("read_enum_variant(names={:?})", names);
         let name = match self.stack.pop() {
             String(s) => s,
-            Object(o) => {
-                let n = match o.find(&~"variant").expect("invalidly encoded json") {
-                    &String(ref s) => s.clone(),
-                    _ => fail!("invalidly encoded json"),
+            Object(mut o) => {
+                let n = match o.pop(&~"variant") {
+                    Some(String(s)) => s,
+                    Some(val) => self.expected("string", &val),
+                    None => self.missing_field("variant", o)
                 };
-                match o.find(&~"fields").expect("invalidly encoded json") {
-                    &List(ref l) => {
-                        for field in l.rev_iter() {
+                match o.pop(&~"fields") {
+                    Some(List(l)) => {
+                        for field in l.move_rev_iter() {
                             self.stack.push(field.clone());
                         }
                     },
-                    _ => fail!("invalidly encoded json")
+                    Some(val) => self.expected("list", &val),
+                    None => {
+                        // re-insert the variant field so we're
+                        // printing the "whole" struct in the error
+                        // message... ick.
+                        o.insert(~"variant", String(n));
+                        self.missing_field("fields", o);
+                    }
                 }
                 n
             }
-            ref json => fail!("invalid variant: {:?}", *json),
+            json => self.expected("string or object", &json)
         };
         let idx = match names.iter().position(|n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
-            None => fail!("Unknown variant name: {}", name),
+            None => self.err(format!("unknown variant name: {}", name))
         };
         f(self, idx)
     }
@@ -999,10 +1034,9 @@ impl serialize::Decoder for Decoder {
                             -> T {
         debug!("read_struct_field(name={}, idx={})", name, idx);
         match self.stack.pop() {
-            Object(obj) => {
-                let mut obj = obj;
+            Object(mut obj) => {
                 let value = match obj.pop(&name.to_owned()) {
-                    None => fail!("no such field: {}", name),
+                    None => self.missing_field(name, obj),
                     Some(json) => {
                         self.stack.push(json);
                         f(self)
@@ -1011,7 +1045,7 @@ impl serialize::Decoder for Decoder {
                 self.stack.push(Object(obj));
                 value
             }
-            value => fail!("not an object: {:?}", value)
+            value => self.expected("object", &value)
         }
     }
 
@@ -1058,7 +1092,7 @@ impl serialize::Decoder for Decoder {
                 }
                 len
             }
-            _ => fail!("not a list"),
+            value => self.expected("list", &value)
         };
         f(self, len)
     }
@@ -1079,7 +1113,7 @@ impl serialize::Decoder for Decoder {
                 }
                 len
             }
-            json => fail!("not an object: {:?}", json),
+            value => self.expected("object", &value)
         };
         f(self, len)
     }
@@ -1935,5 +1969,72 @@ mod tests {
                 line: 3u,
                 col: 8u,
                 msg: @~"EOF while parsing object"}));
+    }
+
+    #[deriving(Decodable)]
+    struct DecodeStruct {
+        x: f64,
+        y: bool,
+        z: ~str,
+        w: ~[DecodeStruct]
+    }
+    #[deriving(Decodable)]
+    enum DecodeEnum {
+        A(f64),
+        B(~str)
+    }
+    fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected_error: &str) {
+        use std::task;
+        let res = task::try(|| {
+            // either fails in `decode` (which is what we want), or
+            // returns Some(error_message)/None if the string was
+            // invalid or valid JSON.
+            match from_str(to_parse) {
+                Err(e) => Some(e.to_str()),
+                Ok(json) => {
+                    let _: T = Decodable::decode(&mut Decoder(json));
+                    None
+                }
+            }
+        });
+        match res {
+            Ok(Some(parse_error)) => fail!("`{}` is not valid json: {}",
+                                           to_parse, parse_error),
+            Ok(None) => fail!("`{}` parsed & decoded ok, expecting error `{}`",
+                              to_parse, expected_error),
+            Err(e) => {
+                let err = e.as_ref::<~str>().unwrap();
+                assert!(err.contains(expected_error),
+                        "`{}` errored incorrectly, found `{}` expecting `{}`",
+                        to_parse, *err, expected_error);
+            }
+        }
+    }
+    #[test]
+    fn test_decode_errors_struct() {
+        check_err::<DecodeStruct>("[]", "object but found list");
+        check_err::<DecodeStruct>("{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
+                                  "number but found boolean");
+        check_err::<DecodeStruct>("{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
+                                  "boolean but found list");
+        check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
+                                  "string but found object");
+        check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
+                                  "list but found null");
+        check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\"}",
+                                  "'w' field in object");
+    }
+    #[test]
+    fn test_decode_errors_enum() {
+        check_err::<DecodeEnum>("{}",
+                                "'variant' field in object");
+        check_err::<DecodeEnum>("{\"variant\": 1}",
+                                "string but found number");
+        check_err::<DecodeEnum>("{\"variant\": \"A\"}",
+                                "'fields' field in object");
+        check_err::<DecodeEnum>("{\"variant\": \"A\", \"fields\": null}",
+                                "list but found null");
+        check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
+                                "unknown variant name");
     }
 }
