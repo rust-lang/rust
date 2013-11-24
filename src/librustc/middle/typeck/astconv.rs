@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -60,10 +60,11 @@ use middle::typeck::lookup_def_tcx;
 
 use std::vec;
 use syntax::abi::AbiSet;
-use syntax::{ast, ast_util};
+use syntax::{ast, ast_map, ast_util};
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
+use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 
 pub trait AstConv {
@@ -518,6 +519,12 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             let did = ast_util::local_def(id);
             ty::mk_self(tcx, did)
+          }
+          ast::DefMod(id) => {
+            tcx.sess.span_fatal(ast_ty.span,
+                                format!("found module name used as a type: {}",
+                                        ast_map::node_id_to_str(tcx.items, id.node,
+                                        token::get_ident_interner())));
           }
           _ => {
             tcx.sess.span_fatal(ast_ty.span,
