@@ -55,7 +55,7 @@ pub fn run(lib_path: &str,
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).unwrap();
 
     for input in input.iter() {
         process.input().write(input.as_bytes());
@@ -82,7 +82,7 @@ pub fn run_background(lib_path: &str,
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).unwrap();
 
     for input in input.iter() {
         process.input().write(input.as_bytes());

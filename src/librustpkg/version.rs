@@ -105,7 +105,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         }
         // FIXME (#9639): This needs to handle non-utf8 paths
         let outp = run::process_output("git",
-                                   ["--git-dir=" + git_dir.as_str().unwrap(), ~"tag", ~"-l"]);
+                           ["--git-dir=" + git_dir.as_str().unwrap(), ~"tag", ~"-l"]).unwrap();
 
         debug!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
 
@@ -142,7 +142,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let outp  = run::process_output("git", [~"clone", format!("https://{}",
                                                                   remote_path.as_str().unwrap()),
-                                                tmp_dir.as_str().unwrap().to_owned()]);
+                                                tmp_dir.as_str().unwrap().to_owned()]).unwrap();
         if outp.status.success() {
             debug!("Cloned it... ( {}, {} )",
                    str::from_utf8(outp.output),
@@ -154,7 +154,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
             // FIXME (#9639): This needs to handle non-utf8 paths
             let outp = run::process_output("git",
                                            ["--git-dir=" + git_dir.as_str().unwrap(),
-                                            ~"tag", ~"-l"]);
+                                            ~"tag", ~"-l"]).unwrap();
             let output_text = str::from_utf8(outp.output);
             debug!("Full output: ( {} ) [{:?}]", output_text, outp.status);
             for l in output_text.line_iter() {

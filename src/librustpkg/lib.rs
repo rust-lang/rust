@@ -171,7 +171,8 @@ impl<'self> PkgScript<'self> {
         // FIXME #7401 should support commands besides `install`
         // FIXME (#9639): This needs to handle non-utf8 paths
         let status = run::process_status(exe.as_str().unwrap(),
-                                         [sysroot.as_str().unwrap().to_owned(), ~"install"]);
+                                         [sysroot.as_str().unwrap().to_owned(),
+                                          ~"install"]).unwrap();
         if !status.success() {
             debug!("run_custom: first pkg command failed with {:?}", status);
             (~[], status)
@@ -181,7 +182,8 @@ impl<'self> PkgScript<'self> {
                    exe.display(), sysroot.display(), "configs");
             // FIXME (#9639): This needs to handle non-utf8 paths
             let output = run::process_output(exe.as_str().unwrap(),
-                                             [sysroot.as_str().unwrap().to_owned(), ~"configs"]);
+                                             [sysroot.as_str().unwrap().to_owned(),
+                                              ~"configs"]).unwrap();
             debug!("run_custom: second pkg command did {:?}", output.status);
             // Run the configs() function to get the configs
             let cfgs = str::from_utf8_slice(output.output).word_iter()
@@ -697,7 +699,8 @@ impl CtxMethods for BuildContext {
             Some(test_exec) => {
                 debug!("test: test_exec = {}", test_exec.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
-                let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
+                let status = run::process_status(test_exec.as_str().unwrap(),
+                                                 [~"--test"]).unwrap();
                 if !status.success() {
                     fail!("Some tests failed");
                 }

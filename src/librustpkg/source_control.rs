@@ -35,7 +35,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             // FIXME (#9639): This needs to handle non-utf8 paths
             let outp = run::process_output("git", [~"clone",
                                                    source.as_str().unwrap().to_owned(),
-                                                   target.as_str().unwrap().to_owned()]);
+                                                   target.as_str().unwrap().to_owned()]).unwrap();
             if !outp.status.success() {
                 println(str::from_utf8_owned(outp.output.clone()));
                 println(str::from_utf8_owned(outp.error));
@@ -51,7 +51,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                         let outp = run::process_output("git",
                             [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
                              format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
-                             ~"checkout", format!("{}", *s)]);
+                             ~"checkout", format!("{}", *s)]).unwrap();
                         if !outp.status.success() {
                             println(str::from_utf8_owned(outp.output.clone()));
                             println(str::from_utf8_owned(outp.error));
@@ -72,7 +72,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             let args = [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
                         format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                         ~"pull", ~"--no-edit", source.as_str().unwrap().to_owned()];
-            let outp = run::process_output("git", args);
+            let outp = run::process_output("git", args).unwrap();
             assert!(outp.status.success());
         }
         CheckedOutSources
@@ -109,7 +109,7 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     let outp = run::process_output("git", [~"clone", source.to_owned(),
-                                           target.as_str().unwrap().to_owned()]);
+                                           target.as_str().unwrap().to_owned()]).unwrap();
     if !outp.status.success() {
          debug!("{}", str::from_utf8_owned(outp.output.clone()));
          debug!("{}", str::from_utf8_owned(outp.error));
@@ -133,7 +133,7 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
 
 fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput {
     let mut prog = Process::new(prog, args, ProcessOptions{ dir: Some(cwd)
-                                ,..ProcessOptions::new()});
+                                ,..ProcessOptions::new()}).unwrap();
     prog.finish_with_output()
 }
 
