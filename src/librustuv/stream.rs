@@ -69,22 +69,27 @@ impl StreamWatcher {
         // uv_read_stop function
         let _f = ForbidUnwind::new("stream read");
 
+        let mut rcx = ReadContext {
+            buf: Some(slice_to_uv_buf(buf)),
+            result: 0,
+            task: None,
+        };
+        // When reading a TTY stream on windows, libuv will invoke alloc_cb
+        // immediately as part of the call to alloc_cb. What this means is that
+        // we must be ready for this to happen (by setting the data in the uv
+        // handle). In theory this otherwise doesn't need to happen until after
+        // the read is succesfully started.
+        unsafe {
+            uvll::set_data_for_uv_handle(self.handle, &rcx)
+        }
+
         // Send off the read request, but don't block until we're sure that the
         // read request is queued.
         match unsafe {
             uvll::uv_read_start(self.handle, alloc_cb, read_cb)
         } {
             0 => {
-                let mut rcx = ReadContext {
-                    buf: Some(slice_to_uv_buf(buf)),
-                    result: 0,
-                    task: None,
-                };
-                do wait_until_woken_after(&mut rcx.task) {
-                    unsafe {
-                        uvll::set_data_for_uv_handle(self.handle, &rcx)
-                    }
-                }
+                wait_until_woken_after(&mut rcx.task, || {});
                 match rcx.result {
                     n if n < 0 => Err(UvError(n as c_int)),
                     n => Ok(n as uint),
