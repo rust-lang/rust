@@ -375,7 +375,7 @@ impl Visitor<()> for GatherLocalsVisitor {
 
     }
         // Add pattern bindings.
-    fn visit_pat(&mut self, p:@ast::Pat, _:()) {
+    fn visit_pat(&mut self, p:&ast::Pat, _:()) {
             match p.node {
               ast::PatIdent(_, ref path, _)
                   if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
