@@ -807,9 +807,12 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
     ];
 
     let obsolete_attrs = [
-        ("abi", "extern \"abi\" fn"),
-        ("auto_encode", "#[deriving(Encodable)]"),
-        ("auto_decode", "#[deriving(Decodable)]"),
+        ("abi", "Use `extern \"abi\" fn` instead"),
+        ("auto_encode", "Use `#[deriving(Encodable)]` instead"),
+        ("auto_decode", "Use `#[deriving(Decodable)]` instead"),
+        ("fast_ffi", "Remove it"),
+        ("fixed_stack_segment", "Remove it"),
+        ("rust_stack", "Remove it"),
     ];
 
     let other_attrs = [
@@ -826,7 +829,7 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 
         // fn-level
         "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-        "fixed_stack_segment", "no_split_stack", "rust_stack", "cold",
+        "no_split_stack", "cold",
 
         // internal attribute: bypass privacy inside items
         "!resolve_unexported",
@@ -849,7 +852,7 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
         for &(obs_attr, obs_alter) in obsolete_attrs.iter() {
             if name.equiv(&obs_attr) {
                 cx.span_lint(attribute_usage, attr.span,
-                             format!("obsolete attribute: use `{:s}` instead", obs_alter));
+                             format!("obsolete attribute: {:s}", obs_alter));
                 return;
             }
         }
