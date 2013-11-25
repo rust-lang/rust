@@ -798,42 +798,54 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
     }
 }
 
+static crate_attrs: &'static [&'static str] = &[
+    "crate_type", "link", "feature", "no_uv", "no_main", "no_std",
+    "desc", "comment", "license", "copyright", // not used in rustc now
+];
+
+
+static obsolete_attrs: &'static [(&'static str, &'static str)] = &[
+    ("abi", "Use `extern \"abi\" fn` instead"),
+    ("auto_encode", "Use `#[deriving(Encodable)]` instead"),
+    ("auto_decode", "Use `#[deriving(Decodable)]` instead"),
+    ("fast_ffi", "Remove it"),
+    ("fixed_stack_segment", "Remove it"),
+    ("rust_stack", "Remove it"),
+];
+
+static other_attrs: &'static [&'static str] = &[
+    // item-level
+    "address_insignificant", // can be crate-level too
+    "allow", "deny", "forbid", "warn", // lint options
+    "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
+    "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
+    "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
+    "packed", "simd", "repr", "deriving", "unsafe_destructor",
+
+    //mod-level
+    "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
+
+    // fn-level
+    "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
+    "no_split_stack", "cold",
+
+    // internal attribute: bypass privacy inside items
+    "!resolve_unexported",
+];
+
+fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
+
+    for attr in attrs.iter() {
+        let name = attr.node.value.name();
+        let mut iter = crate_attrs.iter().chain(other_attrs.iter());
+        if !iter.any(|other_attr| { name.equiv(other_attr) }) {
+            cx.span_lint(attribute_usage, attr.span, "unknown crate attribute");
+        }
+    }
+}
+
 fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
     // check if element has crate-level, obsolete, or any unknown attributes.
-
-    let crate_attrs = [
-        "crate_type", "link", "feature", "no_uv", "no_main", "no_std",
-        "comment", "license", "copyright", // not used in rustc now
-    ];
-
-    let obsolete_attrs = [
-        ("abi", "Use `extern \"abi\" fn` instead"),
-        ("auto_encode", "Use `#[deriving(Encodable)]` instead"),
-        ("auto_decode", "Use `#[deriving(Decodable)]` instead"),
-        ("fast_ffi", "Remove it"),
-        ("fixed_stack_segment", "Remove it"),
-        ("rust_stack", "Remove it"),
-    ];
-
-    let other_attrs = [
-        // item-level
-        "address_insignificant", // can be crate-level too
-        "allow", "deny", "forbid", "warn", // lint options
-        "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
-        "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
-        "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
-        "packed", "simd", "repr", "deriving", "unsafe_destructor",
-
-        // mod-level
-        "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
-
-        // fn-level
-        "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-        "no_split_stack", "cold",
-
-        // internal attribute: bypass privacy inside items
-        "!resolve_unexported",
-    ];
 
     for attr in attrs.iter() {
         let name = attr.node.value.name();
@@ -1349,6 +1361,9 @@ pub fn check_crate(tcx: ty::ctxt,
             v.visited_outermost = true;
             visit::walk_crate(v, crate, ());
         }
+
+        check_crate_attrs_usage(cx, crate.attrs);
+
         visit::walk_crate(cx, crate, ());
     }
 

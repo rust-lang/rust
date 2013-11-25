@@ -13,6 +13,8 @@
 
 #[deny(attribute_usage)];
 
+#[mutable_doc]; //~ ERROR: unknown crate attribute
+
 #[dance] mod a {} //~ ERROR: unknown attribute
 
 #[dance] fn main() {} //~ ERROR: unknown attribute
