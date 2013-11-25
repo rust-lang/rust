@@ -10,7 +10,6 @@
 
 fn foo(_x: int) { }
 
-#[fixed_stack_segment]
 fn main() {
     let v: u64 = 5;
     let x = foo as extern "C" fn() -> int;

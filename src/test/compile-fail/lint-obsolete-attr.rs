@@ -15,4 +15,6 @@
 
 #[abi="stdcall"] extern {} //~ ERROR: obsolete attribute
 
+#[fixed_stack_segment] fn f() {} //~ ERROR: obsolete attribute
+
 fn main() {}
