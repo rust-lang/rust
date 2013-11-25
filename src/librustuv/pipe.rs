@@ -16,7 +16,6 @@ use std::rt::local::Local;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 use std::rt::sched::{Scheduler, SchedHandle};
 use std::rt::tube::Tube;
-use std::task;
 
 use stream::StreamWatcher;
 use super::{Loop, UvError, UvHandle, Request, uv_error_to_io_error,
@@ -74,26 +73,23 @@ impl PipeWatcher {
     pub fn connect(loop_: &Loop, name: &CString) -> Result<PipeWatcher, UvError>
     {
         struct Ctx { task: Option<BlockedTask>, result: libc::c_int, }
-        return do task::unkillable {
-            let mut cx = Ctx { task: None, result: 0 };
-            let mut req = Request::new(uvll::UV_CONNECT);
-            let pipe = PipeWatcher::new(loop_, false);
+        let mut cx = Ctx { task: None, result: 0 };
+        let mut req = Request::new(uvll::UV_CONNECT);
+        let pipe = PipeWatcher::new(loop_, false);
 
-            do wait_until_woken_after(&mut cx.task) {
-                unsafe {
-                    uvll::uv_pipe_connect(req.handle,
-                                          pipe.handle(),
-                                          name.with_ref(|p| p),
-                                          connect_cb)
-                }
-                req.set_data(&cx);
-                req.defuse(); // uv callback now owns this request
+        do wait_until_woken_after(&mut cx.task) {
+            unsafe {
+                uvll::uv_pipe_connect(req.handle,
+                                      pipe.handle(),
+                                      name.with_ref(|p| p),
+                                      connect_cb)
             }
-            match cx.result {
-                0 => Ok(pipe),
-                n => Err(UvError(n))
-            }
-
+            req.set_data(&cx);
+            req.defuse(); // uv callback now owns this request
+        }
+        return match cx.result {
+            0 => Ok(pipe),
+            n => Err(UvError(n))
         };
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {;
@@ -153,24 +149,22 @@ extern fn pipe_close_cb(handle: *uvll::uv_handle_t) {
 
 impl PipeListener {
     pub fn bind(loop_: &Loop, name: &CString) -> Result<~PipeListener, UvError> {
-        do task::unkillable {
-            let pipe = PipeWatcher::new(loop_, false);
-            match unsafe {
-                uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p))
-            } {
-                0 => {
-                    // If successful, unwrap the PipeWatcher because we control how
-                    // we close the pipe differently. We can't rely on
-                    // StreamWatcher's default close method.
-                    let p = ~PipeListener {
-                        home: get_handle_to_current_scheduler!(),
-                        pipe: pipe.unwrap(),
-                        outgoing: Tube::new(),
-                    };
-                    Ok(p.install())
-                }
-                n => Err(UvError(n))
+        let pipe = PipeWatcher::new(loop_, false);
+        match unsafe {
+            uvll::uv_pipe_bind(pipe.handle(), name.with_ref(|p| p))
+        } {
+            0 => {
+                // If successful, unwrap the PipeWatcher because we control how
+                // we close the pipe differently. We can't rely on
+                // StreamWatcher's default close method.
+                let p = ~PipeListener {
+                    home: get_handle_to_current_scheduler!(),
+                    pipe: pipe.unwrap(),
+                    outgoing: Tube::new(),
+                };
+                Ok(p.install())
             }
+            n => Err(UvError(n))
         }
     }
 }
@@ -245,7 +239,6 @@ mod tests {
     use std::comm::oneshot;
     use std::rt::rtio::{RtioUnixListener, RtioUnixAcceptor, RtioPipe};
     use std::rt::test::next_test_unix;
-    use std::task;
 
     use super::*;
     use super::super::local_loop;
@@ -314,7 +307,7 @@ mod tests {
         let (port, chan) = oneshot();
         let chan = Cell::new(chan);
 
-        do task::spawn_unlinked { // plz no linked failure
+        do spawn {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
             chan.take().send(());

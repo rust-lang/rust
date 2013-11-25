@@ -2349,9 +2349,9 @@ Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
-~~~~
+~~~~ {.xfail-test}
 # use std::task;
-# do task::spawn_unlinked {
+# do task::spawn {
 
 ([1, 2, 3, 4])[0];
 (["a", "b"])[10]; // fails

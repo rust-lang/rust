@@ -20,7 +20,6 @@ use std::io;
 use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::sched::{Scheduler, SchedHandle};
-use std::task;
 use std::vec;
 
 use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after};
@@ -298,26 +297,24 @@ impl Drop for FsRequest {
 fn execute(f: &fn(*uvll::uv_fs_t, uvll::uv_fs_cb) -> c_int)
     -> Result<FsRequest, UvError>
 {
-    return do task::unkillable {
-        let mut req = FsRequest {
-            fired: false,
-            req: unsafe { uvll::malloc_req(uvll::UV_FS) }
-        };
-        match f(req.req, fs_cb) {
-            0 => {
-                req.fired = true;
-                let mut slot = None;
-                do wait_until_woken_after(&mut slot) {
-                    unsafe { uvll::set_data_for_req(req.req, &slot) }
-                }
-                match req.get_result() {
-                    n if n < 0 => Err(UvError(n)),
-                    _ => Ok(req),
-                }
+    let mut req = FsRequest {
+        fired: false,
+        req: unsafe { uvll::malloc_req(uvll::UV_FS) }
+    };
+    return match f(req.req, fs_cb) {
+        0 => {
+            req.fired = true;
+            let mut slot = None;
+            do wait_until_woken_after(&mut slot) {
+                unsafe { uvll::set_data_for_req(req.req, &slot) }
             }
-            n => Err(UvError(n))
-
+            match req.get_result() {
+                n if n < 0 => Err(UvError(n)),
+                _ => Ok(req),
+            }
         }
+        n => Err(UvError(n))
+
     };
 
     extern fn fs_cb(req: *uvll::uv_fs_t) {

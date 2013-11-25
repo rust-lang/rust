@@ -1,4 +1,5 @@
 // xfail-pretty
+// xfail-test linked failure
 
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -35,8 +36,6 @@ fn grandchild_group(num_tasks: uint) {
     for _ in range(0, num_tasks) {
         let ch = ch.clone();
         let mut t = task::task();
-        t.linked();
-        t.unwatched();
         do t.spawn { // linked
             ch.send(());
             let (p, _c) = stream::<()>();

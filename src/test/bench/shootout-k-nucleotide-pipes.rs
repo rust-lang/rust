@@ -179,9 +179,9 @@ fn main() {
 
         let (from_parent, to_child) = comm::stream();
 
-        do task::spawn_with(from_parent) |from_parent| {
+        do spawn {
             make_sequence_processor(sz, &from_parent, &to_parent_);
-        };
+        }
 
         to_child
     }.collect::<~[Chan<~[u8]>]>();

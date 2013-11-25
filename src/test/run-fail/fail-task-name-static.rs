@@ -13,7 +13,7 @@
 fn main() {
     let mut t = ::std::task::task();
     t.name("static name");
-    do t.spawn {
+    do t.try {
         fail!("test");
-    }
+    }.unwrap()
 }
