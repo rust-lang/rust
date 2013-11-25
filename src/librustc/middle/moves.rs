@@ -459,8 +459,6 @@ impl VisitContext {
             }
 
             ExprMatch(discr, ref arms) => {
-                // We must do this first so that `arms_have_by_move_bindings`
-                // below knows which bindings are moves.
                 for arm in arms.iter() {
                     self.consume_arm(arm);
                 }
@@ -655,27 +653,6 @@ impl VisitContext {
     pub fn use_fn_arg(&mut self, arg_expr: @Expr) {
         //! Uses the argument.
         self.consume_expr(arg_expr)
-    }
-
-    pub fn arms_have_by_move_bindings(&mut self,
-                                      moves_map: MovesMap,
-                                      arms: &[Arm])
-                                      -> Option<@Pat> {
-        let mut ret = None;
-        for arm in arms.iter() {
-            for &pat in arm.pats.iter() {
-                let cont = do ast_util::walk_pat(pat) |p| {
-                    if moves_map.contains(&p.id) {
-                        ret = Some(p);
-                        false
-                    } else {
-                        true
-                    }
-                };
-                if !cont { return ret }
-            }
-        }
-        ret
     }
 
     pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> @[CaptureVar] {
