@@ -31,6 +31,7 @@ pub mod util {
     pub mod interner;
     #[cfg(test)]
     pub mod parser_testing;
+    pub mod small_vector;
 }
 
 pub mod syntax {
