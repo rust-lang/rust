@@ -2086,15 +2086,13 @@ impl Parser {
         fn parse_non_delim_tt_tok(p: &Parser) -> token_tree {
             maybe_whole!(deref p, nt_tt);
             match *p.token {
-              token::RPAREN | token::RBRACE | token::RBRACKET
-              => {
-                p.fatal(
-                    format!(
-                        "incorrect close delimiter: `{}`",
-                        p.this_token_to_str()
-                    )
-                );
-              }
+              token::RPAREN | token::RBRACE | token::RBRACKET => {
+                  // This is a conservative error: only report the last unclosed delimiter. The
+                  // previous unclosed delimiters could actually be closed! The parser just hasn't
+                  // gotten to them yet.
+                  p.open_braces.last_opt().map(|sp| p.span_note(*sp, "unclosed delimiter"));
+                  p.fatal(format!("incorrect close delimiter: `{}`", p.this_token_to_str()));
+              },
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if *p.quote_depth > 0u => {
                 p.bump();
