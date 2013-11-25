@@ -612,7 +612,7 @@ struct NewNameFinderContext {
 }
 
 impl Visitor<()> for NewNameFinderContext {
-    fn visit_pat(&mut self, pattern: @ast::Pat, _: ()) {
+    fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
         match *pattern {
             // we found a pat_ident!
             ast::Pat {

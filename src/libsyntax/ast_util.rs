@@ -497,7 +497,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
         visit::walk_stmt(self, statement, env)
     }
 
-    fn visit_pat(&mut self, pattern: @Pat, env: ()) {
+    fn visit_pat(&mut self, pattern: &Pat, env: ()) {
         self.operation.visit_id(pattern.id);
         visit::walk_pat(self, pattern, env)
     }

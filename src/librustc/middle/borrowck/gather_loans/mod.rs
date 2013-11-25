@@ -87,7 +87,7 @@ impl<'self> visit::Visitor<()> for GatherLoanCtxt<'self> {
     fn visit_stmt(&mut self, s:@Stmt, _:()) {
         add_stmt_to_map(self, s);
     }
-    fn visit_pat(&mut self, p:@Pat, _:()) {
+    fn visit_pat(&mut self, p:&Pat, _:()) {
         add_pat_to_id_range(self, p);
     }
     fn visit_local(&mut self, l:@Local, _:()) {
@@ -119,7 +119,7 @@ pub fn gather_loans(bccx: &BorrowckCtxt,
 }
 
 fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
-                       p: @ast::Pat) {
+                       p: &ast::Pat) {
     // NB: This visitor function just adds the pat ids into the id
     // range. We gather loans that occur in patterns using the
     // `gather_pat()` method below. Eventually these two should be

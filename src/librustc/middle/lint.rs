@@ -900,7 +900,7 @@ fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
     }
 }
 
-fn check_unused_mut_pat(cx: &Context, p: @ast::Pat) {
+fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
     match p.node {
         ast::PatIdent(ast::BindByValue(ast::MutMutable),
                       ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
@@ -1119,7 +1119,7 @@ impl<'self> Visitor<()> for Context<'self> {
         }
     }
 
-    fn visit_pat(&mut self, p: @ast::Pat, _: ()) {
+    fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
         check_pat_non_uppercase_statics(self, p);
         check_unused_mut_pat(self, p);
 

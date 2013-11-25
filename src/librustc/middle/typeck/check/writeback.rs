@@ -278,7 +278,7 @@ fn visit_block(b: &ast::Block, wbcx: &mut WbCtxt) {
     visit::walk_block(wbcx, b, ());
 }
 
-fn visit_pat(p: @ast::Pat, wbcx: &mut WbCtxt) {
+fn visit_pat(p: &ast::Pat, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -323,7 +323,7 @@ impl Visitor<()> for WbCtxt {
     fn visit_stmt(&mut self, s:@ast::Stmt, _:()) { visit_stmt(s, self); }
     fn visit_expr(&mut self, ex:@ast::Expr, _:()) { visit_expr(ex, self); }
     fn visit_block(&mut self, b:&ast::Block, _:()) { visit_block(b, self); }
-    fn visit_pat(&mut self, p:@ast::Pat, _:()) { visit_pat(p, self); }
+    fn visit_pat(&mut self, p:&ast::Pat, _:()) { visit_pat(p, self); }
     fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(l, self); }
 }
 
