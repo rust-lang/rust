@@ -709,10 +709,11 @@ impl Context {
             let prog_chan = prog_chan.clone();
 
             let mut task = task::task();
-            task.unlinked(); // we kill things manually
             task.name(format!("worker{}", i));
-            task.spawn_with(cache.clone(),
-                            |cache| worker(cache, &port, &chan, &prog_chan));
+            let cache = cache.clone();
+            do task.spawn {
+                worker(cache, &port, &chan, &prog_chan);
+            }
 
             fn worker(cache: RWArc<Cache>,
                       port: &SharedPort<Work>,

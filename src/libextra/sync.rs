@@ -22,7 +22,6 @@ use std::borrow;
 use std::comm;
 use std::comm::SendDeferred;
 use std::comm::{GenericPort, Peekable};
-use std::task;
 use std::unstable::sync::{Exclusive, UnsafeArc};
 use std::unstable::atomics;
 use std::unstable::finally::Finally;
@@ -134,13 +133,11 @@ impl<Q:Send> Sem<Q> {
     }
 
     pub fn access<U>(&self, blk: || -> U) -> U {
-        do task::unkillable {
-            do (|| {
-                self.acquire();
-                do task::rekillable { blk() }
-            }).finally {
-                self.release();
-            }
+        do (|| {
+            self.acquire();
+            blk()
+        }).finally {
+            self.release();
         }
     }
 }
@@ -206,48 +203,41 @@ impl<'self> Condvar<'self> {
     pub fn wait_on(&self, condvar_id: uint) {
         let mut WaitEnd = None;
         let mut out_of_bounds = None;
-        do task::unkillable {
-            // Release lock, 'atomically' enqueuing ourselves in so doing.
-            unsafe {
-                do (**self.sem).with |state| {
-                    if condvar_id < state.blocked.len() {
-                        // Drop the lock.
-                        state.count += 1;
-                        if state.count <= 0 {
-                            state.waiters.signal();
-                        }
-                        // Create waiter nobe, and enqueue ourself to
-                        // be woken up by a signaller.
-                        WaitEnd = Some(state.blocked[condvar_id].wait_end());
-                    } else {
-                        out_of_bounds = Some(state.blocked.len());
+        // Release lock, 'atomically' enqueuing ourselves in so doing.
+        unsafe {
+            do (**self.sem).with |state| {
+                if condvar_id < state.blocked.len() {
+                    // Drop the lock.
+                    state.count += 1;
+                    if state.count <= 0 {
+                        state.waiters.signal();
                     }
+                    // Create waiter nobe, and enqueue ourself to
+                    // be woken up by a signaller.
+                    WaitEnd = Some(state.blocked[condvar_id].wait_end());
+                } else {
+                    out_of_bounds = Some(state.blocked.len());
                 }
             }
+        }
 
-            // If deschedule checks start getting inserted anywhere, we can be
-            // killed before or after enqueueing. Deciding whether to
-            // unkillably reacquire the lock needs to happen atomically
-            // wrt enqueuing.
-            do check_cvar_bounds(out_of_bounds, condvar_id, "cond.wait_on()") {
-                // Unconditionally "block". (Might not actually block if a
-                // signaller already sent -- I mean 'unconditionally' in contrast
-                // with acquire().)
-                do (|| {
-                    do task::rekillable {
-                        let _ = WaitEnd.take_unwrap().recv();
-                    }
-                }).finally {
-                    // Reacquire the condvar. Note this is back in the unkillable
-                    // section; it needs to succeed, instead of itself dying.
-                    match self.order {
-                        Just(lock) => do lock.access {
-                            self.sem.acquire();
-                        },
-                        Nothing => {
-                            self.sem.acquire();
-                        },
-                    }
+        // If deschedule checks start getting inserted anywhere, we can be
+        // killed before or after enqueueing.
+        do check_cvar_bounds(out_of_bounds, condvar_id, "cond.wait_on()") {
+            // Unconditionally "block". (Might not actually block if a
+            // signaller already sent -- I mean 'unconditionally' in contrast
+            // with acquire().)
+            do (|| {
+                let _ = WaitEnd.take_unwrap().recv();
+            }).finally {
+                // Reacquire the condvar.
+                match self.order {
+                    Just(lock) => do lock.access {
+                        self.sem.acquire();
+                    },
+                    Nothing => {
+                        self.sem.acquire();
+                    },
                 }
             }
         }
@@ -484,30 +474,28 @@ impl RWLock {
      */
     pub fn read<U>(&self, blk: || -> U) -> U {
         unsafe {
-            do task::unkillable {
-                do (&self.order_lock).access {
-                    let state = &mut *self.state.get();
-                    let old_count = state.read_count.fetch_add(1, atomics::Acquire);
-                    if old_count == 0 {
-                        (&self.access_lock).acquire();
-                        state.read_mode = true;
-                    }
+            do (&self.order_lock).access {
+                let state = &mut *self.state.get();
+                let old_count = state.read_count.fetch_add(1, atomics::Acquire);
+                if old_count == 0 {
+                    (&self.access_lock).acquire();
+                    state.read_mode = true;
                 }
-                do (|| {
-                    do task::rekillable { blk() }
-                }).finally {
-                    let state = &mut *self.state.get();
-                    assert!(state.read_mode);
-                    let old_count = state.read_count.fetch_sub(1, atomics::Release);
-                    assert!(old_count > 0);
-                    if old_count == 1 {
-                        state.read_mode = false;
-                        // Note: this release used to be outside of a locked access
-                        // to exclusive-protected state. If this code is ever
-                        // converted back to such (instead of using atomic ops),
-                        // this access MUST NOT go inside the exclusive access.
-                        (&self.access_lock).release();
-                    }
+            }
+            do (|| {
+                blk()
+            }).finally {
+                let state = &mut *self.state.get();
+                assert!(state.read_mode);
+                let old_count = state.read_count.fetch_sub(1, atomics::Release);
+                assert!(old_count > 0);
+                if old_count == 1 {
+                    state.read_mode = false;
+                    // Note: this release used to be outside of a locked access
+                    // to exclusive-protected state. If this code is ever
+                    // converted back to such (instead of using atomic ops),
+                    // this access MUST NOT go inside the exclusive access.
+                    (&self.access_lock).release();
                 }
             }
         }
@@ -518,14 +506,10 @@ impl RWLock {
      * 'write' from other tasks will run concurrently with this one.
      */
     pub fn write<U>(&self, blk: || -> U) -> U {
-        do task::unkillable {
-            (&self.order_lock).acquire();
-            do (&self.access_lock).access {
-                (&self.order_lock).release();
-                do task::rekillable {
-                    blk()
-                }
-            }
+        (&self.order_lock).acquire();
+        do (&self.access_lock).access {
+            (&self.order_lock).release();
+            blk()
         }
     }
 
@@ -562,16 +546,12 @@ impl RWLock {
         // which can't happen until T2 finishes the downgrade-read entirely.
         // The astute reader will also note that making waking writers use the
         // order_lock is better for not starving readers.
-        do task::unkillable {
-            (&self.order_lock).acquire();
-            do (&self.access_lock).access_cond |cond| {
-                (&self.order_lock).release();
-                do task::rekillable {
-                    let opt_lock = Just(&self.order_lock);
-                    blk(&Condvar { sem: cond.sem, order: opt_lock,
-                                   token: NonCopyable })
-                }
-            }
+        (&self.order_lock).acquire();
+        do (&self.access_lock).access_cond |cond| {
+            (&self.order_lock).release();
+            let opt_lock = Just(&self.order_lock);
+            blk(&Condvar { sem: cond.sem, order: opt_lock,
+                           token: NonCopyable })
         }
     }
 
@@ -599,39 +579,35 @@ impl RWLock {
     pub fn write_downgrade<U>(&self, blk: |v: RWLockWriteMode| -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
-        do task::unkillable {
-            (&self.order_lock).acquire();
-            (&self.access_lock).acquire();
-            (&self.order_lock).release();
-            do (|| {
-                do task::rekillable {
-                    blk(RWLockWriteMode { lock: self, token: NonCopyable })
-                }
-            }).finally {
-                let writer_or_last_reader;
-                // Check if we're releasing from read mode or from write mode.
-                let state = unsafe { &mut *self.state.get() };
-                if state.read_mode {
-                    // Releasing from read mode.
-                    let old_count = state.read_count.fetch_sub(1, atomics::Release);
-                    assert!(old_count > 0);
-                    // Check if other readers remain.
-                    if old_count == 1 {
-                        // Case 1: Writer downgraded & was the last reader
-                        writer_or_last_reader = true;
-                        state.read_mode = false;
-                    } else {
-                        // Case 2: Writer downgraded & was not the last reader
-                        writer_or_last_reader = false;
-                    }
-                } else {
-                    // Case 3: Writer did not downgrade
+        (&self.order_lock).acquire();
+        (&self.access_lock).acquire();
+        (&self.order_lock).release();
+        do (|| {
+            blk(RWLockWriteMode { lock: self, token: NonCopyable })
+        }).finally {
+            let writer_or_last_reader;
+            // Check if we're releasing from read mode or from write mode.
+            let state = unsafe { &mut *self.state.get() };
+            if state.read_mode {
+                // Releasing from read mode.
+                let old_count = state.read_count.fetch_sub(1, atomics::Release);
+                assert!(old_count > 0);
+                // Check if other readers remain.
+                if old_count == 1 {
+                    // Case 1: Writer downgraded & was the last reader
                     writer_or_last_reader = true;
+                    state.read_mode = false;
+                } else {
+                    // Case 2: Writer downgraded & was not the last reader
+                    writer_or_last_reader = false;
                 }
-                if writer_or_last_reader {
-                    // Nobody left inside; release the "reader cloud" lock.
-                    (&self.access_lock).release();
-                }
+            } else {
+                // Case 3: Writer did not downgrade
+                writer_or_last_reader = true;
+            }
+            if writer_or_last_reader {
+                // Nobody left inside; release the "reader cloud" lock.
+                (&self.access_lock).release();
             }
         }
     }
@@ -643,23 +619,21 @@ impl RWLock {
             fail!("Can't downgrade() with a different rwlock's write_mode!");
         }
         unsafe {
-            do task::unkillable {
-                let state = &mut *self.state.get();
-                assert!(!state.read_mode);
-                state.read_mode = true;
-                // If a reader attempts to enter at this point, both the
-                // downgrader and reader will set the mode flag. This is fine.
-                let old_count = state.read_count.fetch_add(1, atomics::Release);
-                // If another reader was already blocking, we need to hand-off
-                // the "reader cloud" access lock to them.
-                if old_count != 0 {
-                    // Guaranteed not to let another writer in, because
-                    // another reader was holding the order_lock. Hence they
-                    // must be the one to get the access_lock (because all
-                    // access_locks are acquired with order_lock held). See
-                    // the comment in write_cond for more justification.
-                    (&self.access_lock).release();
-                }
+            let state = &mut *self.state.get();
+            assert!(!state.read_mode);
+            state.read_mode = true;
+            // If a reader attempts to enter at this point, both the
+            // downgrader and reader will set the mode flag. This is fine.
+            let old_count = state.read_count.fetch_add(1, atomics::Release);
+            // If another reader was already blocking, we need to hand-off
+            // the "reader cloud" access lock to them.
+            if old_count != 0 {
+                // Guaranteed not to let another writer in, because
+                // another reader was holding the order_lock. Hence they
+                // must be the one to get the access_lock (because all
+                // access_locks are acquired with order_lock held). See
+                // the comment in write_cond for more justification.
+                (&self.access_lock).release();
             }
         }
         RWLockReadMode { lock: token.lock, token: NonCopyable }
