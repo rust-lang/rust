@@ -37,7 +37,7 @@ pub struct CrateAnalysis {
 
 /// Parses, resolves, and typechecks the given crate
 fn get_ast_and_resolve(cpath: &Path,
-                       libs: HashSet<Path>) -> (DocContext, CrateAnalysis) {
+                       libs: HashSet<Path>, cfgs: ~[~str]) -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{file_input, build_configuration,
                                 phase_1_parse_input,
@@ -66,7 +66,9 @@ fn get_ast_and_resolve(cpath: &Path,
                                               span_diagnostic_handler);
 
     let mut cfg = build_configuration(sess);
-    cfg.push(@dummy_spanned(ast::MetaWord(@"stage2")));
+    for cfg_ in cfgs.move_iter() {
+        cfg.push(@dummy_spanned(ast::MetaWord(cfg_.to_managed())));
+    }
 
     let mut crate = phase_1_parse_input(sess, cfg.clone(), &input);
     crate = phase_2_configure_and_expand(sess, cfg, crate);
@@ -79,8 +81,8 @@ fn get_ast_and_resolve(cpath: &Path,
             CrateAnalysis { exported_items: exported_items });
 }
 
-pub fn run_core (libs: HashSet<Path>, path: &Path) -> (clean::Crate, CrateAnalysis) {
-    let (ctxt, analysis) = get_ast_and_resolve(path, libs);
+pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Crate, CrateAnalysis) {
+    let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
     let ctxt = @ctxt;
     debug!("defmap:");
     for (k, v) in ctxt.tycx.def_map.iter() {

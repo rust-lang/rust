@@ -96,6 +96,7 @@ pub fn opts() -> ~[groups::OptGroup] {
         optopt("o", "output", "where to place the output", "PATH"),
         optmulti("L", "library-path", "directory to add to crate search path",
                  "DIR"),
+        optmulti("", "cfg", "pass a --cfg to rustc", ""),
         optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
         optmulti("", "passes", "space separated list of passes to also run, a \
                                 value of `list` will print available passes",
@@ -194,11 +195,12 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 
     // First, parse the crate and extract all relevant information.
     let libs = Cell::new(matches.opt_strs("L").map(|s| Path::new(s.as_slice())));
+    let cfgs = Cell::new(matches.opt_strs("cfg"));
     let cr = Cell::new(Path::new(cratefile));
     info!("starting to run rustc");
     let (crate, analysis) = do std::task::try {
         let cr = cr.take();
-        core::run_core(libs.take().move_iter().collect(), &cr)
+        core::run_core(libs.take().move_iter().collect(), cfgs.take(), &cr)
     }.unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);
