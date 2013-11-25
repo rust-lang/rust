@@ -30,6 +30,7 @@ use std::io::process;
 use std::hashmap::HashSet;
 use std::io;
 use std::io::fs;
+use std::io::File;
 pub use std::path::Path;
 
 use extra::workcache;
@@ -78,6 +79,11 @@ pub mod workcache_support;
 mod workspace;
 
 pub mod usage;
+
+enum PkgType {
+    Bin,
+    Lib,
+}
 
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with
@@ -217,7 +223,7 @@ pub trait CtxMethods {
     fn test(&self, id: &PkgId, workspace: &Path);
     fn uninstall(&self, _id: &str, _vers: Option<~str>);
     fn unprefer(&self, _id: &str, _vers: Option<~str>);
-    fn init(&self);
+    fn init(&self, name: &str, pkg_type: PkgType);
 }
 
 impl CtxMethods for BuildContext {
@@ -382,10 +388,19 @@ impl CtxMethods for BuildContext {
                 }
             }
             "init" => {
-                if args.len() != 0 {
-                    return usage::init();
+                if args.len() != 2 {
+                    usage::init();
                 } else {
-                    self.init();
+                    let pkg_type = match args[0] {
+                        ~"bin" => Some(Bin),
+                        ~"lib" => Some(Lib),
+                        _ => None,
+                    };
+                    if pkg_type.is_none() {
+                        usage::init();
+                    } else {
+                        self.init(args[1].as_slice(), pkg_type.unwrap());
+                    }
                 }
             }
             "uninstall" => {
@@ -710,11 +725,36 @@ impl CtxMethods for BuildContext {
         }
     }
 
-    fn init(&self) {
-        fs::mkdir_recursive(&Path::new("src"), io::UserRWX);
-        fs::mkdir_recursive(&Path::new("bin"), io::UserRWX);
-        fs::mkdir_recursive(&Path::new("lib"), io::UserRWX);
-        fs::mkdir_recursive(&Path::new("build"), io::UserRWX);
+    fn init(&self, name: &str, pkg_type: PkgType) {
+        let path = Path::new(name);
+        let path_exists = path.exists();
+        if path_exists && path.is_file() {
+            error(format!("rustpkg fails to initialize {0:s}: {0:s} appears to be a file.", name));
+        } else if path_exists && fs::walk_dir(&path).len() != 0 {
+            error(format!("rustpkg fails to initialize {0:s}: {0:s} is non-empty.", name));
+        } else {
+            let src_dir = format!("{0:s}/src/{0:s}", name);
+            fs::mkdir_recursive(&Path::new(src_dir.as_slice()), io::UserRWX);
+            fs::mkdir_recursive(&Path::new(format!("{:s}/bin", name)), io::UserRWX);
+            fs::mkdir_recursive(&Path::new(format!("{:s}/lib", name)), io::UserRWX);
+            fs::mkdir_recursive(&Path::new(format!("{:s}/build", name)), io::UserRWX);
+            match pkg_type {
+                Bin => match File::create(&Path::new(format!("{:s}/main.rs", src_dir.as_slice()))) {
+                    Some(mut file) => file.write(bytes!("fn main() {
+    println(\"I don't do much. Yet.\");
+}
+")),
+                    None => warn("rustpkg fails to create main.rs"),
+                },
+                Lib => match File::create(&Path::new(format!("{:s}/lib.rs", src_dir.as_slice()))) {
+                    Some(mut file) => file.write(bytes!("pub fn get_answer() -> int {
+    42
+}
+")),
+                    None => warn("rustpkg fails to create lib.rs"),
+                },
+            }
+        }
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
