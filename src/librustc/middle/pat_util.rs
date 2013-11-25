@@ -70,6 +70,8 @@ pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @Pat) -> bool {
     }
 }
 
+/// Call `it` on every "binding" in a pattern, e.g., on `a` in
+/// `match foo() { Some(a) => (), None => () }`
 pub fn pat_bindings(dm: resolve::DefMap,
                     pat: @Pat,
                     it: |BindingMode, NodeId, Span, &Path|) {
