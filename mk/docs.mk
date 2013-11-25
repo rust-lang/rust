@@ -215,10 +215,12 @@ RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 # $(1) - The crate name (std/extra)
 # $(2) - The crate file
 # $(3) - The relevant host build triple (to depend on libstd)
+#
+# Passes --cfg stage2 to rustdoc because it uses the stage2 librustc.
 define libdoc
 doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
 	@$$(call E, rustdoc: $$@)
-	$(Q)$(RUSTDOC) $(2)
+	$(Q)$(RUSTDOC) --cfg stage2 $(2)
 
 DOCS += doc/$(1)/index.html
 endef
