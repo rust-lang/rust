@@ -596,6 +596,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
 
         space(s.s);
         bopen(s);
+        print_inner_attributes(s, item.attrs);
         for meth in methods.iter() {
            print_method(s, *meth);
         }
