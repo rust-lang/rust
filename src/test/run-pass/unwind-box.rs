@@ -18,5 +18,5 @@ fn f() {
 }
 
 pub fn main() {
-    task::spawn_unlinked(f);
+    task::spawn(f);
 }

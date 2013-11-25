@@ -42,7 +42,7 @@ fn f(c: SharedChan<bool>) {
 pub fn main() {
     let (p, c) = stream();
     let c = SharedChan::new(c);
-    task::spawn_unlinked(|| f(c.clone()) );
+    task::spawn(|| f(c.clone()) );
     error!("hiiiiiiiii");
     assert!(p.recv());
 }

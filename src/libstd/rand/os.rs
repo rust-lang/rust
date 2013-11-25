@@ -162,7 +162,7 @@ mod test {
         for _ in range(0, 20) {
             let (p, c) = comm::stream();
             chans.push(c);
-            do task::spawn_with(p) |p| {
+            do task::spawn {
                 // wait until all the tasks are ready to go.
                 p.recv();
 

@@ -13,7 +13,8 @@
 fn main() {
     let mut t = ::std::task::task();
     t.name("send name".to_send_str());
-    do t.spawn {
+    do t.try {
         fail!("test");
-    }
+        3
+    }.unwrap()
 }

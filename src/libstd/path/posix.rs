@@ -565,7 +565,6 @@ mod tests {
             ($name:expr => $code:block) => (
                 {
                     let mut t = task::task();
-                    t.supervised();
                     t.name($name);
                     let res = do t.try $code;
                     assert!(res.is_err());

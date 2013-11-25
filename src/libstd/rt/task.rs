@@ -36,8 +36,6 @@ use rt::logging::StdErrLogger;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use send_str::SendStr;
-use task::LinkedFailure;
-use task::spawn::Taskgroup;
 use unstable::finally::Finally;
 
 // The Task struct represents all state associated with a rust
@@ -52,7 +50,6 @@ pub struct Task {
     storage: LocalStorage,
     logger: Option<StdErrLogger>,
     unwinder: Unwinder,
-    taskgroup: Option<Taskgroup>,
     death: Death,
     destroyed: bool,
     name: Option<SendStr>,
@@ -188,7 +185,6 @@ impl Task {
             storage: LocalStorage(None),
             logger: None,
             unwinder: Unwinder { unwinding: false, cause: None },
-            taskgroup: None,
             death: Death::new(),
             destroyed: false,
             coroutine: Some(Coroutine::empty()),
@@ -223,7 +219,6 @@ impl Task {
             storage: LocalStorage(None),
             logger: None,
             unwinder: Unwinder { unwinding: false, cause: None },
-            taskgroup: None,
             death: Death::new(),
             destroyed: false,
             name: None,
@@ -246,9 +241,7 @@ impl Task {
             storage: LocalStorage(None),
             logger: None,
             unwinder: Unwinder { unwinding: false, cause: None },
-            taskgroup: None,
-            // FIXME(#7544) make watching optional
-            death: self.death.new_child(),
+            death: Death::new(),
             destroyed: false,
             name: None,
             coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
@@ -333,11 +326,7 @@ impl Task {
         // Cleanup the dynamic borrowck debugging info
         borrowck::clear_task_borrow_list();
 
-        // NB. We pass the taskgroup into death so that it can be dropped while
-        // the unkillable counter is set. This is necessary for when the
-        // taskgroup destruction code drops references on KillHandles, which
-        // might require using unkillable (to synchronize with an unwrapper).
-        self.death.collect_failure(self.unwinder.to_unwind_result(), self.taskgroup.take());
+        self.death.collect_failure(self.unwinder.to_unwind_result());
         self.destroyed = true;
     }
 
@@ -660,10 +649,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
                 Some(s) => *s,
                 None => match msg.as_ref::<~str>() {
                     Some(s) => s.as_slice(),
-                    None => match msg.as_ref::<LinkedFailure>() {
-                        Some(*) => "linked failure",
-                        None => "~Any",
-                    }
+                    None => "~Any",
                 }
             };
 
@@ -782,16 +768,6 @@ mod test {
             let chan = SharedChan::new(chan);
             chan.send(10);
             assert!(port.recv() == 10);
-        }
-    }
-
-    #[test]
-    fn linked_failure() {
-        do run_in_newsched_task() {
-            let res = do spawntask_try {
-                spawntask_random(|| fail!());
-            };
-            assert!(res.is_err());
         }
     }
 

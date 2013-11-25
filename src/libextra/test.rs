@@ -875,7 +875,6 @@ pub fn run_test(force_ignore: bool,
         let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
             let mut task = task::task();
-            task.unlinked();
             task.name(match desc.name {
                 DynTestName(ref name) => SendStrOwned(name.clone()),
                 StaticTestName(name) => SendStrStatic(name),
