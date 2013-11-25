@@ -739,7 +739,7 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
         }
     }
 
-    fn visit_pat(&mut self, pattern: @ast::Pat, _: ()) {
+    fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
         match pattern.node {
             ast::PatStruct(_, ref fields, _) => {
                 match ty::get(ty::pat_ty(self.tcx, pattern)).sty {

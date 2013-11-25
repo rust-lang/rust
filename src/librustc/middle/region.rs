@@ -340,7 +340,7 @@ fn resolve_arm(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_pat(visitor: &mut RegionResolutionVisitor,
-               pat: @ast::Pat,
+               pat: &ast::Pat,
                cx: Context) {
     assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(visitor, cx, pat.id, pat.span);
@@ -480,7 +480,7 @@ impl Visitor<Context> for RegionResolutionVisitor {
     fn visit_arm(&mut self, a:&Arm, cx:Context) {
         resolve_arm(self, a, cx);
     }
-    fn visit_pat(&mut self, p:@Pat, cx:Context) {
+    fn visit_pat(&mut self, p:&Pat, cx:Context) {
         resolve_pat(self, p, cx);
     }
     fn visit_stmt(&mut self, s:@Stmt, cx:Context) {

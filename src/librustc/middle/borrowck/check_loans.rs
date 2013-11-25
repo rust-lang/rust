@@ -51,7 +51,7 @@ impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
     fn visit_block(&mut self, b:&ast::Block, _:()) {
         check_loans_in_block(self, b);
     }
-    fn visit_pat(&mut self, p:@ast::Pat, _:()) {
+    fn visit_pat(&mut self, p:&ast::Pat, _:()) {
         check_loans_in_pat(self, p);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
@@ -847,7 +847,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
 }
 
 fn check_loans_in_pat<'a>(this: &mut CheckLoanCtxt<'a>,
-                          pat: @ast::Pat)
+                          pat: &ast::Pat)
 {
     this.check_for_conflicting_loans(pat.id);
     this.check_move_out_from_id(pat.id, pat.span);
