@@ -3869,9 +3869,14 @@ impl Parser {
          Some(inner_attrs))
     }
 
-    // parse a method in a trait impl
-    fn parse_method(&self) -> @method {
-        let attrs = self.parse_outer_attributes();
+    // parse a method in a trait impl, starting with `attrs` attributes.
+    fn parse_method(&self, already_parsed_attrs: Option<~[Attribute]>) -> @method {
+        let next_attrs = self.parse_outer_attributes();
+        let attrs = match already_parsed_attrs {
+            Some(mut a) => { a.push_all_move(next_attrs); a }
+            None => next_attrs
+        };
+
         let lo = self.span.lo;
 
         let visa = self.parse_visibility();
@@ -3964,16 +3969,21 @@ impl Parser {
         };
 
         let mut meths = ~[];
-        if self.eat(&token::SEMI) {
+        let inner_attrs = if self.eat(&token::SEMI) {
             self.obsolete(*self.last_span, ObsoleteEmptyImpl);
+            None
         } else {
             self.expect(&token::LBRACE);
+            let (inner_attrs, next) = self.parse_inner_attrs_and_next();
+            let mut method_attrs = Some(next);
             while !self.eat(&token::RBRACE) {
-                meths.push(self.parse_method());
+                meths.push(self.parse_method(method_attrs));
+                method_attrs = None;
             }
-        }
+            Some(inner_attrs)
+        };
 
-        (ident, item_impl(generics, opt_trait, ty, meths), None)
+        (ident, item_impl(generics, opt_trait, ty, meths), inner_attrs)
     }
 
     // parse a::B<~str,int>
