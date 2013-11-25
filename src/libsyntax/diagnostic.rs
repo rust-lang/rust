@@ -12,6 +12,7 @@ use codemap::{Pos, Span};
 use codemap;
 
 use std::io;
+use std::io::stdio::StdWriter;
 use std::local_data;
 use extra::term;
 
@@ -197,38 +198,44 @@ fn diagnosticcolor(lvl: level) -> term::color::Color {
 }
 
 fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
-    local_data_key!(tls_terminal: @Option<term::Terminal>)
+    local_data_key!(tls_terminal: ~Option<term::Terminal<StdWriter>>)
 
-    let stderr = @mut io::stderr() as @mut io::Writer;
     fn is_stderr_screen() -> bool {
         use std::libc;
         unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
     }
+    fn write_pretty<T: Writer>(term: &mut term::Terminal<T>, s: &str, c: term::attr::Attr) {
+        term.attr(c);
+        term.write(s.as_bytes());
+        term.reset();
+    }
 
     if is_stderr_screen() {
-        let t = match local_data::get(tls_terminal, |v| v.map(|k| *k)) {
-            None => {
-                let t = term::Terminal::new(stderr);
-                let tls = @match t {
-                    Ok(t) => Some(t),
-                    Err(_) => None
-                };
-                local_data::set(tls_terminal, tls);
-                &*tls
+        local_data::get_mut(tls_terminal, |term| {
+            match term {
+                Some(term) => {
+                    match **term {
+                        Some(ref mut term) => write_pretty(term, msg, color),
+                        None => io::stderr().write(msg.as_bytes())
+                    }
+                }
+                None => {
+                    let t = ~match term::Terminal::new(io::stderr()) {
+                        Ok(mut term) => {
+                            write_pretty(&mut term, msg, color);
+                            Some(term)
+                        }
+                        Err(_) => {
+                            io::stderr().write(msg.as_bytes());
+                            None
+                        }
+                    };
+                    local_data::set(tls_terminal, t);
+                }
             }
-            Some(tls) => &*tls
-        };
-
-        match t {
-            &Some(ref term) => {
-                term.attr(color);
-                write!(stderr, "{}", msg);
-                term.reset();
-            },
-            _ => write!(stderr, "{}", msg)
-        }
+        });
     } else {
-        write!(stderr, "{}", msg);
+        io::stderr().write(msg.as_bytes());
     }
 }
 

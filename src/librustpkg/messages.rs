@@ -12,35 +12,32 @@ use extra::term;
 use std::io;
 
 pub fn note(msg: &str) {
-    pretty_message(msg, "note: ", term::color::GREEN,
-                   @mut io::stdout() as @mut io::Writer)
+    pretty_message(msg, "note: ", term::color::GREEN);
 }
 
 pub fn warn(msg: &str) {
-    pretty_message(msg, "warning: ", term::color::YELLOW,
-                   @mut io::stdout() as @mut io::Writer)
+    pretty_message(msg, "warning: ", term::color::YELLOW);
 }
 
 pub fn error(msg: &str) {
-    pretty_message(msg, "error: ", term::color::RED,
-                   @mut io::stdout() as @mut io::Writer)
+    pretty_message(msg, "error: ", term::color::RED);
 }
 
 fn pretty_message<'a>(msg: &'a str,
                       prefix: &'a str,
-                      color: term::color::Color,
-                      out: @mut io::Writer) {
-    let term = term::Terminal::new(out);
+                      color: term::color::Color) {
+    let mut term = term::Terminal::new(io::stdout());
+    let mut stdout = io::stdout();
     match term {
-        Ok(ref t) => {
+        Ok(ref mut t) => {
             t.fg(color);
-            out.write(prefix.as_bytes());
+            t.write(prefix.as_bytes());
             t.reset();
         },
         _ => {
-            out.write(prefix.as_bytes());
+            stdout.write(prefix.as_bytes());
         }
     }
-    out.write(msg.as_bytes());
-    out.write(['\n' as u8]);
+    stdout.write(msg.as_bytes());
+    stdout.write(['\n' as u8]);
 }
