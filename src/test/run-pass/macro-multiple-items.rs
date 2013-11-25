@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-pretty - token trees can't pretty print
+
 #[feature(macro_rules)];
 
-macro_rules! ignored_item {
-    () => {
-        fn foo() {}
-        fn bar() {}
-        , //~ ERROR macro expansion ignores token `,`
-    }
-}
+macro_rules! make_foo(
+    () => (
+        struct Foo;
 
-macro_rules! ignored_expr {
-    () => ( 1, 2 ) //~ ERROR macro expansion ignores token `,`
-}
+        impl Foo {
+            fn bar(&self) {}
+        }
+    )
+)
 
-ignored_item!()
+make_foo!()
 
-fn main() {
-    ignored_expr!()
+pub fn main() {
+    Foo.bar()
 }

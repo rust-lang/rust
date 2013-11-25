@@ -73,6 +73,22 @@ impl<T> SmallVector<T> {
         }
     }
 
+    pub fn pop(&mut self) -> T {
+        match *self {
+            Zero => fail!("attempted to pop from an empty SmallVector"),
+            One(*) => {
+                let mut tmp = Zero;
+                util::swap(self, &mut tmp);
+                match tmp {
+                    One(v) => v,
+                    _ => unreachable!()
+                }
+            }
+            // Should this reduce to a One if possible?
+            Many(ref mut vs) => vs.pop()
+        }
+    }
+
     pub fn get<'a>(&'a self, idx: uint) -> &'a T {
         match *self {
             One(ref v) if idx == 0 => v,
@@ -174,6 +190,18 @@ mod test {
         v.push(3);
         assert_eq!(3, v.len());
         assert_eq!(&3, v.get(2));
+    }
+
+    #[test]
+    fn test_pop() {
+        let mut v = SmallVector::one(1);
+        assert_eq!(1, v.pop());
+        assert_eq!(0, v.len());
+
+        let mut v= SmallVector::many(~[1, 2]);
+        assert_eq!(2, v.pop());
+        assert_eq!(1, v.pop());
+        assert_eq!(0, v.len());
     }
 
     #[test]
