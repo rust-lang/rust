@@ -26,6 +26,7 @@ use syntax::fold;
 use syntax::opt_vec;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use syntax::util::small_vector::SmallVector;
 
 struct Test {
     span: Span,
@@ -76,7 +77,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         }
     }
 
-    fn fold_item(&self, i: @ast::item) -> Option<@ast::item> {
+    fn fold_item(&self, i: @ast::item) -> SmallVector<@ast::item> {
         self.cx.path.push(i.ident);
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.clone()));
@@ -108,7 +109,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
         let res = fold::noop_fold_item(i, self);
         self.cx.path.pop();
-        return res;
+        res
     }
 
     fn fold_mod(&self, m: &ast::_mod) -> ast::_mod {

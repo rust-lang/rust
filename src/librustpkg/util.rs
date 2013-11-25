@@ -22,6 +22,7 @@ use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
 use syntax::fold::ast_fold;
 use syntax::visit::Visitor;
+use syntax::util::small_vector::SmallVector;
 use rustc::back::link::output_type_exe;
 use rustc::back::link;
 use rustc::driver::session::{lib_crate, bin_crate};
@@ -99,7 +100,7 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &CrateSetup)
 }
 
 fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &CrateSetup)
-             -> Option<@ast::item> {
+             -> SmallVector<@ast::item> {
     ctx.path.push(item.ident);
 
     let mut cmds = ~[];
@@ -142,7 +143,7 @@ struct CrateSetup {
 }
 
 impl fold::ast_fold for CrateSetup {
-    fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {
+    fn fold_item(&self, item: @ast::item) -> SmallVector<@ast::item> {
         fold_item(self.ctx, item, self)
     }
     fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {

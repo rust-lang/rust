@@ -33,6 +33,7 @@ use syntax::codemap;
 use syntax::fold::*;
 use syntax::fold;
 use syntax::parse::token;
+use syntax::util::small_vector::SmallVector;
 use syntax;
 
 use std::at_vec;
@@ -347,11 +348,18 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
 
     match *ii {
         //hack: we're not dropping items
-        ast::ii_item(i) => ast::ii_item(fld.fold_item(i).unwrap()),
+        ast::ii_item(i) => ast::ii_item(get_only_one(fld.fold_item(i))),
         ast::ii_method(d, is_provided, m) =>
           ast::ii_method(d, is_provided, fld.fold_method(m)),
         ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i))
     }
+}
+
+fn get_only_one<T>(mut v: SmallVector<T>) -> T {
+    if v.len() != 1 {
+        fail!("Attempting to extract unique member but there isn't one");
+    }
+    v.pop()
 }
 
 fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
@@ -379,7 +387,7 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
         xcx: xcx,
     };
     match ii {
-        ast::ii_item(i) => ast::ii_item(fld.fold_item(i).unwrap()),
+        ast::ii_item(i) => ast::ii_item(get_only_one(fld.fold_item(i))),
         ast::ii_method(d, is_provided, m) =>
           ast::ii_method(xcx.tr_def_id(d), is_provided, fld.fold_method(m)),
         ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i)),
