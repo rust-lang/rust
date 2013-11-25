@@ -636,7 +636,7 @@ pub fn is_item_impl(item: @ast::item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: @Pat, it: |@Pat| -> bool) -> bool {
+pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
     }
