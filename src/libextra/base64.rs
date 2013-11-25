@@ -260,7 +260,7 @@ mod test {
 
     #[test]
     fn test_to_base64_line_break() {
-        assert!(![0u8, 1000].to_base64(Config {line_length: None, ..STANDARD})
+        assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
                 .contains("\r\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
