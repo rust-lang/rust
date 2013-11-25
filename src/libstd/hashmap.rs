@@ -13,8 +13,6 @@
 //! The tables use a keyed hash with new random keys generated for each container, so the ordering
 //! of a set of keys in a hash table is randomized.
 
-#[mutable_doc];
-
 use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
