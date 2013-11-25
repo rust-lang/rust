@@ -110,7 +110,11 @@ pub fn log(_level: u32, args: &fmt::Arguments) {
                 match (*local).logger {
                     // Use the available logger if we have one
                     Some(ref mut logger) => return logger.log(args),
-                    None => {}
+                    None => {
+                        let mut logger = StdErrLogger::new();
+                        logger.log(args);
+                        (*local).logger = Some(logger);
+                    }
                 }
             }
             None => {}
