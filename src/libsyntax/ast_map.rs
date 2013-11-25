@@ -242,7 +242,7 @@ impl Ctx {
         visit::walk_block(self, b, ());
     }
 
-    fn map_pat(&mut self, pat: @Pat) {
+    fn map_pat(&mut self, pat: &Pat) {
         match pat.node {
             PatIdent(_, ref path, _) => {
                 // Note: this is at least *potentially* a pattern...
@@ -345,7 +345,7 @@ impl Visitor<()> for Ctx {
         self.path.pop();
     }
 
-    fn visit_pat(&mut self, pat: @Pat, _: ()) {
+    fn visit_pat(&mut self, pat: &Pat, _: ()) {
         self.map_pat(pat);
         visit::walk_pat(self, pat, ())
     }

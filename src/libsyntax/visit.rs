@@ -78,7 +78,7 @@ pub trait Visitor<E:Clone> {
     fn visit_block(&mut self, b:&Block, e:E) { walk_block(self, b, e) }
     fn visit_stmt(&mut self, s:@Stmt, e:E) { walk_stmt(self, s, e) }
     fn visit_arm(&mut self, a:&Arm, e:E) { walk_arm(self, a, e) }
-    fn visit_pat(&mut self, p:@Pat, e:E) { walk_pat(self, p, e) }
+    fn visit_pat(&mut self, p:&Pat, e:E) { walk_pat(self, p, e) }
     fn visit_decl(&mut self, d:@Decl, e:E) { walk_decl(self, d, e) }
     fn visit_expr(&mut self, ex:@Expr, e:E) { walk_expr(self, ex, e) }
     fn visit_expr_post(&mut self, _ex:@Expr, _e:E) { }

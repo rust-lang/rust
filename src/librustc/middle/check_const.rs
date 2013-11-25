@@ -33,7 +33,7 @@ impl Visitor<bool> for CheckCrateVisitor {
     fn visit_item(&mut self, i:@item, env:bool) {
         check_item(self, self.sess, self.ast_map, self.def_map, i, env);
     }
-    fn visit_pat(&mut self, p:@Pat, env:bool) {
+    fn visit_pat(&mut self, p:&Pat, env:bool) {
         check_pat(self, p, env);
     }
     fn visit_expr(&mut self, ex:@Expr, env:bool) {
@@ -81,7 +81,7 @@ pub fn check_item(v: &mut CheckCrateVisitor,
     }
 }
 
-pub fn check_pat(v: &mut CheckCrateVisitor, p: @Pat, _is_const: bool) {
+pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
     fn is_str(e: @Expr) -> bool {
         match e.node {
             ExprVstore(
