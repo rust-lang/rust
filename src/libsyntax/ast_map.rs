@@ -111,12 +111,18 @@ pub enum ast_node {
     node_trait_method(@trait_method, DefId /* trait did */,
                       @path /* path to the trait */),
     node_method(@method, DefId /* impl did */, @path /* path to the impl */),
+
+    /// node_variant represents a variant of an enum, e.g., for
+    /// `enum A { B, C, D }`, there would be a node_item for `A`, and a
+    /// node_variant item for each of `B`, `C`, and `D`.
     node_variant(variant, @item, @path),
     node_expr(@Expr),
     node_stmt(@Stmt),
     node_arg(@Pat),
     node_local(Ident),
     node_block(Block),
+
+    /// node_struct_ctor represents a tuple struct.
     node_struct_ctor(@struct_def, @item, @path),
     node_callee_scope(@Expr)
 }

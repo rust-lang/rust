@@ -173,6 +173,8 @@ pub struct DefId {
     node: NodeId,
 }
 
+/// Item definitions in the currently-compiled crate would have the CrateNum
+/// LOCAL_CRATE in their DefId.
 pub static LOCAL_CRATE: CrateNum = 0;
 pub static CRATE_NODE_ID: NodeId = 0;
 
@@ -244,6 +246,10 @@ pub enum Def {
               @Def,     // closed over def
               NodeId,  // expr node that creates the closure
               NodeId), // id for the block/body of the closure expr
+
+    /// Note that if it's a tuple struct's definition, the node id
+    /// of the DefId refers to the struct_def.ctor_id (whereas normally it
+    /// refers to the item definition's id).
     DefStruct(DefId),
     DefTyParamBinder(NodeId), /* struct, impl or trait with ty params */
     DefRegion(NodeId),
@@ -451,6 +457,7 @@ pub enum Stmt_ {
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
+/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct Local {
     ty: Ty,
@@ -553,6 +560,10 @@ pub enum Expr_ {
     ExprAssignOp(NodeId, BinOp, @Expr, @Expr),
     ExprField(@Expr, Ident, ~[Ty]),
     ExprIndex(NodeId, @Expr, @Expr),
+
+    /// Expression that looks like a "name". For example,
+    /// `std::vec::from_elem::<uint>` is an ExprPath that's the "name" part
+    /// of a function call.
     ExprPath(Path),
 
     /// The special identifier `self`.
