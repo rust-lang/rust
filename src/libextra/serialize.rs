@@ -20,6 +20,7 @@ Core encoding and decoding interfaces.
 
 use std::at_vec;
 use std::hashmap::{HashMap, HashSet};
+use std::rc::Rc;
 use std::trie::{TrieMap, TrieSet};
 use std::vec;
 use ringbuf::RingBuf;
@@ -402,6 +403,20 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~T {
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
     fn encode(&self, s: &mut S) {
         (**self).encode(s)
+    }
+}
+
+impl<S:Encoder,T:Encodable<S> + Freeze> Encodable<S> for Rc<T> {
+    #[inline]
+    fn encode(&self, s: &mut S) {
+        self.borrow().encode(s)
+    }
+}
+
+impl<D:Decoder,T:Decodable<D> + Freeze> Decodable<D> for Rc<T> {
+    #[inline]
+    fn decode(d: &mut D) -> Rc<T> {
+        Rc::new(Decodable::decode(d))
     }
 }
 
