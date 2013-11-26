@@ -14,6 +14,9 @@
 #[feature(globs)];
 #[deny(missing_doc)];
 
+//! Some garbage docs for the crate here
+#[doc="More garbage"];
+
 struct Foo {
     a: int,
     priv b: int,
