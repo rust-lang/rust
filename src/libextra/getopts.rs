@@ -413,7 +413,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             let mut i_arg = None;
             if cur[1] == '-' as u8 {
                 let tail = cur.slice(2, curlen);
-                let tail_eq: ~[&str] = tail.split_iter('=').collect();
+                let tail_eq: ~[&str] = tail.split('=').collect();
                 if tail_eq.len() <= 1 {
                     names = ~[Long(tail.to_owned())];
                 } else {
@@ -735,7 +735,7 @@ pub mod groups {
 
             // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
-            for word in desc.word_iter() {
+            for word in desc.words() {
                 desc_normalized_whitespace.push_str(word);
                 desc_normalized_whitespace.push_char(' ');
             }
@@ -826,7 +826,7 @@ pub mod groups {
             cont
         };
 
-        ss.char_offset_iter().advance(|x| machine(x));
+        ss.char_indices().advance(|x| machine(x));
 
         // Let the automaton 'run out' by supplying trailing whitespace
         while cont && match state { B | C => true, A => false } {

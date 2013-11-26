@@ -170,7 +170,7 @@ impl<'self> ReprVisitor<'self> {
 
     pub fn write_escaped_slice(&mut self, slice: &str) {
         self.writer.write(['"' as u8]);
-        for ch in slice.iter() {
+        for ch in slice.chars() {
             self.write_escaped_char(ch, true);
         }
         self.writer.write(['"' as u8]);

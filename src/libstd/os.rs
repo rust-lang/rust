@@ -200,7 +200,7 @@ pub fn env() -> ~[(~str,~str)] {
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
             for p in input.iter() {
-                let vs: ~[&str] = p.splitn_iter('=', 1).collect();
+                let vs: ~[&str] = p.splitn('=', 1).collect();
                 debug!("splitting: len: {}", vs.len());
                 assert_eq!(vs.len(), 2);
                 pairs.push((vs[0].to_owned(), vs[1].to_owned()));

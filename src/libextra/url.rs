@@ -356,7 +356,7 @@ fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
 fn query_from_str(rawquery: &str) -> Query {
     let mut query: Query = ~[];
     if !rawquery.is_empty() {
-        for p in rawquery.split_iter('&') {
+        for p in rawquery.split('&') {
             let (k, v) = split_char_first(p, '=');
             query.push((decode_component(k), decode_component(v)));
         };
@@ -391,7 +391,7 @@ pub fn query_to_str(query: &Query) -> ~str {
 
 // returns the scheme and the rest of the url, or a parsing error
 pub fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
-    for (i,c) in rawurl.iter().enumerate() {
+    for (i,c) in rawurl.chars().enumerate() {
         match c {
           'A' .. 'Z' | 'a' .. 'z' => continue,
           '0' .. '9' | '+' | '-' | '.' => {
@@ -453,7 +453,7 @@ fn get_authority(rawurl: &str) ->
     let mut begin = 2;
     let mut end = len;
 
-    for (i,c) in rawurl.iter().enumerate() {
+    for (i,c) in rawurl.chars().enumerate() {
         if i < 2 { continue; } // ignore the leading //
 
         // deal with input class first
@@ -587,7 +587,7 @@ fn get_path(rawurl: &str, authority: bool) ->
     Result<(~str, ~str), ~str> {
     let len = rawurl.len();
     let mut end = len;
-    for (i,c) in rawurl.iter().enumerate() {
+    for (i,c) in rawurl.chars().enumerate() {
         match c {
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='

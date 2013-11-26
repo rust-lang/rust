@@ -248,7 +248,7 @@ impl Tm {
 pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        for ch in needle.byte_iter() {
+        for ch in needle.bytes() {
             if s[i] != ch {
                 return false;
             }

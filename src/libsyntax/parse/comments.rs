@@ -60,14 +60,14 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let mut i = 0u;
         let mut j = lines.len();
         // first line of all-stars should be omitted
-        if lines.len() > 0 && lines[0].iter().all(|c| c == '*') {
+        if lines.len() > 0 && lines[0].chars().all(|c| c == '*') {
             i += 1;
         }
         while i < j && lines[i].trim().is_empty() {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines[j - 1].iter().skip(1).all(|c| c == '*') {
+        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
             j -= 1;
         }
         while j > i && lines[j - 1].trim().is_empty() {
@@ -82,7 +82,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let mut can_trim = true;
         let mut first = true;
         for line in lines.iter() {
-            for (j, c) in line.iter().enumerate() {
+            for (j, c) in line.chars().enumerate() {
                 if j > i || !"* \t".contains_char(c) {
                     can_trim = false;
                     break;
@@ -124,7 +124,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     if comment.starts_with("/*") {
         let lines = comment.slice(3u, comment.len() - 2u)
-            .any_line_iter()
+            .lines_any()
             .map(|s| s.to_owned())
             .collect::<~[~str]>();
 

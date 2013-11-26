@@ -113,7 +113,7 @@ pub fn get_used_libraries<'a>(cstore: &'a CStore) -> &'a [@str] {
 }
 
 pub fn add_used_link_args(cstore: &mut CStore, args: &str) {
-    for s in args.split_iter(' ') {
+    for s in args.split(' ') {
         cstore.used_link_args.push(s.to_managed());
     }
 }

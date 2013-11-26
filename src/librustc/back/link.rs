@@ -711,7 +711,7 @@ pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    for c in s.iter() {
+    for c in s.chars() {
         match c {
             // Escape these with $ sequences
             '@' => result.push_str("$SP$"),
