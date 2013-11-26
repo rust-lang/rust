@@ -185,7 +185,6 @@ enum ParseState {
 
 pub fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
-    debug!("Attempting to parse: {}", s);
     let mut parse_state = Start;
     for c in s.iter() {
         if char::is_digit(c) {

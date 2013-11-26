@@ -210,9 +210,8 @@ pub fn compile_input(context: &BuildContext,
                           + context.flag_strs()
                           + cfgs.flat_map(|c| { ~[~"--cfg", (*c).clone()] }),
                           driver::optgroups()).unwrap();
-    debug!("rustc flags: {:?}", matches);
-
-    // Hack so that rustpkg can run either out of a rustc target dir,
+ 
+   // Hack so that rustpkg can run either out of a rustc target dir,
     // or the host dir
     let sysroot_to_use = @if !in_target(&context.sysroot()) {
         context.sysroot()
@@ -443,10 +442,9 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                 debug!("Finding and installing... {}", lib_name);
                 // Check standard Rust library path first
                 let whatever = system_library(&self.context.sysroot(), lib_name);
-                debug!("system library returned {:?}", whatever);
                 match whatever {
                     Some(ref installed_path) => {
-                        debug!("It exists: {}", installed_path.display());
+                        debug!("system_library returned: {}", installed_path.display());
                         // Say that [path for c] has a discovered dependency on
                         // installed_path
                         // For binary files, we only hash the datestamp, not the contents.
@@ -462,8 +460,8 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                     }
                     None => {
                         // FIXME #8711: need to parse version out of path_opt
-                        debug!("Trying to install library {}, rebuilding it",
-                               lib_name.to_str());
+                        debug!("Didn't find system library; trying to install
+                               library {}, rebuilding it", lib_name.to_str());
                         // Try to install it
                         let pkg_id = PkgId::new(lib_name);
                         // Find all the workspaces in the RUST_PATH that contain this package.
@@ -498,7 +496,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                  error(format!("Package {} depends on {}, but I don't know \
                                                how to find it",
                                                self.parent.path.display(),
-                                               pkg_id.path.display()));
+                                               pkg_id.to_str()));
                                  fail!()
                         }).inside {
                             PkgSrc::new(source_workspace.clone(),
@@ -530,6 +528,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                     self.parent_crate.as_str().unwrap().to_owned(),
                                     (~"binary", dep.as_str().unwrap().to_owned()));
 
+                            // FIXME (#9639): This needs to handle non-utf8 paths
                             // Also, add an additional search path
                             let dep_dir = dep.dir_path();
                             debug!("Installed {} into {}", dep.display(), dep_dir.display());
@@ -567,13 +566,14 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                     lib_name, target_workspace.as_str().unwrap().to_owned());
                             (self.save)(target_workspace.clone());
                         }
+                        debug!("Installed {} into {}", lib_name, dest_workspace.display());
                     }
                 }
             }
             // Ignore `use`s
             _ => ()
         }
-        visit::walk_view_item(self, vi, env)
+        visit::walk_view_item(self, vi, env);
     }
 }
 

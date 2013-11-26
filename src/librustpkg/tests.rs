@@ -15,8 +15,6 @@ use std::{os, run, str, task};
 use std::io;
 use std::io::fs;
 use std::io::File;
-use std::io::process;
-use std::io::process::ProcessExit;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
@@ -172,6 +170,27 @@ fn init_git_repo(p: &Path) -> TempDir {
     writeFile(&work_dir.join("README"), "");
     run_git([~"add", ~"README"], None, &work_dir_for_opts, format!("Couldn't add in {}",
                                                                 work_dir.display()));
+    git_commit(&work_dir_for_opts, ~"whatever");
+    tmp
+}
+
+fn init_git_repo_with_src<'a>(p: &Path) -> TempDir {
+    assert!(!p.is_absolute());
+    let tmp = TempDir::new("git_local").expect("couldn't create temp dir");
+    let mut work_dir = tmp.path().clone();
+    work_dir.push("src");
+    let work_dir = work_dir.join(p);
+    let work_dir_for_opts = work_dir.clone();
+    fs::mkdir_recursive(&work_dir, io::UserRWX);
+    debug!("Running: git init in {}", work_dir.display());
+    run_git([~"init"], None, &work_dir_for_opts,
+        format!("Couldn't initialize git repository in {}", work_dir.display()));
+    // Add stuff to the dir so that git tag succeeds
+    writeFile(&work_dir.join("README"), "");
+    run_git([~"add", ~"README"],
+            None,
+            &work_dir_for_opts,
+            format!("Couldn't add in {}", work_dir.display()));
     git_commit(&work_dir_for_opts, ~"whatever");
     tmp
 }
@@ -1879,7 +1898,8 @@ fn pkgid_pointing_to_subdir() {
     // The actual repo is mockgithub.com/mozilla/some_repo
     // rustpkg should recognize that and treat the part after some_repo/ as a subdir
     let workspace = TempDir::new("parent_repo").expect("Couldn't create temp dir");
-    let workspace = workspace.path();
+    let workspace = workspace.unwrap();
+    let workspace = &workspace;
     fs::mkdir_recursive(&workspace.join_many(["src", "mockgithub.com",
                                                 "mozilla", "some_repo"]),
                           io::UserRWX);
@@ -2216,6 +2236,64 @@ fn test_installed_read_only() {
     assert!(src2.exists());
     assert!(is_read_only(&src1));
     assert!(is_read_only(&src2));
+}
+
+#[test]
+fn test_import_specific_version() {
+    let p_id = PkgId::new("foo");
+    let dep_id = git_repo_pkg();
+    let workspace = create_local_package(&p_id);
+    let workspace = workspace.path();
+    let repo = init_git_repo(&dep_id.path);
+    let repo = repo.path();
+    let rust_path = Some(~[(~"RUST_PATH", repo.as_str().unwrap().to_owned())]);
+
+    let repo_subdir = repo.join(&dep_id.path);
+    fs::mkdir_recursive(&repo_subdir, io::UserRWX);
+    debug!("Writing files in: {}", repo_subdir.display());
+    writeFile(&repo_subdir.join("lib.rs"),
+              "pub fn f() { let _x = (); }");
+    add_git_tag(&repo_subdir, ~"1.0");
+    writeFile(&repo_subdir.join("lib.rs"),
+              "pub fn g(i: int) { assert_eq!(i, i) }");
+    add_git_tag(&repo_subdir, ~"2.0");
+
+    writeFile(&workspace.join_many([~"src", ~"foo-0.1", ~"main.rs"]),
+              "extern mod bar = \"mockgithub.com/catamorphism/test-pkg#1.0\"; \
+              use bar::f; fn main() { f(); }");
+
+    command_line_test_with_env([~"install", ~"foo"], workspace, rust_path);
+    assert_executable_exists(workspace, "foo");
+}
+
+#[test]
+fn test_import_nonexistent_version() {
+    // Request a revision that isn't in the version control history. It
+    // should fail.
+    let p_id = PkgId::new("foo");
+    let dep_id = git_repo_pkg();
+    let workspace = create_local_package(&p_id);
+    let workspace = workspace.path();
+    let repo = init_git_repo(&dep_id.path);
+    let repo = repo.path();
+    let rust_path = Some(~[(~"RUST_PATH", repo.as_str().unwrap().to_owned())]);
+
+    let repo_subdir = repo.join(&dep_id.path);
+    fs::mkdir_recursive(&repo_subdir, io::UserRWX);
+    debug!("Writing files in: {}", repo_subdir.display());
+    writeFile(&repo_subdir.join("lib.rs"),
+              "pub fn f() { let _x = (); }");
+    add_git_tag(&repo_subdir, ~"1.0");
+
+    writeFile(&workspace.join_many([~"src", ~"foo-0.1", ~"main.rs"]),
+              "extern mod bar = \"mockgithub.com/catamorphism/test-pkg#monkeys\"; \
+              use bar::f; fn main() { f(); }");
+
+    match command_line_test_with_env([~"install", ~"foo"], workspace, rust_path) {
+        Fail(ref error) if error.status.matches_exit_status(70) => (), // ok
+        Fail(_)  => fail!("Wrong error"),
+        Success(*)   => fail!("Bad-revision test succeeded when it should fail")
+    }
 }
 
 #[test]

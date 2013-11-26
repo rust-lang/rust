@@ -13,12 +13,11 @@
 
 use metadata::cstore;
 use metadata::decoder;
-use metadata::filesearch::FileSearch;
+use metadata::filesearch::{FileSearch, split_version};
 use metadata::loader;
 
 use std::hashmap::HashMap;
 use syntax::ast;
-use std::vec;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, dummy_sp};
@@ -143,15 +142,30 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
           let meta_items = match path_opt {
               None => meta_items.clone(),
               Some((p, _path_str_style)) => {
-                  let p_path = Path::new(p);
-                  match p_path.filestem_str() {
-                      None|Some("") =>
-                          e.diag.span_bug(i.span, "Bad package path in `extern mod` item"),
-                      Some(s) =>
-                          vec::append(
-                              ~[attr::mk_name_value_item_str(@"package_id", p),
-                               attr::mk_name_value_item_str(@"name", s.to_managed())],
-                              *meta_items)
+                  match split_version(p) {
+                      None => {
+                          let p_path = Path::new(p);
+                          let s = match p_path.filestem_str() {
+                                None|Some("") =>
+                                    e.diag.span_bug(i.span,
+                                                    "Bad package path in `extern mod` item"),
+                                Some(s) => s,
+                          };
+                            ~[attr::mk_name_value_item_str(@"package_id", p),
+                              attr::mk_name_value_item_str(@"name", s.to_managed())]
+                      }
+                      Some((name, version)) => {
+                          let p_path = Path::new(name);
+                          let s = match p_path.filestem_str() {
+                                None|Some("") =>
+                                    e.diag.span_bug(i.span,
+                                                    "Bad package path in `extern mod` item"),
+                                Some(s) => s,
+                          };
+                          ~[attr::mk_name_value_item_str(@"package_id", name.to_managed()),
+                            attr::mk_name_value_item_str(@"name", s.to_managed()),
+                            attr::mk_name_value_item_str(@"vers", version.to_managed())]
+                      }
                   }
             }
           };

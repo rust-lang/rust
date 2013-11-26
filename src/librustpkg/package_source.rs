@@ -19,7 +19,7 @@ use context::*;
 use crate::Crate;
 use messages::*;
 use source_control::{safe_git_clone, git_clone_url, DirToUse, CheckedOutSources};
-use source_control::make_read_only;
+use source_control::{is_git_dir, make_read_only};
 use path_util::{find_dir_using_rust_path_hack, make_dir_rwx_recursive, default_workspace};
 use path_util::{target_build_dir, versionize, dir_has_crate_file};
 use util::{compile_crate, DepMap};
@@ -72,10 +72,23 @@ condition! {
     build_err: (~str) -> ~str;
 }
 
+// Package source files can be in a workspace
+// subdirectory, or in a source control repository
+enum StartDir { InWorkspace(Path), InRepo(Path) }
+
+impl ToStr for StartDir {
+    fn to_str(&self) -> ~str {
+        match *self {
+            InWorkspace(ref p) => format!("workspace({})", p.display()),
+            InRepo(ref p)      => format!("repository({})", p.display())
+        }
+    }
+}
+
 impl PkgSrc {
 
     pub fn new(mut source_workspace: Path,
-               destination_workspace: Path,
+               mut destination_workspace: Path,
                use_rust_path_hack: bool,
                id: PkgId) -> PkgSrc {
         use conditions::nonexistent_package::cond;
@@ -87,54 +100,94 @@ impl PkgSrc {
                 destination_workspace.display(),
                 use_rust_path_hack);
 
-        let mut destination_workspace = destination_workspace.clone();
-
-        let mut to_try = ~[];
-        let mut output_names = ~[];
-        let build_dir = target_build_dir(&source_workspace);
+        // Possible locations to look for sources
+        let mut paths_to_search = ~[];
+        // Possible places to put the checked-out sources (with or without version)
+        let mut possible_cache_dirs = ~[];
+        // The directory in which to put build products for this package
+        let where_to_build = target_build_dir(&source_workspace);
 
         if use_rust_path_hack {
-            to_try.push(source_workspace.clone());
+            paths_to_search.push(InWorkspace(source_workspace.clone()));
         } else {
             // We search for sources under both src/ and build/ , because build/ is where
             // automatically-checked-out sources go.
-            let mut result = source_workspace.join("src");
-            result.push(&id.path.dir_path());
-            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
-            to_try.push(result);
-            let mut result = source_workspace.join("src");
-            result.push(&id.path);
-            to_try.push(result);
 
-            let mut result = build_dir.join("src");
-            result.push(&id.path.dir_path());
-            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
-            to_try.push(result.clone());
-            output_names.push(result);
-            let mut other_result = build_dir.join("src");
-            other_result.push(&id.path);
-            to_try.push(other_result.clone());
-            output_names.push(other_result);
+            paths_to_search.push(
+                InWorkspace(source_workspace.join("src").
+                            join(id.path.clone().dir_path()).
+                            join(format!("{}-{}",
+                                         id.short_name.clone(),
+                                         id.version.to_str().clone()))));
+            paths_to_search.push(InWorkspace(source_workspace.join("src").join(id.path.clone())));
+            // Try it without the src/ too, in the case of a local git repo
+            paths_to_search.push(InRepo(source_workspace.join(id.path.clone().dir_path()).
+                                        join(format!("{}-{}",
+                                                     id.short_name.clone(),
+                                                     id.version.to_str().clone()))));
+            paths_to_search.push(InRepo(source_workspace.join(id.path.clone())));
+
+
+            // Search the CWD
+            let cwd = os::getcwd();
+            paths_to_search.push(if dir_has_crate_file(&cwd) {
+                    InRepo(cwd) } else { InWorkspace(cwd) });
+
+            // Search the build dir too, since that's where automatically-downloaded sources go
+            let in_build_dir =
+                where_to_build.join("src").
+                               join(id.path.clone().dir_path()).join(
+                                          format!("{}-{}",
+                                                  id.short_name.clone(),
+                                                  id.version.to_str()));
+            paths_to_search.push(InWorkspace(in_build_dir.clone()));
+            possible_cache_dirs.push(in_build_dir);
+            let in_build_dir = where_to_build.join("src").join(id.path.clone());
+            paths_to_search.push(InWorkspace(in_build_dir.clone()));
+            possible_cache_dirs.push(in_build_dir);
 
         }
 
-        debug!("Checking dirs: {:?}", to_try.map(|p| p.display().to_str()).connect(":"));
+        debug!("Searching for sources in the following locations: {:?}",
+               paths_to_search.map(|p| p.to_str()).connect(":"));
 
-        let path = to_try.iter().find(|&d| d.is_dir()
-                                      && dir_has_crate_file(d));
+        let dir_containing_sources_opt =
+            paths_to_search.iter().find(|&d| match d {
+                &InWorkspace(ref d) | &InRepo(ref d) => d.is_dir() && dir_has_crate_file(d) });
 
         // See the comments on the definition of PkgSrc
         let mut build_in_destination = use_rust_path_hack;
-        debug!("1. build_in_destination = {:?}", build_in_destination);
 
-        let dir: Path = match path {
-            Some(d) => (*d).clone(),
+        let mut start_dir = None;
+        // Used only if the sources are found in a local git repository
+        let mut local_git_dir = None;
+        // If we determine that the sources are findable without git
+        // this gets set to false
+        let mut use_git = true;
+        // Now we determine the top-level directory that contains the sources for this
+        // package. Normally we would expect it to be <source-workspace>/src/<id.short_name>,
+        // but there are some special cases.
+        match dir_containing_sources_opt {
+            Some(top_dir) => {
+                // If this is a local git repository, we have to check it
+                // out into a workspace
+                match *top_dir {
+                    InWorkspace(ref d) => {
+                        use_git = false;
+                        start_dir = Some(d.clone());
+                    }
+                    InRepo(ref repo_dir) if is_git_dir(repo_dir) => {
+                        local_git_dir = Some(repo_dir.clone());
+                    }
+                    InRepo(_) => {} // Weird, but do nothing
+                }
+            }
             None => {
                 // See if any of the prefixes of this package ID form a valid package ID
                 // That is, is this a package ID that points into the middle of a workspace?
                 for (prefix, suffix) in id.prefixes_iter() {
                     let package_id = PkgId::new(prefix.as_str().unwrap());
-                    let path = build_dir.join(&package_id.path);
+                    let path = where_to_build.join(&package_id.path);
                     debug!("in loop: checking if {} is a directory", path.display());
                     if path.is_dir() {
                         let ps = PkgSrc::new(source_workspace,
@@ -165,97 +218,121 @@ impl PkgSrc {
 
                     };
                 }
+            }
+        }
 
-                // Ok, no prefixes work, so try fetching from git
-                let mut ok_d = None;
-                for w in output_names.iter() {
-                    debug!("Calling fetch_git on {}", w.display());
-                    let target_dir_opt = PkgSrc::fetch_git(w, &id);
-                    for p in target_dir_opt.iter() {
-                        ok_d = Some(p.clone());
-                        build_in_destination = true;
-                        debug!("2. build_in_destination = {:?}", build_in_destination);
-                        break;
-                    }
-                    match ok_d {
-                        Some(ref d) => {
-                            if d.is_ancestor_of(&id.path)
-                                || d.is_ancestor_of(&versionize(&id.path, &id.version)) {
-                                // Strip off the package ID
-                                source_workspace = d.clone();
-                                for _ in id.path.component_iter() {
+        if use_git {
+            // At this point, we don't know whether it's named `foo-0.2` or just `foo`
+            for cache_dir in possible_cache_dirs.iter() {
+                let mut target_dir_for_checkout = None;
+                debug!("Calling fetch_git on {}", cache_dir.display());
+                let checkout_target_dir_opt = PkgSrc::fetch_git(cache_dir,
+                                                                &id,
+                                                                &local_git_dir);
+                for checkout_target_dir in checkout_target_dir_opt.iter() {
+                    target_dir_for_checkout = Some(checkout_target_dir.clone());
+                    // In this case, we put the build products in the destination
+                    // workspace, because this package originated from a non-workspace.
+                    build_in_destination = true;
+                }
+                match target_dir_for_checkout {
+                    Some(ref checkout_target_dir) => {
+                        if checkout_target_dir.is_ancestor_of(&id.path)
+                            || checkout_target_dir.is_ancestor_of(&versionize(&id.path,
+                                                                              &id.version)) {
+                            // This means that we successfully checked out the git sources
+                            // into `checkout_target_dir`.
+                            // Now determine whether or not the source was actually a workspace
+                            // (that is, whether it has a `src` subdirectory)
+                            // Strip off the package ID
+                            source_workspace = checkout_target_dir.clone();
+                            for _ in id.path.component_iter() {
+                                source_workspace.pop();
+                            }
+                            // Strip off the src/ part
+                            match source_workspace.filename_str() {
+                                None => (),
+                                Some("src") => {
                                     source_workspace.pop();
                                 }
-                                // Strip off the src/ part
-                                source_workspace.pop();
-                                // Strip off the build/<target-triple> part to get the workspace
-                                destination_workspace = source_workspace.clone();
-                                destination_workspace.pop();
-                                destination_workspace.pop();
+                                _ => ()
                             }
-                            break;
+                        // Strip off the build/<target-triple> part to get the workspace
+                        destination_workspace = source_workspace.clone();
+                        destination_workspace.pop();
+                        destination_workspace.pop();
                         }
-                        None => ()
+                        start_dir = Some(checkout_target_dir.clone());
+                        break;
                     }
-                }
-                match ok_d {
-                    Some(d) => d,
+                    // In this case, the git checkout did not succeed.
                     None => {
-                        // See if the sources are in $CWD
-                        let cwd = os::getcwd();
-                        if dir_has_crate_file(&cwd) {
-                            return PkgSrc {
-                                // In this case, source_workspace isn't really a workspace.
-                                // This data structure needs yet more refactoring.
-                                source_workspace: cwd.clone(),
-                                destination_workspace: default_workspace(),
-                                build_in_destination: true,
-                                start_dir: cwd,
-                                id: id,
-                                libs: ~[],
-                                mains: ~[],
-                                benchs: ~[],
-                                tests: ~[]
-                            }
-                        } else if use_rust_path_hack {
-                            match find_dir_using_rust_path_hack(&id) {
-                                Some(d) => d,
-                                None => {
-                                    cond.raise((id.clone(),
-                                        ~"supplied path for package dir does not \
-                                        exist, and couldn't interpret it as a URL fragment"))
-                                }
-                            }
-                        }
-                        else {
-                            cond.raise((id.clone(),
-                                ~"supplied path for package dir does not \
-                                exist, and couldn't interpret it as a URL fragment"))
-                        }
+                        debug!("With cache_dir = {}, checkout failed", cache_dir.display());
                     }
                 }
             }
-        };
-        debug!("3. build_in_destination = {:?}", build_in_destination);
-        debug!("source: {} dest: {}", source_workspace.display(), destination_workspace.display());
-
-        debug!("For package id {}, returning {}", id.to_str(), dir.display());
-
-        if !dir.is_dir() {
-            cond.raise((id.clone(), ~"supplied path for package dir is a \
-                                        non-directory"));
         }
 
-        PkgSrc {
-            source_workspace: source_workspace.clone(),
-            build_in_destination: build_in_destination,
-            destination_workspace: destination_workspace,
-            start_dir: dir,
-            id: id,
-            libs: ~[],
-            mains: ~[],
-            tests: ~[],
-            benchs: ~[]
+        // If we still haven't found it yet...
+        if start_dir.is_none() {
+            // See if the sources are in $CWD
+            let cwd = os::getcwd();
+            if dir_has_crate_file(&cwd) {
+                return PkgSrc {
+                    // In this case, source_workspace isn't really a workspace.
+                    // This data structure needs yet more refactoring.
+                    source_workspace: cwd.clone(),
+                    destination_workspace: default_workspace(),
+                    build_in_destination: true,
+                    start_dir: cwd,
+                    id: id,
+                    libs: ~[],
+                    mains: ~[],
+                    benchs: ~[],
+                    tests: ~[]
+                }
+            } else if use_rust_path_hack {
+                let dir_opt = find_dir_using_rust_path_hack(&id);
+                for dir_with_sources in dir_opt.iter() {
+                    start_dir = Some(dir_with_sources.clone());
+                }
+            }
+        };
+
+        match start_dir {
+            None => {
+                PkgSrc {
+                    source_workspace: source_workspace.clone(),
+                    build_in_destination: build_in_destination,
+                    destination_workspace: destination_workspace,
+                    start_dir: cond.raise((id.clone(),
+                                            format!("supplied path for package {} does not \
+                              exist, and couldn't interpret it as a URL fragment", id.to_str()))),
+                    id: id,
+                    libs: ~[],
+                    mains: ~[],
+                    tests: ~[],
+                    benchs: ~[]
+                }
+            }
+            Some(start_dir) => {
+                if !start_dir.is_dir() {
+                    cond.raise((id.clone(), format!("supplied path `{}` for package dir is a \
+                                non-directory", start_dir.display())));
+                }
+                debug!("For package id {}, returning {}", id.to_str(), start_dir.display());
+                PkgSrc {
+                    source_workspace: source_workspace.clone(),
+                    build_in_destination: build_in_destination,
+                    destination_workspace: destination_workspace,
+                    start_dir: start_dir,
+                    id: id,
+                    libs: ~[],
+                    mains: ~[],
+                    tests: ~[],
+                    benchs: ~[]
+                }
+            }
         }
     }
 
@@ -264,16 +341,21 @@ impl PkgSrc {
     /// if this was successful, None otherwise. Similarly, if the package id
     /// refers to a git repo on the local version, also check it out.
     /// (right now we only support git)
-    pub fn fetch_git(local: &Path, pkgid: &PkgId) -> Option<Path> {
+    /// If parent_dir.is_some(), then we treat the pkgid's path as relative to it
+    pub fn fetch_git(local: &Path, pkgid: &PkgId, parent_dir: &Option<Path>) -> Option<Path> {
         use conditions::git_checkout_failed::cond;
 
         let cwd = os::getcwd();
+        let pkgid_path = match parent_dir {
+            &Some(ref p) => p.clone(),
+            &None    => pkgid.path.clone()
+        };
         debug!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
-                pkgid.to_str(), pkgid.path.display(),
+                pkgid.to_str(), pkgid_path.display(),
                 cwd.display(),
-                pkgid.path.exists());
+                pkgid_path.exists());
 
-        match safe_git_clone(&pkgid.path, &pkgid.version, local) {
+        match safe_git_clone(&pkgid_path, &pkgid.version, local) {
             CheckedOutSources => {
                 make_read_only(local);
                 Some(local.clone())

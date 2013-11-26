@@ -46,7 +46,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                     &ExactRevision(ref s) => {
                         let git_dir = target.join(".git");
                         debug!("`Running: git --work-tree={} --git-dir={} checkout {}",
-                                *s, target.display(), git_dir.display());
+                               target.display(), git_dir.display(), format!("{}", *s));
                         // FIXME (#9639: This needs to handle non-utf8 paths
                         let outp = run::process_output("git",
                             [format!("--work-tree={}", target.as_str().unwrap().to_owned()),

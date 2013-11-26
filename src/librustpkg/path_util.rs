@@ -78,7 +78,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
                 let pf = p.filename_str();
                 do pf.iter().any |&g| {
                     match split_version_general(g, '-') {
-                        None => false,
+                        None => g == pkgid.short_name,
                         Some((ref might_match, ref vers)) => {
                             *might_match == pkgid.short_name
                                 && (pkgid.version == *vers || pkgid.version == NoVersion)
@@ -214,20 +214,15 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
-    debug!("Listing directory {}", dir_to_search.display());
     let dir_contents = do io::ignore_io_error { fs::readdir(dir_to_search) };
-    debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
     let lib_filetype = os::consts::DLL_EXTENSION;
-
-    debug!("lib_prefix = {} and lib_filetype = {}", lib_prefix, lib_filetype);
 
     // Find a filename that matches the pattern:
     // (lib_prefix)-hash-(version)(lib_suffix)
     let mut libraries = do dir_contents.iter().filter |p| {
         let extension = p.extension_str();
-        debug!("p = {}, p's extension is {:?}", p.display(), extension);
         match extension {
             None => false,
             Some(ref s) => lib_filetype == *s
@@ -248,12 +243,10 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
             if f_name.is_empty() { break; }
             match f_name.rfind('-') {
                 Some(i) => {
-                    debug!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
                     match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
                        Some(ref found_vers) if version == found_vers => {
                            match f_name.slice(0, i).rfind('-') {
                                Some(j) => {
-                                   debug!("Maybe {} equals {}", f_name.slice(0, j), lib_prefix);
                                    if f_name.slice(0, j) == lib_prefix {
                                        result_filename = Some(p_path.clone());
                                    }
