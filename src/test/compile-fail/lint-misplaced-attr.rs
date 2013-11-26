@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[auto_encode] //~ ERROR: `#[auto_encode]` is deprecated
-#[auto_decode] //~ ERROR: `#[auto_decode]` is deprecated
-struct A;
+// When denying at the crate level, be sure to not get random warnings from the
+// injected intrinsics by the compiler.
 
-fn main() {}
+#[deny(attribute_usage)];
+
+mod a {
+    #[crate_type = "bin"]; //~ ERROR: crate-level attribute
+}
+
+#[crate_type = "bin"] fn main() {} //~ ERROR: crate-level attribute

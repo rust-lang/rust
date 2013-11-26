@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(_x: int) { }
+// When denying at the crate level, be sure to not get random warnings from the
+// injected intrinsics by the compiler.
 
-fn main() {
-    let v: u64 = 5;
-    let x = foo as extern "C" fn() -> int;
-    //~^ ERROR non-scalar cast
-    let y = v as extern "Rust" fn(int) -> (int, int);
-    //~^ ERROR non-scalar cast
-    y(x());
-}
+#[deny(attribute_usage)];
+
+#[mutable_doc]; //~ ERROR: unknown crate attribute
+
+#[dance] mod a {} //~ ERROR: unknown attribute
+
+#[dance] fn main() {} //~ ERROR: unknown attribute
