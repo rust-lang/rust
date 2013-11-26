@@ -311,8 +311,8 @@ pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
         //   https://github.com/mozilla/rust/issues/3445#issuecomment-26114839
         //
         // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
-        asm!("mov $0, %gs:0x08" :: "r"(stack_lo) :: "volatile");
-        asm!("mov $0, %gs:0x10" :: "r"(stack_hi) :: "volatile");
+        asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
+        asm!("mov $0, %gs:0x10" :: "r"(stack_lo) :: "volatile");
     }
 }
 
