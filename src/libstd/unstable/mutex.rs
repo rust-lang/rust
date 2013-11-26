@@ -70,6 +70,15 @@ impl Mutex {
         }
     }
 
+    /// Creates a new mutex, with the lock/condition variable not initialized.
+    /// This is the same as initializing from the MUTEX_INIT static.
+    pub unsafe fn empty() -> Mutex {
+        Mutex {
+            lock: atomics::AtomicUint::new(0),
+            cond: atomics::AtomicUint::new(0),
+        }
+    }
+
     /// Creates a new copy of this mutex. This is an unsafe operation because
     /// there is no reference counting performed on this type.
     ///
@@ -117,8 +126,10 @@ impl Mutex {
     /// that no other thread is currently holding the lock or waiting on the
     /// condition variable contained inside.
     pub unsafe fn destroy(&mut self) {
-        imp::free_lock(self.lock.swap(0, atomics::Relaxed));
-        imp::free_cond(self.cond.swap(0, atomics::Relaxed));
+        let lock = self.lock.swap(0, atomics::Relaxed);
+        let cond = self.cond.swap(0, atomics::Relaxed);
+        if lock != 0 { imp::free_lock(lock) }
+        if cond != 0 { imp::free_cond(cond) }
     }
 
     unsafe fn getlock(&mut self) -> *c_void {
@@ -331,6 +342,14 @@ mod test {
             lock.wait();
             lock.unlock();
             t.join();
+        }
+    }
+
+    #[test]
+    fn destroy_immediately() {
+        unsafe {
+            let mut m = Mutex::empty();
+            m.destroy();
         }
     }
 }
