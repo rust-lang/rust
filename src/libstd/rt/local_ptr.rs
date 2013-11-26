@@ -41,6 +41,8 @@ pub static mut RT_TLS_PTR: *mut c_void = 0 as *mut c_void;
 #[cfg(stage0)]
 #[cfg(windows)]
 static mut RT_TLS_KEY: tls::Key = -1;
+#[cfg(stage0)]
+#[cfg(windows)]
 static mut tls_lock: Mutex = MUTEX_INIT;
 static mut tls_initialized: bool = false;
 
@@ -60,7 +62,11 @@ pub fn init_tls_key() {
 }
 
 #[cfg(not(stage0), not(windows))]
-pub fn init_tls_key() {}
+pub fn init_tls_key() {
+    unsafe {
+        tls_initialized = true;
+    }
+}
 
 #[cfg(windows)]
 pub unsafe fn cleanup() {
@@ -76,7 +82,6 @@ pub unsafe fn cleanup() {
 #[cfg(not(windows))]
 pub unsafe fn cleanup() {
     assert!(tls_initialized);
-    tls_lock.destroy();
     tls_initialized = false;
 }
 
