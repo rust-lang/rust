@@ -4446,11 +4446,18 @@ impl Parser {
             self.span_err(*self.span, "an ABI may not be specified here");
         }
 
+
+        if *self.token == token::LPAREN {
+            // `extern mod foo (name = "bar"[,vers = "version"]) is obsolete,
+            // `extern mod foo = "bar#[version]";` should be used.
+            // Parse obsolete options to avoid wired parser errors
+            self.parse_optional_meta();
+            self.obsolete(*self.span, ObsoleteExternModAttributesInParens);
+        }
         // extern mod foo;
-        let metadata = self.parse_optional_meta();
         self.expect(&token::SEMI);
         iovi_view_item(ast::view_item {
-            node: view_item_extern_mod(ident, maybe_path, metadata, ast::DUMMY_NODE_ID),
+            node: view_item_extern_mod(ident, maybe_path, ast::DUMMY_NODE_ID),
             attrs: attrs,
             vis: visibility,
             span: mk_sp(lo, self.last_span.hi)

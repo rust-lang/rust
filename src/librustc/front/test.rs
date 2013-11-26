@@ -291,8 +291,7 @@ fn mk_std(cx: &TestCtxt) -> ast::view_item {
                                             path_node(~[id_extra]),
                                             ast::DUMMY_NODE_ID))])
     } else {
-        let mi = attr::mk_name_value_item_str(@"vers", @"0.9-pre");
-        ast::view_item_extern_mod(id_extra, None, ~[mi], ast::DUMMY_NODE_ID)
+        ast::view_item_extern_mod(id_extra, None, ast::DUMMY_NODE_ID)
     };
     ast::view_item {
         node: vi,
