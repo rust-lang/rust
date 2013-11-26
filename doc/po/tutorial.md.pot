@@ -2558,7 +2558,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/tutorial.md:1434
-msgid "~~~~ fn call_closure_with_ten(b: &fn(int)) { b(10); }"
+msgid "~~~~ fn call_closure_with_ten(b: |int|) { b(10); }"
 msgstr ""
 
 #. type: Plain text
@@ -2601,7 +2601,7 @@ msgstr ""
 #: doc/tutorial.md:1459
 msgid ""
 "There are several forms of closure, each with its own role. The most common, "
-"called a _stack closure_, has type `&fn` and can directly access local "
+"called a _stack closure_, has type `||` and can directly access local "
 "variables in the enclosing scope."
 msgstr ""
 
@@ -2700,16 +2700,16 @@ msgstr ""
 msgid ""
 "Rust closures have a convenient subtyping property: you can pass any kind of "
 "closure (as long as the arguments and return types match) to functions that "
-"expect a `&fn()`. Thus, when writing a higher-order function that only calls "
+"expect a `||`. Thus, when writing a higher-order function that only calls "
 "its function argument, and does nothing else with it, you should almost "
-"always declare the type of that argument as `&fn()`. That way, callers may "
+"always declare the type of that argument as `||`. That way, callers may "
 "pass any kind of closure."
 msgstr ""
 
 #. type: Plain text
 #: doc/tutorial.md:1527
 msgid ""
-"~~~~ fn call_twice(f: &fn()) { f(); f(); } let closure = || { \"I'm a "
+"~~~~ fn call_twice(f: ||) { f(); f(); } let closure = || { \"I'm a "
 "closure, and it doesn't matter what type I am\"; }; fn function() { \"I'm a "
 "normal function\"; } call_twice(closure); call_twice(function); ~~~~"
 msgstr ""
@@ -2746,7 +2746,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~\n"
-"fn each(v: &[int], op: &fn(v: &int)) {\n"
+"fn each(v: &[int], op: |v: &int|) {\n"
 "   let mut n = 0;\n"
 "   while n < v.len() {\n"
 "       op(&v[n]);\n"
@@ -2768,7 +2768,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# fn each(v: &[int], op: &fn(v: &int)) { }\n"
+"# fn each(v: &[int], op: |v: &int|) { }\n"
 "# fn do_some_work(i: &int) { }\n"
 "each([1, 2, 3], |n| {\n"
 "    do_some_work(n);\n"
@@ -2788,7 +2788,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~\n"
-"# fn each(v: &[int], op: &fn(v: &int)) { }\n"
+"# fn each(v: &[int], op: |v: &int|) { }\n"
 "# fn do_some_work(i: &int) { }\n"
 "do each([1, 2, 3]) |n| {\n"
 "    do_some_work(n);\n"
@@ -3080,7 +3080,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~\n"
-"fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {\n"
+"fn map<T, U>(vector: &[T], function: |v: &T| -> U) -> ~[U] {\n"
 "    let mut accumulator = ~[];\n"
 "    for element in vector.iter() {\n"
 "        accumulator.push(function(element));\n"
