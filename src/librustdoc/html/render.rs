@@ -995,7 +995,7 @@ fn item_module(w: &mut Writer, cx: &Context,
 
             clean::ViewItemItem(ref item) => {
                 match item.inner {
-                    clean::ExternMod(ref name, ref src, _, _) => {
+                    clean::ExternMod(ref name, ref src, _) => {
                         write!(w, "<tr><td><code>extern mod {}",
                                name.as_slice());
                         match *src {

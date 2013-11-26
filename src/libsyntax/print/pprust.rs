@@ -1952,7 +1952,7 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
     print_outer_attributes(s, item.attrs);
     print_visibility(s, item.vis);
     match item.node {
-        ast::view_item_extern_mod(id, ref optional_path, ref mta, _) => {
+        ast::view_item_extern_mod(id, ref optional_path, _) => {
             head(s, "extern mod");
             print_ident(s, id);
             for &(ref p, style) in optional_path.iter() {
@@ -1960,11 +1960,6 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
                 word(s.s, "=");
                 space(s.s);
                 print_string(s, *p, style);
-            }
-            if !mta.is_empty() {
-                popen(s);
-                commasep(s, consistent, *mta, |p, &i| print_meta_item(p, i));
-                pclose(s);
             }
         }
 

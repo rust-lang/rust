@@ -132,7 +132,7 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
 
 fn visit_view_item(e: &mut Env, i: &ast::view_item) {
     match i.node {
-      ast::view_item_extern_mod(ident, path_opt, _, id) => {
+      ast::view_item_extern_mod(ident, path_opt, id) => {
           let ident = token::ident_to_str(&ident);
           debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
                  ident, path_opt);
