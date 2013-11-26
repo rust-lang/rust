@@ -18,6 +18,7 @@ use ext::expand;
 use parse;
 use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
+use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
 
@@ -131,7 +132,7 @@ pub type SyntaxExpanderTTItemFunNoCtxt =
 
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
-    fn make_item(&self) -> Option<@ast::item>;
+    fn make_items(&self) -> SmallVector<@ast::item>;
     fn make_stmt(&self) -> @ast::Stmt;
 }
 

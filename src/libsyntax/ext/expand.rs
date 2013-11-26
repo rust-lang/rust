@@ -28,6 +28,7 @@ use parse::token;
 use parse::token::{fresh_mark, fresh_name, ident_to_str, intern};
 use visit;
 use visit::Visitor;
+use util::small_vector::SmallVector;
 
 use std::vec;
 
@@ -310,7 +311,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    it: @ast::item,
                    fld: &MacroExpander)
-                   -> Option<@ast::item> {
+                   -> SmallVector<@ast::item> {
     match it.node {
         ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
         ast::item_mod(_) | ast::item_foreign_mod(_) => {
@@ -337,7 +338,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        cx: @ExtCtxt,
                        it: @ast::item,
                        fld: &MacroExpander)
-                       -> Option<@ast::item> {
+                       -> SmallVector<@ast::item> {
     let (pth, tts, ctxt) = match it.node {
         item_mac(codemap::Spanned {
             node: mac_invoc_tt(ref pth, ref tts, ctxt),
@@ -396,28 +397,30 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
             it.span, format!("{}! is not legal in item position", extnamestr))
     };
 
-    let maybe_it = match expanded {
+    let items = match expanded {
         MRItem(it) => {
-            mark_item(it,fm)
-                .and_then(|i| fld.fold_item(i))
+            mark_item(it,fm).move_iter()
+                .flat_map(|i| fld.fold_item(i).move_iter())
+                .collect()
         }
         MRExpr(_) => {
             cx.span_fatal(pth.span, format!("expr macro in item position: {}", extnamestr))
         }
         MRAny(any_macro) => {
-            any_macro.make_item()
-                     .and_then(|i| mark_item(i,fm))
-                     .and_then(|i| fld.fold_item(i))
+            any_macro.make_items().move_iter()
+                    .flat_map(|i| mark_item(i, fm).move_iter())
+                    .flat_map(|i| fld.fold_item(i).move_iter())
+                    .collect()
         }
         MRDef(ref mdef) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
             insert_macro(*extsbox,intern(mdef.name), @SE((*mdef).ext));
-            None
+            SmallVector::zero()
         }
     };
     cx.bt_pop();
-    return maybe_it;
+    return items;
 }
 
 
@@ -442,7 +445,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    s: &Stmt,
                    fld: &MacroExpander)
-                   -> Option<@Stmt> {
+                   -> SmallVector<@Stmt> {
     // why the copying here and not in expand_expr?
     // looks like classic changed-in-only-one-place
     let (pth, tts, semi, ctxt) = match s.node {
@@ -461,7 +464,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     }
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
-    let fully_expanded: @ast::Stmt = match (*extsbox).find(&extname.name) {
+    let fully_expanded: SmallVector<@Stmt> = match (*extsbox).find(&extname.name) {
         None => {
             cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
         }
@@ -501,22 +504,15 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             let marked_after = mark_stmt(expanded,fm);
 
             // Keep going, outside-in.
-            let fully_expanded = match fld.fold_stmt(marked_after) {
-                Some(stmt) => {
-                    let fully_expanded = &stmt.node;
-                    cx.bt_pop();
-                    @Spanned {
-                        span: stmt.span,
-                        node: (*fully_expanded).clone(),
-                    }
-                }
-                None => {
-                    cx.span_fatal(pth.span,
-                                  "macro didn't expand to a statement")
-                }
-            };
-
-            fully_expanded
+            let fully_expanded = fld.fold_stmt(marked_after);
+            if fully_expanded.is_empty() {
+                cx.span_fatal(pth.span,
+                              "macro didn't expand to a statement");
+            }
+            cx.bt_pop();
+            fully_expanded.move_iter()
+                    .map(|s| @Spanned { span: s.span, node: s.node.clone() })
+                    .collect()
         }
 
         _ => {
@@ -525,21 +521,23 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         }
     };
 
-    match fully_expanded.node {
-        StmtExpr(e, stmt_id) if semi => {
-            Some(@Spanned {
-                span: fully_expanded.span,
-                node: StmtSemi(e, stmt_id),
-            })
+    fully_expanded.move_iter().map(|s| {
+        match s.node {
+            StmtExpr(e, stmt_id) if semi => {
+                @Spanned {
+                    span: s.span,
+                    node: StmtSemi(e, stmt_id)
+                }
+            }
+            _ => s /* might already have a semi */
         }
-        _ => Some(fully_expanded), /* might already have a semi */
-    }
+    }).collect()
 }
 
 // expand a non-macro stmt. this is essentially the fallthrough for
 // expand_stmt, above.
 fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
-                         -> Option<@Stmt> {
+                         -> SmallVector<@Stmt> {
     // is it a let?
     match s.node {
         StmtDecl(@Spanned {
@@ -590,7 +588,7 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
                     id: id,
                     span: span,
                 };
-            Some(@Spanned {
+            SmallVector::one(@Spanned {
                 node: StmtDecl(@Spanned {
                         node: DeclLocal(rewritten_local),
                         span: stmt_span
@@ -679,13 +677,11 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
     let pending_renames = block_info.pending_renames;
     let rename_fld = renames_to_fold(pending_renames);
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
-    let mut new_stmts = ~[];
-    for x in b.stmts.iter() {
-        match fld.fold_stmt(mustbesome(rename_fld.fold_stmt(*x))) {
-            Some(s) => new_stmts.push(s),
-            None => ()
-        }
-    }
+    let new_stmts = b.stmts.iter()
+            .map(|x| rename_fld.fold_stmt(*x)
+                 .expect_one("rename_fold didn't return one value"))
+            .flat_map(|x| fld.fold_stmt(x).move_iter())
+            .collect();
     let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(x)));
     Block{
         view_items: new_view_items,
@@ -694,15 +690,6 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
         id: fld.new_id(b.id),
         rules: b.rules,
         span: b.span,
-    }
-}
-
-// rename_fold should never return "None".
-// (basically, just .get() with a better message...)
-fn mustbesome<T>(val : Option<T>) -> T {
-    match val {
-        Some(v) => v,
-        None => fail!("rename_fold returned None")
     }
 }
 
@@ -741,10 +728,8 @@ pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
 
 // perform a bunch of renames
 fn apply_pending_renames(folder : @ast_fold, stmt : ast::Stmt) -> @ast::Stmt {
-    match folder.fold_stmt(&stmt) {
-        Some(s) => s,
-        None => fail!("renaming of stmt produced None")
-    }
+    folder.fold_stmt(&stmt)
+            .expect_one("renaming of stmt did not produce one stmt")
 }
 
 
@@ -1025,14 +1010,14 @@ impl ast_fold for MacroExpander {
                          self)
     }
 
-    fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {
+    fn fold_item(&self, item: @ast::item) -> SmallVector<@ast::item> {
         expand_item(self.extsbox,
                     self.cx,
                     item,
                     self)
     }
 
-    fn fold_stmt(&self, stmt: &ast::Stmt) -> Option<@ast::Stmt> {
+    fn fold_stmt(&self, stmt: &ast::Stmt) -> SmallVector<@ast::Stmt> {
         expand_stmt(self.extsbox,
                     self.cx,
                     stmt,
@@ -1191,11 +1176,12 @@ fn mark_expr(expr : @ast::Expr, m : Mrk) -> @ast::Expr {
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
 fn mark_stmt(expr : &ast::Stmt, m : Mrk) -> @ast::Stmt {
-    new_mark_folder(m).fold_stmt(expr).unwrap()
+    new_mark_folder(m).fold_stmt(expr)
+            .expect_one("marking a stmt didn't return a stmt")
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_item(expr : @ast::item, m : Mrk) -> Option<@ast::item> {
+fn mark_item(expr : @ast::item, m : Mrk) -> SmallVector<@ast::item> {
     new_mark_folder(m).fold_item(expr)
 }
 

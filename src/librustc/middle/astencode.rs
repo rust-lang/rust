@@ -347,7 +347,8 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
 
     match *ii {
         //hack: we're not dropping items
-        ast::ii_item(i) => ast::ii_item(fld.fold_item(i).unwrap()),
+        ast::ii_item(i) => ast::ii_item(fld.fold_item(i)
+                                        .expect_one("expected one item")),
         ast::ii_method(d, is_provided, m) =>
           ast::ii_method(d, is_provided, fld.fold_method(m)),
         ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i))
@@ -379,7 +380,8 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
         xcx: xcx,
     };
     match ii {
-        ast::ii_item(i) => ast::ii_item(fld.fold_item(i).unwrap()),
+        ast::ii_item(i) => ast::ii_item(fld.fold_item(i)
+                                        .expect_one("expected one item")),
         ast::ii_method(d, is_provided, m) =>
           ast::ii_method(xcx.tr_def_id(d), is_provided, fld.fold_method(m)),
         ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i)),
