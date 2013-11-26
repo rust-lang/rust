@@ -336,7 +336,7 @@ pub fn spawntask_try(f: proc()) -> Result<(),()> {
 }
 
 /// Spawn a new task in a new scheduler and return a thread handle.
-pub fn spawntask_thread(f: proc()) -> Thread {
+pub fn spawntask_thread(f: proc()) -> Thread<()> {
 
     let f = Cell::new(f);
 
