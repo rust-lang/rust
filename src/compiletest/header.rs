@@ -145,7 +145,7 @@ fn parse_check_line(line: &str) -> Option<~str> {
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
     do parse_name_value_directive(line, ~"exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs: ~[~str] = nv.splitn_iter('=', 1).map(|s| s.to_owned()).collect();
+        let mut strs: ~[~str] = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
 
         match strs.len() {
           1u => (strs.pop(), ~""),

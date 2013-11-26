@@ -184,7 +184,7 @@ impl<'self> PkgScript<'self> {
                                              [sysroot.as_str().unwrap().to_owned(), ~"configs"]);
             debug!("run_custom: second pkg command did {:?}", output.status);
             // Run the configs() function to get the configs
-            let cfgs = str::from_utf8_slice(output.output).word_iter()
+            let cfgs = str::from_utf8_slice(output.output).words()
                 .map(|w| w.to_owned()).collect();
             (cfgs, output.status)
         }
