@@ -184,14 +184,14 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
     }
 }
 
-#[cfg(test)]
+// cannot give tcp/ip permission without help of apk
+#[cfg(test, not(target_os="android"))]
 mod test {
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use super::*;
     use super::super::local_loop;
 
     #[test]
-    #[ignore(cfg(target_os="android"))] // cannot give tcp/ip permission without help of apk
     fn getaddrinfo_test() {
         match GetAddrInfoRequest::run(local_loop(), Some("localhost"), None, None) {
             Ok(infos) => {
@@ -207,5 +207,13 @@ mod test {
             }
             Err(e) => fail!("{:?}", e),
         }
+    }
+
+    #[test]
+    fn issue_10663() {
+        // Something should happen here, but this certainly shouldn't cause
+        // everything to die. The actual outcome we don't care too much about.
+        GetAddrInfoRequest::run(local_loop(), Some("irc.n0v4.com"), None,
+                                None);
     }
 }
