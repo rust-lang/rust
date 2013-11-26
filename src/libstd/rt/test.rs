@@ -23,24 +23,25 @@ use rand;
 use result::{Result, Ok, Err};
 use rt::basic;
 use rt::comm::oneshot;
+use rt::deque::BufferPool;
 use rt::new_event_loop;
 use rt::sched::Scheduler;
 use rt::sleeper_list::SleeperList;
 use rt::task::Task;
 use rt::task::UnwindResult;
 use rt::thread::Thread;
-use rt::work_queue::WorkQueue;
 use unstable::{run_in_bare_thread};
+use vec;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
 
 pub fn new_test_uv_sched() -> Scheduler {
 
-    let queue = WorkQueue::new();
-    let queues = ~[queue.clone()];
+    let mut pool = BufferPool::init();
+    let (worker, stealer) = pool.deque();
 
     let mut sched = Scheduler::new(new_event_loop(),
-                                   queue,
-                                   queues,
+                                   worker,
+                                   ~[stealer],
                                    SleeperList::new());
 
     // Don't wait for the Shutdown message
@@ -50,13 +51,12 @@ pub fn new_test_uv_sched() -> Scheduler {
 }
 
 pub fn new_test_sched() -> Scheduler {
-
-    let queue = WorkQueue::new();
-    let queues = ~[queue.clone()];
+    let mut pool = BufferPool::init();
+    let (worker, stealer) = pool.deque();
 
     let mut sched = Scheduler::new(basic::event_loop(),
-                                   queue,
-                                   queues,
+                                   worker,
+                                   ~[stealer],
                                    SleeperList::new());
 
     // Don't wait for the Shutdown message
@@ -227,18 +227,16 @@ pub fn run_in_mt_newsched_task(f: proc()) {
 
         let mut handles = ~[];
         let mut scheds = ~[];
-        let mut work_queues = ~[];
 
-        for _ in range(0u, nthreads) {
-            let work_queue = WorkQueue::new();
-            work_queues.push(work_queue);
-        }
+        let mut pool = BufferPool::<~Task>::init();
+        let workers = range(0, nthreads).map(|_| pool.deque());
+        let (workers, stealers) = vec::unzip(workers);
 
-        for i in range(0u, nthreads) {
+        for worker in workers.move_iter() {
             let loop_ = new_event_loop();
             let mut sched = ~Scheduler::new(loop_,
-                                            work_queues[i].clone(),
-                                            work_queues.clone(),
+                                            worker,
+                                            stealers.clone(),
                                             sleepers.clone());
             let handle = sched.make_handle();
 
