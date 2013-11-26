@@ -319,67 +319,49 @@ pub struct LittleLock {
     priv l: Mutex,
 }
 
+pub struct LittleGuard<'a> {
+    priv l: &'a mut Mutex,
+}
+
 impl Drop for LittleLock {
     fn drop(&mut self) {
-        unsafe {
-            self.l.destroy();
-        }
+        unsafe { self.l.destroy(); }
+    }
+}
+
+#[unsafe_destructor]
+impl<'a> Drop for LittleGuard<'a> {
+    fn drop(&mut self) {
+        unsafe { self.l.unlock(); }
     }
 }
 
 impl LittleLock {
     pub fn new() -> LittleLock {
-        unsafe {
-            LittleLock {
-                l: Mutex::new()
-            }
+        unsafe { LittleLock { l: Mutex::new() } }
+    }
+
+    pub unsafe fn lock<'a>(&'a mut self) -> LittleGuard<'a> {
+        self.l.lock();
+        LittleGuard { l: &mut self.l }
+    }
+
+    pub unsafe fn try_lock<'a>(&'a mut self) -> Option<LittleGuard<'a>> {
+        if self.l.trylock() {
+            Some(LittleGuard { l: &mut self.l })
+        } else {
+            None
         }
     }
 
-    pub unsafe fn lock<T>(&self, f: || -> T) -> T {
-        let this = cast::transmute_mut(self);
-        do atomically {
-            this.l.lock();
-            do (|| {
-                f()
-            }).finally {
-                this.l.unlock();
-            }
-        }
+    pub unsafe fn signal(&mut self) {
+        self.l.signal();
     }
+}
 
-    pub unsafe fn try_lock<T>(&self, f: || -> T) -> Option<T> {
-        let this = cast::transmute_mut(self);
-        do atomically {
-            if this.l.trylock() {
-                Some(do (|| {
-                    f()
-                }).finally {
-                    this.l.unlock();
-                })
-            } else {
-                None
-            }
-        }
-    }
-
-    pub unsafe fn signal(&self) {
-        let this = cast::transmute_mut(self);
-        this.l.signal();
-    }
-
-    pub unsafe fn lock_and_wait(&self, f: || -> bool) {
-        let this = cast::transmute_mut(self);
-        do atomically {
-            this.l.lock();
-            do (|| {
-                if f() {
-                    this.l.wait();
-                }
-            }).finally {
-                this.l.unlock();
-            }
-        }
+impl<'a> LittleGuard<'a> {
+    pub unsafe fn wait(&mut self) {
+        self.l.wait();
     }
 }
 
@@ -431,15 +413,14 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn with<U>(&self, f: |x: &mut T| -> U) -> U {
         let rec = self.x.get();
-        do (*rec).lock.lock {
-            if (*rec).failed {
-                fail!("Poisoned Exclusive::new - another task failed inside!");
-            }
-            (*rec).failed = true;
-            let result = f(&mut (*rec).data);
-            (*rec).failed = false;
-            result
+        let _l = (*rec).lock.lock();
+        if (*rec).failed {
+            fail!("Poisoned Exclusive::new - another task failed inside!");
         }
+        (*rec).failed = true;
+        let result = f(&mut (*rec).data);
+        (*rec).failed = false;
+        result
     }
 
     #[inline]
@@ -452,28 +433,28 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn hold_and_signal(&self, f: |x: &mut T|) {
         let rec = self.x.get();
-        do (*rec).lock.lock {
-            if (*rec).failed {
-                fail!("Poisoned Exclusive::new - another task failed inside!");
-            }
-            (*rec).failed = true;
-            f(&mut (*rec).data);
-            (*rec).failed = false;
-            (*rec).lock.signal();
+        let _l = (*rec).lock.lock();
+        if (*rec).failed {
+            fail!("Poisoned Exclusive::new - another task failed inside!");
         }
+        (*rec).failed = true;
+        f(&mut (*rec).data);
+        (*rec).failed = false;
+        (*rec).lock.signal();
     }
 
     #[inline]
     pub unsafe fn hold_and_wait(&self, f: |x: &T| -> bool) {
         let rec = self.x.get();
-        do (*rec).lock.lock_and_wait {
-            if (*rec).failed {
-                fail!("Poisoned Exclusive::new - another task failed inside!");
-            }
-            (*rec).failed = true;
-            let result = f(&(*rec).data);
-            (*rec).failed = false;
-            result
+        let mut l = (*rec).lock.lock();
+        if (*rec).failed {
+            fail!("Poisoned Exclusive::new - another task failed inside!");
+        }
+        (*rec).failed = true;
+        let result = f(&(*rec).data);
+        (*rec).failed = false;
+        if result {
+            l.wait();
         }
     }
 
