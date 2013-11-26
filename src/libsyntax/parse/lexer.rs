@@ -774,7 +774,17 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 bump(rdr);
             }
             return with_str_from(rdr, start, |lifetime_name| {
-                token::LIFETIME(str_to_ident(lifetime_name))
+                let ident = str_to_ident(lifetime_name);
+                let tok = &token::IDENT(ident, false);
+
+                if token::is_any_keyword(tok)
+                    && !token::is_keyword(token::keywords::Static, tok)
+                    && !token::is_keyword(token::keywords::Self, tok) {
+                    fatal_span(rdr, start, rdr.last_pos,
+                        ~"invalid lifetime name");
+                }
+
+                token::LIFETIME(ident)
             })
         }
 
