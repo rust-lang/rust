@@ -950,10 +950,10 @@ declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
 ~~~~ {.xfail-test}
-fn iter<T>(seq: &[T], f: &fn(T)) {
+fn iter<T>(seq: &[T], f: |T|) {
     for elt in seq.iter() { f(elt); }
 }
-fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {
+fn map<T, U>(seq: &[T], f: |T| -> U) -> ~[U] {
     let mut acc = ~[];
     for elt in seq.iter() { acc.push(f(elt)); }
     acc
@@ -1314,7 +1314,7 @@ These appear after the trait name, using the same syntax used in [generic functi
 trait Seq<T> {
    fn len(&self) -> uint;
    fn elt_at(&self, n: uint) -> T;
-   fn iter(&self, &fn(T));
+   fn iter(&self, |T|);
 }
 ~~~~
 
@@ -2607,7 +2607,7 @@ as an abbreviation for defining and capturing a separate function.
 Significantly, lambda expressions _capture their environment_,
 which regular [function definitions](#functions) do not.
 The exact type of capture depends on the [function type](#function-types) inferred for the lambda expression.
-In the simplest and least-expensive form (analogous to a ```&fn() { }``` expression),
+In the simplest and least-expensive form (analogous to a ```|| { }``` expression),
 the lambda expression captures its environment by reference,
 effectively borrowing pointers to all outer variables mentioned inside the function.
 Alternately, the compiler may infer that a lambda expression should copy or move values (depending on their type.)
@@ -2617,7 +2617,7 @@ In this example, we define a function `ten_times` that takes a higher-order func
 and call it with a lambda expression as an argument.
 
 ~~~~
-fn ten_times(f: &fn(int)) {
+fn ten_times(f: |int|) {
     let mut i = 0;
     while i < 10 {
         f(i);
@@ -2726,7 +2726,7 @@ If the `expr` is a [field expression](#field-expressions), it is parsed as thoug
 In this example, both calls to `f` are equivalent:
 
 ~~~~
-# fn f(f: &fn(int)) { }
+# fn f(f: |int|) { }
 # fn g(i: int) { }
 
 f(|j| g(j));
@@ -2739,7 +2739,7 @@ do f |j| {
 In this example, both calls to the (binary) function `k` are equivalent:
 
 ~~~~
-# fn k(x:int, f: &fn(int)) { }
+# fn k(x:int, f: |int|) { }
 # fn l(i: int) { }
 
 k(3, |j| l(j));
@@ -3241,7 +3241,7 @@ and the cast expression in `main`.
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~
-fn map<A: Clone, B: Clone>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
+fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> ~[B] {
     if xs.len() == 0 {
        return ~[];
     }

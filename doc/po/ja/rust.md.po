@@ -1817,10 +1817,10 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~ {.xfail-test}\n"
-"fn iter<T>(seq: &[T], f: &fn(T)) {\n"
+"fn iter<T>(seq: &[T], f: |T|) {\n"
 "    for elt in seq.iter() { f(elt); }\n"
 "}\n"
-"fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {\n"
+"fn map<T, U>(seq: &[T], f: |T| -> U) -> ~[U] {\n"
 "    let mut acc = ~[];\n"
 "    for elt in seq.iter() { acc.push(f(elt)); }\n"
 "    acc\n"
@@ -2404,7 +2404,7 @@ msgid ""
 "trait Seq<T> {\n"
 "   fn len(&self) -> uint;\n"
 "   fn elt_at(&self, n: uint) -> T;\n"
-"   fn iter(&self, &fn(T));\n"
+"   fn iter(&self, |T|);\n"
 "}\n"
 "~~~~\n"
 msgstr ""
@@ -4243,7 +4243,7 @@ msgid ""
 "[function definitions](#functions) do not.  The exact type of capture "
 "depends on the [function type](#function-types) inferred for the lambda "
 "expression.  In the simplest and least-expensive form (analogous to a "
-"```&fn() { }``` expression), the lambda expression captures its environment "
+"```|| { }``` expression), the lambda expression captures its environment "
 "by reference, effectively borrowing pointers to all outer variables "
 "mentioned inside the function.  Alternately, the compiler may infer that a "
 "lambda expression should copy or move values (depending on their type.)  "
@@ -4262,7 +4262,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~\n"
-"fn ten_times(f: &fn(int)) {\n"
+"fn ten_times(f: |int|) {\n"
 "    let mut i = 0;\n"
 "    while i < 10 {\n"
 "        f(i);\n"
@@ -4455,7 +4455,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:2339
-msgid "~~~~ # fn f(f: &fn(int)) { } # fn g(i: int) { }"
+msgid "~~~~ # fn f(f: |int|) { } # fn g(i: int) { }"
 msgstr ""
 
 #. type: Plain text
@@ -4481,7 +4481,7 @@ msgstr ""
 
 #. type: Plain text
 #: doc/rust.md:2352
-msgid "~~~~ # fn k(x:int, f: &fn(int)) { } # fn l(i: int) { }"
+msgid "~~~~ # fn k(x:int, f: |int|) { } # fn l(i: int) { }"
 msgstr ""
 
 #. type: Plain text
@@ -5483,7 +5483,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "~~~~~~~\n"
-"fn map<A: Clone, B: Clone>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {\n"
+"fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> ~[B] {\n"
 "    if xs.len() == 0 {\n"
 "       return ~[];\n"
 "    }\n"
