@@ -663,7 +663,6 @@ pub mod types {
             }
         }
 
-        #[cfg(target_arch = "x86")]
         pub mod arch {
             pub mod c95 {
                 pub type c_char = i8;
@@ -677,27 +676,53 @@ pub mod types {
                 pub type c_ulong = u32;
                 pub type c_float = f32;
                 pub type c_double = f64;
+
+                #[cfg(target_arch = "x86")]
                 pub type size_t = u32;
+                #[cfg(target_arch = "x86_64")]
+                pub type size_t = u64;
+
+                #[cfg(target_arch = "x86")]
                 pub type ptrdiff_t = i32;
+                #[cfg(target_arch = "x86_64")]
+                pub type ptrdiff_t = i64;
+
                 pub type clock_t = i32;
+
+                #[cfg(target_arch = "x86")]
                 pub type time_t = i32;
+                #[cfg(target_arch = "x86_64")]
+                pub type time_t = i64;
+
                 pub type wchar_t = u16;
             }
+
             pub mod c99 {
                 pub type c_longlong = i64;
                 pub type c_ulonglong = u64;
                 pub type intptr_t = int;
                 pub type uintptr_t = uint;
             }
+
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u32;
                 pub type ino_t = i16;
+
+                #[cfg(target_arch = "x86")]
                 pub type pid_t = i32;
+                #[cfg(target_arch = "x86_64")]
+                pub type pid_t = i64;
+
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
+
+                #[cfg(target_arch = "x86")]
                 pub type ssize_t = i32;
+                #[cfg(target_arch = "x86_64")]
+                pub type ssize_t = i64;
             }
+
             pub mod posix01 {
             }
             pub mod posix08 {
@@ -725,19 +750,23 @@ pub mod types {
 
                 pub type LONG = c_long;
                 pub type PLONG = *mut c_long;
+
+                #[cfg(target_arch = "x86")]
                 pub type LONG_PTR = c_long;
+                #[cfg(target_arch = "x86_64")]
+                pub type LONG_PTR = i64;
 
                 pub type LARGE_INTEGER = c_longlong;
                 pub type PLARGE_INTEGER = *mut c_longlong;
 
                 pub type LPCWSTR = *WCHAR;
                 pub type LPCSTR = *CHAR;
-                pub type LPCTSTR = *CHAR;
-                pub type LPTCH = *CHAR;
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
-                pub type LPTSTR = *mut CHAR;
+
+                pub type LPWCH = *mut WCHAR;
+                pub type LPCH = *mut CHAR;
 
                 // Not really, but opaque to us.
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
@@ -760,9 +789,9 @@ pub mod types {
 
                 pub struct STARTUPINFO {
                     cb: DWORD,
-                    lpReserved: LPTSTR,
-                    lpDesktop: LPTSTR,
-                    lpTitle: LPTSTR,
+                    lpReserved: LPWSTR,
+                    lpDesktop: LPWSTR,
+                    lpTitle: LPWSTR,
                     dwX: DWORD,
                     dwY: DWORD,
                     dwXSize: DWORD,
@@ -841,172 +870,6 @@ pub mod types {
                 }
 
                 pub type LPOVERLAPPED = *mut OVERLAPPED;
-            }
-        }
-
-        #[cfg(target_arch = "x86_64")]
-        pub mod arch {
-            pub mod c95 {
-                pub type c_char = i8;
-                pub type c_schar = i8;
-                pub type c_uchar = u8;
-                pub type c_short = i16;
-                pub type c_ushort = u16;
-                pub type c_int = i32;
-                pub type c_uint = u32;
-                pub type c_long = i32;
-                pub type c_ulong = u32;
-                pub type c_float = f32;
-                pub type c_double = f64;
-                pub type size_t = u64;
-                pub type ptrdiff_t = i64;
-                pub type clock_t = i32;
-                pub type time_t = i64;
-                pub type wchar_t = u16;
-            }
-            pub mod c99 {
-                pub type c_longlong = i64;
-                pub type c_ulonglong = u64;
-                pub type intptr_t = int;
-                pub type uintptr_t = uint;
-            }
-            pub mod posix88 {
-                pub type off_t = i32; // XXX unless _FILE_OFFSET_BITS == 64
-                pub type dev_t = u32;
-                pub type ino_t = i16;
-                pub type pid_t = i64;
-                pub type useconds_t = u32;
-                pub type mode_t = u16;
-                pub type ssize_t = i64;
-            }
-            pub mod posix01 {
-            }
-            pub mod posix08 {
-            }
-            pub mod bsd44 {
-            }
-            pub mod extra {
-                use ptr;
-                use libc::types::common::c95::c_void;
-                use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
-                use libc::types::os::arch::c95::{c_ulong};
-                use libc::types::os::arch::c95::{wchar_t};
-                use libc::types::os::arch::c99::{c_ulonglong};
-
-                pub type BOOL = c_int;
-                pub type BYTE = u8;
-                pub type CCHAR = c_char;
-                pub type CHAR = c_char;
-
-                pub type DWORD = c_ulong;
-                pub type DWORDLONG = c_ulonglong;
-
-                pub type HANDLE = LPVOID;
-                pub type HMODULE = c_uint;
-
-                pub type LONG_PTR = i64; // changed
-
-                pub type LPCWSTR = *WCHAR;
-                pub type LPCSTR = *CHAR;
-                pub type LPCTSTR = *CHAR;
-                pub type LPTCH = *CHAR;
-
-                pub type LPWSTR = *mut WCHAR;
-                pub type LPSTR = *mut CHAR;
-                pub type LPTSTR = *mut CHAR;
-
-                // Not really, but opaque to us.
-                pub type LPSECURITY_ATTRIBUTES = LPVOID;
-
-                pub type LPVOID = *mut c_void;
-                pub type LPCVOID = *c_void;
-                pub type LPBYTE = *mut BYTE;
-                pub type LPWORD = *mut WORD;
-                pub type LPDWORD = *mut DWORD;
-                pub type LPHANDLE = *mut HANDLE;
-
-                pub type LRESULT = LONG_PTR;
-                pub type PBOOL = *mut BOOL;
-                pub type WCHAR = wchar_t;
-                pub type WORD = u16;
-                pub type SIZE_T = size_t;
-
-                pub type time64_t = i64;
-                pub type int64 = i64;
-
-                pub struct STARTUPINFO {
-                    cb: DWORD,
-                    lpReserved: LPTSTR,
-                    lpDesktop: LPTSTR,
-                    lpTitle: LPTSTR,
-                    dwX: DWORD,
-                    dwY: DWORD,
-                    dwXSize: DWORD,
-                    dwYSize: DWORD,
-                    dwXCountChars: DWORD,
-                    dwYCountCharts: DWORD,
-                    dwFillAttribute: DWORD,
-                    dwFlags: DWORD,
-                    wShowWindow: WORD,
-                    cbReserved2: WORD,
-                    lpReserved2: LPBYTE,
-                    hStdInput: HANDLE,
-                    hStdOutput: HANDLE,
-                    hStdError: HANDLE
-                }
-                pub type LPSTARTUPINFO = *mut STARTUPINFO;
-
-                pub struct PROCESS_INFORMATION {
-                    hProcess: HANDLE,
-                    hThread: HANDLE,
-                    dwProcessId: DWORD,
-                    dwThreadId: DWORD
-                }
-                pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
-
-                pub struct SYSTEM_INFO {
-                    wProcessorArchitecture: WORD,
-                    wReserved: WORD,
-                    dwPageSize: DWORD,
-                    lpMinimumApplicationAddress: LPVOID,
-                    lpMaximumApplicationAddress: LPVOID,
-                    dwActiveProcessorMask: DWORD,
-                    dwNumberOfProcessors: DWORD,
-                    dwProcessorType: DWORD,
-                    dwAllocationGranularity: DWORD,
-                    wProcessorLevel: WORD,
-                    wProcessorRevision: WORD
-                }
-                pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
-
-                impl SYSTEM_INFO {
-                    pub fn new() -> SYSTEM_INFO {
-                        SYSTEM_INFO {
-                            wProcessorArchitecture: 0,
-                            wReserved: 0,
-                            dwPageSize: 0,
-                            lpMinimumApplicationAddress: ptr::mut_null(),
-                            lpMaximumApplicationAddress: ptr::mut_null(),
-                            dwActiveProcessorMask: 0,
-                            dwNumberOfProcessors: 0,
-                            dwProcessorType: 0,
-                            dwAllocationGranularity: 0,
-                            wProcessorLevel: 0,
-                            wProcessorRevision: 0
-                        }
-                    }
-                }
-
-                pub struct MEMORY_BASIC_INFORMATION {
-                    BaseAddress: LPVOID,
-                    AllocationBase: LPVOID,
-                    AllocationProtect: DWORD,
-                    RegionSize: SIZE_T,
-                    State: DWORD,
-                    Protect: DWORD,
-                    Type: DWORD
-                }
-                pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
             }
         }
     }
@@ -3515,8 +3378,8 @@ pub mod funcs {
         pub mod kernel32 {
             use libc::types::os::arch::c95::{c_uint};
             use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE};
-            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCTSTR,
-                                               LPTSTR, LPTCH, LPDWORD, LPVOID,
+            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCSTR, LPSTR, LPCH,
+                                               LPDWORD, LPVOID,
                                                LPCVOID, LPOVERLAPPED};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
                                                LPPROCESS_INFORMATION,
@@ -3532,8 +3395,8 @@ pub mod funcs {
                                                -> DWORD;
                 pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
                                                -> BOOL;
-                pub fn GetEnvironmentStringsA() -> LPTCH;
-                pub fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
+                pub fn GetEnvironmentStringsA() -> LPCH;
+                pub fn FreeEnvironmentStringsA(env_ptr: LPCH) -> BOOL;
                 pub fn GetModuleFileNameW(hModule: HMODULE,
                                           lpFilename: LPWSTR,
                                           nSize: DWORD)
@@ -3572,8 +3435,8 @@ pub mod funcs {
                                    dwProcessId: DWORD)
                                    -> HANDLE;
                 pub fn GetCurrentProcess() -> HANDLE;
-                pub fn CreateProcessA(lpApplicationName: LPCTSTR,
-                                      lpCommandLine: LPTSTR,
+                pub fn CreateProcessA(lpApplicationName: LPCSTR,
+                                      lpCommandLine: LPSTR,
                                       lpProcessAttributes:
                                       LPSECURITY_ATTRIBUTES,
                                       lpThreadAttributes:
@@ -3581,7 +3444,7 @@ pub mod funcs {
                                       bInheritHandles: BOOL,
                                       dwCreationFlags: DWORD,
                                       lpEnvironment: LPVOID,
-                                      lpCurrentDirectory: LPCTSTR,
+                                      lpCurrentDirectory: LPCSTR,
                                       lpStartupInfo: LPSTARTUPINFO,
                                       lpProcessInformation:
                                       LPPROCESS_INFORMATION)
@@ -3621,7 +3484,7 @@ pub mod funcs {
                                           flProtect: DWORD,
                                           dwMaximumSizeHigh: DWORD,
                                           dwMaximumSizeLow: DWORD,
-                                          lpName: LPCTSTR)
+                                          lpName: LPCWSTR)
                                           -> HANDLE;
                 pub fn MapViewOfFile(hFileMappingObject: HANDLE,
                                      dwDesiredAccess: DWORD,
