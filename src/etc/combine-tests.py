@@ -5,17 +5,20 @@
 # can run it "fast": spawning zillions of windows processes is our major build
 # bottleneck (and it doesn't hurt to run faster on other platforms as well).
 
-import sys, os, re, codecs
+import sys
+import os
+import codecs
+
 
 def scrub(b):
-  if sys.version_info >= (3,) and type(b) == bytes:
-    return b.decode('ascii')
-  else:
-    return b
+    if sys.version_info >= (3,) and type(b) == bytes:
+        return b.decode('ascii')
+    else:
+        return b
 
 src_dir = scrub(os.getenv("CFG_SRC_DIR"))
 if not src_dir:
-  raise Exception("missing env var CFG_SRC_DIR")
+    raise Exception("missing env var CFG_SRC_DIR")
 
 run_pass = os.path.join(src_dir, "src", "test", "run-pass")
 run_pass = os.path.abspath(run_pass)
@@ -23,7 +26,7 @@ stage2_tests = []
 
 for t in os.listdir(run_pass):
     if t.endswith(".rs") and not (
-      t.startswith(".") or t.startswith("#") or t.startswith("~")):
+            t.startswith(".") or t.startswith("#") or t.startswith("~")):
         f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
         if not ("xfail-test" in s or
@@ -41,10 +44,11 @@ i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
 c.write("#[feature(globs, macro_rules, struct_variant, managed_boxes)];\n")
+c.write("#[allow(attribute_usage)];\n")
 for t in stage2_tests:
     p = os.path.join(run_pass, t)
     p = p.replace("\\", "\\\\")
-    c.write("#[path = \"%s\"]" % p);
+    c.write("#[path = \"%s\"]" % p)
     c.write("pub mod t_%d;\n" % i)
     i += 1
 c.close()
@@ -56,10 +60,10 @@ d.write("#[feature(globs, managed_boxes)];\n")
 d.write("extern mod extra;\n")
 d.write("extern mod run_pass_stage2;\n")
 d.write("use run_pass_stage2::*;\n")
-d.write("use std::io;\n");
-d.write("use std::io::Writer;\n");
-d.write("fn main() {\n");
-d.write("    let mut out = io::stdout();\n");
+d.write("use std::io;\n")
+d.write("use std::io::Writer;\n")
+d.write("fn main() {\n")
+d.write("    let mut out = io::stdout();\n")
 i = 0
 for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)
