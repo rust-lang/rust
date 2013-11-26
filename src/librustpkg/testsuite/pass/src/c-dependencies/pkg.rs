@@ -44,7 +44,7 @@ pub fn main() {
     let my_workspace = api::my_workspace(&context.context, "cdep");
     let foo_c_name = my_workspace.join_many(["src", "cdep-0.1", "foo.c"]);
 
-    let out_lib_path = do context.workcache_context.with_prep("foo.c") |prep| {
+    let out_lib_path = context.workcache_context.with_prep("foo.c", |prep| {
         let sub_cx = context.context.clone();
         debug!("foo_c_name = {}", foo_c_name.display());
         prep.declare_input("file",
@@ -62,7 +62,7 @@ pub fn main() {
             out_p.as_str().unwrap().to_owned()
         };
         out_path
-    };
+    });
     let out_lib_path = Path::new(out_lib_path);
     debug!("out_lib_path = {}", out_lib_path.display());
     context.add_library_path(out_lib_path.dir_path());

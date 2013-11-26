@@ -22,7 +22,7 @@ use std::unstable::raw::Vec;
 
 /// Trait for visitor that wishes to reflect on data.
 trait movable_ptr {
-    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void);
+    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void);
 }
 
 /// Helper function for alignment calculation.
@@ -37,16 +37,12 @@ impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     pub fn bump(&mut self, sz: uint) {
-      do self.inner.move_ptr() |p| {
-            ((p as uint) + sz) as *c_void
-      };
+      self.inner.move_ptr(|p| ((p as uint) + sz) as *c_void)
     }
 
     #[inline(always)]
     pub fn align(&mut self, a: uint) {
-      do self.inner.move_ptr() |p| {
-            align(p as uint, a) as *c_void
-      };
+      self.inner.move_ptr(|p| align(p as uint, a) as *c_void)
     }
 
     #[inline(always)]
@@ -471,7 +467,7 @@ struct Stuff {
 }
 
 impl my_visitor {
-    pub fn get<T:Clone>(&mut self, f: &fn(T)) {
+    pub fn get<T:Clone>(&mut self, f: |T|) {
         unsafe {
             f((*(self.ptr1 as *T)).clone());
         }
@@ -490,7 +486,7 @@ impl my_visitor {
 struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
-    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void) {
+    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }
@@ -501,15 +497,11 @@ impl TyVisitor for my_visitor {
     fn visit_bot(&mut self) -> bool { true }
     fn visit_nil(&mut self) -> bool { true }
     fn visit_bool(&mut self) -> bool {
-        do self.get::<bool>() |b| {
-            self.vals.push(b.to_str());
-        };
+        self.get::<bool>(|b| self.vals.push(b.to_str()));
         true
     }
     fn visit_int(&mut self) -> bool {
-        do self.get::<int>() |i| {
-            self.vals.push(i.to_str());
-        };
+        self.get::<int>(|i| self.vals.push(i.to_str()));
         true
     }
     fn visit_i8(&mut self) -> bool { true }

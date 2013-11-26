@@ -616,7 +616,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
      */
 
 
-    do base::with_scope_result(in_cx, call_info, "call") |cx| {
+    base::with_scope_result(in_cx, call_info, "call", |cx| {
         let callee = get_callee(cx);
         let mut bcx = callee.bcx;
         let ccx = cx.ccx();
@@ -776,7 +776,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         }
 
         rslt(bcx, llresult)
-    }
+    })
 }
 
 pub enum CallArgs<'self> {

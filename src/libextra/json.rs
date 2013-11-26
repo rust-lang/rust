@@ -79,9 +79,7 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    do n.times {
-        ss.push_str(" ");
-    }
+    n.times(|| ss.push_str(" "));
     return ss;
 }
 
@@ -1523,33 +1521,33 @@ mod tests {
     fn test_write_enum() {
         let animal = Dog;
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = Encoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"\"Dog\""
         );
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"\"Dog\""
         );
 
         let animal = Frog(~"Henry", 349);
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = Encoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
-            do with_str_writer |wr| {
+            with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder(wr);
                 animal.encode(&mut encoder);
-            },
+            }),
             ~"\
             [\n  \
                 \"Frog\",\n  \
@@ -1562,33 +1560,33 @@ mod tests {
     #[test]
     fn test_write_some() {
         let value = Some(~"jodhpurs");
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = Encoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"\"jodhpurs\"");
 
         let value = Some(~"jodhpurs");
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = PrettyEncoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"\"jodhpurs\"");
     }
 
     #[test]
     fn test_write_none() {
         let value: Option<~str> = None;
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = Encoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"null");
 
-        let s = do with_str_writer |wr| {
+        let s = with_str_writer(|wr| {
             let mut encoder = Encoder(wr);
             value.encode(&mut encoder);
-        };
+        });
         assert_eq!(s, ~"null");
     }
 
@@ -1985,7 +1983,7 @@ mod tests {
     }
     fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected_error: &str) {
         use std::task;
-        let res = task::try(|| {
+        let res = do task::try {
             // either fails in `decode` (which is what we want), or
             // returns Some(error_message)/None if the string was
             // invalid or valid JSON.
@@ -1996,7 +1994,7 @@ mod tests {
                     None
                 }
             }
-        });
+        };
         match res {
             Ok(Some(parse_error)) => fail!("`{}` is not valid json: {}",
                                            to_parse, parse_error),

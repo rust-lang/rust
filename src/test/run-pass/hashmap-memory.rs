@@ -24,7 +24,7 @@ mod map_reduce {
     use std::str;
     use std::task;
 
-    pub type putter<'self> = &'self fn(~str, ~str);
+    pub type putter<'self> = 'self |~str, ~str|;
 
     pub type mapper = extern fn(~str, putter);
 
@@ -34,7 +34,7 @@ mod map_reduce {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
-            task::spawn(|| map_task(ctrl.clone(), i.clone()) );
+            task::spawn(proc() map_task(ctrl.clone(), i.clone()) );
         }
     }
 

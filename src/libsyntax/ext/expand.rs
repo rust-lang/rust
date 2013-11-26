@@ -261,8 +261,8 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
     // For each item, look through the attributes.  If any of them are
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
-    let new_items = do vec::flat_map(module_.items) |item| {
-        do item.attrs.rev_iter().fold(~[*item]) |items, attr| {
+    let new_items = vec::flat_map(module_.items, |item| {
+        item.attrs.rev_iter().fold(~[*item], |items, attr| {
             let mname = attr.name();
 
             match (*extsbox).find(&intern(mname)) {
@@ -280,8 +280,8 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
               },
               _ => items,
             }
-        }
-    };
+        })
+    });
 
     ast::_mod {
         items: new_items,

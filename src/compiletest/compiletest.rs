@@ -266,12 +266,12 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
         let file = file.clone();
         debug!("inspecting file {}", file.display());
         if is_test(config, &file) {
-            let t = do make_test(config, &file) {
+            let t = make_test(config, &file, || {
                 match config.mode {
                     mode_codegen => make_metrics_test_closure(config, &file),
                     _ => make_test_closure(config, &file)
                 }
-            };
+            });
             tests.push(t)
         }
     }
@@ -301,8 +301,8 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: &config, testfile: &Path,
-                 f: &fn()->test::TestFn) -> test::TestDescAndFn {
+pub fn make_test(config: &config, testfile: &Path, f: || -> test::TestFn)
+                 -> test::TestDescAndFn {
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testfile),
@@ -333,7 +333,7 @@ pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     let config = Cell::new((*config).clone());
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
-    test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
+    test::DynTestFn(proc() { runtest::run(config.take(), testfile.take()) })
 }
 
 pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
@@ -341,5 +341,7 @@ pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::Test
     let config = Cell::new((*config).clone());
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
-    test::DynMetricFn(|mm| { runtest::run_metrics(config.take(), testfile.take(), mm) })
+    test::DynMetricFn(proc(mm) {
+        runtest::run_metrics(config.take(), testfile.take(), mm)
+    })
 }

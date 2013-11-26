@@ -37,11 +37,11 @@ fn count(n: uint) -> uint {
 }
 
 pub fn main() {
-    do 10u.times {
+    10u.times(|| {
         do task::spawn {
             let result = count(5u);
             info!("result = {}", result);
             assert_eq!(result, 16u);
         };
-    }
+    })
 }

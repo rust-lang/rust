@@ -26,7 +26,7 @@ fn call3<'a, 'b>(a: &'a uint, b: &'b uint) {
 }
 
 fn call4<'a, 'b>(a: &'a uint, b: &'b uint) {
-    let z: Option<&fn(&'a &'b uint)> = None;
+    let z: Option<|&'a &'b uint|> = None;
     //~^ ERROR pointer has a longer lifetime than the data it references
 }
 

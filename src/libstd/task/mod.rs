@@ -280,13 +280,13 @@ impl TaskBuilder {
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
             None => {
-                let f: proc(proc()) -> proc() = |body| body;
+                let f: proc(proc()) -> proc() = proc(body) body;
                 f
             }
         };
         let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
-            let f: proc(proc()) -> proc() = |body| {
+            let f: proc(proc()) -> proc() = proc(body) {
                 let prev_gen_body = prev_gen_body.take();
                 wrapper(prev_gen_body(body))
             };
@@ -432,12 +432,12 @@ pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
-        do Local::borrow |task: &mut Task| {
+        Local::borrow(|task: &mut Task| {
             match task.name {
                 Some(ref name) => blk(Some(name.as_slice())),
                 None => blk(None)
             }
-        }
+        })
     } else {
         fail!("no task name exists in non-green task context")
     }
@@ -459,9 +459,7 @@ pub fn failing() -> bool {
 
     use rt::task::Task;
 
-    do Local::borrow |local: &mut Task| {
-        local.unwinder.unwinding
-    }
+    Local::borrow(|local: &mut Task| local.unwinder.unwinding)
 }
 
 // The following 8 tests test the following 2^3 combinations:
@@ -479,9 +477,9 @@ fn test_unnamed_task() {
 
     do run_in_uv_task {
         do spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.is_none());
-            }
+            })
         }
     }
 }
@@ -494,9 +492,9 @@ fn test_owned_named_task() {
         let mut t = task();
         t.name(~"ada lovelace");
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -509,9 +507,9 @@ fn test_static_named_task() {
         let mut t = task();
         t.name("ada lovelace");
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -524,9 +522,9 @@ fn test_send_named_task() {
         let mut t = task();
         t.name("ada lovelace".into_send_str());
         do t.spawn {
-            do with_task_name |name| {
+            with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
-            }
+            })
         }
     }
 }
@@ -553,7 +551,7 @@ fn test_add_wrapper() {
     let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
         let ch = Cell::new(ch.take());
-        let result: proc() = || {
+        let result: proc() = proc() {
             let ch = ch.take();
             body();
             ch.send(());
@@ -608,9 +606,9 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    do Local::borrow |sched: &mut ::rt::sched::Scheduler| {
+    Local::borrow(|sched: &mut ::rt::sched::Scheduler| {
         sched.sched_id() as int
-    }
+    })
 }
 
 #[test]
@@ -668,7 +666,7 @@ fn test_spawn_sched_blocking() {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        do 20u.times {
+        20u.times(|| {
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
 
@@ -715,7 +713,7 @@ fn test_spawn_sched_blocking() {
             lock.unlock();
             fin_po.recv();
             lock.destroy();
-        }
+        })
     }
 }
 
@@ -742,21 +740,21 @@ fn test_avoid_copying_the_body_spawn() {
 
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         let builder = task();
         do builder.spawn || {
             f();
         }
-    }
+    })
 }
 
 #[test]
 fn test_avoid_copying_the_body_try() {
-    do avoid_copying_the_body |f| {
+    avoid_copying_the_body(|f| {
         do try || {
             f()
         };
-    }
+    })
 }
 
 #[test]
@@ -767,7 +765,7 @@ fn test_child_doesnt_ref_parent() {
     // valgrind-friendly. try this at home, instead..!)
     static generations: uint = 16;
     fn child_no(x: uint) -> proc() {
-        return || {
+        return proc() {
             if x < generations {
                 let mut t = task();
                 t.unwatched();
@@ -785,7 +783,7 @@ fn test_simple_newsched_spawn() {
     use rt::test::run_in_uv_task;
 
     do run_in_uv_task {
-        spawn(||())
+        spawn(proc()())
     }
 }
 

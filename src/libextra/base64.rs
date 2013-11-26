@@ -317,20 +317,20 @@ mod test {
         use std::rand::{task_rng, random, Rng};
         use std::vec;
 
-        do 1000.times {
+        1000.times(|| {
             let times = task_rng().gen_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
-        }
+        })
     }
 
     #[bench]
     pub fn bench_to_base64(bh: & mut BenchHarness) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        do bh.iter {
+        bh.iter(|| {
             s.as_bytes().to_base64(STANDARD);
-        }
+        });
         bh.bytes = s.len() as u64;
     }
 
@@ -339,9 +339,9 @@ mod test {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let b = s.as_bytes().to_base64(STANDARD);
-        do bh.iter {
+        bh.iter(|| {
             b.from_base64();
-        }
+        });
         bh.bytes = b.len() as u64;
     }
 

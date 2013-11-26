@@ -25,13 +25,13 @@ fn test_ret() { let _x: @int = return; }
 
 fn test_fail() {
     fn f() { let _x: @int = fail!(); }
-    task::try(|| f() );
+    task::try(proc() f() );
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail!(); }
     fn g() { let _x: @int = f(); }
-    task::try(|| g() );
+    task::try(proc() g() );
 }
 
 pub fn main() {

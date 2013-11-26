@@ -16,9 +16,9 @@ fn x(s: ~str, n: int) {
 }
 
 pub fn main() {
-    task::spawn(|| x(~"hello from first spawned fn", 65) );
-    task::spawn(|| x(~"hello from second spawned fn", 66) );
-    task::spawn(|| x(~"hello from third spawned fn", 67) );
+    task::spawn(proc() x(~"hello from first spawned fn", 65) );
+    task::spawn(proc() x(~"hello from second spawned fn", 66) );
+    task::spawn(proc() x(~"hello from third spawned fn", 67) );
     let mut i: int = 30;
     while i > 0 { i = i - 1; info!("parent sleeping"); task::deschedule(); }
 }

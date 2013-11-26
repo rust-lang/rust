@@ -96,12 +96,12 @@ impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
-            do self.chunks.each |chunk| {
+            self.chunks.each(|chunk| {
                 if !chunk.is_pod {
                     destroy_chunk(chunk);
                 }
                 true
-            };
+            });
         }
     }
 }
@@ -282,10 +282,10 @@ fn test_arena_destructors() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        do arena.alloc { @i };
+        arena.alloc(|| @i);
         // Allocate something with funny size and alignment, to keep
         // things interesting.
-        do arena.alloc { [0u8, 1u8, 2u8] };
+        arena.alloc(|| [0u8, 1u8, 2u8]);
     }
 }
 
@@ -297,14 +297,14 @@ fn test_arena_destructors_fail() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        do arena.alloc { @i };
+        arena.alloc(|| { @i });
         // Allocate something with funny size and alignment, to keep
         // things interesting.
-        do arena.alloc { [0u8, 1u8, 2u8] };
+        arena.alloc(|| { [0u8, 1u8, 2u8] });
     }
     // Now, fail while allocating
-    do arena.alloc::<@int> {
+    arena.alloc::<@int>(|| {
         // Now fail.
         fail!();
-    };
+    });
 }

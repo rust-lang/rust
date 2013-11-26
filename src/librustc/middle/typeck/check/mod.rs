@@ -392,12 +392,10 @@ impl Visitor<()> for GatherLocalsVisitor {
     }
 
     fn visit_block(&mut self, b:&ast::Block, _:()) {
-            // non-obvious: the `blk` variable maps to region lb, so
-            // we have to keep this up-to-date.  This
-            // is... unfortunate.  It'd be nice to not need this.
-            do self.fcx.with_region_lb(b.id) {
-                visit::walk_block(self, b, ());
-            }
+        // non-obvious: the `blk` variable maps to region lb, so
+        // we have to keep this up-to-date.  This
+        // is... unfortunate.  It'd be nice to not need this.
+        self.fcx.with_region_lb(b.id, || visit::walk_block(self, b, ()));
     }
 
         // Don't descend into fns and items
@@ -517,10 +515,11 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         // Add formal parameters.
         for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
-            do pat_util::pat_bindings(tcx.def_map, input.pat)
-                    |_bm, pat_id, _sp, _path| {
+            pat_util::pat_bindings(tcx.def_map,
+                                   input.pat,
+                                   |_bm, pat_id, _sp, _path| {
                 visit.assign(pat_id, None);
-            }
+            });
 
             // Check the pattern.
             let pcx = pat_ctxt {
@@ -1392,17 +1391,17 @@ pub fn valid_range_bounds(ccx: @mut CrateCtxt,
 pub fn check_expr_has_type(
     fcx: @mut FnCtxt, expr: @ast::Expr,
     expected: ty::t) {
-    do check_expr_with_unifier(fcx, expr, Some(expected)) {
+    check_expr_with_unifier(fcx, expr, Some(expected), || {
         demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr));
-    }
+    });
 }
 
 pub fn check_expr_coercable_to_type(
     fcx: @mut FnCtxt, expr: @ast::Expr,
     expected: ty::t) {
-    do check_expr_with_unifier(fcx, expr, Some(expected)) {
+    check_expr_with_unifier(fcx, expr, Some(expected), || {
         demand::coerce(fcx, expr.span, expected, expr)
-    }
+    });
 }
 
 pub fn check_expr_with_hint(
@@ -1462,9 +1461,7 @@ pub fn lookup_field_ty(tcx: ty::ctxt,
                        substs: &ty::substs) -> Option<ty::t> {
 
     let o_field = items.iter().find(|f| f.name == fieldname);
-    do o_field.map() |f| {
-        ty::lookup_field_type(tcx, class_id, f.id, substs)
-    }
+    o_field.map(|f| ty::lookup_field_type(tcx, class_id, f.id, substs))
 }
 
 // Controls whether the arguments are automatically referenced. This is useful
@@ -2693,7 +2690,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::ExprUnary(callee_id, unop, oprnd) => {
-        let exp_inner = do unpack_expected(fcx, expected) |sty| {
+        let exp_inner = unpack_expected(fcx, expected, |sty| {
             match unop {
               ast::UnBox(_) | ast::UnUniq => match *sty {
                 ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => Some(mt.ty),
@@ -2702,7 +2699,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
               ast::UnNot | ast::UnNeg => expected,
               ast::UnDeref => None
             }
-        };
+        });
         check_expr_with_opt_hint(fcx, oprnd, exp_inner);
         let mut oprnd_t = fcx.expr_ty(oprnd);
         if !ty::type_is_error(oprnd_t) &&
@@ -2908,8 +2905,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         _match::check_match(fcx, expr, discrim, *arms);
       }
       ast::ExprFnBlock(ref decl, ref body) => {
-        check_expr_fn(fcx, expr, None,
-                      decl, body, Vanilla, expected);
+        check_expr_fn(fcx,
+                      expr,
+                      Some(ast::BorrowedSigil),
+                      decl,
+                      body,
+                      Vanilla,
+                      expected);
       }
       ast::ExprProc(ref decl, ref body) => {
         check_expr_fn(fcx,
@@ -2925,12 +2927,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            expected,
                                            |x| Some((*x).clone()));
         let inner_ty = match expected_sty {
-            Some(ty::ty_closure(_)) => expected.unwrap(),
+            Some(ty::ty_closure(ref closure_ty))
+                    if closure_ty.sigil == ast::OwnedSigil => {
+                expected.unwrap()
+            }
             _ => match expected {
                 Some(expected_t) => {
                     fcx.type_error_message(expr.span, |actual| {
                         format!("last argument in `do` call \
-                              has non-closure type: {}",
+                              has non-procedure type: {}",
                              actual)
                     }, expected_t, None);
                     let err_ty = ty::mk_err();
@@ -3137,7 +3142,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut bot_field = false;
         let mut err_field = false;
 
-        let elt_ts = do elts.iter().enumerate().map |(i, e)| {
+        let elt_ts = elts.iter().enumerate().map(|(i, e)| {
             let opt_hint = match flds {
                 Some(ref fs) if i < fs.len() => Some(fs[i]),
                 _ => None
@@ -3147,7 +3152,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
             t
-        }.collect();
+        }).collect();
         if bot_field {
             fcx.write_bot(id);
         } else if err_field {
@@ -3355,7 +3360,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
     let purity_state = fcx.ps.recurse(blk);
     let prev = replace(&mut fcx.ps, purity_state);
 
-    do fcx.with_region_lb(blk.id) {
+    fcx.with_region_lb(blk.id, || {
         let mut warned = false;
         let mut last_was_bot = false;
         let mut any_bot = false;
@@ -3408,7 +3413,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
               }
           }
         };
-    }
+    });
 
     fcx.ps = prev;
 }

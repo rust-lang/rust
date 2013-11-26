@@ -10,16 +10,16 @@
 
 extern mod extra;
 
-fn asSendfn( f : proc()->uint ) -> uint {
+fn asSendfn(f: proc() -> uint) -> uint {
    return f();
 }
 
-fn asBlock( f : &fn()->uint ) -> uint {
+fn asBlock(f: || -> uint) -> uint {
    return f();
 }
 
 pub fn main() {
-   let x = asSendfn(|| 22u);
+   let x = asSendfn(proc() 22u);
    assert_eq!(x, 22u);
    let x = asBlock(|| 22u);
    assert_eq!(x, 22u);

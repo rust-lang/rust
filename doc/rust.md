@@ -2703,22 +2703,16 @@ A `loop` expression is only permitted in the body of a loop.
 do_expr : "do" expr [ '|' ident_list '|' ] ? '{' block '}' ;
 ~~~~
 
-A _do expression_ provides a more-familiar block-syntax for a [lambda expression](#lambda-expressions),
-including a special translation of [return expressions](#return-expressions) inside the supplied block.
+A _do expression_ provides a more-familiar block syntax
+for invoking a function and passing it a newly-created a procedure.
 
-Any occurrence of a [return expression](#return-expressions)
-inside this `block` expression is rewritten
-as a reference to an (anonymous) flag set in the caller's environment,
-which is checked on return from the `expr` and, if set,
-causes a corresponding return from the caller.
-In this way, the meaning of `return` statements in language built-in control blocks is preserved,
-if they are rewritten using lambda functions and `do` expressions as abstractions.
-
-The optional `ident_list` and `block` provided in a `do` expression are parsed as though they constitute a lambda expression;
+The optional `ident_list` and `block` provided in a `do` expression are parsed
+as though they constitute a procedure expression;
 if the `ident_list` is missing, an empty `ident_list` is implied.
 
-The lambda expression is then provided as a _trailing argument_
-to the outermost [call](#call-expressions) or [method call](#method-call-expressions) expression
+The procedure expression is then provided as a _trailing argument_
+to the outermost [call](#call-expressions) or
+[method call](#method-call-expressions) expression
 in the `expr` following `do`.
 If the `expr` is a [path expression](#path-expressions), it is parsed as though it is a call expression.
 If the `expr` is a [field expression](#field-expressions), it is parsed as though it is a method call expression.
@@ -2726,10 +2720,10 @@ If the `expr` is a [field expression](#field-expressions), it is parsed as thoug
 In this example, both calls to `f` are equivalent:
 
 ~~~~
-# fn f(f: |int|) { }
+# fn f(f: proc(int)) { }
 # fn g(i: int) { }
 
-f(|j| g(j));
+f(proc(j) { g(j) });
 
 do f |j| {
     g(j);
@@ -2739,10 +2733,10 @@ do f |j| {
 In this example, both calls to the (binary) function `k` are equivalent:
 
 ~~~~
-# fn k(x:int, f: |int|) { }
+# fn k(x:int, f: proc(int)) { }
 # fn l(i: int) { }
 
-k(3, |j| l(j));
+k(3, proc(j) { l(j) });
 
 do k(3) |j| {
    l(j);
@@ -3194,7 +3188,7 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type Binop<'self> = &'self fn(int,int) -> int;
+type Binop<'self> = 'self |int,int| -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ~~~~

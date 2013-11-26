@@ -52,13 +52,13 @@ pub type path = ~[path_elt];
 
 pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
                          -> ~str {
-    let strs = do p.map |e| {
+    let strs = p.map(|e| {
         match *e {
             path_mod(s) | path_name(s) | path_pretty_name(s, _) => {
                 itr.get(s.name)
             }
         }
-    };
+    });
     strs.connect(sep)
 }
 

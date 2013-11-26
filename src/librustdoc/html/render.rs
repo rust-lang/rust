@@ -320,22 +320,22 @@ fn write(dst: Path, contents: &str) {
 /// Makes a directory on the filesystem, failing the task if an error occurs and
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) {
-    do io::io_error::cond.trap(|err| {
+    io::io_error::cond.trap(|err| {
         error!("Couldn't create directory `{}`: {}",
                 path.display(), err.desc);
         fail!()
-    }).inside {
+    }).inside(|| {
         if !path.is_dir() {
             fs::mkdir(path, io::UserRWX);
         }
-    }
+    })
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
 /// things like ".." to components which preserve the "top down" hierarchy of a
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
-fn clean_srcpath(src: &[u8], f: &fn(&str)) {
+fn clean_srcpath(src: &[u8], f: |&str|) {
     let p = Path::new(src);
     if p.as_vec() != bytes!(".") {
         for c in p.str_components().map(|x|x.unwrap()) {
@@ -439,11 +439,11 @@ impl<'self> SourceCollector<'self> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = ~"../../";
-        do clean_srcpath(p.dirname()) |component| {
+        clean_srcpath(p.dirname(), |component| {
             cur.push(component);
             mkdir(&cur);
             root_path.push_str("../");
-        }
+        });
 
         cur.push(p.filename().expect("source has no filename") + bytes!(".html"));
         let mut w = BufferedWriter::new(File::create(&cur).unwrap());
@@ -492,9 +492,9 @@ impl DocFolder for Cache {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
                     Some(clean::ResolvedPath{ id, _ }) => {
-                        let v = do self.implementors.find_or_insert_with(id) |_|{
+                        let v = self.implementors.find_or_insert_with(id, |_|{
                             ~[]
-                        };
+                        });
                         match i.for_ {
                             clean::ResolvedPath{_} => {
                                 v.unshift(PathType(i.for_.clone()));
@@ -595,9 +595,9 @@ impl DocFolder for Cache {
                     clean::Item{ attrs, inner: clean::ImplItem(i), _ } => {
                         match i.for_ {
                             clean::ResolvedPath { id, _ } => {
-                                let v = do self.impls.find_or_insert_with(id) |_| {
+                                let v = self.impls.find_or_insert_with(id, |_| {
                                     ~[]
-                                };
+                                });
                                 // extract relevant documentation for this impl
                                 match attrs.move_iter().find(|a| {
                                     match *a {
@@ -645,7 +645,7 @@ impl<'self> Cache {
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
-    fn recurse<T>(&mut self, s: ~str, f: &fn(&mut Context) -> T) -> T {
+    fn recurse<T>(&mut self, s: ~str, f: |&mut Context| -> T) -> T {
         if s.len() == 0 {
             fail!("what {:?}", self);
         }
@@ -726,16 +726,16 @@ impl Context {
                         Process(cx, item) => {
                             let mut cx = cx;
                             let item = Cell::new(item);
-                            do (|| {
-                                do cx.item(item.take()) |cx, item| {
+                            (|| {
+                                cx.item(item.take(), |cx, item| {
                                     prog_chan.send(JobNew);
                                     chan.send(Process(cx.clone(), item));
-                                }
-                            }).finally {
+                                })
+                            }).finally(|| {
                                 // If we fail, everything else should still get
                                 // completed
                                 prog_chan.send(JobDone);
-                            }
+                            })
                         }
                         Die => break,
                     }
@@ -768,7 +768,7 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item(&mut self, item: clean::Item, f: &fn(&mut Context, clean::Item)) {
+    fn item(&mut self, item: clean::Item, f: |&mut Context, clean::Item|) {
         fn render(w: io::File, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {
             // A little unfortunate that this is done like this, but it sure
@@ -803,7 +803,7 @@ impl Context {
             clean::ModuleItem(*) => {
                 let name = item.name.get_ref().to_owned();
                 let item = Cell::new(item);
-                do self.recurse(name) |this| {
+                self.recurse(name, |this| {
                     let item = item.take();
                     let dst = this.dst.join("index.html");
                     render(File::create(&dst).unwrap(), this, &item, false);
@@ -816,7 +816,7 @@ impl Context {
                     for item in m.items.move_iter() {
                         f(this, item);
                     }
-                }
+                })
             }
 
             // Things which don't have names (like impls) don't get special
@@ -875,9 +875,9 @@ impl<'self> fmt::Default for Item<'self> {
 
         if it.cx.include_sources {
             let mut path = ~[];
-            do clean_srcpath(it.item.source.filename.as_bytes()) |component| {
+            clean_srcpath(it.item.source.filename.as_bytes(), |component| {
                 path.push(component.to_owned());
-            }
+            });
             let href = if it.item.source.loline == it.item.source.hiline {
                 format!("{}", it.item.source.loline)
             } else {
@@ -1012,9 +1012,7 @@ fn item_module(w: &mut Writer, cx: &Context,
     }
 
     debug!("{:?}", indices);
-    do sort::quick_sort(indices) |&i1, &i2| {
-        lt(&items[i1], &items[i2], i1, i2)
-    }
+    sort::quick_sort(indices, |&i1, &i2| lt(&items[i1], &items[i2], i1, i2));
 
     debug!("{:?}", indices);
     let mut curty = "";
@@ -1200,8 +1198,8 @@ fn item_trait(w: &mut Writer, it: &clean::Item, t: &clean::Trait) {
         write!(w, "</div>");
     }
 
-    do local_data::get(cache_key) |cache| {
-        do cache.unwrap().read |cache| {
+    local_data::get(cache_key, |cache| {
+        cache.unwrap().read(|cache| {
             match cache.implementors.find(&it.id) {
                 Some(implementors) => {
                     write!(w, "
@@ -1223,8 +1221,8 @@ fn item_trait(w: &mut Writer, it: &clean::Item, t: &clean::Trait) {
                 }
                 None => {}
             }
-        }
-    }
+        })
+    })
 }
 
 fn render_method(w: &mut Writer, meth: &clean::Item, withlink: bool) {
@@ -1412,9 +1410,9 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
 }
 
 fn render_methods(w: &mut Writer, it: &clean::Item) {
-    do local_data::get(cache_key) |cache| {
+    local_data::get(cache_key, |cache| {
         let cache = cache.unwrap();
-        do cache.read |c| {
+        cache.read(|c| {
             match c.impls.find(&it.id) {
                 Some(v) => {
                     let mut non_trait = v.iter().filter(|p| {
@@ -1442,8 +1440,8 @@ fn render_methods(w: &mut Writer, it: &clean::Item) {
                 }
                 None => {}
             }
-        }
-    }
+        })
+    })
 }
 
 fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
@@ -1492,8 +1490,8 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
             None => continue,
             Some(id) => id,
         };
-        do local_data::get(cache_key) |cache| {
-            do cache.unwrap().read |cache| {
+        local_data::get(cache_key, |cache| {
+            cache.unwrap().read(|cache| {
                 match cache.traits.find(&trait_id) {
                     Some(t) => {
                         let name = meth.name.clone();
@@ -1513,8 +1511,8 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
                     }
                     None => {}
                 }
-            }
-        }
+            })
+        })
     }
 
     // If we've implemented a trait, then also emit documentation for all
@@ -1522,8 +1520,8 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
     match trait_id {
         None => {}
         Some(id) => {
-            do local_data::get(cache_key) |cache| {
-                do cache.unwrap().read |cache| {
+            local_data::get(cache_key, |cache| {
+                cache.unwrap().read(|cache| {
                     match cache.traits.find(&id) {
                         Some(t) => {
                             for method in t.methods.iter() {
@@ -1538,8 +1536,8 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
                         }
                         None => {}
                     }
-                }
-            }
+                })
+            })
         }
     }
     write!(w, "</div>");

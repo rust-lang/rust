@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(f: &fn(int)) { f(10) }
+fn f(f: proc(int)) { f(10) }
 
 pub fn main() {
     do f() |i| { assert!(i == 10) }

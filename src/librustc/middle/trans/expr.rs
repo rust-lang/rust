@@ -693,10 +693,12 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
             return _match::trans_match(bcx, expr, discr, *arms, dest);
         }
         ast::ExprBlock(ref blk) => {
-            return do base::with_scope(bcx, blk.info(),
-                                       "block-expr body") |bcx| {
+            return base::with_scope(bcx,
+                                    blk.info(),
+                                    "block-expr body",
+                                    |bcx| {
                 controlflow::trans_block(bcx, blk, dest)
-            };
+            });
         }
         ast::ExprStruct(_, ref fields, base) => {
             return trans_rec_or_struct(bcx, (*fields), base, expr.span, expr.id, dest);
@@ -930,17 +932,18 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
         let repr = adt::represent_type(bcx.ccx(), base_datum.ty);
-        do with_field_tys(bcx.tcx(), base_datum.ty, None) |discr, field_tys| {
+        with_field_tys(bcx.tcx(), base_datum.ty, None, |discr, field_tys| {
             let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
             DatumBlock {
-                datum: do base_datum.get_element(bcx,
-                                                 field_tys[ix].mt.ty,
-                                                 ZeroMem) |srcval| {
+                datum: base_datum.get_element(bcx,
+                                              field_tys[ix].mt.ty,
+                                              ZeroMem,
+                                              |srcval| {
                     adt::trans_field_ptr(bcx, repr, srcval, discr, ix)
-                },
+                }),
                 bcx: bcx
             }
-        }
+        })
     }
 
     fn trans_index(bcx: @mut Block,
@@ -984,9 +987,9 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
         let expect = ccx.intrinsics.get_copy(&("llvm.expect.i1"));
         let expected = Call(bcx, expect, [bounds_check, C_i1(false)], []);
-        let bcx = do with_cond(bcx, expected) |bcx| {
+        let bcx = with_cond(bcx, expected, |bcx| {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
-        };
+        });
         let elt = InBoundsGEP(bcx, base, [ix_val]);
         let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
         return DatumBlock {
@@ -1044,11 +1047,11 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                             let symbol = csearch::get_symbol(
                                 bcx.ccx().sess.cstore,
                                 did);
-                            let llval = do symbol.with_c_str |buf| {
+                            let llval = symbol.with_c_str(|buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
                                                     llty.to_ref(),
                                                     buf)
-                            };
+                            });
                             let extern_const_values = &mut bcx.ccx().extern_const_values;
                             extern_const_values.insert(did, llval);
                             llval
@@ -1208,10 +1211,10 @@ fn trans_rec_or_struct(bcx: @mut Block,
 
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
-    do with_field_tys(tcx, ty, Some(id)) |discr, field_tys| {
+    with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
-        let numbered_fields = do fields.map |field| {
+        let numbered_fields = fields.map(|field| {
             let opt_pos =
                 field_tys.iter().position(|field_ty|
                                           field_ty.ident.name == field.ident.node.name);
@@ -1225,7 +1228,7 @@ fn trans_rec_or_struct(bcx: @mut Block,
                                       "Couldn't find field in struct type")
                 }
             }
-        };
+        });
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = ~[];
@@ -1247,7 +1250,7 @@ fn trans_rec_or_struct(bcx: @mut Block,
 
         let repr = adt::represent_type(bcx.ccx(), ty);
         trans_adt(bcx, repr, discr, numbered_fields, optbase, dest)
-    }
+    })
 }
 
 /**
@@ -1308,9 +1311,9 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: ty::Disr,
         // And, would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
         for &(i, t) in base.fields.iter() {
-            let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {
+            let datum = base_datum.get_element(bcx, t, ZeroMem, |srcval| {
                 adt::trans_field_ptr(bcx, repr, srcval, discr, i)
-            };
+            });
             let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
             bcx = datum.store_to(bcx, INIT, dest);
         }
@@ -1541,9 +1544,9 @@ fn trans_lazy_binop(bcx: @mut Block,
     let bcx = bcx;
 
     let Result {bcx: past_lhs, val: lhs} = {
-        do base::with_scope_result(bcx, a.info(), "lhs") |bcx| {
+        base::with_scope_result(bcx, a.info(), "lhs", |bcx| {
             trans_to_datum(bcx, a).to_result()
-        }
+        })
     };
 
     if past_lhs.unreachable {
@@ -1560,9 +1563,9 @@ fn trans_lazy_binop(bcx: @mut Block,
     }
 
     let Result {bcx: past_rhs, val: rhs} = {
-        do base::with_scope_result(before_rhs, b.info(), "rhs") |bcx| {
+        base::with_scope_result(before_rhs, b.info(), "rhs", |bcx| {
             trans_to_datum(bcx, b).to_result()
-        }
+        })
     };
 
     if past_rhs.unreachable {
@@ -1830,9 +1833,9 @@ pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
             ccx, modpath, "loglevel");
         let global;
         unsafe {
-            global = do s.with_c_str |buf| {
+            global = s.with_c_str(|buf| {
                 llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
-            };
+            });
             llvm::LLVMSetGlobalConstant(global, False);
             llvm::LLVMSetInitializer(global, C_null(Type::i32()));
             lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);

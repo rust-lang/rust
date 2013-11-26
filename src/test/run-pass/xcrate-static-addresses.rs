@@ -21,8 +21,8 @@ pub fn main() {
 
     // Previously this fail'd because there were two addresses that were being
     // used when declaring constants.
-    do other::test::cond.trap(|_| {
-    }).inside {
+    other::test::cond.trap(|_| {
+    }).inside(|| {
         other::raise();
-    }
+    })
 }

@@ -13,13 +13,13 @@
 
 pub fn main() {
     let mut sum: int = 0;
-    do first_ten |i| { info!("main"); info!("{}", i); sum = sum + i; }
+    first_ten(|i| { info!("main"); info!("{}", i); sum = sum + i; });
     info!("sum");
     info!("{}", sum);
     assert_eq!(sum, 45);
 }
 
-fn first_ten(it: &fn(int)) {
+fn first_ten(it: |int|) {
     let mut i: int = 0;
     while i < 10 { info!("first_ten"); it(i); i = i + 1; }
 }

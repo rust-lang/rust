@@ -15,7 +15,7 @@ use std::cmp::{Eq, Ord};
 use std::util::swap;
 use std::vec;
 
-type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
+type Le<'self, T> = 'self |v1: &T, v2: &T| -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -828,7 +828,7 @@ mod test_qsort {
 
         let expected = ~[1, 2, 3];
 
-        do quick_sort(names) |x, y| { *x < *y };
+        quick_sort(names, |x, y| *x < *y);
 
         let immut_names = names;
 
@@ -968,9 +968,9 @@ mod test_tim_sort {
     #[cfg(unix)]
     fn crash_test() {
         let mut rng = rand::rng();
-        let mut arr = do vec::from_fn(1000) |_i| {
+        let mut arr = vec::from_fn(1000, |_i| {
             CVal { val: rng.gen() }
-        };
+        });
 
         tim_sort(arr);
         fail!("Guarantee the fail");
@@ -991,9 +991,9 @@ mod test_tim_sort {
     #[test]
     fn test_bad_Ord_impl() {
         let mut rng = rand::rng();
-        let mut arr = do vec::from_fn(500) |_i| {
+        let mut arr = vec::from_fn(500, |_i| {
             DVal { val: rng.gen() }
-        };
+        });
 
         tim_sort(arr);
     }
@@ -1024,14 +1024,14 @@ mod big_tests {
 
     fn multiplyVec<T:Clone>(arr: &[T], num: uint) -> ~[T] {
         let size = arr.len();
-        let res = do vec::from_fn(num) |i| {
+        let res = vec::from_fn(num, |i| {
             arr[i % size].clone()
-        };
+        });
         res
     }
 
     fn makeRange(n: uint) -> ~[uint] {
-        let one = do vec::from_fn(n) |i| { i };
+        let one = vec::from_fn(n, |i| i);
         let mut two = one.clone();
         two.reverse();
         vec::append(two, one)
@@ -1050,9 +1050,9 @@ mod big_tests {
 
         for i in range(lo, hi) {
             let n = 1 << i;
-            let mut arr: ~[f64] = do vec::from_fn(n) |_i| {
+            let mut arr: ~[f64] = vec::from_fn(n, |_i| {
                 rng.gen()
-            };
+            });
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1064,11 +1064,11 @@ mod big_tests {
             tim_sort(arr); // /sort
             isSorted(arr);
 
-            do 3.times {
+            3.times(|| {
                 let i1 = rng.gen_range(0u, n);
                 let i2 = rng.gen_range(0u, n);
                 arr.swap(i1, i2);
-            }
+            });
             tim_sort(arr); // 3sort
             isSorted(arr);
 
@@ -1083,10 +1083,10 @@ mod big_tests {
             tim_sort(arr); // +sort
             isSorted(arr);
 
-            do (n/100).times {
+            (n/100).times(|| {
                 let idx = rng.gen_range(0u, n);
                 arr[idx] = rng.gen();
-            }
+            });
             tim_sort(arr);
             isSorted(arr);
 
@@ -1121,9 +1121,9 @@ mod big_tests {
 
         for i in range(lo, hi) {
             let n = 1 << i;
-            let arr: ~[@f64] = do vec::from_fn(n) |_i| {
+            let arr: ~[@f64] = vec::from_fn(n, |_i| {
                 @rng.gen()
-            };
+            });
             let mut arr = arr;
 
             tim_sort(arr); // *sort
@@ -1136,11 +1136,11 @@ mod big_tests {
             tim_sort(arr); // /sort
             isSorted(arr);
 
-            do 3.times {
+            3.times(|| {
                 let i1 = rng.gen_range(0u, n);
                 let i2 = rng.gen_range(0u, n);
                 arr.swap(i1, i2);
-            }
+            });
             tim_sort(arr); // 3sort
             isSorted(arr);
 
@@ -1155,10 +1155,10 @@ mod big_tests {
             tim_sort(arr); // +sort
             isSorted(arr);
 
-            do (n/100).times {
+            (n/100).times(|| {
                 let idx = rng.gen_range(0u, n);
                 arr[idx] = @rng.gen();
-            }
+            });
             tim_sort(arr);
             isSorted(arr);
 

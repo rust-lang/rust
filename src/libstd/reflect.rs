@@ -50,16 +50,12 @@ pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
 impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline]
     pub fn bump(&mut self, sz: uint) {
-        do self.inner.move_ptr() |p| {
-            ((p as uint) + sz) as *c_void
-        };
+        self.inner.move_ptr(|p| ((p as uint) + sz) as *c_void)
     }
 
     #[inline]
     pub fn align(&mut self, a: uint) {
-        do self.inner.move_ptr() |p| {
-            align(p as uint, a) as *c_void
-        };
+        self.inner.move_ptr(|p| align(p as uint, a) as *c_void)
     }
 
     #[inline]

@@ -5383,7 +5383,7 @@ msgstr ""
 #. type: Plain text
 #: doc/rust.md:2849
 msgid ""
-"type Binop<'self> = &'self fn(int,int) -> int; let bo: Binop = add; x = "
+"type Binop<'self> = 'self |int,int| -> int; let bo: Binop = add; x = "
 "bo(5,7); ~~~~~~~~"
 msgstr ""
 

@@ -10,7 +10,7 @@
 
 
 
-fn range_(a: int, b: int, it: &fn(int)) {
+fn range_(a: int, b: int, it: |int|) {
     assert!((a < b));
     let mut i: int = a;
     while i < b { it(i); i += 1; }

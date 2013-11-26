@@ -635,9 +635,9 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
-    let opt_transformed_self_ty = do opt_self_info.map |self_info| {
+    let opt_transformed_self_ty = opt_self_info.map(|self_info| {
         transform_self_ty(this, &rb, self_info)
-    };
+    });
 
     let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, a, None));
 
@@ -730,14 +730,14 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
-    let input_tys = do decl.inputs.iter().enumerate().map |(i, a)| {
-        let expected_arg_ty = do expected_sig.as_ref().and_then |e| {
+    let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
+        let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
-        };
+        });
         ty_of_arg(this, &rb, a, expected_arg_ty)
-    }.collect();
+    }).collect();
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {

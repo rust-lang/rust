@@ -19,7 +19,7 @@ use std::trie::TrieMap;
 use std::uint;
 use std::vec;
 
-fn timed(label: &str, f: &fn()) {
+fn timed(label: &str, f: ||) {
     let start = time::precise_time_s();
     f();
     let end = time::precise_time_s();
@@ -29,66 +29,65 @@ fn timed(label: &str, f: &fn()) {
 fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     println(" Ascending integers:");
 
-    do timed("insert") {
+    timed("insert", || {
         for i in range(0u, n_keys) {
             map.insert(i, i + 1);
         }
-    }
+    });
 
-    do timed("search") {
+    timed("search", || {
         for i in range(0u, n_keys) {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
-    }
+    });
 
-    do timed("remove") {
+    timed("remove", || {
         for i in range(0, n_keys) {
             assert!(map.remove(&i));
         }
-    }
+    });
 }
 
 fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     println(" Descending integers:");
 
-    do timed("insert") {
+    timed("insert", || {
         for i in range(0, n_keys).invert() {
             map.insert(i, i + 1);
         }
-    }
+    });
 
-    do timed("search") {
+    timed("search", || {
         for i in range(0, n_keys).invert() {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
-    }
+    });
 
-    do timed("remove") {
+    timed("remove", || {
         for i in range(0, n_keys) {
             assert!(map.remove(&i));
         }
-    }
+    });
 }
 
 fn vector<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
-
-    do timed("insert") {
+    timed("insert", || {
         for i in range(0u, n_keys) {
             map.insert(dist[i], i + 1);
         }
-    }
+    });
 
-    do timed("search") {
+    timed("search", || {
         for i in range(0u, n_keys) {
             assert_eq!(map.find(&dist[i]).unwrap(), &(i + 1));
         }
-    }
+    });
 
-    do timed("remove") {
+    timed("remove", || {
         for i in range(0u, n_keys) {
             assert!(map.remove(&dist[i]));
         }
-    }
+    });
 }
 
 fn main() {

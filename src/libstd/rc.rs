@@ -177,9 +177,9 @@ mod test_rc {
     fn test_clone() {
         let x = Rc::from_send(RefCell::new(5));
         let y = x.clone();
-        do x.borrow().with_mut |inner| {
+        x.borrow().with_mut(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().with(|v| *v), 20);
     }
 
@@ -187,9 +187,9 @@ mod test_rc {
     fn test_deep_clone() {
         let x = Rc::from_send(RefCell::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut |inner| {
+        x.borrow().with_mut(|inner| {
             *inner = 20;
-        }
+        });
         assert_eq!(y.borrow().with(|v| *v), 5);
     }
 

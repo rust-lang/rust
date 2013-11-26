@@ -46,17 +46,17 @@ pub mod totalord;
 
 pub mod generic;
 
-pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ExtCtxt,
-                                                       Span,
-                                                       x: &struct_def,
-                                                       Ident,
-                                                       y: &Generics)
-                                                 -> @item;
-pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ExtCtxt,
-                                                    Span,
-                                                    x: &enum_def,
-                                                    Ident,
-                                                    y: &Generics)
+pub type ExpandDerivingStructDefFn<'self> = 'self |@ExtCtxt,
+                                                   Span,
+                                                   x: &struct_def,
+                                                   Ident,
+                                                   y: &Generics|
+                                                   -> @item;
+pub type ExpandDerivingEnumDefFn<'self> = 'self |@ExtCtxt,
+                                                 Span,
+                                                 x: &enum_def,
+                                                 Ident,
+                                                 y: &Generics|
                                                  -> @item;
 
 pub fn expand_meta_deriving(cx: @ExtCtxt,
@@ -74,7 +74,7 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
             in_items
         }
         MetaList(_, ref titems) => {
-            do titems.rev_iter().fold(in_items) |in_items, &titem| {
+            titems.rev_iter().fold(in_items, |in_items, &titem| {
                 match titem.node {
                     MetaNameValue(tname, _) |
                     MetaList(tname, _) |
@@ -112,7 +112,7 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                         }
                     }
                 }
-            }
+            })
         }
     }
 }

@@ -127,12 +127,12 @@ pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
 }
 
 pub fn count_names(ms: &[matcher]) -> uint {
-    do ms.iter().fold(0) |ct, m| {
+    ms.iter().fold(0, |ct, m| {
         ct + match m.node {
           match_tok(_) => 0u,
           match_seq(ref more_ms, _, _, _, _) => count_names((*more_ms)),
           match_nonterminal(_,_,_) => 1u
-        }}
+        }})
 }
 
 pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
@@ -416,9 +416,9 @@ pub fn parse(
                 }
                 cur_eis.push(ei);
 
-                do rust_parser.tokens_consumed.times() || {
-                    rdr.next_token();
-                }
+                rust_parser.tokens_consumed.times(|| {
+                    let _ = rdr.next_token();
+                });
             }
         }
 

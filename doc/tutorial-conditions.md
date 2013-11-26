@@ -457,7 +457,7 @@ condition! {
 
 fn main() {
     // Trap the condition:
-    do malformed_line::cond.trap(|_| (-1,-1)).inside {
+    malformed_line::cond.trap(|_| (-1,-1)).inside(|| {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -465,7 +465,7 @@ fn main() {
                 println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    }
+    })
 }
 
 fn read_int_pairs() -> ~[(int,int)] {
@@ -535,7 +535,7 @@ condition! {
 
 fn main() {
     // Trap the condition and return `None`
-    do malformed_line::cond.trap(|_| None).inside {
+    malformed_line::cond.trap(|_| None).inside(|| {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -543,7 +543,7 @@ fn main() {
             println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    }
+    })
 }
 
 fn read_int_pairs() -> ~[(int,int)] {
@@ -631,7 +631,7 @@ condition! {
 
 fn main() {
     // Trap the condition and return `UsePreviousLine`
-    do malformed_line::cond.trap(|_| UsePreviousLine).inside {
+    malformed_line::cond.trap(|_| UsePreviousLine).inside(|| {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -639,7 +639,7 @@ fn main() {
             println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    }
+    })
 }
 
 fn read_int_pairs() -> ~[(int,int)] {
@@ -758,10 +758,10 @@ condition! {
 
 fn main() {
     // Trap the `malformed_int` condition and return -1
-    do malformed_int::cond.trap(|_| -1).inside {
+    malformed_int::cond.trap(|_| -1).inside(|| {
 
         // Trap the `malformed_line` condition and return `UsePreviousLine`
-        do malformed_line::cond.trap(|_| UsePreviousLine).inside {
+        malformed_line::cond.trap(|_| UsePreviousLine).inside(|| {
 
             // The protected logic.
             let pairs = read_int_pairs();
@@ -769,8 +769,8 @@ fn main() {
                 println!("{:4.4d}, {:4.4d}", a, b);
             }
 
-        }
-    }
+        })
+    })
 }
 
 // Parse an int; if parsing fails, call the condition handler and

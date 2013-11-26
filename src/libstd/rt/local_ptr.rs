@@ -110,11 +110,7 @@ pub unsafe fn borrow<T>(f: |&mut T|) {
     let unsafe_ptr = cast::transmute_mut_region(&mut *value);
     let value_cell = Cell::new(value);
 
-    do (|| {
-        f(unsafe_ptr);
-    }).finally {
-        put(value_cell.take());
-    }
+    (|| f(unsafe_ptr)).finally(|| put(value_cell.take()));
 }
 
 /// Borrow a mutable reference to the thread-local value

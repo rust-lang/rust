@@ -290,7 +290,7 @@ impl<'self> AsciiStr for &'self [Ascii] {
 
     #[inline]
     fn eq_ignore_case(self, other: &[Ascii]) -> bool {
-        do self.iter().zip(other.iter()).all |(&a, &b)| { a.eq_ignore_case(b) }
+        self.iter().zip(other.iter()).all(|(&a, &b)| a.eq_ignore_case(b))
     }
 }
 

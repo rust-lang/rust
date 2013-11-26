@@ -102,7 +102,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
      */
 
     let mut found_nominal = false;
-    do ty::walk_ty(original_type) |t| {
+    ty::walk_ty(original_type, |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
             ty_trait(def_id, _, _, _, _) |
@@ -114,7 +114,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 
             _ => { }
         }
-    }
+    });
     return found_nominal;
 }
 
@@ -413,22 +413,22 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation_coherence(&self) {
-        do self.crate_context.tcx.trait_impls.each_key |&trait_id| {
+        self.crate_context.tcx.trait_impls.each_key(|&trait_id| {
             self.check_implementation_coherence_of(trait_id);
             true
-        };
+        });
     }
 
     pub fn check_implementation_coherence_of(&self, trait_def_id: DefId) {
         // Unify pairs of polytypes.
-        do self.iter_impls_of_trait(trait_def_id) |a| {
+        self.iter_impls_of_trait(trait_def_id, |a| {
             let implementation_a = a;
             let polytype_a =
                 self.get_self_type_for_implementation(implementation_a);
 
             // "We have an impl of trait <trait_def_id> for type <polytype_a>,
             // and that impl is <implementation_a>"
-            do self.iter_impls_of_trait(trait_def_id) |b| {
+            self.iter_impls_of_trait(trait_def_id, |b| {
                 let implementation_b = b;
 
                 // An impl is coherent with itself
@@ -447,8 +447,8 @@ impl CoherenceChecker {
                                           "note conflicting implementation here");
                     }
                 }
-            }
-        }
+            })
+        })
     }
 
     pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
@@ -665,12 +665,12 @@ impl CoherenceChecker {
         let mut impls_seen = HashSet::new();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
-        do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            do each_impl(crate_store, crate_number) |def_id| {
+        iter_crate_data(crate_store, |crate_number, _crate_metadata| {
+            each_impl(crate_store, crate_number, |def_id| {
                 assert_eq!(crate_number, def_id.crate);
                 self.add_external_impl(&mut impls_seen, def_id)
-            }
-        }
+            })
+        })
     }
 
     //

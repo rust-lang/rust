@@ -58,11 +58,11 @@ pub mod bench {
         }
 
         // measure
-        do bh.iter {
+        bh.iter(|| {
             let k = rng.gen::<uint>() % n;
             map.insert(k, 1);
             map.remove(&k);
-        }
+        })
     }
 
     pub fn insert_seq_n<M:MutableMap<uint,uint>>(n: uint,
@@ -76,11 +76,11 @@ pub mod bench {
 
         // measure
         let mut i = 1;
-        do bh.iter {
+        bh.iter(|| {
             map.insert(i, 1);
             map.remove(&i);
             i = (i + 2) % n;
-        }
+        })
     }
 
     pub fn find_rand_n<M:MutableMap<uint,uint>>(n: uint,
@@ -98,10 +98,10 @@ pub mod bench {
 
         // measure
         let mut i = 0;
-        do bh.iter {
+        bh.iter(|| {
             map.find(&(keys[i]));
             i = (i + 1) % n;
-        }
+        })
     }
 
     pub fn find_seq_n<M:MutableMap<uint,uint>>(n: uint,
@@ -114,9 +114,9 @@ pub mod bench {
 
         // measure
         let mut i = 0;
-        do bh.iter {
+        bh.iter(|| {
             map.find(&i);
             i = (i + 1) % n;
-        }
+        })
      }
 }

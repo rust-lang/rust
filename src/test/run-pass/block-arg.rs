@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn inty(fun: proc(int) -> int) -> int {
+    fun(100)
+}
+
+fn booly(fun: proc(bool) -> bool) -> bool {
+    fun(true)
+}
+
 // Check usage and precedence of block arguments in expressions:
 pub fn main() {
     let v = ~[-1.0f64, 0.0, 1.0, 2.0, 3.0];
@@ -18,28 +26,27 @@ pub fn main() {
     }
 
     // Usable at all:
-    let mut any_negative = do v.iter().any |e| { e.is_negative() };
-    assert!(any_negative);
+    do inty |x| { x };
 
     // Higher precedence than assignments:
-    any_negative = do v.iter().any |e| { e.is_negative() };
-    assert!(any_negative);
+    let result = do inty |e| { e };
+    assert_eq!(result, 100);
 
     // Higher precedence than unary operations:
-    let abs_v = do v.iter().map |e| { e.abs() }.collect::<~[f64]>();
-    assert!(do abs_v.iter().all |e| { e.is_positive() });
-    assert!(!do abs_v.iter().any |e| { e.is_negative() });
+    let stringy = do inty |e| { e }.to_str();
+    assert!(do booly |_| { true });
+    assert!(!do booly |_| { false });
 
     // Usable in funny statement-like forms:
-    if !do v.iter().any |e| { e.is_positive() } {
+    if !do booly |_| { true } {
         assert!(false);
     }
-    match do v.iter().all |e| { e.is_negative() } {
+    match do booly |_| { false } {
         true => { fail!("incorrect answer."); }
         false => { }
     }
     match 3 {
-      _ if do v.iter().any |e| { e.is_negative() } => {
+      _ if do booly |_| { true } => {
       }
       _ => {
         fail!("wrong answer.");
@@ -48,15 +55,19 @@ pub fn main() {
 
 
     // Lower precedence than binary operations:
-    let w = do v.iter().fold(0.0) |x, y| { x + *y } + 10.0;
-    let y = do v.iter().fold(0.0) |x, y| { x + *y } + 10.0;
-    let z = 10.0 + do v.iter().fold(0.0) |x, y| { x + *y };
+    let w = do inty |_| { 10 } + 10;
+    let y = do inty |_| { 10 } + 10;
+    let z = 10 + do inty |_| { 10 };
     assert_eq!(w, y);
     assert_eq!(y, z);
 
     // In the tail of a block
-    let w =
-        if true { do abs_v.iter().any |e| { e.is_positive() } }
-      else { false };
+    let w = if true {
+        do booly |_| {
+            true
+        }
+    } else {
+        false
+    };
     assert!(w);
 }

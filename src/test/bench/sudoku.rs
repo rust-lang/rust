@@ -51,9 +51,9 @@ impl Sudoku {
     }
 
     pub fn from_vec(vec: &[[u8, ..9], ..9]) -> Sudoku {
-        let g = do vec::from_fn(9u) |i| {
-            do vec::from_fn(9u) |j| { vec[i][j] }
-        };
+        let g = vec::from_fn(9u, |i| {
+            vec::from_fn(9u, |j| { vec[i][j] })
+        });
         return Sudoku::new(g)
     }
 

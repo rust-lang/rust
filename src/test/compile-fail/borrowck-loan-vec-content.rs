@@ -12,21 +12,20 @@
 // (locally rooted) mutable, unique vector, and that we then prevent
 // modifications to the contents.
 
-fn takes_imm_elt(_v: &int, f: &fn()) {
+fn takes_imm_elt(_v: &int, f: ||) {
     f();
 }
 
 fn has_mut_vec_and_does_not_try_to_change_it() {
     let mut v = ~[1, 2, 3];
-    do takes_imm_elt(&v[0]) {
-    }
+    takes_imm_elt(&v[0], || {})
 }
 
 fn has_mut_vec_but_tries_to_change_it() {
     let mut v = ~[1, 2, 3];
-    do takes_imm_elt(&v[0]) {
+    takes_imm_elt(&v[0], || {
         v[1] = 4; //~ ERROR cannot assign
-    }
+    })
 }
 
 fn main() {

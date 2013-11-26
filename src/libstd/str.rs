@@ -322,7 +322,7 @@ impl CharEq for char {
     fn only_ascii(&self) -> bool { (*self as uint) < 128 }
 }
 
-impl<'self> CharEq for &'self fn(char) -> bool {
+impl<'self> CharEq for 'self |char| -> bool {
     #[inline]
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
@@ -410,11 +410,11 @@ impl<'self> Iterator<(uint, char)> for CharOffsetIterator<'self> {
     fn next(&mut self) -> Option<(uint, char)> {
         // Compute the byte offset by using the pointer offset between
         // the original string slice and the iterator's remaining part
-        let offset = do self.string.as_imm_buf |a, _| {
-            do self.iter.string.as_imm_buf |b, _| {
+        let offset = self.string.as_imm_buf(|a, _| {
+            self.iter.string.as_imm_buf(|b, _| {
                 b as uint - a as uint
-            }
-        };
+            })
+        });
         self.iter.next().map(|ch| (offset, ch))
     }
 
@@ -428,11 +428,11 @@ impl<'self> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
         self.iter.next_back().map(|ch| {
-            let offset = do self.string.as_imm_buf |a, _| {
-                do self.iter.string.as_imm_buf |b, len| {
+            let offset = self.string.as_imm_buf(|a, _| {
+                self.iter.string.as_imm_buf(|b, len| {
                     b as uint - a as uint + len
-                }
-            };
+                })
+            });
             (offset, ch)
         })
     }
@@ -716,14 +716,14 @@ impl<'self> Iterator<char> for NormalizationIterator<'self> {
 
         if !self.sorted {
             for ch in self.iter {
-                do decomposer(ch) |d| {
+                decomposer(ch, |d| {
                     let class = canonical_combining_class(d);
                     if class == 0 && !self.sorted {
                         canonical_sort(self.buffer);
                         self.sorted = true;
                     }
                     self.buffer.push((d, class));
-                }
+                });
                 if self.sorted { break }
             }
         }
@@ -781,8 +781,8 @@ Section: Comparing strings
 #[lang="str_eq"]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    do a.as_imm_buf |ap, alen| {
-        do b.as_imm_buf |bp, blen| {
+    a.as_imm_buf(|ap, alen| {
+        b.as_imm_buf(|bp, blen| {
             if (alen != blen) { false }
             else {
                 unsafe {
@@ -791,16 +791,16 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
                                  alen as libc::size_t) == 0
                 }
             }
-        }
-    }
+        })
+    })
 }
 
 /// Bytewise slice equality
 #[cfg(test)]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    do a.as_imm_buf |ap, alen| {
-        do b.as_imm_buf |bp, blen| {
+    a.as_imm_buf(|ap, alen| {
+        b.as_imm_buf(|bp, blen| {
             if (alen != blen) { false }
             else {
                 unsafe {
@@ -809,8 +809,8 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
                                  alen as libc::size_t) == 0
                 }
             }
-        }
-    }
+        })
+    })
 }
 
 /// Bytewise string equality
@@ -1029,9 +1029,7 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len);
-        do v.as_mut_buf |vbuf, _len| {
-            ptr::copy_memory(vbuf, buf as *u8, len)
-        };
+        v.as_mut_buf(|vbuf, _len| ptr::copy_memory(vbuf, buf as *u8, len));
         vec::raw::set_len(&mut v, len);
 
         assert!(is_utf8(v));
@@ -1059,9 +1057,7 @@ pub mod raw {
 
     /// Converts a vector of bytes to a new owned string.
     pub unsafe fn from_utf8(v: &[u8]) -> ~str {
-        do v.as_imm_buf |buf, len| {
-            from_buf_len(buf, len)
-        }
+        v.as_imm_buf(|buf, len| from_buf_len(buf, len))
     }
 
     /// Converts an owned vector of bytes to a new owned string. This assumes
@@ -1112,12 +1108,12 @@ pub mod raw {
     /// Caller must check slice boundaries!
     #[inline]
     pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        do s.as_imm_buf |sbuf, _n| {
+        s.as_imm_buf(|sbuf, _n| {
              cast::transmute(Slice {
                  data: sbuf.offset(begin as int),
                  len: end - begin,
              })
-        }
+        })
     }
 
     /// Appends a byte to a string.
@@ -1351,7 +1347,7 @@ impl<'self> Str for @str {
 impl<'self> Container for &'self str {
     #[inline]
     fn len(&self) -> uint {
-        do self.as_imm_buf |_p, n| { n }
+        self.as_imm_buf(|_p, n| n)
     }
 }
 
@@ -1876,11 +1872,11 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     fn lines_any(&self) -> AnyLineIterator<'self> {
-        do self.lines().map |line| {
+        self.lines().map(|line| {
             let l = line.len();
             if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
             else { line }
-        }
+        })
     }
 
     #[inline]
@@ -1973,9 +1969,7 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
         for c in self.chars() {
-            do c.escape_default |c| {
-                out.push_char(c);
-            }
+            c.escape_default(|c| out.push_char(c));
         }
         out
     }
@@ -1984,9 +1978,7 @@ impl<'self> StrSlice<'self> for &'self str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
         for c in self.chars() {
-            do c.escape_unicode |c| {
-                out.push_char(c);
-            }
+            c.escape_unicode(|c| out.push_char(c));
         }
         out
     }
@@ -2044,17 +2036,15 @@ impl<'self> StrSlice<'self> for &'self str {
 
     #[inline]
     fn to_owned(&self) -> ~str {
-        do self.as_imm_buf |src, len| {
+        self.as_imm_buf(|src, len| {
             unsafe {
                 let mut v = vec::with_capacity(len);
 
-                do v.as_mut_buf |dst, _| {
-                    ptr::copy_memory(dst, src, len);
-                }
+                v.as_mut_buf(|dst, _| ptr::copy_memory(dst, src, len));
                 vec::raw::set_len(&mut v, len);
                 ::cast::transmute(v)
             }
-        }
+        })
     }
 
     #[inline]
@@ -2250,8 +2240,8 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     fn subslice_offset(&self, inner: &str) -> uint {
-        do self.as_imm_buf |a, a_len| {
-            do inner.as_imm_buf |b, b_len| {
+        self.as_imm_buf(|a, a_len| {
+            inner.as_imm_buf(|b, b_len| {
                 let a_start: uint;
                 let a_end: uint;
                 let b_start: uint;
@@ -2263,8 +2253,8 @@ impl<'self> StrSlice<'self> for &'self str {
                 assert!(a_start <= b_start);
                 assert!(b_end <= a_end);
                 b_start - a_start
-            }
-        }
+            })
+        })
     }
 
     #[inline]
@@ -2382,11 +2372,11 @@ impl OwnedStr for ~str {
 
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let used = do self.as_mut_buf |buf, _| {
-                do vec::raw::mut_buf_as_slice(buf.offset(cur_len as int), 4) |slc| {
+            let used = self.as_mut_buf(|buf, _| {
+                vec::raw::mut_buf_as_slice(buf.offset(cur_len as int), 4, |slc| {
                     c.encode_utf8(slc)
-                }
-            };
+                })
+            });
             raw::set_len(self, cur_len + used);
         }
     }
@@ -3156,13 +3146,11 @@ mod tests {
                   0x6d_u8];
 
         let mut error_happened = false;
-        let _x = do cond.trap(|err| {
+        let _x = cond.trap(|err| {
             assert_eq!(err, ~"from_utf8: input is not UTF-8; first bad byte is 255");
             error_happened = true;
             ~""
-        }).inside {
-            from_utf8(bb)
-        };
+        }).inside(|| from_utf8(bb));
         assert!(error_happened);
     }
 
@@ -3201,11 +3189,9 @@ mod tests {
 
     #[test]
     fn test_as_imm_buf() {
-        do "".as_imm_buf |_, len| {
-            assert_eq!(len, 0);
-        }
+        "".as_imm_buf(|_, len| assert_eq!(len, 0));
 
-        do "hello".as_imm_buf |buf, len| {
+        "hello".as_imm_buf(|buf, len| {
             assert_eq!(len, 5);
             unsafe {
                 assert_eq!(*ptr::offset(buf, 0), 'h' as u8);
@@ -3214,7 +3200,7 @@ mod tests {
                 assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
                 assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
             }
-        }
+        })
     }
 
     #[test]
@@ -3864,9 +3850,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        do bh.iter {
-            assert_eq!(s.chars().len(), len);
-        }
+        bh.iter(|| assert_eq!(s.chars().len(), len));
     }
 
     #[bench]
@@ -3879,9 +3863,7 @@ mod bench {
         Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        do bh.iter {
-            assert_eq!(s.chars().len(), len);
-        }
+        bh.iter(|| assert_eq!(s.chars().len(), len));
     }
 
     #[bench]
@@ -3889,9 +3871,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        do bh.iter {
-            assert_eq!(s.chars_rev().len(), len);
-        }
+        bh.iter(|| assert_eq!(s.chars_rev().len(), len));
     }
 
     #[bench]
@@ -3899,9 +3879,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        do bh.iter {
-            assert_eq!(s.char_indices().len(), len);
-        }
+        bh.iter(|| assert_eq!(s.char_indices().len(), len));
     }
 
     #[bench]
@@ -3909,18 +3887,14 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        do bh.iter {
-            assert_eq!(s.char_indices_rev().len(), len);
-        }
+        bh.iter(|| assert_eq!(s.char_indices_rev().len(), len));
     }
 
     #[bench]
     fn split_unicode_ascii(bh: &mut BenchHarness) {
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        do bh.iter {
-            assert_eq!(s.split('V').len(), 3);
-        }
+        bh.iter(|| assert_eq!(s.split('V').len(), 3));
     }
 
     #[bench]
@@ -3934,9 +3908,7 @@ mod bench {
         }
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        do bh.iter {
-            assert_eq!(s.split(NotAscii('V')).len(), 3);
-        }
+        bh.iter(|| assert_eq!(s.split(NotAscii('V')).len(), 3));
     }
 
 
@@ -3945,9 +3917,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        do bh.iter {
-            assert_eq!(s.split(' ').len(), len);
-        }
+        bh.iter(|| assert_eq!(s.split(' ').len(), len));
     }
 
     #[bench]
@@ -3961,9 +3931,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        do bh.iter {
-            assert_eq!(s.split(NotAscii(' ')).len(), len);
-        }
+        bh.iter(|| assert_eq!(s.split(NotAscii(' ')).len(), len));
     }
 
     #[bench]
@@ -3972,9 +3940,7 @@ mod bench {
         let len = s.split(' ').len();
         fn pred(c: char) -> bool { c == ' ' }
 
-        do bh.iter {
-            assert_eq!(s.split(pred).len(), len);
-        }
+        bh.iter(|| assert_eq!(s.split(pred).len(), len));
     }
 
     #[bench]
@@ -3982,9 +3948,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        do bh.iter {
-            assert_eq!(s.split(|c: char| c == ' ').len(), len);
-        }
+        bh.iter(|| assert_eq!(s.split(|c: char| c == ' ').len(), len));
     }
 
     #[bench]
@@ -3992,9 +3956,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        do bh.iter {
-            assert_eq!(s.split(&[' ']).len(), len);
-        }
+        bh.iter(|| assert_eq!(s.split(&[' ']).len(), len));
     }
 
     #[bench]
@@ -4004,34 +3966,34 @@ mod bench {
                         Lorem ipsum dolor sit amet, consectetur. ");
 
         assert_eq!(100, s.len());
-        do bh.iter {
-            is_utf8(s);
-        }
+        bh.iter(|| {
+            let _ = is_utf8(s);
+        });
     }
 
     #[bench]
     fn is_utf8_100_multibyte(bh: &mut BenchHarness) {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
-        do bh.iter {
-            is_utf8(s);
-        }
+        bh.iter(|| {
+            let _ = is_utf8(s);
+        });
     }
 
     #[bench]
     fn bench_with_capacity(bh: &mut BenchHarness) {
-        do bh.iter {
-            with_capacity(100);
-        }
+        bh.iter(|| {
+            let _ = with_capacity(100);
+        });
     }
 
     #[bench]
     fn bench_push_str(bh: &mut BenchHarness) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        do bh.iter {
+        bh.iter(|| {
             let mut r = ~"";
             r.push_str(s);
-        }
+        });
     }
 
     #[bench]
@@ -4039,8 +4001,8 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let sep = "→";
         let v = [s, s, s, s, s, s, s, s, s, s];
-        do bh.iter {
+        bh.iter(|| {
             assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
-        }
+        })
     }
 }

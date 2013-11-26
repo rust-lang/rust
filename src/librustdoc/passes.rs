@@ -57,9 +57,9 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = HashSet::new();
     let crate = Cell::new(crate);
-    let exported_items = do local_data::get(super::analysiskey) |analysis| {
+    let exported_items = local_data::get(super::analysiskey, |analysis| {
         analysis.unwrap().exported_items.clone()
-    };
+    });
     let mut crate = crate.take();
 
     // strip all private items
@@ -231,7 +231,7 @@ pub fn unindent(s: &str) -> ~str {
     let lines = s.lines_any().collect::<~[&str]>();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = do lines.iter().fold(uint::max_value) |min_indent, line| {
+    let min_indent = lines.iter().fold(uint::max_value, |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
@@ -257,7 +257,7 @@ pub fn unindent(s: &str) -> ~str {
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            do line.chars().all |char| {
+            line.chars().all(|char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
@@ -266,22 +266,22 @@ pub fn unindent(s: &str) -> ~str {
                 } else {
                     false
                 }
-            };
+            });
             num::min(min_indent, spaces)
         }
-    };
+    });
 
     match lines {
         [head, .. tail] => {
             let mut unindented = ~[ head.trim() ];
-            unindented.push_all(do tail.map |&line| {
+            unindented.push_all(tail.map(|&line| {
                 if line.is_whitespace() {
                     line
                 } else {
                     assert!(line.len() >= min_indent);
                     line.slice_from(min_indent)
                 }
-            });
+            }));
             unindented.connect("\n")
         }
         [] => s.to_owned()

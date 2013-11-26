@@ -21,7 +21,7 @@ pub struct UdpSocket {
 
 impl UdpSocket {
     pub fn bind(addr: SocketAddr) -> Option<UdpSocket> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.udp_bind(addr) {
                 Ok(s) => Some(UdpSocket { obj: s }),
                 Err(ioerr) => {
@@ -29,7 +29,7 @@ impl UdpSocket {
                     None
                 }
             }
-        }
+        })
     }
 
     pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, SocketAddr)> {
@@ -84,13 +84,13 @@ impl UdpStream {
 impl Reader for UdpStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let peer = self.connectedTo;
-        do self.as_socket |sock| {
+        self.as_socket(|sock| {
             match sock.recvfrom(buf) {
                 Some((_nread, src)) if src != peer => Some(0),
                 Some((nread, _src)) => Some(nread),
                 None => None,
             }
-        }
+        })
     }
 
     fn eof(&mut self) -> bool { fail!() }
@@ -98,9 +98,7 @@ impl Reader for UdpStream {
 
 impl Writer for UdpStream {
     fn write(&mut self, buf: &[u8]) {
-        do self.as_socket |sock| {
-            sock.sendto(buf, self.connectedTo);
-        }
+        self.as_socket(|sock| sock.sendto(buf, self.connectedTo));
     }
 }
 
@@ -118,14 +116,14 @@ mod test {
     fn bind_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
-            do io_error::cond.trap(|e| {
+            io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
                 called = true;
-            }).inside {
+            }).inside(|| {
                 let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let socket = UdpSocket::bind(addr);
                 assert!(socket.is_none());
-            }
+            });
             assert!(called);
         }
     }

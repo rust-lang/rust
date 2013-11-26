@@ -184,11 +184,11 @@ mod bench {
         let gamma = Gamma::new(10., 1.0);
         let mut rng = StdRng::new();
 
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
-        }
+        });
         bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 
@@ -197,11 +197,11 @@ mod bench {
         let gamma = Gamma::new(0.1, 1.0);
         let mut rng = StdRng::new();
 
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
-        }
+        });
         bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }

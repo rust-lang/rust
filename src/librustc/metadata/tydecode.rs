@@ -54,7 +54,7 @@ pub enum DefIdSource {
     RegionParameter,
 }
 type conv_did<'self> =
-    &'self fn(source: DefIdSource, ast::DefId) -> ast::DefId;
+    'self |source: DefIdSource, ast::DefId| -> ast::DefId;
 
 pub struct PState<'self> {
     data: &'self [u8],

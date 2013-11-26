@@ -61,7 +61,7 @@ pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
 }
 
 struct LoopQueryVisitor<'self> {
-    p: &'self fn(&ast::Expr_) -> bool,
+    p: 'self |&ast::Expr_| -> bool,
     flag: bool,
 }
 
@@ -89,7 +89,7 @@ pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
 }
 
 struct BlockQueryVisitor<'self> {
-    p: &'self fn(@ast::Expr) -> bool,
+    p: 'self |@ast::Expr| -> bool,
     flag: bool,
 }
 

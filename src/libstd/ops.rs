@@ -481,8 +481,8 @@ mod bench {
 
     #[bench]
     fn alloc_obj_with_dtor(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             HasDtor { x : 10 };
-        }
+        })
     }
 }

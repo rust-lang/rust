@@ -23,10 +23,10 @@ fn main() {
     while cond() {
         if cond() { break }
         if cond() { continue }
-        do foo {
+        foo(|| {
             if cond() { break } //~ ERROR: `break` inside of a closure
             if cond() { continue } //~ ERROR: `continue` inside of a closure
-        }
+        })
     }
 
     let rs: Foo = Foo{t: pth};

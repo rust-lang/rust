@@ -142,19 +142,17 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
     if settings.len() > 0 {
         if settings == ~"::help" || settings == ~"?" {
             rterrln!("\nCrate log map:\n");
-            do iter_crate_map(crate_map) |entry| {
-                rterrln!(" {}", entry.name);
-            }
+            iter_crate_map(crate_map, |entry| rterrln!(" {}", entry.name));
             unsafe { exit(1); }
         }
         dirs = parse_logging_spec(settings);
     }
 
     let mut n_matches: u32 = 0;
-    do iter_crate_map(crate_map) |entry| {
+    iter_crate_map(crate_map, |entry| {
         let m = update_entry(dirs, entry);
         n_matches += m;
-    }
+    });
 
     if n_matches < (dirs.len() as u32) {
         rterrln!("warning: got {} RUST_LOG specs but only matched\n\

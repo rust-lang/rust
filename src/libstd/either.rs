@@ -209,23 +209,23 @@ pub type Rights<L, R, Iter> = FilterMap<'static, Either<L, R>, R, Iter>;
 /// Extracts all the left values
 pub fn lefts<L, R, Iter: Iterator<Either<L, R>>>(eithers: Iter)
     -> Lefts<L, R, Iter> {
-    do eithers.filter_map |elt| {
+    eithers.filter_map(|elt| {
         match elt {
             Left(x) => Some(x),
             _ => None,
         }
-    }
+    })
 }
 
 /// Extracts all the right values
 pub fn rights<L, R, Iter: Iterator<Either<L, R>>>(eithers: Iter)
     -> Rights<L, R, Iter> {
-    do eithers.filter_map |elt| {
+    eithers.filter_map(|elt| {
         match elt {
             Right(x) => Some(x),
             _ => None,
         }
-    }
+    })
 }
 
 

@@ -40,9 +40,9 @@ Some examples of obvious things you might want to do
 
 * Iterate over the lines of a file
 
-    do File::open("message.txt").each_line |line| {
+    File::open("message.txt").each_line(|line| {
         println(line)
-    }
+    })
 
 * Pull the lines of a file into a vector of strings
 
@@ -395,13 +395,11 @@ condition! {
 /// Helper for wrapper calls where you want to
 /// ignore any io_errors that might be raised
 pub fn ignore_io_error<T>(cb: || -> T) -> T {
-    do io_error::cond.trap(|_| {
+    io_error::cond.trap(|_| {
         // just swallow the error.. downstream users
         // who can make a decision based on a None result
         // won't care
-    }).inside {
-        cb()
-    }
+    }).inside(|| cb())
 }
 
 /// Helper for catching an I/O error and wrapping it in a Result object. The
@@ -501,7 +499,7 @@ pub trait Reader {
             buf.reserve_additional(len);
             vec::raw::set_len(buf, start_len + len);
 
-            do (|| {
+            (|| {
                 while total_read < len {
                     let len = buf.len();
                     let slice = buf.mut_slice(start_len + total_read, len);
@@ -515,9 +513,7 @@ pub trait Reader {
                         }
                     }
                 }
-            }).finally {
-                vec::raw::set_len(buf, start_len + total_read);
-            }
+            }).finally(|| vec::raw::set_len(buf, start_len + total_read))
         }
     }
 
@@ -542,17 +538,17 @@ pub trait Reader {
     fn read_to_end(&mut self) -> ~[u8] {
         let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
         let mut keep_reading = true;
-        do io_error::cond.trap(|e| {
+        io_error::cond.trap(|e| {
             if e.kind == EndOfFile {
                 keep_reading = false;
             } else {
                 io_error::cond.raise(e)
             }
-        }).inside {
+        }).inside(|| {
             while keep_reading {
                 self.push_bytes(&mut buf, DEFAULT_BUF_SIZE)
             }
-        }
+        });
         return buf;
     }
 

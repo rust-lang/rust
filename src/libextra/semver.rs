@@ -238,14 +238,14 @@ pub fn parse(s: &str) -> Option<Version> {
     }
     let s = s.trim();
     let mut bad = false;
-    do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside {
+    bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside(|| {
         let v = parse_iter(&mut s.chars());
         if bad || v.to_str() != s.to_owned() {
             None
         } else {
             Some(v)
         }
-    }
+    })
 }
 
 #[test]

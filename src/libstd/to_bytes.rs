@@ -22,7 +22,7 @@ use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
 
-pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
+pub type Cb<'self> = 'self |buf: &[u8]| -> bool;
 
 ///
 /// A trait to implement in order to make a type hashable;
@@ -369,12 +369,12 @@ impl<A:IterBytes> ToBytes for A {
         use io::mem;
         use io::Writer;
 
-        do mem::with_mem_writer |wr| {
-            do self.iter_bytes(lsb0) |bytes| {
+        mem::with_mem_writer(|wr| {
+            self.iter_bytes(lsb0, |bytes| {
                 wr.write(bytes);
                 true
-            };
-        }
+            });
+        })
     }
 }
 

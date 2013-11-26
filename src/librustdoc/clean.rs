@@ -79,9 +79,9 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
         let mut externs = HashMap::new();
-        do cstore::iter_crate_data(cx.sess.cstore) |n, meta| {
+        cstore::iter_crate_data(cx.sess.cstore, |n, meta| {
             externs.insert(n, meta.clean());
-        }
+        });
 
         Crate {
             name: match maybe_meta {

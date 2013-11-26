@@ -801,12 +801,12 @@ impl<'self> Formatter<'self> {
     }
 
     fn runplural(&mut self, value: uint, pieces: &[rt::Piece]) {
-        do ::uint::to_str_bytes(value, 10) |buf| {
+        ::uint::to_str_bytes(value, 10, |buf| {
             let valuestr = str::from_utf8_slice(buf);
             for piece in pieces.iter() {
                 self.run(piece, Some(valuestr));
             }
-        }
+        })
     }
 
     // Helper methods used for padding and processing formatting arguments that
@@ -868,9 +868,9 @@ impl<'self> Formatter<'self> {
                     self.fill = '0';
                     sign(self);
                 }
-                do self.with_padding(min - actual_len, parse::AlignRight) |me| {
+                self.with_padding(min - actual_len, parse::AlignRight, |me| {
                     emit(me);
-                }
+                })
             }
         }
     }
@@ -924,9 +924,9 @@ impl<'self> Formatter<'self> {
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                do self.with_padding(width - s.len(), parse::AlignLeft) |me| {
+                self.with_padding(width - s.len(), parse::AlignLeft, |me| {
                     me.buf.write(s.as_bytes());
-                }
+                })
             }
         }
     }
@@ -1007,18 +1007,18 @@ macro_rules! int_base(($ty:ident, $into:ident, $base:expr,
                        $name:ident, $prefix:expr) => {
     impl $name for $ty {
         fn fmt(c: &$ty, f: &mut Formatter) {
-            do ::$into::to_str_bytes(*c as $into, $base) |buf| {
+            ::$into::to_str_bytes(*c as $into, $base, |buf| {
                 f.pad_integral(buf, $prefix, true);
-            }
+            })
         }
     }
 })
 macro_rules! upper_hex(($ty:ident, $into:ident) => {
     impl UpperHex for $ty {
         fn fmt(c: &$ty, f: &mut Formatter) {
-            do ::$into::to_str_bytes(*c as $into, 16) |buf| {
+            ::$into::to_str_bytes(*c as $into, 16, |buf| {
                 upperhex(buf, f);
-            }
+            })
         }
     }
 })
@@ -1045,9 +1045,9 @@ macro_rules! integer(($signed:ident, $unsigned:ident) => {
         // nothing else should do that, however.
         impl Signed for $signed {
             fn fmt(c: &$signed, f: &mut Formatter) {
-                do ::$unsigned::to_str_bytes(c.abs() as $unsigned, 10) |buf| {
+                ::$unsigned::to_str_bytes(c.abs() as $unsigned, 10, |buf| {
                     f.pad_integral(buf, "", *c >= 0);
-                }
+                })
             }
         }
         int_base!($signed, $unsigned, 2, Binary, "0b")
@@ -1104,9 +1104,9 @@ impl<T> Poly for T {
 impl<T> Pointer for *T {
     fn fmt(t: &*T, f: &mut Formatter) {
         f.flags |= 1 << (parse::FlagAlternate as uint);
-        do ::uint::to_str_bytes(*t as uint, 16) |buf| {
+        ::uint::to_str_bytes(*t as uint, 16, |buf| {
             f.pad_integral(buf, "0x", true);
-        }
+        })
     }
 }
 impl<T> Pointer for *mut T {

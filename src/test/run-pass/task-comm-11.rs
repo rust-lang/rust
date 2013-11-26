@@ -22,6 +22,6 @@ fn start(c: &comm::Chan<comm::Chan<int>>) {
 
 pub fn main() {
     let (p, ch) = comm::stream();
-    let _child = task::spawn(|| start(&ch) );
+    let _child = task::spawn(proc() start(&ch) );
     let _c = p.recv();
 }

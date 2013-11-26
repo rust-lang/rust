@@ -18,12 +18,12 @@
 //
 // Running /usr/local/bin/rustc:
 // issue-2185.rs:24:0: 26:1 error: conflicting implementations for a trait
-// issue-2185.rs:24 impl iterable<uint> for &'static fn(&fn(uint)) {
-// issue-2185.rs:25     fn iter(&self, blk: &fn(v: uint)) { self( |i| blk(i) ) }
+// issue-2185.rs:24 impl iterable<uint> for 'static ||uint|| {
+// issue-2185.rs:25     fn iter(&self, blk: |v: uint|) { self( |i| blk(i) ) }
 // issue-2185.rs:26 }
 // issue-2185.rs:20:0: 22:1 note: note conflicting implementation here
-// issue-2185.rs:20 impl<A> iterable<A> for &'static fn(&fn(A)) {
-// issue-2185.rs:21     fn iter(&self, blk: &fn(A)) { self(blk); }
+// issue-2185.rs:20 impl<A> iterable<A> for 'static ||A|| {
+// issue-2185.rs:21     fn iter(&self, blk: |A|) { self(blk); }
 // issue-2185.rs:22 }
 //
 // … so it looks like it's just not possible to implement both the generic iterable<uint> and iterable<A> for the type iterable<uint>. Is it okay if I just remove this test?
@@ -39,26 +39,24 @@
 // warrant still having a test, so I inlined the old definitions.
 
 trait iterable<A> {
-    fn iter(&self, blk: &fn(A));
+    fn iter(&self, blk: |A|);
 }
 
-impl<A> iterable<A> for &'static fn(&fn(A)) {
-    fn iter(&self, blk: &fn(A)) { self(blk); }
+impl<A> iterable<A> for 'static ||A|| {
+    fn iter(&self, blk: |A|) { self(blk); }
 }
 
-impl iterable<uint> for &'static fn(&fn(uint)) {
-    fn iter(&self, blk: &fn(v: uint)) { self( |i| blk(i) ) }
+impl iterable<uint> for 'static ||uint|| {
+    fn iter(&self, blk: |v: uint|) { self( |i| blk(i) ) }
 }
 
-fn filter<A,IA:iterable<A>>(self: IA,
-                            prd: &'static fn(A) -> bool,
-                            blk: &fn(A)) {
+fn filter<A,IA:iterable<A>>(self: IA, prd: 'static |A| -> bool, blk: |A|) {
     do self.iter |a| {
         if prd(a) { blk(a) }
     }
 }
 
-fn foldl<A,B,IA:iterable<A>>(self: IA, b0: B, blk: &fn(B, A) -> B) -> B {
+fn foldl<A,B,IA:iterable<A>>(self: IA, b0: B, blk: |B, A| -> B) -> B {
     let mut b = b0;
     do self.iter |a| {
         b = blk(b, a);
@@ -66,7 +64,7 @@ fn foldl<A,B,IA:iterable<A>>(self: IA, b0: B, blk: &fn(B, A) -> B) -> B {
     b
 }
 
-fn range(lo: uint, hi: uint, it: &fn(uint)) {
+fn range(lo: uint, hi: uint, it: |uint|) {
     let mut i = lo;
     while i < hi {
         it(i);
@@ -75,8 +73,8 @@ fn range(lo: uint, hi: uint, it: &fn(uint)) {
 }
 
 pub fn main() {
-    let range: &'static fn(&fn(uint)) = |a| range(0u, 1000u, a);
-    let filt: &'static fn(&fn(v: uint)) = |a| filter(
+    let range: 'static ||uint|| = |a| range(0u, 1000u, a);
+    let filt: 'static ||v: uint|| = |a| filter(
         range,
         |&&n: uint| n % 3u != 0u && n % 5u != 0u,
         a);

@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow(v: &int, f: &fn(x: &int)) {
+fn borrow(v: &int, f: |x: &int|) {
     f(v);
 }
 
 fn box_imm() {
     let mut v = ~3;
-    do borrow(v) |w| {
+    borrow(v, |w| {
         v = ~4; //~ ERROR cannot assign to `v` because it is borrowed
         assert_eq!(*v, 3);
         assert_eq!(*w, 4);
-    }
+    })
 }
 
 fn main() {

@@ -384,9 +384,7 @@ fn executable_exists(repo: &Path, short_name: &str) -> bool {
 fn test_executable_exists(repo: &Path, short_name: &str) -> bool {
     debug!("test_executable_exists: repo = {}, short_name = {}", repo.display(), short_name);
     let exec = built_test_in_workspace(&PkgId::new(short_name), repo);
-    do exec.map_default(false) |exec| {
-        exec.exists() && is_rwx(&exec)
-    }
+    exec.map_default(false, |exec| exec.exists() && is_rwx(&exec))
 }
 
 fn remove_executable_file(p: &PkgId, workspace: &Path) {
@@ -544,12 +542,12 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
     debug!("Frobbed? {:?}", maybe_p);
     match maybe_p {
         Some(ref p) => {
-            do io::io_error::cond.trap(|e| {
+            io::io_error::cond.trap(|e| {
                 cond.raise((p.clone(), format!("Bad path: {}", e.desc)));
-            }).inside {
+            }).inside(|| {
                 let mut w = File::open_mode(p, io::Append, io::Write);
                 w.write(bytes!("/* hi */\n"));
-            }
+            })
         }
         None => fail!("frob_source_file failed to find a source file in {}",
                            pkg_src_dir.display())
@@ -744,26 +742,26 @@ fn test_package_ids_must_be_relative_path_like() {
     assert!("github.com/catamorphism/test-pkg-0.1" ==
             PkgId::new("github.com/catamorphism/test-pkg").to_str());
 
-    do cond.trap(|(p, e)| {
+    cond.trap(|(p, e)| {
         assert!(p.filename().is_none())
         assert!("0-length pkgid" == e);
         whatever.clone()
-    }).inside {
+    }).inside(|| {
         let x = PkgId::new("");
         assert_eq!(~"foo-0.1", x.to_str());
-    }
+    });
 
-    do cond.trap(|(p, e)| {
+    cond.trap(|(p, e)| {
         let abs = os::make_absolute(&Path::new("foo/bar/quux"));
         assert_eq!(p, abs);
         assert!("absolute pkgid" == e);
         whatever.clone()
-    }).inside {
+    }).inside(|| {
         let zp = os::make_absolute(&Path::new("foo/bar/quux"));
         // FIXME (#9639): This needs to handle non-utf8 paths
         let z = PkgId::new(zp.as_str().unwrap());
         assert_eq!(~"foo-0.1", z.to_str());
-    }
+    })
 
 }
 

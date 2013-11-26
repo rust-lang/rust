@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn call_any(f: &fn() -> uint) -> uint {
+fn call_any(f: proc() -> uint) -> uint {
     return f();
 }
 

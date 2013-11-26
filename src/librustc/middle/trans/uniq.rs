@@ -23,7 +23,7 @@ pub fn make_free_glue(bcx: @mut Block, vptrptr: ValueRef, box_ty: ty::t)
     let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
 
     let not_null = IsNotNull(bcx, box_datum.val);
-    do with_cond(bcx, not_null) |bcx| {
+    with_cond(bcx, not_null, |bcx| {
         let body_datum = box_datum.box_body(bcx);
         let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
                                 body_datum.ty);
@@ -32,5 +32,5 @@ pub fn make_free_glue(bcx: @mut Block, vptrptr: ValueRef, box_ty: ty::t)
         } else {
             glue::trans_exchange_free(bcx, box_datum.val)
         }
-    }
+    })
 }

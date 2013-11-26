@@ -13,31 +13,34 @@
 // it.
 
 trait iterable<A> {
-    fn iterate(&self, blk: &fn(x: &A) -> bool) -> bool;
+    fn iterate(&self, blk: |x: &A| -> bool) -> bool;
 }
 
 impl<'self,A> iterable<A> for &'self [A] {
-    fn iterate(&self, f: &fn(x: &A) -> bool) -> bool {
+    fn iterate(&self, f: |x: &A| -> bool) -> bool {
         self.iter().advance(f)
     }
 }
 
 impl<A> iterable<A> for ~[A] {
-    fn iterate(&self, f: &fn(x: &A) -> bool) -> bool {
+    fn iterate(&self, f: |x: &A| -> bool) -> bool {
         self.iter().advance(f)
     }
 }
 
 fn length<A, T: iterable<A>>(x: T) -> uint {
     let mut len = 0;
-    do x.iterate() |_y| { len += 1; true };
+    x.iterate(|_y| {
+        len += 1;
+        true
+    });
     return len;
 }
 
 pub fn main() {
     let x = ~[0,1,2,3];
     // Call a method
-    do x.iterate() |y| { assert!(x[*y] == *y); true };
+    x.iterate(|y| { assert!(x[*y] == *y); true });
     // Call a parameterized function
     assert_eq!(length(x.clone()), x.len());
     // Call a parameterized function, with type arguments that require
@@ -47,7 +50,7 @@ pub fn main() {
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];
     // Call a method
-    do z.iterate() |y| { assert!(z[*y] == *y); true };
+    z.iterate(|y| { assert!(z[*y] == *y); true });
     // Call a parameterized function
     assert_eq!(length::<int, &[int]>(z), z.len());
 }

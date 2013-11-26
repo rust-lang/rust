@@ -40,9 +40,9 @@ fn test_destroy_twice() {
 
     let mut p = run::Process::new(PROG, [], run::ProcessOptions::new());
     p.destroy(); // this shouldnt crash...
-    do io::io_error::cond.trap(|_| {}).inside {
+    io::io_error::cond.trap(|_| {}).inside(|| {
         p.destroy(); // ...and nor should this (and nor should the destructor)
-    }
+    })
 }
 
 fn test_destroy_actually_kills(force: bool) {

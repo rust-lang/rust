@@ -236,9 +236,9 @@ impl Scheduler {
             // Our scheduler must be in the task before the event loop
             // is started.
             let self_sched = Cell::new(self);
-            do Local::borrow |stask: &mut Task| {
+            Local::borrow(|stask: &mut Task| {
                 stask.sched = Some(self_sched.take());
-            };
+            });
 
             (*event_loop).run();
         }
@@ -538,9 +538,7 @@ impl Scheduler {
     /// As enqueue_task, but with the possibility for the blocked task to
     /// already have been killed.
     pub fn enqueue_blocked_task(&mut self, blocked_task: BlockedTask) {
-        do blocked_task.wake().map |task| {
-            self.enqueue_task(task);
-        };
+        blocked_task.wake().map(|task| self.enqueue_task(task));
     }
 
     // * Core Context Switching Functions
@@ -643,9 +641,9 @@ impl Scheduler {
     // * Context Swapping Helpers - Here be ugliness!
 
     pub fn resume_task_immediately(~self, task: ~Task) {
-        do self.change_task_context(task) |sched, stask| {
+        self.change_task_context(task, |sched, stask| {
             sched.sched_task = Some(stask);
-        }
+        })
     }
 
     fn resume_task_immediately_cl(sched: ~Scheduler,
@@ -686,15 +684,15 @@ impl Scheduler {
                                          f: |&mut Scheduler, BlockedTask|) {
         // This is where we convert the BlockedTask-taking closure into one
         // that takes just a Task
-        do self.change_task_context(next_task) |sched, task| {
+        self.change_task_context(next_task, |sched, task| {
             f(sched, BlockedTask::block(task))
-        }
+        })
     }
 
     fn switch_task(sched: ~Scheduler, task: ~Task) {
-        do sched.switch_running_tasks_and_then(task) |sched, last_task| {
+        sched.switch_running_tasks_and_then(task, |sched, last_task| {
             sched.enqueue_blocked_task(last_task);
-        };
+        });
     }
 
     // * Task Context Helpers
@@ -705,10 +703,10 @@ impl Scheduler {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();
-        do self.change_task_context(stask) |sched, mut dead_task| {
+        self.change_task_context(stask, |sched, mut dead_task| {
             let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
-        }
+        })
     }
 
     pub fn run_task(task: ~Task) {
@@ -718,9 +716,9 @@ impl Scheduler {
 
     pub fn run_task_later(next_task: ~Task) {
         let next_task = Cell::new(next_task);
-        do Local::borrow |sched: &mut Scheduler| {
+        Local::borrow(|sched: &mut Scheduler| {
             sched.enqueue_task(next_task.take());
-        };
+        });
     }
 
     /// Yield control to the scheduler, executing another task. This is guaranteed
@@ -731,9 +729,9 @@ impl Scheduler {
         self.yield_check_count = reset_yield_check(&mut self.rng);
         // Tell the scheduler to start stealing on the next iteration
         self.steal_for_yield = true;
-        do self.deschedule_running_task_and_then |sched, task| {
+        self.deschedule_running_task_and_then(|sched, task| {
             sched.enqueue_blocked_task(task);
-        }
+        })
     }
 
     pub fn maybe_yield(mut ~self) {
@@ -852,9 +850,9 @@ fn new_sched_rng() -> XorShiftRng {
     use iter::Iterator;
     use rand::SeedableRng;
 
-    let fd = do "/dev/urandom".with_c_str |name| {
+    let fd = "/dev/urandom".with_c_str(|name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }
-    };
+    });
     if fd == -1 {
         rtabort!("could not open /dev/urandom for reading.")
     }
@@ -862,13 +860,13 @@ fn new_sched_rng() -> XorShiftRng {
     let mut seeds = [0u32, .. 4];
     let size = mem::size_of_val(&seeds);
     loop {
-        let nbytes = do seeds.as_mut_buf |buf, _| {
+        let nbytes = seeds.as_mut_buf(|buf, _| {
             unsafe {
                 libc::read(fd,
                            buf as *mut libc::c_void,
                            size as libc::size_t)
             }
-        };
+        });
         rtassert!(nbytes as uint == size);
 
         if !seeds.iter().all(|x| *x == 0) {
@@ -981,7 +979,7 @@ mod test {
                 assert!(Task::on_appropriate_sched());
             };
 
-            let on_exit: proc(UnwindResult) = |exit_status| {
+            let on_exit: proc(UnwindResult) = proc(exit_status) {
                 rtassert!(exit_status.is_success())
             };
             task.death.on_exit = Some(on_exit);
@@ -1178,7 +1176,7 @@ mod test {
         use util;
 
         do run_in_bare_thread {
-            do stress_factor().times {
+            stress_factor().times(|| {
                 let sleepers = SleeperList::new();
                 let queue = WorkQueue::new();
                 let queues = ~[queue.clone()];
@@ -1195,19 +1193,22 @@ mod test {
 
                 let thread = do Thread::start {
                     let mut sched = sched.take();
-                    let bootstrap_task = ~Task::new_root(&mut sched.stack_pool, None, ||());
+                    let bootstrap_task =
+                        ~Task::new_root(&mut sched.stack_pool,
+                                        None,
+                                        proc()());
                     sched.bootstrap(bootstrap_task);
                 };
 
                 let mut stack_pool = StackPool::new();
-                let task = ~Task::new_root(&mut stack_pool, None, ||());
+                let task = ~Task::new_root(&mut stack_pool, None, proc()());
                 handle.send(TaskFromFriend(task));
 
                 handle.send(Shutdown);
                 util::ignore(handle);
 
                 thread.join();
-            }
+            })
         }
     }
 
@@ -1220,14 +1221,14 @@ mod test {
 
         do run_in_mt_newsched_task {
             let mut ports = ~[];
-            do 10.times {
+            10.times(|| {
                 let (port, chan) = oneshot();
                 let chan_cell = Cell::new(chan);
                 do spawntask_later {
                     chan_cell.take().send(());
                 }
                 ports.push(port);
-            }
+            });
 
             while !ports.is_empty() {
                 ports.pop().recv();
@@ -1317,7 +1318,7 @@ mod test {
     fn dont_starve_1() {
         use rt::comm::oneshot;
 
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_mt_newsched_task {
                 let (port, chan) = oneshot();
 
@@ -1329,14 +1330,14 @@ mod test {
 
                 chan.send(());
             }
-        }
+        })
     }
 
     #[test]
     fn dont_starve_2() {
         use rt::comm::oneshot;
 
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot();
                 let (_port2, chan2) = stream();
@@ -1351,7 +1352,7 @@ mod test {
 
                 chan.send(());
             }
-        }
+        })
     }
 
     // Regression test for a logic bug that would cause single-threaded schedulers
@@ -1362,7 +1363,7 @@ mod test {
         use num::Times;
 
         do spawn_sched(SingleThreaded) {
-            do 5.times { deschedule(); }
+            5.times(|| { deschedule(); })
         }
         do spawn { }
         do spawn { }

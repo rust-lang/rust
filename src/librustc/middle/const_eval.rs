@@ -219,9 +219,7 @@ impl ConstEvalVisitor {
             }
 
             ast::ExprStruct(_, ref fs, None) => {
-                let cs = do fs.iter().map |f| {
-                    self.classify(f.expr)
-                };
+                let cs = fs.iter().map(|f| self.classify(f.expr));
                 join_all(cs)
             }
 
