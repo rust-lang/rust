@@ -38,6 +38,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("asm", Active),
     ("managed_boxes", Active),
     ("non_ascii_idents", Active),
+    ("thread_local", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -107,6 +108,17 @@ impl Visitor<()> for Context {
     }
 
     fn visit_item(&mut self, i: @ast::item, _:()) {
+        // NOTE: uncomment after snapshot
+        /*
+        for attr in i.attrs.iter() {
+            if "thread_local" == attr.name() {
+                self.gate_feature("thread_local", i.span,
+                                  "`#[thread_local]` is an experimental feature, and does not \
+                                  currently handle destructors. There is no corresponding \
+                                  `#[task_local]` mapping to the task model");
+            }
+        }
+        */
         match i.node {
             ast::item_enum(ref def, _) => {
                 for variant in def.variants.iter() {
@@ -152,8 +164,8 @@ impl Visitor<()> for Context {
             },
             ast::ty_box(_) => {
                 self.gate_feature("managed_boxes", t.span,
-                                  "The managed box syntax is being replaced by the `std::gc::Gc`
-                                  and `std::rc::Rc` types. Equivalent functionality to managed
+                                  "The managed box syntax is being replaced by the `std::gc::Gc` \
+                                  and `std::rc::Rc` types. Equivalent functionality to managed \
                                   trait objects will be implemented but is currently missing.");
             }
             _ => {}

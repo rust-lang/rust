@@ -2544,6 +2544,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     inlineable = true;
                                 }
 
+                                if attr::contains_name(i.attrs, "thread_local") {
+                                    lib::llvm::set_thread_local(g, true);
+                                }
+
                                 if !inlineable {
                                     debug!("{} not inlined", sym);
                                     ccx.non_inlineable_statics.insert(id);
