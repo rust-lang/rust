@@ -23,7 +23,6 @@ use std::str;
 struct A;
 struct B;
 
-#[fmt="foo"]
 impl fmt::Signed for A {
     fn fmt(_: &A, f: &mut fmt::Formatter) { f.buf.write("aloha".as_bytes()); }
 }

@@ -76,6 +76,7 @@ pub enum lint {
     type_overflow,
     unused_unsafe,
     unsafe_block,
+    attribute_usage,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -242,6 +243,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unsafe_block,
         desc: "usage of an `unsafe` block",
         default: allow
+    }),
+
+    ("attribute_usage",
+     LintSpec {
+        lint: attribute_usage,
+        desc: "detects bad use of attributes",
+        default: warn
     }),
 
     ("unused_variable",
@@ -790,6 +798,83 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
     }
 }
 
+static crate_attrs: &'static [&'static str] = &[
+    "crate_type", "link", "feature", "no_uv", "no_main", "no_std",
+    "desc", "comment", "license", "copyright", // not used in rustc now
+];
+
+
+static obsolete_attrs: &'static [(&'static str, &'static str)] = &[
+    ("abi", "Use `extern \"abi\" fn` instead"),
+    ("auto_encode", "Use `#[deriving(Encodable)]` instead"),
+    ("auto_decode", "Use `#[deriving(Decodable)]` instead"),
+    ("fast_ffi", "Remove it"),
+    ("fixed_stack_segment", "Remove it"),
+    ("rust_stack", "Remove it"),
+];
+
+static other_attrs: &'static [&'static str] = &[
+    // item-level
+    "address_insignificant", // can be crate-level too
+    "allow", "deny", "forbid", "warn", // lint options
+    "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
+    "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
+    "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
+    "packed", "simd", "repr", "deriving", "unsafe_destructor",
+
+    //mod-level
+    "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
+
+    // fn-level
+    "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
+    "no_split_stack", "cold",
+
+    // internal attribute: bypass privacy inside items
+    "!resolve_unexported",
+];
+
+fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
+
+    for attr in attrs.iter() {
+        let name = attr.node.value.name();
+        let mut iter = crate_attrs.iter().chain(other_attrs.iter());
+        if !iter.any(|other_attr| { name.equiv(other_attr) }) {
+            cx.span_lint(attribute_usage, attr.span, "unknown crate attribute");
+        }
+    }
+}
+
+fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
+    // check if element has crate-level, obsolete, or any unknown attributes.
+
+    for attr in attrs.iter() {
+        let name = attr.node.value.name();
+        for crate_attr in crate_attrs.iter() {
+            if name.equiv(crate_attr) {
+                let msg = match attr.node.style {
+                    ast::AttrOuter => "crate-level attribute should be an inner attribute: \
+                                       add semicolon at end",
+                    ast::AttrInner => "crate-level attribute should be in the root module",
+                };
+                cx.span_lint(attribute_usage, attr.span, msg);
+                return;
+            }
+        }
+
+        for &(obs_attr, obs_alter) in obsolete_attrs.iter() {
+            if name.equiv(&obs_attr) {
+                cx.span_lint(attribute_usage, attr.span,
+                             format!("obsolete attribute: {:s}", obs_alter));
+                return;
+            }
+        }
+
+        if !other_attrs.iter().any(|other_attr| { name.equiv(other_attr) }) {
+            cx.span_lint(attribute_usage, attr.span, "unknown attribute");
+        }
+    }
+}
+
 fn check_heap_expr(cx: &Context, e: &ast::Expr) {
     let ty = ty::expr_ty(cx.tcx, e);
     check_heap_type(cx, e.span, ty);
@@ -1110,12 +1195,27 @@ impl<'self> Visitor<()> for Context<'self> {
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
+            check_attrs_usage(cx, it.attrs);
 
             do cx.visit_ids |v| {
                 v.visit_item(it, ());
             }
 
             visit::walk_item(cx, it, ());
+        }
+    }
+
+    fn visit_foreign_item(&mut self, it: @ast::foreign_item, _: ()) {
+        do self.with_lint_attrs(it.attrs) |cx| {
+            check_attrs_usage(cx, it.attrs);
+            visit::walk_foreign_item(cx, it, ());
+        }
+    }
+
+    fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
+        do self.with_lint_attrs(i.attrs) |cx| {
+            check_attrs_usage(cx, i.attrs);
+            visit::walk_view_item(cx, i, ());
         }
     }
 
@@ -1168,6 +1268,7 @@ impl<'self> Visitor<()> for Context<'self> {
             visit::fk_method(_, _, m) => {
                 do self.with_lint_attrs(m.attrs) |cx| {
                     check_missing_doc_method(cx, m);
+                    check_attrs_usage(cx, m.attrs);
 
                     do cx.visit_ids |v| {
                         v.visit_fn(fk, decl, body, span, id, ());
@@ -1179,9 +1280,11 @@ impl<'self> Visitor<()> for Context<'self> {
         }
     }
 
+
     fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
         do self.with_lint_attrs(t.attrs) |cx| {
             check_missing_doc_ty_method(cx, t);
+            check_attrs_usage(cx, t.attrs);
 
             visit::walk_ty_method(cx, t, ());
         }
@@ -1202,6 +1305,7 @@ impl<'self> Visitor<()> for Context<'self> {
     fn visit_struct_field(&mut self, s: @ast::struct_field, _: ()) {
         do self.with_lint_attrs(s.node.attrs) |cx| {
             check_missing_doc_struct_field(cx, s);
+            check_attrs_usage(cx, s.node.attrs);
 
             visit::walk_struct_field(cx, s, ());
         }
@@ -1210,6 +1314,7 @@ impl<'self> Visitor<()> for Context<'self> {
     fn visit_variant(&mut self, v: &ast::variant, g: &ast::Generics, _: ()) {
         do self.with_lint_attrs(v.node.attrs) |cx| {
             check_missing_doc_variant(cx, v);
+            check_attrs_usage(cx, v.node.attrs);
 
             visit::walk_variant(cx, v, g, ());
         }
@@ -1256,6 +1361,9 @@ pub fn check_crate(tcx: ty::ctxt,
             v.visited_outermost = true;
             visit::walk_crate(v, crate, ());
         }
+
+        check_crate_attrs_usage(cx, crate.attrs);
+
         visit::walk_crate(cx, crate, ());
     }
 

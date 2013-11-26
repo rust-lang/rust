@@ -10,8 +10,6 @@
 
 //! Types dealing with dynamic mutability
 
-#[missing_doc];
-
 use prelude::*;
 use cast;
 use util::NonCopyable;
