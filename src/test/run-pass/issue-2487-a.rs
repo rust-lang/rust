@@ -19,9 +19,7 @@ impl Drop for socket {
 
 impl socket {
     pub fn set_identity(&self)  {
-        do closure {
-            setsockopt_bytes(self.sock.clone())
-        }
+        closure(|| setsockopt_bytes(self.sock.clone()))
     }
 }
 
@@ -31,7 +29,7 @@ fn socket() -> socket {
     }
 }
 
-fn closure(f: &fn()) { f() }
+fn closure(f: ||) { f() }
 
 fn setsockopt_bytes(_sock: int) { }
 

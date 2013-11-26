@@ -12,4 +12,4 @@
 
 fn f(f: |int|) { f(10) }
 
-fn main() { do f |i| { assert!(i == 10) } }
+fn main() { f(|i| { assert!(i == 10) }) }

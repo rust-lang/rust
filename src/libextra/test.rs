@@ -176,7 +176,7 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
 // semantics into parallel test runners, which in turn requires a ~[]
 // rather than a &[].
 pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
-    let owned_tests = do tests.map |t| {
+    let owned_tests = tests.map(|t| {
         match t.testfn {
             StaticTestFn(f) =>
             TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
@@ -188,7 +188,7 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
                 fail!("non-static tests passed to test::test_main_static");
             }
         }
-    };
+    });
     test_main(args, owned_tests)
 }
 
@@ -730,12 +730,12 @@ fn run_tests(opts: &TestOpts,
     callback(TeFiltered(filtered_descs));
 
     let (filtered_tests, filtered_benchs_and_metrics) =
-        do filtered_tests.partition |e| {
-        match e.testfn {
-            StaticTestFn(_) | DynTestFn(_) => true,
-            _ => false
-        }
-    };
+        filtered_tests.partition(|e| {
+            match e.testfn {
+                StaticTestFn(_) | DynTestFn(_) => true,
+                _ => false
+            }
+        });
 
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
@@ -912,7 +912,7 @@ pub fn run_test(force_ignore: bool,
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
-        StaticTestFn(f) => run_test_inner(desc, monitor_ch, || f())
+        StaticTestFn(f) => run_test_inner(desc, monitor_ch, proc() f())
     }
 }
 
@@ -1044,12 +1044,12 @@ impl MetricMap {
         };
 
         let diff : MetricDiff = self.compare_to_old(&old, pct);
-        let ok = do diff.iter().all() |(_, v)| {
+        let ok = diff.iter().all(|(_, v)| {
             match *v {
                 Regression(_) => false,
                 _ => true
             }
-        };
+        });
 
         if ok {
             debug!("rewriting file '{:?}' with updated metrics", p);
@@ -1209,7 +1209,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1227,7 +1227,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1245,7 +1245,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1263,7 +1263,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(|| f()),
+            testfn: DynTestFn(proc() f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan::new(ch);
@@ -1318,7 +1318,7 @@ mod tests {
                     ignore: true,
                     should_fail: false,
                 },
-                testfn: DynTestFn(|| {}),
+                testfn: DynTestFn(proc() {}),
             },
             TestDescAndFn {
                 desc: TestDesc {
@@ -1326,7 +1326,7 @@ mod tests {
                     ignore: false,
                     should_fail: false
                 },
-                testfn: DynTestFn(|| {}),
+                testfn: DynTestFn(proc() {}),
             },
         ];
         let filtered = filter_tests(&opts, tests);

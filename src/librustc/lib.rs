@@ -261,9 +261,9 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = build_configuration(sess);
-    let pretty = do matches.opt_default("pretty", "normal").map |a| {
+    let pretty = matches.opt_default("pretty", "normal").map(|a| {
         parse_pretty(sess, a)
-    };
+    });
     match pretty {
       Some::<PpMode>(ppm) => {
         pretty_print_input(sess, cfg, &input, ppm);
@@ -345,7 +345,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
         task_builder.opts.stack_size = Some(STACK_SIZE);
     }
 
-    match do task_builder.try {
+    match task_builder.try(proc() {
         let ch = ch_capture.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
@@ -368,7 +368,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
         // Due reasons explain in #7732, if there was a jit execution context it
         // must be consumed and passed along to our parent task.
         back::link::jit::consume_engine()
-    } {
+    }) {
         result::Ok(_) => { /* fallthrough */ }
         result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
@@ -403,9 +403,6 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
-    do monitor |demitter| {
-        run_compiler(owned_args, demitter);
-    }
-
-    return 0;
+    monitor(proc(demitter) run_compiler(owned_args, demitter));
+    0
 }

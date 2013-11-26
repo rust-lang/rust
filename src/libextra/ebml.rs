@@ -546,24 +546,24 @@ pub mod reader {
 
         fn read_option<T>(&mut self, f: |&mut Decoder, bool| -> T) -> T {
             debug!("read_option()");
-            do self.read_enum("Option") |this| {
-                do this.read_enum_variant(["None", "Some"]) |this, idx| {
+            self.read_enum("Option", |this| {
+                this.read_enum_variant(["None", "Some"], |this, idx| {
                     match idx {
                         0 => f(this, false),
                         1 => f(this, true),
                         _ => fail!(),
                     }
-                }
-            }
+                })
+            })
         }
 
         fn read_seq<T>(&mut self, f: |&mut Decoder, uint| -> T) -> T {
             debug!("read_seq()");
-            do self.push_doc(EsVec) |d| {
+            self.push_doc(EsVec, |d| {
                 let len = d._next_uint(EsVecLen);
                 debug!("  len={}", len);
                 f(d, len)
-            }
+            })
         }
 
         fn read_seq_elt<T>(&mut self, idx: uint, f: |&mut Decoder| -> T)
@@ -574,11 +574,11 @@ pub mod reader {
 
         fn read_map<T>(&mut self, f: |&mut Decoder, uint| -> T) -> T {
             debug!("read_map()");
-            do self.push_doc(EsMap) |d| {
+            self.push_doc(EsMap, |d| {
                 let len = d._next_uint(EsMapLen);
                 debug!("  len={}", len);
                 f(d, len)
-            }
+            })
         }
 
         fn read_map_elt_key<T>(&mut self, idx: uint, f: |&mut Decoder| -> T)
@@ -687,21 +687,21 @@ pub mod writer {
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) {
-            do u64_to_be_bytes(v, 8u) |v| {
+            u64_to_be_bytes(v, 8u, |v| {
                 self.wr_tagged_bytes(tag_id, v);
-            }
+            })
         }
 
         pub fn wr_tagged_u32(&mut self, tag_id: uint, v: u32) {
-            do u64_to_be_bytes(v as u64, 4u) |v| {
+            u64_to_be_bytes(v as u64, 4u, |v| {
                 self.wr_tagged_bytes(tag_id, v);
-            }
+            })
         }
 
         pub fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) {
-            do u64_to_be_bytes(v as u64, 2u) |v| {
+            u64_to_be_bytes(v as u64, 2u, |v| {
                 self.wr_tagged_bytes(tag_id, v);
-            }
+            })
         }
 
         pub fn wr_tagged_u8(&mut self, tag_id: uint, v: u8) {
@@ -709,21 +709,21 @@ pub mod writer {
         }
 
         pub fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) {
-            do u64_to_be_bytes(v as u64, 8u) |v| {
+            u64_to_be_bytes(v as u64, 8u, |v| {
                 self.wr_tagged_bytes(tag_id, v);
-            }
+            })
         }
 
         pub fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) {
-            do u64_to_be_bytes(v as u64, 4u) |v| {
+            u64_to_be_bytes(v as u64, 4u, |v| {
                 self.wr_tagged_bytes(tag_id, v);
-            }
+            })
         }
 
         pub fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) {
-            do u64_to_be_bytes(v as u64, 2u) |v| {
+            u64_to_be_bytes(v as u64, 2u, |v| {
                 self.wr_tagged_bytes(tag_id, v);
-            }
+            })
         }
 
         pub fn wr_tagged_i8(&mut self, tag_id: uint, v: i8) {

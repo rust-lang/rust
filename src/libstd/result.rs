@@ -139,9 +139,9 @@ impl<T, E: ToStr> Result<T, E> {
     ///
     /// Example:
     ///
-    ///     let res = do read_file(file).map |buf| {
+    ///     let res = read_file(file).map(|buf| {
     ///         parse_bytes(buf)
-    ///     }
+    ///     })
     #[inline]
     pub fn map<U>(self, op: |T| -> U) -> Result<U,E> {
         match self {
@@ -462,11 +462,11 @@ mod tests {
     pub fn test_impl_iter() {
         let mut valid = false;
         let okval = Ok::<~str, ~str>(~"a");
-        do okval.iter().next().map |_| { valid = true; };
+        okval.iter().next().map(|_| { valid = true; });
         assert!(valid);
 
         let errval = Err::<~str, ~str>(~"b");
-        do errval.iter().next().map |_| { valid = false; };
+        errval.iter().next().map(|_| { valid = false; });
         assert!(valid);
     }
 
@@ -474,12 +474,12 @@ mod tests {
     pub fn test_impl_iter_err() {
         let mut valid = true;
         let okval = Ok::<~str, ~str>(~"a");
-        do okval.iter_err().next().map |_| { valid = false };
+        okval.iter_err().next().map(|_| { valid = false });
         assert!(valid);
 
         valid = false;
         let errval = Err::<~str, ~str>(~"b");
-        do errval.iter_err().next().map |_| { valid = true };
+        errval.iter_err().next().map(|_| { valid = true });
         assert!(valid);
     }
 

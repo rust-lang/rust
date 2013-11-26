@@ -189,7 +189,7 @@ pub fn get<T: 'static, U>(key: Key<T>, f: |Option<&T>| -> U) -> U {
 /// on loan via this or the `get` methods. This is similar to how it's a runtime
 /// error to take two mutable loans on an `@mut` box.
 pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
-    do get_with(key, MutLoan) |x| {
+    get_with(key, MutLoan, |x| {
         match x {
             None => f(None),
             // We're violating a lot of compiler guarantees with this
@@ -199,7 +199,7 @@ pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
             // there is no need to be upset!
             Some(x) => { f(Some(unsafe { cast::transmute_mut(x) })) }
         }
-    }
+    })
 }
 
 fn get_with<T:'static,
@@ -479,19 +479,19 @@ mod tests {
         static key: Key<~int> = &Key;
         set(key, ~1);
 
-        do get(key) |v| {
-            do get(key) |v| {
-                do get(key) |v| {
+        get(key, |v| {
+            get(key, |v| {
+                get(key, |v| {
                     assert_eq!(**v.unwrap(), 1);
-                }
+                });
                 assert_eq!(**v.unwrap(), 1);
-            }
+            });
             assert_eq!(**v.unwrap(), 1);
-        }
+        });
         set(key, ~2);
-        do get(key) |v| {
+        get(key, |v| {
             assert_eq!(**v.unwrap(), 2);
-        }
+        })
     }
 
     #[test]
@@ -499,13 +499,13 @@ mod tests {
         static key: Key<int> = &Key;
         set(key, 1);
 
-        do get_mut(key) |v| {
+        get_mut(key, |v| {
             *v.unwrap() = 2;
-        }
+        });
 
-        do get(key) |v| {
+        get(key, |v| {
             assert_eq!(*v.unwrap(), 2);
-        }
+        })
     }
 
     #[test]
@@ -533,9 +533,9 @@ mod tests {
     fn test_nested_get_set1() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get(key) |_| {
+        get(key, |_| {
             set(key, 4);
-        }
+        })
     }
 
     #[test]
@@ -543,9 +543,9 @@ mod tests {
     fn test_nested_get_mut2() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get(key) |_| {
+        get(key, |_| {
             get_mut(key, |_| {})
-        }
+        })
     }
 
     #[test]
@@ -553,9 +553,9 @@ mod tests {
     fn test_nested_get_mut3() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get_mut(key) |_| {
+        get_mut(key, |_| {
             get(key, |_| {})
-        }
+        })
     }
 
     #[test]
@@ -563,8 +563,8 @@ mod tests {
     fn test_nested_get_mut4() {
         static key: Key<int> = &Key;
         set(key, 4);
-        do get_mut(key) |_| {
+        get_mut(key, |_| {
             get_mut(key, |_| {})
-        }
+        })
     }
 }

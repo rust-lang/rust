@@ -394,7 +394,7 @@ impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'self T> {
-        do self.iter.next().map |(value, _)| { value }
+        self.iter.next().map(|(value, _)| value)
     }
 }
 
@@ -402,7 +402,7 @@ impl<'self, T> Iterator<&'self T> for TreeSetRevIterator<'self, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'self T> {
-        do self.iter.next().map |(value, _)| { value }
+        self.iter.next().map(|(value, _)| value)
     }
 }
 
@@ -1027,8 +1027,8 @@ mod test_treemap {
 
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(&[42]);
 
-        do 3.times {
-            do 90.times {
+        3.times(|| {
+            90.times(|| {
                 let k = rng.gen();
                 let v = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
@@ -1037,16 +1037,16 @@ mod test_treemap {
                     check_structure(&map);
                     check_equal(ctrl, &map);
                 }
-            }
+            });
 
-            do 30.times {
+            30.times(|| {
                 let r = rng.gen_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));
                 check_structure(&map);
                 check_equal(ctrl, &map);
-            }
-        }
+            });
+        })
     }
 
     #[test]
@@ -1414,11 +1414,11 @@ mod test_set {
         for y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
-        do f(&set_a, &set_b) |x| {
+        f(&set_a, &set_b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 

@@ -18,13 +18,13 @@ mod foo {
     }
 }
 
-fn callback<T>(_f: &fn() -> T) -> T { fail!() }
+fn callback<T>(_f: || -> T) -> T { fail!() }
 unsafe fn unsf() {}
 
 fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block
 fn bad2() { unsafe { bad1() } }          //~ ERROR: unnecessary `unsafe` block
 unsafe fn bad3() { unsafe {} }           //~ ERROR: unnecessary `unsafe` block
-fn bad4() { unsafe { do callback {} } }  //~ ERROR: unnecessary `unsafe` block
+fn bad4() { unsafe { callback(||{}) } }  //~ ERROR: unnecessary `unsafe` block
 unsafe fn bad5() { unsafe { unsf() } }   //~ ERROR: unnecessary `unsafe` block
 fn bad6() {
     unsafe {                             // don't put the warning here
@@ -50,9 +50,9 @@ fn good2() {
     unsafe {
         unsafe fn what() -> ~[~str] { fail!() }
 
-        do callback {
+        callback(|| {
             what();
-        }
+        });
     }
 }
 

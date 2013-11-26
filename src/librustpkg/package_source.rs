@@ -291,11 +291,9 @@ impl PkgSrc {
 
                 let mut failed = false;
 
-                do cond.trap(|_| {
+                cond.trap(|_| {
                     failed = true;
-                }).inside {
-                    git_clone_url(url, &clone_target, &pkgid.version);
-                };
+                }).inside(|| git_clone_url(url, &clone_target, &pkgid.version));
 
                 if failed {
                     return None;
@@ -348,7 +346,7 @@ impl PkgSrc {
         self.find_crates_with_filter(|_| true);
     }
 
-    pub fn find_crates_with_filter(&mut self, filter: &fn(&str) -> bool) {
+    pub fn find_crates_with_filter(&mut self, filter: |&str| -> bool) {
         use conditions::missing_pkg_files::cond;
 
         let prefix = self.start_dir.components().len();
@@ -400,7 +398,7 @@ impl PkgSrc {
             debug!("build_crates: compiling {}", path.display());
             let cfgs = crate.cfgs + cfgs;
 
-            do ctx.workcache_context.with_prep(crate_tag(&path)) |prep| {
+            ctx.workcache_context.with_prep(crate_tag(&path), |prep| {
                 debug!("Building crate {}, declaring it as an input", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("file", path.as_str().unwrap(),
@@ -414,7 +412,7 @@ impl PkgSrc {
                 let sub_deps = deps.clone();
                 let inputs = inputs_to_discover.map(|&(ref k, ref p)|
                                                     (k.clone(), p.as_str().unwrap().to_owned()));
-                do prep.exec |exec| {
+                prep.exec(proc(exec) {
                     for &(ref kind, ref p) in inputs.iter() {
                         let pth = Path::new(p.clone());
                         exec.discover_input(*kind, *p, if *kind == ~"file" {
@@ -445,8 +443,8 @@ impl PkgSrc {
                     let result = result.as_ref().map(|p|p.as_str().unwrap());
                     debug!("Result of compiling {} was {}", subpath.display(), result.to_str());
                     result.to_str()
-                }
-            };
+                })
+            });
         }
     }
 

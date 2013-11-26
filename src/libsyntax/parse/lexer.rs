@@ -337,7 +337,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     bump(rdr);
                 }
-                let ret = do with_str_from(rdr, start_bpos) |string| {
+                let ret = with_str_from(rdr, start_bpos, |string| {
                     // but comments with only more "/"s are not
                     if !is_line_non_doc_comment(string) {
                         Some(TokenAndSpan{
@@ -347,7 +347,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                     } else {
                         None
                     }
-                };
+                });
 
                 if ret.is_some() {
                     return ret;
@@ -412,7 +412,7 @@ fn consume_block_comment(rdr: @mut StringReader)
     }
 
     let res = if is_doc_comment {
-        do with_str_from(rdr, start_bpos) |string| {
+        with_str_from(rdr, start_bpos, |string| {
             // but comments with only "*"s between two "/"s are not
             if !is_block_non_doc_comment(string) {
                 Some(TokenAndSpan{
@@ -422,7 +422,7 @@ fn consume_block_comment(rdr: @mut StringReader)
             } else {
                 None
             }
-        }
+        })
     } else {
         None
     };
@@ -652,7 +652,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             bump(rdr);
         }
 
-        return do with_str_from(rdr, start) |string| {
+        return with_str_from(rdr, start, |string| {
             if string == "_" {
                 token::UNDERSCORE
             } else {
@@ -661,7 +661,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 // FIXME: perform NFKC normalization here. (Issue #2253)
                 token::IDENT(str_to_ident(string), is_mod_name)
             }
-        }
+        })
     }
     if is_dec_digit(c) {
         return scan_number(c, rdr);
@@ -775,9 +775,9 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             while ident_continue(rdr.curr) {
                 bump(rdr);
             }
-            return do with_str_from(rdr, start) |lifetime_name| {
+            return with_str_from(rdr, start, |lifetime_name| {
                 token::LIFETIME(str_to_ident(lifetime_name))
-            }
+            })
         }
 
         // Otherwise it is a character constant:

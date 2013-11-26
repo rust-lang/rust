@@ -35,14 +35,14 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
     let mut output_types = ~[];
 
     // Prepare the output operands
-    let outputs = do ia.outputs.map |&(c, out)| {
+    let outputs = ia.outputs.map(|&(c, out)| {
         constraints.push(c);
 
         let out_datum = unpack_datum!(bcx, trans_to_datum(bcx, out));
         output_types.push(type_of(bcx.ccx(), out_datum.ty));
         out_datum.val
 
-    };
+    });
 
     for c in cleanups.iter() {
         revoke_clean(bcx, *c);
@@ -50,7 +50,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
     cleanups.clear();
 
     // Now the input operands
-    let inputs = do ia.inputs.map |&(c, input)| {
+    let inputs = ia.inputs.map(|&(c, input)| {
         constraints.push(c);
 
         unpack_result!(bcx, {
@@ -61,8 +61,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    &mut cleanups,
                                    callee::DontAutorefArg)
         })
-
-    };
+    });
 
     for c in cleanups.iter() {
         revoke_clean(bcx, *c);
@@ -103,11 +102,11 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         ast::asm_intel => lib::llvm::AD_Intel
     };
 
-    let r = do ia.asm.with_c_str |a| {
-        do constraints.with_c_str |c| {
+    let r = ia.asm.with_c_str(|a| {
+        constraints.with_c_str(|c| {
             InlineAsmCall(bcx, a, c, inputs, output_type, ia.volatile, ia.alignstack, dialect)
-        }
-    };
+        })
+    });
 
     // Again, based on how many outputs we have
     if numOutputs == 1 {

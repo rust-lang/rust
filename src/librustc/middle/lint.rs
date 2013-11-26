@@ -441,7 +441,7 @@ impl<'self> Context<'self> {
         // of what we changed so we can roll everything back after invoking the
         // specified closure
         let mut pushed = 0u;
-        do each_lint(self.tcx.sess, attrs) |meta, level, lintname| {
+        each_lint(self.tcx.sess, attrs, |meta, level, lintname| {
             match self.dict.find_equiv(&lintname) {
                 None => {
                     self.span_lint(
@@ -467,7 +467,7 @@ impl<'self> Context<'self> {
                 }
             }
             true
-        };
+        });
 
         let old_is_doc_hidden = self.is_doc_hidden;
         self.is_doc_hidden = self.is_doc_hidden ||
@@ -479,10 +479,10 @@ impl<'self> Context<'self> {
 
         // rollback
         self.is_doc_hidden = old_is_doc_hidden;
-        do pushed.times {
+        pushed.times(|| {
             let (lint, lvl, src) = self.lint_stack.pop();
             self.set_level(lint, lvl, src);
-        }
+        })
     }
 
     fn visit_ids(&self, f: |&mut ast_util::IdVisitor<Context>|) {
@@ -1135,11 +1135,11 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         // this crate
         match cx.tcx.items.find(&id.node) {
             Some(ast_node) => {
-                let s = do ast_node.with_attrs |attrs| {
-                    do attrs.map |a| {
+                let s = ast_node.with_attrs(|attrs| {
+                    attrs.map(|a| {
                         attr::find_stability(a.iter().map(|a| a.meta()))
-                    }
-                };
+                    })
+                });
                 match s {
                     Some(s) => s,
 
@@ -1157,11 +1157,11 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         let mut s = None;
         // run through all the attributes and take the first
         // stability one.
-        do csearch::get_item_attrs(cx.tcx.cstore, id) |meta_items| {
+        csearch::get_item_attrs(cx.tcx.cstore, id, |meta_items| {
             if s.is_none() {
                 s = attr::find_stability(meta_items.move_iter())
             }
-        }
+        });
         s
     };
 
@@ -1189,7 +1189,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 
 impl<'self> Visitor<()> for Context<'self> {
     fn visit_item(&mut self, it: @ast::item, _: ()) {
-        do self.with_lint_attrs(it.attrs) |cx| {
+        self.with_lint_attrs(it.attrs, |cx| {
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
             check_item_non_uppercase_statics(cx, it);
@@ -1197,26 +1197,24 @@ impl<'self> Visitor<()> for Context<'self> {
             check_missing_doc_item(cx, it);
             check_attrs_usage(cx, it.attrs);
 
-            do cx.visit_ids |v| {
-                v.visit_item(it, ());
-            }
+            cx.visit_ids(|v| v.visit_item(it, ()));
 
             visit::walk_item(cx, it, ());
-        }
+        })
     }
 
     fn visit_foreign_item(&mut self, it: @ast::foreign_item, _: ()) {
-        do self.with_lint_attrs(it.attrs) |cx| {
+        self.with_lint_attrs(it.attrs, |cx| {
             check_attrs_usage(cx, it.attrs);
             visit::walk_foreign_item(cx, it, ());
-        }
+        })
     }
 
     fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
-        do self.with_lint_attrs(i.attrs) |cx| {
+        self.with_lint_attrs(i.attrs, |cx| {
             check_attrs_usage(cx, i.attrs);
             visit::walk_view_item(cx, i, ());
-        }
+        })
     }
 
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
@@ -1266,15 +1264,15 @@ impl<'self> Visitor<()> for Context<'self> {
 
         match *fk {
             visit::fk_method(_, _, m) => {
-                do self.with_lint_attrs(m.attrs) |cx| {
+                self.with_lint_attrs(m.attrs, |cx| {
                     check_missing_doc_method(cx, m);
                     check_attrs_usage(cx, m.attrs);
 
-                    do cx.visit_ids |v| {
+                    cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id, ());
-                    }
+                    });
                     recurse(cx);
-                }
+                })
             }
             _ => recurse(self),
         }
@@ -1282,12 +1280,12 @@ impl<'self> Visitor<()> for Context<'self> {
 
 
     fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
-        do self.with_lint_attrs(t.attrs) |cx| {
+        self.with_lint_attrs(t.attrs, |cx| {
             check_missing_doc_ty_method(cx, t);
             check_attrs_usage(cx, t.attrs);
 
             visit::walk_ty_method(cx, t, ());
-        }
+        })
     }
 
     fn visit_struct_def(&mut self,
@@ -1303,21 +1301,21 @@ impl<'self> Visitor<()> for Context<'self> {
     }
 
     fn visit_struct_field(&mut self, s: @ast::struct_field, _: ()) {
-        do self.with_lint_attrs(s.node.attrs) |cx| {
+        self.with_lint_attrs(s.node.attrs, |cx| {
             check_missing_doc_struct_field(cx, s);
             check_attrs_usage(cx, s.node.attrs);
 
             visit::walk_struct_field(cx, s, ());
-        }
+        })
     }
 
     fn visit_variant(&mut self, v: &ast::variant, g: &ast::Generics, _: ()) {
-        do self.with_lint_attrs(v.node.attrs) |cx| {
+        self.with_lint_attrs(v.node.attrs, |cx| {
             check_missing_doc_variant(cx, v);
             check_attrs_usage(cx, v.node.attrs);
 
             visit::walk_variant(cx, v, g, ());
-        }
+        })
     }
 }
 
@@ -1356,16 +1354,16 @@ pub fn check_crate(tcx: ty::ctxt,
     for &(lint, level) in tcx.sess.opts.lint_opts.iter() {
         cx.set_level(lint, level, CommandLine);
     }
-    do cx.with_lint_attrs(crate.attrs) |cx| {
-        do cx.visit_ids |v| {
+    cx.with_lint_attrs(crate.attrs, |cx| {
+        cx.visit_ids(|v| {
             v.visited_outermost = true;
             visit::walk_crate(v, crate, ());
-        }
+        });
 
         check_crate_attrs_usage(cx, crate.attrs);
 
         visit::walk_crate(cx, crate, ());
-    }
+    });
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.

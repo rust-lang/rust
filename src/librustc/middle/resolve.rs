@@ -909,11 +909,12 @@ impl<'self> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'self> {
 
     fn visit_foreign_item(&mut self, foreign_item: @foreign_item,
                           context:ReducedGraphParent) {
-        do self.resolver.build_reduced_graph_for_foreign_item(foreign_item,
-                                                              context) |r, c| {
+        self.resolver.build_reduced_graph_for_foreign_item(foreign_item,
+                                                           context,
+                                                           |r, c| {
             let mut v = BuildReducedGraphVisitor{ resolver: r };
             visit::walk_foreign_item(&mut v, foreign_item, c);
-        }
+        })
     }
 
     fn visit_view_item(&mut self, view_item:&view_item, context:ReducedGraphParent) {
@@ -1227,11 +1228,11 @@ impl Resolver {
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
-                do ctor_id.while_some |cid| {
+                ctor_id.while_some(|cid| {
                     name_bindings.define_value(DefStruct(local_def(cid)), sp,
                                                is_public);
                     None
-                }
+                });
 
                 // Record the def ID of this struct.
                 self.structs.insert(local_def(item.id));
@@ -1553,12 +1554,12 @@ impl Resolver {
                 let def = DefFn(local_def(foreign_item.id), unsafe_fn);
                 name_bindings.define_value(def, foreign_item.span, is_public);
 
-                do self.with_type_parameter_rib(
-                    HasTypeParameters(
-                        generics, foreign_item.id, 0, NormalRibKind)) |this|
-                {
-                    f(this, new_parent)
-                }
+                self.with_type_parameter_rib(
+                    HasTypeParameters(generics,
+                                      foreign_item.id,
+                                      0,
+                                      NormalRibKind),
+                    |this| f(this, new_parent));
             }
             foreign_item_static(_, m) => {
                 let def = DefStatic(local_def(foreign_item.id), m);
@@ -1758,15 +1759,17 @@ impl Resolver {
                     DefForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
-                        do csearch::each_child_of_item(self.session.cstore,
-                                                       def_id)
-                                |def_like, child_ident, vis| {
+                        csearch::each_child_of_item(self.session.cstore,
+                                                    def_id,
+                                                    |def_like,
+                                                     child_ident,
+                                                     vis| {
                             self.build_reduced_graph_for_external_crate_def(
                                 root,
                                 def_like,
                                 child_ident,
                                 vis)
-                        }
+                        });
                     }
                     _ => {
                         let (child_name_bindings, new_parent) =
@@ -1893,15 +1896,16 @@ impl Resolver {
             Some(def_id) => def_id,
         };
 
-        do csearch::each_child_of_item(self.session.cstore, def_id)
-                |def_like, child_ident, visibility| {
+        csearch::each_child_of_item(self.session.cstore,
+                                    def_id,
+                                    |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
                    token::ident_to_str(&child_ident));
             self.build_reduced_graph_for_external_crate_def(module,
                                                             def_like,
                                                             child_ident,
                                                             visibility)
-        }
+        });
         module.populated = true
     }
 
@@ -1918,14 +1922,14 @@ impl Resolver {
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self,
                                               root: @mut Module) {
-        do csearch::each_top_level_item_of_crate(self.session.cstore,
-                                                 root.def_id.unwrap().crate)
-                |def_like, ident, visibility| {
+        csearch::each_top_level_item_of_crate(self.session.cstore,
+                                              root.def_id.unwrap().crate,
+                                              |def_like, ident, visibility| {
             self.build_reduced_graph_for_external_crate_def(root,
                                                             def_like,
                                                             ident,
                                                             visibility)
-        }
+        });
     }
 
     /// Creates and adds an import directive to the given module.
@@ -3544,20 +3548,23 @@ impl Resolver {
                 // n.b. the discr expr gets visted twice.
                 // but maybe it's okay since the first time will signal an
                 // error if there is one? -- tjc
-                do self.with_type_parameter_rib(
-                    HasTypeParameters(
-                        generics, item.id, 0, NormalRibKind)) |this| {
+                self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               item.id,
+                                                               0,
+                                                               NormalRibKind),
+                                             |this| {
                     visit::walk_item(this, item, ());
-                }
+                });
             }
 
             item_ty(_, ref generics) => {
-                do self.with_type_parameter_rib
-                        (HasTypeParameters(generics, item.id, 0,
-                                           NormalRibKind))
-                        |this| {
+                self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               item.id,
+                                                               0,
+                                                               NormalRibKind),
+                                             |this| {
                     visit::walk_item(this, item, ());
-                }
+                });
             }
 
             item_impl(ref generics,
@@ -3581,10 +3588,11 @@ impl Resolver {
                                               DlDef(DefSelfTy(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
-                do self.with_type_parameter_rib
-                        (HasTypeParameters(generics, item.id, 0,
-                                           NormalRibKind)) |this| {
-
+                self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               item.id,
+                                                               0,
+                                                               NormalRibKind),
+                                             |this| {
                     this.resolve_type_parameters(&generics.ty_params);
 
                     // Resolve derived traits.
@@ -3600,11 +3608,12 @@ impl Resolver {
 
                         match *method {
                           required(ref ty_m) => {
-                            do this.with_type_parameter_rib
+                            this.with_type_parameter_rib
                                 (HasTypeParameters(&ty_m.generics,
                                                    item.id,
                                                    generics.ty_params.len(),
-                                        MethodRibKind(item.id, Required))) |this| {
+                                        MethodRibKind(item.id, Required)),
+                                 |this| {
 
                                 // Resolve the method-specific type
                                 // parameters.
@@ -3616,7 +3625,7 @@ impl Resolver {
                                 }
 
                                 this.resolve_type(&ty_m.decl.output);
-                            }
+                            });
                           }
                           provided(m) => {
                               this.resolve_method(MethodRibKind(item.id,
@@ -3626,7 +3635,7 @@ impl Resolver {
                           }
                         }
                     }
-                }
+                });
 
                 self.type_ribs.pop();
             }
@@ -3638,14 +3647,14 @@ impl Resolver {
             }
 
             item_mod(ref module_) => {
-                do self.with_scope(Some(item.ident)) |this| {
+                self.with_scope(Some(item.ident), |this| {
                     this.resolve_module(module_, item.span, item.ident,
                                         item.id);
-                }
+                });
             }
 
             item_foreign_mod(ref foreign_module) => {
-                do self.with_scope(Some(item.ident)) |this| {
+                self.with_scope(Some(item.ident), |this| {
                     for foreign_item in foreign_module.items.iter() {
                         match foreign_item.node {
                             foreign_item_fn(_, ref generics) => {
@@ -3664,7 +3673,7 @@ impl Resolver {
                             }
                         }
                     }
-                }
+                });
             }
 
             item_fn(ref fn_decl, _, _, ref generics, ref block) => {
@@ -3764,7 +3773,7 @@ impl Resolver {
         self.label_ribs.push(function_label_rib);
 
         // If this function has type parameters, add them now.
-        do self.with_type_parameter_rib(type_parameters) |this| {
+        self.with_type_parameter_rib(type_parameters, |this| {
             // Resolve the type parameters.
             match type_parameters {
                 NoTypeParameters => {
@@ -3815,7 +3824,7 @@ impl Resolver {
             this.resolve_block(block);
 
             debug!("(resolving function) leaving function");
-        }
+        });
 
         self.label_ribs.pop();
         self.value_ribs.pop();
@@ -3890,10 +3899,11 @@ impl Resolver {
         }
 
         // If applicable, create a rib for the type parameters.
-        do self.with_type_parameter_rib(HasTypeParameters
-                                        (generics, id, 0,
-                                         OpaqueFunctionRibKind)) |this| {
-
+        self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                       id,
+                                                       0,
+                                                       OpaqueFunctionRibKind),
+                                     |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
 
@@ -3901,7 +3911,7 @@ impl Resolver {
             for field in fields.iter() {
                 this.resolve_type(&field.node.ty);
             }
-        }
+        });
     }
 
     // Does this really need to take a RibKind or is it always going
@@ -3937,9 +3947,11 @@ impl Resolver {
                                   methods: &[@method]) {
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = generics.ty_params.len();
-        do self.with_type_parameter_rib(HasTypeParameters
-                                        (generics, id, 0,
-                                         NormalRibKind)) |this| {
+        self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                       id,
+                                                       0,
+                                                       NormalRibKind),
+                                     |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
 
@@ -4000,7 +4012,7 @@ impl Resolver {
                 Some(r) => { this.current_trait_refs = r; }
                 None => ()
             }
-        }
+        });
     }
 
     fn resolve_module(&mut self,
@@ -4037,12 +4049,12 @@ impl Resolver {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: @Pat) -> BindingMap {
         let mut result = HashMap::new();
-        do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
+        pat_bindings(self.def_map, pat, |binding_mode, _id, sp, path| {
             let name = mtwt_resolve(path_to_ident(path));
             result.insert(name,
                           binding_info {span: sp,
                                         binding_mode: binding_mode});
-        }
+        });
         return result;
     }
 
@@ -4210,19 +4222,19 @@ impl Resolver {
                     }
                 }
 
-                do bounds.as_ref().map |bound_vec| {
+                bounds.as_ref().map(|bound_vec| {
                     for bound in bound_vec.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound);
                     }
-                };
+                });
             }
 
             ty_closure(c) => {
-                do c.bounds.as_ref().map |bounds| {
+                c.bounds.as_ref().map(|bounds| {
                     for bound in bounds.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound);
                     }
-                };
+                });
                 visit::walk_ty(self, ty, ());
             }
 
@@ -4240,7 +4252,7 @@ impl Resolver {
                        // pattern that binds them
                        bindings_list: Option<@mut HashMap<Name,NodeId>>) {
         let pat_id = pattern.id;
-        do walk_pat(pattern) |pattern| {
+        walk_pat(pattern, |pattern| {
             match pattern.node {
                 PatIdent(binding_mode, ref path, _)
                         if !path.global && path.segments.len() == 1 => {
@@ -4480,7 +4492,7 @@ impl Resolver {
                 }
             }
             true
-        };
+        });
     }
 
     fn resolve_bare_identifier_pattern(&mut self, name: Ident)
@@ -5056,14 +5068,14 @@ impl Resolver {
             }
 
             ExprLoop(_, Some(label)) => {
-                do self.with_label_rib |this| {
+                self.with_label_rib(|this| {
                     let def_like = DlDef(DefLabel(expr.id));
                     let rib = this.label_ribs[this.label_ribs.len() - 1];
                     // plain insert (no renaming)
                     rib.bindings.insert(label.name, def_like);
 
                     visit::walk_expr(this, expr, ());
-                }
+                })
             }
 
             ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
@@ -5316,7 +5328,7 @@ impl Resolver {
         debug!("(recording def) recording {:?} for {:?}, last private {:?}",
                 def, node_id, lp);
         self.last_private.insert(node_id, lp);
-        do self.def_map.insert_or_update_with(node_id, def) |_, old_value| {
+        self.def_map.insert_or_update_with(node_id, def, |_, old_value| {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis
@@ -5324,7 +5336,7 @@ impl Resolver {
                 self.session.bug(format!("node_id {:?} resolved first to {:?} \
                                       and then {:?}", node_id, *old_value, def));
             }
-        };
+        });
     }
 
     fn enforce_default_binding_mode(&mut self,

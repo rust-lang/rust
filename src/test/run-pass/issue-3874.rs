@@ -10,7 +10,7 @@
 
 enum PureCounter { PureCounter(uint) }
 
-fn each(thing: PureCounter, blk: &fn(v: &uint)) {
+fn each(thing: PureCounter, blk: |v: &uint|) {
     let PureCounter(ref x) = thing;
     blk(x);
 }

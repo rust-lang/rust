@@ -77,7 +77,7 @@ impl PipeWatcher {
         let mut req = Request::new(uvll::UV_CONNECT);
         let pipe = PipeWatcher::new(loop_, false);
 
-        do wait_until_woken_after(&mut cx.task) {
+        wait_until_woken_after(&mut cx.task, || {
             unsafe {
                 uvll::uv_pipe_connect(req.handle,
                                       pipe.handle(),
@@ -86,7 +86,7 @@ impl PipeWatcher {
             }
             req.set_data(&cx);
             req.defuse(); // uv callback now owns this request
-        }
+        });
         return match cx.result {
             0 => Ok(pipe),
             n => Err(UvError(n))

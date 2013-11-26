@@ -63,7 +63,7 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
 
 pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
 // Returns the directory it was actually found in
-             workspace_to_src_dir: &fn(&Path) -> Path) -> Option<Path> {
+             workspace_to_src_dir: |&Path| -> Path) -> Option<Path> {
     if !workspace.is_dir() {
         return None;
     }
@@ -76,7 +76,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
         if p.is_dir() {
             if p == src_dir.join(&pkgid.path) || {
                 let pf = p.filename_str();
-                do pf.iter().any |&g| {
+                pf.iter().any(|&g| {
                     match split_version_general(g, '-') {
                         None => false,
                         Some((ref might_match, ref vers)) => {
@@ -84,7 +84,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
                                 && (pkgid.version == *vers || pkgid.version == NoVersion)
                         }
                     }
-                }
+                })
             } {
                 found = Some(p.clone());
             }
@@ -215,7 +215,7 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
     debug!("Listing directory {}", dir_to_search.display());
-    let dir_contents = do io::ignore_io_error { fs::readdir(dir_to_search) };
+    let dir_contents = io::ignore_io_error(|| fs::readdir(dir_to_search));
     debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
@@ -225,14 +225,14 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
 
     // Find a filename that matches the pattern:
     // (lib_prefix)-hash-(version)(lib_suffix)
-    let mut libraries = do dir_contents.iter().filter |p| {
+    let mut libraries = dir_contents.iter().filter(|p| {
         let extension = p.extension_str();
         debug!("p = {}, p's extension is {:?}", p.display(), extension);
         match extension {
             None => false,
             Some(ref s) => lib_filetype == *s
         }
-    };
+    });
 
     let mut result_filename = None;
     for p_path in libraries {
@@ -277,11 +277,11 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
 
     // Return the filename that matches, which we now know exists
     // (if result_filename != None)
-    let abs_path = do result_filename.map |result_filename| {
+    let abs_path = result_filename.map(|result_filename| {
         let absolute_path = dir_to_search.join(&result_filename);
         debug!("result_filename = {}", absolute_path.display());
         absolute_path
-    };
+    });
 
     abs_path
 }
@@ -463,19 +463,14 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
 #[cfg(target_os = "win32")]
 pub fn chmod_read_only(p: &Path) -> bool {
     unsafe {
-        do p.with_c_str |src_buf| {
-            libc::chmod(src_buf, S_IRUSR as libc::c_int) == 0 as libc::c_int
-        }
+        p.with_c_str(|src_buf| libc::chmod(src_buf, S_IRUSR as libc::c_int) == 0 as libc::c_int)
     }
 }
 
 #[cfg(not(target_os = "win32"))]
 pub fn chmod_read_only(p: &Path) -> bool {
     unsafe {
-        do p.with_c_str |src_buf| {
-            libc::chmod(src_buf, S_IRUSR as libc::mode_t) == 0
-                as libc::c_int
-        }
+        p.with_c_str(|src_buf| libc::chmod(src_buf, S_IRUSR as libc::mode_t) == 0 as libc::c_int)
     }
 }
 

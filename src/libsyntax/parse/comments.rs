@@ -106,9 +106,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
 
         if can_trim {
-            do lines.map |line| {
-                line.slice(i + 1, line.len()).to_owned()
-            }
+            lines.map(|line| line.slice(i + 1, line.len()).to_owned())
         } else {
             lines
         }
@@ -377,10 +375,10 @@ pub fn gather_comments_and_literals(span_diagnostic:
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
-            do with_str_from(rdr, bstart) |s| {
+            with_str_from(rdr, bstart, |s| {
                 debug!("tok lit: {}", s);
                 literals.push(lit {lit: s.to_owned(), pos: sp.lo});
-            }
+            })
         } else {
             debug!("tok: {}", token::to_str(get_ident_interner(), &tok));
         }

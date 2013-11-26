@@ -18,8 +18,8 @@ fn test_mutex_arc_nested() {
     let arc2 = ~MutexArc::new(*arc);
 
     do task::spawn || {
-        do (*arc2).access |mutex| { //~ ERROR instantiating a type parameter with an incompatible type
-        }
+        (*arc2).access(|mutex| { //~ ERROR instantiating a type parameter with an incompatible type
+        })
     };
 }
 

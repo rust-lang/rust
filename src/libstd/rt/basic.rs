@@ -71,13 +71,13 @@ impl BasicLoop {
 
     fn remote_work(&mut self) {
         let messages = unsafe {
-            do self.messages.with |messages| {
+            self.messages.with(|messages| {
                 if messages.len() > 0 {
                     Some(util::replace(messages, ~[]))
                 } else {
                     None
                 }
-            }
+            })
         };
         let messages = match messages {
             Some(m) => m, None => return
@@ -139,11 +139,11 @@ impl EventLoop for BasicLoop {
             unsafe {
                 // We block here if we have no messages to process and we may
                 // receive a message at a later date
-                do self.messages.hold_and_wait |messages| {
+                self.messages.hold_and_wait(|messages| {
                     self.remotes.len() > 0 &&
                         messages.len() == 0 &&
                         self.work.len() == 0
-                }
+                })
             }
         }
     }
@@ -189,9 +189,9 @@ impl BasicRemote {
 impl RemoteCallback for BasicRemote {
     fn fire(&mut self) {
         unsafe {
-            do self.queue.hold_and_signal |queue| {
+            self.queue.hold_and_signal(|queue| {
                 queue.push(RunRemote(self.id));
-            }
+            })
         }
     }
 }
@@ -199,9 +199,9 @@ impl RemoteCallback for BasicRemote {
 impl Drop for BasicRemote {
     fn drop(&mut self) {
         unsafe {
-            do self.queue.hold_and_signal |queue| {
+            self.queue.hold_and_signal(|queue| {
                 queue.push(RemoveRemote(self.id));
-            }
+            })
         }
     }
 }

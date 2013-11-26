@@ -1248,35 +1248,35 @@ mod tests {
         use path::null_byte::cond;
 
         let mut handled = false;
-        let mut p = do cond.trap(|v| {
+        let mut p = cond.trap(|v| {
             handled = true;
             assert_eq!(v.as_slice(), b!("foo\\bar", 0));
             (b!("\\bar").to_owned())
-        }).inside {
+        }).inside(|| {
             Path::new(b!("foo\\bar", 0))
-        };
+        });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\bar"));
 
         handled = false;
-        do cond.trap(|v| {
+        cond.trap(|v| {
             handled = true;
             assert_eq!(v.as_slice(), b!("f", 0, "o"));
             (b!("foo").to_owned())
-        }).inside {
+        }).inside(|| {
             p.set_filename(b!("f", 0, "o"))
-        };
+        });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\foo"));
 
         handled = false;
-        do cond.trap(|v| {
+        cond.trap(|v| {
             handled = true;
             assert_eq!(v.as_slice(), b!("f", 0, "o"));
             (b!("foo").to_owned())
-        }).inside {
+        }).inside(|| {
             p.push(b!("f", 0, "o"));
-        };
+        });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\foo\\foo"));
     }
@@ -1298,29 +1298,29 @@ mod tests {
         )
 
         t!(~"from_vec() w\\nul" => {
-            do cond.trap(|_| {
+            cond.trap(|_| {
                 (b!("null", 0).to_owned())
-            }).inside {
+            }).inside(|| {
                 Path::new(b!("foo\\bar", 0))
-            };
+            });
         })
 
         t!(~"set_filename w\\nul" => {
             let mut p = Path::new(b!("foo\\bar"));
-            do cond.trap(|_| {
+            cond.trap(|_| {
                 (b!("null", 0).to_owned())
-            }).inside {
+            }).inside(|| {
                 p.set_filename(b!("foo", 0))
-            };
+            });
         })
 
         t!(~"push w\\nul" => {
             let mut p = Path::new(b!("foo\\bar"));
-            do cond.trap(|_| {
+            cond.trap(|_| {
                 (b!("null", 0).to_owned())
-            }).inside {
+            }).inside(|| {
                 p.push(b!("foo", 0))
-            };
+            });
         })
     }
 
@@ -1339,17 +1339,17 @@ mod tests {
 
         let mut called = false;
         let path = Path::new("foo");
-        do path.display().with_str |s| {
+        path.display().with_str(|s| {
             assert_eq!(s, "foo");
             called = true;
-        };
+        });
         assert!(called);
         called = false;
         let path = Path::new(b!("\\"));
-        do path.filename_display().with_str |s| {
+        path.filename_display().with_str(|s| {
             assert_eq!(s, "");
             called = true;
-        }
+        });
         assert!(called);
     }
 

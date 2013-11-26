@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // Issue #922
-fn f2(_thing: &fn()) { }
+fn f2(_thing: ||) { }
 
-fn f(thing: &fn()) {
+fn f(thing: ||) {
     f2(thing);
 }
 

@@ -77,13 +77,13 @@ impl num::Times for uint {
     #[inline]
     ///
     /// A convenience form for basic repetition. Given a uint `x`,
-    /// `do x.times { ... }` executes the given block x times.
+    /// `x.times(|| { ... })` executes the given block x times.
     ///
     /// Equivalent to `for uint::range(0, x) |_| { ... }`.
     ///
     /// Not defined on all integer types to permit unambiguous
     /// use with integer literals of inferred integer-type as
-    /// the self-value (eg. `do 100.times { ... }`).
+    /// the self-value (eg. `100.times(|| { ... })`).
     ///
     fn times(&self, it: ||) {
         let mut i = *self;
@@ -244,6 +244,6 @@ pub fn test_times() {
     use num::Times;
     let ten = 10 as uint;
     let mut accum = 0;
-    do ten.times { accum += 1; }
+    ten.times(|| { accum += 1; });
     assert!((accum == 10));
 }

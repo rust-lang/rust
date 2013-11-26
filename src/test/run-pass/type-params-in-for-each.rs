@@ -13,15 +13,15 @@ struct S<T> {
     b: uint,
 }
 
-fn range_(lo: uint, hi: uint, it: &fn(uint)) {
+fn range_(lo: uint, hi: uint, it: |uint|) {
     let mut lo_ = lo;
     while lo_ < hi { it(lo_); lo_ += 1u; }
 }
 
 fn create_index<T>(_index: ~[S<T>], _hash_fn: extern fn(T) -> uint) {
-    do range_(0u, 256u) |_i| {
+    range_(0u, 256u, |_i| {
         let _bucket: ~[T] = ~[];
-    }
+    })
 }
 
 pub fn main() { }

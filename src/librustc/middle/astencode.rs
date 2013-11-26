@@ -303,7 +303,7 @@ struct NestedItemsDropper {
 
 impl fold::ast_fold for NestedItemsDropper {
     fn fold_block(&self, blk: &ast::Block) -> ast::Block {
-        let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
+        let stmts_sans_items = blk.stmts.iter().filter_map(|stmt| {
             match stmt.node {
                 ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
                 ast::StmtDecl(@codemap::Spanned {
@@ -316,7 +316,7 @@ impl fold::ast_fold for NestedItemsDropper {
                 }, _) => None,
                 ast::StmtMac(*) => fail!("unexpanded macro in astencode")
             }
-        }.collect();
+        }).collect();
         let blk_sans_items = ast::Block {
             view_items: ~[], // I don't know if we need the view_items here,
                              // but it doesn't break tests!
@@ -568,26 +568,26 @@ trait read_method_map_entry_helper {
 fn encode_method_map_entry(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            mme: method_map_entry) {
-    do ebml_w.emit_struct("method_map_entry", 3) |ebml_w| {
-        do ebml_w.emit_struct_field("self_ty", 0u) |ebml_w| {
+    ebml_w.emit_struct("method_map_entry", 3, |ebml_w| {
+        ebml_w.emit_struct_field("self_ty", 0u, |ebml_w| {
             ebml_w.emit_ty(ecx, mme.self_ty);
-        }
-        do ebml_w.emit_struct_field("explicit_self", 2u) |ebml_w| {
+        });
+        ebml_w.emit_struct_field("explicit_self", 2u, |ebml_w| {
             mme.explicit_self.encode(ebml_w);
-        }
-        do ebml_w.emit_struct_field("origin", 1u) |ebml_w| {
+        });
+        ebml_w.emit_struct_field("origin", 1u, |ebml_w| {
             mme.origin.encode(ebml_w);
-        }
-        do ebml_w.emit_struct_field("self_mode", 3) |ebml_w| {
+        });
+        ebml_w.emit_struct_field("self_mode", 3, |ebml_w| {
             mme.self_mode.encode(ebml_w);
-        }
-    }
+        });
+    })
 }
 
 impl read_method_map_entry_helper for reader::Decoder {
     fn read_method_map_entry(&mut self, xcx: @ExtendedDecodeContext)
                              -> method_map_entry {
-        do self.read_struct("method_map_entry", 3) |this| {
+        self.read_struct("method_map_entry", 3, |this| {
             method_map_entry {
                 self_ty: this.read_struct_field("self_ty", 0u, |this| {
                     this.read_ty(xcx)
@@ -608,7 +608,7 @@ impl read_method_map_entry_helper for reader::Decoder {
                     self_mode
                 }),
             }
-        }
+        })
     }
 }
 
@@ -648,50 +648,50 @@ pub fn encode_vtable_res(ecx: &e::EncodeContext,
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
-    do ebml_w.emit_from_vec(*dr) |ebml_w, param_tables| {
+    ebml_w.emit_from_vec(*dr, |ebml_w, param_tables| {
         encode_vtable_param_res(ecx, ebml_w, *param_tables);
-    }
+    })
 }
 
 pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      param_tables: typeck::vtable_param_res) {
-    do ebml_w.emit_from_vec(*param_tables) |ebml_w, vtable_origin| {
+    ebml_w.emit_from_vec(*param_tables, |ebml_w, vtable_origin| {
         encode_vtable_origin(ecx, ebml_w, vtable_origin)
-    }
+    })
 }
 
 
 pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         vtable_origin: &typeck::vtable_origin) {
-    do ebml_w.emit_enum("vtable_origin") |ebml_w| {
+    ebml_w.emit_enum("vtable_origin", |ebml_w| {
         match *vtable_origin {
           typeck::vtable_static(def_id, ref tys, vtable_res) => {
-            do ebml_w.emit_enum_variant("vtable_static", 0u, 3u) |ebml_w| {
-                do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
+            ebml_w.emit_enum_variant("vtable_static", 0u, 3u, |ebml_w| {
+                ebml_w.emit_enum_variant_arg(0u, |ebml_w| {
                     ebml_w.emit_def_id(def_id)
-                }
-                do ebml_w.emit_enum_variant_arg(1u) |ebml_w| {
+                });
+                ebml_w.emit_enum_variant_arg(1u, |ebml_w| {
                     ebml_w.emit_tys(ecx, *tys);
-                }
-                do ebml_w.emit_enum_variant_arg(2u) |ebml_w| {
+                });
+                ebml_w.emit_enum_variant_arg(2u, |ebml_w| {
                     encode_vtable_res(ecx, ebml_w, vtable_res);
-                }
-            }
+                })
+            })
           }
           typeck::vtable_param(pn, bn) => {
-            do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) |ebml_w| {
-                do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
+            ebml_w.emit_enum_variant("vtable_param", 1u, 2u, |ebml_w| {
+                ebml_w.emit_enum_variant_arg(0u, |ebml_w| {
                     pn.encode(ebml_w);
-                }
-                do ebml_w.emit_enum_variant_arg(1u) |ebml_w| {
+                });
+                ebml_w.emit_enum_variant_arg(1u, |ebml_w| {
                     ebml_w.emit_uint(bn);
-                }
-            }
+                })
+            })
           }
         }
-    }
+    })
 }
 
 pub trait vtable_decoder_helpers {
@@ -724,40 +724,40 @@ impl vtable_decoder_helpers for reader::Decoder {
     fn read_vtable_origin(&mut self,
                           tcx: ty::ctxt, cdata: @cstore::crate_metadata)
         -> typeck::vtable_origin {
-        do self.read_enum("vtable_origin") |this| {
-            do this.read_enum_variant(["vtable_static",
-                                       "vtable_param",
-                                       "vtable_self"])
-                    |this, i| {
+        self.read_enum("vtable_origin", |this| {
+            this.read_enum_variant(["vtable_static",
+                                    "vtable_param",
+                                    "vtable_self"],
+                                   |this, i| {
                 match i {
                   0 => {
                     typeck::vtable_static(
-                        do this.read_enum_variant_arg(0u) |this| {
+                        this.read_enum_variant_arg(0u, |this| {
                             this.read_def_id_noxcx(cdata)
-                        },
-                        do this.read_enum_variant_arg(1u) |this| {
+                        }),
+                        this.read_enum_variant_arg(1u, |this| {
                             this.read_tys_noxcx(tcx, cdata)
-                        },
-                        do this.read_enum_variant_arg(2u) |this| {
+                        }),
+                        this.read_enum_variant_arg(2u, |this| {
                             this.read_vtable_res(tcx, cdata)
-                        }
+                        })
                     )
                   }
                   1 => {
                     typeck::vtable_param(
-                        do this.read_enum_variant_arg(0u) |this| {
+                        this.read_enum_variant_arg(0u, |this| {
                             Decodable::decode(this)
-                        },
-                        do this.read_enum_variant_arg(1u) |this| {
+                        }),
+                        this.read_enum_variant_arg(1u, |this| {
                             this.read_uint()
-                        }
+                        })
                     )
                   }
                   // hard to avoid - user input
                   _ => fail!("bad enum variant")
                 }
-            }
-        }
+            })
+        })
     }
 }
 
@@ -793,54 +793,48 @@ trait ebml_writer_helpers {
 
 impl ebml_writer_helpers for writer::Encoder {
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
-        do self.emit_opaque |this| {
-            e::write_type(ecx, this, ty)
-        }
+        self.emit_opaque(|this| e::write_type(ecx, this, ty))
     }
 
     fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore) {
-        do self.emit_opaque |this| {
-            e::write_vstore(ecx, this, vstore)
-        }
+        self.emit_opaque(|this| e::write_vstore(ecx, this, vstore))
     }
 
     fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]) {
-        do self.emit_from_vec(tys) |this, ty| {
-            this.emit_ty(ecx, *ty)
-        }
+        self.emit_from_vec(tys, |this, ty| this.emit_ty(ecx, *ty))
     }
 
     fn emit_type_param_def(&mut self,
                            ecx: &e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef) {
-        do self.emit_opaque |this| {
+        self.emit_opaque(|this| {
             tyencode::enc_type_param_def(this.writer,
                                          ecx.ty_str_ctxt(),
                                          type_param_def)
-        }
+        })
     }
 
     fn emit_tpbt(&mut self,
                  ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
-        do self.emit_struct("ty_param_bounds_and_ty", 2) |this| {
-            do this.emit_struct_field("generics", 0) |this| {
-                do this.emit_struct("Generics", 2) |this| {
-                    do this.emit_struct_field("type_param_defs", 0) |this| {
-                        do this.emit_from_vec(*tpbt.generics.type_param_defs)
-                                |this, type_param_def| {
+        self.emit_struct("ty_param_bounds_and_ty", 2, |this| {
+            this.emit_struct_field("generics", 0, |this| {
+                this.emit_struct("Generics", 2, |this| {
+                    this.emit_struct_field("type_param_defs", 0, |this| {
+                        this.emit_from_vec(*tpbt.generics.type_param_defs,
+                                           |this, type_param_def| {
                             this.emit_type_param_def(ecx, type_param_def);
-                        }
-                    }
-                    do this.emit_struct_field("region_param_defs", 1) |this| {
+                        })
+                    });
+                    this.emit_struct_field("region_param_defs", 1, |this| {
                         tpbt.generics.region_param_defs.encode(this);
-                    }
-                }
-            }
-            do this.emit_struct_field("ty", 1) |this| {
+                    })
+                })
+            });
+            this.emit_struct_field("ty", 1, |this| {
                 this.emit_ty(ecx, tpbt.ty);
-            }
-        }
+            })
+        })
     }
 }
 
@@ -912,50 +906,48 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let r = tcx.def_map.find(&id);
         for def in r.iter() {
-            do ebml_w.tag(c::tag_table_def) |ebml_w| {
+            ebml_w.tag(c::tag_table_def, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                    (*def).encode(ebml_w)
-                }
-            }
+                ebml_w.tag(c::tag_table_val, |ebml_w| (*def).encode(ebml_w));
+            })
         }
     }
 
     {
         let r = tcx.node_types.find(&(id as uint));
         for &ty in r.iter() {
-            do ebml_w.tag(c::tag_table_node_type) |ebml_w| {
+            ebml_w.tag(c::tag_table_node_type, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     ebml_w.emit_ty(ecx, *ty);
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = tcx.node_type_substs.find(&id);
         for tys in r.iter() {
-            do ebml_w.tag(c::tag_table_node_type_subst) |ebml_w| {
+            ebml_w.tag(c::tag_table_node_type_subst, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     ebml_w.emit_tys(ecx, **tys)
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = tcx.freevars.find(&id);
         for &fv in r.iter() {
-            do ebml_w.tag(c::tag_table_freevars) |ebml_w| {
+            ebml_w.tag(c::tag_table_freevars, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                    do ebml_w.emit_from_vec(**fv) |ebml_w, fv_entry| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
+                    ebml_w.emit_from_vec(**fv, |ebml_w, fv_entry| {
                         encode_freevar_entry(ebml_w, *fv_entry)
-                    }
-                }
-            }
+                    })
+                })
+            })
         }
     }
 
@@ -963,74 +955,74 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let r = tcx.tcache.find(&lid);
         for &tpbt in r.iter() {
-            do ebml_w.tag(c::tag_table_tcache) |ebml_w| {
+            ebml_w.tag(c::tag_table_tcache, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     ebml_w.emit_tpbt(ecx, *tpbt);
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = tcx.ty_param_defs.find(&id);
         for &type_param_def in r.iter() {
-            do ebml_w.tag(c::tag_table_param_defs) |ebml_w| {
+            ebml_w.tag(c::tag_table_param_defs, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     ebml_w.emit_type_param_def(ecx, type_param_def)
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = maps.method_map.find(&id);
         for &mme in r.iter() {
-            do ebml_w.tag(c::tag_table_method_map) |ebml_w| {
+            ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     encode_method_map_entry(ecx, ebml_w, *mme)
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = maps.vtable_map.find(&id);
         for &dr in r.iter() {
-            do ebml_w.tag(c::tag_table_vtable_map) |ebml_w| {
+            ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     encode_vtable_res(ecx, ebml_w, *dr);
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = tcx.adjustments.find(&id);
         for adj in r.iter() {
-            do ebml_w.tag(c::tag_table_adjustments) |ebml_w| {
+            ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
                     (**adj).encode(ebml_w)
-                }
-            }
+                })
+            })
         }
     }
 
     {
         let r = maps.capture_map.find(&id);
         for &cap_vars in r.iter() {
-            do ebml_w.tag(c::tag_table_capture_map) |ebml_w| {
+            ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
-                do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                    do ebml_w.emit_from_vec(*cap_vars) |ebml_w, cap_var| {
+                ebml_w.tag(c::tag_table_val, |ebml_w| {
+                    ebml_w.emit_from_vec(*cap_vars, |ebml_w, cap_var| {
                         cap_var.encode(ebml_w);
-                    }
-                }
-            }
+                    })
+                })
+            })
         }
     }
 }
@@ -1072,14 +1064,14 @@ trait ebml_decoder_decoder_helpers {
 impl ebml_decoder_decoder_helpers for reader::Decoder {
     fn read_ty_noxcx(&mut self,
                      tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t {
-        do self.read_opaque |_, doc| {
+        self.read_opaque(|_, doc| {
             tydecode::parse_ty_data(
                 *doc.data,
                 cdata.cnum,
                 doc.start,
                 tcx,
                 |_, id| decoder::translate_def_id(cdata, id))
-        }
+        })
     }
 
     fn read_tys_noxcx(&mut self,
@@ -1094,7 +1086,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         // context.  However, we do not bother, because region types
         // are not used during trans.
 
-        return do self.read_opaque |this, doc| {
+        return self.read_opaque(|this, doc| {
             debug!("read_ty({})", type_string(doc));
 
             let ty = tydecode::parse_ty_data(
@@ -1105,7 +1097,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                 |s, a| this.convert_def_id(xcx, s, a));
 
             ty
-        };
+        });
 
         fn type_string(doc: ebml::Doc) -> ~str {
             let mut str = ~"";
@@ -1122,22 +1114,22 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 
     fn read_type_param_def(&mut self, xcx: @ExtendedDecodeContext)
                            -> ty::TypeParameterDef {
-        do self.read_opaque |this, doc| {
+        self.read_opaque(|this, doc| {
             tydecode::parse_type_param_def_data(
                 *doc.data,
                 doc.start,
                 xcx.dcx.cdata.cnum,
                 xcx.dcx.tcx,
                 |s, a| this.convert_def_id(xcx, s, a))
-        }
+        })
     }
 
     fn read_ty_param_bounds_and_ty(&mut self, xcx: @ExtendedDecodeContext)
                                    -> ty::ty_param_bounds_and_ty {
-        do self.read_struct("ty_param_bounds_and_ty", 2) |this| {
+        self.read_struct("ty_param_bounds_and_ty", 2, |this| {
             ty::ty_param_bounds_and_ty {
-                generics: do this.read_struct_field("generics", 0) |this| {
-                    do this.read_struct("Generics", 2) |this| {
+                generics: this.read_struct_field("generics", 0, |this| {
+                    this.read_struct("Generics", 2, |this| {
                         ty::Generics {
                             type_param_defs:
                                 this.read_struct_field("type_param_defs",
@@ -1153,13 +1145,13 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                                     Decodable::decode(this)
                                 })
                         }
-                    }
-                },
+                    })
+                }),
                 ty: this.read_struct_field("ty", 1, |this| {
                     this.read_ty(xcx)
                 })
             }
-        }
+        })
     }
 
     fn convert_def_id(&mut self,
@@ -1208,7 +1200,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                       ast_doc: ebml::Doc) {
     let dcx = xcx.dcx;
     let tbl_doc = ast_doc.get(c::tag_table as uint);
-    do reader::docs(tbl_doc) |tag, entry_doc| {
+    reader::docs(tbl_doc, |tag, entry_doc| {
         let id0 = entry_doc.get(c::tag_table_id as uint).as_int();
         let id = xcx.tr_id(id0);
 
@@ -1288,7 +1280,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
 
         debug!(">< Side table doc loaded");
         true
-    };
+    });
 }
 
 // ______________________________________________________________________

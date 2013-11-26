@@ -234,18 +234,18 @@ fn spawn_process_os(prog: &str, args: &[~str],
         let mut pi = zeroed_process_information();
         let mut create_err = None;
 
-        do with_envp(env) |envp| {
-            do with_dirp(dir) |dirp| {
-                do cmd.with_c_str |cmdp| {
+        with_envp(env, |envp| {
+            with_dirp(dir, |dirp| {
+                cmd.with_c_str(|cmdp| {
                     let created = CreateProcessA(ptr::null(), cast::transmute(cmdp),
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  0, envp, dirp, &mut si, &mut pi);
                     if created == FALSE {
                         create_err = Some(os::last_os_error());
                     }
-                }
-            }
-        }
+                })
+            })
+        });
 
         CloseHandle(si.hStdInput);
         CloseHandle(si.hStdOutput);
@@ -411,22 +411,22 @@ fn spawn_process_os(prog: &str, args: &[~str],
             close(fd as c_int);
         }
 
-        do with_dirp(dir) |dirp| {
+        with_dirp(dir, |dirp| {
             if !dirp.is_null() && chdir(dirp) == -1 {
                 fail!("failure in chdir: {}", os::last_os_error());
             }
-        }
+        });
 
-        do with_envp(env) |envp| {
+        with_envp(env, |envp| {
             if !envp.is_null() {
                 set_environ(envp);
             }
-            do with_argv(prog, args) |argv| {
+            with_argv(prog, args, |argv| {
                 execvp(*argv, argv);
                 // execvp only returns if an error occurred
                 fail!("failure in execvp: {}", os::last_os_error());
-            }
-        }
+            })
+        })
     }
 }
 
@@ -448,9 +448,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: |**libc::c_char| -> T) -> T {
     // Next, convert each of the byte strings into a pointer. This is
     // technically unsafe as the caller could leak these pointers out of our
     // scope.
-    let mut ptrs = do tmps.map |tmp| {
-        tmp.with_ref(|buf| buf)
-    };
+    let mut ptrs = tmps.map(|tmp| tmp.with_ref(|buf| buf));
 
     // Finally, make sure we add a null pointer.
     ptrs.push(ptr::null());
@@ -475,14 +473,10 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*c_void| -> T) -> T {
             }
 
             // Once again, this is unsafe.
-            let mut ptrs = do tmps.map |tmp| {
-                tmp.with_ref(|buf| buf)
-            };
+            let mut ptrs = tmps.map(|tmp| tmp.with_ref(|buf| buf));
             ptrs.push(ptr::null());
 
-            do ptrs.as_imm_buf |buf, _| {
-                unsafe { cb(cast::transmute(buf)) }
-            }
+            ptrs.as_imm_buf(|buf, _| unsafe { cb(cast::transmute(buf)) })
         }
         _ => cb(ptr::null())
     }
@@ -505,9 +499,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
 
             blk.push(0);
 
-            do blk.as_imm_buf |p, _len| {
-                unsafe { cb(cast::transmute(p)) }
-            }
+            blk.as_imm_buf(|p, _len| unsafe { cb(cast::transmute(p)) })
         }
         _ => cb(ptr::mut_null())
     }

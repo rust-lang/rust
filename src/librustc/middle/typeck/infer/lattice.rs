@@ -52,7 +52,7 @@ pub trait LatticeValue {
 }
 
 pub type LatticeOp<'self, T> =
-    &'self fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
+    'self |cf: &CombineFields, a: &T, b: &T| -> cres<T>;
 
 impl LatticeValue for ty::t {
     fn sub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
@@ -230,9 +230,7 @@ impl CombineFieldsLatticeMethods for CombineFields {
             (&Some(_),       &None) => Ok((*a).clone()),
             (&None,          &Some(_)) => Ok((*b).clone()),
             (&Some(ref v_a), &Some(ref v_b)) => {
-                do lattice_op(self, v_a, v_b).and_then |v| {
-                    Ok(Some(v))
-                }
+                lattice_op(self, v_a, v_b).and_then(|v| Ok(Some(v)))
             }
         }
     }
@@ -407,7 +405,7 @@ pub fn super_lattice_tys<L:LatticeDir+TyLatticeDir+Combine>(this: &L,
     }
 }
 
-pub type LatticeDirOp<'self, T> = &'self fn(a: &T, b: &T) -> cres<T>;
+pub type LatticeDirOp<'self, T> = 'self |a: &T, b: &T| -> cres<T>;
 
 #[deriving(Clone)]
 pub enum LatticeVarResult<V,T> {
@@ -471,9 +469,9 @@ pub fn lattice_vars<L:LatticeDir + Combine,
     // Otherwise, we need to merge A and B into one variable.  We can
     // then use either variable as an upper bound:
     let cf = this.combine_fields();
-    do cf.var_sub_var(a_vid.clone(), b_vid.clone()).then {
+    cf.var_sub_var(a_vid.clone(), b_vid.clone()).then(|| {
         Ok(VarResult(a_vid.clone()))
-    }
+    })
 }
 
 pub fn lattice_var_and_t<L:LatticeDir + Combine,
@@ -508,11 +506,11 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
             // and then return b.
             debug!("bnd=None");
             let a_bounds = this.with_bnd(a_bounds, (*b).clone());
-            do this.combine_fields().bnds(&a_bounds.lb, &a_bounds.ub).then {
+            this.combine_fields().bnds(&a_bounds.lb, &a_bounds.ub).then(|| {
                 this.infcx().set(a_id.clone(),
                                  Root(a_bounds.clone(), nde_a.rank));
                 Ok((*b).clone())
-            }
+            })
         }
     }
 }

@@ -123,7 +123,7 @@ impl Listener {
         if self.handles.contains_key(&signum) {
             return true; // self is already listening to signum, so succeed
         }
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.signal(signum, self.chan.clone()) {
                 Ok(w) => {
                     self.handles.insert(signum, w);
@@ -134,7 +134,7 @@ impl Listener {
                     None
                 }
             }
-        }.is_some()
+        }).is_some()
     }
 
     /// Unregisters a signal. If this listener currently had a handler
@@ -212,13 +212,13 @@ mod test {
         use super::User1;
         let mut s = Listener::new();
         let mut called = false;
-        do io::io_error::cond.trap(|_| {
+        io::io_error::cond.trap(|_| {
             called = true;
-        }).inside {
+        }).inside(|| {
             if s.register(User1) {
                 fail!("Unexpected successful registry of signum {:?}", User1);
             }
-        }
+        });
         assert!(called);
     }
 }

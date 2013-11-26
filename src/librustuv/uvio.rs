@@ -46,23 +46,23 @@ pub trait HomingIO {
 
         let _f = ForbidUnwind::new("going home");
 
-        let current_sched_id = do Local::borrow |sched: &mut Scheduler| {
+        let current_sched_id = Local::borrow(|sched: &mut Scheduler| {
             sched.sched_id()
-        };
+        });
 
         // Only need to invoke a context switch if we're not on the right
         // scheduler.
         if current_sched_id != self.home().sched_id {
             let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                do task.wake().map |task| {
+            scheduler.deschedule_running_task_and_then(|_, task| {
+                task.wake().map(|task| {
                     self.home().send(RunOnce(task));
-                };
-            }
+                });
+            })
         }
-        let current_sched_id = do Local::borrow |sched: &mut Scheduler| {
+        let current_sched_id = Local::borrow(|sched: &mut Scheduler| {
             sched.sched_id()
-        };
+        });
         assert!(current_sched_id == self.home().sched_id);
 
         self.home().sched_id
@@ -114,11 +114,11 @@ impl Drop for HomingMissile {
         // original scheduler. Otherwise, we can just return and keep running
         if !Task::on_appropriate_sched() {
             let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                do task.wake().map |task| {
+            scheduler.deschedule_running_task_and_then(|_, task| {
+                task.wake().map(|task| {
                     Scheduler::run_task(task);
-                };
-            }
+                });
+            })
         }
 
         util::ignore(f);
@@ -161,7 +161,7 @@ impl EventLoop for UvEventLoop {
         ~AsyncWatcher::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self, f: &fn(&'a mut IoFactory)) {
+    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|) {
         f(&mut self.uvio as &mut IoFactory)
     }
 }

@@ -27,11 +27,11 @@ pub struct DynamicLibrary { priv handle: *libc::c_void }
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
-        match do dl::check_for_errors_in {
+        match dl::check_for_errors_in(|| {
             unsafe {
                 dl::close(self.handle)
             }
-        } {
+        }) {
             Ok(()) => {},
             Err(str) => fail!("{}", str)
         }
@@ -43,12 +43,12 @@ impl DynamicLibrary {
     /// handle to the calling process
     pub fn open(filename: Option<&path::Path>) -> Result<DynamicLibrary, ~str> {
         unsafe {
-            let maybe_library = do dl::check_for_errors_in {
+            let maybe_library = dl::check_for_errors_in(|| {
                 match filename {
                     Some(name) => dl::open_external(name),
                     None => dl::open_internal()
                 }
-            };
+            });
 
             // The dynamic library must not be constructed if there is
             // an error opening the library so the destructor does not
@@ -65,11 +65,11 @@ impl DynamicLibrary {
         // This function should have a lifetime constraint of 'self on
         // T but that feature is still unimplemented
 
-        let maybe_symbol_value = do dl::check_for_errors_in {
-            do symbol.with_c_str |raw_string| {
+        let maybe_symbol_value = dl::check_for_errors_in(|| {
+            symbol.with_c_str(|raw_string| {
                 dl::symbol(self.handle, raw_string)
-            }
-        };
+            })
+        });
 
         // The value must not be constructed if there is an error so
         // the destructor does not run.
@@ -144,9 +144,9 @@ pub mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
-        do filename.with_c_str |raw_name| {
+        filename.with_c_str(|raw_name| {
             dlopen(raw_name, Lazy as libc::c_int)
-        }
+        })
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
@@ -162,7 +162,7 @@ pub mod dl {
             // would cause this task to be descheduled, which could deadlock
             // the scheduler if it happens while the lock is held.
             // FIXME #9105 use a Rust mutex instead of C++ mutexes.
-            do atomically {
+            atomically(|| {
                 lock.lock();
                 let _old_error = dlerror();
 
@@ -176,7 +176,7 @@ pub mod dl {
                 };
                 lock.unlock();
                 ret
-            }
+            })
         }
     }
 
@@ -213,9 +213,9 @@ pub mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
-        do os::win32::as_utf16_p(filename.as_str().unwrap()) |raw_name| {
+        os::win32::as_utf16_p(filename.as_str().unwrap(), |raw_name| {
             LoadLibraryW(raw_name)
-        }
+        })
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
@@ -226,7 +226,7 @@ pub mod dl {
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
         unsafe {
-            do atomically {
+            atomically(|| {
                 SetLastError(0);
 
                 let result = f();
@@ -237,7 +237,7 @@ pub mod dl {
                 } else {
                     Err(format!("Error code {}", error))
                 }
-            }
+            })
         }
     }
 

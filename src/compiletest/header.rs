@@ -39,7 +39,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pp_exact = None;
     let mut debugger_cmds = ~[];
     let mut check_lines = ~[];
-    do iter_header(testfile) |ln| {
+    iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
           None => ()
@@ -74,7 +74,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         };
 
         true
-    };
+    });
     return TestProps {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
@@ -91,18 +91,18 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
         ~"xfail-" + util::get_os(config.target)
     }
 
-    let val = do iter_header(testfile) |ln| {
+    let val = iter_header(testfile, |ln| {
         if parse_name_directive(ln, "xfail-test") { false }
         else if parse_name_directive(ln, xfail_target(config)) { false }
         else if config.mode == common::mode_pretty &&
             parse_name_directive(ln, "xfail-pretty") { false }
         else { true }
-    };
+    });
 
     !val
 }
 
-fn iter_header(testfile: &Path, it: &fn(&str) -> bool) -> bool {
+fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     use std::io::buffered::BufferedReader;
     use std::io::File;
 
@@ -143,7 +143,7 @@ fn parse_check_line(line: &str) -> Option<~str> {
 }
 
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
-    do parse_name_value_directive(line, ~"exec-env").map |nv| {
+    parse_name_value_directive(line, ~"exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: ~[~str] = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
 
@@ -155,7 +155,7 @@ fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
           }
           n => fail!("Expected 1 or 2 strings, not {}", n)
         }
-    }
+    })
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {

@@ -15,8 +15,8 @@ use extra::sync;
 fn main() {
     let m = ~sync::Mutex::new();
     let mut cond = None;
-    do m.lock_cond |c| {
+    m.lock_cond(|c| {
         cond = Some(c);
-    }
+    });
     cond.unwrap().signal();
 }

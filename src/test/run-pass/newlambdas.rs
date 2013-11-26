@@ -10,13 +10,13 @@
 
 // Tests for the new |args| expr lambda syntax
 
-fn f(i: int, f: &fn(int) -> int) -> int { f(i) }
+fn f(i: int, f: |int| -> int) -> int { f(i) }
 
-fn g(_g: &fn()) { }
+fn g(_g: ||) { }
 
 pub fn main() {
     assert_eq!(f(10, |a| a), 10);
     g(||());
-    assert_eq!(do f(10) |a| { a }, 10);
-    do g() { }
+    assert_eq!(f(10, |a| a), 10);
+    g(||{});
 }

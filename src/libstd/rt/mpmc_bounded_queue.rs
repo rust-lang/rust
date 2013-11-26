@@ -68,9 +68,9 @@ impl<T: Send> State<T> {
         } else {
             capacity
         };
-        let buffer = do vec::from_fn(capacity) |i:uint| {
+        let buffer = vec::from_fn(capacity, |i:uint| {
             Node{sequence:AtomicUint::new(i),value:None}
-        };
+        });
         State{
             pad0: [0, ..64],
             buffer: buffer,

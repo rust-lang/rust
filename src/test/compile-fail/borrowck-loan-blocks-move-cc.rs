@@ -10,7 +10,7 @@
 
 use std::task;
 
-fn borrow(v: &int, f: &fn(x: &int)) {
+fn borrow(v: &int, f: |x: &int|) {
     f(v);
 }
 
@@ -24,7 +24,7 @@ fn box_imm() {
 
     let v = ~3;
     let _w = &v;
-    task::spawn(|| {
+    task::spawn(proc() {
         info!("v={}", *v);
         //~^ ERROR cannot move
     });

@@ -37,7 +37,7 @@ fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
     #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
 
-    let (data, origamt) = do data.as_imm_buf |data, amt| { (data, amt) };
+    let (data, origamt) = data.as_imm_buf(|data, amt| (data, amt));
     let mut data = data;
     let mut amt = origamt;
     while amt > 0 {
@@ -83,11 +83,11 @@ impl FileDesc {
     fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         #[cfg(windows)] type rlen = libc::c_uint;
         #[cfg(not(windows))] type rlen = libc::size_t;
-        let ret = do keep_going(buf) |buf, len| {
+        let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::read(self.fd, buf as *mut libc::c_void, len as rlen) as i64
             }
-        };
+        });
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else if ret < 0 {
@@ -99,11 +99,11 @@ impl FileDesc {
     fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         #[cfg(windows)] type wlen = libc::c_uint;
         #[cfg(not(windows))] type wlen = libc::size_t;
-        let ret = do keep_going(buf) |buf, len| {
+        let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::write(self.fd, buf as *libc::c_void, len as wlen) as i64
             }
-        };
+        });
         if ret < 0 {
             Err(super::last_error())
         } else {
@@ -344,12 +344,12 @@ impl CFile {
 
 impl rtio::RtioFileStream for CFile {
     fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError> {
-        let ret = do keep_going(buf) |buf, len| {
+        let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::fread(buf as *mut libc::c_void, 1, len as libc::size_t,
                             self.file) as i64
             }
-        };
+        });
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else if ret < 0 {
@@ -360,12 +360,12 @@ impl rtio::RtioFileStream for CFile {
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let ret = do keep_going(buf) |buf, len| {
+        let ret = keep_going(buf, |buf, len| {
             unsafe {
                 libc::fwrite(buf as *libc::c_void, 1, len as libc::size_t,
                             self.file) as i64
             }
-        };
+        });
         if ret < 0 {
             Err(super::last_error())
         } else {
@@ -445,9 +445,9 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
 
     #[cfg(windows)]
     fn os_open(path: &CString, flags: c_int, mode: c_int) -> c_int {
-        do as_utf16_p(path.as_str().unwrap()) |path| {
+        as_utf16_p(path.as_str().unwrap(), |path| {
             unsafe { libc::wopen(path, flags, mode) }
-        }
+        })
     }
 
     #[cfg(unix)]
@@ -463,9 +463,9 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     fn os_mkdir(p: &CString, _mode: c_int) -> IoResult<()> {
         super::mkerr_winbool(unsafe {
             // FIXME: turn mode into something useful? #2623
-            do as_utf16_p(p.as_str().unwrap()) |buf| {
+            as_utf16_p(p.as_str().unwrap(), |buf| {
                 libc::CreateDirectoryW(buf, ptr::mut_null())
-            }
+            })
         })
     }
 
@@ -497,9 +497,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
             }
             debug!("os::list_dir -- BEFORE OPENDIR");
 
-            let dir_ptr = do p.with_ref |buf| {
-                opendir(buf)
-            };
+            let dir_ptr = p.with_ref(|buf| opendir(buf));
 
             if (dir_ptr as uint != 0) {
                 let mut paths = ~[];
@@ -540,7 +538,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
             let p = CString::new(p.with_ref(|p| p), false);
             let p = Path::new(p);
             let star = p.join("*");
-            do as_utf16_p(star.as_str().unwrap()) |path_ptr| {
+            as_utf16_p(star.as_str().unwrap(), |path_ptr| {
                 let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
                 let find_handle = FindFirstFileW(path_ptr, wfd_ptr as HANDLE);
                 if find_handle as libc::c_int != INVALID_HANDLE_VALUE {
@@ -565,7 +563,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                 } else {
                     Err(super::last_error())
                 }
-            }
+            })
         }
 
         get_list(p).map(|paths| prune(p, paths))
@@ -578,9 +576,9 @@ pub fn unlink(p: &CString) -> IoResult<()> {
     #[cfg(windows)]
     fn os_unlink(p: &CString) -> IoResult<()> {
         super::mkerr_winbool(unsafe {
-            do as_utf16_p(p.as_str().unwrap()) |buf| {
+            as_utf16_p(p.as_str().unwrap(), |buf| {
                 libc::DeleteFileW(buf)
-            }
+            })
         })
     }
 
@@ -596,11 +594,11 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
     #[cfg(windows)]
     fn os_rename(old: &CString, new: &CString) -> IoResult<()> {
         super::mkerr_winbool(unsafe {
-            do as_utf16_p(old.as_str().unwrap()) |old| {
-                do as_utf16_p(new.as_str().unwrap()) |new| {
+            as_utf16_p(old.as_str().unwrap(), |old| {
+                as_utf16_p(new.as_str().unwrap(), |new| {
                     libc::MoveFileExW(old, new, libc::MOVEFILE_REPLACE_EXISTING)
-                }
-            }
+                })
+            })
         })
     }
 
@@ -618,9 +616,7 @@ pub fn chmod(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     #[cfg(windows)]
     fn os_chmod(p: &CString, mode: c_int) -> c_int {
         unsafe {
-            do as_utf16_p(p.as_str().unwrap()) |p| {
-                libc::wchmod(p, mode)
-            }
+            as_utf16_p(p.as_str().unwrap(), |p| libc::wchmod(p, mode))
         }
     }
 
@@ -636,7 +632,7 @@ pub fn rmdir(p: &CString) -> IoResult<()> {
     #[cfg(windows)]
     fn os_rmdir(p: &CString) -> c_int {
         unsafe {
-            do as_utf16_p(p.as_str().unwrap()) |p| { libc::wrmdir(p) }
+            as_utf16_p(p.as_str().unwrap(), |p| libc::wrmdir(p))
         }
     }
 
@@ -669,7 +665,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
     #[cfg(windows)]
     fn os_readlink(p: &CString) -> IoResult<Path> {
         let handle = unsafe {
-            do as_utf16_p(p.as_str().unwrap()) |p| {
+            as_utf16_p(p.as_str().unwrap(), |p| {
                 libc::CreateFileW(p,
                                   libc::GENERIC_READ,
                                   libc::FILE_SHARE_READ,
@@ -677,15 +673,15 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
                                   libc::OPEN_EXISTING,
                                   libc::FILE_ATTRIBUTE_NORMAL,
                                   ptr::mut_null())
-            }
+            })
         };
         if handle == ptr::mut_null() { return Err(super::last_error()) }
-        let ret = do fill_utf16_buf_and_decode |buf, sz| {
+        let ret = fill_utf16_buf_and_decode(|buf, sz| {
             unsafe {
                 libc::GetFinalPathNameByHandleW(handle, buf as *u16, sz,
                                                 libc::VOLUME_NAME_NT)
             }
-        };
+        });
         let ret = match ret {
             Some(s) => Ok(Path::new(s)),
             None => Err(super::last_error()),
@@ -722,11 +718,11 @@ pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
 
     #[cfg(windows)]
     fn os_symlink(src: &CString, dst: &CString) -> IoResult<()> {
-        super::mkerr_winbool(do as_utf16_p(src.as_str().unwrap()) |src| {
-            do as_utf16_p(dst.as_str().unwrap()) |dst| {
+        super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
+            as_utf16_p(dst.as_str().unwrap(), |dst| {
                 unsafe { libc::CreateSymbolicLinkW(dst, src, 0) }
-            }
-        })
+            })
+        }))
     }
 
     #[cfg(unix)]
@@ -742,11 +738,11 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
 
     #[cfg(windows)]
     fn os_link(src: &CString, dst: &CString) -> IoResult<()> {
-        super::mkerr_winbool(do as_utf16_p(src.as_str().unwrap()) |src| {
-            do as_utf16_p(dst.as_str().unwrap()) |dst| {
+        super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
+            as_utf16_p(dst.as_str().unwrap(), |dst| {
                 unsafe { libc::CreateHardLinkW(dst, src, ptr::mut_null()) }
-            }
-        })
+            })
+        }))
     }
 
     #[cfg(unix)]
@@ -851,12 +847,12 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     #[cfg(windows)]
     fn os_stat(p: &CString) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { intrinsics::uninit() };
-        do as_utf16_p(p.as_str().unwrap()) |up| {
+        as_utf16_p(p.as_str().unwrap(), |up| {
             match unsafe { libc::wstat(up, &mut stat) } {
                 0 => Ok(mkstat(&stat, p)),
                 _ => Err(super::last_error()),
             }
-        }
+        })
     }
 
     #[cfg(unix)]
@@ -898,9 +894,7 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
             modtime: (mtime / 1000) as libc::time64_t,
         };
         unsafe {
-            do as_utf16_p(p.as_str().unwrap()) |p| {
-                libc::wutime(p, &buf)
-            }
+            as_utf16_p(p.as_str().unwrap(), |p| libc::wutime(p, &buf))
         }
     }
 

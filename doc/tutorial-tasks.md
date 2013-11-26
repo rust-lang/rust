@@ -76,7 +76,7 @@ fn print_message() { println("I am running in a different task!"); }
 spawn(print_message);
 
 // Print something more profound in a different task using a lambda expression
-spawn( || println("I am also running in a different task!") );
+spawn(proc() println("I am also running in a different task!") );
 
 // The canonical way to spawn is using `do` notation
 do spawn {
@@ -253,13 +253,13 @@ might look like the example below.
 # use std::vec;
 
 // Create a vector of ports, one for each child task
-let ports = do vec::from_fn(3) |init_val| {
+let ports = vec::from_fn(3, |init_val| {
     let (port, chan) = stream();
     do spawn {
         chan.send(some_expensive_computation(init_val));
     }
     port
-};
+});
 
 // Wait on each port, accumulating the results
 let result = ports.iter().fold(0, |accum, port| accum + port.recv() );
@@ -278,7 +278,7 @@ fn fib(n: u64) -> u64 {
     12586269025
 }
 
-let mut delayed_fib = extra::future::Future::spawn (|| fib(50) );
+let mut delayed_fib = extra::future::Future::spawn(proc() fib(50));
 make_a_sandwich();
 println!("fib(50) = {:?}", delayed_fib.get())
 ~~~

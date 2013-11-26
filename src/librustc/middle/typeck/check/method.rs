@@ -378,14 +378,13 @@ impl<'self> LookupContext<'self> {
         // we find the trait the method came from, counting up the
         // methods from them.
         let mut method_count = 0;
-        do ty::each_bound_trait_and_supertraits(tcx, &[subtrait])
-            |bound_ref| {
+        ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
             if bound_ref.def_id == trait_ref.def_id { false }
                 else {
                 method_count += ty::trait_methods(tcx, bound_ref.def_id).len();
                 true
             }
-        };
+        });
         return method_count + n_method;
     }
 
@@ -412,7 +411,7 @@ impl<'self> LookupContext<'self> {
         };
         let trait_ref = @TraitRef { def_id: did, substs: rcvr_substs.clone() };
 
-        do self.push_inherent_candidates_from_bounds_inner(&[trait_ref])
+        self.push_inherent_candidates_from_bounds_inner(&[trait_ref],
             |new_trait_ref, m, method_num, _bound_num| {
             let vtable_index =
                 self.get_method_index(new_trait_ref, trait_ref, method_num);
@@ -436,7 +435,7 @@ impl<'self> LookupContext<'self> {
                         real_index: vtable_index
                     })
             }
-        };
+        });
     }
 
     fn push_inherent_candidates_from_param(&self,
@@ -464,7 +463,7 @@ impl<'self> LookupContext<'self> {
                                             self_ty: ty::t,
                                             bounds: &[@TraitRef],
                                             param: param_index) {
-        do self.push_inherent_candidates_from_bounds_inner(bounds)
+        self.push_inherent_candidates_from_bounds_inner(bounds,
             |trait_ref, m, method_num, bound_num| {
             Candidate {
                 rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
@@ -478,7 +477,7 @@ impl<'self> LookupContext<'self> {
                         bound_num: bound_num,
                     })
             }
-        }
+        })
     }
 
     // Do a search through a list of bounds, using a callback to actually
@@ -493,7 +492,7 @@ impl<'self> LookupContext<'self> {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
-        do ty::each_bound_trait_and_supertraits(tcx, bounds) |bound_trait_ref| {
+        ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
             let this_bound_idx = next_bound_idx;
             next_bound_idx += 1;
 
@@ -518,7 +517,7 @@ impl<'self> LookupContext<'self> {
                 }
             }
             true
-        };
+        });
     }
 
 

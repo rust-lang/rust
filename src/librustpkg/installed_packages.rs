@@ -16,10 +16,10 @@ use std::os;
 use std::io;
 use std::io::fs;
 
-pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
+pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
     let workspaces = rust_path();
     for p in workspaces.iter() {
-        let binfiles = do io::ignore_io_error { fs::readdir(&p.join("bin")) };
+        let binfiles = io::ignore_io_error(|| fs::readdir(&p.join("bin")));
         for exec in binfiles.iter() {
             // FIXME (#9639): This needs to handle non-utf8 paths
             match exec.filestem_str() {
@@ -31,7 +31,7 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
                 }
             }
         }
-        let libfiles = do io::ignore_io_error { fs::readdir(&p.join("lib")) };
+        let libfiles = io::ignore_io_error(|| fs::readdir(&p.join("lib")));
         for lib in libfiles.iter() {
             debug!("Full name: {}", lib.display());
             match has_library(lib) {
@@ -42,10 +42,10 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
                     let rel_p = lib.path_relative_from(&parent).unwrap();
                     debug!("Rel: {}", rel_p.display());
                     let rel_path = rel_p.join(basename);
-                    do rel_path.display().with_str |s| {
+                    rel_path.display().with_str(|s| {
                         debug!("Rel name: {}", s);
                         f(&PkgId::new(s));
-                    }
+                    });
                 }
                 None => ()
             }
@@ -55,7 +55,7 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
 }
 
 pub fn has_library(p: &Path) -> Option<~str> {
-    let files = do io::ignore_io_error { fs::readdir(p) };
+    let files = io::ignore_io_error(|| fs::readdir(p));
     for path in files.iter() {
         if path.extension_str() == Some(os::consts::DLL_EXTENSION) {
             let stuff : &str = path.filestem_str().expect("has_library: weird path");
@@ -71,13 +71,13 @@ pub fn has_library(p: &Path) -> Option<~str> {
 
 pub fn package_is_installed(p: &PkgId) -> bool {
     let mut is_installed = false;
-    do list_installed_packages() |installed| {
+    list_installed_packages(|installed| {
         if installed == p {
             is_installed = true;
             false
         } else {
             true
         }
-    };
+    });
     is_installed
 }

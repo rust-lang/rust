@@ -19,11 +19,11 @@ pub mod general_category {
         use cmp::{Equal, Less, Greater};
         use vec::ImmutableVector;
         use option::None;
-        (do r.bsearch |&(lo,hi)| {
+        (r.bsearch(|&(lo,hi)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
-        }) != None
+        })) != None
     }
 
 
@@ -3663,11 +3663,11 @@ pub mod derived_property {
         use cmp::{Equal, Less, Greater};
         use vec::ImmutableVector;
         use option::None;
-        (do r.bsearch |&(lo,hi)| {
+        (r.bsearch(|&(lo,hi)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
-        }) != None
+        })) != None
     }
 
 

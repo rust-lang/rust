@@ -21,7 +21,7 @@ fn main() {
     // huge).
 
     let x = ~[1u,2u,3u];
-    do x.as_imm_buf |p, _len| {
+    x.as_imm_buf(|p, _len| {
         let base = p as uint;
         let idx = base / mem::size_of::<uint>();
         error!("ov1 base = 0x{:x}", base);
@@ -32,5 +32,5 @@ fn main() {
 
         // This should fail.
         error!("ov1 0x{:x}",  x[idx]);
-    }
+    })
 }

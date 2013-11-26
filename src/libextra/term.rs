@@ -220,9 +220,9 @@ impl<T: Writer> Terminal<T> {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = do cap.map_default(Err(~"can't find terminfo capability `sgr0`")) |op| {
+        let s = cap.map_default(Err(~"can't find terminfo capability `sgr0`"), |op| {
             expand(*op, [], &mut Variables::new())
-        };
+        });
         if s.is_ok() {
             self.out.write(s.unwrap());
         } else if self.num_colors > 0 {

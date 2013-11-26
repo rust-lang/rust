@@ -440,74 +440,74 @@ impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @mut T {
 
 impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self [T] {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))
             }
-        }
+        })
     }
 }
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))
             }
-        }
+        })
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     fn decode(d: &mut D) -> ~[T] {
-        do d.read_seq |d, len| {
-            do vec::from_fn(len) |i| {
+        d.read_seq(|d, len| {
+            vec::from_fn(len, |i| {
                 d.read_seq_elt(i, |d| Decodable::decode(d))
-            }
-        }
+            })
+        })
     }
 }
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))
             }
-        }
+        })
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
     fn decode(d: &mut D) -> @[T] {
-        do d.read_seq |d, len| {
-            do at_vec::from_fn(len) |i| {
+        d.read_seq(|d, len| {
+            at_vec::from_fn(len, |i| {
                 d.read_seq_elt(i, |d| Decodable::decode(d))
-            }
-        }
+            })
+        })
     }
 }
 
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &mut S) {
-        do s.emit_option |s| {
+        s.emit_option(|s| {
             match *self {
                 None => s.emit_option_none(),
                 Some(ref v) => s.emit_option_some(|s| v.encode(s)),
             }
-        }
+        })
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &mut D) -> Option<T> {
-        do d.read_option |d, b| {
+        d.read_option(|d, b| {
             if b {
                 Some(Decodable::decode(d))
             } else {
                 None
             }
-        }
+        })
     }
 }
 
@@ -515,10 +515,10 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
     fn encode(&self, s: &mut S) {
         match *self {
             (ref t0, ref t1) => {
-                do s.emit_seq(2) |s| {
+                s.emit_seq(2, |s| {
                     s.emit_seq_elt(0, |s| t0.encode(s));
                     s.emit_seq_elt(1, |s| t1.encode(s));
-                }
+                })
             }
         }
     }
@@ -526,13 +526,13 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
 
 impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
     fn decode(d: &mut D) -> (T0, T1) {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             assert_eq!(len, 2);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
                 d.read_seq_elt(1, |d| Decodable::decode(d))
             )
-        }
+        })
     }
 }
 
@@ -545,11 +545,11 @@ impl<
     fn encode(&self, s: &mut S) {
         match *self {
             (ref t0, ref t1, ref t2) => {
-                do s.emit_seq(3) |s| {
+                s.emit_seq(3, |s| {
                     s.emit_seq_elt(0, |s| t0.encode(s));
                     s.emit_seq_elt(1, |s| t1.encode(s));
                     s.emit_seq_elt(2, |s| t2.encode(s));
-                }
+                })
             }
         }
     }
@@ -562,14 +562,14 @@ impl<
     T2: Decodable<D>
 > Decodable<D> for (T0, T1, T2) {
     fn decode(d: &mut D) -> (T0, T1, T2) {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             assert_eq!(len, 3);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
                 d.read_seq_elt(1, |d| Decodable::decode(d)),
                 d.read_seq_elt(2, |d| Decodable::decode(d))
             )
-        }
+        })
     }
 }
 
@@ -583,12 +583,12 @@ impl<
     fn encode(&self, s: &mut S) {
         match *self {
             (ref t0, ref t1, ref t2, ref t3) => {
-                do s.emit_seq(4) |s| {
+                s.emit_seq(4, |s| {
                     s.emit_seq_elt(0, |s| t0.encode(s));
                     s.emit_seq_elt(1, |s| t1.encode(s));
                     s.emit_seq_elt(2, |s| t2.encode(s));
                     s.emit_seq_elt(3, |s| t3.encode(s));
-                }
+                })
             }
         }
     }
@@ -602,7 +602,7 @@ impl<
     T3: Decodable<D>
 > Decodable<D> for (T0, T1, T2, T3) {
     fn decode(d: &mut D) -> (T0, T1, T2, T3) {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             assert_eq!(len, 4);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
@@ -610,7 +610,7 @@ impl<
                 d.read_seq_elt(2, |d| Decodable::decode(d)),
                 d.read_seq_elt(3, |d| Decodable::decode(d))
             )
-        }
+        })
     }
 }
 
@@ -625,13 +625,13 @@ impl<
     fn encode(&self, s: &mut S) {
         match *self {
             (ref t0, ref t1, ref t2, ref t3, ref t4) => {
-                do s.emit_seq(5) |s| {
+                s.emit_seq(5, |s| {
                     s.emit_seq_elt(0, |s| t0.encode(s));
                     s.emit_seq_elt(1, |s| t1.encode(s));
                     s.emit_seq_elt(2, |s| t2.encode(s));
                     s.emit_seq_elt(3, |s| t3.encode(s));
                     s.emit_seq_elt(4, |s| t4.encode(s));
-                }
+                })
             }
         }
     }
@@ -646,7 +646,7 @@ impl<
     T4: Decodable<D>
 > Decodable<D> for (T0, T1, T2, T3, T4) {
     fn decode(d: &mut D) -> (T0, T1, T2, T3, T4) {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             assert_eq!(len, 5);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
@@ -655,7 +655,7 @@ impl<
                 d.read_seq_elt(3, |d| Decodable::decode(d)),
                 d.read_seq_elt(4, |d| Decodable::decode(d))
             )
-        }
+        })
     }
 }
 
@@ -664,22 +664,22 @@ impl<
     T: Encodable<S>
 > Encodable<S> for DList<T> {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s));
             }
-        }
+        })
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
     fn decode(d: &mut D) -> DList<T> {
         let mut list = DList::new();
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             for i in range(0u, len) {
                 list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
-        }
+        });
         list
     }
 }
@@ -689,22 +689,22 @@ impl<
     T: Encodable<S>
 > Encodable<S> for RingBuf<T> {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s));
             }
-        }
+        })
     }
 }
 
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
     fn decode(d: &mut D) -> RingBuf<T> {
         let mut deque = RingBuf::new();
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             for i in range(0u, len) {
                 deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
-        }
+        });
         deque
     }
 }
@@ -715,14 +715,14 @@ impl<
     V: Encodable<E>
 > Encodable<E> for HashMap<K, V> {
     fn encode(&self, e: &mut E) {
-        do e.emit_map(self.len()) |e| {
+        e.emit_map(self.len(), |e| {
             let mut i = 0;
             for (key, val) in self.iter() {
                 e.emit_map_elt_key(i, |e| key.encode(e));
                 e.emit_map_elt_val(i, |e| val.encode(e));
                 i += 1;
             }
-        }
+        })
     }
 }
 
@@ -732,7 +732,7 @@ impl<
     V: Decodable<D>
 > Decodable<D> for HashMap<K, V> {
     fn decode(d: &mut D) -> HashMap<K, V> {
-        do d.read_map |d, len| {
+        d.read_map(|d, len| {
             let mut map = HashMap::with_capacity(len);
             for i in range(0u, len) {
                 let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
@@ -740,7 +740,7 @@ impl<
                 map.insert(key, val);
             }
             map
-        }
+        })
     }
 }
 
@@ -749,13 +749,13 @@ impl<
     T: Encodable<S> + Hash + IterBytes + Eq
 > Encodable<S> for HashSet<T> {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             let mut i = 0;
             for e in self.iter() {
                 s.emit_seq_elt(i, |s| e.encode(s));
                 i += 1;
             }
-        }
+        })
     }
 }
 
@@ -764,13 +764,13 @@ impl<
     T: Decodable<D> + Hash + IterBytes + Eq
 > Decodable<D> for HashSet<T> {
     fn decode(d: &mut D) -> HashSet<T> {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             let mut set = HashSet::with_capacity(len);
             for i in range(0u, len) {
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
             set
-        }
+        })
     }
 }
 
@@ -779,15 +779,15 @@ impl<
     V: Encodable<E>
 > Encodable<E> for TrieMap<V> {
     fn encode(&self, e: &mut E) {
-        do e.emit_map(self.len()) |e| {
+        e.emit_map(self.len(), |e| {
             let mut i = 0;
-            do self.each |key, val| {
+            self.each(|key, val| {
                 e.emit_map_elt_key(i, |e| key.encode(e));
                 e.emit_map_elt_val(i, |e| val.encode(e));
                 i += 1;
                 true
-            };
-        }
+            });
+        })
     }
 }
 
@@ -796,7 +796,7 @@ impl<
     V: Decodable<D>
 > Decodable<D> for TrieMap<V> {
     fn decode(d: &mut D) -> TrieMap<V> {
-        do d.read_map |d, len| {
+        d.read_map(|d, len| {
             let mut map = TrieMap::new();
             for i in range(0u, len) {
                 let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
@@ -804,32 +804,32 @@ impl<
                 map.insert(key, val);
             }
             map
-        }
+        })
     }
 }
 
 impl<S: Encoder> Encodable<S> for TrieSet {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             let mut i = 0;
-            do self.each |e| {
+            self.each(|e| {
                 s.emit_seq_elt(i, |s| e.encode(s));
                 i += 1;
                 true
-            };
-        }
+            });
+        })
     }
 }
 
 impl<D: Decoder> Decodable<D> for TrieSet {
     fn decode(d: &mut D) -> TrieSet {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             let mut set = TrieSet::new();
             for i in range(0u, len) {
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
             set
-        }
+        })
     }
 }
 
@@ -839,14 +839,14 @@ impl<
     V: Encodable<E> + Eq
 > Encodable<E> for TreeMap<K, V> {
     fn encode(&self, e: &mut E) {
-        do e.emit_map(self.len()) |e| {
+        e.emit_map(self.len(), |e| {
             let mut i = 0;
             for (key, val) in self.iter() {
                 e.emit_map_elt_key(i, |e| key.encode(e));
                 e.emit_map_elt_val(i, |e| val.encode(e));
                 i += 1;
             }
-        }
+        })
     }
 }
 
@@ -856,7 +856,7 @@ impl<
     V: Decodable<D> + Eq
 > Decodable<D> for TreeMap<K, V> {
     fn decode(d: &mut D) -> TreeMap<K, V> {
-        do d.read_map |d, len| {
+        d.read_map(|d, len| {
             let mut map = TreeMap::new();
             for i in range(0u, len) {
                 let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
@@ -864,7 +864,7 @@ impl<
                 map.insert(key, val);
             }
             map
-        }
+        })
     }
 }
 
@@ -873,13 +873,13 @@ impl<
     T: Encodable<S> + Eq + TotalOrd
 > Encodable<S> for TreeSet<T> {
     fn encode(&self, s: &mut S) {
-        do s.emit_seq(self.len()) |s| {
+        s.emit_seq(self.len(), |s| {
             let mut i = 0;
             for e in self.iter() {
                 s.emit_seq_elt(i, |s| e.encode(s));
                 i += 1;
             }
-        }
+        })
     }
 }
 
@@ -888,13 +888,13 @@ impl<
     T: Decodable<D> + Eq + TotalOrd
 > Decodable<D> for TreeSet<T> {
     fn decode(d: &mut D) -> TreeSet<T> {
-        do d.read_seq |d, len| {
+        d.read_seq(|d, len| {
             let mut set = TreeSet::new();
             for i in range(0u, len) {
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
             set
-        }
+        })
     }
 }
 
@@ -909,13 +909,13 @@ pub trait EncoderHelpers {
 
 impl<S:Encoder> EncoderHelpers for S {
     fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut S, &T|) {
-        do self.emit_seq(v.len()) |this| {
+        self.emit_seq(v.len(), |this| {
             for (i, e) in v.iter().enumerate() {
-                do this.emit_seq_elt(i) |this| {
+                this.emit_seq_elt(i, |this| {
                     f(this, e)
-                }
+                })
             }
-        }
+        })
     }
 }
 
@@ -925,10 +925,10 @@ pub trait DecoderHelpers {
 
 impl<D:Decoder> DecoderHelpers for D {
     fn read_to_vec<T>(&mut self, f: |&mut D| -> T) -> ~[T] {
-        do self.read_seq |this, len| {
-            do vec::from_fn(len) |i| {
+        self.read_seq(|this, len| {
+            vec::from_fn(len, |i| {
                 this.read_seq_elt(i, |this| f(this))
-            }
-        }
+            })
+        })
     }
 }

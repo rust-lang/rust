@@ -11,8 +11,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn of<T>() -> &fn(T) { fail!(); }
-fn subtype<T>(x: &fn(T)) { fail!(); }
+fn of<T>() -> |T| { fail!(); }
+fn subtype<T>(x: |T|) { fail!(); }
 
 fn test_fn<T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // Here, x, y, and z are free.  Other letters
@@ -21,14 +21,14 @@ fn test_fn<T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // iff T1 <: T2.
 
     // should be the default:
-    subtype::<&'static fn()>(of::<&fn()>());
-    subtype::<&fn()>(of::<&'static fn()>());
+    subtype::<'static ||>(of::<||>());
+    subtype::<||>(of::<'static ||>());
 
     //
-    subtype::<&'x fn()>(of::<&fn()>());    //~ ERROR mismatched types
-    subtype::<&'x fn()>(of::<&'y fn()>());  //~ ERROR mismatched types
+    subtype::<'x ||>(of::<||>());    //~ ERROR mismatched types
+    subtype::<'x ||>(of::<'y ||>());  //~ ERROR mismatched types
 
-    subtype::<&'x fn()>(of::<&'static fn()>()); //~ ERROR mismatched types
-    subtype::<&'static fn()>(of::<&'x fn()>());
+    subtype::<'x ||>(of::<'static ||>()); //~ ERROR mismatched types
+    subtype::<'static ||>(of::<'x ||>());
 
 }

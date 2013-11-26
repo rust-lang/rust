@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn f(_: proc()) -> proc(uint) -> uint {
+    proc(x: uint) { x }
+}
+
 pub fn main() {
-    fn f(i: uint) -> uint { i }
-    let v = ~[-1.0, 0.0, 1.0, 2.0, 3.0];
-    let z = do v.iter().fold(f) |x, _y| { x } (22u);
+    let z = do f {} (22u);
     assert_eq!(z, 22u);
 }

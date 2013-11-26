@@ -156,7 +156,7 @@ pub trait Iterator<A> {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn map<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, Self> {
+    fn map<'r, B>(self, f: 'r |A| -> B) -> Map<'r, A, B, Self> {
         Map{iter: self, f: f}
     }
 
@@ -173,7 +173,7 @@ pub trait Iterator<A> {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> Filter<'r, A, Self> {
+    fn filter<'r>(self, predicate: 'r |&A| -> bool) -> Filter<'r, A, Self> {
         Filter{iter: self, predicate: predicate}
     }
 
@@ -190,7 +190,7 @@ pub trait Iterator<A> {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMap<'r, A, B, Self> {
+    fn filter_map<'r, B>(self, f: 'r |A| -> Option<B>) -> FilterMap<'r, A, B, Self> {
         FilterMap { iter: self, f: f }
     }
 
@@ -249,7 +249,7 @@ pub trait Iterator<A> {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhile<'r, A, Self> {
+    fn skip_while<'r>(self, predicate: 'r |&A| -> bool) -> SkipWhile<'r, A, Self> {
         SkipWhile{iter: self, flag: false, predicate: predicate}
     }
 
@@ -267,7 +267,7 @@ pub trait Iterator<A> {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhile<'r, A, Self> {
+    fn take_while<'r>(self, predicate: 'r |&A| -> bool) -> TakeWhile<'r, A, Self> {
         TakeWhile{iter: self, flag: false, predicate: predicate}
     }
 
@@ -327,7 +327,7 @@ pub trait Iterator<A> {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
+    fn scan<'r, St, B>(self, initial_state: St, f: 'r |&mut St, A| -> Option<B>)
         -> Scan<'r, A, B, Self, St> {
         Scan{iter: self, f: f, state: initial_state}
     }
@@ -349,7 +349,7 @@ pub trait Iterator<A> {
     /// }
     /// ```
     #[inline]
-    fn flat_map<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
+    fn flat_map<'r, B, U: Iterator<B>>(self, f: 'r |A| -> U)
         -> FlatMap<'r, A, Self, U> {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
@@ -401,7 +401,7 @@ pub trait Iterator<A> {
     ///println(sum.to_str());
     /// ```
     #[inline]
-    fn inspect<'r>(self, f: &'r fn(&A)) -> Inspect<'r, A, Self> {
+    fn inspect<'r>(self, f: 'r |&A|) -> Inspect<'r, A, Self> {
         Inspect{iter: self, f: f}
     }
 
@@ -1123,7 +1123,7 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 /// An iterator which maps the values of `iter` with `f`
 pub struct Map<'self, A, B, T> {
     priv iter: T,
-    priv f: &'self fn(A) -> B
+    priv f: 'self |A| -> B
 }
 
 impl<'self, A, B, T> Map<'self, A, B, T> {
@@ -1172,7 +1172,7 @@ impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'s
 /// An iterator which filters the elements of `iter` with `predicate`
 pub struct Filter<'self, A, T> {
     priv iter: T,
-    priv predicate: &'self fn(&A) -> bool
+    priv predicate: 'self |&A| -> bool
 }
 
 impl<'self, A, T: Iterator<A>> Iterator<A> for Filter<'self, A, T> {
@@ -1216,7 +1216,7 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'sel
 /// An iterator which uses `f` to both filter and map elements from `iter`
 pub struct FilterMap<'self, A, B, T> {
     priv iter: T,
-    priv f: &'self fn(A) -> Option<B>
+    priv f: 'self |A| -> Option<B>
 }
 
 impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'self, A, B, T> {
@@ -1359,7 +1359,7 @@ impl<'self, A, T: Iterator<A>> Peekable<A, T> {
 pub struct SkipWhile<'self, A, T> {
     priv iter: T,
     priv flag: bool,
-    priv predicate: &'self fn(&A) -> bool
+    priv predicate: 'self |&A| -> bool
 }
 
 impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
@@ -1397,7 +1397,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
 pub struct TakeWhile<'self, A, T> {
     priv iter: T,
     priv flag: bool,
-    priv predicate: &'self fn(&A) -> bool
+    priv predicate: 'self |&A| -> bool
 }
 
 impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhile<'self, A, T> {
@@ -1544,7 +1544,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
 /// An iterator to maintain state while iterating another iterator
 pub struct Scan<'self, A, B, T, St> {
     priv iter: T,
-    priv f: &'self fn(&mut St, A) -> Option<B>,
+    priv f: 'self |&mut St, A| -> Option<B>,
 
     /// The current internal state to be passed to the closure next.
     state: St
@@ -1568,7 +1568,7 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
 ///
 pub struct FlatMap<'self, A, T, U> {
     priv iter: T,
-    priv f: &'self fn(A) -> U,
+    priv f: 'self |A| -> U,
     priv frontiter: Option<U>,
     priv backiter: Option<U>,
 }
@@ -1699,7 +1699,7 @@ impl<T> Fuse<T> {
 /// element before yielding it.
 pub struct Inspect<'self, A, T> {
     priv iter: T,
-    priv f: &'self fn(&A)
+    priv f: 'self |&A|
 }
 
 impl<'self, A, T> Inspect<'self, A, T> {
@@ -1751,7 +1751,7 @@ for Inspect<'self, A, T> {
 
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct Unfold<'self, A, St> {
-    priv f: &'self fn(&mut St) -> Option<A>,
+    priv f: 'self |&mut St| -> Option<A>,
     /// Internal state that will be yielded on the next iteration
     state: St
 }
@@ -1760,8 +1760,8 @@ impl<'self, A, St> Unfold<'self, A, St> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the iterator
     #[inline]
-    pub fn new<'a>(initial_state: St, f: &'a fn(&mut St) -> Option<A>)
-        -> Unfold<'a, A, St> {
+    pub fn new<'a>(initial_state: St, f: 'a |&mut St| -> Option<A>)
+               -> Unfold<'a, A, St> {
         Unfold {
             f: f,
             state: initial_state
@@ -2674,13 +2674,13 @@ mod tests {
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do v.iter().rposition |_elt| {
+        v.iter().rposition(|_elt| {
             if i == 2 {
                 fail!()
             }
             i += 1;
             false
-        };
+        });
     }
 
 

@@ -171,9 +171,9 @@ impl<'self> Ty<'self> {
                    -> ast::Path {
         match *self {
             Self => {
-                let self_params = do self_generics.ty_params.map |ty_param| {
+                let self_params = self_generics.ty_params.map(|ty_param| {
                     cx.ty_ident(span, ty_param.ident)
-                };
+                });
                 let lifetimes = self_generics.lifetimes.clone();
 
                 cx.path_all(span, false, ~[self_ty], lifetimes,
@@ -192,10 +192,10 @@ impl<'self> Ty<'self> {
 fn mk_ty_param(cx: @ExtCtxt, span: Span, name: &str, bounds: &[Path],
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
     let bounds = opt_vec::from(
-        do bounds.map |b| {
+        bounds.map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
-        });
+        }));
     cx.typaram(cx.ident_of(name), bounds)
 }
 
@@ -224,16 +224,16 @@ impl<'self> LifetimeBounds<'self> {
                        self_ty: Ident,
                        self_generics: &Generics)
                        -> Generics {
-        let lifetimes = do self.lifetimes.map |lt| {
+        let lifetimes = self.lifetimes.map(|lt| {
             cx.lifetime(span, cx.ident_of(*lt))
-        };
-        let ty_params = do self.bounds.map |t| {
+        });
+        let ty_params = self.bounds.map(|t| {
             match t {
                 &(ref name, ref bounds) => {
                     mk_ty_param(cx, span, *name, *bounds, self_ty, self_generics)
                 }
             }
-        };
+        });
         mk_generics(lifetimes, ty_params)
     }
 }

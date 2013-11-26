@@ -427,9 +427,9 @@ fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
                         ProcRes: &ProcRes) {
     if props.error_patterns.is_empty() {
-        do testfile.display().with_str |s| {
+        testfile.display().with_str(|s| {
             fatal(~"no error pattern specified in " + s);
-        }
+        })
     }
 
     if ProcRes.status.success() {
@@ -730,9 +730,12 @@ fn compose_and_run(config: &config, testfile: &Path,
                           prog, args, procenv, input);
 }
 
-fn make_compile_args(config: &config, props: &TestProps, extras: ~[~str],
-                     xform: &fn(&config, (&Path)) -> Path,
-                     testfile: &Path) -> ProcArgs {
+fn make_compile_args(config: &config,
+                     props: &TestProps,
+                     extras: ~[~str],
+                     xform: |&config, &Path| -> Path,
+                     testfile: &Path)
+                     -> ProcArgs {
     let xform_file = xform(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut args = ~[testfile.as_str().unwrap().to_owned(),

@@ -15,7 +15,7 @@ use std::uint;
 fn f(n: uint) {
     let mut i = 0u;
     while i < n {
-        task::try(|| g() );
+        task::try(proc() g());
         i += 1u;
     }
 }
@@ -33,5 +33,5 @@ fn main() {
     };
     let n = from_str::<uint>(args[1]).unwrap();
     let mut i = 0u;
-    while i < n { task::spawn(|| f(n) ); i += 1u; }
+    while i < n { task::spawn(proc() f(n) ); i += 1u; }
 }

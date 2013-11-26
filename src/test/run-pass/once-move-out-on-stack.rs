@@ -17,14 +17,14 @@ extern mod extra;
 use extra::arc;
 use std::util;
 
-fn foo(blk: &once fn()) {
+fn foo(blk: once ||) {
     blk();
 }
 
 fn main() {
     let x = arc::Arc::new(true);
-    do foo {
+    foo(|| {
         assert!(*x.get());
         util::ignore(x);
-    }
+    })
 }

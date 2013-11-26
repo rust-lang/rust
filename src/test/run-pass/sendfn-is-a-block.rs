@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-fn test(f: &fn(uint) -> uint) -> uint {
+fn test(f: |uint| -> uint) -> uint {
     return f(22u);
 }
 

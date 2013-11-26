@@ -10,11 +10,11 @@
 
 // xfail-test
 fn main() {
-    let one: &fn() -> uint = || {
+    let one: || -> uint = || {
         enum r { a };
         a as uint
     };
-    let two = &fn() -> uint = || {
+    let two = || -> uint = || {
         enum r { a };
         a as uint
     };

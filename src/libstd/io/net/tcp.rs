@@ -26,7 +26,7 @@ impl TcpStream {
     }
 
     pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.tcp_connect(addr) {
                 Ok(s) => Some(TcpStream::new(s)),
                 Err(ioerr) => {
@@ -34,7 +34,7 @@ impl TcpStream {
                     None
                 }
             }
-        }
+        })
     }
 
     pub fn peer_name(&mut self) -> Option<SocketAddr> {
@@ -92,7 +92,7 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.tcp_bind(addr) {
                 Ok(l) => Some(TcpListener { obj: l }),
                 Err(ioerr) => {
@@ -100,7 +100,7 @@ impl TcpListener {
                     None
                 }
             }
-        }
+        })
     }
 
     pub fn socket_name(&mut self) -> Option<SocketAddr> {
@@ -157,14 +157,14 @@ mod test {
     fn bind_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
-            do io_error::cond.trap(|e| {
+            io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
                 called = true;
-            }).inside {
+            }).inside(|| {
                 let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let listener = TcpListener::bind(addr);
                 assert!(listener.is_none());
-            }
+            });
             assert!(called);
         }
     }
@@ -173,7 +173,7 @@ mod test {
     fn connect_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
-            do io_error::cond.trap(|e| {
+            io_error::cond.trap(|e| {
                 let expected_error = if cfg!(unix) {
                     ConnectionRefused
                 } else {
@@ -182,11 +182,11 @@ mod test {
                 };
                 assert_eq!(e.kind, expected_error);
                 called = true;
-            }).inside {
+            }).inside(|| {
                 let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let stream = TcpStream::connect(addr);
                 assert!(stream.is_none());
-            }
+            });
             assert!(called);
         }
     }
@@ -306,16 +306,16 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                do io_error::cond.trap(|e| {
+                io_error::cond.trap(|e| {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {
                         fail!();
                     }
-                }).inside {
+                }).inside(|| {
                     let nread = stream.read(buf);
                     assert!(nread.is_none());
-                }
+                })
             }
 
             do spawntask {
@@ -341,16 +341,16 @@ mod test {
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-                do io_error::cond.trap(|e| {
+                io_error::cond.trap(|e| {
                     if cfg!(windows) {
                         assert_eq!(e.kind, NotConnected);
                     } else {
                         fail!();
                     }
-                }).inside {
+                }).inside(|| {
                     let nread = stream.read(buf);
                     assert!(nread.is_none());
-                }
+                })
             }
 
             do spawntask {
@@ -376,7 +376,7 @@ mod test {
                 let buf = [0];
                 loop {
                     let mut stop = false;
-                    do io_error::cond.trap(|e| {
+                    io_error::cond.trap(|e| {
                         // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
                         //     on windows
                         assert!(e.kind == ConnectionReset ||
@@ -384,9 +384,9 @@ mod test {
                                 e.kind == ConnectionAborted,
                                 "unknown error: {:?}", e);
                         stop = true;
-                    }).inside {
+                    }).inside(|| {
                         stream.write(buf);
-                    }
+                    });
                     if stop { break }
                 }
             }
@@ -414,7 +414,7 @@ mod test {
                 let buf = [0];
                 loop {
                     let mut stop = false;
-                    do io_error::cond.trap(|e| {
+                    io_error::cond.trap(|e| {
                         // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
                         //     on windows
                         assert!(e.kind == ConnectionReset ||
@@ -422,9 +422,9 @@ mod test {
                                 e.kind == ConnectionAborted,
                                 "unknown error: {:?}", e);
                         stop = true;
-                    }).inside {
+                    }).inside(|| {
                         stream.write(buf);
-                    }
+                    });
                     if stop { break }
                 }
             }
@@ -458,10 +458,10 @@ mod test {
 
             do spawntask {
                 port.take().recv();
-                do max.times {
+                max.times(|| {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
-                }
+                });
             }
         }
     }
@@ -487,10 +487,10 @@ mod test {
 
             do spawntask {
                 port.take().recv();
-                do max.times {
+                max.times(|| {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
-                }
+                });
             }
         }
     }

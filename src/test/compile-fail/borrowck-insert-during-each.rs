@@ -15,7 +15,7 @@ struct Foo {
 }
 
 impl Foo {
-    pub fn foo(&mut self, fun: &fn(&int)) {
+    pub fn foo(&mut self, fun: |&int|) {
         for f in self.n.iter() {
             fun(f);
         }
@@ -23,9 +23,9 @@ impl Foo {
 }
 
 fn bar(f: &mut Foo) {
-  do f.foo |a| {
+  f.foo(|a| {
     f.n.insert(*a); //~ ERROR cannot borrow
-  }
+  })
 }
 
 fn main() {

@@ -51,7 +51,7 @@ fn main() {
     zzz();
     sentinel();
 
-    let stack_closure: &fn(int) = |x| {
+    let stack_closure: |int| = |x| {
         zzz();
         sentinel();
 

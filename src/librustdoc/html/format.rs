@@ -148,8 +148,8 @@ fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
 }
 
 fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
-        root: &fn(&render::Cache, &[~str]) -> Option<~str>,
-        info: &fn(&render::Cache) -> Option<(~[~str], &'static str)>) {
+        root: |&render::Cache, &[~str]| -> Option<~str>,
+        info: |&render::Cache| -> Option<(~[~str], &'static str)>) {
     // The generics will get written to both the title and link
     let mut generics = ~"";
     let last = path.segments.last();
@@ -170,11 +170,11 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
     }
 
     // Did someone say rightward-drift?
-    do local_data::get(current_location_key) |loc| {
+    local_data::get(current_location_key, |loc| {
         let loc = loc.unwrap();
 
-        do local_data::get(cache_key) |cache| {
-            do cache.unwrap().read |cache| {
+        local_data::get(cache_key, |cache| {
+            cache.unwrap().read(|cache| {
                 let abs_root = root(cache, loc.as_slice());
                 let rel_root = match path.segments[0].name.as_slice() {
                     "self" => Some(~"./"),
@@ -238,9 +238,9 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                     }
                 }
                 write!(w, "{}", generics);
-            }
-        }
-    }
+            })
+        })
+    })
 }
 
 /// Helper to render type parameters
@@ -262,11 +262,11 @@ impl fmt::Default for clean::Type {
     fn fmt(g: &clean::Type, f: &mut fmt::Formatter) {
         match *g {
             clean::TyParamBinder(id) | clean::Generic(id) => {
-                do local_data::get(cache_key) |cache| {
-                    do cache.unwrap().read |m| {
+                local_data::get(cache_key, |cache| {
+                    cache.unwrap().read(|m| {
                         f.buf.write(m.typarams.get(&id).as_bytes());
-                    }
-                }
+                    })
+                })
             }
             clean::ResolvedPath{id, typarams: ref tp, path: ref path} => {
                 resolved_path(f.buf, id, path, false);

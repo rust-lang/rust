@@ -51,7 +51,7 @@ impl Builder {
             self.ccx.stats.n_llvm_insns += 1;
         }
         if self.ccx.sess.count_llvm_insns() {
-            do base::with_insn_ctxt |v| {
+            base::with_insn_ctxt(|v| {
                 let h = &mut self.ccx.stats.llvm_insns;
 
                 // Build version of path with cycles removed.
@@ -85,7 +85,7 @@ impl Builder {
                     _ => 0u
                 };
                 h.insert(s, n+1u);
-            }
+            })
         }
     }
 
@@ -419,9 +419,9 @@ impl Builder {
             if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
-                do name.with_c_str |c| {
+                name.with_c_str(|c| {
                     llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), c)
-                }
+                })
             }
         }
     }
@@ -465,11 +465,11 @@ impl Builder {
             let min = llvm::LLVMConstInt(t, lo, signed);
             let max = llvm::LLVMConstInt(t, hi, signed);
 
-            do [min, max].as_imm_buf |ptr, len| {
+            [min, max].as_imm_buf(|ptr, len| {
                 llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
                                       llvm::LLVMMDNodeInContext(self.ccx.llcx,
                                                                 ptr, len as c_uint));
-            }
+            })
         }
 
         value
@@ -518,7 +518,7 @@ impl Builder {
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = do ixs.iter().map |i| { C_i32(*i as i32) }.collect::<~[ValueRef]>();
+            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<~[ValueRef]>();
             self.count_insn("gepi");
             self.inbounds_gep(base, v)
         }
@@ -736,12 +736,12 @@ impl Builder {
             let sanitized = text.replace("$", "");
             let comment_text = format!("\\# {}", sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let asm = do comment_text.with_c_str |c| {
+            let asm = comment_text.with_c_str(|c| {
                 unsafe {
                     llvm::LLVMConstInlineAsm(Type::func([], &Type::void()).to_ref(),
                                              c, noname(), False, False)
                 }
-            };
+            });
             self.call(asm, [], []);
         }
     }
@@ -757,10 +757,10 @@ impl Builder {
         let alignstack = if alignstack { lib::llvm::True }
                          else          { lib::llvm::False };
 
-        let argtys = do inputs.map |v| {
+        let argtys = inputs.map(|v| {
             debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_str(*v));
             val_ty(*v)
-        };
+        });
 
         debug!("Asm Output Type: {:?}", self.ccx.tn.type_to_str(output));
         let fty = Type::func(argtys, &output);
@@ -878,9 +878,9 @@ impl Builder {
             let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(self.llbuilder);
             let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
             let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-            let T: ValueRef = do "llvm.trap".with_c_str |buf| {
+            let T: ValueRef = "llvm.trap".with_c_str(|buf| {
                 llvm::LLVMGetNamedFunction(M, buf)
-            };
+            });
             assert!((T as int != 0));
             let args: &[ValueRef] = [];
             self.count_insn("trap");
