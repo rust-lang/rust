@@ -147,18 +147,17 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
         ty::ty_tup(*) | ty::ty_enum(*) => {
             let repr = adt::represent_type(cx, t);
-            Type::struct_(adt::sizing_fields_of(cx, repr), false)
+            adt::sizing_type_of(cx, repr)
         }
 
-        ty::ty_struct(did, _) => {
+        ty::ty_struct(*) => {
             if ty::type_is_simd(cx.tcx, t) {
                 let et = ty::simd_type(cx.tcx, t);
                 let n = ty::simd_size(cx.tcx, t);
                 Type::vector(&type_of(cx, et), n as u64)
             } else {
                 let repr = adt::represent_type(cx, t);
-                let packed = ty::lookup_packed(cx.tcx, did);
-                Type::struct_(adt::sizing_fields_of(cx, repr), packed)
+                adt::sizing_type_of(cx, repr)
             }
         }
 
@@ -217,8 +216,9 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         // fill it in *after* placing it into the type cache. This
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
-
-        Type::named_struct(llvm_type_name(cx, an_enum, did, substs.tps))
+        let repr = adt::represent_type(cx, t);
+        let name = llvm_type_name(cx, an_enum, did, substs.tps);
+        adt::incomplete_type_of(cx, repr, name)
       }
       ty::ty_estr(ty::vstore_box) => {
         Type::box(cx, &Type::vec(cx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
@@ -287,7 +287,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_type => cx.tydesc_type.ptr_to(),
       ty::ty_tup(*) => {
           let repr = adt::represent_type(cx, t);
-          Type::struct_(adt::fields_of(cx, repr), false)
+          adt::type_of(cx, repr)
       }
       ty::ty_opaque_closure_ptr(_) => Type::opaque_box(cx).ptr_to(),
       ty::ty_struct(did, ref substs) => {
@@ -299,7 +299,9 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
               // Only create the named struct, but don't fill it in. We fill it
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
-              Type::named_struct(llvm_type_name(cx, a_struct, did, substs.tps))
+              let repr = adt::represent_type(cx, t);
+              let name = llvm_type_name(cx, a_struct, did, substs.tps);
+              adt::incomplete_type_of(cx, repr, name)
           }
       }
       ty::ty_self(*) => cx.tcx.sess.unimpl("type_of: ty_self"),
@@ -316,19 +318,11 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
-      ty::ty_enum(*) => {
-          let repr = adt::represent_type(cx, t);
-          llty.set_struct_body(adt::fields_of(cx, repr), false);
-      }
-
-      ty::ty_struct(did, _) => {
-        if !ty::type_is_simd(cx.tcx, t) {
-          let repr = adt::represent_type(cx, t);
-          let packed = ty::lookup_packed(cx.tcx, did);
-          llty.set_struct_body(adt::fields_of(cx, repr), packed);
+        ty::ty_enum(*) | ty::ty_struct(*) if !ty::type_is_simd(cx.tcx, t) => {
+            let repr = adt::represent_type(cx, t);
+            adt::finish_type_of(cx, repr, &mut llty);
         }
-      }
-      _ => ()
+        _ => ()
     }
 
     return llty;
