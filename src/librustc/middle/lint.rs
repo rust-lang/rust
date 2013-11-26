@@ -1048,7 +1048,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
 }
 
 fn check_missing_doc_attrs(cx: &Context,
-                           id: ast::NodeId,
+                           id: Option<ast::NodeId>,
                            attrs: &[ast::Attribute],
                            sp: Span,
                            desc: &'static str) {
@@ -1059,9 +1059,12 @@ fn check_missing_doc_attrs(cx: &Context,
     // `#[doc(hidden)]` disables missing_doc check.
     if cx.is_doc_hidden { return }
 
-    // Only check publicly-visible items, using the result from the
-    // privacy pass.
-    if !cx.exported_items.contains(&id) { return }
+    // Only check publicly-visible items, using the result from the privacy pass. It's an option so
+    // the crate root can also use this function (it doesn't have a NodeId).
+    match id {
+        Some(ref id) if !cx.exported_items.contains(id) => return,
+        _ => ()
+    }
 
     if !attrs.iter().any(|a| a.node.is_sugared_doc) {
         cx.span_lint(missing_doc, sp,
@@ -1069,7 +1072,7 @@ fn check_missing_doc_attrs(cx: &Context,
     }
 }
 
-fn check_missing_doc_item(cx: &mut Context, it: &ast::item) { // XXX doesn't need to be mut
+fn check_missing_doc_item(cx: &Context, it: &ast::item) {
     let desc = match it.node {
         ast::item_fn(..) => "a function",
         ast::item_mod(..) => "a module",
@@ -1078,7 +1081,7 @@ fn check_missing_doc_item(cx: &mut Context, it: &ast::item) { // XXX doesn't nee
         ast::item_trait(..) => "a trait",
         _ => return
     };
-    check_missing_doc_attrs(cx, it.id, it.attrs, it.span, desc);
+    check_missing_doc_attrs(cx, Some(it.id), it.attrs, it.span, desc);
 }
 
 fn check_missing_doc_method(cx: &Context, m: &ast::method) {
@@ -1104,24 +1107,24 @@ fn check_missing_doc_method(cx: &Context, m: &ast::method) {
             }
         }
     }
-    check_missing_doc_attrs(cx, m.id, m.attrs, m.span, "a method");
+    check_missing_doc_attrs(cx, Some(m.id), m.attrs, m.span, "a method");
 }
 
 fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
-    check_missing_doc_attrs(cx, tm.id, tm.attrs, tm.span, "a type method");
+    check_missing_doc_attrs(cx, Some(tm.id), tm.attrs, tm.span, "a type method");
 }
 
 fn check_missing_doc_struct_field(cx: &Context, sf: &ast::struct_field) {
     match sf.node.kind {
         ast::named_field(_, vis) if vis != ast::private =>
-            check_missing_doc_attrs(cx, cx.cur_struct_def_id, sf.node.attrs,
+            check_missing_doc_attrs(cx, Some(cx.cur_struct_def_id), sf.node.attrs,
                                     sf.span, "a struct field"),
         _ => {}
     }
 }
 
 fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
-    check_missing_doc_attrs(cx, v.node.id, v.node.attrs, v.span, "a variant");
+    check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs, v.span, "a variant");
 }
 
 /// Checks for use of items with #[deprecated], #[experimental] and
@@ -1372,6 +1375,9 @@ pub fn check_crate(tcx: ty::ctxt,
         });
 
         check_crate_attrs_usage(cx, crate.attrs);
+        // since the root module isn't visited as an item (because it isn't an item), warn for it
+        // here.
+        check_missing_doc_attrs(cx, None, crate.attrs, crate.span, "crate");
 
         visit::walk_crate(cx, crate, ());
     });
