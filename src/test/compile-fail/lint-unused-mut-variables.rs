@@ -55,7 +55,7 @@ fn main() {
     let mut _allowed = 1;
 }
 
-fn callback(f: &fn()) {}
+fn callback(f: ||) {}
 
 // make sure the lint attribute can be turned off
 #[allow(unused_mut)]

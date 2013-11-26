@@ -222,7 +222,7 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
 pub struct SplitIterator<'self, T> {
     priv v: &'self [T],
     priv n: uint,
-    priv pred: &'self fn(t: &T) -> bool,
+    priv pred: 'self |t: &T| -> bool,
     priv finished: bool
 }
 
@@ -271,7 +271,7 @@ impl<'self, T> Iterator<&'self [T]> for SplitIterator<'self, T> {
 pub struct RSplitIterator<'self, T> {
     priv v: &'self [T],
     priv n: uint,
-    priv pred: &'self fn(t: &T) -> bool,
+    priv pred: 'self |t: &T| -> bool,
     priv finished: bool
 }
 
@@ -859,20 +859,20 @@ pub trait ImmutableVector<'self, T> {
     fn rev_iter(self) -> RevIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.
-    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
+    fn split_iter(self, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.
-    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
+    fn splitn_iter(self, n: uint, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.
-    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
+    fn rsplit_iter(self, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.
-    fn rsplitn_iter(self,  n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
+    fn rsplitn_iter(self,  n: uint, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -1024,11 +1024,11 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
+    fn split_iter(self, pred: 'self |&T| -> bool) -> SplitIterator<'self, T> {
         self.splitn_iter(uint::max_value, pred)
     }
     #[inline]
-    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
+    fn splitn_iter(self, n: uint, pred: 'self |&T| -> bool) -> SplitIterator<'self, T> {
         SplitIterator {
             v: self,
             n: n,
@@ -1037,11 +1037,11 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         }
     }
     #[inline]
-    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
+    fn rsplit_iter(self, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T> {
         self.rsplitn_iter(uint::max_value, pred)
     }
     #[inline]
-    fn rsplitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
+    fn rsplitn_iter(self, n: uint, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T> {
         RSplitIterator {
             v: self,
             n: n,

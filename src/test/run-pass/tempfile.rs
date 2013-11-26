@@ -136,7 +136,7 @@ pub fn test_rmdir_recursive_ok() {
     assert!(!root.join("bar").join("blat").exists());
 }
 
-fn in_tmpdir(f: &fn()) {
+fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").expect("can't make tmpdir");
     assert!(os::change_dir(tmpdir.path()));
 

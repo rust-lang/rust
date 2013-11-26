@@ -44,7 +44,7 @@ macro_rules! finally_fn {
     }
 }
 
-impl<'self,T> Finally<T> for &'self fn() -> T {
+impl<'self,T> Finally<T> for 'self || -> T {
     fn finally(&self, dtor: ||) -> T {
         let _d = Finallyalizer {
             dtor: dtor
@@ -57,7 +57,7 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
 finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {
-    dtor: &'self fn()
+    dtor: 'self ||
 }
 
 #[unsafe_destructor]

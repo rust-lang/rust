@@ -12,7 +12,7 @@
 // some point regions-ret-borrowed reported an error but this file did
 // not, due to special hardcoding around the anonymous region.
 
-fn with<R>(f: &fn<'a>(x: &'a int) -> R) -> R {
+fn with<R>(f: <'a>|x: &'a int| -> R) -> R {
     f(&3)
 }
 

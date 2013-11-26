@@ -43,16 +43,16 @@ fn bar<'a>(x: &'a int) {
 
     // &'a CAN be declared on functions and used then:
     fn g<'a>(a: &'a int) { } // OK
-    fn h(a: &fn<'a>(&'a int)) { } // OK
+    fn h(a: <'a>|&'a int|) { } // OK
 }
 
 // Test nesting of lifetimes in fn type declarations
 fn fn_types(a: &'a int, //~ ERROR undeclared lifetime
-            b: &fn<'a>(a: &'a int,
-                       b: &'b int, //~ ERROR undeclared lifetime
-                       c: &fn<'b>(a: &'a int,
-                                  b: &'b int),
-                       d: &'b int), //~ ERROR undeclared lifetime
+            b: <'a>|a: &'a int,
+                    b: &'b int, //~ ERROR undeclared lifetime
+                    c: <'b>|a: &'a int,
+                            b: &'b int|,
+                    d: &'b int|, //~ ERROR undeclared lifetime
             c: &'a int) //~ ERROR undeclared lifetime
 {
 }

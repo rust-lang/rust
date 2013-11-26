@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct X {
-    field: &'static fn:Send(),
+    field: 'static ||:Send,
 }
 
-fn foo(blk: &'static fn:()) -> X {
+fn foo(blk: 'static ||:) -> X {
     return X { field: blk }; //~ ERROR expected bounds `Send` but found no bounds
 }
 

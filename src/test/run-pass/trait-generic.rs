@@ -24,10 +24,10 @@ impl to_str for () {
 }
 
 trait map<T> {
-    fn map<U>(&self, f: &fn(&T) -> U) -> ~[U];
+    fn map<U>(&self, f: |&T| -> U) -> ~[U];
 }
 impl<T> map<T> for ~[T] {
-    fn map<U>(&self, f: &fn(&T) -> U) -> ~[U] {
+    fn map<U>(&self, f: |&T| -> U) -> ~[U] {
         let mut r = ~[];
         // FIXME: #7355 generates bad code with VecIterator
         for i in range(0u, self.len()) {

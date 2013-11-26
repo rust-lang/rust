@@ -301,8 +301,8 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: &config, testfile: &Path,
-                 f: &fn()->test::TestFn) -> test::TestDescAndFn {
+pub fn make_test(config: &config, testfile: &Path, f: || -> test::TestFn)
+                 -> test::TestDescAndFn {
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testfile),

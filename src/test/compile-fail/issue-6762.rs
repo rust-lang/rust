@@ -4,20 +4,17 @@
 // transferring ownership of the owned box before invoking the stack
 // closure results in a crash.
 
-fn twice(x: ~uint) -> uint
-{
+fn twice(x: ~uint) -> uint {
      *x * 2
 }
 
-fn invoke(f : &fn() -> uint)
-{
+fn invoke(f: || -> uint) {
      f();
 }
 
-fn main()
-{
+fn main() {
       let x  : ~uint         = ~9;
-      let sq : &fn() -> uint = || { *x * *x };
+      let sq : || -> uint =  || { *x * *x };
 
       twice(x);
       invoke(sq);

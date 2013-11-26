@@ -9,15 +9,15 @@
 // except according to those terms.
 
 struct parameterized1<'self> {
-    g: &'self fn()
+    g: 'self ||
 }
 
 struct not_parameterized1 {
-    g: &'static fn()
+    g: 'static ||
 }
 
 struct not_parameterized2 {
-    g: &'static fn()
+    g: 'static ||
 }
 
 fn take1(p: parameterized1) -> parameterized1 { p }

@@ -10,7 +10,7 @@
 
 // error-pattern:fail
 
-fn x(it: &fn(int)) {
+fn x(it: |int|) {
     let _a = @0;
     it(1);
 }

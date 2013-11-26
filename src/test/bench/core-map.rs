@@ -19,7 +19,7 @@ use std::trie::TrieMap;
 use std::uint;
 use std::vec;
 
-fn timed(label: &str, f: &fn()) {
+fn timed(label: &str, f: ||) {
     let start = time::precise_time_s();
     f();
     let end = time::precise_time_s();

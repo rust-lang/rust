@@ -224,7 +224,7 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
 
 pub struct BottomUpFolder<'self> {
     tcx: ty::ctxt,
-    fldop: &'self fn(ty::t) -> ty::t,
+    fldop: 'self |ty::t| -> ty::t,
 }
 
 impl<'self> TypeFolder for BottomUpFolder<'self> {
@@ -241,14 +241,14 @@ impl<'self> TypeFolder for BottomUpFolder<'self> {
 
 pub struct RegionFolder<'self> {
     tcx: ty::ctxt,
-    fld_t: &'self fn(ty::t) -> ty::t,
-    fld_r: &'self fn(ty::Region) -> ty::Region,
+    fld_t: 'self |ty::t| -> ty::t,
+    fld_r: 'self |ty::Region| -> ty::Region,
 }
 
 impl<'self> RegionFolder<'self> {
     pub fn general(tcx: ty::ctxt,
-                   fld_r: &'self fn(ty::Region) -> ty::Region,
-                   fld_t: &'self fn(ty::t) -> ty::t)
+                   fld_r: 'self |ty::Region| -> ty::Region,
+                   fld_t: 'self |ty::t| -> ty::t)
                    -> RegionFolder<'self> {
         RegionFolder {
             tcx: tcx,
@@ -257,8 +257,7 @@ impl<'self> RegionFolder<'self> {
         }
     }
 
-    pub fn regions(tcx: ty::ctxt,
-                   fld_r: &'self fn(ty::Region) -> ty::Region)
+    pub fn regions(tcx: ty::ctxt, fld_r: 'self |ty::Region| -> ty::Region)
                    -> RegionFolder<'self> {
         fn noop(t: ty::t) -> ty::t { t }
 

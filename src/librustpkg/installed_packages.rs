@@ -16,7 +16,7 @@ use std::os;
 use std::io;
 use std::io::fs;
 
-pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
+pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
     let workspaces = rust_path();
     for p in workspaces.iter() {
         let binfiles = do io::ignore_io_error { fs::readdir(&p.join("bin")) };

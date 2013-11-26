@@ -15,7 +15,7 @@ use std::cmp::{Eq, Ord};
 use std::util::swap;
 use std::vec;
 
-type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
+type Le<'self, T> = 'self |v1: &T, v2: &T| -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.

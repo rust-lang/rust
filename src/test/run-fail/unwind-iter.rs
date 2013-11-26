@@ -13,7 +13,7 @@
 #[allow(unreachable_code)];
 #[allow(unused_variable)];
 
-fn x(it: &fn(int)) {
+fn x(it: |int|) {
     fail!();
     it(0);
 }

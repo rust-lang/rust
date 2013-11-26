@@ -9,11 +9,11 @@
 // except according to those terms.
 
 trait vec_monad<A> {
-    fn bind<B>(&self, f: &fn(A) -> ~[B]);
+    fn bind<B>(&self, f: |A| -> ~[B]);
 }
 
 impl<A> vec_monad<A> for ~[A] {
-    fn bind<B>(&self, f: &fn(A) -> ~[B]) {
+    fn bind<B>(&self, f: |A| -> ~[B]) {
         let mut r = fail!();
         for elt in self.iter() { r = r + f(*elt); }
         //~^ ERROR the type of this value must be known
