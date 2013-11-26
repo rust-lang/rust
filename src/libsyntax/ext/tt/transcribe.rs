@@ -151,10 +151,10 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
     }
     match *t {
       tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
-        do tts.iter().fold(lis_unconstrained) |lis, tt| {
+        tts.iter().fold(lis_unconstrained, |lis, tt| {
             let lis2 = lockstep_iter_size(tt, r);
             lis_merge(lis, lis2)
-        }
+        })
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {

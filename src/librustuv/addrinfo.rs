@@ -55,11 +55,11 @@ impl GetAddrInfoRequest {
 
         let hint = hints.map(|hint| {
             let mut flags = 0;
-            do each_ai_flag |cval, aival| {
+            each_ai_flag(|cval, aival| {
                 if hint.flags & (aival as uint) != 0 {
                     flags |= cval as i32;
                 }
-            }
+            });
             let socktype = 0;
             let protocol = 0;
 
@@ -86,9 +86,9 @@ impl GetAddrInfoRequest {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
 
-                do wait_until_woken_after(&mut cx.slot) {
+                wait_until_woken_after(&mut cx.slot, || {
                     req.set_data(&cx);
-                }
+                });
 
                 match cx.status {
                     0 => Ok(accum_addrinfo(cx.addrinfo.get_ref())),
@@ -120,7 +120,7 @@ impl Drop for Addrinfo {
     }
 }
 
-fn each_ai_flag(_f: &fn(c_int, ai::Flag)) {
+fn each_ai_flag(_f: |c_int, ai::Flag|) {
     /* XXX: do we really want to support these?
     unsafe {
         f(uvll::rust_AI_ADDRCONFIG(), ai::AddrConfig);
@@ -144,11 +144,11 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
             let rustaddr = net::sockaddr_to_socket_addr((*addr).ai_addr);
 
             let mut flags = 0;
-            do each_ai_flag |cval, aival| {
+            each_ai_flag(|cval, aival| {
                 if (*addr).ai_flags & cval != 0 {
                     flags |= aival as uint;
                 }
-            }
+            });
 
             /* XXX: do we really want to support these
             let protocol = match (*addr).ai_protocol {

@@ -169,18 +169,18 @@ pub fn mk_sugared_doc_attr(text: @str, lo: BytePos, hi: BytePos) -> Attribute {
 pub fn contains(haystack: &[@ast::MetaItem],
                 needle: @ast::MetaItem) -> bool {
     debug!("attr::contains (name={})", needle.name());
-    do haystack.iter().any |item| {
+    haystack.iter().any(|item| {
         debug!("  testing: {}", item.name());
         item.node == needle.node
-    }
+    })
 }
 
 pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
     debug!("attr::contains_name (name={})", name);
-    do metas.iter().any |item| {
+    metas.iter().any(|item| {
         debug!("  testing: {}", item.name());
         name == item.name()
-    }
+    })
 }
 
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
@@ -204,12 +204,10 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
         .map(|&mi| (mi.name(), mi))
         .collect::<~[(@str, @MetaItem)]>();
 
-    do extra::sort::quick_sort(v) |&(a, _), &(b, _)| {
-        a <= b
-    }
+    extra::sort::quick_sort(v, |&(a, _), &(b, _)| a <= b);
 
     // There doesn't seem to be a more optimal way to do this
-    do v.move_iter().map |(_, m)| {
+    v.move_iter().map(|(_, m)| {
         match m.node {
             MetaList(n, ref mis) => {
                 @Spanned {
@@ -219,7 +217,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
             }
             _ => m
         }
-    }.collect()
+    }).collect()
 }
 
 /**
@@ -248,7 +246,7 @@ pub enum InlineAttr {
 /// True if something like #[inline] is found in the list of attrs.
 pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
-    do attrs.iter().fold(InlineNone) |ia,attr| {
+    attrs.iter().fold(InlineNone, |ia,attr| {
         match attr.node.value.node {
           MetaWord(n) if "inline" == n => InlineHint,
           MetaList(n, ref items) if "inline" == n => {
@@ -262,7 +260,7 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
           }
           _ => ia
         }
-    }
+    })
 }
 
 /// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.
@@ -278,7 +276,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
 
     // this would be much nicer as a chain of iterator adaptors, but
     // this doesn't work.
-    let some_cfg_matches = do metas.any |mi| {
+    let some_cfg_matches = metas.any(|mi| {
         debug!("testing name: {}", mi.name());
         if "cfg" == mi.name() { // it is a #[cfg()] attribute
             debug!("is cfg");
@@ -287,7 +285,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
             match mi.meta_item_list() {
                 Some(cfg_meta) => {
                     debug!("is cfg(...)");
-                    do cfg_meta.iter().all |cfg_mi| {
+                    cfg_meta.iter().all(|cfg_mi| {
                         debug!("cfg({}[...])", cfg_mi.name());
                         match cfg_mi.node {
                             ast::MetaList(s, ref not_cfgs) if "not" == s => {
@@ -301,14 +299,14 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
                             }
                             _ => contains(cfg, *cfg_mi)
                         }
-                    }
+                    })
                 }
                 None => false
             }
         } else {
             false
         }
-    };
+    });
     debug!("test_cfg (no_cfgs={}, some_cfg_matches={})", no_cfgs, some_cfg_matches);
     no_cfgs || some_cfg_matches
 }

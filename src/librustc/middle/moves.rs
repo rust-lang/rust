@@ -614,7 +614,7 @@ impl VisitContext {
          * into itself or not based on its type and annotation.
          */
 
-        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, path| {
+        pat_bindings(self.tcx.def_map, pat, |bm, id, _span, path| {
             let binding_moves = match bm {
                 BindByRef(_) => false,
                 BindByValue(_) => {
@@ -633,7 +633,7 @@ impl VisitContext {
             if binding_moves {
                 self.move_maps.moves_map.insert(id);
             }
-        }
+        })
     }
 
     pub fn use_receiver(&mut self,

@@ -45,7 +45,7 @@ fn test<'a,T,U:Freeze>(_: &'a int) {
     assert_freeze::<&'a mut Dummy:Freeze>(); //~ ERROR does not fulfill `Freeze`
 
     // closures are like an `&mut` object
-    assert_freeze::<&fn()>(); //~ ERROR does not fulfill `Freeze`
+    assert_freeze::<||>(); //~ ERROR does not fulfill `Freeze`
 
     // unsafe ptrs are ok unless they point at unfreezeable things
     assert_freeze::<*int>();

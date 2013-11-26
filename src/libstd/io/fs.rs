@@ -76,7 +76,7 @@ pub struct File {
 }
 
 fn io_raise<T>(f: |io: &mut IoFactory| -> Result<T, IoError>) -> Option<T> {
-    do with_local_io |io| {
+    with_local_io(|io| {
         match f(io) {
             Ok(t) => Some(t),
             Err(ioerr) => {
@@ -84,7 +84,7 @@ fn io_raise<T>(f: |io: &mut IoFactory| -> Result<T, IoError>) -> Option<T> {
                 None
             }
         }
-    }
+    })
 }
 
 impl File {
@@ -97,9 +97,9 @@ impl File {
     ///
     ///     let p = Path::new("/some/file/path.txt");
     ///
-    ///     do io_error::cond.trap(|_| {
+    ///     io_error::cond.trap(|_| {
     ///         // hoo-boy...
-    ///     }).inside {
+    ///     }).inside(|| {
     ///         let file = match File::open_mode(&p, Open, ReadWrite) {
     ///             Some(s) => s,
     ///             None => fail!("whoops! I'm sure this raised, anyways..")
@@ -107,7 +107,7 @@ impl File {
     ///         // do some stuff with that file
     ///
     ///         // the file will be closed at the end of this block
-    ///     }
+    ///     })
     ///     // ..
     ///
     /// `FileMode` and `FileAccess` provide information about the permissions
@@ -132,7 +132,7 @@ impl File {
     pub fn open_mode(path: &Path,
                      mode: FileMode,
                      access: FileAccess) -> Option<File> {
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.fs_open(&path.to_c_str(), mode, access) {
                 Ok(fd) => Some(File {
                     path: path.clone(),
@@ -144,7 +144,7 @@ impl File {
                     None
                 }
             }
-        }
+        })
     }
 
     /// Attempts to open a file in read-only mode. This function is equivalent to
@@ -244,7 +244,7 @@ impl File {
 /// directory, the user lacks permissions to remove the file, or if some
 /// other filesystem-level error occurs.
 pub fn unlink(path: &Path) {
-    do io_raise |io| { io.fs_unlink(&path.to_c_str()) };
+    io_raise(|io| io.fs_unlink(&path.to_c_str()));
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -272,9 +272,7 @@ pub fn unlink(path: &Path) {
 /// requisite permissions to perform a `stat` call on the given path or if
 /// there is no entry in the filesystem at the provided path.
 pub fn stat(path: &Path) -> FileStat {
-    do io_raise |io| {
-        io.fs_stat(&path.to_c_str())
-    }.unwrap_or_else(dummystat)
+    io_raise(|io| io.fs_stat(&path.to_c_str())).unwrap_or_else(dummystat)
 }
 
 fn dummystat() -> FileStat {
@@ -310,9 +308,7 @@ fn dummystat() -> FileStat {
 ///
 /// See `stat`
 pub fn lstat(path: &Path) -> FileStat {
-    do io_raise |io| {
-        io.fs_lstat(&path.to_c_str())
-    }.unwrap_or_else(dummystat)
+    io_raise(|io| io.fs_lstat(&path.to_c_str())).unwrap_or_else(dummystat)
 }
 
 /// Rename a file or directory to a new name.
@@ -330,9 +326,7 @@ pub fn lstat(path: &Path) -> FileStat {
 /// the process lacks permissions to view the contents, or if some other
 /// intermittent I/O error occurs.
 pub fn rename(from: &Path, to: &Path) {
-    do io_raise |io| {
-        io.fs_rename(&from.to_c_str(), &to.to_c_str())
-    };
+    io_raise(|io| io.fs_rename(&from.to_c_str(), &to.to_c_str()));
 }
 
 /// Copies the contents of one file to another. This function will also
@@ -403,9 +397,7 @@ pub fn copy(from: &Path, to: &Path) {
 /// condition. Some possible error situations are not having the permission to
 /// change the attributes of a file or the file not existing.
 pub fn chmod(path: &Path, mode: io::FilePermission) {
-    do io_raise |io| {
-        io.fs_chmod(&path.to_c_str(), mode)
-    };
+    io_raise(|io| io.fs_chmod(&path.to_c_str(), mode));
 }
 
 /// Change the user and group owners of a file at the specified path.
@@ -414,7 +406,7 @@ pub fn chmod(path: &Path, mode: io::FilePermission) {
 ///
 /// This funtion will raise on the `io_error` condition on failure.
 pub fn chown(path: &Path, uid: int, gid: int) {
-    do io_raise |io| { io.fs_chown(&path.to_c_str(), uid, gid) };
+    io_raise(|io| io.fs_chown(&path.to_c_str(), uid, gid));
 }
 
 /// Creates a new hard link on the filesystem. The `dst` path will be a
@@ -425,7 +417,7 @@ pub fn chown(path: &Path, uid: int, gid: int) {
 ///
 /// This function will raise on the `io_error` condition on failure.
 pub fn link(src: &Path, dst: &Path) {
-    do io_raise |io| { io.fs_link(&src.to_c_str(), &dst.to_c_str()) };
+    io_raise(|io| io.fs_link(&src.to_c_str(), &dst.to_c_str()));
 }
 
 /// Creates a new symbolic link on the filesystem. The `dst` path will be a
@@ -435,7 +427,7 @@ pub fn link(src: &Path, dst: &Path) {
 ///
 /// This function will raise on the `io_error` condition on failure.
 pub fn symlink(src: &Path, dst: &Path) {
-    do io_raise |io| { io.fs_symlink(&src.to_c_str(), &dst.to_c_str()) };
+    io_raise(|io| io.fs_symlink(&src.to_c_str(), &dst.to_c_str()));
 }
 
 /// Reads a symlink, returning the file that the symlink points to.
@@ -446,7 +438,7 @@ pub fn symlink(src: &Path, dst: &Path) {
 /// conditions include reading a file that does not exist or reading a file
 /// which is not a symlink.
 pub fn readlink(path: &Path) -> Option<Path> {
-    do io_raise |io| { io.fs_readlink(&path.to_c_str()) }
+    io_raise(|io| io.fs_readlink(&path.to_c_str()))
 }
 
 /// Create a new, empty directory at the provided path
@@ -466,9 +458,7 @@ pub fn readlink(path: &Path) -> Option<Path> {
 /// to make a new directory at the provided path, or if the directory already
 /// exists.
 pub fn mkdir(path: &Path, mode: FilePermission) {
-    do io_raise |io| {
-        io.fs_mkdir(&path.to_c_str(), mode)
-    };
+    io_raise(|io| io.fs_mkdir(&path.to_c_str(), mode));
 }
 
 /// Remove an existing, empty directory
@@ -487,9 +477,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) {
 /// to remove the directory at the provided path, or if the directory isn't
 /// empty.
 pub fn rmdir(path: &Path) {
-    do io_raise |io| {
-        io.fs_rmdir(&path.to_c_str())
-    };
+    io_raise(|io| io.fs_rmdir(&path.to_c_str()));
 }
 
 /// Retrieve a vector containing all entries within a provided directory
@@ -516,9 +504,7 @@ pub fn rmdir(path: &Path) {
 /// the process lacks permissions to view the contents or if the `path` points
 /// at a non-directory file
 pub fn readdir(path: &Path) -> ~[Path] {
-    do io_raise |io| {
-        io.fs_readdir(&path.to_c_str(), 0)
-    }.unwrap_or_else(|| ~[])
+    io_raise(|io| io.fs_readdir(&path.to_c_str(), 0)).unwrap_or_else(|| ~[])
 }
 
 /// Returns an iterator which will recursively walk the directory structure
@@ -599,9 +585,7 @@ pub fn rmdir_recursive(path: &Path) {
 /// happens.
 // FIXME(#10301) these arguments should not be u64
 pub fn change_file_times(path: &Path, atime: u64, mtime: u64) {
-    do io_raise |io| {
-        io.fs_utime(&path.to_c_str(), atime, mtime)
-    };
+    io_raise(|io| io.fs_utime(&path.to_c_str(), atime, mtime));
 }
 
 impl Reader for File {
@@ -797,12 +781,12 @@ mod test {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let mut called = false;
-        do io_error::cond.trap(|_| {
+        io_error::cond.trap(|_| {
             called = true;
-        }).inside {
+        }).inside(|| {
             let result = File::open_mode(filename, Open, Read);
             assert!(result.is_none());
-        }
+        });
         assert!(called);
     })
 
@@ -810,11 +794,9 @@ mod test {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_another_file_that_does_not_exist.txt");
         let mut called = false;
-        do io_error::cond.trap(|_| {
+        io_error::cond.trap(|_| {
             called = true;
-        }).inside {
-            unlink(filename);
-        }
+        }).inside(|| unlink(filename));
         assert!(called);
     })
 

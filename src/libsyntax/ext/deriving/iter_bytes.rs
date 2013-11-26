@@ -90,7 +90,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @
         cx.span_bug(span, "#[deriving(IterBytes)] needs at least one field");
     }
 
-    do exprs.slice(1, exprs.len()).iter().fold(exprs[0]) |prev, me| {
+    exprs.slice(1, exprs.len()).iter().fold(exprs[0], |prev, me| {
         cx.expr_binary(span, BiAnd, prev, *me)
-    }
+    })
 }

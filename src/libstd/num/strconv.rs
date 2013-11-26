@@ -750,16 +750,16 @@ mod bench {
     #[bench]
     fn uint_to_str_rand(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
-        do bh.iter {
+        bh.iter(|| {
             rng.gen::<uint>().to_str();
-        }
+        })
     }
 
     #[bench]
     fn float_to_str_rand(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
-        do bh.iter {
+        bh.iter(|| {
             f64::to_str(rng.gen());
-        }
+        })
     }
 }

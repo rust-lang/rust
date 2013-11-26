@@ -213,12 +213,12 @@ impl Reflector {
           ty::ty_tup(ref tys) => {
               let extra = ~[self.c_uint(tys.len())]
                   + self.c_size_and_align(t);
-              do self.bracketed("tup", extra) |this| {
+              self.bracketed("tup", extra, |this| {
                   for (i, t) in tys.iter().enumerate() {
                       let extra = ~[this.c_uint(i), this.c_tydesc(*t)];
                       this.visit("tup_field", extra);
                   }
-              }
+              })
           }
 
           // FIXME (#2594): fetch constants out of intrinsic
@@ -262,7 +262,7 @@ impl Reflector {
               let extra = ~[self.c_slice(ty_to_str(tcx, t).to_managed()),
                             self.c_bool(named_fields),
                             self.c_uint(fields.len())] + self.c_size_and_align(t);
-              do self.bracketed("class", extra) |this| {
+              self.bracketed("class", extra, |this| {
                   for (i, field) in fields.iter().enumerate() {
                       let extra = ~[this.c_uint(i),
                                     this.c_slice(bcx.ccx().sess.str_of(field.ident)),
@@ -270,7 +270,7 @@ impl Reflector {
                           + this.c_mt(&field.mt);
                       this.visit("class_field", extra);
                   }
-              }
+              })
           }
 
           // FIXME (#2595): visiting all the variants in turn is probably
@@ -320,14 +320,14 @@ impl Reflector {
 
             let enum_args = ~[self.c_uint(variants.len()), make_get_disr()]
                 + self.c_size_and_align(t);
-            do self.bracketed("enum", enum_args) |this| {
+            self.bracketed("enum", enum_args, |this| {
                 for (i, v) in variants.iter().enumerate() {
                     let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
                                          C_u64(v.disr_val),
                                          this.c_uint(v.args.len()),
                                          this.c_slice(name)];
-                    do this.bracketed("enum_variant", variant_args) |this| {
+                    this.bracketed("enum_variant", variant_args, |this| {
                         for (j, a) in v.args.iter().enumerate() {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
@@ -338,9 +338,9 @@ impl Reflector {
                                                this.c_tydesc(*a)];
                             this.visit("enum_variant_field", field_args);
                         }
-                    }
+                    })
                 }
-            }
+            })
           }
 
           ty::ty_trait(_, _, _, _, _) => {

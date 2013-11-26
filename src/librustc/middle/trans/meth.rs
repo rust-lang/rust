@@ -545,14 +545,14 @@ pub fn get_vtable(bcx: @mut Block,
     }
 
     // Not in the cache. Actually build it.
-    let methods = do origins.flat_map |origin| {
+    let methods = origins.flat_map(|origin| {
         match *origin {
             typeck::vtable_static(id, ref substs, sub_vtables) => {
                 emit_vtable_methods(bcx, id, *substs, sub_vtables)
             }
             _ => ccx.sess.bug("get_vtable: expected a static origin"),
         }
-    };
+    });
 
     // Generate a type descriptor for the vtable.
     let tydesc = get_tydesc(ccx, self_ty);
@@ -578,9 +578,9 @@ pub fn make_vtable(ccx: &mut CrateContext,
 
         let tbl = C_struct(components, false);
         let sym = token::gensym("vtable");
-        let vt_gvar = do format!("vtable{}", sym).with_c_str |buf| {
+        let vt_gvar = format!("vtable{}", sym).with_c_str(|buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
-        };
+        });
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
         lib::llvm::SetLinkage(vt_gvar, lib::llvm::InternalLinkage);
@@ -605,7 +605,7 @@ fn emit_vtable_methods(bcx: @mut Block,
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trt_id);
 
     let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
-    do trait_method_def_ids.map |method_def_id| {
+    trait_method_def_ids.map(|method_def_id| {
         let ident = ty::method(tcx, *method_def_id).ident;
         // The substitutions we have are on the impl, so we grab
         // the method type from the impl to substitute into.
@@ -626,7 +626,7 @@ fn emit_vtable_methods(bcx: @mut Block,
             trans_fn_ref_with_vtables(bcx, m_id, 0,
                                       substs, Some(vtables)).llfn
         }
-    }
+    })
 }
 
 pub fn trans_trait_cast(bcx: @mut Block,

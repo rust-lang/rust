@@ -47,7 +47,7 @@ static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adle
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
 fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    do bytes.as_imm_buf |b, len| {
+    bytes.as_imm_buf(|b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -61,7 +61,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
             libc::free(res);
             out
         }
-    }
+    })
 }
 
 pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
@@ -73,7 +73,7 @@ pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 }
 
 fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    do bytes.as_imm_buf |b, len| {
+    bytes.as_imm_buf(|b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -87,7 +87,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
             libc::free(res);
             out
         }
-    }
+    })
 }
 
 pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
@@ -108,15 +108,15 @@ mod tests {
     fn test_flate_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
-        do 20.times {
+        20.times(|| {
             let range = r.gen_range(1u, 10);
             words.push(r.gen_vec::<u8>(range));
-        }
-        do 20.times {
+        });
+        20.times(|| {
             let mut input = ~[];
-            do 2000.times {
+            2000.times(|| {
                 input.push_all(r.choose(words));
-            }
+            });
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
             let cmp = deflate_bytes(input);
@@ -125,7 +125,7 @@ mod tests {
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(input, out);
-        }
+        });
     }
 
     #[test]

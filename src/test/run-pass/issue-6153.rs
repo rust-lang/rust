@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn swap(f: &fn(~[int]) -> ~[int]) -> ~[int] {
+fn swap(f: |~[int]| -> ~[int]) -> ~[int] {
     let x = ~[1, 2, 3];
     f(x)
 }
 
 pub fn main() {
     let v = swap(|mut x| { x.push(4); x });
-    let w = do swap |mut x| { x.push(4); x };
+    let w = swap(|mut x| { x.push(4); x });
     assert_eq!(v, w);
 }

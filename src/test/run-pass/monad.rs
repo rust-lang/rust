@@ -11,11 +11,11 @@
 // xfail-fast
 
 trait vec_monad<A> {
-    fn bind<B>(&self, f: &fn(&A) -> ~[B]) -> ~[B];
+    fn bind<B>(&self, f: |&A| -> ~[B]) -> ~[B];
 }
 
 impl<A> vec_monad<A> for ~[A] {
-    fn bind<B>(&self, f: &fn(&A) -> ~[B]) -> ~[B] {
+    fn bind<B>(&self, f: |&A| -> ~[B]) -> ~[B] {
         let mut r = ~[];
         for elt in self.iter() {
             r.push_all_move(f(elt));
@@ -25,11 +25,11 @@ impl<A> vec_monad<A> for ~[A] {
 }
 
 trait option_monad<A> {
-    fn bind<B>(&self, f: &fn(&A) -> Option<B>) -> Option<B>;
+    fn bind<B>(&self, f: |&A| -> Option<B>) -> Option<B>;
 }
 
 impl<A> option_monad<A> for Option<A> {
-    fn bind<B>(&self, f: &fn(&A) -> Option<B>) -> Option<B> {
+    fn bind<B>(&self, f: |&A| -> Option<B>) -> Option<B> {
         match *self {
             Some(ref a) => { f(a) }
             None => { None }

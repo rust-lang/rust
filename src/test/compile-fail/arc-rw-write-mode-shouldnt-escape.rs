@@ -14,9 +14,7 @@ use extra::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None;
-    do x.write_downgrade |write_mode| {
-        y = Some(write_mode);
-    }
+    x.write_downgrade(|write_mode| y = Some(write_mode));
     y.unwrap();
     // Adding this line causes a method unification failure instead
     // do (&option::unwrap(y)).write |state| { assert!(*state == 1); }

@@ -104,7 +104,7 @@ pub trait Unsigned: Num {}
 /// use num::Times;
 /// let ten = 10 as uint;
 /// let mut accum = 0;
-/// do ten.times { accum += 1; }
+/// ten.times(|| { accum += 1; })
 /// ```
 ///
 pub trait Times {

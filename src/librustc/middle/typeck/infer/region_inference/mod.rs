@@ -764,7 +764,7 @@ impl RegionVarBindings {
     }
 
     fn expansion(&self, var_data: &mut [VarData]) {
-        do self.iterate_until_fixed_point("Expansion") |constraint| {
+        self.iterate_until_fixed_point("Expansion", |constraint| {
             match *constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
                 let b_data = &mut var_data[b_vid.to_uint()];
@@ -788,7 +788,7 @@ impl RegionVarBindings {
                 false
               }
             }
-        }
+        })
     }
 
     fn expand_node(&self,
@@ -829,7 +829,7 @@ impl RegionVarBindings {
 
     fn contraction(&self,
                    var_data: &mut [VarData]) {
-        do self.iterate_until_fixed_point("Contraction") |constraint| {
+        self.iterate_until_fixed_point("Contraction", |constraint| {
             match *constraint {
               ConstrainRegSubVar(*) => {
                 // This is an expansion constraint.  Ignore.
@@ -853,7 +853,7 @@ impl RegionVarBindings {
                 false
               }
             }
-        }
+        })
     }
 
     fn contract_node(&self,
@@ -1225,7 +1225,7 @@ impl RegionVarBindings {
             debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
             let source_node_index = NodeIndex(source_vid.to_uint());
-            do graph.each_adjacent_edge(source_node_index, dir) |_, edge| {
+            graph.each_adjacent_edge(source_node_index, dir, |_, edge| {
                 match edge.data {
                     ConstrainVarSubVar(from_vid, to_vid) => {
                         let opp_vid =
@@ -1246,7 +1246,7 @@ impl RegionVarBindings {
                     ConstrainRegSubReg(*) => {}
                 }
                 true
-            };
+            });
         }
     }
 

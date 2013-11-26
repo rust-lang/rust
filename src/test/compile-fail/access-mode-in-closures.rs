@@ -11,7 +11,7 @@
 
 struct sty(~[int]);
 
-fn unpack(_unpack: &fn(v: &sty) -> ~[int]) {}
+fn unpack(_unpack: |v: &sty| -> ~[int]) {}
 
 fn main() {
     let _foo = unpack(|s| {

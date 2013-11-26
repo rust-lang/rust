@@ -20,7 +20,7 @@
 
 fn f() { }
 static bare_fns: &'static [extern fn()] = &[f, f];
-struct S<'self>(&'self fn());
+struct S<'self>('self ||);
 static closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {

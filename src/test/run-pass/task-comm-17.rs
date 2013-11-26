@@ -20,5 +20,5 @@ fn f() {
 }
 
 pub fn main() {
-    task::spawn(|| f() );
+    task::spawn(proc() f() );
 }

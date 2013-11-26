@@ -438,22 +438,22 @@ mod test {
 
     #[bench]
     fn bench_buffered_reader(bh: &mut Harness) {
-        do bh.iter {
+        bh.iter(|| {
             BufferedReader::new(NullStream);
-        }
+        });
     }
 
     #[bench]
     fn bench_buffered_writer(bh: &mut Harness) {
-        do bh.iter {
+        bh.iter(|| {
             BufferedWriter::new(NullStream);
-        }
+        });
     }
 
     #[bench]
     fn bench_buffered_stream(bh: &mut Harness) {
-        do bh.iter {
+        bh.iter(|| {
             BufferedStream::new(NullStream);
-        }
+        });
     }
 }

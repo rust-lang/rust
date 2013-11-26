@@ -39,9 +39,9 @@ fn block_overarching_alias_mut() {
 
     let mut v = ~3;
     let mut x = &mut v;
-    do 3.times {
+    3.times(|| {
         borrow(v); //~ ERROR cannot borrow
-    }
+    });
     *x = ~5;
 }
 
@@ -111,7 +111,7 @@ fn while_aliased_mut_cond(cond: bool, cond2: bool) {
     }
 }
 
-fn loop_break_pops_scopes<'r>(_v: &'r mut [uint], f: &fn(&'r mut uint) -> bool) {
+fn loop_break_pops_scopes<'r>(_v: &'r mut [uint], f: |&'r mut uint| -> bool) {
     // Here we check that when you break out of an inner loop, the
     // borrows that go out of scope as you exit the inner loop are
     // removed from the bitset.
@@ -127,7 +127,7 @@ fn loop_break_pops_scopes<'r>(_v: &'r mut [uint], f: &fn(&'r mut uint) -> bool) 
     }
 }
 
-fn loop_loop_pops_scopes<'r>(_v: &'r mut [uint], f: &fn(&'r mut uint) -> bool) {
+fn loop_loop_pops_scopes<'r>(_v: &'r mut [uint], f: |&'r mut uint| -> bool) {
     // Similar to `loop_break_pops_scopes` but for the `loop` keyword
 
     while cond() {

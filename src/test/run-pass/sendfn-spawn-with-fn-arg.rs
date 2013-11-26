@@ -19,12 +19,12 @@ fn test05_start(f: proc(int)) {
 
 fn test05() {
     let three = ~3;
-    let fn_to_send: proc(int) = |n| {
+    let fn_to_send: proc(int) = proc(n) {
         error!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
     let fn_to_send = Cell::new(fn_to_send);
-    task::spawn(|| {
+    task::spawn(proc() {
         test05_start(fn_to_send.take());
     });
 }

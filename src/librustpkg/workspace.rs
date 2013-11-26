@@ -18,7 +18,10 @@ use path_util::rust_path;
 use util::option_to_vec;
 use package_id::PkgId;
 
-pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
+pub fn each_pkg_parent_workspace(cx: &Context,
+                                 pkgid: &PkgId,
+                                 action: |&Path| -> bool)
+                                 -> bool {
     // Using the RUST_PATH, find workspaces that contain
     // this package ID
     let workspaces = pkg_parent_workspaces(cx, pkgid);

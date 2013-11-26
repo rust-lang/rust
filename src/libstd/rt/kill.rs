@@ -257,10 +257,7 @@ impl Death {
     /// Collect failure exit codes from children and propagate them to a parent.
     pub fn collect_failure(&mut self, result: UnwindResult) {
         let result = Cell::new(result);
-
-        do self.on_exit.take().map |on_exit| {
-            on_exit(result.take());
-        };
+        self.on_exit.take().map(|on_exit| on_exit(result.take()));
     }
 
     /// Enter a possibly-nested "atomic" section of code. Just for assertions.

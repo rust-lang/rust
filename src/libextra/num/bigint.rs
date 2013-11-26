@@ -158,12 +158,12 @@ impl Orderable for BigUint {
 impl BitAnd<BigUint, BigUint> for BigUint {
     fn bitand(&self, other: &BigUint) -> BigUint {
         let new_len = num::min(self.data.len(), other.data.len());
-        let anded = do vec::from_fn(new_len) |i| {
+        let anded = vec::from_fn(new_len, |i| {
             // i will never be less than the size of either data vector
             let ai = self.data[i];
             let bi = other.data[i];
             ai & bi
-        };
+        });
         return BigUint::new(anded);
     }
 }
@@ -171,11 +171,11 @@ impl BitAnd<BigUint, BigUint> for BigUint {
 impl BitOr<BigUint, BigUint> for BigUint {
     fn bitor(&self, other: &BigUint) -> BigUint {
         let new_len = num::max(self.data.len(), other.data.len());
-        let ored = do vec::from_fn(new_len) |i| {
+        let ored = vec::from_fn(new_len, |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             ai | bi
-        };
+        });
         return BigUint::new(ored);
     }
 }
@@ -183,11 +183,11 @@ impl BitOr<BigUint, BigUint> for BigUint {
 impl BitXor<BigUint, BigUint> for BigUint {
     fn bitxor(&self, other: &BigUint) -> BigUint {
         let new_len = num::max(self.data.len(), other.data.len());
-        let xored = do vec::from_fn(new_len) |i| {
+        let xored = vec::from_fn(new_len, |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             ai ^ bi
-        };
+        });
         return BigUint::new(xored);
     }
 }
@@ -230,7 +230,7 @@ impl Add<BigUint, BigUint> for BigUint {
         let new_len = num::max(self.data.len(), other.data.len());
 
         let mut carry = 0;
-        let mut sum = do vec::from_fn(new_len) |i| {
+        let mut sum = vec::from_fn(new_len, |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             let (hi, lo) = BigDigit::from_uint(
@@ -238,7 +238,7 @@ impl Add<BigUint, BigUint> for BigUint {
             );
             carry = hi;
             lo
-        };
+        });
         if carry != 0 { sum.push(carry); }
         return BigUint::new(sum);
     }
@@ -249,7 +249,7 @@ impl Sub<BigUint, BigUint> for BigUint {
         let new_len = num::max(self.data.len(), other.data.len());
 
         let mut borrow = 0;
-        let diff = do vec::from_fn(new_len) |i| {
+        let diff = vec::from_fn(new_len, |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
             let (hi, lo) = BigDigit::from_uint(
@@ -262,7 +262,7 @@ impl Sub<BigUint, BigUint> for BigUint {
             */
             borrow = if hi == 0 { 1 } else { 0 };
             lo
-        };
+        });
 
         assert_eq!(borrow, 0);     // <=> assert!((self >= other));
         return BigUint::new(diff);
@@ -306,13 +306,13 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return (*a).clone(); }
 
             let mut carry = 0;
-            let mut prod = do a.data.iter().map |ai| {
+            let mut prod = a.data.iter().map(|ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
                 carry = hi;
                 lo
-            }.collect::<~[BigDigit]>();
+            }).collect::<~[BigDigit]>();
             if carry != 0 { prod.push(carry); }
             return BigUint::new(prod);
         }
@@ -504,14 +504,14 @@ impl Integer for BigUint {
 impl ToPrimitive for BigUint {
     #[inline]
     fn to_i64(&self) -> Option<i64> {
-        do self.to_u64().and_then |n| {
+        self.to_u64().and_then(|n| {
             // If top bit of u64 is set, it's too large to convert to i64.
             if n >> 63 == 0 {
                 Some(n as i64)
             } else {
                 None
             }
-        }
+        })
     }
 
     #[cfg(target_word_size = "32")]
@@ -763,13 +763,13 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
-        let mut shifted = do self.data.iter().map |elem| {
+        let mut shifted = self.data.iter().map(|elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );
             carry = hi;
             lo
-        }.collect::<~[BigDigit]>();
+        }).collect::<~[BigDigit]>();
         if carry != 0 { shifted.push(carry); }
         return BigUint::new(shifted);
     }
@@ -1182,7 +1182,7 @@ impl ToPrimitive for BigInt {
             Plus  => self.data.to_i64(),
             Zero  => Some(0),
             Minus => {
-                do self.data.to_u64().and_then |n| {
+                self.data.to_u64().and_then(|n| {
                     let m: u64 = 1 << 63;
                     if n < m {
                         Some(-(n as i64))
@@ -1191,7 +1191,7 @@ impl ToPrimitive for BigInt {
                     } else {
                         None
                     }
-                }
+                })
             }
         }
     }
@@ -1210,13 +1210,14 @@ impl FromPrimitive for BigInt {
     #[inline]
     fn from_i64(n: i64) -> Option<BigInt> {
         if n > 0 {
-            do FromPrimitive::from_u64(n as u64).and_then |n| {
+            FromPrimitive::from_u64(n as u64).and_then(|n| {
                 Some(BigInt::from_biguint(Plus, n))
-            }
+            })
         } else if n < 0 {
-            do FromPrimitive::from_u64(u64::max_value - (n as u64) + 1).and_then |n| {
-                Some(BigInt::from_biguint(Minus, n))
-            }
+            FromPrimitive::from_u64(u64::max_value - (n as u64) + 1).and_then(
+                |n| {
+                    Some(BigInt::from_biguint(Minus, n))
+                })
         } else {
             Some(Zero::zero())
         }
@@ -1227,9 +1228,9 @@ impl FromPrimitive for BigInt {
         if n == 0 {
             Some(Zero::zero())
         } else {
-            do FromPrimitive::from_u64(n).and_then |n| {
+            FromPrimitive::from_u64(n).and_then(|n| {
                 Some(BigInt::from_biguint(Plus, n))
-            }
+            })
         }
     }
 }
@@ -2051,22 +2052,22 @@ mod biguint_tests {
     fn test_rand_range() {
         let mut rng = task_rng();
 
-        do 10.times {
+        10.times(|| {
             assert_eq!(rng.gen_bigint_range(&FromPrimitive::from_uint(236).unwrap(),
                                             &FromPrimitive::from_uint(237).unwrap()),
                        FromPrimitive::from_uint(236).unwrap());
-        }
+        });
 
         let l = FromPrimitive::from_uint(403469000 + 2352).unwrap();
         let u = FromPrimitive::from_uint(403469000 + 3513).unwrap();
-        do 1000.times {
+        1000.times(|| {
             let n: BigUint = rng.gen_biguint_below(&u);
             assert!(n < u);
 
             let n: BigUint = rng.gen_biguint_range(&l, &u);
             assert!(n >= l);
             assert!(n < u);
-        }
+        })
     }
 
     #[test]
@@ -2548,19 +2549,19 @@ mod bigint_tests {
     fn test_rand_range() {
         let mut rng = task_rng();
 
-        do 10.times {
+        10.times(|| {
             assert_eq!(rng.gen_bigint_range(&FromPrimitive::from_uint(236).unwrap(),
                                             &FromPrimitive::from_uint(237).unwrap()),
                        FromPrimitive::from_uint(236).unwrap());
-        }
+        });
 
         fn check(l: BigInt, u: BigInt) {
             let mut rng = task_rng();
-            do 1000.times {
+            1000.times(|| {
                 let n: BigInt = rng.gen_bigint_range(&l, &u);
                 assert!(n >= l);
                 assert!(n < u);
-            }
+            });
         }
         let l: BigInt = FromPrimitive::from_uint(403469000 + 2352).unwrap();
         let u: BigInt = FromPrimitive::from_uint(403469000 + 3513).unwrap();
@@ -2614,19 +2615,27 @@ mod bench {
 
     #[bench]
     fn factorial_100(bh: &mut BenchHarness) {
-        do bh.iter { factorial(100);  }
+        bh.iter(|| {
+            factorial(100);
+        });
     }
 
     #[bench]
     fn fib_100(bh: &mut BenchHarness) {
-        do bh.iter { fib(100); }
+        bh.iter(|| {
+            fib(100);
+        });
     }
 
     #[bench]
     fn to_str(bh: &mut BenchHarness) {
         let fac = factorial(100);
         let fib = fib(100);
-        do bh.iter { fac.to_str(); }
-        do bh.iter { fib.to_str(); }
+        bh.iter(|| {
+            fac.to_str();
+        });
+        bh.iter(|| {
+            fib.to_str();
+        });
     }
 }

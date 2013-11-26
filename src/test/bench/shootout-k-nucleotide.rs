@@ -154,7 +154,7 @@ impl Table {
         }
     }
 
-    fn each(&self, f: &fn(entry: &Entry) -> bool) {
+    fn each(&self, f: |entry: &Entry| -> bool) {
         for self.items.each |item| {
             match *item {
                 None => {}

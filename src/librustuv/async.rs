@@ -111,14 +111,14 @@ impl RemoteCallback for AsyncWatcher {
 impl Drop for AsyncWatcher {
     fn drop(&mut self) {
         unsafe {
-            do self.exit_flag.with |should_exit| {
+            self.exit_flag.with(|should_exit| {
                 // NB: These two things need to happen atomically. Otherwise
                 // the event handler could wake up due to a *previous*
                 // signal and see the exit flag, destroying the handle
                 // before the final send.
                 *should_exit = true;
                 uvll::uv_async_send(self.handle)
-            }
+            })
         }
     }
 }

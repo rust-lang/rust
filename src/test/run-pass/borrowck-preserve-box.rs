@@ -1,3 +1,5 @@
+// xfail-pretty
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -12,7 +14,7 @@
 
 use std::ptr;
 
-fn borrow(x: &int, f: &fn(x: &int)) {
+fn borrow(x: &int, f: |x: &int|) {
     let before = *x;
     f(x);
     let after = *x;
@@ -21,7 +23,7 @@ fn borrow(x: &int, f: &fn(x: &int)) {
 
 pub fn main() {
     let mut x = @3;
-    do borrow(x) |b_x| {
+    borrow(x, |b_x| {
         assert_eq!(*b_x, 3);
         assert_eq!(ptr::to_unsafe_ptr(&(*x)), ptr::to_unsafe_ptr(&(*b_x)));
         x = @22;
@@ -30,5 +32,5 @@ pub fn main() {
                ptr::to_unsafe_ptr(&(*b_x)) as uint);
         assert_eq!(*b_x, 3);
         assert!(ptr::to_unsafe_ptr(&(*x)) != ptr::to_unsafe_ptr(&(*b_x)));
-    }
+    })
 }

@@ -134,9 +134,8 @@ impl<T: Send> UnsafeArc<T> {
     /// If called when the task is already unkillable, unwrap will unkillably
     /// block; otherwise, an unwrapping task can be killed by linked failure.
     pub fn unwrap(self) -> T {
-        let this = Cell::new(self); // argh
         unsafe {
-            let mut this = this.take();
+            let mut this = self;
             // The ~ dtor needs to run if this code succeeds.
             let mut data: ~ArcData<T> = cast::transmute(this.data);
             // Set up the unwrap protocol.
@@ -164,7 +163,7 @@ impl<T: Send> UnsafeArc<T> {
                     // Unlike the above one, this cell is necessary. It will get
                     // taken either in the do block or in the finally block.
                     let c2_and_data = Cell::new((c2,data));
-                    do (|| {
+                    (|| {
                         p1.take().recv();
                         // Got here. Back in the 'unkillable' without getting killed.
                         let (c2, data) = c2_and_data.take();
@@ -174,7 +173,7 @@ impl<T: Send> UnsafeArc<T> {
                         // user_data
                         let mut data = data;
                         data.data.take_unwrap()
-                    }).finally {
+                    }).finally(|| {
                         if task::failing() {
                             // Killed during wait. Because this might happen while
                             // someone else still holds a reference, we can't free
@@ -185,7 +184,7 @@ impl<T: Send> UnsafeArc<T> {
                         } else {
                             assert!(c2_and_data.is_empty());
                         }
-                    }
+                    })
                 }
             } else {
                 // If 'put' returns the server end back to us, we were rejected;
@@ -256,8 +255,6 @@ impl<T> Drop for UnsafeArc<T>{
                 // *awake* task with the data.
                 match data.unwrapper.take(Acquire) {
                     Some(~(message,response)) => {
-                        let cell = Cell::new((message, response, data));
-                        let (message, response, data) = cell.take();
                         // Send 'ready' and wait for a response.
                         message.send(());
                         // Unkillable wait. Message guaranteed to come.
@@ -301,12 +298,10 @@ pub unsafe fn atomically<U>(f: || -> U) -> U {
         Some(t) => {
             match (*t).task_type {
                 GreenTask(_) => {
-                    do (|| {
+                    (|| {
                         (*t).death.inhibit_deschedule();
                         f()
-                    }).finally {
-                        (*t).death.allow_deschedule();
-                    }
+                    }).finally(|| (*t).death.allow_deschedule())
                 }
                 SchedTask => f()
             }
@@ -425,9 +420,7 @@ impl<T:Send> Exclusive<T> {
 
     #[inline]
     pub unsafe fn with_imm<U>(&self, f: |x: &T| -> U) -> U {
-        do self.with |x| {
-            f(cast::transmute_immut(x))
-        }
+        self.with(|x| f(cast::transmute_immut(x)))
     }
 
     #[inline]
@@ -469,7 +462,6 @@ impl<T:Send> Exclusive<T> {
 
 #[cfg(test)]
 mod tests {
-    use cell::Cell;
     use comm;
     use option::*;
     use prelude::*;
@@ -489,7 +481,7 @@ mod tests {
     fn test_atomically() {
         // NB. The whole runtime will abort on an 'atomic-sleep' violation,
         // so we can't really test for the converse behaviour.
-        unsafe { do atomically { } } task::deschedule(); // oughtn't fail
+        unsafe { atomically(|| ()) } task::deschedule(); // oughtn't fail
     }
 
     #[test]
@@ -509,9 +501,7 @@ mod tests {
 
                 do task::spawn || {
                     for _ in range(0u, count) {
-                        do total.with |count| {
-                            **count += 1;
-                        }
+                        total.with(|count| **count += 1);
                     }
                     chan.send(());
                 }
@@ -519,9 +509,7 @@ mod tests {
 
             for f in futures.iter() { f.recv() }
 
-            do total.with |total| {
-                assert!(**total == num_tasks * count)
-            };
+            total.with(|total| assert!(**total == num_tasks * count));
         }
     }
 
@@ -533,13 +521,9 @@ mod tests {
             let x = Exclusive::new(1);
             let x2 = x.clone();
             do task::try || {
-                do x2.with |one| {
-                    assert_eq!(*one, 2);
-                }
+                x2.with(|one| assert_eq!(*one, 2))
             };
-            do x.with |one| {
-                assert_eq!(*one, 1);
-            }
+            x.with(|one| assert_eq!(*one, 1));
         }
     }
 
@@ -595,11 +579,11 @@ mod tests {
     fn arclike_try_unwrap_unwrap_race() {
         // When an unwrap and a try_unwrap race, the unwrapper should always win.
         let x = UnsafeArc::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = x.clone();
         let (p,c) = comm::stream();
         do task::spawn {
             c.send(());
-            assert!(x2.take().unwrap() == ~~"hello");
+            assert!(x2.unwrap() == ~~"hello");
             c.send(());
         }
         p.recv();
@@ -620,21 +604,19 @@ mod tests {
     #[test]
     fn exclusive_new_unwrap_contended() {
         let x = Exclusive::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = x.clone();
         do task::spawn {
-            let x2 = x2.take();
-            unsafe { do x2.with |_hello| { } }
+            unsafe { x2.with(|_hello| ()); }
             task::deschedule();
         }
         assert!(x.unwrap() == ~~"hello");
 
         // Now try the same thing, but with the child task blocking.
         let x = Exclusive::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = x.clone();
         let mut builder = task::task();
         let res = builder.future_result();
         do builder.spawn {
-            let x2 = x2.take();
             assert!(x2.unwrap() == ~~"hello");
         }
         // Have to get rid of our reference before blocking.
@@ -645,11 +627,10 @@ mod tests {
     #[test] #[should_fail]
     fn exclusive_new_unwrap_conflict() {
         let x = Exclusive::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = x.clone();
         let mut builder = task::task();
         let res = builder.future_result();
         do builder.spawn {
-            let x2 = x2.take();
             assert!(x2.unwrap() == ~~"hello");
         }
         assert!(x.unwrap() == ~~"hello");

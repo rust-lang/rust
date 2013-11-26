@@ -224,11 +224,11 @@ impl<T:Send> MutexArc<T> {
         let state = self.x.get();
         // Borrowck would complain about this if the function were
         // not already unsafe. See borrow_rwlock, far below.
-        do (&(*state).lock).lock {
+        (&(*state).lock).lock(|| {
             check_poison(true, (*state).failed);
             let _z = PoisonOnFail(&mut (*state).failed);
             blk(&mut (*state).data)
-        }
+        })
     }
 
     /// As unsafe_access(), but with a condvar, as sync::mutex.lock_cond().
@@ -237,14 +237,14 @@ impl<T:Send> MutexArc<T> {
                                         blk: |x: &mut T, c: &Condvar| -> U)
                                         -> U {
         let state = self.x.get();
-        do (&(*state).lock).lock_cond |cond| {
+        (&(*state).lock).lock_cond(|cond| {
             check_poison(true, (*state).failed);
             let _z = PoisonOnFail(&mut (*state).failed);
             blk(&mut (*state).data,
                 &Condvar {is_mutex: true,
                           failed: &mut (*state).failed,
                           cond: cond })
-        }
+        })
     }
 
     /**
@@ -390,11 +390,11 @@ impl<T:Freeze + Send> RWArc<T> {
     pub fn write<U>(&self, blk: |x: &mut T| -> U) -> U {
         unsafe {
             let state = self.x.get();
-            do (*borrow_rwlock(state)).write {
+            (*borrow_rwlock(state)).write(|| {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail(&mut (*state).failed);
                 blk(&mut (*state).data)
-            }
+            })
         }
     }
 
@@ -405,14 +405,14 @@ impl<T:Freeze + Send> RWArc<T> {
                          -> U {
         unsafe {
             let state = self.x.get();
-            do (*borrow_rwlock(state)).write_cond |cond| {
+            (*borrow_rwlock(state)).write_cond(|cond| {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail(&mut (*state).failed);
                 blk(&mut (*state).data,
                     &Condvar {is_mutex: false,
                               failed: &mut (*state).failed,
                               cond: cond})
-            }
+            })
         }
     }
 
@@ -428,10 +428,10 @@ impl<T:Freeze + Send> RWArc<T> {
     pub fn read<U>(&self, blk: |x: &T| -> U) -> U {
         unsafe {
             let state = self.x.get();
-            do (*state).lock.read {
+            (*state).lock.read(|| {
                 check_poison(false, (*state).failed);
                 blk(&(*state).data)
-            }
+            })
         }
     }
 
@@ -458,14 +458,14 @@ impl<T:Freeze + Send> RWArc<T> {
     pub fn write_downgrade<U>(&self, blk: |v: RWWriteMode<T>| -> U) -> U {
         unsafe {
             let state = self.x.get();
-            do (*borrow_rwlock(state)).write_downgrade |write_mode| {
+            (*borrow_rwlock(state)).write_downgrade(|write_mode| {
                 check_poison(false, (*state).failed);
                 blk(RWWriteMode {
                     data: &mut (*state).data,
                     token: write_mode,
                     poison: PoisonOnFail(&mut (*state).failed)
                 })
-            }
+            })
         }
     }
 
@@ -544,9 +544,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
                 token: ref token,
                 poison: _
             } => {
-                do token.write {
-                    blk(data)
-                }
+                token.write(|| blk(data))
             }
         }
     }
@@ -561,7 +559,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
                 token: ref token,
                 poison: ref poison
             } => {
-                do token.write_cond |cond| {
+                token.write_cond(|cond| {
                     unsafe {
                         let cvar = Condvar {
                             is_mutex: false,
@@ -570,7 +568,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
                         };
                         blk(data, &cvar)
                     }
-                }
+                })
             }
         }
     }
@@ -584,7 +582,7 @@ impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
                 data: data,
                 token: ref token
             } => {
-                do token.read { blk(data) }
+                token.read(|| blk(data))
             }
         }
     }
@@ -634,19 +632,19 @@ mod tests {
         do task::spawn || {
             // wait until parent gets in
             p.take().recv();
-            do arc2.access_cond |state, cond| {
+            arc2.access_cond(|state, cond| {
                 *state = true;
                 cond.signal();
-            }
+            })
         }
 
-        do arc.access_cond |state, cond| {
+        arc.access_cond(|state, cond| {
             c.take().send(());
             assert!(!*state);
             while !*state {
                 cond.wait();
             }
-        }
+        })
     }
 
     #[test] #[should_fail]
@@ -657,19 +655,19 @@ mod tests {
 
         do spawn {
             let _ = p.recv();
-            do arc2.access_cond |one, cond| {
+            arc2.access_cond(|one, cond| {
                 cond.signal();
                 // Parent should fail when it wakes up.
                 assert_eq!(*one, 0);
-            }
+            })
         }
 
-        do arc.access_cond |one, cond| {
+        arc.access_cond(|one, cond| {
             c.send(());
             while *one == 1 {
                 cond.wait();
             }
-        }
+        })
     }
 
     #[test] #[should_fail]
@@ -677,13 +675,13 @@ mod tests {
         let arc = ~MutexArc::new(1);
         let arc2 = ~arc.clone();
         do task::try || {
-            do arc2.access |one| {
+            arc2.access(|one| {
                 assert_eq!(*one, 2);
-            }
+            })
         };
-        do arc.access |one| {
+        arc.access(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
 
     #[test] #[should_fail]
@@ -692,10 +690,10 @@ mod tests {
         let arc2 = ~(&arc).clone();
         let (p, c) = comm::stream();
         do task::spawn {
-            do arc2.access |one| {
+            arc2.access(|one| {
                 c.send(());
                 assert!(*one == 2);
-            }
+            })
         }
         let _ = p.recv();
         let one = arc.unwrap();
@@ -710,11 +708,11 @@ mod tests {
             let arc = ~MutexArc::new(1);
             let arc2 = ~MutexArc::new(*arc);
             do task::spawn || {
-                do (*arc2).unsafe_access |mutex| {
-                    do (*mutex).access |one| {
+                (*arc2).unsafe_access(|mutex| {
+                    (*mutex).access(|one| {
                         assert!(*one == 1);
-                    }
-                }
+                    })
+                })
             };
         }
     }
@@ -724,13 +722,13 @@ mod tests {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
         do task::try {
-            do arc2.write |one| {
+            arc2.write(|one| {
                 assert_eq!(*one, 2);
-            }
+            })
         };
-        do arc.read |one| {
+        arc.read(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
 
     #[test] #[should_fail]
@@ -738,70 +736,70 @@ mod tests {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
         do task::try {
-            do arc2.write |one| {
+            arc2.write(|one| {
                 assert_eq!(*one, 2);
-            }
+            })
         };
-        do arc.write |one| {
+        arc.write(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
     #[test] #[should_fail]
     fn test_rw_arc_poison_dw() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
         do task::try {
-            do arc2.write_downgrade |mut write_mode| {
-                do write_mode.write |one| {
+            arc2.write_downgrade(|mut write_mode| {
+                write_mode.write(|one| {
                     assert_eq!(*one, 2);
-                }
-            }
+                })
+            })
         };
-        do arc.write |one| {
+        arc.write(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
     #[test]
     fn test_rw_arc_no_poison_rr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
         do task::try {
-            do arc2.read |one| {
+            arc2.read(|one| {
                 assert_eq!(*one, 2);
-            }
+            })
         };
-        do arc.read |one| {
+        arc.read(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
     #[test]
     fn test_rw_arc_no_poison_rw() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
         do task::try {
-            do arc2.read |one| {
+            arc2.read(|one| {
                 assert_eq!(*one, 2);
-            }
+            })
         };
-        do arc.write |one| {
+        arc.write(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
     #[test]
     fn test_rw_arc_no_poison_dr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
         do task::try {
-            do arc2.write_downgrade |write_mode| {
+            arc2.write_downgrade(|write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
-                do read_mode.read |one| {
+                read_mode.read(|one| {
                     assert_eq!(*one, 2);
-                }
-            }
+                })
+            })
         };
-        do arc.write |one| {
+        arc.write(|one| {
             assert_eq!(*one, 1);
-        }
+        })
     }
     #[test]
     fn test_rw_arc() {
@@ -810,29 +808,29 @@ mod tests {
         let (p, c) = comm::stream();
 
         do task::spawn {
-            do arc2.write |num| {
-                do 10.times {
+            arc2.write(|num| {
+                10.times(|| {
                     let tmp = *num;
                     *num = -1;
                     task::deschedule();
                     *num = tmp + 1;
-                }
+                });
                 c.send(());
-            }
+            })
         }
 
         // Readers try to catch the writer in the act
         let mut children = ~[];
-        do 5.times {
+        5.times(|| {
             let arc3 = arc.clone();
             let mut builder = task::task();
             children.push(builder.future_result());
             do builder.spawn {
-                do arc3.read |num| {
+                arc3.read(|num| {
                     assert!(*num >= 0);
-                }
+                })
             }
-        }
+        });
 
         // Wait for children to pass their asserts
         for r in children.iter() {
@@ -841,9 +839,9 @@ mod tests {
 
         // Wait for writer to finish
         p.recv();
-        do arc.read |num| {
+        arc.read(|num| {
             assert_eq!(*num, 10);
-        }
+        })
     }
     #[test]
     fn test_rw_downgrade() {
@@ -857,42 +855,42 @@ mod tests {
 
         // Reader tasks
         let mut reader_convos = ~[];
-        do 10.times {
+        10.times(|| {
             let ((rp1, rc1), (rp2, rc2)) = (comm::stream(), comm::stream());
             reader_convos.push((rc1, rp2));
             let arcn = arc.clone();
             do task::spawn {
                 rp1.recv(); // wait for downgrader to give go-ahead
-                do arcn.read |state| {
+                arcn.read(|state| {
                     assert_eq!(*state, 31337);
                     rc2.send(());
-                }
+                })
             }
-        }
+        });
 
         // Writer task
         let arc2 = arc.clone();
         let ((wp1, wc1), (wp2, wc2)) = (comm::stream(), comm::stream());
         do task::spawn || {
             wp1.recv();
-            do arc2.write_cond |state, cond| {
+            arc2.write_cond(|state, cond| {
                 assert_eq!(*state, 0);
                 *state = 42;
                 cond.signal();
-            }
+            });
             wp1.recv();
-            do arc2.write |state| {
+            arc2.write(|state| {
                 // This shouldn't happen until after the downgrade read
                 // section, and all other readers, finish.
                 assert_eq!(*state, 31337);
                 *state = 42;
-            }
+            });
             wc2.send(());
         }
 
         // Downgrader (us)
-        do arc.write_downgrade |mut write_mode| {
-            do write_mode.write_cond |state, cond| {
+        arc.write_downgrade(|mut write_mode| {
+            write_mode.write_cond(|state, cond| {
                 wc1.send(()); // send to another writer who will wake us up
                 while *state == 0 {
                     cond.wait();
@@ -903,17 +901,17 @@ mod tests {
                 for &(ref rc, _) in reader_convos.iter() {
                     rc.send(())
                 }
-            }
+            });
             let read_mode = arc.downgrade(write_mode);
-            do read_mode.read |state| {
+            read_mode.read(|state| {
                 // complete handshake with other readers
                 for &(_, ref rp) in reader_convos.iter() {
                     rp.recv()
                 }
                 wc1.send(()); // tell writer to try again
                 assert_eq!(*state, 31337);
-            }
-        }
+            });
+        });
 
         wp2.recv(); // complete handshake with writer
     }
@@ -934,42 +932,42 @@ mod tests {
         // writer task
         let xw = x.clone();
         do task::spawn {
-            do xw.write_cond |state, c| {
+            xw.write_cond(|state, c| {
                 wc.send(()); // tell downgrader it's ok to go
                 c.wait();
                 // The core of the test is here: the condvar reacquire path
                 // must involve order_lock, so that it cannot race with a reader
                 // trying to receive the "reader cloud lock hand-off".
                 *state = false;
-            }
+            })
         }
 
         wp.recv(); // wait for writer to get in
 
-        do x.write_downgrade |mut write_mode| {
-            do write_mode.write_cond |state, c| {
+        x.write_downgrade(|mut write_mode| {
+            write_mode.write_cond(|state, c| {
                 assert!(*state);
                 // make writer contend in the cond-reacquire path
                 c.signal();
-            }
+            });
             // make a reader task to trigger the "reader cloud lock" handoff
             let xr = x.clone();
             let (rp, rc) = comm::stream();
             do task::spawn {
                 rc.send(());
-                do xr.read |_state| { }
+                xr.read(|_state| { })
             }
             rp.recv(); // wait for reader task to exist
 
             let read_mode = x.downgrade(write_mode);
-            do read_mode.read |state| {
+            read_mode.read(|state| {
                 // if writer mistakenly got in, make sure it mutates state
                 // before we assert on it
-                do 5.times { task::deschedule(); }
+                5.times(|| task::deschedule());
                 // make sure writer didn't get in.
                 assert!(*state);
-            }
-        }
+            })
+        });
     }
     #[test]
     fn test_rw_write_cond_downgrade_read_race() {
@@ -977,6 +975,6 @@ mod tests {
         // helped to expose the race nearly 100% of the time... but adding
         // deschedules in the intuitively-right locations made it even less likely,
         // and I wasn't sure why :( . This is a mediocre "next best" option.
-        do 8.times { test_rw_write_cond_downgrade_read_race_helper() }
+        8.times(|| test_rw_write_cond_downgrade_read_race_helper());
     }
 }

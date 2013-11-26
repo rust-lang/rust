@@ -64,11 +64,9 @@ impl Drop for AsciiArt {
 fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
-    let lines = do vec::build(Some(height)) |push| {
-            do height.times {
-                push(vec::from_elem(width, '.'));
-            }
-        };
+    let lines = vec::build(Some(height), |push| {
+        height.times(|| push(vec::from_elem(width, '.')))
+    });
 
     // Rust code often returns values by omitting the trailing semi-colon
     // instead of using an explicit return statement.
@@ -101,7 +99,7 @@ impl AsciiArt {
 impl ToStr for AsciiArt {
     fn to_str(&self) -> ~str {
         // Convert each line into a string.
-        let lines = do self.lines.map |line| {str::from_chars(*line)};
+        let lines = self.lines.map(|line| str::from_chars(*line));
 
         // Concatenate the lines together using a new-line.
         lines.connect("\n")

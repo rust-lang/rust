@@ -109,16 +109,16 @@ mod imp {
 
     fn with_lock<T>(f: || -> T) -> T {
         static mut lock: Mutex = MUTEX_INIT;
-        do (|| {
+        (|| {
             unsafe {
                 lock.lock();
                 f()
             }
-        }).finally {
+        }).finally(|| {
             unsafe {
                 lock.unlock();
             }
-        }
+        })
     }
 
     fn get_global_ptr() -> *mut Option<~~[~str]> {
@@ -127,9 +127,9 @@ mod imp {
 
     // Copied from `os`.
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~str] {
-        do vec::from_fn(argc as uint) |i| {
+        vec::from_fn(argc as uint, |i| {
             str::raw::from_c_str(*(argv as **libc::c_char).offset(i as int))
-        }
+        })
     }
 
     #[cfg(test)]
@@ -150,14 +150,14 @@ mod imp {
             assert!(take() == Some(expected.clone()));
             assert!(take() == None);
 
-            do (|| {
-            }).finally {
+            (|| {
+            }).finally(|| {
                 // Restore the actual global state.
                 match saved_value {
                     Some(ref args) => put(args.clone()),
                     None => ()
                 }
-            }
+            })
         }
     }
 }

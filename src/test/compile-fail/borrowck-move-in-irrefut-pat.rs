@@ -1,4 +1,4 @@
-fn with(f: &fn(&~str)) {}
+fn with(f: |&~str|) {}
 
 fn arg_item(&_x: &~str) {}
     //~^ ERROR cannot move out of dereference of & pointer

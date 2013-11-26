@@ -57,8 +57,8 @@ impl Process {
             }
         }
 
-        let ret = do with_argv(config.program, config.args) |argv| {
-            do with_env(config.env) |envp| {
+        let ret = with_argv(config.program, config.args, |argv| {
+            with_env(config.env, |envp| {
                 let options = uvll::uv_process_options_t {
                     exit_cb: on_exit,
                     file: unsafe { *argv },
@@ -88,8 +88,8 @@ impl Process {
                     0 => Ok(process.install()),
                     err => Err(UvError(err)),
                 }
-            }
-        };
+            })
+        });
 
         match ret {
             Ok(p) => Ok((p, ret_io)),
@@ -148,7 +148,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
 }
 
 /// Converts the program and arguments to the argv array expected by libuv
-fn with_argv<T>(prog: &str, args: &[~str], f: &fn(**libc::c_char) -> T) -> T {
+fn with_argv<T>(prog: &str, args: &[~str], f: |**libc::c_char| -> T) -> T {
     // First, allocation space to put all the C-strings (we need to have
     // ownership of them somewhere
     let mut c_strs = vec::with_capacity(args.len() + 1);
@@ -167,7 +167,7 @@ fn with_argv<T>(prog: &str, args: &[~str], f: &fn(**libc::c_char) -> T) -> T {
 }
 
 /// Converts the environment to the env array expected by libuv
-fn with_env<T>(env: Option<&[(~str, ~str)]>, f: &fn(**libc::c_char) -> T) -> T {
+fn with_env<T>(env: Option<&[(~str, ~str)]>, f: |**libc::c_char| -> T) -> T {
     let env = match env {
         Some(s) => s,
         None => { return f(ptr::null()); }

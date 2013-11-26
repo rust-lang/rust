@@ -336,7 +336,7 @@ pub fn call_tydesc_glue(cx: @mut Block, v: ValueRef, t: ty::t, field: uint)
 
 pub fn make_visit_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
     let _icx = push_ctxt("make_visit_glue");
-    do with_scope(bcx, None, "visitor cleanup") |bcx| {
+    with_scope(bcx, None, "visitor cleanup", |bcx| {
         let mut bcx = bcx;
         let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
                                                                      ty::ReStatic) {
@@ -350,7 +350,7 @@ pub fn make_visit_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
         // The visitor is a boxed object and needs to be dropped
         add_clean(bcx, v, object_ty);
         bcx
-    }
+    })
 }
 
 pub fn make_free_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
@@ -394,9 +394,9 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
                               class_did: ast::DefId, substs: &ty::substs) -> @mut Block {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
-    do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
+    with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag)), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
-    }
+    })
 }
 
 pub fn trans_struct_drop(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
@@ -420,7 +420,7 @@ pub fn trans_struct_drop(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast:
     // Be sure to put all of the fields into a scope so we can use an invoke
     // instruction to call the user destructor but still call the field
     // destructors if the user destructor fails.
-    do with_scope(bcx, None, "field drops") |bcx| {
+    with_scope(bcx, None, "field drops", |bcx| {
         let self_arg = PointerCast(bcx, v0, params[0]);
         let args = ~[self_arg];
 
@@ -434,7 +434,7 @@ pub fn trans_struct_drop(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast:
 
         let (_, bcx) = invoke(bcx, dtor_addr, args, []);
         bcx
-    }
+    })
 }
 
 pub fn make_drop_glue(bcx: @mut Block, v0: ValueRef, t: ty::t) -> @mut Block {
@@ -480,7 +480,7 @@ pub fn make_drop_glue(bcx: @mut Block, v0: ValueRef, t: ty::t) -> @mut Block {
       ty::ty_trait(_, _, ty::UniqTraitStore, _, _) => {
           let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
           // Only drop the value when it is non-null
-          do with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue))) |bcx| {
+          with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {
               let llvtable = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
 
               // Cast the vtable to a pointer to a pointer to a tydesc.
@@ -493,7 +493,7 @@ pub fn make_drop_glue(bcx: @mut Block, v0: ValueRef, t: ty::t) -> @mut Block {
                                     abi::tydesc_field_free_glue,
                                     None);
               bcx
-          }
+          })
       }
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_drop_glue(bcx, ck, v0)
@@ -618,11 +618,11 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
     note_unique_llvm_symbol(ccx, name);
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_str(ccx.tcx, t), name);
-    let gvar = do name.with_c_str |buf| {
+    let gvar = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
         }
-    };
+    });
 
     let ty_name = C_estr_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
 
@@ -642,7 +642,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     return inf;
 }
 
-pub type glue_helper<'self> = &'self fn(@mut Block, ValueRef, ty::t) -> @mut Block;
+pub type glue_helper<'self> = 'self |@mut Block, ValueRef, ty::t|
+                                     -> @mut Block;
 
 pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
                             name: &str) -> ValueRef {

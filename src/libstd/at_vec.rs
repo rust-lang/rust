@@ -56,24 +56,24 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> @[A] {
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
 pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
-    do build(Some(lhs.len() + rhs.len())) |push| {
+    build(Some(lhs.len() + rhs.len()), |push| {
         for x in lhs.iter() {
             push((*x).clone());
         }
         for elt in rhs.iter() {
             push(elt.clone());
         }
-    }
+    })
 }
 
 
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: |x: &T| -> U) -> @[U] {
-    do build(Some(v.len())) |push| {
+    build(Some(v.len()), |push| {
         for elem in v.iter() {
             push(f(elem));
         }
-    }
+    })
 }
 
 /**
@@ -83,10 +83,10 @@ pub fn map<T, U>(v: &[T], f: |x: &T| -> U) -> @[U] {
  * to the value returned by the function `op`.
  */
 pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> @[T] {
-    do build(Some(n_elts)) |push| {
+    build(Some(n_elts), |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
-    }
+    })
 }
 
 /**
@@ -96,13 +96,13 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> @[T] {
  * to the value `t`.
  */
 pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
-    do build(Some(n_elts)) |push| {
+    build(Some(n_elts), |push| {
         let mut i: uint = 0u;
         while i < n_elts {
             push(t.clone());
             i += 1u;
         }
-    }
+    })
 }
 
 /**
@@ -137,11 +137,11 @@ impl<T> Clone for @[T] {
 impl<A> FromIterator<A> for @[A] {
     fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> @[A] {
         let (lower, _) = iterator.size_hint();
-        do build(Some(lower)) |push| {
+        build(Some(lower), |push| {
             for x in *iterator {
                 push(x);
             }
-        }
+        })
     }
 }
 
@@ -259,9 +259,9 @@ pub mod raw {
             use rt::local::Local;
             use rt::task::Task;
 
-            do Local::borrow |task: &mut Task| {
+            Local::borrow(|task: &mut Task| {
                 task.heap.realloc(ptr as *mut Box<()>, size) as *()
-            }
+            })
         }
     }
 
@@ -295,11 +295,11 @@ mod test {
     fn test() {
         // Some code that could use that, then:
         fn seq_range(lo: uint, hi: uint) -> @[uint] {
-            do build(None) |push| {
+            build(None, |push| {
                 for i in range(lo, hi) {
                     push(i);
                 }
-            }
+            })
         }
 
         assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
@@ -333,80 +333,80 @@ mod test {
     #[bench]
     fn bench_capacity(b: &mut bh) {
         let x = @[1, 2, 3];
-        do b.iter {
-            capacity(x);
-        }
+        b.iter(|| {
+            let _ = capacity(x);
+        });
     }
 
     #[bench]
     fn bench_build_sized(b: &mut bh) {
         let len = 64;
-        do b.iter {
+        b.iter(|| {
             build(Some(len), |push| for i in range(0, 1024) { push(i) });
-        }
+        });
     }
 
     #[bench]
     fn bench_build(b: &mut bh) {
-        do b.iter {
+        b.iter(|| {
             for i in range(0, 95) {
                 build(None, |push| push(i));
             }
-        }
+        });
     }
 
     #[bench]
     fn bench_append(b: &mut bh) {
         let lhs = @[7, ..128];
         let rhs = range(0, 256).to_owned_vec();
-        do b.iter {
-            append(lhs, rhs);
-        }
+        b.iter(|| {
+            let _ = append(lhs, rhs);
+        })
     }
 
     #[bench]
     fn bench_map(b: &mut bh) {
         let elts = range(0, 256).to_owned_vec();
-        do b.iter {
-            map(elts, |x| x*2);
-        }
+        b.iter(|| {
+            let _ = map(elts, |x| x*2);
+        })
     }
 
     #[bench]
     fn bench_from_fn(b: &mut bh) {
-        do b.iter {
-            from_fn(1024, |x| x);
-        }
+        b.iter(|| {
+            let _ = from_fn(1024, |x| x);
+        });
     }
 
     #[bench]
     fn bench_from_elem(b: &mut bh) {
-        do b.iter {
-            from_elem(1024, 0u64);
-        }
+        b.iter(|| {
+            let _ = from_elem(1024, 0u64);
+        });
     }
 
     #[bench]
     fn bench_to_managed_move(b: &mut bh) {
-        do b.iter {
+        b.iter(|| {
             let elts = range(0, 1024).to_owned_vec(); // yikes! can't move out of capture, though
             to_managed_move(elts);
-        }
+        })
     }
 
     #[bench]
     fn bench_to_managed(b: &mut bh) {
         let elts = range(0, 1024).to_owned_vec();
-        do b.iter {
-            to_managed(elts);
-        }
+        b.iter(|| {
+            let _ = to_managed(elts);
+        });
     }
 
     #[bench]
     fn bench_clone(b: &mut bh) {
         let elts = to_managed(range(0, 1024).to_owned_vec());
-        do b.iter {
-            elts.clone();
-        }
+        b.iter(|| {
+            let _ = elts.clone();
+        });
     }
 }

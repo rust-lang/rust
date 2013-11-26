@@ -29,6 +29,6 @@ pub fn main() {
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
     let (p, ch) = comm::stream();
-    task::spawn(|| start(&ch, 10));
+    task::spawn(proc() start(&ch, 10));
     p.recv();
 }

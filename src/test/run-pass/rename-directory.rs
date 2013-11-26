@@ -31,20 +31,20 @@ fn rename_directory() {
         let test_file = &old_path.join("temp.txt");
 
         /* Write the temp input file */
-        let ostream = do test_file.with_c_str |fromp| {
-            do "w+b".with_c_str |modebuf| {
+        let ostream = test_file.with_c_str(|fromp| {
+            "w+b".with_c_str(|modebuf| {
                 libc::fopen(fromp, modebuf)
-            }
-        };
+            })
+        });
         assert!((ostream as uint != 0u));
         let s = ~"hello";
-        do "hello".with_c_str |buf| {
+        "hello".with_c_str(|buf| {
             let write_len = libc::fwrite(buf as *libc::c_void,
                                          1u as libc::size_t,
                                          (s.len() + 1u) as libc::size_t,
                                          ostream);
             assert_eq!(write_len, (s.len() + 1) as libc::size_t)
-        }
+        });
         assert_eq!(libc::fclose(ostream), (0u as libc::c_int));
 
         let new_path = tmpdir.join_many(["quux", "blat"]);

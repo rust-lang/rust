@@ -52,7 +52,7 @@ impl Value {
     pub fn get_dominating_store(self, bcx: &mut Block) -> Option<Value> {
         match self.get_single_user().and_then(|user| user.as_store_inst()) {
             Some(store) => {
-                do store.get_parent().and_then |store_bb| {
+                store.get_parent().and_then(|store_bb| {
                     let mut bb = BasicBlock(bcx.llbb);
                     let mut ret = Some(store);
                     while *bb != *store_bb {
@@ -62,7 +62,7 @@ impl Value {
                         }
                     }
                     ret
-                }
+                })
             }
             _ => None
         }
@@ -150,8 +150,8 @@ impl Iterator<Value> for UserIterator {
     fn next(&mut self) -> Option<Value> {
         let current = self.next;
 
-        self.next = do current.and_then |u| { u.get_next_use() };
+        self.next = current.and_then(|u| u.get_next_use());
 
-        do current.map |u| { u.get_user() }
+        current.map(|u| u.get_user())
     }
 }

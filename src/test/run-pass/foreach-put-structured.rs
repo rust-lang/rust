@@ -10,7 +10,7 @@
 
 
 
-fn pairs(it: &fn((int, int))) {
+fn pairs(it: |(int, int)|) {
     let mut i: int = 0;
     let mut j: int = 0;
     while i < 10 { it((i, j)); i += 1; j += i; }
@@ -19,13 +19,13 @@ fn pairs(it: &fn((int, int))) {
 pub fn main() {
     let mut i: int = 10;
     let mut j: int = 0;
-    do pairs() |p| {
+    pairs(|p| {
         let (_0, _1) = p;
         info!("{}", _0);
         info!("{}", _1);
         assert_eq!(_0 + 10, i);
         i += 1;
         j = _1;
-    };
+    });
     assert_eq!(j, 45);
 }

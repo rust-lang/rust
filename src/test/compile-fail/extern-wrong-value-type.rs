@@ -14,5 +14,5 @@ extern fn f() {
 fn main() {
     // extern functions are extern "C" fn
     let _x: extern "C" fn() = f; // OK
-    let _x: &fn() = f; //~ ERROR mismatched types
+    let _x: || = f; //~ ERROR mismatched types
 }

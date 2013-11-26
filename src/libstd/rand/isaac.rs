@@ -51,9 +51,9 @@ impl IsaacRng {
         unsafe {
             let ptr = raw::to_mut_ptr(rng.rsl);
 
-            do raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl)) |slice| {
+            raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
                 OSRng::new().fill_bytes(slice);
-            }
+            })
         }
 
         rng.init(true);
@@ -94,7 +94,7 @@ impl IsaacRng {
             }}
         );
 
-        do 4.times { mix!(); }
+        4.times(|| mix!());
 
         if use_rsl {
             macro_rules! memloop (
@@ -256,9 +256,9 @@ impl Isaac64Rng {
         unsafe {
             let ptr = raw::to_mut_ptr(rng.rsl);
 
-            do raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl)) |slice| {
+            raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
                 OSRng::new().fill_bytes(slice);
-            }
+            })
         }
 
         rng.init(true);

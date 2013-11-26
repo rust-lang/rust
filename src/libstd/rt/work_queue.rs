@@ -37,25 +37,25 @@ impl<T: Send> WorkQueue<T> {
 
     pub fn pop(&mut self) -> Option<T> {
         unsafe {
-            do self.queue.with |q| {
+            self.queue.with(|q| {
                 if !q.is_empty() {
                     Some(q.shift())
                 } else {
                     None
                 }
-            }
+            })
         }
     }
 
     pub fn steal(&mut self) -> Option<T> {
         unsafe {
-            do self.queue.with |q| {
+            self.queue.with(|q| {
                 if !q.is_empty() {
                     Some(q.pop())
                 } else {
                     None
                 }
-            }
+            })
         }
     }
 

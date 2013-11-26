@@ -232,9 +232,7 @@ pub trait Combine {
     }
 
     fn args(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
-        do self.contratys(a, b).and_then |t| {
-            Ok(t)
-        }
+        self.contratys(a, b).and_then(|t| Ok(t))
     }
 
     fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
@@ -270,9 +268,9 @@ pub trait Combine {
 
         match (a, b) {
             (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
-                do self.contraregions(a_r, b_r).and_then |r| {
+                self.contraregions(a_r, b_r).and_then(|r| {
                     Ok(ty::vstore_slice(r))
-                }
+                })
             }
 
             _ if a == b => {
@@ -294,9 +292,9 @@ pub trait Combine {
 
         match (a, b) {
             (ty::RegionTraitStore(a_r), ty::RegionTraitStore(b_r)) => {
-                do self.contraregions(a_r, b_r).and_then |r| {
+                self.contraregions(a_r, b_r).and_then(|r| {
                     Ok(ty::RegionTraitStore(r))
-                }
+                })
             }
 
             _ if a == b => {
@@ -346,11 +344,9 @@ pub fn expected_found<C:Combine,T>(
 
 pub fn eq_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> ures {
     let suber = this.sub();
-    do this.infcx().try {
-        do suber.tys(a, b).and_then |_ok| {
-            suber.contratys(a, b)
-        }.to_ures()
-    }
+    this.infcx().try(|| {
+        suber.tys(a, b).and_then(|_ok| suber.contratys(a, b)).to_ures()
+    })
 }
 
 pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
@@ -359,11 +355,9 @@ pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
             a.repr(this.infcx().tcx),
             b.repr(this.infcx().tcx));
     let sub = this.sub();
-    do indent {
+    indent(|| {
         this.infcx().try(|| {
-            do sub.regions(a, b).and_then |_r| {
-                sub.contraregions(a, b)
-            }
+            sub.regions(a, b).and_then(|_r| sub.contraregions(a, b))
         }).or_else(|e| {
             // substitute a better error, but use the regions
             // found in the original error
@@ -373,7 +367,7 @@ pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
               _ => Err(e)
             }
         }).to_ures()
-    }
+    })
 }
 
 pub fn eq_opt_regions<C:Combine>(
@@ -382,25 +376,19 @@ pub fn eq_opt_regions<C:Combine>(
     b: Option<ty::Region>) -> cres<Option<ty::Region>> {
 
     match (a, b) {
-      (None, None) => {
-        Ok(None)
-      }
-      (Some(a), Some(b)) => {
-        do eq_regions(this, a, b).then {
-            Ok(Some(a))
+        (None, None) => Ok(None),
+        (Some(a), Some(b)) => eq_regions(this, a, b).then(|| Ok(Some(a))),
+        (_, _) => {
+            // If these two substitutions are for the same type (and
+            // they should be), then the type should either
+            // consistently have a region parameter or not have a
+            // region parameter.
+            this.infcx().tcx.sess.bug(
+                format!("substitution a had opt_region {} and \
+                      b had opt_region {}",
+                     a.inf_str(this.infcx()),
+                     b.inf_str(this.infcx())));
         }
-      }
-      (_, _) => {
-        // If these two substitutions are for the same type (and
-        // they should be), then the type should either
-        // consistently have a region parameter or not have a
-        // region parameter.
-        this.infcx().tcx.sess.bug(
-            format!("substitution a had opt_region {} and \
-                  b had opt_region {}",
-                 a.inf_str(this.infcx()),
-                 b.inf_str(this.infcx())));
-      }
     }
 }
 
@@ -528,21 +516,15 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       }
 
       (&ty::ty_box(ref a_mt), &ty::ty_box(ref b_mt)) => {
-        do this.mts(a_mt, b_mt).and_then |mt| {
-            Ok(ty::mk_box(tcx, mt))
-        }
+        this.mts(a_mt, b_mt).and_then(|mt| Ok(ty::mk_box(tcx, mt)))
       }
 
       (&ty::ty_uniq(ref a_mt), &ty::ty_uniq(ref b_mt)) => {
-        do this.mts(a_mt, b_mt).and_then |mt| {
-            Ok(ty::mk_uniq(tcx, mt))
-        }
+        this.mts(a_mt, b_mt).and_then(|mt| Ok(ty::mk_uniq(tcx, mt)))
       }
 
       (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
-        do this.mts(a_mt, b_mt).and_then |mt| {
-            Ok(ty::mk_ptr(tcx, mt))
-        }
+        this.mts(a_mt, b_mt).and_then(|mt| Ok(ty::mk_ptr(tcx, mt)))
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
@@ -552,11 +534,11 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       }
 
       (&ty::ty_evec(ref a_mt, vs_a), &ty::ty_evec(ref b_mt, vs_b)) => {
-        do this.mts(a_mt, b_mt).and_then |mt| {
-            do this.vstores(ty::terr_vec, vs_a, vs_b).and_then |vs| {
+        this.mts(a_mt, b_mt).and_then(|mt| {
+            this.vstores(ty::terr_vec, vs_a, vs_b).and_then(|vs| {
                 Ok(ty::mk_evec(tcx, mt, vs))
-            }
-        }
+            })
+        })
       }
 
       (&ty::ty_estr(vs_a), &ty::ty_estr(vs_b)) => {
@@ -576,15 +558,15 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       }
 
       (&ty::ty_bare_fn(ref a_fty), &ty::ty_bare_fn(ref b_fty)) => {
-        do this.bare_fn_tys(a_fty, b_fty).and_then |fty| {
+        this.bare_fn_tys(a_fty, b_fty).and_then(|fty| {
             Ok(ty::mk_bare_fn(tcx, fty))
-        }
+        })
       }
 
       (&ty::ty_closure(ref a_fty), &ty::ty_closure(ref b_fty)) => {
-        do this.closure_tys(a_fty, b_fty).and_then |fty| {
+        this.closure_tys(a_fty, b_fty).and_then(|fty| {
             Ok(ty::mk_closure(tcx, fty))
-        }
+        })
       }
 
       _ => Err(ty::terr_sorts(expected_found(this, a, b)))

@@ -118,13 +118,13 @@ impl fold::ast_fold for TestHarnessGenerator {
         fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
             if !*cx.sess.building_library {
                 @ast::item {
-                    attrs: do item.attrs.iter().filter_map |attr| {
+                    attrs: item.attrs.iter().filter_map(|attr| {
                         if "main" != attr.name() {
                             Some(*attr)
                         } else {
                             None
                         }
-                    }.collect(),
+                    }).collect(),
                     .. (*item).clone()
                 }
             } else {
@@ -172,10 +172,10 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
 fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
-    do config::strip_items(crate) |attrs| {
+    config::strip_items(crate, |attrs| {
         !attr::contains_name(attrs, "test") &&
         !attr::contains_name(attrs, "bench")
-    }
+    })
 }
 
 fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
@@ -232,13 +232,13 @@ fn is_bench_fn(i: @ast::item) -> bool {
 }
 
 fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
-    do i.attrs.iter().any |attr| {
+    i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
             Some(ref cfgs) => attr::test_cfg(cx.config, cfgs.iter().map(|x| *x)),
             None => true
         }
-    }
+    })
 }
 
 fn should_fail(i: @ast::item) -> bool {

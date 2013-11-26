@@ -161,7 +161,7 @@ mod test {
 
     #[test]
     fn test_from_fn() {
-        let mut f = Future::from_fn(|| ~"brail");
+        let mut f = Future::from_fn(proc() ~"brail");
         assert_eq!(f.get(), ~"brail");
     }
 
@@ -185,14 +185,14 @@ mod test {
 
     #[test]
     fn test_spawn() {
-        let mut f = Future::spawn(|| ~"bale");
+        let mut f = Future::spawn(proc() ~"bale");
         assert_eq!(f.get(), ~"bale");
     }
 
     #[test]
     #[should_fail]
     fn test_futurefail() {
-        let mut f = Future::spawn(|| fail!());
+        let mut f = Future::spawn(proc() fail!());
         let _x: ~str = f.get();
     }
 

@@ -48,7 +48,7 @@ fn test00() {
         results.push(builder.future_result());
         builder.spawn({
             let i = i;
-            || test00_start(&ch, i, number_of_messages)
+            proc() test00_start(&ch, i, number_of_messages)
         });
         i = i + 1;
     }

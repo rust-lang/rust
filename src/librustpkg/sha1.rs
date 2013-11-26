@@ -51,11 +51,11 @@ fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     unsafe {
         let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
         let mut y: *i32 = transmute(input.unsafe_ref(0));
-        do dst.len().times() {
+        dst.len().times(|| {
             *x = to_be32(*y);
             x = x.offset(1);
             y = y.offset(1);
-        }
+        })
     }
 }
 
@@ -94,7 +94,7 @@ fn add_bytes_to_bits<T: Int + CheckedAdd + ToBits>(bits: T, bytes: T) -> T {
 trait FixedBuffer {
     /// Input a vector of bytes. If the buffer becomes full, process it with the provided
     /// function and then clear the buffer.
-    fn input(&mut self, input: &[u8], func: &fn(&[u8]));
+    fn input(&mut self, input: &[u8], func: |&[u8]|);
 
     /// Reset the buffer.
     fn reset(&mut self);
@@ -137,7 +137,7 @@ impl FixedBuffer64 {
 }
 
 impl FixedBuffer for FixedBuffer64 {
-    fn input(&mut self, input: &[u8], func: &fn(&[u8])) {
+    fn input(&mut self, input: &[u8], func: |&[u8]|) {
         let mut i = 0;
 
         let size = 64;
@@ -217,11 +217,11 @@ trait StandardPadding {
     /// and is guaranteed to have exactly rem remaining bytes when it returns. If there are not at
     /// least rem bytes available, the buffer will be zero padded, processed, cleared, and then
     /// filled with zeros again until only rem bytes are remaining.
-    fn standard_padding(&mut self, rem: uint, func: &fn(&[u8]));
+    fn standard_padding(&mut self, rem: uint, func: |&[u8]|);
 }
 
 impl <T: FixedBuffer> StandardPadding for T {
-    fn standard_padding(&mut self, rem: uint, func: &fn(&[u8])) {
+    fn standard_padding(&mut self, rem: uint, func: |&[u8]|) {
         let size = self.size();
 
         self.next(1)[0] = 128;
@@ -613,9 +613,7 @@ mod bench {
     pub fn sha1_10(bh: & mut BenchHarness) {
         let mut sh = Sha1::new();
         let bytes = [1u8, ..10];
-        do bh.iter {
-            sh.input(bytes);
-        }
+        bh.iter(|| sh.input(bytes));
         bh.bytes = bytes.len() as u64;
     }
 
@@ -623,9 +621,7 @@ mod bench {
     pub fn sha1_1k(bh: & mut BenchHarness) {
         let mut sh = Sha1::new();
         let bytes = [1u8, ..1024];
-        do bh.iter {
-            sh.input(bytes);
-        }
+        bh.iter(|| sh.input(bytes));
         bh.bytes = bytes.len() as u64;
     }
 
@@ -633,9 +629,7 @@ mod bench {
     pub fn sha1_64k(bh: & mut BenchHarness) {
         let mut sh = Sha1::new();
         let bytes = [1u8, ..65536];
-        do bh.iter {
-            sh.input(bytes);
-        }
+        bh.iter(|| sh.input(bytes));
         bh.bytes = bytes.len() as u64;
     }
 }

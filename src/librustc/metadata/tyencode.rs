@@ -132,7 +132,7 @@ fn enc_opt<T>(w: @mut MemWriter, t: Option<T>, enc_f: |T|) {
 
 fn enc_substs(w: @mut MemWriter, cx: @ctxt, substs: &ty::substs) {
     enc_region_substs(w, cx, &substs.regions);
-    do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
+    enc_opt(w, substs.self_ty, |t| enc_ty(w, cx, t));
     mywrite!(w, "[");
     for t in substs.tps.iter() { enc_ty(w, cx, *t); }
     mywrite!(w, "]");
@@ -350,10 +350,10 @@ fn enc_purity(w: @mut MemWriter, p: purity) {
 
 fn enc_abi_set(w: @mut MemWriter, abis: AbiSet) {
     mywrite!(w, "[");
-    do abis.each |abi| {
+    abis.each(|abi| {
         mywrite!(w, "{},", abi.name());
         true
-    };
+    });
     mywrite!(w, "]")
 }
 

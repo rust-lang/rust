@@ -15,7 +15,5 @@ extern mod xc_conditions_2;
 use xcc = xc_conditions_2;
 
 pub fn main() {
-    do xcc::oops::cond.trap(|_| 1).inside {
-        xcc::oops::cond.raise(1);
-    }
+    xcc::oops::cond.trap(|_| 1).inside(|| xcc::oops::cond.raise(1));
 }

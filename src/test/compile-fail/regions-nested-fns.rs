@@ -14,13 +14,13 @@ fn nested<'x>(x: &'x int) {
     let y = 3;
     let mut ay = &y; //~ ERROR cannot infer an appropriate lifetime
 
-    ignore::<&fn<'z>(&'z int)>(|z| {
+    ignore::< <'z>|&'z int|>(|z| {
         ay = x;
         ay = &y;
         ay = z;
     });
 
-    ignore::<&fn<'z>(&'z int) -> &'z int>(|z| {
+    ignore::< <'z>|&'z int| -> &'z int>(|z| {
         if false { return x; }  //~ ERROR mismatched types
         //~^ ERROR cannot infer an appropriate lifetime
         if false { return ay; }

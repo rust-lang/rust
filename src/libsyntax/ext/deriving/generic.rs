@@ -294,7 +294,7 @@ Combine the values of all the fields together. The last argument is
 all the fields of all the structures, see above for details.
 */
 pub type CombineSubstructureFunc<'self> =
-    &'self fn(@ExtCtxt, Span, &Substructure) -> @Expr;
+    'self |@ExtCtxt, Span, &Substructure| -> @Expr;
 
 /**
 Deal with non-matching enum variants, the arguments are a list
@@ -302,10 +302,11 @@ representing each variant: (variant index, ast::variant instance,
 [variant fields]), and a list of the nonself args of the type
 */
 pub type EnumNonMatchFunc<'self> =
-    &'self fn(@ExtCtxt, Span,
-              &[(uint, ast::variant,
-                 ~[(Span, Option<Ident>, @Expr)])],
-              &[@Expr]) -> @Expr;
+    'self |@ExtCtxt,
+           Span,
+           &[(uint, ast::variant, ~[(Span, Option<Ident>, @Expr)])],
+           &[@Expr]|
+           -> @Expr;
 
 
 impl<'self> TraitDef<'self> {
@@ -361,9 +362,9 @@ impl<'self> TraitDef<'self> {
             // a TyParamBound requires an ast id
             let mut bounds = opt_vec::from(
                 // extra restrictions on the generics parameters to the type being derived upon
-                do self.additional_bounds.map |p| {
+                self.additional_bounds.map(|p| {
                     cx.typarambound(p.to_path(cx, trait_span, type_ident, generics))
-                });
+                }));
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
@@ -374,9 +375,9 @@ impl<'self> TraitDef<'self> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = do generics.ty_params.map |ty_param| {
+        let self_ty_params = generics.ty_params.map(|ty_param| {
             cx.ty_ident(trait_span, ty_param.ident)
-        };
+        });
 
         let self_lifetimes = generics.lifetimes.clone();
 
@@ -404,7 +405,7 @@ impl<'self> TraitDef<'self> {
                          struct_def: &struct_def,
                          type_ident: Ident,
                          generics: &Generics) -> @ast::item {
-        let methods = do self.methods.map |method_def| {
+        let methods = self.methods.map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, trait_span, type_ident, generics);
 
@@ -425,7 +426,7 @@ impl<'self> TraitDef<'self> {
                                      type_ident, generics,
                                      explicit_self, tys,
                                      body)
-        };
+        });
 
         self.create_derived_impl(cx, trait_span, type_ident, generics, methods)
     }
@@ -435,7 +436,7 @@ impl<'self> TraitDef<'self> {
                        enum_def: &enum_def,
                        type_ident: Ident,
                        generics: &Generics) -> @ast::item {
-        let methods = do self.methods.map |method_def| {
+        let methods = self.methods.map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, trait_span, type_ident, generics);
 
@@ -456,7 +457,7 @@ impl<'self> TraitDef<'self> {
                                      type_ident, generics,
                                      explicit_self, tys,
                                      body)
-        };
+        });
 
         self.create_derived_impl(cx, trait_span, type_ident, generics, methods)
     }
@@ -546,9 +547,9 @@ impl<'self> MethodDef<'self> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_span, type_ident, generics);
 
-        let args = do arg_types.move_iter().map |(name, ty)| {
+        let args = arg_types.move_iter().map(|(name, ty)| {
             cx.arg(trait_span, name, ty)
-        }.collect();
+        }).collect();
 
         let ret_type = self.get_ret_ty(cx, trait_span, generics, type_ident);
 
@@ -623,19 +624,19 @@ impl<'self> MethodDef<'self> {
         // transpose raw_fields
         let fields = match raw_fields {
             [ref self_arg, .. rest] => {
-                do self_arg.iter().enumerate().map |(i, &(span, opt_id, field))| {
-                    let other_fields = do rest.map |l| {
+                self_arg.iter().enumerate().map(|(i, &(span, opt_id, field))| {
+                    let other_fields = rest.map(|l| {
                         match &l[i] {
                             &(_, _, ex) => ex
                         }
-                    };
+                    });
                     FieldInfo {
                         span: span,
                         name: opt_id,
                         self_: field,
                         other: other_fields
                     }
-                }.collect()
+                }).collect()
             }
             [] => { cx.span_bug(trait_span, "No self arguments to non-static \
                                        method in generic `deriving`") }
@@ -786,16 +787,16 @@ impl<'self> MethodDef<'self> {
                         }
                     }
                     let field_tuples =
-                        do self_vec.iter()
-                           .zip(enum_matching_fields.iter())
-                           .map |(&(span, id, self_f), other)| {
+                        self_vec.iter()
+                                .zip(enum_matching_fields.iter())
+                                .map(|(&(span, id, self_f), other)| {
                         FieldInfo {
                             span: span,
                             name: id,
                             self_: self_f,
                             other: (*other).clone()
                         }
-                    }.collect();
+                    }).collect();
                     substructure = EnumMatching(variant_index, variant, field_tuples);
                 }
                 None => {
@@ -900,7 +901,7 @@ impl<'self> MethodDef<'self> {
                                       self_args: &[@Expr],
                                       nonself_args: &[@Expr])
         -> @Expr {
-        let summary = do enum_def.variants.map |v| {
+        let summary = enum_def.variants.map(|v| {
             let ident = v.node.name;
             let summary = match v.node.kind {
                 ast::tuple_variant_kind(ref args) => Unnamed(args.map(|va| va.ty.span)),
@@ -909,7 +910,7 @@ impl<'self> MethodDef<'self> {
                 }
             };
             (ident, summary)
-        };
+        });
         self.call_substructure_method(cx,
                                       trait_span, type_ident,
                                       self_args, nonself_args,
@@ -943,10 +944,10 @@ pub fn create_subpatterns(cx: @ExtCtxt,
                           field_paths: ~[ast::Path],
                           mutbl: ast::Mutability)
                    -> ~[@ast::Pat] {
-    do field_paths.map |path| {
+    field_paths.map(|path| {
         cx.pat(path.span,
                ast::PatIdent(ast::BindByRef(mutbl), (*path).clone(), None))
-    }
+    })
 }
 
 #[deriving(Eq)] // dogfooding!
@@ -1002,10 +1003,10 @@ fn create_struct_pattern(cx: @ExtCtxt,
     // struct_type is definitely not Unknown, since struct_def.fields
     // must be nonempty to reach here
     let pattern = if struct_type == Record {
-        let field_pats = do subpats.iter().zip(ident_expr.iter()).map |(&pat, &(_, id, _))| {
+        let field_pats = subpats.iter().zip(ident_expr.iter()).map(|(&pat, &(_, id, _))| {
             // id is guaranteed to be Some
             ast::FieldPat { ident: id.unwrap(), pat: pat }
-        }.collect();
+        }).collect();
         cx.pat_struct(trait_span, matching_path, field_pats)
     } else {
         cx.pat_enum(trait_span, matching_path, subpats)
@@ -1074,13 +1075,13 @@ pub fn cs_fold(use_foldl: bool,
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
-                do all_fields.iter().fold(base) |old, field| {
+                all_fields.iter().fold(base, |old, field| {
                     f(cx, field.span, old, field.self_, field.other)
-                }
+                })
             } else {
-                do all_fields.rev_iter().fold(base) |old, field| {
+                all_fields.rev_iter().fold(base, |old, field| {
                     f(cx, field.span, old, field.self_, field.other)
-                }
+                })
             }
         },
         EnumNonMatching(ref all_enums) => enum_nonmatch_f(cx, trait_span,
@@ -1112,12 +1113,12 @@ pub fn cs_same_method(f: |@ExtCtxt, Span, ~[@Expr]| -> @Expr,
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
-            let called = do all_fields.map |field| {
+            let called = all_fields.map(|field| {
                 cx.expr_method_call(field.span,
                                     field.self_,
                                     substructure.method_ident,
                                     field.other.clone())
-            };
+            });
 
             f(cx, trait_span, called)
         },
@@ -1147,13 +1148,13 @@ pub fn cs_same_method_fold(use_foldl: bool,
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {
-                do vals.iter().fold(base) |old, &new| {
+                vals.iter().fold(base, |old, &new| {
                     f(cx, span, old, new)
-                }
+                })
             } else {
-                do vals.rev_iter().fold(base) |old, &new| {
+                vals.rev_iter().fold(base, |old, &new| {
                     f(cx, span, old, new)
-                }
+                })
             }
         },
         enum_nonmatch_f,

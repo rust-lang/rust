@@ -30,14 +30,14 @@ This macro declares an inner module called `my_error` with one static variable,
 parameters are used for, an example usage of this condition would be:
 
 ```rust
-do my_error::cond.trap(|raised_int| {
+my_error::cond.trap(|raised_int| {
 
     // the condition `my_error` was raised on, and the value it raised is stored
     // in `raised_int`. This closure must return a `~str` type (as specified in
     // the declaration of the condition
     if raised_int == 3 { ~"three" } else { ~"oh well" }
 
-}).inside {
+}).inside(|| {
 
     // The condition handler above is installed for the duration of this block.
     // That handler will override any previous handler, but the previous handler
@@ -50,7 +50,7 @@ do my_error::cond.trap(|raised_int| {
     println(my_error::cond.raise(3)); // prints "three"
     println(my_error::cond.raise(4)); // prints "oh well"
 
-}
+})
  ```
 
 Condition handling is useful in cases where propagating errors is either to
@@ -104,7 +104,7 @@ impl<T, U> Condition<T, U> {
     /// // use `trap`'s inside method to register the handler and then run a
     /// // block of code with the handler registered
     /// ```
-    pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
+    pub fn trap<'a>(&'a self, h: 'a |T| -> U) -> Trap<'a, T, U> {
         let h: Closure = unsafe { ::cast::transmute(h) };
         let prev = local_data::get(self.key, |k| k.map(|x| *x));
         let h = @Handler { handle: h, prev: prev };
@@ -176,12 +176,12 @@ impl<'self, T, U> Trap<'self, T, U> {
     /// ```rust
     /// condition! { my_error: int -> int; }
     ///
-    /// let result = do my_error::cond.trap(|error| error + 3).inside {
+    /// let result = my_error::cond.trap(|error| error + 3).inside(|| {
     ///     my_error::cond.raise(4)
-    /// };
+    /// });
     /// assert_eq!(result, 7);
     /// ```
-    pub fn inside<V>(&self, inner: &'self fn() -> V) -> V {
+    pub fn inside<V>(&self, inner: 'self || -> V) -> V {
         let _g = Guard { cond: self.cond };
         debug!("Trap: pushing handler to TLS");
         local_data::set(self.cond.key, self.handler);
@@ -224,14 +224,14 @@ mod test {
     fn nested_trap_test_inner() {
         let mut inner_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_trap_test_inner: in handler");
             inner_trapped = true;
             0
-        }).inside {
+        }).inside(|| {
             debug!("nested_trap_test_inner: in protected block");
             trouble(1);
-        }
+        });
 
         assert!(inner_trapped);
     }
@@ -240,14 +240,14 @@ mod test {
     fn nested_trap_test_outer() {
         let mut outer_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_trap_test_outer: in handler");
             outer_trapped = true; 0
-        }).inside {
+        }).inside(|| {
             debug!("nested_guard_test_outer: in protected block");
             nested_trap_test_inner();
             trouble(1);
-        }
+        });
 
         assert!(outer_trapped);
     }
@@ -255,16 +255,16 @@ mod test {
     fn nested_reraise_trap_test_inner() {
         let mut inner_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_inner: in handler");
             inner_trapped = true;
             let i = 10;
             debug!("nested_reraise_trap_test_inner: handler re-raising");
             sadness::cond.raise(i)
-        }).inside {
+        }).inside(|| {
             debug!("nested_reraise_trap_test_inner: in protected block");
             trouble(1);
-        }
+        });
 
         assert!(inner_trapped);
     }
@@ -273,13 +273,13 @@ mod test {
     fn nested_reraise_trap_test_outer() {
         let mut outer_trapped = false;
 
-        do sadness::cond.trap(|_j| {
+        sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_outer: in handler");
             outer_trapped = true; 0
-        }).inside {
+        }).inside(|| {
             debug!("nested_reraise_trap_test_outer: in protected block");
             nested_reraise_trap_test_inner();
-        }
+        });
 
         assert!(outer_trapped);
     }
@@ -288,13 +288,13 @@ mod test {
     fn test_default() {
         let mut trapped = false;
 
-        do sadness::cond.trap(|j| {
+        sadness::cond.trap(|j| {
             debug!("test_default: in handler");
             sadness::cond.raise_default(j, || { trapped=true; 5 })
-        }).inside {
+        }).inside(|| {
             debug!("test_default: in protected block");
             trouble(1);
-        }
+        });
 
         assert!(trapped);
     }
@@ -312,12 +312,12 @@ mod test {
             #[test]
             fn test_conditions_are_public() {
                 let mut trapped = false;
-                do sadness::cond.trap(|_| {
+                sadness::cond.trap(|_| {
                     trapped = true;
                     0
-                }).inside {
+                }).inside(|| {
                     sadness::cond.raise(0);
-                }
+                });
                 assert!(trapped);
             }
         }

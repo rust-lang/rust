@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ho(f: &fn(int) -> int) -> int { let n: int = f(3); return n; }
+fn ho(f: |int| -> int) -> int { let n: int = f(3); return n; }
 
 fn direct(x: int) -> int { return x + 1; }
 

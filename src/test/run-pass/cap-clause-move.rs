@@ -13,11 +13,11 @@ use std::ptr;
 pub fn main() {
     let x = ~3;
     let y = ptr::to_unsafe_ptr(&(*x)) as uint;
-    let snd_move: proc() -> uint = || ptr::to_unsafe_ptr(&(*x)) as uint;
+    let snd_move: proc() -> uint = proc() ptr::to_unsafe_ptr(&(*x)) as uint;
     assert_eq!(snd_move(), y);
 
     let x = ~4;
     let y = ptr::to_unsafe_ptr(&(*x)) as uint;
-    let lam_move: proc() -> uint = || ptr::to_unsafe_ptr(&(*x)) as uint;
+    let lam_move: proc() -> uint = proc() ptr::to_unsafe_ptr(&(*x)) as uint;
     assert_eq!(lam_move(), y);
 }

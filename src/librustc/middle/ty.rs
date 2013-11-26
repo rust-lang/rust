@@ -1684,7 +1684,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
     let mut encountered_box = encountered_box;
     let mut needs_unwind_cleanup = false;
-    do maybe_walk_ty(ty) |ty| {
+    maybe_walk_ty(ty, |ty| {
         let old_encountered_box = encountered_box;
         let result = match get(ty).sty {
           ty_box(_) | ty_opaque_box => {
@@ -1729,7 +1729,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
         encountered_box = old_encountered_box;
         result
-    }
+    });
 
     return needs_unwind_cleanup;
 }
@@ -2207,14 +2207,14 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                                -> TypeContents {
         let _i = indenter();
         let mut tc = TC::All;
-        do each_inherited_builtin_bound(cx, bounds, traits) |bound| {
+        each_inherited_builtin_bound(cx, bounds, traits, |bound| {
             tc = tc - match bound {
                 BoundStatic => TC::Nonstatic,
                 BoundSend => TC::Nonsendable,
                 BoundFreeze => TC::Nonfreezable,
                 BoundSized => TC::Nonsized,
             };
-        }
+        });
         return tc;
 
         // Iterates over all builtin bounds on the type parameter def, including
@@ -2227,13 +2227,13 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 f(bound);
             }
 
-            do each_bound_trait_and_supertraits(cx, traits) |trait_ref| {
+            each_bound_trait_and_supertraits(cx, traits, |trait_ref| {
                 let trait_def = lookup_trait_def(cx, trait_ref.def_id);
                 for bound in trait_def.bounds.iter() {
                     f(bound);
                 }
                 true
-            };
+            });
         }
     }
 }
@@ -2327,12 +2327,12 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_enum(did, ref substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
-                let r = !vs.is_empty() && do vs.iter().all |variant| {
-                    do variant.args.iter().any |aty| {
+                let r = !vs.is_empty() && vs.iter().all(|variant| {
+                    variant.args.iter().any(|aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
-                    }
-                };
+                    })
+                });
                 seen.pop();
                 r
             }
@@ -2490,11 +2490,11 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_opaque_closure_ptr(_) => result = true,
       ty_struct(did, ref substs) => {
         let fields = lookup_struct_fields(cx, did);
-        result = do fields.iter().all |f| {
+        result = fields.iter().all(|f| {
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
             type_is_pod(cx, sty)
-        };
+        });
       }
 
       ty_estr(vstore_slice(*)) | ty_evec(_, vstore_slice(*)) => {
@@ -3000,7 +3000,7 @@ pub fn method_call_type_param_defs(tcx: ctxt,
                                    method_map: typeck::method_map,
                                    id: ast::NodeId)
                                    -> Option<@~[TypeParameterDef]> {
-    do method_map.find(&id).map |method| {
+    method_map.find(&id).map(|method| {
         match method.origin {
           typeck::method_static(did) => {
             // n.b.: When we encode impl methods, the bounds
@@ -3026,7 +3026,7 @@ pub fn method_call_type_param_defs(tcx: ctxt,
                                   n_mth).generics.type_param_defs)
           }
         }
-    }
+    })
 }
 
 pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
@@ -3217,14 +3217,14 @@ pub fn method_idx(id: ast::Ident, meths: &[@Method]) -> Option<uint> {
 /// to a bitset or some other representation.
 pub fn param_tys_in_type(ty: t) -> ~[param_ty] {
     let mut rslt = ~[];
-    do walk_ty(ty) |ty| {
+    walk_ty(ty, |ty| {
         match get(ty).sty {
           ty_param(p) => {
             rslt.push(p);
           }
           _ => ()
         }
-    }
+    });
     rslt
 }
 
@@ -3233,12 +3233,12 @@ pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
     // contain duplicates.  (Integral type vars aren't counted.)
     fn vars_in_type(ty: t) -> ~[TyVid] {
         let mut rslt = ~[];
-        do walk_ty(ty) |ty| {
+        walk_ty(ty, |ty| {
             match get(ty).sty {
               ty_infer(TyVar(v)) => rslt.push(v),
               _ => ()
             }
-        }
+        });
         rslt
     }
 
@@ -3644,9 +3644,9 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::DefId) -> Option<ast::DefId> {
         Some(&ast_map::node_item(item, _)) => {
             match item.node {
                 ast::item_struct(struct_def, _) => {
-                    do struct_def.ctor_id.map |ctor_id| {
+                    struct_def.ctor_id.map(|ctor_id| {
                         ast_util::local_def(ctor_id)
-                    }
+                    })
                 }
                 _ => cx.sess.bug("called struct_ctor_id on non-struct")
             }
@@ -3698,13 +3698,13 @@ impl VariantInfo {
                 assert!(fields.len() > 0);
 
                 let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
-                let arg_names = do fields.map |field| {
+                let arg_names = fields.map(|field| {
                     match field.node.kind {
                         named_field(ident, _) => ident,
                         unnamed_field => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
                     }
-                };
+                });
 
                 return VariantInfo {
                     args: arg_tys,
@@ -3724,7 +3724,7 @@ pub fn substd_enum_variants(cx: ctxt,
                             id: ast::DefId,
                             substs: &substs)
                          -> ~[@VariantInfo] {
-    do enum_variants(cx, id).iter().map |variant_info| {
+    enum_variants(cx, id).iter().map(|variant_info| {
         let substd_args = variant_info.args.iter()
             .map(|aty| subst(cx, substs, *aty)).collect();
 
@@ -3735,7 +3735,7 @@ pub fn substd_enum_variants(cx: ctxt,
             ctor_ty: substd_ctor_ty,
             ..(**variant_info).clone()
         }
-    }.collect()
+    }).collect()
 }
 
 pub fn item_path_str(cx: ctxt, id: ast::DefId) -> ~str {
@@ -3967,11 +3967,11 @@ pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
         }
     } else {
         let mut cont = true;
-        do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
+        csearch::get_item_attrs(tcx.cstore, did, |meta_items| {
             if cont {
                 cont = meta_items.iter().advance(|ptrptr| f(*ptrptr));
             }
-        }
+        });
         return cont;
     }
 }
@@ -4083,7 +4083,7 @@ pub fn lookup_struct_field(cx: ctxt,
 }
 
 fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
-    do fields.map |field| {
+    fields.map(|field| {
         match field.node.kind {
             named_field(ident, visibility) => {
                 field_ty {
@@ -4101,14 +4101,14 @@ fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
                 }
             }
         }
-    }
+    })
 }
 
 // Returns a list of fields corresponding to the struct's items. trans uses
 // this. Takes a list of substs with which to instantiate field types.
 pub fn struct_fields(cx: ctxt, did: ast::DefId, substs: &substs)
                      -> ~[field] {
-    do lookup_struct_fields(cx, did).map |f| {
+    lookup_struct_fields(cx, did).map(|f| {
        field {
             // FIXME #6993: change type of field to Name and get rid of new()
             ident: ast::Ident::new(f.name),
@@ -4117,7 +4117,7 @@ pub fn struct_fields(cx: ctxt, did: ast::DefId, substs: &substs)
                 mutbl: MutImmutable
             }
         }
-    }
+    })
 }
 
 pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
@@ -4381,27 +4381,27 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
                                     type_param_defs: &[TypeParameterDef]) -> uint {
     let mut total = 0;
     for type_param_def in type_param_defs.iter() {
-        do each_bound_trait_and_supertraits(
-            tcx, type_param_def.bounds.trait_bounds) |_| {
+        each_bound_trait_and_supertraits(
+            tcx, type_param_def.bounds.trait_bounds, |_| {
             total += 1;
             true
-        };
+        });
     }
     return total;
 }
 
 pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {
-    do tcx.lang_items.require(TyDescStructLangItem).map |tydesc_lang_item| {
+    tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
         tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
-    }
+    })
 }
 
 pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
-    do tcx.lang_items.require(OpaqueStructLangItem).map |opaque_lang_item| {
+    tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
         tcx.intrinsic_defs.find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
-    }
+    })
 }
 
 pub fn visitor_object_ty(tcx: ctxt,
@@ -4460,7 +4460,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         return
     }
 
-    do csearch::each_implementation_for_type(tcx.sess.cstore, type_id)
+    csearch::each_implementation_for_type(tcx.sess.cstore, type_id,
             |implementation_def_id| {
         let implementation = @csearch::get_impl(tcx, implementation_def_id);
 
@@ -4498,7 +4498,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
 
         // Store the implementation info.
         tcx.impls.insert(implementation_def_id, implementation);
-    }
+    });
 
     tcx.populated_external_types.insert(type_id);
 }
@@ -4515,7 +4515,7 @@ pub fn populate_implementations_for_trait_if_necessary(
         return
     }
 
-    do csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id)
+    csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id,
             |implementation_def_id| {
         let implementation = @csearch::get_impl(tcx, implementation_def_id);
 
@@ -4532,7 +4532,7 @@ pub fn populate_implementations_for_trait_if_necessary(
 
         // Store the implementation info.
         tcx.impls.insert(implementation_def_id, implementation);
-    }
+    });
 
     tcx.populated_external_traits.insert(trait_id);
 }
@@ -4607,9 +4607,9 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
         iter(hash, &mt.mutbl);
     };
     fn iter<T: IterBytes>(hash: &mut SipState, t: &T) {
-        do t.iter_bytes(true) |bytes| { hash.input(bytes); true };
+        t.iter_bytes(true, |bytes| { hash.input(bytes); true });
     }
-    do ty::walk_ty(t) |t| {
+    ty::walk_ty(t, |t| {
         match ty::get(t).sty {
             ty_nil => hash.input([0]),
             ty_bot => hash.input([1]),
@@ -4714,7 +4714,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
                 mt(&mut hash, m);
             }
         }
-    }
+    });
 
     hash.result_u64()
 }

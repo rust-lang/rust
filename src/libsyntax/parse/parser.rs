@@ -1031,11 +1031,11 @@ impl Parser {
 
     // parse the methods in a trait declaration
     pub fn parse_trait_methods(&self) -> ~[trait_method] {
-        do self.parse_unspanned_seq(
+        self.parse_unspanned_seq(
             &token::LBRACE,
             &token::RBRACE,
-            seq_sep_none()
-        ) |p| {
+            seq_sep_none(),
+            |p| {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
@@ -1048,11 +1048,11 @@ impl Parser {
 
             let generics = p.parse_generics();
 
-            let (explicit_self, d) = do self.parse_fn_decl_with_self() |p| {
+            let (explicit_self, d) = self.parse_fn_decl_with_self(|p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
                 p.parse_arg_general(false)
-            };
+            });
 
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
@@ -1108,7 +1108,7 @@ impl Parser {
                     );
                 }
             }
-        }
+        })
     }
 
     // parse a possibly mutable type
@@ -1286,7 +1286,7 @@ impl Parser {
                 return self.parse_ty_closure(Some(sigil), Some(lifetime));
             }
 
-            token::IDENT(*) if sigil == ast::BorrowedSigil => {
+            token::IDENT(*) => {
                 if self.token_is_old_style_closure_keyword() {
                     self.obsolete(*self.last_span, ObsoleteBoxedClosure);
                     return self.parse_ty_closure(Some(sigil), None);
@@ -1311,6 +1311,7 @@ impl Parser {
         let opt_lifetime = self.parse_opt_lifetime();
 
         if self.token_is_old_style_closure_keyword() {
+            self.obsolete(*self.last_span, ObsoleteClosureType);
             return self.parse_ty_closure(Some(BorrowedSigil), opt_lifetime);
         }
 
@@ -2999,13 +3000,13 @@ impl Parser {
             let mutbl = self.parse_mutability();
             pat = self.parse_pat_ident(BindByRef(mutbl));
         } else {
-            let can_be_enum_or_struct = do self.look_ahead(1) |t| {
+            let can_be_enum_or_struct = self.look_ahead(1, |t| {
                 match *t {
                     token::LPAREN | token::LBRACKET | token::LT |
                     token::LBRACE | token::MOD_SEP => true,
                     _ => false,
                 }
-            };
+            });
 
             if self.look_ahead(1, |t| *t == token::DOTDOT) {
                 let start = self.parse_expr_res(RESTRICT_NO_BAR_OP);
@@ -3039,18 +3040,18 @@ impl Parser {
                         let mut args: ~[@Pat] = ~[];
                         match *self.token {
                           token::LPAREN => {
-                            let is_star = do self.look_ahead(1) |t| {
+                            let is_star = self.look_ahead(1, |t| {
                                 match *t {
                                     token::BINOP(token::STAR) => true,
                                     _ => false,
                                 }
-                            };
-                            let is_dotdot = do self.look_ahead(1) |t| {
+                            });
+                            let is_dotdot = self.look_ahead(1, |t| {
                                 match *t {
                                     token::DOTDOT => true,
                                     _ => false,
                                 }
-                            };
+                            });
                             if is_star | is_dotdot {
                                 // This is a "top constructor only" pat
                                 self.bump();
@@ -3883,9 +3884,9 @@ impl Parser {
         let pur = self.parse_fn_purity();
         let ident = self.parse_ident();
         let generics = self.parse_generics();
-        let (explicit_self, decl) = do self.parse_fn_decl_with_self() |p| {
+        let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
             p.parse_arg()
-        };
+        });
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         let hi = body.span.hi;
@@ -4026,11 +4027,11 @@ impl Parser {
         } else if *self.token == token::LPAREN {
             // It's a tuple-like struct.
             is_tuple_like = true;
-            fields = do self.parse_unspanned_seq(
+            fields = self.parse_unspanned_seq(
                 &token::LPAREN,
                 &token::RPAREN,
-                seq_sep_trailing_allowed(token::COMMA)
-            ) |p| {
+                seq_sep_trailing_allowed(token::COMMA),
+                |p| {
                 let attrs = self.parse_outer_attributes();
                 let lo = p.span.lo;
                 let struct_field_ = ast::struct_field_ {
@@ -4040,7 +4041,7 @@ impl Parser {
                     attrs: attrs,
                 };
                 @spanned(lo, p.span.hi, struct_field_)
-            };
+            });
             self.expect(&token::SEMI);
         } else if self.eat(&token::SEMI) {
             // It's a unit-like struct.
@@ -4258,20 +4259,16 @@ impl Parser {
                               path: Path,
                               outer_attrs: ~[ast::Attribute],
                               id_sp: Span) -> (ast::item_, ~[ast::Attribute]) {
-        let maybe_i = do self.sess.included_mod_stack.iter().position |p| { *p == path };
+        let maybe_i = self.sess.included_mod_stack.iter().position(|p| *p == path);
         match maybe_i {
             Some(i) => {
                 let stack = &self.sess.included_mod_stack;
                 let mut err = ~"circular modules: ";
                 for p in stack.slice(i, stack.len()).iter() {
-                    do p.display().with_str |s| {
-                        err.push_str(s);
-                    }
+                    p.display().with_str(|s| err.push_str(s));
                     err.push_str(" -> ");
                 }
-                do path.display().with_str |s| {
-                    err.push_str(s);
-                }
+                path.display().with_str(|s| err.push_str(s));
                 self.span_fatal(id_sp, err);
             }
             None => ()

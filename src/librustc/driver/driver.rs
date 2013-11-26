@@ -123,10 +123,10 @@ pub fn build_configuration(sess: Session) ->
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
-    do cfgspecs.move_iter().map |s| {
+    cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
-    }.collect::<ast::CrateConfig>()
+    }).collect::<ast::CrateConfig>()
 }
 
 pub enum input {

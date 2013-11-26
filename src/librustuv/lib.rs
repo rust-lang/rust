@@ -138,9 +138,9 @@ pub trait UvHandle<T> {
             uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb);
             uvll::set_data_for_uv_handle(self.uv_handle(), ptr::null::<()>());
 
-            do wait_until_woken_after(&mut slot) {
+            wait_until_woken_after(&mut slot, || {
                 uvll::set_data_for_uv_handle(self.uv_handle(), &slot);
-            }
+            })
         }
 
         extern fn close_cb(handle: *uvll::uv_handle_t) {
@@ -196,15 +196,15 @@ impl Drop for ForbidUnwind {
     }
 }
 
-fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: &fn()) {
+fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: ||) {
     let _f = ForbidUnwind::new("wait_until_woken_after");
     unsafe {
         assert!((*slot).is_none());
         let sched: ~Scheduler = Local::take();
-        do sched.deschedule_running_task_and_then |_, task| {
+        sched.deschedule_running_task_and_then(|_, task| {
             f();
             *slot = Some(task);
-        }
+        })
     }
 }
 
@@ -390,15 +390,15 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
 #[cfg(test)]
 fn local_loop() -> &'static mut Loop {
     unsafe {
-        cast::transmute(do Local::borrow |sched: &mut Scheduler| {
+        cast::transmute(Local::borrow(|sched: &mut Scheduler| {
             let mut io = None;
-            do sched.event_loop.io |i| {
+            sched.event_loop.io(|i| {
                 let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
                     cast::transmute(i);
                 io = Some(uvio);
-            }
+            });
             io.unwrap()
-        }.uv_loop())
+        }).uv_loop())
     }
 }
 

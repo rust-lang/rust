@@ -70,7 +70,7 @@ enum StdSource {
 }
 
 fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
-    do with_local_io |io| {
+    with_local_io(|io| {
         let fd = unsafe { libc::dup(fd) };
         match io.tty_open(fd, readable) {
             Ok(tty) => Some(f(TTY(tty))),
@@ -84,14 +84,14 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
                 Some(f(File(io.fs_from_raw_fd(fd, CloseAsynchronously))))
             }
         }
-    }.unwrap()
+    }).unwrap()
 }
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
 /// See `stdout()` for notes about this function.
 pub fn stdin() -> StdReader {
-    do src(libc::STDIN_FILENO, true) |src| { StdReader { inner: src } }
+    src(libc::STDIN_FILENO, true, |src| StdReader { inner: src })
 }
 
 /// Creates a new non-blocking handle to the stdout of the current process.
@@ -101,14 +101,14 @@ pub fn stdin() -> StdReader {
 /// task context because the stream returned will be a non-blocking object using
 /// the local scheduler to perform the I/O.
 pub fn stdout() -> StdWriter {
-    do src(libc::STDOUT_FILENO, false) |src| { StdWriter { inner: src } }
+    src(libc::STDOUT_FILENO, false, |src| StdWriter { inner: src })
 }
 
 /// Creates a new non-blocking handle to the stderr of the current process.
 ///
 /// See `stdout()` for notes about this function.
 pub fn stderr() -> StdWriter {
-    do src(libc::STDERR_FILENO, false) |src| { StdWriter { inner: src } }
+    src(libc::STDERR_FILENO, false, |src| StdWriter { inner: src })
 }
 
 // Helper to access the local task's stdout handle
@@ -116,11 +116,11 @@ pub fn stderr() -> StdWriter {
 // Note that this is not a safe function to expose because you can create an
 // aliased pointer very easily:
 //
-//  do with_task_stdout |io1| {
-//      do with_task_stdout |io2| {
+//  with_task_stdout(|io1| {
+//      with_task_stdout(|io2| {
 //          // io1 aliases io2
-//      }
-//  }
+//      })
+//  })
 fn with_task_stdout(f: |&mut Writer|) {
     use rt::local::Local;
     use rt::task::Task;
@@ -158,42 +158,34 @@ fn with_task_stdout(f: |&mut Writer|) {
 /// will emit output to stderr, and while they are line buffered the log
 /// messages are always terminated in a newline (no need to flush).
 pub fn flush() {
-    do with_task_stdout |io| {
-        io.flush();
-    }
+    with_task_stdout(|io| io.flush())
 }
 
 /// Prints a string to the stdout of the current process. No newline is emitted
 /// after the string is printed.
 pub fn print(s: &str) {
-    do with_task_stdout |io| {
-        io.write(s.as_bytes());
-    }
+    with_task_stdout(|io| io.write(s.as_bytes()))
 }
 
 /// Prints a string as a line. to the stdout of the current process. A literal
 /// `\n` character is printed to the console after the string.
 pub fn println(s: &str) {
-    do with_task_stdout |io| {
+    with_task_stdout(|io| {
         io.write(s.as_bytes());
         io.write(['\n' as u8]);
-    }
+    })
 }
 
 /// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
 /// with the `format_args!` macro.
 pub fn print_args(fmt: &fmt::Arguments) {
-    do with_task_stdout |io| {
-        fmt::write(io, fmt);
-    }
+    with_task_stdout(|io| fmt::write(io, fmt))
 }
 
 /// Similar to `println`, but takes a `fmt::Arguments` structure to be
 /// compatible with the `format_args!` macro.
 pub fn println_args(fmt: &fmt::Arguments) {
-    do with_task_stdout |io| {
-        fmt::writeln(io, fmt);
-    }
+    with_task_stdout(|io| fmt::writeln(io, fmt))
 }
 
 /// Representation of a reader of a standard input stream

@@ -15,7 +15,7 @@
 // used to successfully compile because we failed to account for the
 // fact that fn(x: &int) rebound the region &.
 
-fn with<R>(f: &fn(x: &int) -> R) -> R {
+fn with<R>(f: |x: &int| -> R) -> R {
     f(&3)
 }
 

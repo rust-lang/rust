@@ -532,7 +532,7 @@ fn test_is_digit() {
 fn test_escape_default() {
     fn string(c: char) -> ~str {
         let mut result = ~"";
-        do escape_default(c) |c| { result.push_char(c); }
+        escape_default(c, |c| { result.push_char(c); });
         return result;
     }
     assert_eq!(string('\n'), ~"\\n");
@@ -554,7 +554,7 @@ fn test_escape_default() {
 fn test_escape_unicode() {
     fn string(c: char) -> ~str {
         let mut result = ~"";
-        do escape_unicode(c) |c| { result.push_char(c); }
+        escape_unicode(c, |c| { result.push_char(c); });
         return result;
     }
     assert_eq!(string('\x00'), ~"\\x00");

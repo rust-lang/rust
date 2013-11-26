@@ -121,7 +121,7 @@ impl Process {
     /// source/destination
     pub fn new(config: ProcessConfig) -> Option<Process> {
         let config = Cell::new(config);
-        do with_local_io |io| {
+        with_local_io(|io| {
             match io.spawn(config.take()) {
                 Ok((p, io)) => Some(Process{
                     handle: p,
@@ -134,7 +134,7 @@ impl Process {
                     None
                 }
             }
-        }
+        })
     }
 
     /// Returns the process id of this child process

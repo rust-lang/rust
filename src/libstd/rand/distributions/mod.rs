@@ -205,12 +205,14 @@ mod ziggurat_tables;
 // the perf improvement (25-50%) is definitely worth the extra code
 // size from force-inlining.
 #[inline(always)]
-fn ziggurat<R:Rng>(rng: &mut R,
-                   symmetric: bool,
-                   X: ziggurat_tables::ZigTable,
-                   F: ziggurat_tables::ZigTable,
-                   pdf: &'static fn(f64) -> f64,
-                   zero_case: &'static fn(&mut R, f64) -> f64) -> f64 {
+fn ziggurat<R:Rng>(
+            rng: &mut R,
+            symmetric: bool,
+            X: ziggurat_tables::ZigTable,
+            F: ziggurat_tables::ZigTable,
+            pdf: 'static |f64| -> f64,
+            zero_case: 'static |&mut R, f64| -> f64)
+            -> f64 {
     static SCALE: f64 = (1u64 << 53) as f64;
     loop {
         // reimplement the f64 generation as an optimisation suggested
@@ -569,11 +571,11 @@ mod bench {
         let mut rng = XorShiftRng::new();
         let mut normal = Normal::new(-2.71828, 3.14159);
 
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 normal.sample(&mut rng);
             }
-        }
+        });
         bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
     #[bench]
@@ -581,11 +583,11 @@ mod bench {
         let mut rng = XorShiftRng::new();
         let mut exp = Exp::new(2.71828 * 3.14159);
 
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 exp.sample(&mut rng);
             }
-        }
+        });
         bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }

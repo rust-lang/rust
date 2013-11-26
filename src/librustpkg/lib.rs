@@ -255,7 +255,7 @@ impl CtxMethods for BuildContext {
             // argument
             let pkgid = PkgId::new(args[0].clone());
             let mut dest_ws = default_workspace();
-            do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
+            each_pkg_parent_workspace(&self.context, &pkgid, |workspace| {
                 debug!("found pkg {} in workspace {}, trying to build",
                        pkgid.to_str(), workspace.display());
                 dest_ws = determine_destination(os::getcwd(),
@@ -265,7 +265,7 @@ impl CtxMethods for BuildContext {
                                               false, pkgid.clone());
                 self.build(&mut pkg_src, what);
                 true
-            };
+            });
             // n.b. If this builds multiple packages, it only returns the workspace for
             // the last one. The whole building-multiple-packages-with-the-same-ID is weird
             // anyway and there are no tests for it, so maybe take it out
@@ -353,12 +353,10 @@ impl CtxMethods for BuildContext {
             }
             "list" => {
                 println("Installed packages:");
-                do installed_packages::list_installed_packages |pkg_id| {
-                    do pkg_id.path.display().with_str |s| {
-                        println(s);
-                    }
+                installed_packages::list_installed_packages(|pkg_id| {
+                    pkg_id.path.display().with_str(|s| println(s));
                     true
-                };
+                });
             }
             "prefer" => {
                 if args.len() < 1 {
@@ -402,12 +400,12 @@ impl CtxMethods for BuildContext {
                 else {
                     let rp = rust_path();
                     assert!(!rp.is_empty());
-                    do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
+                    each_pkg_parent_workspace(&self.context, &pkgid, |workspace| {
                         path_util::uninstall_package_from(workspace, &pkgid);
                         note(format!("Uninstalled package {} (was installed in {})",
                                   pkgid.to_str(), workspace.display()));
                         true
-                    };
+                    });
                 }
             }
             "unprefer" => {
@@ -471,19 +469,19 @@ impl CtxMethods for BuildContext {
                 // Build the package script if needed
                 let script_build = format!("build_package_script({})",
                                            package_script_path.display());
-                let pkg_exe = do self.workcache_context.with_prep(script_build) |prep| {
+                let pkg_exe = self.workcache_context.with_prep(script_build, |prep| {
                     let subsysroot = sysroot.clone();
                     let psp = package_script_path.clone();
                     let ws = workspace.clone();
                     let pid = pkgid.clone();
-                    do prep.exec |exec| {
+                    prep.exec(proc(exec) {
                         let mut pscript = PkgScript::parse(subsysroot.clone(),
                                                            psp.clone(),
                                                            &ws,
                                                            &pid);
                         pscript.build_custom(exec)
-                    }
-                };
+                    })
+                });
                 // We always *run* the package script
                 let (cfgs, hook_result) = PkgScript::run_custom(&Path::new(pkg_exe), &sysroot);
                 debug!("Command return code = {:?}", hook_result);
@@ -620,7 +618,7 @@ impl CtxMethods for BuildContext {
                target_exec.display(), target_lib,
                maybe_executable, maybe_library);
 
-        do self.workcache_context.with_prep(id.install_tag()) |prep| {
+        self.workcache_context.with_prep(id.install_tag(), |prep| {
             for ee in maybe_executable.iter() {
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("binary",
@@ -638,7 +636,7 @@ impl CtxMethods for BuildContext {
             let sub_target_ex = target_exec.clone();
             let sub_target_lib = target_lib.clone();
             let sub_build_inputs = build_inputs.to_owned();
-            do prep.exec |exe_thing| {
+            prep.exec(proc(exe_thing) {
                 let mut outputs = ~[];
                 // Declare all the *inputs* to the declared input too, as inputs
                 for executable in subex.iter() {
@@ -684,8 +682,8 @@ impl CtxMethods for BuildContext {
                     outputs.push(target_lib.as_str().unwrap().to_owned());
                 }
                 outputs
-            }
-        }
+            })
+        })
     }
 
     fn prefer(&self, _id: &str, _vers: Option<~str>)  {

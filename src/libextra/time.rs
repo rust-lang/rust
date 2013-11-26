@@ -969,9 +969,9 @@ mod tests {
             // Windows does not understand "America/Los_Angeles".
             // PST+08 may look wrong, but not! "PST" indicates
             // the name of timezone. "+08" means UTC = local + 08.
-            do "TZ=PST+08".with_c_str |env| {
+            "TZ=PST+08".with_c_str(|env| {
                 _putenv(env);
-            }
+            })
         }
         tzset();
     }

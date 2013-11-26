@@ -104,8 +104,7 @@ fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
 // given a ~[u8], for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry(bb: &[u8], nn: uint,
-                      it: &fn(window: &[u8])) -> ~[u8] {
+fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> ~[u8] {
    let mut ii = 0u;
 
    let len = bb.len();
@@ -170,7 +169,7 @@ fn main() {
     let sizes = ~[1u,2,3,4,6,12,18];
     let mut streams = vec::from_fn(sizes.len(), |_| Some(stream::<~str>()));
     let mut from_child = ~[];
-    let to_child   = do sizes.iter().zip(streams.mut_iter()).map |(sz, stream_ref)| {
+    let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
         let stream = util::replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
@@ -184,7 +183,7 @@ fn main() {
         }
 
         to_child
-    }.collect::<~[Chan<~[u8]>]>();
+    }).collect::<~[Chan<~[u8]>]>();
 
 
    // latch stores true after we've started

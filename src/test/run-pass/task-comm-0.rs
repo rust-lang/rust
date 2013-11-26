@@ -29,7 +29,7 @@ fn test05_start(ch : &Chan<int>) {
 
 fn test05() {
     let (po, ch) = comm::stream();
-    task::spawn(|| test05_start(&ch) );
+    task::spawn(proc() test05_start(&ch) );
     let mut value: int = po.recv();
     error!("{}", value);
     value = po.recv();

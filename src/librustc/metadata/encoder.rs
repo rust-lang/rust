@@ -52,10 +52,10 @@ use std::cast;
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
 
-pub type encode_inlined_item<'self> = &'self fn(ecx: &EncodeContext,
-                                   ebml_w: &mut writer::Encoder,
-                                   path: &[ast_map::path_elt],
-                                   ii: ast::inlined_item);
+pub type encode_inlined_item<'self> = 'self |ecx: &EncodeContext,
+                                             ebml_w: &mut writer::Encoder,
+                                             path: &[ast_map::path_elt],
+                                             ii: ast::inlined_item|;
 
 pub struct EncodeParams<'self> {
     diag: @mut span_handler,
@@ -615,12 +615,12 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
 
-        do each_auxiliary_node_id(*item) |auxiliary_node_id| {
+        each_auxiliary_node_id(*item, |auxiliary_node_id| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(auxiliary_node_id)));
             ebml_w.end_tag();
             true
-        };
+        });
 
         match item.node {
             item_impl(*) => {
@@ -1570,13 +1570,13 @@ fn encode_crate_deps(ecx: &EncodeContext,
 
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = ~[];
-        do cstore::iter_crate_data(cstore) |key, val| {
+        cstore::iter_crate_data(cstore, |key, val| {
             let dep = decoder::CrateDep {cnum: key,
                        name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
             deps.push(dep);
-        };
+        });
 
         // Sort by cnum
         extra::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
@@ -1697,12 +1697,12 @@ fn encode_misc_info(ecx: &EncodeContext,
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
 
-        do each_auxiliary_node_id(item) |auxiliary_node_id| {
+        each_auxiliary_node_id(item, |auxiliary_node_id| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(auxiliary_node_id)));
             ebml_w.end_tag();
             true
-        };
+        });
     }
 
     // Encode reexports for the root module.
