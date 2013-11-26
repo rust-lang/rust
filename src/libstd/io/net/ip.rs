@@ -41,7 +41,7 @@ impl ToStr for IpAddr {
             }
 
             Ipv6Addr(a, b, c, d, e, f, g, h) =>
-                format!("{}:{}:{}:{}:{}:{}:{}:{}", a, b, c, d, e, f, g, h)
+                format!("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", a, b, c, d, e, f, g, h)
         }
     }
 }
@@ -449,6 +449,7 @@ mod test {
     fn ipv6_addr_to_str() {
         let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
         assert!(a1.to_str() == ~"::ffff:192.0.2.128" || a1.to_str() == ~"::FFFF:192.0.2.128");
+        assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_str(), ~"8:9:a:b:c:d:e:f");
     }
 
 }
