@@ -678,7 +678,9 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
     let rename_fld = renames_to_fold(pending_renames);
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let new_stmts = b.stmts.iter()
-            .flat_map(|x| fld.fold_stmt(mustbeone(rename_fld.fold_stmt(*x))).move_iter())
+            .map(|x| rename_fld.fold_stmt(*x)
+                 .expect_one("rename_fold didn't return one value"))
+            .flat_map(|x| fld.fold_stmt(x).move_iter())
             .collect();
     let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(x)));
     Block{
@@ -689,14 +691,6 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
         rules: b.rules,
         span: b.span,
     }
-}
-
-// rename_fold should never return anything other than one thing
-fn mustbeone<T>(mut val : SmallVector<T>) -> T {
-    if val.len() != 1 {
-        fail!("rename_fold didn't return one value");
-    }
-    val.pop()
 }
 
 // get the (innermost) BlockInfo from an exts stack
@@ -734,11 +728,8 @@ pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
 
 // perform a bunch of renames
 fn apply_pending_renames(folder : @ast_fold, stmt : ast::Stmt) -> @ast::Stmt {
-    let mut stmts = folder.fold_stmt(&stmt);
-    if stmts.len() != 1 {
-        fail!("renaming of stmt did not produce one stmt");
-    }
-    stmts.pop()
+    folder.fold_stmt(&stmt)
+            .expect_one("renaming of stmt did not produce one stmt")
 }
 
 
@@ -1185,11 +1176,8 @@ fn mark_expr(expr : @ast::Expr, m : Mrk) -> @ast::Expr {
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
 fn mark_stmt(expr : &ast::Stmt, m : Mrk) -> @ast::Stmt {
-    let mut stmts = new_mark_folder(m).fold_stmt(expr);
-    if stmts.len() != 1 {
-        fail!("marking a stmt didn't return a stmt");
-    }
-    stmts.pop()
+    new_mark_folder(m).fold_stmt(expr)
+            .expect_one("marking a stmt didn't return a stmt")
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
