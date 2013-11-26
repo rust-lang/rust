@@ -48,14 +48,6 @@ pub fn strip_items(crate: ast::Crate,
     ctxt.fold_crate(crate)
 }
 
-fn filter_item(cx: &Context, item: @ast::item) -> Option<@ast::item> {
-    if item_in_cfg(cx, item) {
-        Some(item)
-    } else {
-        None
-    }
-}
-
 fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
                         -> Option<&'r ast::view_item> {
     if view_item_in_cfg(cx, view_item) {
@@ -66,9 +58,10 @@ fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
 }
 
 fn fold_mod(cx: &Context, m: &ast::_mod) -> ast::_mod {
-    let filtered_items = m.items.iter().filter_map(|a| {
-        filter_item(cx, *a).and_then(|x| cx.fold_item(x))
-    }).collect();
+    let filtered_items = m.items.iter()
+            .filter(|&a| item_in_cfg(cx, *a))
+            .flat_map(|&x| cx.fold_item(x).move_iter())
+            .collect();
     let filtered_view_items = m.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();
@@ -122,28 +115,25 @@ fn fold_item_underscore(cx: &Context, item: &ast::item_) -> ast::item_ {
     fold::noop_fold_item_underscore(&item, cx)
 }
 
-fn filter_stmt(cx: &Context, stmt: @ast::Stmt) -> Option<@ast::Stmt> {
+fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
     match stmt.node {
       ast::StmtDecl(decl, _) => {
         match decl.node {
           ast::DeclItem(item) => {
-            if item_in_cfg(cx, item) {
-                Some(stmt)
-            } else {
-                None
-            }
+            item_in_cfg(cx, item)
           }
-          _ => Some(stmt)
+          _ => true
         }
       }
-      _ => Some(stmt),
+      _ => true
     }
 }
 
 fn fold_block(cx: &Context, b: &ast::Block) -> ast::Block {
-    let resulting_stmts = b.stmts.iter().filter_map(|a| {
-        filter_stmt(cx, *a).and_then(|stmt| cx.fold_stmt(stmt))
-    }).collect();
+    let resulting_stmts = b.stmts.iter()
+            .filter(|&a| retain_stmt(cx, *a))
+            .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())
+            .collect();
     let filtered_view_items = b.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();

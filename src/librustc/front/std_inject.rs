@@ -19,6 +19,7 @@ use syntax::codemap;
 use syntax::fold::ast_fold;
 use syntax::fold;
 use syntax::opt_vec;
+use syntax::util::small_vector::SmallVector;
 
 static STD_VERSION: &'static str = "0.9-pre";
 
@@ -98,14 +99,14 @@ impl fold::ast_fold for StandardLibraryInjector {
         }
     }
 
-    fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {
+    fn fold_item(&self, item: @ast::item) -> SmallVector<@ast::item> {
         if !no_prelude(item.attrs) {
             // only recur if there wasn't `#[no_implicit_prelude];`
             // on this item, i.e. this means that the prelude is not
             // implicitly imported though the whole subtree
             fold::noop_fold_item(item, self)
         } else {
-            Some(item)
+            SmallVector::one(item)
         }
     }
 
