@@ -859,20 +859,20 @@ pub trait ImmutableVector<'self, T> {
     fn rev_iter(self) -> RevIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.
-    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
+    fn split(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.
-    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
+    fn splitn(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.
-    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
+    fn rsplit(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.
-    fn rsplitn_iter(self,  n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
+    fn rsplitn(self,  n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -890,13 +890,13 @@ pub trait ImmutableVector<'self, T> {
      *
      * ```rust
      * let v = &[1,2,3,4];
-     * for win in v.window_iter() {
+     * for win in v.windows(2) {
      *     println!("{:?}", win);
      * }
      * ```
      *
      */
-    fn window_iter(self, size: uint) -> WindowIter<'self, T>;
+    fn windows(self, size: uint) -> WindowIter<'self, T>;
     /**
      *
      * Returns an iterator over `size` elements of the vector at a
@@ -915,13 +915,13 @@ pub trait ImmutableVector<'self, T> {
      *
      * ```rust
      * let v = &[1,2,3,4,5];
-     * for win in v.chunk_iter() {
+     * for win in v.chunks(2) {
      *     println!("{:?}", win);
      * }
      * ```
      *
      */
-    fn chunk_iter(self, size: uint) -> ChunkIter<'self, T>;
+    fn chunks(self, size: uint) -> ChunkIter<'self, T>;
 
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
@@ -1024,11 +1024,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn split_iter(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
-        self.splitn_iter(uint::max_value, pred)
+    fn split(self, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
+        self.splitn(uint::max_value, pred)
     }
+
     #[inline]
-    fn splitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
+    fn splitn(self, n: uint, pred: &'self fn(&T) -> bool) -> SplitIterator<'self, T> {
         SplitIterator {
             v: self,
             n: n,
@@ -1036,12 +1037,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             finished: false
         }
     }
+
     #[inline]
-    fn rsplit_iter(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
-        self.rsplitn_iter(uint::max_value, pred)
+    fn rsplit(self, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
+        self.rsplitn(uint::max_value, pred)
     }
+
     #[inline]
-    fn rsplitn_iter(self, n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
+    fn rsplitn(self, n: uint, pred: &'self fn(&T) -> bool) -> RSplitIterator<'self, T> {
         RSplitIterator {
             v: self,
             n: n,
@@ -1050,12 +1053,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         }
     }
 
-    fn window_iter(self, size: uint) -> WindowIter<'self, T> {
+    #[inline]
+    fn windows(self, size: uint) -> WindowIter<'self, T> {
         assert!(size != 0);
         WindowIter { v: self, size: size }
     }
 
-    fn chunk_iter(self, size: uint) -> ChunkIter<'self, T> {
+    #[inline]
+    fn chunks(self, size: uint) -> ChunkIter<'self, T> {
         assert!(size != 0);
         ChunkIter { v: self, size: size }
     }
@@ -1218,7 +1223,7 @@ pub trait ImmutableCopyableVector<T> {
 
     /// Create an iterator that yields every possible permutation of the
     /// vector in succession.
-    fn permutations_iter(self) -> Permutations<T>;
+    fn permutations(self) -> Permutations<T>;
 }
 
 impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
@@ -1243,7 +1248,7 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
         (*self.unsafe_ref(index)).clone()
     }
 
-    fn permutations_iter(self) -> Permutations<T> {
+    fn permutations(self) -> Permutations<T> {
         Permutations{
             swaps: ElementSwaps::new(self.len()),
             v: self.to_owned(),
@@ -3035,17 +3040,17 @@ mod tests {
         use hashmap;
         {
             let v: [int, ..0] = [];
-            let mut it = v.permutations_iter();
+            let mut it = v.permutations();
             assert_eq!(it.next(), None);
         }
         {
             let v = [~"Hello"];
-            let mut it = v.permutations_iter();
+            let mut it = v.permutations();
             assert_eq!(it.next(), None);
         }
         {
             let v = [1, 2, 3];
-            let mut it = v.permutations_iter();
+            let mut it = v.permutations();
             assert_eq!(it.next(), Some(~[1,2,3]));
             assert_eq!(it.next(), Some(~[1,3,2]));
             assert_eq!(it.next(), Some(~[3,1,2]));
@@ -3058,7 +3063,7 @@ mod tests {
             // check that we have N! unique permutations
             let mut set = hashmap::HashSet::new();
             let v = ['A', 'B', 'C', 'D', 'E', 'F'];
-            for perm in v.permutations_iter() {
+            for perm in v.permutations() {
                 set.insert(perm);
             }
             assert_eq!(set.len(), 2 * 3 * 4 * 5 * 6);
@@ -3357,7 +3362,7 @@ mod tests {
     fn test_permute_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        for _ in v.permutations_iter() {
+        for _ in v.permutations() {
             if i == 2 {
                 fail!()
             }
@@ -3530,97 +3535,97 @@ mod tests {
     }
 
     #[test]
-    fn test_split_iterator() {
+    fn test_splitator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.split_iter(|x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x % 2 == 0).collect::<~[&[int]]>(),
                    ~[&[1], &[3], &[5]]);
-        assert_eq!(xs.split_iter(|x| *x == 1).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 1).collect::<~[&[int]]>(),
                    ~[&[], &[2,3,4,5]]);
-        assert_eq!(xs.split_iter(|x| *x == 5).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 5).collect::<~[&[int]]>(),
                    ~[&[1,2,3,4], &[]]);
-        assert_eq!(xs.split_iter(|x| *x == 10).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 10).collect::<~[&[int]]>(),
                    ~[&[1,2,3,4,5]]);
-        assert_eq!(xs.split_iter(|_| true).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|_| true).collect::<~[&[int]]>(),
                    ~[&[], &[], &[], &[], &[], &[]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.split_iter(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+        assert_eq!(xs.split(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]
-    fn test_splitn_iterator() {
+    fn test_splitnator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.splitn_iter(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.splitn(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
                    ~[&[1,2,3,4,5]]);
-        assert_eq!(xs.splitn_iter(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.splitn(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
                    ~[&[1], &[3,4,5]]);
-        assert_eq!(xs.splitn_iter(3, |_| true).collect::<~[&[int]]>(),
+        assert_eq!(xs.splitn(3, |_| true).collect::<~[&[int]]>(),
                    ~[&[], &[], &[], &[4,5]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.splitn_iter(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+        assert_eq!(xs.splitn(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]
-    fn test_rsplit_iterator() {
+    fn test_rsplitator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.rsplit_iter(|x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplit(|x| *x % 2 == 0).collect::<~[&[int]]>(),
                    ~[&[5], &[3], &[1]]);
-        assert_eq!(xs.rsplit_iter(|x| *x == 1).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplit(|x| *x == 1).collect::<~[&[int]]>(),
                    ~[&[2,3,4,5], &[]]);
-        assert_eq!(xs.rsplit_iter(|x| *x == 5).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplit(|x| *x == 5).collect::<~[&[int]]>(),
                    ~[&[], &[1,2,3,4]]);
-        assert_eq!(xs.rsplit_iter(|x| *x == 10).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplit(|x| *x == 10).collect::<~[&[int]]>(),
                    ~[&[1,2,3,4,5]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.rsplit_iter(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+        assert_eq!(xs.rsplit(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]
-    fn test_rsplitn_iterator() {
+    fn test_rsplitnator() {
         let xs = &[1,2,3,4,5];
 
-        assert_eq!(xs.rsplitn_iter(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplitn(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
                    ~[&[1,2,3,4,5]]);
-        assert_eq!(xs.rsplitn_iter(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplitn(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
                    ~[&[5], &[1,2,3]]);
-        assert_eq!(xs.rsplitn_iter(3, |_| true).collect::<~[&[int]]>(),
+        assert_eq!(xs.rsplitn(3, |_| true).collect::<~[&[int]]>(),
                    ~[&[], &[], &[], &[1,2]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.rsplitn_iter(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+        assert_eq!(xs.rsplitn(1, |x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]
-    fn test_window_iterator() {
+    fn test_windowsator() {
         let v = &[1i,2,3,4];
 
-        assert_eq!(v.window_iter(2).collect::<~[&[int]]>(), ~[&[1,2], &[2,3], &[3,4]]);
-        assert_eq!(v.window_iter(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[2,3,4]]);
-        assert!(v.window_iter(6).next().is_none());
+        assert_eq!(v.windows(2).collect::<~[&[int]]>(), ~[&[1,2], &[2,3], &[3,4]]);
+        assert_eq!(v.windows(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[2,3,4]]);
+        assert!(v.windows(6).next().is_none());
     }
 
     #[test]
     #[should_fail]
-    fn test_window_iterator_0() {
+    fn test_windowsator_0() {
         let v = &[1i,2,3,4];
-        let _it = v.window_iter(0);
+        let _it = v.windows(0);
     }
 
     #[test]
-    fn test_chunk_iterator() {
+    fn test_chunksator() {
         let v = &[1i,2,3,4,5];
 
-        assert_eq!(v.chunk_iter(2).collect::<~[&[int]]>(), ~[&[1i,2], &[3,4], &[5]]);
-        assert_eq!(v.chunk_iter(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[4,5]]);
-        assert_eq!(v.chunk_iter(6).collect::<~[&[int]]>(), ~[&[1i,2,3,4,5]]);
+        assert_eq!(v.chunks(2).collect::<~[&[int]]>(), ~[&[1i,2], &[3,4], &[5]]);
+        assert_eq!(v.chunks(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[4,5]]);
+        assert_eq!(v.chunks(6).collect::<~[&[int]]>(), ~[&[1i,2,3,4,5]]);
 
-        assert_eq!(v.chunk_iter(2).invert().collect::<~[&[int]]>(), ~[&[5i], &[3,4], &[1,2]]);
-        let it = v.chunk_iter(2);
+        assert_eq!(v.chunks(2).invert().collect::<~[&[int]]>(), ~[&[5i], &[3,4], &[1,2]]);
+        let it = v.chunks(2);
         assert_eq!(it.indexable(), 3);
         assert_eq!(it.idx(0).unwrap(), &[1,2]);
         assert_eq!(it.idx(1).unwrap(), &[3,4]);
@@ -3630,9 +3635,9 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_chunk_iterator_0() {
+    fn test_chunksator_0() {
         let v = &[1i,2,3,4];
-        let _it = v.chunk_iter(0);
+        let _it = v.chunks(0);
     }
 
     #[test]

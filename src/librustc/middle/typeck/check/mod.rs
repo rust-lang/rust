@@ -3926,7 +3926,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     let nm = ccx.tcx.sess.str_of(it.ident);
     let name = nm.as_slice();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
-        let split : ~[&str] = name.split_iter('_').collect();
+        let split : ~[&str] = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
         //We only care about the operation here

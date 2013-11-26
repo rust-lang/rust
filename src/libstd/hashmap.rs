@@ -736,7 +736,7 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit the values representing the difference
-    pub fn difference_iter<'a>(&'a self, other: &'a HashSet<T>) -> SetAlgebraIter<'a, T> {
+    pub fn difference<'a>(&'a self, other: &'a HashSet<T>) -> SetAlgebraIter<'a, T> {
         Repeat::new(other)
             .zip(self.iter())
             .filter_map(|(other, elt)| {
@@ -745,13 +745,13 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit the values representing the symmetric difference
-    pub fn symmetric_difference_iter<'a>(&'a self, other: &'a HashSet<T>)
+    pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T>)
         -> Chain<SetAlgebraIter<'a, T>, SetAlgebraIter<'a, T>> {
-        self.difference_iter(other).chain(other.difference_iter(self))
+        self.difference(other).chain(other.difference(self))
     }
 
     /// Visit the values representing the intersection
-    pub fn intersection_iter<'a>(&'a self, other: &'a HashSet<T>)
+    pub fn intersection<'a>(&'a self, other: &'a HashSet<T>)
         -> SetAlgebraIter<'a, T> {
         Repeat::new(other)
             .zip(self.iter())
@@ -761,9 +761,9 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit the values representing the union
-    pub fn union_iter<'a>(&'a self, other: &'a HashSet<T>)
+    pub fn union<'a>(&'a self, other: &'a HashSet<T>)
         -> Chain<HashSetIterator<'a, T>, SetAlgebraIter<'a, T>> {
-        self.iter().chain(other.difference_iter(self))
+        self.iter().chain(other.difference(self))
     }
 
 }
@@ -1114,7 +1114,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
-        for x in a.intersection_iter(&b) {
+        for x in a.intersection(&b) {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1137,7 +1137,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [1, 5, 11];
-        for x in a.difference_iter(&b) {
+        for x in a.difference(&b) {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1163,7 +1163,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [-2, 1, 5, 11, 14, 22];
-        for x in a.symmetric_difference_iter(&b) {
+        for x in a.symmetric_difference(&b) {
             assert!(expected.contains(x));
             i += 1
         }
@@ -1193,7 +1193,7 @@ mod test_set {
 
         let mut i = 0;
         let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
-        for x in a.union_iter(&b) {
+        for x in a.union(&b) {
             assert!(expected.contains(x));
             i += 1
         }

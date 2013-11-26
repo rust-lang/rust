@@ -46,7 +46,7 @@ Some examples of obvious things you might want to do
 
 * Pull the lines of a file into a vector of strings
 
-    let lines = File::open("message.txt").line_iter().to_vec();
+    let lines = File::open("message.txt").lines().to_vec();
 
 * Make an simple HTTP request
 

@@ -228,7 +228,7 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
 }
 
 pub fn unindent(s: &str) -> ~str {
-    let lines = s.any_line_iter().collect::<~[&str]>();
+    let lines = s.lines_any().collect::<~[&str]>();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
     let min_indent = do lines.iter().fold(uint::max_value) |min_indent, line| {
@@ -257,7 +257,7 @@ pub fn unindent(s: &str) -> ~str {
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            do line.iter().all |char| {
+            do line.chars().all |char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {

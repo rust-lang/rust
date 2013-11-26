@@ -76,7 +76,7 @@ impl Sudoku {
             let line = match reader.read_line() {
                 Some(ln) => ln, None => break
             };
-            let comps: ~[&str] = line.trim().split_iter(',').collect();
+            let comps: ~[&str] = line.trim().split(',').collect();
 
             if comps.len() == 3u {
                 let row     = from_str::<uint>(comps[0]).unwrap() as u8;
