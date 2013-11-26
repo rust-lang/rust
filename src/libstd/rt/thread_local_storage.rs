@@ -34,6 +34,11 @@ pub unsafe fn get(key: Key) -> *mut c_void {
     pthread_getspecific(key)
 }
 
+#[cfg(unix)]
+pub unsafe fn destroy(key: Key) {
+    assert_eq!(0, pthread_key_delete(key));
+}
+
 #[cfg(target_os="macos")]
 #[allow(non_camel_case_types)] // foreign type
 type pthread_key_t = ::libc::c_ulong;
@@ -47,6 +52,7 @@ type pthread_key_t = ::libc::c_uint;
 #[cfg(unix)]
 extern {
     fn pthread_key_create(key: *mut pthread_key_t, dtor: *u8) -> c_int;
+    fn pthread_key_delete(key: pthread_key_t) -> c_int;
     fn pthread_getspecific(key: pthread_key_t) -> *mut c_void;
     fn pthread_setspecific(key: pthread_key_t, value: *mut c_void) -> c_int;
 }
@@ -72,8 +78,14 @@ pub unsafe fn get(key: Key) -> *mut c_void {
 }
 
 #[cfg(windows)]
+pub unsafe fn destroy(key: Key) {
+    assert!(TlsFree(key) != 0);
+}
+
+#[cfg(windows)]
 extern "system" {
     fn TlsAlloc() -> DWORD;
+    fn TlsFree(dwTlsIndex: DWORD) -> BOOL;
     fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
     fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
 }
