@@ -75,7 +75,6 @@ use vec::{OwnedVector, MutableVector, ImmutableVector};
 use vec;
 
 use self::thread::Thread;
-use self::work_queue::WorkQueue;
 
 // the os module needs to reach into this helper, so allow general access
 // through this reexport.
@@ -130,9 +129,6 @@ pub mod rtio;
 /// or task-local storage.
 pub mod local;
 
-/// A parallel work-stealing deque.
-pub mod work_queue;
-
 /// A parallel queue.
 pub mod message_queue;
 
@@ -141,6 +137,9 @@ mod mpsc_queue;
 
 /// A lock-free multi-producer, multi-consumer bounded queue.
 mod mpmc_bounded_queue;
+
+/// A parallel work-stealing deque
+pub mod deque;
 
 /// A parallel data structure for tracking sleeping schedulers.
 pub mod sleeper_list;
@@ -287,7 +286,9 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
 
     // Create a work queue for each scheduler, ntimes. Create an extra
     // for the main thread if that flag is set. We won't steal from it.
-    let work_queues: ~[WorkQueue<~Task>] = vec::from_fn(nscheds, |_| WorkQueue::new());
+    let mut pool = deque::BufferPool::init();
+    let arr = vec::from_fn(nscheds, |_| pool.deque());
+    let (workers, stealers) = vec::unzip(arr.move_iter());
 
     // The schedulers.
     let mut scheds = ~[];
@@ -295,14 +296,14 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
     // sent the Shutdown message to terminate the schedulers.
     let mut handles = ~[];
 
-    for work_queue in work_queues.iter() {
+    for worker in workers.move_iter() {
         rtdebug!("inserting a regular scheduler");
 
         // Every scheduler is driven by an I/O event loop.
         let loop_ = new_event_loop();
         let mut sched = ~Scheduler::new(loop_,
-                                        work_queue.clone(),
-                                        work_queues.clone(),
+                                        worker,
+                                        stealers.clone(),
                                         sleepers.clone());
         let handle = sched.make_handle();
 
@@ -321,12 +322,12 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
 
         // This scheduler needs a queue that isn't part of the stealee
         // set.
-        let work_queue = WorkQueue::new();
+        let (worker, _) = pool.deque();
 
         let main_loop = new_event_loop();
         let mut main_sched = ~Scheduler::new_special(main_loop,
-                                                     work_queue,
-                                                     work_queues.clone(),
+                                                     worker,
+                                                     stealers.clone(),
                                                      sleepers.clone(),
                                                      false,
                                                      Some(friend_handle));
