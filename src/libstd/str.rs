@@ -112,17 +112,17 @@ use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 use default::Default;
 use send_str::{SendStr, SendStrOwned};
 
-/*
-Section: Conditions
-*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Section: Conditions
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 condition! {
     pub not_utf8: (~str) -> ~str;
 }
 
-/*
-Section: Creating a string
-*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Section: Creating a string
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Convert a vector of bytes to a new UTF-8 string
 ///
@@ -347,9 +347,9 @@ impl<'self, C: CharEq> CharEq for &'self [C] {
     }
 }
 
-/*
-Section: Iterators
-*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Section: Iterators
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// External iterator for a string's characters.
 /// Use with the `std::iter` module.
@@ -772,9 +772,9 @@ pub fn replace(s: &str, from: &str, to: &str) -> ~str {
     result
 }
 
-/*
-Section: Comparing strings
-*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Section: Comparing strings
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Bytewise slice equality
 #[cfg(not(test))]
@@ -827,9 +827,9 @@ pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
-/*
-Section: Misc
-*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Section: Misc
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// Determines if a vector of bytes contains valid UTF-8
 pub fn is_utf8(v: &[u8]) -> bool {
@@ -1016,6 +1016,52 @@ macro_rules! utf8_acc_cont_byte(
 
 static TAG_CONT_U8: u8 = 128u8;
 
+/// Common char slicing implementation. Slices from char index `begin` to char index `end`.
+/// If `begin` is `None`, it slices from the beginning of the string.
+/// If `end` is `None`, it slices to the end of the string.
+#[inline]
+fn slice_chars_common<'a>(s: &'a str, begin: Option<uint>, end: Option<uint>) -> &'a str {
+    match (begin, end) {
+        (Some(a), Some(b)) => assert!(a <= b, "slice_chars_common: `begin` is after `end`"),
+        _ => ()
+    }
+
+    let mut count = 0;
+    let mut begin_byte = if begin.is_none() {Some(0)      } else {None};
+    let mut end_byte   = if end.is_none()   {Some(s.len())} else {None};
+
+    // This could be even more efficient by not decoding,
+    // only finding the char boundaries
+    for (idx, _) in s.char_offset_iter() {
+        match (begin, begin_byte) {
+            (Some(begin), None) if count == begin => { begin_byte = Some(idx) }
+            _ => ()
+        }
+        match (end, end_byte) {
+            (Some(end), None) if count == end => { end_byte = Some(idx) }
+            _ => ()
+        }
+        count += 1;
+        if begin_byte.is_some() && end_byte.is_some() { break }
+    }
+
+    // Handle one-after-end char index correctly
+    match (begin, begin_byte) {
+        (Some(begin), None) if count == begin => { begin_byte = Some(s.len()) }
+        _ => ()
+    }
+    match (end, end_byte) {
+        (Some(end), None) if count == end => { end_byte = Some(s.len()) }
+        _ => ()
+    }
+
+    match (begin_byte, end_byte) {
+        (None, _) => fail!("slice_chars_common: `begin` is beyond end of string"),
+        (_, None) => fail!("slice_chars_common: `end` is beyond end of string"),
+        (Some(a), Some(b)) => unsafe { raw::slice_bytes(s, a, b) }
+    }
+}
+
 /// Unsafe operations
 pub mod raw {
     use cast;
@@ -1187,9 +1233,9 @@ pub mod raw {
     }
 }
 
-/*
-Section: Trait implementations
-*/
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Section: Trait implementations
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(not(test))]
 #[allow(missing_doc)]
@@ -1536,8 +1582,22 @@ pub trait StrSlice<'self> {
     /// [`begin`..`end`).
     ///
     /// Fails if `begin` > `end` or the either `begin` or `end` are
-    /// beyond the last character of the string.
+    /// more than one beyond the last character of the string.
     fn slice_chars(&self, begin: uint, end: uint) -> &'self str;
+
+    /// Returns a slice of the string starting at char index `begin`.
+    ///
+    /// This can also be viewed as returning a slice skipping the first `begin` chars.
+    ///
+    /// Fails if `begin` is more than one beyond the last character of the string.
+    fn slice_chars_from(&self, begin: uint) -> &'self str;
+
+    /// Returns a slice of the string ending one before the char index `end`.
+    ///
+    /// This can also be viewed as returning a slice containing the first `end` chars.
+    ///
+    /// Fails if `end` is more than one beyond the last character of the string.
+    fn slice_chars_to(&self, end: uint) -> &'self str;
 
     /// Returns true if `needle` is a prefix of the string.
     fn starts_with(&self, needle: &str) -> bool;
@@ -1934,27 +1994,19 @@ impl<'self> StrSlice<'self> for &'self str {
         unsafe { raw::slice_bytes(*self, 0, end) }
     }
 
+    #[inline]
     fn slice_chars(&self, begin: uint, end: uint) -> &'self str {
-        assert!(begin <= end);
-        let mut count = 0;
-        let mut begin_byte = None;
-        let mut end_byte = None;
+        slice_chars_common(*self, Some(begin), Some(end))
+    }
 
-        // This could be even more efficient by not decoding,
-        // only finding the char boundaries
-        for (idx, _) in self.char_offset_iter() {
-            if count == begin { begin_byte = Some(idx); }
-            if count == end { end_byte = Some(idx); break; }
-            count += 1;
-        }
-        if begin_byte.is_none() && count == begin { begin_byte = Some(self.len()) }
-        if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
+    #[inline]
+    fn slice_chars_from(&self, begin: uint) -> &'self str {
+        slice_chars_common(*self, Some(begin), None)
+    }
 
-        match (begin_byte, end_byte) {
-            (None, _) => fail!("slice_chars: `begin` is beyond end of string"),
-            (_, None) => fail!("slice_chars: `end` is beyond end of string"),
-            (Some(a), Some(b)) => unsafe { raw::slice_bytes(*self, a, b) }
-        }
+    #[inline]
+    fn slice_chars_to(&self, end: uint) -> &'self str {
+        slice_chars_common(*self, None, Some(end))
     }
 
     #[inline]
@@ -3846,10 +3898,51 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<~str> = from_str(&"string");
-      assert_eq!(owned, Some(~"string"));
-      let managed: Option<@str> = from_str(&"string");
-      assert_eq!(managed, Some(@"string"));
+        let owned: Option<~str> = from_str(&"string");
+        assert_eq!(owned, Some(~"string"));
+        let managed: Option<@str> = from_str(&"string");
+        assert_eq!(managed, Some(@"string"));
+    }
+
+    #[test]
+    fn test_slice_chars_from() {
+        let a = "abcd";
+        let b = "ศไทย中华Việt Nam";
+
+        assert_eq!(a.slice_chars_from(0), "abcd");
+        assert_eq!(a.slice_chars_from(2), "cd");
+        assert_eq!(a.slice_chars_from(4), "");
+
+        assert_eq!(b.slice_chars_from(2), "ทย中华Việt Nam");
+        assert_eq!(b.slice_chars_from(4), "中华Việt Nam");
+        assert_eq!(b.slice_chars_from(11), "Nam");
+    }
+
+    #[test]
+    fn test_slice_chars_to() {
+        let a = "abcd";
+        let b = "ศไทย中华Việt Nam";
+
+        assert_eq!(a.slice_chars_to(4), "abcd");
+        assert_eq!(a.slice_chars_to(2), "ab");
+        assert_eq!(a.slice_chars_to(0), "");
+
+        assert_eq!(b.slice_chars_to(5), "ศไทย中");
+        assert_eq!(b.slice_chars_to(8), "ศไทย中华Vi");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_slice_chars_from_fail() {
+        let a = "abcd";
+        a.slice_chars_from(5);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_slice_chars_to_fail() {
+        let a = "abcd";
+        a.slice_chars_to(5);
     }
 }
 
