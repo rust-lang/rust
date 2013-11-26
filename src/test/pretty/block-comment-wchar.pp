@@ -51,7 +51,7 @@ fn f() {
       CR4+2:                         (should align)
     */
     /*
-    // (NEL deliberately omitted)
+      NEL4+2:                        (should align)
     */
     /*
       Ogham Space Mark 4+2:          (should align)
@@ -103,11 +103,10 @@ fn f() {
 fn main() {
     // Taken from http://www.unicode.org/Public/UNIDATA/PropList.txt
     let chars =
-        ['\x0A', '\x0B', '\x0C', '\x0D', '\x20',
-         // '\x85', // for some reason Rust thinks NEL isn't whitespace
-         '\xA0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004',
-         '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A', '\u2028',
-         '\u2029', '\u202F', '\u205F', '\u3000'];
+        ['\x0A', '\x0B', '\x0C', '\x0D', '\x20', '\x85', '\xA0', '\u1680',
+         '\u2000', '\u2001', '\u2002', '\u2003', '\u2004', '\u2005', '\u2006',
+         '\u2007', '\u2008', '\u2009', '\u200A', '\u2028', '\u2029', '\u202F',
+         '\u205F', '\u3000'];
     for c in chars.iter() {
         let ws = c.is_whitespace();
         println!("{:?} {:?}" , c , ws);

@@ -41,7 +41,7 @@ def load_unicode_data(f):
             continue
         [code, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcsae, titlecase ] = fields
+         old, iso, upcase, lowcase, titlecase ] = fields
 
         code = int(code, 16)
 
@@ -89,11 +89,9 @@ def load_unicode_data(f):
 
     return (canon_decomp, compat_decomp, gencats, combines)
 
-
-def load_derived_core_properties(f):
+def load_properties(f, interestingprops):
     fetch(f)
-    derivedprops = {}
-    interestingprops = ["XID_Start", "XID_Continue", "Alphabetic"]
+    props = {}
     re1 = re.compile("^([0-9A-F]+) +; (\w+)")
     re2 = re.compile("^([0-9A-F]+)\.\.([0-9A-F]+) +; (\w+)")
 
@@ -118,10 +116,10 @@ def load_derived_core_properties(f):
             continue
         d_lo = int(d_lo, 16)
         d_hi = int(d_hi, 16)
-        if prop not in derivedprops:
-            derivedprops[prop] = []
-        derivedprops[prop].append((d_lo, d_hi))
-    return derivedprops
+        if prop not in props:
+            props[prop] = []
+        props[prop].append((d_lo, d_hi))
+    return props
 
 def escape_char(c):
     if c <= 0xff:
@@ -376,5 +374,9 @@ emit_property_module(rf, "general_category", gencats)
 
 emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
 
-derived = load_derived_core_properties("DerivedCoreProperties.txt")
+derived = load_properties("DerivedCoreProperties.txt",
+        ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
 emit_property_module(rf, "derived_property", derived)
+
+props = load_properties("PropList.txt", ["White_Space"])
+emit_property_module(rf, "property", props)
