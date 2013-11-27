@@ -612,14 +612,14 @@ pub enum token_tree {
     tt_tok(Span, ::parse::token::Token),
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
-    tt_delim(@mut ~[token_tree]),
+    tt_delim(@~[token_tree]),
 
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a tt_forest,
     // an optional separator, and a boolean where true indicates
     // zero or more (*), and false indicates one or more (+).
-    tt_seq(Span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
+    tt_seq(Span, @~[token_tree], Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
     tt_nonterminal(Span, Ident)
@@ -1178,6 +1178,18 @@ pub enum inlined_item {
     ii_item(@item),
     ii_method(DefId /* impl id */, bool /* is provided */, @method),
     ii_foreign(@foreign_item),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn is_freeze<T: Freeze>() {}
+
+    // Assert that the AST remains Freeze (#10693).
+    #[test] fn ast_is_freeze() {
+        is_freeze::<item>();
+    }
 }
 
 /* hold off on tests ... they appear in a later merge.

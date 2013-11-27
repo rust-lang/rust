@@ -457,10 +457,10 @@ pub fn fold_tts<T:ast_fold>(tts: &[token_tree], fld: &T) -> ~[token_tree] {
         match *tt {
             tt_tok(span, ref tok) =>
             tt_tok(span,maybe_fold_ident(tok,fld)),
-            tt_delim(ref tts) => tt_delim(@mut fold_tts(**tts, fld)),
-            tt_seq(span, ref pattern, ref sep, is_optional) =>
+            tt_delim(tts) => tt_delim(@fold_tts(*tts, fld)),
+            tt_seq(span, pattern, ref sep, is_optional) =>
             tt_seq(span,
-                   @mut fold_tts(**pattern, fld),
+                   @fold_tts(*pattern, fld),
                    sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
                    is_optional),
             tt_nonterminal(sp,ref ident) =>
