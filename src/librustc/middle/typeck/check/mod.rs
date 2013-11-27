@@ -105,6 +105,7 @@ use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
+use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux::UserString;
 use util::ppaux;
@@ -4013,7 +4014,17 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
               });
               (1u, ~[], td_ptr)
             }
-            "type_id" => (1u, ~[], ty::mk_u64()),
+            "type_id" => {
+                let langid = ccx.tcx.lang_items.require(TypeIdLangItem);
+                match langid {
+                    Ok(did) => (1u, ~[], ty::mk_struct(ccx.tcx, did, substs {
+                                                 self_ty: None,
+                                                 tps: ~[],
+                                                 regions: ty::NonerasedRegions(opt_vec::Empty)
+                                                 }) ),
+                    Err(msg) => { tcx.sess.span_fatal(it.span, msg); }
+                }
+            },
             "visit_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
                   Ok(t) => t,
