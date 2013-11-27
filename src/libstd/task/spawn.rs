@@ -139,7 +139,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
             let join_task = do Task::build_child(None) {
                 debug!("running join task");
                 let thread_port = thread_port_cell.take();
-                let thread: Thread = thread_port.recv();
+                let thread: Thread<()> = thread_port.recv();
                 thread.join();
             };
 
