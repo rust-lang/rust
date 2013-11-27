@@ -2112,7 +2112,7 @@ impl Parser {
                     };
                     tt_seq(
                         mk_sp(sp.lo, p.span.hi),
-                        @mut seq,
+                        @seq,
                         s,
                         z
                     )
@@ -2157,7 +2157,7 @@ impl Parser {
                 result.push(parse_any_tt_tok(self));
                 self.open_braces.pop();
 
-                tt_delim(@mut result)
+                tt_delim(@result)
             }
             _ => parse_non_delim_tt_tok(self)
         }
