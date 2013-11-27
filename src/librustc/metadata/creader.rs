@@ -67,7 +67,7 @@ impl visit::Visitor<()> for ReadCrateVisitor {
 
 #[deriving(Clone)]
 struct cache_entry {
-    cnum: int,
+    cnum: ast::CrateNum,
     span: Span,
     hash: @str,
     metas: @~[@ast::MetaItem]
@@ -242,7 +242,7 @@ fn metas_with_ident(ident: @str, metas: ~[@ast::MetaItem])
 }
 
 fn existing_match(e: &Env, metas: &[@ast::MetaItem], hash: &str)
-               -> Option<int> {
+               -> Option<ast::CrateNum> {
     for c in e.crate_cache.iter() {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || c.hash.as_slice() == hash) {
