@@ -502,12 +502,12 @@ fn mk_fresh_ident_interner() -> @ident_interner {
     @interner::StrInterner::prefill(init_vec)
 }
 
-static SELF_KEYWORD_NAME: uint = 8;
-static STATIC_KEYWORD_NAME: uint = 27;
-static STRICT_KEYWORD_START: uint = 32;
-static STRICT_KEYWORD_FINAL: uint = 65;
-static RESERVED_KEYWORD_START: uint = 66;
-static RESERVED_KEYWORD_FINAL: uint = 72;
+static SELF_KEYWORD_NAME: Name = 8;
+static STATIC_KEYWORD_NAME: Name = 27;
+static STRICT_KEYWORD_START: Name = 32;
+static STRICT_KEYWORD_FINAL: Name = 65;
+static RESERVED_KEYWORD_START: Name = 66;
+static RESERVED_KEYWORD_FINAL: Name = 72;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.

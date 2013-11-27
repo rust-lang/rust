@@ -169,7 +169,7 @@ pub struct field_ty {
 // the types of AST nodes.
 #[deriving(Eq,IterBytes)]
 pub struct creader_cache_key {
-    cnum: int,
+    cnum: CrateNum,
     pos: uint,
     len: uint
 }
