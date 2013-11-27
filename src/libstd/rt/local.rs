@@ -132,7 +132,7 @@ mod test {
     #[test]
     fn thread_local_task_smoke_test() {
         do run_in_bare_thread {
-            local_ptr::init_tls_key();
+            local_ptr::init();
             let mut sched = ~new_test_uv_sched();
             let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
@@ -144,7 +144,7 @@ mod test {
     #[test]
     fn thread_local_task_two_instances() {
         do run_in_bare_thread {
-            local_ptr::init_tls_key();
+            local_ptr::init();
             let mut sched = ~new_test_uv_sched();
             let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
@@ -161,7 +161,7 @@ mod test {
     #[test]
     fn borrow_smoke_test() {
         do run_in_bare_thread {
-            local_ptr::init_tls_key();
+            local_ptr::init();
             let mut sched = ~new_test_uv_sched();
             let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
@@ -177,7 +177,7 @@ mod test {
     #[test]
     fn borrow_with_return() {
         do run_in_bare_thread {
-            local_ptr::init_tls_key();
+            local_ptr::init();
             let mut sched = ~new_test_uv_sched();
             let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
