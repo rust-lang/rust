@@ -95,11 +95,9 @@ pub use self::kill::BlockedTask;
 pub mod shouldnt_be_public {
     pub use super::select::SelectInner;
     pub use super::select::{SelectInner, SelectPortInner};
-    #[cfg(stage0)]
-    #[cfg(windows)]
-    pub use super::local_ptr::maybe_tls_key;
-    #[cfg(not(stage0), not(windows))]
-    pub use super::local_ptr::RT_TLS_PTR;
+    pub use super::local_ptr::native::maybe_tls_key;
+    #[cfg(not(stage0), not(windows), not(target_os = "android"))]
+    pub use super::local_ptr::compiled::RT_TLS_PTR;
 }
 
 // Internal macros used by the runtime.
