@@ -32,8 +32,8 @@ pub unsafe fn init(argc: int, argv: **u8) { imp::init(argc, argv) }
 pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 
 /// One-time global cleanup.
-#[cfg(not(test))] pub fn cleanup() { imp::cleanup() }
-#[cfg(test)]      pub fn cleanup() { realargs::cleanup() }
+#[cfg(not(test))] pub unsafe fn cleanup() { imp::cleanup() }
+#[cfg(test)]      pub unsafe fn cleanup() { realargs::cleanup() }
 
 /// Take the global arguments from global storage.
 #[cfg(not(test))] pub fn take() -> Option<~[~str]> { imp::take() }
@@ -74,14 +74,16 @@ mod imp {
     use vec;
 
     static mut global_args_ptr: uint = 0;
+    static mut lock: Mutex = MUTEX_INIT;
 
     pub unsafe fn init(argc: int, argv: **u8) {
         let args = load_argc_and_argv(argc, argv);
         put(args);
     }
 
-    pub fn cleanup() {
+    pub unsafe fn cleanup() {
         rtassert!(take().is_some());
+        lock.destroy();
     }
 
     pub fn take() -> Option<~[~str]> {
@@ -108,7 +110,6 @@ mod imp {
     }
 
     fn with_lock<T>(f: || -> T) -> T {
-        static mut lock: Mutex = MUTEX_INIT;
         (|| {
             unsafe {
                 lock.lock();

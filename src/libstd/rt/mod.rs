@@ -215,7 +215,8 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 
     init(argc, argv);
     let exit_code = run(main);
-    cleanup();
+    // unsafe is ok b/c we're sure that the runtime is gone
+    unsafe { cleanup(); }
 
     return exit_code;
 }
@@ -228,7 +229,8 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 pub fn start_on_main_thread(argc: int, argv: **u8, main: proc()) -> int {
     init(argc, argv);
     let exit_code = run_on_main_thread(main);
-    cleanup();
+    // unsafe is ok b/c we're sure that the runtime is gone
+    unsafe { cleanup(); }
 
     return exit_code;
 }
@@ -249,8 +251,17 @@ pub fn init(argc: int, argv: **u8) {
 }
 
 /// One-time runtime cleanup.
-pub fn cleanup() {
+///
+/// This function is unsafe because it performs no checks to ensure that the
+/// runtime has completely ceased running. It is the responsibility of the
+/// caller to ensure that the runtime is entirely shut down and nothing will be
+/// poking around at the internal components.
+///
+/// Invoking cleanup while portions of the runtime are still in use may cause
+/// undefined behavior.
+pub unsafe fn cleanup() {
     args::cleanup();
+    local_ptr::cleanup();
 }
 
 /// Execute the main function in a scheduler.
