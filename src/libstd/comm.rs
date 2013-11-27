@@ -15,6 +15,7 @@ Message passing
 #[allow(missing_doc)];
 
 use clone::Clone;
+use iter::Iterator;
 use kinds::Send;
 use option::Option;
 use rtcomm = rt::comm;
@@ -43,10 +44,35 @@ pub trait GenericPort<T> {
     /// Receives a message, or fails if the connection closes.
     fn recv(&self) -> T;
 
-    /** Receives a message, or returns `none` if
-    the connection is closed or closes.
-    */
+    /// Receives a message, or returns `none` if
+    /// the connection is closed or closes.
     fn try_recv(&self) -> Option<T>;
+
+    /// Returns an iterator that breaks once the connection closes.
+    ///
+    /// # Example
+    ///
+    /// ~~~rust
+    /// do spawn {
+    ///     for x in port.recv_iter() {
+    ///         if pred(x) { break; }
+    ///         println!("{}", x);
+    ///     }
+    /// }
+    /// ~~~
+    fn recv_iter<'a>(&'a self) -> RecvIterator<'a, Self> {
+        RecvIterator { port: self }
+    }
+}
+
+pub struct RecvIterator<'a, P> {
+    priv port: &'a P,
+}
+
+impl<'a, T, P: GenericPort<T>> Iterator<T> for RecvIterator<'a, P> {
+    fn next(&mut self) -> Option<T> {
+        self.port.try_recv()
+    }
 }
 
 /// Ports that can `peek`
@@ -225,5 +251,60 @@ impl<T: Send> Clone for SharedPort<T> {
     fn clone(&self) -> SharedPort<T> {
         let &SharedPort { x: ref p } = self;
         SharedPort { x: p.clone() }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use comm::*;
+    use prelude::*;
+
+    #[test]
+    fn test_nested_recv_iter() {
+        let (port, chan) = stream::<int>();
+        let (total_port, total_chan) = oneshot::<int>();
+
+        do spawn {
+            let mut acc = 0;
+            for x in port.recv_iter() {
+                acc += x;
+                for x in port.recv_iter() {
+                    acc += x;
+                    for x in port.try_recv().move_iter() {
+                        acc += x;
+                        total_chan.send(acc);
+                    }
+                }
+            }
+        }
+
+        chan.send(3);
+        chan.send(1);
+        chan.send(2);
+        assert_eq!(total_port.recv(), 6);
+    }
+
+    #[test]
+    fn test_recv_iter_break() {
+        let (port, chan) = stream::<int>();
+        let (count_port, count_chan) = oneshot::<int>();
+
+        do spawn {
+            let mut count = 0;
+            for x in port.recv_iter() {
+                if count >= 3 {
+                    count_chan.send(count);
+                    break;
+                } else {
+                    count += x;
+                }
+            }
+        }
+
+        chan.send(2);
+        chan.send(2);
+        chan.send(2);
+        chan.send(2);
+        assert_eq!(count_port.recv(), 4);
     }
 }
