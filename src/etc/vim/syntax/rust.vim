@@ -187,8 +187,8 @@ syn match   rustCharacter   /'\([^'\\]\|\\\([nrt0\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8
 
 syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
 syn region    rustComment     start="//" end="$" contains=rustTodo keepend
-syn region    rustCommentMLDoc start="/\*\%(!\|\*/\@!\)" end="\*/" contains=rustTodo
-syn region    rustCommentDoc  start="//[/!]" end="$" contains=rustTodo keepend
+syn region    rustCommentMLDoc start="/\*\%(!\|\*[*/]\@!\)" end="\*/" contains=rustTodo
+syn region    rustCommentDoc  start="//\%(//\@!\|!\)" end="$" contains=rustTodo keepend
 
 syn keyword rustTodo contained TODO FIXME XXX NB NOTE
 
