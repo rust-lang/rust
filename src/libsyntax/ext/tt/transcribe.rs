@@ -22,7 +22,7 @@ use std::option;
 
 ///an unzipping of `token_tree`s
 struct TtFrame {
-    forest: @mut ~[ast::token_tree],
+    forest: @~[ast::token_tree],
     idx: uint,
     dotdotdoted: bool,
     sep: Option<Token>,
@@ -52,7 +52,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
     let r = @mut TtReader {
         sp_diag: sp_diag,
         stack: @mut TtFrame {
-            forest: @mut src,
+            forest: @src,
             idx: 0u,
             dotdotdoted: false,
             sep: None,
@@ -74,7 +74,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
 
 fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
     @mut TtFrame {
-        forest: @mut (*f.forest).clone(),
+        forest: @(*f.forest).clone(),
         idx: f.idx,
         dotdotdoted: f.dotdotdoted,
         sep: f.sep.clone(),
@@ -175,8 +175,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     loop {
         {
             let stack = &mut *r.stack;
-            let forest = &mut *stack.forest;
-            if stack.idx < forest.len() {
+            if stack.idx < stack.forest.len() {
                 break;
             }
         }
