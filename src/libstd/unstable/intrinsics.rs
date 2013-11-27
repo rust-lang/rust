@@ -34,7 +34,7 @@ A quick refresher on memory ordering:
 
 // This is needed to prevent duplicate lang item definitions.
 #[cfg(test)]
-pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor};
+pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
 
 pub type GlueFn = extern "Rust" fn(*i8);
 
@@ -313,7 +313,11 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
+    #[cfg(stage0)]
     pub fn type_id<T: 'static>() -> u64;
+    #[cfg(not(stage0))]
+    pub fn type_id<T: 'static>() -> TypeId;
+
 
     /// Create a value initialized to zero.
     ///
@@ -486,3 +490,22 @@ extern "rust-intrinsic" {
 #[cfg(target_endian = "big")]    pub fn to_be32(x: i32) -> i32 { x }
 #[cfg(target_endian = "little")] pub fn to_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
 #[cfg(target_endian = "big")]    pub fn to_be64(x: i64) -> i64 { x }
+
+
+/// `TypeId` represents a globally unique identifier for a type
+#[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
+                  // middle/lang_items.rs
+#[deriving(Eq, IterBytes)]
+#[cfg(not(test))]
+pub struct TypeId {
+    priv t: u64,
+}
+
+#[cfg(not(test))]
+impl TypeId {
+    /// Returns the `TypeId` of the type this generic function has been instantiated with
+    #[cfg(not(stage0))]
+    pub fn of<T: 'static>() -> TypeId {
+        unsafe { type_id::<T>() }
+    }
+}
