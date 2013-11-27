@@ -28,7 +28,6 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax;
 
-use std::int;
 use std::hashmap::{HashMap,HashSet};
 
 #[deriving(Clone)]
@@ -209,7 +208,7 @@ pub struct Session_ {
     building_library: @mut bool,
     working_dir: Path,
     lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
-    node_id: @mut uint,
+    node_id: @mut ast::NodeId,
 }
 
 pub type Session = @Session_;
@@ -274,13 +273,15 @@ impl Session_ {
     pub fn next_node_id(&self) -> ast::NodeId {
         self.reserve_node_ids(1)
     }
-    pub fn reserve_node_ids(&self, count: uint) -> ast::NodeId {
+    pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
         let v = *self.node_id;
-        *self.node_id += count;
-        if v > (int::max_value as uint) {
-            self.bug("Input too large, ran out of node ids!");
+
+        match v.checked_add(&count) {
+            Some(next) => { *self.node_id = next; }
+            None => self.bug("Input too large, ran out of node ids!")
         }
-        v as int
+
+        v
     }
     pub fn diagnostic(&self) -> @mut diagnostic::span_handler {
         self.span_diagnostic

@@ -12,15 +12,17 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 
+use ast::Name;
+
 use std::cmp::Equiv;
 use std::hashmap::HashMap;
 
 pub struct Interner<T> {
-    priv map: @mut HashMap<T, uint>,
+    priv map: @mut HashMap<T, Name>,
     priv vect: @mut ~[T],
 }
 
-// when traits can extend traits, we should extend index<uint,T> to get []
+// when traits can extend traits, we should extend index<Name,T> to get []
 impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
@@ -37,37 +39,37 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
         rv
     }
 
-    pub fn intern(&self, val: T) -> uint {
+    pub fn intern(&self, val: T) -> Name {
         match self.map.find(&val) {
             Some(&idx) => return idx,
             None => (),
         }
 
         let vect = &mut *self.vect;
-        let new_idx = vect.len();
+        let new_idx = vect.len() as Name;
         self.map.insert(val.clone(), new_idx);
         vect.push(val);
         new_idx
     }
 
-    pub fn gensym(&self, val: T) -> uint {
+    pub fn gensym(&self, val: T) -> Name {
         let new_idx = {
             let vect = &*self.vect;
-            vect.len()
+            vect.len() as Name
         };
         // leave out of .map to avoid colliding
         self.vect.push(val);
         new_idx
     }
 
-    pub fn get(&self, idx: uint) -> T {
+    pub fn get(&self, idx: Name) -> T {
         self.vect[idx].clone()
     }
 
     pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 
     pub fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
-                                              -> Option<uint> {
+                                              -> Option<Name> {
         match self.map.find_equiv(val) {
             Some(v) => Some(*v),
             None => None,
@@ -78,11 +80,11 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 // A StrInterner differs from Interner<String> in that it accepts
 // borrowed pointers rather than @ ones, resulting in less allocation.
 pub struct StrInterner {
-    priv map: @mut HashMap<@str, uint>,
+    priv map: @mut HashMap<@str, Name>,
     priv vect: @mut ~[@str],
 }
 
-// when traits can extend traits, we should extend index<uint,T> to get []
+// when traits can extend traits, we should extend index<Name,T> to get []
 impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
@@ -97,21 +99,21 @@ impl StrInterner {
         rv
     }
 
-    pub fn intern(&self, val: &str) -> uint {
+    pub fn intern(&self, val: &str) -> Name {
         match self.map.find_equiv(&val) {
             Some(&idx) => return idx,
             None => (),
         }
 
-        let new_idx = self.len();
+        let new_idx = self.len() as Name;
         let val = val.to_managed();
         self.map.insert(val, new_idx);
         self.vect.push(val);
         new_idx
     }
 
-    pub fn gensym(&self, val: &str) -> uint {
-        let new_idx = self.len();
+    pub fn gensym(&self, val: &str) -> Name {
+        let new_idx = self.len() as Name;
         // leave out of .map to avoid colliding
         self.vect.push(val.to_managed());
         new_idx
@@ -127,19 +129,19 @@ impl StrInterner {
 
     // create a gensym with the same name as an existing
     // entry.
-    pub fn gensym_copy(&self, idx : uint) -> uint {
-        let new_idx = self.len();
+    pub fn gensym_copy(&self, idx : Name) -> Name {
+        let new_idx = self.len() as Name;
         // leave out of map to avoid colliding
         self.vect.push(self.vect[idx]);
         new_idx
     }
 
-    pub fn get(&self, idx: uint) -> @str { self.vect[idx] }
+    pub fn get(&self, idx: Name) -> @str { self.vect[idx] }
 
     pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 
     pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
-                                                         -> Option<uint> {
+                                                         -> Option<Name> {
         match self.map.find_equiv(val) {
             Some(v) => Some(*v),
             None => None,

@@ -18,7 +18,7 @@ use visit::Visitor;
 use visit;
 
 use std::hashmap::HashMap;
-use std::int;
+use std::u32;
 use std::local_data;
 use std::num;
 use std::option;
@@ -382,8 +382,8 @@ pub struct id_range {
 impl id_range {
     pub fn max() -> id_range {
         id_range {
-            min: int::max_value,
-            max: int::min_value,
+            min: u32::max_value,
+            max: u32::min_value,
         }
     }
 
@@ -803,9 +803,9 @@ pub fn display_sctable(table : &SCTable) {
 
 
 /// Add a value to the end of a vec, return its index
-fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
+fn idx_push<T>(vec: &mut ~[T], val: T) -> u32 {
     vec.push(val);
-    vec.len() - 1
+    (vec.len() - 1) as u32
 }
 
 /// Resolve a syntax object to a name, per MTWT.
@@ -917,7 +917,7 @@ pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
 
 /// Push a name... unless it matches the one on top, in which
 /// case pop and discard (so two of the same marks cancel)
-pub fn xorPush(marks: &mut ~[uint], mark: uint) {
+pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
     if ((marks.len() > 0) && (getLast(marks) == mark)) {
         marks.pop();
     } else {
@@ -927,7 +927,7 @@ pub fn xorPush(marks: &mut ~[uint], mark: uint) {
 
 // get the last element of a mutable array.
 // FIXME #4903: , must be a separate procedure for now.
-pub fn getLast(arr: &~[Mrk]) -> uint {
+pub fn getLast(arr: &~[Mrk]) -> Mrk {
     *arr.last()
 }
 
@@ -1000,14 +1000,8 @@ mod test {
         assert_eq!(s.clone(),~[14]);
     }
 
-    // convert a list of uints to an @[ident]
-    // (ignores the interner completely)
-    fn uints_to_idents (uints: &~[uint]) -> @~[Ident] {
-        @uints.map(|u| Ident {name:*u, ctxt: EMPTY_CTXT})
-    }
-
-    fn id (u : uint, s: SyntaxContext) -> Ident {
-        Ident{name:u, ctxt: s}
+    fn id(n: Name, s: SyntaxContext) -> Ident {
+        Ident {name: n, ctxt: s}
     }
 
     // because of the SCTable, I now need a tidy way of

@@ -76,10 +76,10 @@ fn lookup_hash(d: ebml::Doc, eq_fn: |&[u8]| -> bool, hash: u64) ->
 
 pub type GetCrateDataCb<'self> = 'self |ast::CrateNum| -> Cmd;
 
-pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
-    fn eq_item(bytes: &[u8], item_id: int) -> bool {
+pub fn maybe_find_item(item_id: ast::NodeId, items: ebml::Doc) -> Option<ebml::Doc> {
+    fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         return u64_from_be_bytes(
-            bytes.slice(0u, 4u), 0u, 4u) as int
+            bytes.slice(0u, 4u), 0u, 4u) as ast::NodeId
             == item_id;
     }
     lookup_hash(items,
@@ -87,7 +87,7 @@ pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
                 (item_id as i64).hash())
 }
 
-fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
+fn find_item(item_id: ast::NodeId, items: ebml::Doc) -> ebml::Doc {
     match maybe_find_item(item_id, items) {
        None => fail!("lookup_item: id not found: {}", item_id),
        Some(d) => d
@@ -96,7 +96,7 @@ fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
 
 // Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
-pub fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
+pub fn lookup_item(item_id: ast::NodeId, data: @~[u8]) -> ebml::Doc {
     let items = reader::get_doc(reader::Doc(data), tag_items);
     find_item(item_id, items)
 }
@@ -343,7 +343,7 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::Ident {
     let string = name.as_str_slice();
     match intr.find_equiv(&string) {
         None => token::str_to_ident(string),
-        Some(val) => ast::Ident::new(val),
+        Some(val) => ast::Ident::new(val as ast::Name),
     }
 }
 
