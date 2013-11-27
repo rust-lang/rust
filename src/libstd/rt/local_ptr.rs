@@ -41,27 +41,49 @@ pub static mut RT_TLS_PTR: *mut c_void = 0 as *mut c_void;
 #[cfg(stage0)]
 #[cfg(windows)]
 static mut RT_TLS_KEY: tls::Key = -1;
+#[cfg(stage0)]
+#[cfg(windows)]
+static mut tls_lock: Mutex = MUTEX_INIT;
+static mut tls_initialized: bool = false;
 
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
 #[inline(never)]
 #[cfg(stage0)]
 #[cfg(windows)]
 pub fn init_tls_key() {
-    static mut lock: Mutex = MUTEX_INIT;
-    static mut initialized: bool = false;
-
     unsafe {
-        lock.lock();
-        if !initialized {
+        tls_lock.lock();
+        if !tls_initialized {
             tls::create(&mut RT_TLS_KEY);
-            initialized = true;
+            tls_initialized = true;
         }
-        lock.unlock();
+        tls_lock.unlock();
     }
 }
 
 #[cfg(not(stage0), not(windows))]
-pub fn init_tls_key() {}
+pub fn init_tls_key() {
+    unsafe {
+        tls_initialized = true;
+    }
+}
+
+#[cfg(windows)]
+pub unsafe fn cleanup() {
+    // No real use to acquiring a lock around these operations. All we're
+    // going to do is destroy the lock anyway which races locking itself. This
+    // is why the whole function is labeled as 'unsafe'
+    assert!(tls_initialized);
+    tls::destroy(RT_TLS_KEY);
+    tls_lock.destroy();
+    tls_initialized = false;
+}
+
+#[cfg(not(windows))]
+pub unsafe fn cleanup() {
+    assert!(tls_initialized);
+    tls_initialized = false;
+}
 
 /// Give a pointer to thread-local storage.
 ///
