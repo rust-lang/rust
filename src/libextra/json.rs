@@ -15,6 +15,166 @@
 #[allow(missing_doc)];
 
 //! json parsing and serialization
+/*!
+
+#example of use
+
+Needed use for the example:
+
+```rust
+use std::io::mem::MemWriter;
+use extra::serialize::Decodable;
+use extra::serialize::Encodable;
+use extra::serialize::Encoder;
+use extra::json::{Json, Decoder, ToJson, Object};
+use extra::treemap::TreeMap;
+use std::io::Decorator;
+ ```
+
+##First example
+
+use a struct call TestStruct1 and serialeze and unserialize using
+json with the serialization API. Serialization code is generated
+by rustc.
+
+```rust
+#[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
+pub struct TestStruct1  {
+    dataInt: u8,
+    dataStr:~str,
+    dataArray:~[u8],
+}
+```
+To serialize use the json::Encoder, it call the generated Encodable impl.
+The example use a MemWriter as input stream:
+
+```rust
+let test : TestStruct1 = TestStruct1 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+let m = @mut MemWriter::new();
+let mut encoder = extra::json::Encoder(m as @mut Writer);
+test.encode(&mut encoder);
+let buf:&~[u8] = m.inner_ref(); //get the serialized values.
+let s = std::str::from_utf8(*buf);
+```
+
+To unserialize use the extra::json::from_str and extra::json::Decoder
+
+```rust
+let jsonobject = extra::json::from_str(s);
+let mut decoder = extra::json::Decoder(jsonobject.unwrap());
+let decoded1: TestStruct1 = Decodable::decode(&mut decoder); //create the final object
+```
+
+##second example
+
+This example use the ToJson impl to unserialize the json string.
+For this example I declare another struct TestStruct2.
+This struct provide its own impl of Decodable and Encodable (to show own it works).
+
+```rust
+pub struct TestStruct2  {
+    dataInt: u8,
+    dataStr:~str,
+    dataArray:~[u8],
+}
+
+
+impl ToJson for TestStruct2 {
+    fn to_json( &self ) -> Json {
+        let mut d = ~TreeMap::new();
+        d.insert(~"dataInt", self.dataInt.to_json());
+        d.insert(~"dataStr", self.dataStr.to_json());
+        d.insert(~"dataArray", self.dataArray.to_json());
+        Object(d)
+    }
+}
+
+impl<D:extra::serialize::Decoder> extra::serialize::Decodable<D> for TestStruct2 {
+    fn decode(d: &mut D) -> TestStruct2 {
+        do d.read_struct("TestStruct2", 1) |d| {
+            TestStruct2
+            {
+                dataInt: d.read_struct_field("dataInt", 0, |d| d.read_u8()),
+                dataStr: d.read_struct_field("dataStr", 1, |d| d.read_str()),
+
+                dataArray: do d.read_struct_field("dataArray", 2) |d| {
+                    let mut arr:~[u8] = ~[];
+                    do d.read_seq |d, len| {
+                        for i in range(0u, len) {
+                            arr.push(d.read_seq_elt(i, |d| d.read_u8()));
+                        }
+                    }
+                    arr
+                }
+            }
+        }
+
+    }
+} 
+
+```
+Seralization using our impl of to_json :
+
+```rust
+    let test2 : TestStruct2 = TestStruct2 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+    let tjson : Json = test2.to_json();
+    let jsonStr:~str = tjson.to_str();
+```
+Unserialize using our impl of Decodable
+
+```rust
+    let mut decoder = Decoder(extra::json::from_str(jsonStr).unwrap());
+    let decoded2: TestStruct2 = Decodable::decode(&mut decoder); //create the final object
+```
+
+##Third example
+
+This example use the our impl of Encodable to serialize :
+Encodable impl:
+
+```rust
+impl<S:extra::serialize::Encoder> extra::serialize::Encodable<S> for TestStruct2 {
+    fn encode(&self, s: &mut S) {
+        do s.emit_struct("TestStruct2", 3) |s| {  //3: number of field in the structure.
+            s.emit_struct_field("dataInt", 0, |s| self.dataInt.encode(s));
+            s.emit_struct_field("dataStr", 1, |s| self.dataStr.encode(s));
+            //encode the dataArray array field with emit_seq
+            do s.emit_struct_field("dataArray", 2) |s| {
+                do s.emit_seq(self.dataArray.len()) |s| {  //len number of element in the array. 
+                    for i in range(0u, self.dataArray.len())    {
+                        s.emit_seq_elt(i, |s| self.dataArray[i].encode(s));
+                    }
+                }
+            }
+        }
+   }
+} 
+```
+
+Serialization :
+
+```rust
+    let test3 : TestStruct2 = TestStruct2 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+    let m3 = @mut MemWriter::new();
+    let mut encoder3 = extra::json::Encoder(m3 as @mut Writer);
+    test3.encode(&mut encoder3);
+    let buf3:&~[u8] = m3.inner_ref(); //get the serialized values.
+    let s3 = std::str::from_utf8(*buf3);
+```
+
+Unserialize using error management :
+
+```rust
+    let j:Result<extra::json::Json,extra::json::Error> = extra::json::from_str(s3);
+    let json: extra::json::Json = match j {
+        Ok(l) => l,
+        Err(e) => fail!(format!("Error: {:?}", e))
+    };
+    let mut decoder3 = Decoder(json);
+    let decoded3: TestStruct2 = Decodable::decode(&mut decoder3); //create the final object
+```
+
+*/
 
 use std::char;
 use std::cast::transmute;
@@ -1339,8 +1499,13 @@ mod tests {
     use super::*;
 
     use std::io;
-    use serialize::Decodable;
+    use serialize;
     use treemap::TreeMap;
+
+    //use for example test
+    use std::io::mem::MemWriter;
+    use std::io::Decorator;
+    use std::str::from_utf8;
 
     #[deriving(Eq, Encodable, Decodable)]
     enum Animal {
@@ -1636,15 +1801,15 @@ mod tests {
     #[test]
     fn test_decode_identifiers() {
         let mut decoder = Decoder(from_str("null").unwrap());
-        let v: () = Decodable::decode(&mut decoder);
+        let v: () = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ());
 
         let mut decoder = Decoder(from_str("true").unwrap());
-        let v: bool = Decodable::decode(&mut decoder);
+        let v: bool = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, true);
 
         let mut decoder = Decoder(from_str("false").unwrap());
-        let v: bool = Decodable::decode(&mut decoder);
+        let v: bool = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, false);
     }
 
@@ -1679,31 +1844,31 @@ mod tests {
     #[test]
     fn test_decode_numbers() {
         let mut decoder = Decoder(from_str("3").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, 3.0);
 
         let mut decoder = Decoder(from_str("3.1").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, 3.1);
 
         let mut decoder = Decoder(from_str("-1.2").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, -1.2);
 
         let mut decoder = Decoder(from_str("0.4").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4);
 
         let mut decoder = Decoder(from_str("0.4e5").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e5);
 
         let mut decoder = Decoder(from_str("0.4e15").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e15);
 
         let mut decoder = Decoder(from_str("0.4e-01").unwrap());
-        let v: f64 = Decodable::decode(&mut decoder);
+        let v: f64 = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e-01);
     }
 
@@ -1731,39 +1896,39 @@ mod tests {
     #[test]
     fn test_decode_str() {
         let mut decoder = Decoder(from_str("\"\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"");
 
         let mut decoder = Decoder(from_str("\"foo\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"foo");
 
         let mut decoder = Decoder(from_str("\"\\\"\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\"");
 
         let mut decoder = Decoder(from_str("\"\\b\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\x08");
 
         let mut decoder = Decoder(from_str("\"\\n\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\n");
 
         let mut decoder = Decoder(from_str("\"\\r\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\r");
 
         let mut decoder = Decoder(from_str("\"\\t\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\t");
 
         let mut decoder = Decoder(from_str("\"\\u12ab\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\u12ab");
 
         let mut decoder = Decoder(from_str("\"\\uAB12\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder);
+        let v: ~str = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\uAB12");
     }
 
@@ -1796,27 +1961,27 @@ mod tests {
     #[test]
     fn test_decode_list() {
         let mut decoder = Decoder(from_str("[]").unwrap());
-        let v: ~[()] = Decodable::decode(&mut decoder);
+        let v: ~[()] = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~[]);
 
         let mut decoder = Decoder(from_str("[null]").unwrap());
-        let v: ~[()] = Decodable::decode(&mut decoder);
+        let v: ~[()] = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~[()]);
 
         let mut decoder = Decoder(from_str("[true]").unwrap());
-        let v: ~[bool] = Decodable::decode(&mut decoder);
+        let v: ~[bool] = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~[true]);
 
         let mut decoder = Decoder(from_str("[true]").unwrap());
-        let v: ~[bool] = Decodable::decode(&mut decoder);
+        let v: ~[bool] = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~[true]);
 
         let mut decoder = Decoder(from_str("[3, 1]").unwrap());
-        let v: ~[int] = Decodable::decode(&mut decoder);
+        let v: ~[int] = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~[3, 1]);
 
         let mut decoder = Decoder(from_str("[[3], [1, 2]]").unwrap());
-        let v: ~[~[uint]] = Decodable::decode(&mut decoder);
+        let v: ~[~[uint]] = serialize::Decodable::decode(&mut decoder);
         assert_eq!(v, ~[~[3], ~[1, 2]]);
     }
 
@@ -1918,7 +2083,7 @@ mod tests {
             ]
         }";
         let mut decoder = Decoder(from_str(s).unwrap());
-        let v: Outer = Decodable::decode(&mut decoder);
+        let v: Outer = serialize::Decodable::decode(&mut decoder);
         assert_eq!(
             v,
             Outer {
@@ -1932,23 +2097,23 @@ mod tests {
     #[test]
     fn test_decode_option() {
         let mut decoder = Decoder(from_str("null").unwrap());
-        let value: Option<~str> = Decodable::decode(&mut decoder);
+        let value: Option<~str> = serialize::Decodable::decode(&mut decoder);
         assert_eq!(value, None);
 
         let mut decoder = Decoder(from_str("\"jodhpurs\"").unwrap());
-        let value: Option<~str> = Decodable::decode(&mut decoder);
+        let value: Option<~str> = serialize::Decodable::decode(&mut decoder);
         assert_eq!(value, Some(~"jodhpurs"));
     }
 
     #[test]
     fn test_decode_enum() {
         let mut decoder = Decoder(from_str("\"Dog\"").unwrap());
-        let value: Animal = Decodable::decode(&mut decoder);
+        let value: Animal = serialize::Decodable::decode(&mut decoder);
         assert_eq!(value, Dog);
 
         let mut decoder =
             Decoder(from_str("{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}").unwrap());
-        let value: Animal = Decodable::decode(&mut decoder);
+        let value: Animal = serialize::Decodable::decode(&mut decoder);
         assert_eq!(value, Frog(~"Henry", 349));
     }
 
@@ -1956,7 +2121,7 @@ mod tests {
     fn test_decode_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\"fields\":[\"Henry\", 349]}}";
         let mut decoder = Decoder(from_str(s).unwrap());
-        let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder);
+        let mut map: TreeMap<~str, Animal> = serialize::Decodable::decode(&mut decoder);
 
         assert_eq!(map.pop(&~"a"), Some(Dog));
         assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));
@@ -1983,7 +2148,7 @@ mod tests {
         A(f64),
         B(~str)
     }
-    fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected_error: &str) {
+    fn check_err<T: serialize::Decodable<Decoder>>(to_parse: &'static str, expected_error: &str) {
         use std::task;
         let res = task::try(|| {
             // either fails in `decode` (which is what we want), or
@@ -1992,7 +2157,7 @@ mod tests {
             match from_str(to_parse) {
                 Err(e) => Some(e.to_str()),
                 Ok(json) => {
-                    let _: T = Decodable::decode(&mut Decoder(json));
+                    let _: T = serialize::Decodable::decode(&mut Decoder(json));
                     None
                 }
             }
@@ -2036,5 +2201,140 @@ mod tests {
                                 "list but found null");
         check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
                                 "unknown variant name");
+    }
+
+
+    //example test
+    //first struct with auto generate  Decodable, Encodable
+    #[deriving(Decodable, Encodable, Eq)] //generate Decodable, Encodable impl. Eq is added for the test assert.
+    pub struct TestStruct1  {
+        dataInt: u8,
+        dataStr:~str,
+        dataArray:~[u8],
+    }
+
+    #[test]
+    fn Test_example1()  {
+
+        //first possibility to use JSON is the serialization API. 
+        //Use a struct that implement Decodable, Encodable.
+        //the object to test
+        let test : TestStruct1 = TestStruct1 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+         // encoded ~"{\"dataInt\":1,\"dataStr\":\"toto\",\"dataArray\":[2,3,4,5]}"
+
+        //Serialize the object in a string using a writer
+        let m = @mut MemWriter::new();
+        let mut encoder = Encoder(m as @mut Writer);
+        test.encode(&mut encoder);
+        let buf:&~[u8] = m.inner_ref(); //get the serialized values.
+        let s = from_utf8(*buf);
+
+         assert_eq!(s, ~"{\"1dataInt\":1,\"dataStr\":\"toto\",\"dataArray\":[2,3,4,5]}");
+
+        //unserialize using the object decoder
+        //convert the string to a json object.
+        let jsonobject = from_str(s);
+        let mut decoder = Decoder(jsonobject.unwrap());
+        let decoded1: TestStruct1 = serialize::Decodable::decode(&mut decoder); //create the final object
+        assert_eq!(decoded1, test); 
+    }
+
+
+    //second struct with manually implemented  Decodable, Encodable
+    #[deriving(Eq)] //generate impl of Eq for the test assert.
+    pub struct TestStruct2  {
+        dataInt: u8,
+        dataStr:~str,
+        dataArray:~[u8],
+    }
+
+    impl<S:serialize::Encoder> serialize::Encodable<S> for TestStruct2 {
+        fn encode(&self, s: &mut S) {
+            do s.emit_struct("TestStruct2", 3) |s| {  //2 correspond to len the number of field in the structure.
+                s.emit_struct_field("dataInt", 0, |s| self.dataInt.encode(s));
+                s.emit_struct_field("dataStr", 1, |s| self.dataStr.encode(s));
+                //encode the dataArray array field with emit_seq
+                do s.emit_struct_field("dataArray", 2) |s| {
+                    do s.emit_seq(self.dataArray.len()) |s| {  //len number of element in the array. 
+                        for i in range(0u, self.dataArray.len())    {
+                            s.emit_seq_elt(i, |s| self.dataArray[i].encode(s));
+                        }
+                    }
+                }
+            }
+       }
+    } 
+
+     impl<D:serialize::Decoder> serialize::Decodable<D> for TestStruct2 {
+        fn decode(d: &mut D) -> TestStruct2 {
+            do d.read_struct("TestStruct2", 1) |d| {
+                TestStruct2
+                {
+                    dataInt: d.read_struct_field("dataInt", 0, |d| d.read_u8()),
+                    dataStr: d.read_struct_field("dataStr", 1, |d| d.read_str()),
+
+                    dataArray: do d.read_struct_field("dataArray", 2) |d| {
+                        let mut arr:~[u8] = ~[];
+                        do d.read_seq |d, len| {
+                            for i in range(0u, len) {
+                                arr.push(d.read_seq_elt(i, |d| d.read_u8()));
+                            }
+                        }
+                        arr
+                    }
+                }
+            }
+
+        }
+    } 
+
+    //second possibility to decode json is to implement the ToJson trait.
+    impl ToJson for TestStruct2 {
+        fn to_json( &self ) -> Json {
+            let mut d = ~TreeMap::new();
+            d.insert(~"dataInt", self.dataInt.to_json());
+            d.insert(~"dataStr", self.dataStr.to_json());
+            d.insert(~"dataArray", self.dataArray.to_json());
+            Object(d)
+        }
+    }
+
+    #[test]
+    fn Test_example2()  {
+            //second possibility : use impl of to_json() to serialize
+        let test2 : TestStruct2 = TestStruct2 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]}; 
+        //encoded {\"dataArray\":[2,3,4,5],\"dataInt\":1,\"dataStr\":\"toto\"}
+        let tjson : Json = test2.to_json();
+        let jsonStr:~str = tjson.to_str();
+        assert_eq!(jsonStr, ~"{\"dataArray\":[2,3,4,5],\"dataInt\":1,\"dataStr\":\"toto\"}");
+
+        //unserialize using the our own impl of decoder
+        //convert the string to a json object and decode.
+        let mut decoder = Decoder(from_str(jsonStr).unwrap());
+        let decoded2: TestStruct2 = serialize::Decodable::decode(&mut decoder); //create the final object
+        assert_eq!(decoded2, test2);
+
+    }
+
+    #[test]
+    fn Test_example3()  {
+            //thrid use our own encoder to encode
+        let test3 : TestStruct2 = TestStruct2 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+        // encoded {\"dataArray\":[2,3,4,5],\"dataInt\":1,\"dataStr\":\"toto\"}
+        let m3 = @mut MemWriter::new();
+        let mut encoder3 = Encoder(m3 as @mut Writer);
+        test3.encode(&mut encoder3);
+        let buf3:&~[u8] = m3.inner_ref(); //get the serialized values.
+        let s3 = from_utf8(*buf3);
+
+        //decode using error management and our own decoder.
+        let j:Result<Json,Error> = from_str(s3);
+        let json: Json = match j {
+            Ok(l) => l,
+            Err(e) => fail!(format!("Error: {:?}", e))
+        };
+        let mut decoder3 = Decoder(json);
+        let decoded3: TestStruct2 = serialize::Decodable::decode(&mut decoder3); //create the final object
+        assert_eq!(decoded3, test3);
     }
 }
