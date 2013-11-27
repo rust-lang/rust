@@ -59,6 +59,7 @@ use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
+use syntax::ast_util::IdVisitingOperation;
 use syntax::visit::Visitor;
 
 #[deriving(Clone, Eq)]
@@ -77,6 +78,7 @@ pub enum lint {
     unused_unsafe,
     unsafe_block,
     attribute_usage,
+    unknown_features,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -320,6 +322,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: warnings,
         desc: "mass-change the level for lints which produce warnings",
         default: warn
+    }),
+
+    ("unknown_features",
+     LintSpec {
+        lint: unknown_features,
+        desc: "unknown features found in create-level #[feature] directives",
+        default: deny,
     }),
 ];
 
@@ -1320,7 +1329,7 @@ impl<'self> Visitor<()> for Context<'self> {
     }
 }
 
-impl<'self> ast_util::IdVisitingOperation for Context<'self> {
+impl<'self> IdVisitingOperation for Context<'self> {
     fn visit_id(&self, id: ast::NodeId) {
         match self.tcx.sess.lints.pop(&id) {
             None => {}
@@ -1356,6 +1365,7 @@ pub fn check_crate(tcx: ty::ctxt,
         cx.set_level(lint, level, CommandLine);
     }
     cx.with_lint_attrs(crate.attrs, |cx| {
+        cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;
             visit::walk_crate(v, crate, ());

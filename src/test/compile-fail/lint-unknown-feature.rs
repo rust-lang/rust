@@ -8,16 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(
-    foo_bar_baz,
-    foo(bar),
-    foo = "baz"
-)];
-//~^^^ ERROR: malformed feature
-//~^^^ ERROR: malformed feature
+#[deny(unknown_features)];
 
-#[feature]; //~ ERROR: malformed feature
-#[feature = "foo"]; //~ ERROR: malformed feature
+#[feature(this_is_not_a_feature)]; //~ ERROR: unknown feature
 
-#[feature(test_removed_feature)]; //~ ERROR: feature has been removed
-#[feature(test_accepted_feature)]; //~ WARNING: feature has added
+fn main() {}
