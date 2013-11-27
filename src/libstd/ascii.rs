@@ -498,6 +498,15 @@ mod tests {
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
+        assert!('0'.to_ascii().is_digit());
+        assert!('9'.to_ascii().is_digit());
+        assert!(!'/'.to_ascii().is_digit());
+        assert!(!':'.to_ascii().is_digit());
+
+        assert!((0x1fu8).to_ascii().is_control());
+        assert!(!' '.to_ascii().is_control());
+        assert!((0x7fu8).to_ascii().is_control());
+
         assert!("banana".chars().all(|c| c.is_ascii()));
         assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
     }
