@@ -161,8 +161,7 @@ fn reserve_id_range(sess: Session,
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
-    assert!(cnt >= 0);
-    let to_id_min = sess.reserve_node_ids(cnt as uint);
+    let to_id_min = sess.reserve_node_ids(cnt);
     let to_id_max = to_id_min + cnt;
     ast_util::id_range { min: to_id_min, max: to_id_max }
 }
@@ -1204,7 +1203,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
     let tbl_doc = ast_doc.get(c::tag_table as uint);
     reader::docs(tbl_doc, |tag, entry_doc| {
         let id0 = entry_doc.get(c::tag_table_id as uint).as_int();
-        let id = xcx.tr_id(id0);
+        let id = xcx.tr_id(id0 as ast::NodeId);
 
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",

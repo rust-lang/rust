@@ -69,7 +69,7 @@ impl Eq for Ident {
 
 // this uint is a reference to a table stored in thread-local
 // storage.
-pub type SyntaxContext = uint;
+pub type SyntaxContext = u32;
 
 // the SCTable contains a table of SyntaxContext_'s. It
 // represents a flattened tree structure, to avoid having
@@ -87,8 +87,8 @@ pub struct SCTable {
 }
 
 // NB: these must be placed in any SCTable...
-pub static EMPTY_CTXT : uint = 0;
-pub static ILLEGAL_CTXT : uint = 1;
+pub static EMPTY_CTXT : SyntaxContext = 0;
+pub static ILLEGAL_CTXT : SyntaxContext = 1;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum SyntaxContext_ {
@@ -109,10 +109,10 @@ pub enum SyntaxContext_ {
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
-pub type Name = uint;
+pub type Name = u32;
 
 /// A mark represents a unique id associated with a macro expansion
-pub type Mrk = uint;
+pub type Mrk = u32;
 
 impl<S:Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
@@ -163,9 +163,9 @@ pub struct PathSegment {
     types: OptVec<Ty>,
 }
 
-pub type CrateNum = int;
+pub type CrateNum = u32;
 
-pub type NodeId = int;
+pub type NodeId = u32;
 
 #[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub struct DefId {
