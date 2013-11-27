@@ -67,7 +67,7 @@ impl Ascii {
     /// Check if the character is a number (0-9)
     #[inline]
     pub fn is_digit(&self) -> bool {
-        self.chr >= 0x31 && self.chr <= 0x39
+        self.chr >= 0x30 && self.chr <= 0x39
     }
 
     /// Check if the character is a letter or number
@@ -85,7 +85,7 @@ impl Ascii {
     /// Check if the character is a control character
     #[inline]
     pub fn is_control(&self) -> bool {
-        self.chr <= 0x20 || self.chr == 0x7F
+        self.chr < 0x20 || self.chr == 0x7F
     }
 
     /// Checks if the character is printable (except space)
