@@ -18,6 +18,8 @@
 //! Features are enabled in programs via the crate-level attributes of
 //! #[feature(...)] with a comma-separated list of features.
 
+use middle::lint;
+
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
@@ -209,7 +211,10 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
                                                      directive not necessary");
                         }
                         None => {
-                            sess.span_err(mi.span, "unknown feature");
+                            sess.add_lint(lint::unknown_features,
+                                          ast::CRATE_NODE_ID,
+                                          mi.span,
+                                          ~"unknown feature");
                         }
                     }
                 }
