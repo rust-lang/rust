@@ -54,7 +54,7 @@ pub struct Error {
     /// The column number at which the error occurred
     priv col: uint,
     /// A message describing the type of the error
-    priv msg: @~str,
+    priv msg: ~str,
 }
 
 fn escape_str(s: &str) -> ~str {
@@ -525,7 +525,7 @@ impl<T : Iterator<char>> Parser<T> {
     }
 
     fn error<T>(&self, msg: ~str) -> Result<T, Error> {
-        Err(Error { line: self.line, col: self.col, msg: @msg })
+        Err(Error { line: self.line, col: self.col, msg: msg })
     }
 
     fn parse_value(&mut self) -> Result<Json, Error> {
@@ -1327,7 +1327,7 @@ impl to_str::ToStr for Json {
 
 impl to_str::ToStr for Error {
     fn to_str(&self) -> ~str {
-        format!("{}:{}: {}", self.line, self.col, *self.msg)
+        format!("{}:{}: {}", self.line, self.col, self.msg)
     }
 }
 
@@ -1593,35 +1593,35 @@ mod tests {
     #[test]
     fn test_trailing_characters() {
         assert_eq!(from_str("nulla"),
-            Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
+            Err(Error {line: 1u, col: 5u, msg: ~"trailing characters"}));
         assert_eq!(from_str("truea"),
-            Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
+            Err(Error {line: 1u, col: 5u, msg: ~"trailing characters"}));
         assert_eq!(from_str("falsea"),
-            Err(Error {line: 1u, col: 6u, msg: @~"trailing characters"}));
+            Err(Error {line: 1u, col: 6u, msg: ~"trailing characters"}));
         assert_eq!(from_str("1a"),
-            Err(Error {line: 1u, col: 2u, msg: @~"trailing characters"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"trailing characters"}));
         assert_eq!(from_str("[]a"),
-            Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
+            Err(Error {line: 1u, col: 3u, msg: ~"trailing characters"}));
         assert_eq!(from_str("{}a"),
-            Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
+            Err(Error {line: 1u, col: 3u, msg: ~"trailing characters"}));
     }
 
     #[test]
     fn test_read_identifiers() {
         assert_eq!(from_str("n"),
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"invalid syntax"}));
         assert_eq!(from_str("nul"),
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 4u, msg: ~"invalid syntax"}));
 
         assert_eq!(from_str("t"),
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"invalid syntax"}));
         assert_eq!(from_str("truz"),
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 4u, msg: ~"invalid syntax"}));
 
         assert_eq!(from_str("f"),
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"invalid syntax"}));
         assert_eq!(from_str("faz"),
-            Err(Error {line: 1u, col: 3u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 3u, msg: ~"invalid syntax"}));
 
         assert_eq!(from_str("null"), Ok(Null));
         assert_eq!(from_str("true"), Ok(Boolean(true)));
@@ -1649,20 +1649,20 @@ mod tests {
     #[test]
     fn test_read_number() {
         assert_eq!(from_str("+"),
-            Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 1u, msg: ~"invalid syntax"}));
         assert_eq!(from_str("."),
-            Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 1u, msg: ~"invalid syntax"}));
 
         assert_eq!(from_str("-"),
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"invalid number"}));
         assert_eq!(from_str("00"),
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"invalid number"}));
         assert_eq!(from_str("1."),
-            Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
+            Err(Error {line: 1u, col: 3u, msg: ~"invalid number"}));
         assert_eq!(from_str("1e"),
-            Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
+            Err(Error {line: 1u, col: 3u, msg: ~"invalid number"}));
         assert_eq!(from_str("1e+"),
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid number"}));
+            Err(Error {line: 1u, col: 4u, msg: ~"invalid number"}));
 
         assert_eq!(from_str("3"), Ok(Number(3.0)));
         assert_eq!(from_str("3.1"), Ok(Number(3.1)));
@@ -1708,10 +1708,10 @@ mod tests {
     #[test]
     fn test_read_str() {
         assert_eq!(from_str("\""),
-            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
+            Err(Error {line: 1u, col: 2u, msg: ~"EOF while parsing string"
         }));
         assert_eq!(from_str("\"lol"),
-            Err(Error {line: 1u, col: 5u, msg: @~"EOF while parsing string"
+            Err(Error {line: 1u, col: 5u, msg: ~"EOF while parsing string"
         }));
 
         assert_eq!(from_str("\"\""), Ok(String(~"")));
@@ -1768,15 +1768,15 @@ mod tests {
     #[test]
     fn test_read_list() {
         assert_eq!(from_str("["),
-            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing value"}));
+            Err(Error {line: 1u, col: 2u, msg: ~"EOF while parsing value"}));
         assert_eq!(from_str("[1"),
-            Err(Error {line: 1u, col: 3u, msg: @~"EOF while parsing list"}));
+            Err(Error {line: 1u, col: 3u, msg: ~"EOF while parsing list"}));
         assert_eq!(from_str("[1,"),
-            Err(Error {line: 1u, col: 4u, msg: @~"EOF while parsing value"}));
+            Err(Error {line: 1u, col: 4u, msg: ~"EOF while parsing value"}));
         assert_eq!(from_str("[1,]"),
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
+            Err(Error {line: 1u, col: 4u, msg: ~"invalid syntax"}));
         assert_eq!(from_str("[6 7]"),
-            Err(Error {line: 1u, col: 4u, msg: @~"expected `,` or `]`"}));
+            Err(Error {line: 1u, col: 4u, msg: ~"expected `,` or `]`"}));
 
         assert_eq!(from_str("[]"), Ok(List(~[])));
         assert_eq!(from_str("[ ]"), Ok(List(~[])));
@@ -1824,49 +1824,49 @@ mod tests {
             Err(Error {
                 line: 1u,
                 col: 2u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
         assert_eq!(from_str("{ "),
             Err(Error {
                 line: 1u,
                 col: 3u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
         assert_eq!(from_str("{1"),
             Err(Error {
                 line: 1u,
                 col: 2u,
-                msg: @~"key must be a string"}));
+                msg: ~"key must be a string"}));
         assert_eq!(from_str("{ \"a\""),
             Err(Error {
                 line: 1u,
                 col: 6u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
         assert_eq!(from_str("{\"a\""),
             Err(Error {
                 line: 1u,
                 col: 5u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
         assert_eq!(from_str("{\"a\" "),
             Err(Error {
                 line: 1u,
                 col: 6u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
 
         assert_eq!(from_str("{\"a\" 1"),
-            Err(Error {line: 1u, col: 6u, msg: @~"expected `:`"}));
+            Err(Error {line: 1u, col: 6u, msg: ~"expected `:`"}));
         assert_eq!(from_str("{\"a\":"),
-            Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing value"}));
+            Err(Error {line: 1u, col: 6u, msg: ~"EOF while parsing value"}));
         assert_eq!(from_str("{\"a\":1"),
             Err(Error {
                 line: 1u,
                 col: 7u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
         assert_eq!(from_str("{\"a\":1 1"),
-            Err(Error {line: 1u, col: 8u, msg: @~"expected `,` or `}`"}));
+            Err(Error {line: 1u, col: 8u, msg: ~"expected `,` or `}`"}));
         assert_eq!(from_str("{\"a\":1,"),
             Err(Error {
                 line: 1u,
                 col: 8u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
 
         assert_eq!(from_str("{}").unwrap(), mk_object([]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
@@ -1966,7 +1966,7 @@ mod tests {
             Err(Error {
                 line: 3u,
                 col: 8u,
-                msg: @~"EOF while parsing object"}));
+                msg: ~"EOF while parsing object"}));
     }
 
     #[deriving(Decodable)]
