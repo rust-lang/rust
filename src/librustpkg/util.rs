@@ -353,7 +353,8 @@ pub fn compile_crate_from_input(input: &Path,
 
     // bad copy
     debug!("out_dir = {}", out_dir.display());
-    let mut outputs = driver::build_output_filenames(&driver::file_input(input.clone()),
+    let file_input = driver::file_input(input.clone());
+    let mut outputs = driver::build_output_filenames(&file_input,
                                                      &Some(out_dir.clone()), &None,
                                                      crate.attrs, sess);
     match what {
@@ -388,7 +389,7 @@ pub fn compile_crate_from_input(input: &Path,
     // -c
     if driver::stop_after_phase_5(sess)
         || stop_before == Link || stop_before == Assemble { return Some(outputs.out_filename); }
-    driver::phase_6_link_output(sess, &translation, outputs);
+    driver::phase_6_link_output(sess, &translation, &file_input, outputs);
 
     // Register dependency on the source file
     // FIXME (#9639): This needs to handle non-utf8 paths

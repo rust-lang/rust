@@ -260,6 +260,10 @@ impl FileMap {
         };
         self.multibyte_chars.push(mbc);
     }
+
+    pub fn is_real_file(&self) -> bool {
+        !(self.name.starts_with("<") && self.name.ends_with(">"))
+    }
 }
 
 pub struct CodeMap {
