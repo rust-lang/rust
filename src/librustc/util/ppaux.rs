@@ -81,11 +81,11 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
           }
           Some(&ast_map::node_expr(expr)) => {
             match expr.node {
-              ast::ExprCall(*) => explain_span(cx, "call", expr.span),
-              ast::ExprMethodCall(*) => {
+              ast::ExprCall(..) => explain_span(cx, "call", expr.span),
+              ast::ExprMethodCall(..) => {
                 explain_span(cx, "method call", expr.span)
               },
-              ast::ExprMatch(*) => explain_span(cx, "match", expr.span),
+              ast::ExprMatch(..) => explain_span(cx, "match", expr.span),
               _ => explain_span(cx, "expression", expr.span)
             }
           }
@@ -93,7 +93,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
               explain_span(cx, "statement", stmt.span)
           }
           Some(&ast_map::node_item(it, _)) if (match it.node {
-                ast::item_fn(*) => true, _ => false}) => {
+                ast::item_fn(..) => true, _ => false}) => {
               explain_span(cx, "function body", it.span)
           }
           Some(_) | None => {
@@ -119,7 +119,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
             (format!("{} {}", prefix, msg), opt_span)
           }
           Some(&ast_map::node_item(it, _)) if match it.node {
-                ast::item_impl(*) => true, _ => false} => {
+                ast::item_impl(..) => true, _ => false} => {
             let (msg, opt_span) = explain_span(cx, "impl", it.span);
             (format!("{} {}", prefix, msg), opt_span)
           }
@@ -136,7 +136,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
-      ty::ReInfer(_) | ty::ReEarlyBound(*) | ty::ReLateBound(*) => {
+      ty::ReInfer(_) | ty::ReEarlyBound(..) | ty::ReLateBound(..) => {
         (format!("lifetime {:?}", region), None)
       }
     };
@@ -179,18 +179,18 @@ pub fn ReScope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
       }
       Some(&ast_map::node_expr(expr)) => {
         match expr.node {
-          ast::ExprCall(*) => {
+          ast::ExprCall(..) => {
             format!("<call at {}>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
-          ast::ExprMatch(*) => {
+          ast::ExprMatch(..) => {
             format!("<match at {}>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
-          ast::ExprAssignOp(*) |
-          ast::ExprUnary(*) |
-          ast::ExprBinary(*) |
-          ast::ExprIndex(*) => {
+          ast::ExprAssignOp(..) |
+          ast::ExprUnary(..) |
+          ast::ExprBinary(..) |
+          ast::ExprIndex(..) => {
             format!("<method at {}>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
@@ -494,7 +494,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           };
           if !cx.sess.verbose() { ident } else { format!("{}:{:?}", ident, did) }
       }
-      ty_self(*) => ~"Self",
+      ty_self(..) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
@@ -751,12 +751,12 @@ impl Repr for ast::DefId {
         // and otherwise fallback to just printing the crate/node pair
         if self.crate == ast::LOCAL_CRATE {
             match tcx.items.find(&self.node) {
-                Some(&ast_map::node_item(*)) |
-                Some(&ast_map::node_foreign_item(*)) |
-                Some(&ast_map::node_method(*)) |
-                Some(&ast_map::node_trait_method(*)) |
-                Some(&ast_map::node_variant(*)) |
-                Some(&ast_map::node_struct_ctor(*)) => {
+                Some(&ast_map::node_item(..)) |
+                Some(&ast_map::node_foreign_item(..)) |
+                Some(&ast_map::node_method(..)) |
+                Some(&ast_map::node_trait_method(..)) |
+                Some(&ast_map::node_variant(..)) |
+                Some(&ast_map::node_struct_ctor(..)) => {
                     return format!("{:?}:{}", *self, ty::item_path_str(tcx, *self));
                 }
                 _ => {}

@@ -156,7 +156,7 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
             lis_merge(lis, lis2)
         })
       }
-      tt_tok(*) => lis_unconstrained,
+      tt_tok(..) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
         matched_nonterminal(_) => lis_unconstrained,
         matched_seq(ref ads, _) => lis_constraint(ads.len(), name)
@@ -290,7 +290,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.stack.idx += 1u;
                 return ret_val;
               }
-              matched_seq(*) => {
+              matched_seq(..) => {
                 r.sp_diag.span_fatal(
                     r.cur_span, /* blame the macro writer */
                     format!("variable '{}' is still repeating at this depth",

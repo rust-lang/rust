@@ -447,7 +447,7 @@ impl Parser {
     pub fn commit_expr(&self, e: @Expr, edible: &[token::Token], inedible: &[token::Token]) {
         debug!("commit_expr {:?}", e);
         match e.node {
-            ExprPath(*) => {
+            ExprPath(..) => {
                 // might be unit-struct construction; check for recoverableinput error.
                 let expected = vec::append(edible.to_owned(), inedible);
                 self.check_for_erroneous_unit_struct_expecting(expected);
@@ -486,7 +486,7 @@ impl Parser {
                 self.bump();
                 i
             }
-            token::INTERPOLATED(token::nt_ident(*)) => {
+            token::INTERPOLATED(token::nt_ident(..)) => {
                 self.bug("ident interpolation not converted to real token");
             }
             _ => {
@@ -835,7 +835,7 @@ impl Parser {
 
     pub fn token_is_lifetime(&self, tok: &token::Token) -> bool {
         match *tok {
-            token::LIFETIME(*) => true,
+            token::LIFETIME(..) => true,
             _ => false,
         }
     }
@@ -1280,13 +1280,13 @@ impl Parser {
                                      -> ty_ {
         // ~'foo fn() or ~fn() are parsed directly as obsolete fn types:
         match *self.token {
-            token::LIFETIME(*) => {
+            token::LIFETIME(..) => {
                 let lifetime = self.parse_lifetime();
                 self.obsolete(*self.last_span, ObsoleteBoxedClosure);
                 return self.parse_ty_closure(Some(sigil), Some(lifetime));
             }
 
-            token::IDENT(*) => {
+            token::IDENT(..) => {
                 if self.token_is_old_style_closure_keyword() {
                     self.obsolete(*self.last_span, ObsoleteBoxedClosure);
                     return self.parse_ty_closure(Some(sigil), None);
@@ -1574,7 +1574,7 @@ impl Parser {
     /// parses 0 or 1 lifetime
     pub fn parse_opt_lifetime(&self) -> Option<ast::Lifetime> {
         match *self.token {
-            token::LIFETIME(*) => {
+            token::LIFETIME(..) => {
                 Some(self.parse_lifetime())
             }
             _ => {
@@ -2108,7 +2108,7 @@ impl Parser {
                     );
                     let (s, z) = p.parse_sep_and_zerok();
                     let seq = match seq {
-                        Spanned { node, _ } => node,
+                        Spanned { node, .. } => node,
                     };
                     tt_seq(
                         mk_sp(sp.lo, p.span.hi),
@@ -2274,13 +2274,13 @@ impl Parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
-                  ExprVec(*) | ExprLit(@codemap::Spanned {
-                    node: lit_str(*), span: _
+                  ExprVec(..) | ExprLit(@codemap::Spanned {
+                    node: lit_str(..), span: _
                   })
                   if m == MutImmutable => {
                     ExprVstore(e, ExprVstoreSlice)
                   }
-                  ExprVec(*) if m == MutMutable => {
+                  ExprVec(..) if m == MutMutable => {
                     ExprVstore(e, ExprVstoreMutSlice)
                   }
                   _ => ExprAddrOf(m, e)
@@ -2296,11 +2296,11 @@ impl Parser {
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
-              ExprVec(*) | ExprRepeat(*) if m == MutMutable =>
+              ExprVec(..) | ExprRepeat(..) if m == MutMutable =>
                 ExprVstore(e, ExprVstoreMutBox),
-              ExprVec(*) |
-              ExprLit(@codemap::Spanned { node: lit_str(*), span: _}) |
-              ExprRepeat(*) if m == MutImmutable => ExprVstore(e, ExprVstoreBox),
+              ExprVec(..) |
+              ExprLit(@codemap::Spanned { node: lit_str(..), span: _}) |
+              ExprRepeat(..) if m == MutImmutable => ExprVstore(e, ExprVstoreBox),
               _ => self.mk_unary(UnBox(m), e)
             };
           }
@@ -2311,9 +2311,9 @@ impl Parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
-              ExprVec(*) |
-              ExprLit(@codemap::Spanned { node: lit_str(*), span: _}) |
-              ExprRepeat(*) => ExprVstore(e, ExprVstoreUniq),
+              ExprVec(..) |
+              ExprLit(@codemap::Spanned { node: lit_str(..), span: _}) |
+              ExprRepeat(..) => ExprVstore(e, ExprVstoreUniq),
               _ => self.mk_unary(UnUniq, e)
             };
           }
@@ -2564,8 +2564,8 @@ impl Parser {
                                                  ~[last_arg],
                                                  sugar))
             }
-            ExprPath(*) | ExprCall(*) | ExprMethodCall(*) |
-                ExprParen(*) => {
+            ExprPath(..) | ExprCall(..) | ExprMethodCall(..) |
+                ExprParen(..) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
@@ -2742,18 +2742,17 @@ impl Parser {
                     let subpat = self.parse_pat();
                     match subpat {
                         @ast::Pat { id, node: PatWild, span } => {
-                            // NOTE #5830 activate after snapshot
-                            // self.obsolete(*self.span, ObsoleteVecDotDotWildcard);
+                            self.obsolete(*self.span, ObsoleteVecDotDotWildcard);
                             slice = Some(@ast::Pat {
                                 id: id,
                                 node: PatWildMulti,
                                 span: span
                             })
                         },
-                        @ast::Pat { node: PatIdent(_, _, _), _ } => {
+                        @ast::Pat { node: PatIdent(_, _, _), .. } => {
                             slice = Some(subpat);
                         }
-                        @ast::Pat { span, _ } => self.span_fatal(
+                        @ast::Pat { span, .. } => self.span_fatal(
                             span, "expected an identifier or nothing"
                         )
                     }
@@ -2782,8 +2781,7 @@ impl Parser {
 
             etc = *self.token == token::UNDERSCORE || *self.token == token::DOTDOT;
             if *self.token == token::UNDERSCORE {
-                // NOTE #5830 activate after snapshot
-                // self.obsolete(*self.span, ObsoleteStructWildcard);
+                self.obsolete(*self.span, ObsoleteStructWildcard);
             }
             if etc {
                 self.bump();
@@ -2848,8 +2846,8 @@ impl Parser {
             pat = match sub.node {
               PatLit(e@@Expr {
                 node: ExprLit(@codemap::Spanned {
-                    node: lit_str(*),
-                    span: _}), _
+                    node: lit_str(..),
+                    span: _}), ..
               }) => {
                 let vst = @Expr {
                     id: ast::DUMMY_NODE_ID,
@@ -2876,8 +2874,8 @@ impl Parser {
             pat = match sub.node {
               PatLit(e@@Expr {
                 node: ExprLit(@codemap::Spanned {
-                    node: lit_str(*),
-                    span: _}), _
+                    node: lit_str(..),
+                    span: _}), ..
               }) => {
                 let vst = @Expr {
                     id: ast::DUMMY_NODE_ID,
@@ -2904,8 +2902,8 @@ impl Parser {
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
                   PatLit(e@@Expr {
-                      node: ExprLit(@codemap::Spanned {
-                            node: lit_str(*), span: _}), _
+                      node: ExprLit(@codemap::Spanned{ node: lit_str(..), .. }),
+                      ..
                   }) => {
                       let vst = @Expr {
                           id: ast::DUMMY_NODE_ID,
@@ -3056,8 +3054,7 @@ impl Parser {
                                 // This is a "top constructor only" pat
                                 self.bump();
                                 if is_star {
-                                    // NOTE #5830 activate after snapshot
-                                    // self.obsolete(*self.span, ObsoleteEnumWildcard);
+                                    self.obsolete(*self.span, ObsoleteEnumWildcard);
                                 }
                                 self.bump();
                                 self.expect(&token::RPAREN);
@@ -3330,7 +3327,7 @@ impl Parser {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
             items: items,
-            _
+            ..
         } = self.parse_items_and_view_items(first_item_attrs,
                                             false, false);
 
@@ -3478,7 +3475,7 @@ impl Parser {
                     }
                     self.bump();
                 }
-                token::MOD_SEP | token::IDENT(*) => {
+                token::MOD_SEP | token::IDENT(..) => {
                     let tref = self.parse_trait_ref();
                     result.push(TraitTyParamBound(tref));
                 }
@@ -3702,7 +3699,7 @@ impl Parser {
                 sty_uniq(MutImmutable)
             }, self)
           }
-          token::IDENT(*) if self.is_self_ident() => {
+          token::IDENT(..) if self.is_self_ident() => {
             self.bump();
             sty_value(MutImmutable)
           }
@@ -3952,7 +3949,7 @@ impl Parser {
                         ref_id: node_id
                     })
                 }
-                ty_path(*) => {
+                ty_path(..) => {
                     self.span_err(ty.span,
                                   "bounded traits are only valid in type position");
                     None
@@ -4129,7 +4126,7 @@ impl Parser {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
             items: starting_items,
-            _
+            ..
         } = self.parse_items_and_view_items(first_item_attrs, true, true);
         let mut items: ~[@item] = starting_items;
         let attrs_remaining_len = attrs_remaining.len();
@@ -4386,7 +4383,7 @@ impl Parser {
         }
 
         let (named, maybe_path, ident) = match *self.token {
-            token::IDENT(*) => {
+            token::IDENT(..) => {
                 let the_ident = self.parse_ident();
                 let path = if *self.token == token::EQ {
                     self.bump();
@@ -5046,16 +5043,16 @@ impl Parser {
                 }
                 iovi_view_item(view_item) => {
                     match view_item.node {
-                        view_item_use(*) => {
+                        view_item_use(..) => {
                             // `extern mod` must precede `use`.
                             extern_mod_allowed = false;
                         }
-                        view_item_extern_mod(*)
+                        view_item_extern_mod(..)
                         if !extern_mod_allowed => {
                             self.span_err(view_item.span,
                                           "\"extern mod\" declarations are not allowed here");
                         }
-                        view_item_extern_mod(*) => {}
+                        view_item_extern_mod(..) => {}
                     }
                     view_items.push(view_item);
                 }

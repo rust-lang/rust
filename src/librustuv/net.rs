@@ -36,8 +36,8 @@ use uvll::sockaddr;
 
 fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: |*sockaddr| -> T) -> T {
     let malloc = match addr.ip {
-        Ipv4Addr(*) => uvll::rust_malloc_ip4_addr,
-        Ipv6Addr(*) => uvll::rust_malloc_ip6_addr,
+        Ipv4Addr(..) => uvll::rust_malloc_ip4_addr,
+        Ipv6Addr(..) => uvll::rust_malloc_ip6_addr,
     };
 
     let ip = addr.ip.to_str();
@@ -667,7 +667,7 @@ mod test {
     #[test]
     fn connect_close_ip4() {
         match TcpWatcher::connect(local_loop(), next_test_ip4()) {
-            Ok(*) => fail!(),
+            Ok(..) => fail!(),
             Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
         }
     }
@@ -675,7 +675,7 @@ mod test {
     #[test]
     fn connect_close_ip6() {
         match TcpWatcher::connect(local_loop(), next_test_ip6()) {
-            Ok(*) => fail!(),
+            Ok(..) => fail!(),
             Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
         }
     }
@@ -683,16 +683,16 @@ mod test {
     #[test]
     fn udp_bind_close_ip4() {
         match UdpWatcher::bind(local_loop(), next_test_ip4()) {
-            Ok(*) => {}
-            Err(*) => fail!()
+            Ok(..) => {}
+            Err(..) => fail!()
         }
     }
 
     #[test]
     fn udp_bind_close_ip6() {
         match UdpWatcher::bind(local_loop(), next_test_ip6()) {
-            Ok(*) => {}
-            Err(*) => fail!()
+            Ok(..) => {}
+            Err(..) => fail!()
         }
     }
 

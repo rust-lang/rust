@@ -606,8 +606,8 @@ match mypoint {
 
 In general, the field names of a struct do not have to appear in the same
 order they appear in the type. When you are not interested in all
-the fields of a struct, a struct pattern may end with `, _` (as in
-`Name { field1, _ }`) to indicate that you're ignoring all other fields.
+the fields of a struct, a struct pattern may end with `, ..` (as in
+`Name { field1, .. }`) to indicate that you're ignoring all other fields.
 Additionally, struct fields have a shorthand matching form that simply
 reuses the field name as the binding name.
 
@@ -615,7 +615,7 @@ reuses the field name as the binding name.
 # struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x, _ } => { println(x.to_str()) }
+    Point { x, .. } => { println(x.to_str()) }
 }
 ~~~
 
@@ -696,7 +696,7 @@ fn area(sh: Shape) -> f64 {
 ~~~~
 
 You can write a lone `_` to ignore an individual field, and can
-ignore all fields of a variant like: `Circle(*)`. As in their
+ignore all fields of a variant like: `Circle(..)`. As in their
 introduction form, nullary enum patterns are written without
 parentheses.
 
@@ -725,7 +725,7 @@ enum Shape {
 }
 fn area(sh: Shape) -> f64 {
     match sh {
-        Circle { radius: radius, _ } => f64::consts::PI * square(radius),
+        Circle { radius: radius, .. } => f64::consts::PI * square(radius),
         Rectangle { top_left: top_left, bottom_right: bottom_right } => {
             (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y)
         }
@@ -1698,7 +1698,7 @@ a function that returns `Option<T>` instead of `T`.
 fn radius(shape: Shape) -> Option<f64> {
     match shape {
         Circle(_, radius) => Some(radius),
-        Rectangle(*)      => None
+        Rectangle(..)      => None
     }
 }
 ~~~~

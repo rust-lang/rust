@@ -192,7 +192,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                         }
                     }
                 }
-                ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+                ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
                     match *ctor {
                         vec(n) => Some(format!("vectors of length {}", n).to_managed()),
                         _ => None
@@ -274,7 +274,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
               ty::ty_evec(_, ty::vstore_fixed(n)) => {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
-              ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+              ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
                 let max_len = m.rev_iter().fold(0, |max_len, r| {
                   match r[0].node {
                     PatVec(ref before, _, ref after) => {
@@ -348,13 +348,13 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
       PatRange(lo, hi) => {
         Some(range(eval_const_expr(cx.tcx, lo), eval_const_expr(cx.tcx, hi)))
       }
-      PatStruct(*) => {
+      PatStruct(..) => {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&DefVariant(_, id, _)) => Some(variant(id)),
           _ => Some(single)
         }
       }
-      PatBox(_) | PatUniq(_) | PatTup(_) | PatRegion(*) => {
+      PatBox(_) | PatUniq(_) | PatTup(_) | PatRegion(..) => {
         Some(single)
       }
       PatVec(ref before, slice, ref after) => {
@@ -372,7 +372,7 @@ fn is_wild(cx: &MatchCheckCtxt, p: @Pat) -> bool {
       PatWild | PatWildMulti => { true }
       PatIdent(_, _, _) => {
         match cx.tcx.def_map.find(&pat.id) {
-          Some(&DefVariant(_, _, _)) | Some(&DefStatic(*)) => { false }
+          Some(&DefVariant(_, _, _)) | Some(&DefStatic(..)) => { false }
           _ => { true }
         }
       }
@@ -385,8 +385,8 @@ fn missing_ctor(cx: &MatchCheckCtxt,
                     left_ty: ty::t)
                  -> Option<ctor> {
     match ty::get(left_ty).sty {
-      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) | ty::ty_tup(_) |
-      ty::ty_struct(*) => {
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(..) | ty::ty_tup(_) |
+      ty::ty_struct(..) => {
         for r in m.iter() {
             if !is_wild(cx, r[0]) { return None; }
         }
@@ -451,7 +451,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
           _         => None
         }
       }
-      ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+      ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
 
         // Find the lengths and slices of all vector patterns.
         let vec_pat_lens = m.iter().filter_map(|r| {
@@ -508,7 +508,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
 fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
     match ty::get(ty).sty {
       ty::ty_tup(ref fs) => fs.len(),
-      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(..) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match *ctor { variant(id) => id,
           _ => fail!("impossible case") };
@@ -518,7 +518,7 @@ fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
-      ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+      ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
         match *ctor {
           vec(n) => n,
           _ => 0u
@@ -656,8 +656,8 @@ fn specialize(cx: &MatchCheckCtxt,
                     }
                     DefVariant(_, _, _) => None,
 
-                    DefFn(*) |
-                    DefStruct(*) => {
+                    DefFn(..) |
+                    DefStruct(..) => {
                         // FIXME #4731: Is this right? --pcw
                         let new_args;
                         match args {
@@ -847,7 +847,7 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
             return true;
         }
       }
-      Some(&DefStatic(*)) => return true,
+      Some(&DefStatic(..)) => return true,
       _ => ()
     }
 
@@ -857,7 +857,7 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
         is_refutable(cx, sub)
       }
       PatWild | PatWildMulti | PatIdent(_, _, None) => { false }
-      PatLit(@Expr {node: ExprLit(@Spanned { node: lit_nil, _}), _}) => {
+      PatLit(@Expr {node: ExprLit(@Spanned { node: lit_nil, ..}), ..}) => {
         // "()"
         false
       }
@@ -872,7 +872,7 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
         args.iter().any(|a| is_refutable(cx, *a))
       }
       PatEnum(_,_) => { false }
-      PatVec(*) => { true }
+      PatVec(..) => { true }
     }
 }
 
@@ -903,7 +903,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let check_move: |&Pat, Option<@Pat>| = |p, sub| {
         // check legality of moving out of the enum
 
-        // x @ Foo(*) is legal, but x @ Foo(y) isn't.
+        // x @ Foo(..) is legal, but x @ Foo(y) isn't.
         if sub.map_default(false, |p| pat_contains_bindings(def_map, p)) {
             tcx.sess.span_err(
                 p.span,

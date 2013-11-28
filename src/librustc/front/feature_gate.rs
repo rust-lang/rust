@@ -95,7 +95,7 @@ impl Visitor<()> for Context {
             ast::view_item_use(ref paths) => {
                 for path in paths.iter() {
                     match path.node {
-                        ast::view_path_glob(*) => {
+                        ast::view_path_glob(..) => {
                             self.gate_feature("globs", path.span,
                                               "glob import statements are \
                                                experimental and possibly buggy");
@@ -110,8 +110,6 @@ impl Visitor<()> for Context {
     }
 
     fn visit_item(&mut self, i: @ast::item, _:()) {
-        // NOTE: uncomment after snapshot
-        /*
         for attr in i.attrs.iter() {
             if "thread_local" == attr.name() {
                 self.gate_feature("thread_local", i.span,
@@ -120,12 +118,11 @@ impl Visitor<()> for Context {
                                   `#[task_local]` mapping to the task model");
             }
         }
-        */
         match i.node {
             ast::item_enum(ref def, _) => {
                 for variant in def.variants.iter() {
                     match variant.node.kind {
-                        ast::struct_variant_kind(*) => {
+                        ast::struct_variant_kind(..) => {
                             self.gate_feature("struct_variant", variant.span,
                                               "enum struct variants are \
                                                experimental and possibly buggy");

@@ -14,7 +14,7 @@ enum t3 { c(T2, uint), }
 
 fn m(input: t3) -> int {
     match input {
-      c(T2 {x: a(m), _}, _) => { return m; }
+      c(T2 {x: a(m), ..}, _) => { return m; }
       c(T2 {x: b(m), y: y}, z) => { return ((m + z) as int) + y; }
     }
 }

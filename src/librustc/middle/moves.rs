@@ -322,14 +322,14 @@ impl VisitContext {
         let comp_mode = match self.tcx.adjustments.find(&expr.id) {
             Some(&@ty::AutoDerefRef(
                 ty::AutoDerefRef {
-                    autoref: Some(_), _})) => Read,
+                    autoref: Some(_), ..})) => Read,
             _ => expr_mode
         };
 
         debug!("comp_mode = {:?}", comp_mode);
 
         match expr.node {
-            ExprPath(*) | ExprSelf => {
+            ExprPath(..) | ExprSelf => {
                 match comp_mode {
                     Move => {
                         let def = self.tcx.def_map.get_copy(&expr.id);
@@ -372,7 +372,7 @@ impl VisitContext {
                         Many => Read,
                         }
                     },
-                    ty::ty_bare_fn(*) => Read,
+                    ty::ty_bare_fn(..) => Read,
                     ref x =>
                         self.tcx.sess.span_bug(callee.span,
                             format!("non-function type in moves for expr_call: {:?}", x)),
@@ -484,10 +484,10 @@ impl VisitContext {
             }
 
             ExprLogLevel |
-            ExprInlineAsm(*) |
-            ExprBreak(*) |
-            ExprAgain(*) |
-            ExprLit(*) => {}
+            ExprInlineAsm(..) |
+            ExprBreak(..) |
+            ExprAgain(..) |
+            ExprLit(..) => {}
 
             ExprLoop(ref blk, _) => {
                 self.consume_block(blk);
@@ -498,7 +498,7 @@ impl VisitContext {
                 self.consume_block(blk);
             }
 
-            ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ExprUnary(_, _, lhs) => {
                 if !self.use_overloaded_operator(expr, lhs, [])
@@ -567,7 +567,7 @@ impl VisitContext {
                 self.use_expr(base, comp_mode);
             }
 
-            ExprMac(*) => {
+            ExprMac(..) => {
                 self.tcx.sess.span_bug(
                     expr.span,
                     "macro expression remains after expansion");

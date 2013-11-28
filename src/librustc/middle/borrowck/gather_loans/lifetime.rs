@@ -70,13 +70,13 @@ impl<'self> GuaranteeLifetimeContext<'self> {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
 
         match cmt.cat {
-            mc::cat_rvalue(*) |
-            mc::cat_copied_upvar(*) |                  // L-Local
-            mc::cat_local(*) |                         // L-Local
-            mc::cat_arg(*) |                           // L-Local
-            mc::cat_self(*) |                          // L-Local
-            mc::cat_deref(_, _, mc::region_ptr(*)) |   // L-Deref-Borrowed
-            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
+            mc::cat_rvalue(..) |
+            mc::cat_copied_upvar(..) |                  // L-Local
+            mc::cat_local(..) |                         // L-Local
+            mc::cat_arg(..) |                           // L-Local
+            mc::cat_self(..) |                          // L-Local
+            mc::cat_deref(_, _, mc::region_ptr(..)) |   // L-Deref-Borrowed
+            mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {
                 let scope = self.scope(cmt);
                 self.check_scope(scope)
             }
@@ -183,7 +183,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
         //! lvalue.
 
         cmt.mutbl.is_immutable() || match cmt.guarantor().cat {
-            mc::cat_rvalue(*) => true,
+            mc::cat_rvalue(..) => true,
             _ => false
         }
     }
@@ -305,16 +305,16 @@ impl<'self> GuaranteeLifetimeContext<'self> {
             mc::cat_arg(id) => {
                 self.bccx.moved_variables_set.contains(&id)
             }
-            mc::cat_rvalue(*) |
+            mc::cat_rvalue(..) |
             mc::cat_static_item |
-            mc::cat_copied_upvar(*) |
-            mc::cat_deref(*) => {
+            mc::cat_copied_upvar(..) |
+            mc::cat_deref(..) => {
                 false
             }
-            r @ mc::cat_downcast(*) |
-            r @ mc::cat_interior(*) |
-            r @ mc::cat_stack_upvar(*) |
-            r @ mc::cat_discr(*) => {
+            r @ mc::cat_downcast(..) |
+            r @ mc::cat_interior(..) |
+            r @ mc::cat_stack_upvar(..) |
+            r @ mc::cat_discr(..) => {
                 self.tcx().sess.span_bug(
                     cmt.span,
                     format!("illegal guarantor category: {:?}", r));
@@ -344,7 +344,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
             mc::cat_self(local_id) => {
                 self.bccx.tcx.region_maps.encl_region(local_id)
             }
-            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
+            mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {
                 ty::ReStatic
             }
             mc::cat_deref(_, _, mc::region_ptr(_, r)) => {
@@ -352,7 +352,7 @@ impl<'self> GuaranteeLifetimeContext<'self> {
             }
             mc::cat_downcast(cmt) |
             mc::cat_deref(cmt, _, mc::uniq_ptr) |
-            mc::cat_deref(cmt, _, mc::gc_ptr(*)) |
+            mc::cat_deref(cmt, _, mc::gc_ptr(..)) |
             mc::cat_interior(cmt, _) |
             mc::cat_stack_upvar(cmt) |
             mc::cat_discr(cmt, _) => {

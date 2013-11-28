@@ -198,7 +198,7 @@ impl PurityState {
 
             purity => {
                 let (purity, def) = match blk.rules {
-                    ast::UnsafeBlock(*) => (ast::unsafe_fn, blk.id),
+                    ast::UnsafeBlock(..) => (ast::unsafe_fn, blk.id),
                     ast::DefaultBlock => (purity, self.def),
                 };
                 PurityState{ def: def,
@@ -622,7 +622,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in (*trait_methods).iter() {
             match *trait_method {
-              required(*) => {
+              required(..) => {
                 // Nothing to do, since required methods don't have
                 // bodies to check.
               }
@@ -633,7 +633,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
             }
         }
       }
-      ast::item_struct(*) => {
+      ast::item_struct(..) => {
         check_struct(ccx, it.id, it.span);
       }
       ast::item_ty(ref t, ref generics) => {
@@ -1354,8 +1354,8 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-      ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::ReStatic)),
-      ast::lit_binary(*) => {
+      ast::lit_str(..) => ty::mk_estr(tcx, ty::vstore_slice(ty::ReStatic)),
+      ast::lit_binary(..) => {
           ty::mk_evec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
                       ty::vstore_slice(ty::ReStatic))
       }
@@ -1743,9 +1743,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             };
             for (i, arg) in args.iter().take(t).enumerate() {
                 let is_block = match arg.node {
-                    ast::ExprFnBlock(*) |
-                    ast::ExprProc(*) |
-                    ast::ExprDoBody(*) => true,
+                    ast::ExprFnBlock(..) |
+                    ast::ExprProc(..) |
+                    ast::ExprDoBody(..) => true,
                     _ => false
                 };
 
@@ -1874,8 +1874,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
 
         let fn_sig = match *fn_sty {
-            ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
-            ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => sig,
+            ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, ..}) |
+            ty::ty_closure(ty::ClosureTy {sig: ref sig, ..}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
                     format!("expected function but \
@@ -2573,7 +2573,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     match expr.node {
       ast::ExprVstore(ev, vst) => {
         let typ = match ev.node {
-          ast::ExprLit(@codemap::Spanned { node: ast::lit_str(*), _ }) => {
+          ast::ExprLit(@codemap::Spanned { node: ast::lit_str(..), .. }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_estr(tcx, tt)
           }
@@ -2723,13 +2723,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         }
                         None => {
                             match *sty {
-                                ty::ty_enum(*) => {
+                                ty::ty_enum(..) => {
                                     tcx.sess.span_err(
                                         expr.span,
                                         "can only dereference enums with a single variant which \
                                          has a single argument");
                                 }
-                                ty::ty_struct(*) => {
+                                ty::ty_struct(..) => {
                                     tcx.sess.span_err(
                                         expr.span,
                                         "can only dereference structs with one anonymous field");
@@ -2890,7 +2890,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::ExprForLoop(*) =>
+      ast::ExprForLoop(..) =>
           fail!("non-desugared expr_for_loop"),
       ast::ExprLoop(ref body, _) => {
         check_block_no_value(fcx, (body));
@@ -3012,7 +3012,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         else {
             match ty::get(t_1).sty {
                 // This will be looked up later on
-                ty::ty_trait(*) => (),
+                ty::ty_trait(..) => (),
 
                 _ => {
                     if ty::type_is_nil(t_e) {
@@ -3322,7 +3322,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::Stmt)  {
         saw_bot |= ty::type_is_bot(expr_ty);
         saw_err |= ty::type_is_error(expr_ty);
       }
-      ast::StmtMac(*) => fcx.ccx.tcx.sess.bug("unexpanded macro")
+      ast::StmtMac(..) => fcx.ccx.tcx.sess.bug("unexpanded macro")
     }
     if saw_bot {
         fcx.write_bot(node_id);
@@ -3371,7 +3371,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             let s_ty = fcx.node_ty(s_id);
             if last_was_bot && !warned && match s.node {
                   ast::StmtDecl(@codemap::Spanned { node: ast::DeclLocal(_),
-                                                 _}, _) |
+                                                 ..}, _) |
                   ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => {
                     true
                   }
@@ -3656,28 +3656,28 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::DefTrait(_) |
       ast::DefTy(_) |
       ast::DefPrimTy(_) |
-      ast::DefTyParam(*)=> {
+      ast::DefTyParam(..)=> {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
       }
-      ast::DefMod(*) | ast::DefForeignMod(*) => {
+      ast::DefMod(..) | ast::DefForeignMod(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
       }
-      ast::DefUse(*) => {
+      ast::DefUse(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
       }
-      ast::DefRegion(*) => {
+      ast::DefRegion(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
       }
-      ast::DefTyParamBinder(*) => {
+      ast::DefTyParamBinder(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
       }
-      ast::DefLabel(*) => {
+      ast::DefLabel(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
       }
-      ast::DefSelfTy(*) => {
+      ast::DefSelfTy(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
       }
-      ast::DefMethod(*) => {
+      ast::DefMethod(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
       }
     }
@@ -3905,7 +3905,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
 
     ty::walk_ty(ty, |t| {
             match ty::get(t).sty {
-                ty::ty_param(param_ty {idx, _}) => {
+                ty::ty_param(param_ty {idx, ..}) => {
                     debug!("Found use of ty param \\#{}", idx);
                     tps_used[idx] = true;
                 }

@@ -116,7 +116,7 @@ fn main() {
 
     match Struct { x: 239, y: 240 } {
         // ignored field
-        Struct { x: shadowed, _ } => {
+        Struct { x: shadowed, .. } => {
 
             zzz();
             sentinel();

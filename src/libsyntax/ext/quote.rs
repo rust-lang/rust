@@ -553,7 +553,7 @@ fn mk_tt(cx: @ExtCtxt, sp: Span, tt: &ast::token_tree)
         }
 
         ast::tt_delim(ref tts) => mk_tts(cx, sp, **tts),
-        ast::tt_seq(*) => fail!("tt_seq in quote!"),
+        ast::tt_seq(..) => fail!("tt_seq in quote!"),
 
         ast::tt_nonterminal(sp, ident) => {
 

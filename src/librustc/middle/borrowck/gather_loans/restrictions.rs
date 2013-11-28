@@ -68,7 +68,7 @@ impl<'self> RestrictionsContext<'self> {
         }
 
         match cmt.cat {
-            mc::cat_rvalue(*) => {
+            mc::cat_rvalue(..) => {
                 // Effectively, rvalues are stored into a
                 // non-aliasable temporary on the stack. Since they
                 // are inherently non-aliasable, they can only be
@@ -117,8 +117,8 @@ impl<'self> RestrictionsContext<'self> {
                 self.extend(result, cmt.mutbl, LpDeref(pk), restrictions)
             }
 
-            mc::cat_copied_upvar(*) | // FIXME(#2152) allow mutation of upvars
-            mc::cat_static_item(*) |
+            mc::cat_copied_upvar(..) | // FIXME(#2152) allow mutation of upvars
+            mc::cat_static_item(..) |
             mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(MutImmutable)) => {
                 // R-Deref-Imm-Borrowed
@@ -200,7 +200,7 @@ impl<'self> RestrictionsContext<'self> {
                 }
             }
 
-            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
+            mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {
                 // We are very trusting when working with unsafe pointers.
                 Safe
             }

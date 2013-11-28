@@ -399,12 +399,12 @@ impl<'self> CheckLoanCtxt<'self> {
                         cmt = b;
                     }
 
-                    mc::cat_rvalue(*) |
+                    mc::cat_rvalue(..) |
                     mc::cat_static_item |
-                    mc::cat_copied_upvar(*) |
-                    mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
-                    mc::cat_deref(_, _, mc::gc_ptr(*)) |
-                    mc::cat_deref(_, _, mc::region_ptr(*)) => {
+                    mc::cat_copied_upvar(..) |
+                    mc::cat_deref(_, _, mc::unsafe_ptr(..)) |
+                    mc::cat_deref(_, _, mc::gc_ptr(..)) |
+                    mc::cat_deref(_, _, mc::region_ptr(..)) => {
                         assert_eq!(cmt.mutbl, mc::McDeclared);
                         return;
                     }
@@ -477,12 +477,12 @@ impl<'self> CheckLoanCtxt<'self> {
                     }
 
                     mc::cat_copied_upvar(_) |
-                    mc::cat_rvalue(*) |
-                    mc::cat_local(*) |
+                    mc::cat_rvalue(..) |
+                    mc::cat_local(..) |
                     mc::cat_arg(_) |
-                    mc::cat_self(*) |
-                    mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
-                    mc::cat_static_item(*) |
+                    mc::cat_self(..) |
+                    mc::cat_deref(_, _, mc::unsafe_ptr(..)) |
+                    mc::cat_static_item(..) |
                     mc::cat_deref(_, _, mc::gc_ptr(_)) |
                     mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) => {
                         // Aliasability is independent of base cmt
@@ -654,7 +654,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
     fn check_move_out_from_expr(&self, expr: @ast::Expr) {
         match expr.node {
-            ast::ExprFnBlock(*) | ast::ExprProc(*) => {
+            ast::ExprFnBlock(..) | ast::ExprProc(..) => {
                 // moves due to capture clauses are checked
                 // in `check_loans_in_fn`, so that we can
                 // give a better error message
@@ -728,14 +728,14 @@ fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
                          sp: Span,
                          id: ast::NodeId) {
     match *fk {
-        visit::fk_item_fn(*) |
-        visit::fk_method(*) => {
+        visit::fk_item_fn(..) |
+        visit::fk_method(..) => {
             // Don't process nested items.
             return;
         }
 
-        visit::fk_anon(*) |
-        visit::fk_fn_block(*) => {
+        visit::fk_anon(..) |
+        visit::fk_fn_block(..) => {
             check_captured_variables(this, id, sp);
         }
     }
@@ -800,7 +800,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
 
     match expr.node {
       ast::ExprSelf |
-      ast::ExprPath(*) => {
+      ast::ExprPath(..) => {
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt={}", cmt.repr(this.tcx()));

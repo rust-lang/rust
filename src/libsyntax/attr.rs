@@ -459,8 +459,8 @@ impl IntType {
     #[inline]
     pub fn is_signed(self) -> bool {
         match self {
-            SignedInt(*) => true,
-            UnsignedInt(*) => false
+            SignedInt(..) => true,
+            UnsignedInt(..) => false
         }
     }
     fn is_ffi_safe(self) -> bool {

@@ -76,7 +76,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
 
 fn find_item(item: @item, ctxt: &mut EntryContext) {
     match item.node {
-        item_fn(*) => {
+        item_fn(..) => {
             if item.ident.name == special_idents::main.name {
                 match ctxt.ast_map.find(&item.id) {
                     Some(&ast_map::node_item(_, path)) => {

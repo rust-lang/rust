@@ -71,7 +71,7 @@ pub fn type_is_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
     }
     match ty::get(ty).sty {
         ty::ty_bot => true,
-        ty::ty_struct(*) | ty::ty_enum(*) | ty::ty_tup(*) => {
+        ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
         }
@@ -778,7 +778,7 @@ pub fn in_scope_cx(cx: @mut Block,
         cur_scope = match cur_scope {
             Some(inf) => match scope_id {
                 Some(wanted) => match inf.node_info {
-                    Some(NodeInfo { id: actual, _ }) if wanted == actual => {
+                    Some(NodeInfo { id: actual, .. }) if wanted == actual => {
                         debug!("in_scope_cx: selected cur={} (cx={})",
                                cur.to_str(), cx.to_str());
                         f(inf);
@@ -1054,11 +1054,11 @@ pub enum MonoDataClass {
 pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
     match ty::get(t).sty {
         ty::ty_float(_) => MonoFloat,
-        ty::ty_rptr(*) | ty::ty_uniq(*) |
-        ty::ty_box(*) | ty::ty_opaque_box(*) |
+        ty::ty_rptr(..) | ty::ty_uniq(..) |
+        ty::ty_box(..) | ty::ty_opaque_box(..) |
         ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) |
         ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) |
-        ty::ty_bare_fn(*) => MonoNonNull,
+        ty::ty_bare_fn(..) => MonoNonNull,
         // Is that everything?  Would closures or slices qualify?
         _ => MonoBits
     }

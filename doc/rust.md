@@ -2820,7 +2820,7 @@ expression*, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
 
 In a pattern whose head expression has an `enum` type, a placeholder (`_`) stands for a
-*single* data field, whereas a wildcard `*` stands for *all* the fields of a particular
+*single* data field, whereas a wildcard `..` stands for *all* the fields of a particular
 variant. For example:
 
 ~~~~
@@ -2830,7 +2830,7 @@ let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
     Cons(_, @Nil) => fail!("singleton list"),
-    Cons(*)       => return,
+    Cons(..)      => return,
     Nil           => fail!("empty list")
 }
 ~~~~
@@ -2838,7 +2838,7 @@ match x {
 The first pattern matches lists constructed by applying `Cons` to any head value, and a
 tail value of `@Nil`. The second pattern matches _any_ list constructed with `Cons`,
 ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
-`C` has exactly one argument, while the pattern `C(*)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
+`C` has exactly one argument, while the pattern `C(..)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
 To execute an `match` expression, first the head expression is evaluated, then
 its value is sequentially compared to the patterns in the arms until a match

@@ -192,7 +192,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_float(_) | ty::ty_type |
         ty::ty_opaque_closure_ptr(_) |
         ty::ty_err | ty::ty_opaque_box | ty::ty_infer(_) |
-        ty::ty_param(*) | ty::ty_self(_) => {
+        ty::ty_param(..) | ty::ty_self(_) => {
             (*sty).clone()
         }
     }
