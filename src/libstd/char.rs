@@ -14,7 +14,7 @@ use cast::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use str::StrSlice;
-use unicode::{derived_property, general_category, decompose};
+use unicode::{derived_property, property, general_category, decompose};
 use to_str::ToStr;
 use str;
 
@@ -89,30 +89,28 @@ pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 ///
 /// Indicates whether a character is in lower case, defined
-/// in terms of the Unicode General Category 'Ll'
+/// in terms of the Unicode Derived Core Property 'Lowercase'.
 ///
 #[inline]
-pub fn is_lowercase(c: char) -> bool { general_category::Ll(c) }
+pub fn is_lowercase(c: char) -> bool { derived_property::Lowercase(c) }
 
 ///
 /// Indicates whether a character is in upper case, defined
-/// in terms of the Unicode General Category 'Lu'.
+/// in terms of the Unicode Derived Core Property 'Uppercase'.
 ///
 #[inline]
-pub fn is_uppercase(c: char) -> bool { general_category::Lu(c) }
+pub fn is_uppercase(c: char) -> bool { derived_property::Uppercase(c) }
 
 ///
 /// Indicates whether a character is whitespace. Whitespace is defined in
-/// terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
-/// additional 'Cc'-category control codes in the range [0x09, 0x0d]
+/// terms of the Unicode Property 'White_Space'.
 ///
 #[inline]
 pub fn is_whitespace(c: char) -> bool {
+    // As an optimization ASCII whitespace characters are checked separately
     c == ' '
         || ('\x09' <= c && c <= '\x0d')
-        || general_category::Zs(c)
-        || general_category::Zl(c)
-        || general_category::Zp(c)
+        || property::White_Space(c)
 }
 
 ///

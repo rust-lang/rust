@@ -5,7 +5,7 @@
 # code covering the core properties. Since this is a pretty rare event we
 # just store this out-of-line and check the unicode.rs file into git.
 #
-# The emitted code is "the minimum we think is necessary for libcore", that
+# The emitted code is "the minimum we think is necessary for libstd", that
 # is, to support basic operations of the compiler and "most nontrivial rust
 # programs". It is not meant to be a complete implementation of unicode.
 # For that we recommend you use a proper binding to libicu.
@@ -41,7 +41,7 @@ def load_unicode_data(f):
             continue
         [code, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcsae, titlecase ] = fields
+         old, iso, upcase, lowcase, titlecase ] = fields
 
         code = int(code, 16)
 
@@ -89,11 +89,9 @@ def load_unicode_data(f):
 
     return (canon_decomp, compat_decomp, gencats, combines)
 
-
-def load_derived_core_properties(f):
+def load_properties(f, interestingprops):
     fetch(f)
-    derivedprops = {}
-    interestingprops = ["XID_Start", "XID_Continue", "Alphabetic"]
+    props = {}
     re1 = re.compile("^([0-9A-F]+) +; (\w+)")
     re2 = re.compile("^([0-9A-F]+)\.\.([0-9A-F]+) +; (\w+)")
 
@@ -118,10 +116,10 @@ def load_derived_core_properties(f):
             continue
         d_lo = int(d_lo, 16)
         d_hi = int(d_hi, 16)
-        if prop not in derivedprops:
-            derivedprops[prop] = []
-        derivedprops[prop].append((d_lo, d_hi))
-    return derivedprops
+        if prop not in props:
+            props[prop] = []
+        props[prop].append((d_lo, d_hi))
+    return props
 
 def escape_char(c):
     if c <= 0xff:
@@ -144,7 +142,7 @@ def emit_bsearch_range_table(f):
         use cmp::{Equal, Less, Greater};
         use vec::ImmutableVector;
         use option::None;
-        (do r.bsearch |&(lo,hi)| {
+        r.bsearch(|&(lo,hi)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
@@ -302,14 +300,14 @@ def emit_decomp_module(f, canon, compat, combine):
         ix += 1
     f.write("\n    ];\n")
 
-    f.write("    pub fn canonical(c: char, i: &fn(char)) "
+    f.write("    pub fn canonical(c: char, i: |char|) "
         + "{ d(c, i, false); }\n\n")
-    f.write("    pub fn compatibility(c: char, i: &fn(char)) "
+    f.write("    pub fn compatibility(c: char, i: |char|) "
             +"{ d(c, i, true); }\n\n")
     f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
         + "        bsearch_range_value_table(c, combining_class_table)\n"
         + "    }\n\n")
-    f.write("    fn d(c: char, i: &fn(char), k: bool) {\n")
+    f.write("    fn d(c: char, i: |char|, k: bool) {\n")
     f.write("        use iter::Iterator;\n");
 
     f.write("        if c <= '\\x7f' { i(c); return; }\n")
@@ -376,5 +374,9 @@ emit_property_module(rf, "general_category", gencats)
 
 emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
 
-derived = load_derived_core_properties("DerivedCoreProperties.txt")
+derived = load_properties("DerivedCoreProperties.txt",
+        ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
 emit_property_module(rf, "derived_property", derived)
+
+props = load_properties("PropList.txt", ["White_Space"])
+emit_property_module(rf, "property", props)
