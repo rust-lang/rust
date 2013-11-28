@@ -23,9 +23,8 @@ use clone::Clone;
 use comm::{Port, SharedChan, stream};
 use container::{Map, MutableMap};
 use hashmap;
-use io::io_error;
-use option::{Some, None};
 use result::{Err, Ok};
+use io::IoResult;
 use rt::rtio::{IoFactory, RtioSignal, with_local_io};
 
 #[repr(int)]
@@ -119,22 +118,19 @@ impl Listener {
     /// If this function fails to register a signal handler, then an error will
     /// be raised on the `io_error` condition and the function will return
     /// false.
-    pub fn register(&mut self, signum: Signum) -> bool {
+    pub fn register(&mut self, signum: Signum) -> IoResult<()> {
         if self.handles.contains_key(&signum) {
-            return true; // self is already listening to signum, so succeed
+            return Ok(()); // self is already listening to signum, so succeed
         }
         with_local_io(|io| {
             match io.signal(signum, self.chan.clone()) {
                 Ok(w) => {
                     self.handles.insert(signum, w);
-                    Some(())
+                    Ok(())
                 },
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+                Err(ioerr) => Err(ioerr),
             }
-        }).is_some()
+        })
     }
 
     /// Unregisters a signal. If this listener currently had a handler

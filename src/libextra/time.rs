@@ -679,26 +679,22 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         let ch = range.ch;
         let next = range.next;
 
-        let mut buf = [0];
-        let c = match rdr.read(buf) {
-            Some(*) => buf[0] as u8 as char,
-            None => break
-        };
-        match c {
-            '%' => {
-                let ch = match rdr.read(buf) {
-                    Some(*) => buf[0] as u8 as char,
-                    None => break
+        match rdr.read_byte() {
+            Ok(c) if c == '%' as u8 => {
+                let ch = match rdr.read_byte() {
+                    Ok(b) => b as char,
+                    Err(*) => break
                 };
                 match parse_type(s, pos, ch, &mut tm) {
                     Ok(next) => pos = next,
                     Err(e) => { result = Err(e); break; }
                 }
             },
-            c => {
-                if c != ch { break }
+            Ok(c) => {
+                if c as char != ch { break }
                 pos = next;
             }
+            Err(*) => break
         }
     }
 
@@ -930,18 +926,13 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
 
     let mut rdr = BufReader::new(format.as_bytes());
     loop {
-        let mut b = [0];
-        let ch = match rdr.read(b) {
-            Some(*) => b[0],
-            None => break,
-        };
-        match ch as char {
-            '%' => {
-                rdr.read(b);
-                let s = parse_type(b[0] as char, tm);
+        match rdr.read_byte() {
+            Ok(c) if c == '%' as u8 => {
+                let s = parse_type(rdr.read_byte().unwrap() as char, tm);
                 buf.push_all(s.as_bytes());
             }
-            ch => buf.push(ch as u8)
+            Ok(ch) => buf.push(ch as u8),
+            Err(*) => break,
         }
     }
 

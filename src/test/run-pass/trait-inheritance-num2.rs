@@ -95,7 +95,7 @@ impl FloatExt for f32 {}
 impl FloatExt for f64 {}
 
 
-fn test_float_ext<T:FloatExt>(n: T) { println!("{}", n < n) }
+fn test_float_ext<T:FloatExt>(n: T) { println!("{}", n < n); }
 
 pub fn main() {
     test_float_ext(1f32);

@@ -96,7 +96,7 @@ pub enum CloneResult {
 
 pub fn make_read_only(target: &Path) {
     // Now, make all the files in the target dir read-only
-    for p in fs::walk_dir(target) {
+    for p in fs::walk_dir(target).unwrap() {
         if !p.is_dir() {
             assert!(chmod_read_only(&p));
         }

@@ -18,8 +18,7 @@ getaddrinfo()
 */
 
 use option::{Option, Some, None};
-use result::{Ok, Err};
-use io::{io_error};
+use io::IoResult;
 use io::net::ip::{SocketAddr, IpAddr};
 use rt::rtio::{IoFactory, with_local_io};
 use vec::ImmutableVector;
@@ -75,7 +74,7 @@ pub struct Info {
 /// # Failure
 ///
 /// On failure, this will raise on the `io_error` condition.
-pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
+pub fn get_host_addresses(host: &str) -> IoResult<~[IpAddr]> {
     lookup(Some(host), None, None).map(|a| a.map(|i| i.address.ip))
 }
 
@@ -96,16 +95,8 @@ pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
 /// XXX: this is not public because the `Hint` structure is not ready for public
 ///      consumption just yet.
 fn lookup(hostname: Option<&str>, servname: Option<&str>,
-          hint: Option<Hint>) -> Option<~[Info]> {
-    with_local_io(|io| {
-        match io.get_host_addresses(hostname, servname, hint) {
-            Ok(i) => Some(i),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
-    })
+          hint: Option<Hint>) -> IoResult<~[Info]> {
+    with_local_io(|io| io.get_host_addresses(hostname, servname, hint))
 }
 
 #[cfg(test)]

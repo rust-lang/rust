@@ -24,46 +24,47 @@ use iter::Iterator;
 use libc::c_void;
 use option::{Some, None};
 use ptr;
-use reflect;
 use reflect::{MovePtr, align};
+use reflect;
+use result::Ok;
 use str::StrSlice;
 use to_str::ToStr;
-use vec::OwnedVector;
 use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use unstable::raw;
+use vec::OwnedVector;
 
 /// Representations
 
 trait Repr {
-    fn write_repr(&self, writer: &mut io::Writer);
+    fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> ;
 }
 
 impl Repr for () {
-    fn write_repr(&self, writer: &mut io::Writer) {
-        writer.write("()".as_bytes());
+    fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
+        writer.write("()".as_bytes())
     }
 }
 
 impl Repr for bool {
-    fn write_repr(&self, writer: &mut io::Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
         let s = if *self { "true" } else { "false" };
         writer.write(s.as_bytes())
     }
 }
 
 impl Repr for int {
-    fn write_repr(&self, writer: &mut io::Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
         ::int::to_str_bytes(*self, 10u, |bits| {
-            writer.write(bits);
+            writer.write(bits)
         })
     }
 }
 
 macro_rules! int_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
-    fn write_repr(&self, writer: &mut io::Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
         ::$ty::to_str_bytes(*self, 10u, |bits| {
-            writer.write(bits);
-            writer.write(bytes!($suffix));
+            writer.write(bits).and_then(|()|
+                writer.write(bytes!($suffix)))
         })
     }
 }))
@@ -79,10 +80,10 @@ int_repr!(u32, "u32")
 int_repr!(u64, "u64")
 
 macro_rules! num_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
-    fn write_repr(&self, writer: &mut io::Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
         let s = self.to_str();
-        writer.write(s.as_bytes());
-        writer.write(bytes!($suffix));
+        writer.write(s.as_bytes()).and_then(|()|
+            writer.write(bytes!($suffix)))
     }
 }))
 
@@ -236,9 +237,10 @@ impl<'self> ReprVisitor<'self> {
             _ => {
                 char::escape_unicode(ch, |c| {
                     self.writer.write([c as u8]);
-                })
+                }
+                Ok(()) // XXX: ignoring errors
             }
-        }
+        }; // XXX: this shouldn't ignore the error
     }
 }
 
@@ -607,13 +609,14 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     fn visit_closure_ptr(&mut self, _ck: uint) -> bool { true }
 }
 
-pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
+pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = get_tydesc::<T>();
         let u = ReprVisitor(ptr, writer);
         let mut v = reflect::MovePtrAdaptor(u);
         visit_tydesc(tydesc, &mut v as &mut TyVisitor);
+        Ok(()) // XXX: this should catch errors from down below
     }
 }
 
@@ -700,7 +703,8 @@ fn test_repr() {
     exact_test(&("'"), "\"'\"");
     exact_test(&("\""), "\"\\\"\"");
 
-    exact_test(&println, "fn(&str)");
+    fn foo(_: &str) {}
+    exact_test(&foo, "fn(&str)");
     exact_test(&swap::<int>, "fn(&mut int, &mut int)");
     exact_test(&is_alphabetic, "fn(char) -> bool");
     exact_test(&(~5 as ~ToStr), "~to_str::ToStr:Send");

@@ -28,12 +28,12 @@ out.write(bytes!("Hello, world!"));
 
 use fmt;
 use libc;
-use option::{Option, Some, None};
+use option::{Some, None};
 use result::{Ok, Err};
 use io::buffered::LineBufferedWriter;
 use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io,
                CloseAsynchronously};
-use super::{Reader, Writer, io_error, IoError, OtherIoError,
+use super::{Reader, Writer, IoResult, IoError, OtherIoError,
             standard_error, EndOfFile};
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
@@ -73,7 +73,7 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
     with_local_io(|io| {
         let fd = unsafe { libc::dup(fd) };
         match io.tty_open(fd, readable) {
-            Ok(tty) => Some(f(TTY(tty))),
+            Ok(tty) => Ok(f(TTY(tty))),
             Err(_) => {
                 // It's not really that desirable if these handles are closed
                 // synchronously, and because they're squirreled away in a task
@@ -81,7 +81,7 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
                 // attempted to get destroyed. This means that if we run a
                 // synchronous destructor we'll attempt to do some scheduling
                 // operations which will just result in sadness.
-                Some(f(File(io.fs_from_raw_fd(fd, CloseAsynchronously))))
+                Ok(f(File(io.fs_from_raw_fd(fd, CloseAsynchronously))))
             }
         }
     }).unwrap()
@@ -119,9 +119,9 @@ pub fn stderr() -> StdWriter {
 //  with_task_stdout(|io1| {
 //      with_task_stdout(|io2| {
 //          // io1 aliases io2
-//      })
-//  })
-fn with_task_stdout(f: |&mut Writer|) {
+//      }
+//  }
+fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) -> IoResult<()> {
     use rt::local::Local;
     use rt::task::Task;
 
@@ -157,34 +157,33 @@ fn with_task_stdout(f: |&mut Writer|) {
 /// Note that logging macros do not use this stream. Using the logging macros
 /// will emit output to stderr, and while they are line buffered the log
 /// messages are always terminated in a newline (no need to flush).
-pub fn flush() {
+pub fn flush() -> IoResult<()> {
     with_task_stdout(|io| io.flush())
 }
 
 /// Prints a string to the stdout of the current process. No newline is emitted
 /// after the string is printed.
-pub fn print(s: &str) {
+pub fn print(s: &str) -> IoResult<()> {
     with_task_stdout(|io| io.write(s.as_bytes()))
 }
 
 /// Prints a string as a line. to the stdout of the current process. A literal
 /// `\n` character is printed to the console after the string.
-pub fn println(s: &str) {
+pub fn println(s: &str) -> IoResult<()> {
     with_task_stdout(|io| {
-        io.write(s.as_bytes());
-        io.write(['\n' as u8]);
+        io.write(s.as_bytes()).and_then(|()| io.write(['\n' as u8]))
     })
 }
 
 /// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
 /// with the `format_args!` macro.
-pub fn print_args(fmt: &fmt::Arguments) {
+pub fn print_args(fmt: &fmt::Arguments) -> IoResult<()> {
     with_task_stdout(|io| fmt::write(io, fmt))
 }
 
 /// Similar to `println`, but takes a `fmt::Arguments` structure to be
 /// compatible with the `format_args!` macro.
-pub fn println_args(fmt: &fmt::Arguments) {
+pub fn println_args(fmt: &fmt::Arguments) -> IoResult<()> {
     with_task_stdout(|io| fmt::writeln(io, fmt))
 }
 
@@ -194,7 +193,7 @@ pub struct StdReader {
 }
 
 impl Reader for StdReader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let ret = match self.inner {
             TTY(ref mut tty) => tty.read(buf),
             File(ref mut file) => file.read(buf).map(|i| i as uint),
@@ -205,15 +204,9 @@ impl Reader for StdReader {
             // return an actual EOF error, but apparently for stdin it's a
             // little different. Hence, here we convert a 0 length read to an
             // end-of-file indicator so the caller knows to stop reading.
-            Ok(0) => {
-                io_error::cond.raise(standard_error(EndOfFile));
-                None
-            }
-            Ok(amt) => Some(amt as uint),
-            Err(e) => {
-                io_error::cond.raise(e);
-                None
-            }
+            Ok(0) => Err(standard_error(EndOfFile)),
+            Ok(amt) => Ok(amt as uint),
+            Err(e) => Err(e)
         }
     }
 
@@ -236,25 +229,14 @@ impl StdWriter {
     ///
     /// This function will raise on the `io_error` condition if an error
     /// happens.
-    pub fn winsize(&mut self) -> Option<(int, int)> {
+    pub fn winsize(&mut self) -> IoResult<(int, int)> {
         match self.inner {
-            TTY(ref mut tty) => {
-                match tty.get_winsize() {
-                    Ok(p) => Some(p),
-                    Err(e) => {
-                        io_error::cond.raise(e);
-                        None
-                    }
-                }
-            }
-            File(*) => {
-                io_error::cond.raise(IoError {
-                    kind: OtherIoError,
-                    desc: "stream is not a tty",
-                    detail: None,
-                });
-                None
-            }
+            TTY(ref mut tty) => tty.get_winsize(),
+            File(*) => Err(IoError {
+                kind: OtherIoError,
+                desc: "stream is not a tty",
+                detail: None,
+            })
         }
     }
 
@@ -265,21 +247,14 @@ impl StdWriter {
     ///
     /// This function will raise on the `io_error` condition if an error
     /// happens.
-    pub fn set_raw(&mut self, raw: bool) {
+    pub fn set_raw(&mut self, raw: bool) -> IoResult<()> {
         match self.inner {
-            TTY(ref mut tty) => {
-                match tty.set_raw(raw) {
-                    Ok(()) => {},
-                    Err(e) => io_error::cond.raise(e),
-                }
-            }
-            File(*) => {
-                io_error::cond.raise(IoError {
-                    kind: OtherIoError,
-                    desc: "stream is not a tty",
-                    detail: None,
-                });
-            }
+            TTY(ref mut tty) => tty.set_raw(raw),
+            File(*) => Err(IoError {
+                kind: OtherIoError,
+                desc: "stream is not a tty",
+                detail: None,
+            })
         }
     }
 
@@ -293,14 +268,10 @@ impl StdWriter {
 }
 
 impl Writer for StdWriter {
-    fn write(&mut self, buf: &[u8]) {
-        let ret = match self.inner {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        match self.inner {
             TTY(ref mut tty) => tty.write(buf),
             File(ref mut file) => file.write(buf),
-        };
-        match ret {
-            Ok(()) => {}
-            Err(e) => io_error::cond.raise(e)
         }
     }
 }

@@ -1441,7 +1441,6 @@ mod tests {
         use result::{Ok, Err};
         use os::*;
         use libc::*;
-        use io;
         use io::fs;
 
         #[cfg(unix)]
@@ -1485,7 +1484,7 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
-        io::ignore_io_error(|| fs::unlink(&path));
+        fs::unlink(&path);
     }
 
     // More recursive_mkdir tests are in extra::tempfile

@@ -438,7 +438,7 @@ impl<T> AsResult<T, ()> for Option<T> {
 
 impl<T: fmt::Default> fmt::Default for Option<T> {
     #[inline]
-    fn fmt(s: &Option<T>, f: &mut fmt::Formatter) {
+    fn fmt(s: &Option<T>, f: &mut fmt::Formatter) -> fmt::Result {
         match *s {
             Some(ref t) => write!(f.buf, "Some({})", *t),
             None        => write!(f.buf, "None")

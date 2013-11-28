@@ -109,7 +109,7 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     loop {
         let ln = match rdr.read_line() {
-            Some(ln) => ln, None => break
+            Ok(ln) => ln, Err(*) => break
         };
 
         // Assume that any directives will be found before the first

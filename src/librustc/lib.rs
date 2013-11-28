@@ -247,7 +247,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
       1u => {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
-            let src = str::from_utf8(io::stdin().read_to_end());
+            let src = str::from_utf8(io::stdin().read_to_end().unwrap());
             str_input(src.to_managed())
         } else {
             file_input(Path::new(ifile))

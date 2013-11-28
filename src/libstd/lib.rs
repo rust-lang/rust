@@ -91,6 +91,36 @@ pub mod linkhack {
     }
 }
 
+macro_rules! if_ok (
+    ($inp: expr) => (
+        match $inp {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        }
+    )
+)
+
+macro_rules! seq (
+    (let $p:pat = $e:expr; $($rest:tt)*) => ({
+        let $p = match $e {
+            Ok(e) => e, Err(e) => return Err(e)
+        };
+        seq!($($rest)*)
+    });
+    ($e:expr; $($rest:tt)+) => ({
+        match $e {
+            Ok(()) => {}, Err(e) => return Err(e)
+        }
+        seq!($($rest)+)
+    });
+    ($e:expr;) => (
+        match $e {
+            Ok(()) => {}, Err(e) => return Err(e)
+        }
+    );
+    ($e:expr) => ($e)
+)
+
 /* The Prelude. */
 
 pub mod prelude;

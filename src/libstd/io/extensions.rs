@@ -13,48 +13,8 @@
 // XXX: Not sure how this should be structured
 // XXX: Iteration should probably be considered separately
 
-use iter::Iterator;
-use option::Option;
-use io::{Reader, Decorator};
-
-/// An iterator that reads a single byte on each iteration,
-/// until `.read_byte()` returns `None`.
-///
-/// # Notes about the Iteration Protocol
-///
-/// The `ByteIterator` may yield `None` and thus terminate
-/// an iteration, but continue to yield elements if iteration
-/// is attempted again.
-///
-/// # Failure
-///
-/// Raises the same conditions as the `read` method, for
-/// each call to its `.next()` method.
-/// Yields `None` if the condition is handled.
-pub struct ByteIterator<T> {
-    priv reader: T,
-}
-
-impl<R: Reader> ByteIterator<R> {
-    pub fn new(r: R) -> ByteIterator<R> {
-        ByteIterator { reader: r }
-    }
-}
-
-impl<R> Decorator<R> for ByteIterator<R> {
-    fn inner(self) -> R { self.reader }
-    fn inner_ref<'a>(&'a self) -> &'a R { &self.reader }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R { &mut self.reader }
-}
-
-impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
-    #[inline]
-    fn next(&mut self) -> Option<u8> {
-        self.reader.read_byte()
-    }
-}
-
-pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+pub fn u64_to_le_bytes<T>(n: u64, size: uint,
+                          f: |v: &[u8]| -> T) -> T {
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
@@ -136,9 +96,10 @@ pub fn u64_from_be_bytes(data: &[u8],
 
 #[cfg(test)]
 mod test {
-    use option::{None, Option, Some};
+    use result::{Ok, Err};
+    use option::{None, Some};
     use io::mem::{MemReader, MemWriter};
-    use io::{Reader, io_error, placeholder_error};
+    use io::{Reader, standard_error, EndOfFile, IoUnavailable, IoResult};
     use vec::ImmutableVector;
 
     struct InitialZeroByteReader {
@@ -146,13 +107,13 @@ mod test {
     }
 
     impl Reader for InitialZeroByteReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
-                Some(0)
+                Ok(0)
             } else {
                 buf[0] = 10;
-                Some(1)
+                Ok(1)
             }
         }
         fn eof(&mut self) -> bool {
@@ -163,8 +124,8 @@ mod test {
     struct EofReader;
 
     impl Reader for EofReader {
-        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
-            None
+        fn read(&mut self, _: &mut [u8]) -> IoResult<uint> {
+            Err(standard_error(EndOfFile))
         }
         fn eof(&mut self) -> bool {
             false
@@ -174,9 +135,8 @@ mod test {
     struct ErroringReader;
 
     impl Reader for ErroringReader {
-        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
-            io_error::cond.raise(placeholder_error());
-            None
+        fn read(&mut self, _: &mut [u8]) -> IoResult<uint> {
+            Err(standard_error(IoUnavailable))
         }
         fn eof(&mut self) -> bool {
             false
@@ -188,16 +148,16 @@ mod test {
     }
 
     impl Reader for PartialReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
                 buf[1] = 11;
-                Some(2)
+                Ok(2)
             } else {
                 buf[0] = 12;
                 buf[1] = 13;
-                Some(2)
+                Ok(2)
             }
         }
         fn eof(&mut self) -> bool {
@@ -210,14 +170,13 @@ mod test {
     }
 
     impl Reader for ErroringLaterReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
-                Some(1)
+                Ok(1)
             } else {
-                io_error::cond.raise(placeholder_error());
-                None
+                Err(standard_error(IoUnavailable))
             }
         }
         fn eof(&mut self) -> bool {
@@ -230,19 +189,19 @@ mod test {
     }
 
     impl Reader for ThreeChunkReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
                 buf[1] = 11;
-                Some(2)
+                Ok(2)
             } else if self.count == 1 {
                 self.count = 2;
                 buf[0] = 12;
                 buf[1] = 13;
-                Some(2)
+                Ok(2)
             } else {
-                None
+                Err(standard_error(EndOfFile))
             }
         }
         fn eof(&mut self) -> bool {
@@ -254,7 +213,7 @@ mod test {
     fn read_byte() {
         let mut reader = MemReader::new(~[10]);
         let byte = reader.read_byte();
-        assert!(byte == Some(10));
+        assert!(byte == Ok(10));
     }
 
     #[test]
@@ -263,57 +222,28 @@ mod test {
             count: 0,
         };
         let byte = reader.read_byte();
-        assert!(byte == Some(10));
+        assert!(byte == Ok(10));
     }
 
     #[test]
     fn read_byte_eof() {
         let mut reader = EofReader;
         let byte = reader.read_byte();
-        assert!(byte == None);
+        assert!(byte.is_err());
     }
 
     #[test]
     fn read_byte_error() {
         let mut reader = ErroringReader;
-        io_error::cond.trap(|_| {
-        }).inside(|| {
-            let byte = reader.read_byte();
-            assert!(byte == None);
-        });
-    }
-
-    #[test]
-    fn bytes_0_bytes() {
-        let reader = InitialZeroByteReader {
-            count: 0,
-        };
-        let byte = reader.bytes().next();
-        assert!(byte == Some(10));
-    }
-
-    #[test]
-    fn bytes_eof() {
-        let reader = EofReader;
-        let byte = reader.bytes().next();
-        assert!(byte == None);
-    }
-
-    #[test]
-    fn bytes_error() {
-        let reader = ErroringReader;
-        let mut it = reader.bytes();
-        io_error::cond.trap(|_| ()).inside(|| {
-            let byte = it.next();
-            assert!(byte == None);
-        })
+        let byte = reader.read_byte();
+        assert!(byte.is_err());
     }
 
     #[test]
     fn read_bytes() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
         let bytes = reader.read_bytes(4);
-        assert!(bytes == ~[10, 11, 12, 13]);
+        assert!(bytes == Ok(~[10, 11, 12, 13]));
     }
 
     #[test]
@@ -322,16 +252,16 @@ mod test {
             count: 0,
         };
         let bytes = reader.read_bytes(4);
-        assert!(bytes == ~[10, 11, 12, 13]);
+        assert!(bytes == Ok(~[10, 11, 12, 13]));
     }
 
     #[test]
     fn read_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
-        io_error::cond.trap(|_| {
-        }).inside(|| {
-            assert!(reader.read_bytes(4) == ~[10, 11]);
-        })
+        match reader.read_bytes(4) {
+            Ok(*) => fail!(),
+            Err((b, _)) => assert_eq!(b, ~[10, 11]),
+        }
     }
 
     #[test]
@@ -356,11 +286,8 @@ mod test {
     fn push_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
-        io_error::cond.trap(|_| {
-        }).inside(|| {
-            reader.push_bytes(&mut buf, 4);
-            assert!(buf == ~[8, 9, 10, 11]);
-        })
+        reader.push_bytes(&mut buf, 4);
+        assert!(buf == ~[8, 9, 10, 11]);
     }
 
     #[test]
@@ -369,14 +296,13 @@ mod test {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        io_error::cond.trap(|_| { } ).inside(|| {
-            reader.push_bytes(&mut buf, 4);
-        });
+        reader.push_bytes(&mut buf, 4);
         assert!(buf == ~[8, 9, 10]);
     }
 
     #[test]
     #[should_fail]
+    #[ignore] // FIXME(#7049): buf is still borrowed
     fn push_bytes_fail_reset_len() {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
@@ -399,7 +325,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end();
-        assert!(buf == ~[10, 11, 12, 13]);
+        assert!(buf == Ok(~[10, 11, 12, 13]));
     }
 
     #[test]
@@ -409,7 +335,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end();
-        assert!(buf == ~[10, 11]);
+        assert!(buf == Ok(~[10, 11]));
     }
 
     #[test]
@@ -423,7 +349,7 @@ mod test {
 
         let mut reader = MemReader::new(writer.inner());
         for i in uints.iter() {
-            assert!(reader.read_le_u64() == *i);
+            assert!(reader.read_le_u64() == Ok(*i));
         }
     }
 
@@ -439,7 +365,7 @@ mod test {
 
         let mut reader = MemReader::new(writer.inner());
         for i in uints.iter() {
-            assert!(reader.read_be_u64() == *i);
+            assert!(reader.read_be_u64() == Ok(*i));
         }
     }
 
@@ -456,7 +382,7 @@ mod test {
         for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
-            assert!(reader.read_be_int_n(4) == *i as i64);
+            assert!(reader.read_be_int_n(4) == Ok(*i as i64));
         }
     }
 
@@ -470,7 +396,7 @@ mod test {
 
         let mut reader = MemReader::new(writer.inner());
         let f = reader.read_be_f32();
-        assert!(f == 8.1250);
+        assert!(f == Ok(8.1250));
     }
 
     #[test]
@@ -482,8 +408,8 @@ mod test {
         writer.write_le_f32(f);
 
         let mut reader = MemReader::new(writer.inner());
-        assert!(reader.read_be_f32() == 8.1250);
-        assert!(reader.read_le_f32() == 8.1250);
+        assert!(reader.read_be_f32() == Ok(8.1250));
+        assert!(reader.read_le_f32() == Ok(8.1250));
     }
 
 }

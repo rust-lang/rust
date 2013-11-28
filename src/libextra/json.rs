@@ -95,7 +95,7 @@ pub fn Encoder(wr: @mut io::Writer) -> Encoder {
 }
 
 impl serialize::Encoder for Encoder {
-    fn emit_nil(&mut self) { write!(self.wr, "null") }
+    fn emit_nil(&mut self) { write!(self.wr, "null"); }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
     fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
@@ -118,13 +118,13 @@ impl serialize::Encoder for Encoder {
     }
 
     fn emit_f64(&mut self, v: f64) {
-        write!(self.wr, "{}", f64::to_str_digits(v, 6u))
+        write!(self.wr, "{}", f64::to_str_digits(v, 6u));
     }
     fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) {
-        write!(self.wr, "{}", escape_str(v))
+        write!(self.wr, "{}", escape_str(v));
     }
 
     fn emit_enum(&mut self, _name: &str, f: |&mut Encoder|) { f(self) }
@@ -180,7 +180,7 @@ impl serialize::Encoder for Encoder {
                          name: &str,
                          idx: uint,
                          f: |&mut Encoder|) {
-        if idx != 0 { write!(self.wr, ",") }
+        if idx != 0 { write!(self.wr, ","); }
         write!(self.wr, "{}:", escape_str(name));
         f(self);
     }
@@ -226,7 +226,7 @@ impl serialize::Encoder for Encoder {
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Encoder|) {
-        if idx != 0 { write!(self.wr, ",") }
+        if idx != 0 { write!(self.wr, ","); }
         f(self)
     }
 
@@ -252,7 +252,7 @@ pub fn PrettyEncoder(wr: @mut io::Writer) -> PrettyEncoder {
 }
 
 impl serialize::Encoder for PrettyEncoder {
-    fn emit_nil(&mut self) { write!(self.wr, "null") }
+    fn emit_nil(&mut self) { write!(self.wr, "null"); }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
     fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
@@ -275,7 +275,7 @@ impl serialize::Encoder for PrettyEncoder {
     }
 
     fn emit_f64(&mut self, v: f64) {
-        write!(self.wr, "{}", f64::to_str_digits(v, 6u))
+        write!(self.wr, "{}", f64::to_str_digits(v, 6u));
     }
     fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
@@ -841,7 +841,12 @@ impl<T : Iterator<char>> Parser<T> {
 
 /// Decodes a json value from an `&mut io::Reader`
 pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, Error> {
-    let s = str::from_utf8(rdr.read_to_end());
+    let s = match rdr.read_to_end() {
+        Ok(b) => str::from_utf8_owned(b),
+        Err(e) => return Err(Error {
+            line: 0, col: 0, msg: @format!("{}", e)
+        })
+    };
     let mut parser = Parser(~s.chars());
     parser.parse()
 }

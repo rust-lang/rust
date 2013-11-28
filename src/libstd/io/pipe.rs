@@ -15,7 +15,7 @@
 
 use prelude::*;
 use super::{Reader, Writer};
-use io::{io_error, EndOfFile};
+use io::IoResult;
 use io::native::file;
 use rt::rtio::{RtioPipe, with_local_io};
 
@@ -43,16 +43,8 @@ impl PipeStream {
     ///
     /// If the pipe cannot be created, an error will be raised on the
     /// `io_error` condition.
-    pub fn open(fd: file::fd_t) -> Option<PipeStream> {
-        with_local_io(|io| {
-            match io.pipe_open(fd) {
-                Ok(obj) => Some(PipeStream { obj: obj }),
-                Err(e) => {
-                    io_error::cond.raise(e);
-                    None
-                }
-            }
-        })
+    pub fn open(fd: file::fd_t) -> IoResult<PipeStream> {
+        with_local_io(|io| io.pipe_open(fd).map(|obj| PipeStream { obj: obj }))
     }
 
     pub fn new(inner: ~RtioPipe) -> PipeStream {
@@ -61,29 +53,10 @@ impl PipeStream {
 }
 
 impl Reader for PipeStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.obj.read(buf) {
-            Ok(read) => Some(read),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                return None;
-            }
-        }
-    }
-
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
     fn eof(&mut self) -> bool { false }
 }
 
 impl Writer for PipeStream {
-    fn write(&mut self, buf: &[u8]) {
-        match self.obj.write(buf) {
-            Ok(_) => (),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-            }
-        }
-    }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }

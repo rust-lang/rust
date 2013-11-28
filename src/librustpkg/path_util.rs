@@ -45,11 +45,11 @@ pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 /// and executable by the user. Returns true iff creation
 /// succeeded.
 pub fn make_dir_rwx(p: &Path) -> bool {
-    io::result(|| fs::mkdir(p, io::UserRWX)).is_ok()
+    fs::mkdir(p, io::UserRWX).is_ok()
 }
 
 pub fn make_dir_rwx_recursive(p: &Path) -> bool {
-    io::result(|| fs::mkdir_recursive(p, io::UserRWX)).is_ok()
+    fs::mkdir_recursive(p, io::UserRWX).is_ok()
 }
 
 // n.b. The next three functions ignore the package version right
@@ -72,7 +72,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     if !src_dir.is_dir() { return None }
 
     let mut found = None;
-    for p in fs::walk_dir(&src_dir) {
+    for p in fs::walk_dir(&src_dir).unwrap() {
         if p.is_dir() {
             if p == src_dir.join(&pkgid.path) || {
                 let pf = p.filename_str();
@@ -215,7 +215,13 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
     debug!("Listing directory {}", dir_to_search.display());
+<<<<<<< HEAD
     let dir_contents = io::ignore_io_error(|| fs::readdir(dir_to_search));
+=======
+    let dir_contents = match fs::readdir(dir_to_search) {
+        Ok(d) => d, Err(*) => return None,
+    };
+>>>>>>> Remove io::io_error
     debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
@@ -338,7 +344,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
-    if io::result(|| fs::mkdir_recursive(&result, io::UserRWX)).is_err() {
+    if fs::mkdir_recursive(&result, io::UserRWX).is_err() {
         cond.raise((result.clone(), format!("target_file_in_workspace couldn't \
             create the {} dir (pkgid={}, workspace={}, what={:?}, where={:?}",
             subdir, pkgid.to_str(), workspace.display(), what, where)));

@@ -428,7 +428,7 @@ impl<T: Writer> ConsoleTestState<T> {
                     term.reset();
                 }
             }
-            Right(ref mut stdout) => stdout.write(word.as_bytes())
+            Right(ref mut stdout) => { stdout.write(word.as_bytes()); }
         }
     }
 
@@ -550,9 +550,10 @@ impl<T: Writer> ConsoleTestState<T> {
                 self.write_plain(format!("\nusing metrics ratcher: {}\n", pth.display()));
                 match ratchet_pct {
                     None => (),
-                    Some(pct) =>
+                    Some(pct) => {
                         self.write_plain(format!("with noise-tolerance forced to: {}%\n",
-                                                 pct))
+                                                 pct));
+                    }
                 }
                 let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
                 self.write_metric_diff(&diff);

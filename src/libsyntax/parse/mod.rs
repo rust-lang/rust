@@ -19,7 +19,6 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
-use std::io;
 use std::io::File;
 use std::str;
 
@@ -262,7 +261,7 @@ pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<Span>)
             None => sess.span_diagnostic.handler().fatal(msg),
         }
     };
-    let bytes = match io::result(|| File::open(path).read_to_end()) {
+    let bytes = match File::open(path).read_to_end() {
         Ok(bytes) => bytes,
         Err(e) => {
             err(format!("couldn't read {}: {}", path.display(), e.desc));

@@ -971,11 +971,10 @@ pub fn link_binary(sess: Session,
 fn is_writeable(p: &Path) -> bool {
     use std::io;
 
-    !p.exists() ||
-        (match io::result(|| p.stat()) {
-            Err(*) => false,
-            Ok(m) => m.perm & io::UserWrite == io::UserWrite
-        })
+    match p.stat() {
+        Err(*) => true,
+        Ok(m) => m.perm & io::UserWrite == io::UserWrite
+    }
 }
 
 pub fn link_args(sess: Session,

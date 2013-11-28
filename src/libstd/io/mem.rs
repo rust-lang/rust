@@ -33,7 +33,7 @@ impl MemWriter {
 }
 
 impl Writer for MemWriter {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         // Make sure the internal buffer is as least as big as where we
         // currently are
         let difference = self.pos as i64 - self.buf.len() as i64;
@@ -61,13 +61,17 @@ impl Writer for MemWriter {
 
         // Bump us forward
         self.pos += buf.len();
+        Ok(())
     }
 }
 
-// FIXME(#10432)
+// FIXME(#10432) is this the right behavior?
 impl Seek for MemWriter {
-    fn tell(&self) -> u64 { self.pos as u64 }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
 
+    /// Seeks this memory writer to the given position. If the position is
+    /// beyond the current end of the buffer, then the intermediate bytes will
+    /// all be filled with 0s.
     fn seek(&mut self, pos: i64, style: SeekStyle) {
         // compute offset as signed and clamp to prevent overflow
         let offset = match style {
@@ -94,16 +98,14 @@ pub struct MemReader {
 
 impl MemReader {
     pub fn new(buf: ~[u8]) -> MemReader {
-        MemReader {
-            buf: buf,
-            pos: 0
-        }
+        MemReader { buf: buf, pos: 0 }
     }
 }
 
 impl Reader for MemReader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        { if self.eof() { return None; } }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        if self.eof() { return Err(standard_error(EndOfFile)); }
+        assert!(self.pos < self.buf.len());
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -115,22 +117,24 @@ impl Reader for MemReader {
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
 
-        return Some(write_len);
+        return Ok(write_len);
     }
 
-    fn eof(&mut self) -> bool { self.pos == self.buf.len() }
+    fn eof(&mut self) -> bool { self.pos >= self.buf.len() }
 }
 
+// FIXME(#10432) implement this
 impl Seek for MemReader {
-    fn tell(&self) -> u64 { self.pos as u64 }
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) -> IoResult<()> { fail!() }
 }
 
 impl Buffer for MemReader {
-    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+        Ok(self.buf.slice_from(self.pos))
+    }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
-
 impl Decorator<~[u8]> for MemReader {
     fn inner(self) -> ~[u8] { self.buf }
     fn inner_ref<'a>(&'a self) -> &'a ~[u8] { &self.buf }
@@ -208,8 +212,8 @@ impl<'self> BufReader<'self> {
 }
 
 impl<'self> Reader for BufReader<'self> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        { if self.eof() { return None; } }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        if self.eof() { return Err(standard_error(EndOfFile)); }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -221,16 +225,16 @@ impl<'self> Reader for BufReader<'self> {
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
 
-        return Some(write_len);
+        return Ok(write_len);
      }
 
     fn eof(&mut self) -> bool { self.pos == self.buf.len() }
 }
 
+// FIXME(#10432) implement this
 impl<'self> Seek for BufReader<'self> {
-    fn tell(&self) -> u64 { self.pos as u64 }
-
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) -> IoResult<()> { fail!() }
 }
 
 impl<'self> Buffer for BufReader<'self> {
@@ -255,16 +259,16 @@ mod test {
     #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
-        assert_eq!(writer.tell(), 0);
+        assert_eq!(writer.tell(), Ok(0));
         writer.write([0]);
-        assert_eq!(writer.tell(), 1);
+        assert_eq!(writer.tell(), Ok(1));
         writer.write([1, 2, 3]);
         writer.write([4, 5, 6, 7]);
-        assert_eq!(writer.tell(), 8);
+        assert_eq!(writer.tell(), Ok(8));
         assert_eq!(*writer.inner_ref(), ~[0, 1, 2, 3, 4, 5, 6, 7]);
 
         writer.seek(0, SeekSet);
-        assert_eq!(writer.tell(), 0);
+        assert_eq!(writer.tell(), Ok(0));
         writer.write([3, 4]);
         assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 3, 4, 5, 6, 7]);
 
@@ -344,20 +348,20 @@ mod test {
     fn test_mem_reader() {
         let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
         let mut buf = [];
-        assert_eq!(reader.read(buf), Some(0));
-        assert_eq!(reader.tell(), 0);
+        assert_eq!(reader.read(buf), Ok(0));
+        assert_eq!(reader.tell(), Ok(0));
         let mut buf = [0];
-        assert_eq!(reader.read(buf), Some(1));
-        assert_eq!(reader.tell(), 1);
+        assert_eq!(reader.read(buf), Ok(1));
+        assert_eq!(reader.tell(), Ok(1));
         assert_eq!(buf, [0]);
         let mut buf = [0, ..4];
-        assert_eq!(reader.read(buf), Some(4));
-        assert_eq!(reader.tell(), 5);
+        assert_eq!(reader.read(buf), Ok(4));
+        assert_eq!(reader.tell(), Ok(5));
         assert_eq!(buf, [1, 2, 3, 4]);
-        assert_eq!(reader.read(buf), Some(3));
+        assert_eq!(reader.read(buf), Ok(3));
         assert_eq!(buf.slice(0, 3), [5, 6, 7]);
         assert!(reader.eof());
-        assert_eq!(reader.read(buf), None);
+        assert!(reader.read(buf).is_err());
         assert!(reader.eof());
     }
 
@@ -366,26 +370,28 @@ mod test {
         let in_buf = ~[0, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = BufReader::new(in_buf);
         let mut buf = [];
-        assert_eq!(reader.read(buf), Some(0));
-        assert_eq!(reader.tell(), 0);
+        assert_eq!(reader.read(buf), Ok(0));
+        assert_eq!(reader.tell(), Ok(0));
         let mut buf = [0];
-        assert_eq!(reader.read(buf), Some(1));
-        assert_eq!(reader.tell(), 1);
+        assert_eq!(reader.read(buf), Ok(1));
+        assert_eq!(reader.tell(), Ok(1));
         assert_eq!(buf, [0]);
         let mut buf = [0, ..4];
-        assert_eq!(reader.read(buf), Some(4));
-        assert_eq!(reader.tell(), 5);
+        assert_eq!(reader.read(buf), Ok(4));
+        assert_eq!(reader.tell(), Ok(5));
         assert_eq!(buf, [1, 2, 3, 4]);
-        assert_eq!(reader.read(buf), Some(3));
+        assert_eq!(reader.read(buf), Ok(3));
         assert_eq!(buf.slice(0, 3), [5, 6, 7]);
         assert!(reader.eof());
-        assert_eq!(reader.read(buf), None);
+        assert!(reader.read(buf).is_err());
         assert!(reader.eof());
     }
 
     #[test]
     fn test_with_mem_writer() {
-        let buf = with_mem_writer(|wr| wr.write([1,2,3,4,5,6,7]));
+        let buf = with_mem_writer(|wr| {
+            wr.write([1,2,3,4,5,6,7]);
+        });
         assert_eq!(buf, ~[1,2,3,4,5,6,7]);
     }
 

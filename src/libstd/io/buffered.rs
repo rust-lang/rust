@@ -55,7 +55,7 @@ use prelude::*;
 
 use num;
 use vec;
-use super::{Stream, Decorator};
+use super::{Reader, Writer, Stream, Decorator, IoResult};
 
 // libuv recommends 64k buffers to maximize throughput
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
@@ -95,17 +95,12 @@ impl<R: Reader> BufferedReader<R> {
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
-    fn fill<'a>(&'a mut self) -> &'a [u8] {
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
-            match self.inner.read(self.buf) {
-                Some(cap) => {
-                    self.pos = 0;
-                    self.cap = cap;
-                }
-                None => {}
-            }
+            self.cap = if_ok!(self.inner.read(self.buf));
+            self.pos = 0;
         }
-        return self.buf.slice(self.pos, self.cap);
+        return Ok(self.buf.slice(self.pos, self.cap));
     }
 
     fn consume(&mut self, amt: uint) {
@@ -115,18 +110,15 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 }
 
 impl<R: Reader> Reader for BufferedReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let nread = {
-            let available = self.fill();
-            if available.len() == 0 {
-                return None;
-            }
+            let available = if_ok!(self.fill_buffer());
             let nread = num::min(available.len(), buf.len());
             vec::bytes::copy_memory(buf, available, nread);
             nread
         };
         self.pos += nread;
-        Some(nread)
+        Ok(nread)
     }
 
     fn eof(&mut self) -> bool {
@@ -169,26 +161,27 @@ impl<W: Writer> BufferedWriter<W> {
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.pos + buf.len() > self.buf.len() {
-            self.flush();
+            if_ok!(self.flush());
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.write(buf);
+            self.inner.write(buf)
         } else {
             let dst = self.buf.mut_slice_from(self.pos);
             vec::bytes::copy_memory(dst, buf, buf.len());
             self.pos += buf.len();
+            Ok(())
         }
     }
 
-    fn flush(&mut self) {
+    fn flush(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            self.inner.write(self.buf.slice_to(self.pos));
+            if_ok!(self.inner.write(self.buf.slice_to(self.pos)));
             self.pos = 0;
         }
-        self.inner.flush();
+        self.inner.flush()
     }
 }
 
@@ -217,18 +210,21 @@ impl<W: Writer> LineBufferedWriter<W> {
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().position(|&b| b == '\n' as u8) {
             Some(i) => {
-                self.inner.write(buf.slice_to(i + 1));
-                self.inner.flush();
-                self.inner.write(buf.slice_from(i + 1));
+                seq!(
+                    self.inner.write(buf.slice_to(i + 1));
+                    self.inner.flush();
+                    self.inner.write(buf.slice_from(i + 1));
+                );
+                Ok(())
             }
             None => self.inner.write(buf),
         }
     }
 
-    fn flush(&mut self) { self.inner.flush() }
+    fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
 }
 
 impl<W: Writer> Decorator<W> for LineBufferedWriter<W> {
@@ -240,7 +236,7 @@ impl<W: Writer> Decorator<W> for LineBufferedWriter<W> {
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
     fn eof(&mut self) -> bool { self.inner.eof() }
 }
 
@@ -268,18 +264,20 @@ impl<S: Stream> BufferedStream<S> {
 }
 
 impl<S: Stream> Buffer for BufferedStream<S> {
-    fn fill<'a>(&'a mut self) -> &'a [u8] { self.inner.fill() }
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill() }
     fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
 }
 
 impl<S: Stream> Reader for BufferedStream<S> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
     fn eof(&mut self) -> bool { self.inner.eof() }
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
-    fn write(&mut self, buf: &[u8]) { self.inner.inner.write(buf) }
-    fn flush(&mut self) { self.inner.inner.flush() }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.inner.inner.write(buf)
+    }
+    fn flush(&mut self) -> IoResult<()> { self.inner.inner.flush() }
 }
 
 impl<S: Stream> Decorator<S> for BufferedStream<S> {
@@ -293,8 +291,9 @@ impl<S: Stream> Decorator<S> for BufferedStream<S> {
 #[cfg(test)]
 mod test {
     use prelude::*;
+    use result::{Ok, Err};
     use super::*;
-    use io;
+    use io::{IoResult, EndOfFile, standard_error};
     use super::super::mem::{MemReader, MemWriter};
     use Harness = extra::test::BenchHarness;
 
@@ -325,28 +324,28 @@ mod test {
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
-        assert_eq!(Some(2), nread);
+        assert_eq!(Ok(2), nread);
         assert_eq!([0, 1, 0], buf);
         assert!(!reader.eof());
 
         let mut buf = [0];
         let nread = reader.read(buf);
-        assert_eq!(Some(1), nread);
+        assert_eq!(Ok(1), nread);
         assert_eq!([2], buf);
         assert!(!reader.eof());
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
-        assert_eq!(Some(1), nread);
+        assert_eq!(Ok(1), nread);
         assert_eq!([3, 0, 0], buf);
         assert!(!reader.eof());
 
         let nread = reader.read(buf);
-        assert_eq!(Some(1), nread);
+        assert_eq!(Ok(1), nread);
         assert_eq!([4, 0, 0], buf);
         assert!(reader.eof());
 
-        assert_eq!(None, reader.read(buf));
+        assert!(reader.read(buf).is_err());
     }
 
     #[test]
@@ -391,14 +390,17 @@ mod test {
     // newtype struct autoderef weirdness
     #[test]
     fn test_buffered_stream() {
+        use io;
         struct S;
 
         impl io::Writer for S {
-            fn write(&mut self, _: &[u8]) {}
+            fn write(&mut self, _: &[u8]) -> IoResult<()> { Ok(()) }
         }
 
         impl io::Reader for S {
-            fn read(&mut self, _: &mut [u8]) -> Option<uint> { None }
+            fn read(&mut self, _: &mut [u8]) -> IoResult<uint> {
+                Err(standard_error(EndOfFile))
+            }
             fn eof(&mut self) -> bool { true }
         }
 
@@ -414,11 +416,11 @@ mod test {
     fn test_read_until() {
         let inner = MemReader::new(~[0, 1, 2, 1, 0]);
         let mut reader = BufferedReader::with_capacity(2, inner);
-        assert_eq!(reader.read_until(0), Some(~[0]));
-        assert_eq!(reader.read_until(2), Some(~[1, 2]));
-        assert_eq!(reader.read_until(1), Some(~[1]));
-        assert_eq!(reader.read_until(8), Some(~[0]));
-        assert_eq!(reader.read_until(9), None);
+        assert_eq!(reader.read_until(0), Ok(~[0]));
+        assert_eq!(reader.read_until(2), Ok(~[1, 2]));
+        assert_eq!(reader.read_until(1), Ok(~[1]));
+        assert_eq!(reader.read_until(8), Ok(~[0]));
+        assert!(reader.read_until(9).is_err());
     }
 
     #[test]

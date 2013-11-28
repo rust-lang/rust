@@ -3,6 +3,8 @@
 
 use std::cast;
 
+fn println(_: &str) {}
+
 fn call_it(f: proc(~str) -> ~str) {
     println(f(~"Fred"))
 }

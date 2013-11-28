@@ -12,7 +12,6 @@ extern mod extra;
 
 use target::*;
 use package_id::PkgId;
-use std::io;
 use std::io::fs;
 use std::os;
 use context::*;
@@ -302,7 +301,7 @@ impl PkgSrc {
                 // Move clone_target to local.
                 // First, create all ancestor directories.
                 let moved = make_dir_rwx_recursive(&local.dir_path())
-                    && io::result(|| fs::rename(&clone_target, local)).is_ok();
+                    && fs::rename(&clone_target, local).is_ok();
                 if moved { Some(local.clone()) }
                     else { None }
             }
@@ -351,7 +350,7 @@ impl PkgSrc {
 
         let prefix = self.start_dir.components().len();
         debug!("Matching against {}", self.id.short_name);
-        for pth in fs::walk_dir(&self.start_dir) {
+        for pth in fs::walk_dir(&self.start_dir).unwrap() {
             let maybe_known_crate_set = match pth.filename_str() {
                 Some(filename) if filter(filename) => match filename {
                     "lib.rs" => Some(&mut self.libs),
