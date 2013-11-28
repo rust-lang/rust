@@ -80,6 +80,7 @@ pub fn expand_mod(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 pub fn expand_include(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
+    // The file will be added to the code map by the parser
     let p = parse::new_sub_parser_from_file(
         cx.parse_sess(), cx.cfg(),
         &res_rel_file(cx, sp, &Path::new(file)), sp);
@@ -99,7 +100,20 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
         Ok(bytes) => bytes,
     };
     match str::from_utf8_owned_opt(bytes) {
-        Some(s) => base::MRExpr(cx.expr_str(sp, s.to_managed())),
+        Some(s) => {
+            let s = s.to_managed();
+            // Add this input file to the code map to make it available as
+            // dependency information
+            cx.parse_sess.cm.files.push(@codemap::FileMap {
+                name: file.display().to_str().to_managed(),
+                substr: codemap::FssNone,
+                src: s,
+                start_pos: codemap::BytePos(0),
+                lines: @mut ~[],
+                multibyte_chars: @mut ~[],
+            });
+            base::MRExpr(cx.expr_str(sp, s))
+        }
         None => {
             cx.span_fatal(sp, format!("{} wasn't a utf-8 file", file.display()));
         }
