@@ -210,7 +210,7 @@ pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::Ident,
     end(s); // Close the head box
     end(s); // Close the outer box
     eof(s.s);
-    str::from_utf8(*wr.inner_ref())
+    str::from_utf8_owned(wr.inner_ref().to_owned())
 }
 
 pub fn block_to_str(blk: &ast::Block, intr: @ident_interner) -> ~str {
@@ -222,7 +222,7 @@ pub fn block_to_str(blk: &ast::Block, intr: @ident_interner) -> ~str {
     ibox(s, 0u);
     print_block(s, blk);
     eof(s.s);
-    str::from_utf8(*wr.inner_ref())
+    str::from_utf8_owned(wr.inner_ref().to_owned())
 }
 
 pub fn meta_item_to_str(mi: &ast::MetaItem, intr: @ident_interner) -> ~str {
@@ -2292,7 +2292,7 @@ pub fn to_str<T>(t: &T, f: |@ps, &T|, intr: @ident_interner) -> ~str {
     let s = rust_printer(wr as @mut io::Writer, intr);
     f(s, t);
     eof(s.s);
-    str::from_utf8(*wr.inner_ref())
+    str::from_utf8_owned(wr.inner_ref().to_owned())
 }
 
 pub fn next_comment(s: @ps) -> Option<comments::cmnt> {

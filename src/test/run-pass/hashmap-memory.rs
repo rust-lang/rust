@@ -79,11 +79,10 @@ mod map_reduce {
             match ctrl_port.recv() {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
-                let mut c;
-                match reducers.find(&str::from_utf8(k)) {
-                  Some(&_c) => { c = _c; }
-                  None => { c = 0; }
-                }
+                let c = match reducers.find(&str::from_utf8_owned(k)) {
+                  Some(&_c) => _c,
+                  None => 0
+                };
                 cc.send(c);
               }
             }

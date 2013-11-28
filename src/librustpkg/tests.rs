@@ -154,7 +154,7 @@ fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &st
     let rslt = prog.finish_with_output();
     if !rslt.status.success() {
         fail!("{} [git returned {:?}, output = {}, error = {}]", err_msg,
-           rslt.status, str::from_utf8(rslt.output), str::from_utf8(rslt.error));
+           rslt.status, str::from_utf8_slice(rslt.output), str::from_utf8_slice(rslt.error));
     }
 }
 
@@ -290,13 +290,13 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
     });
     let output = prog.finish_with_output();
     debug!("Output from command {} with args {:?} was {} \\{{}\\}[{:?}]",
-                    cmd, args, str::from_utf8(output.output),
-                   str::from_utf8(output.error),
-                   output.status);
+           cmd, args, str::from_utf8_slice(output.output),
+           str::from_utf8_slice(output.error),
+           output.status);
     if !output.status.success() {
         debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} ---",
               cmd, args, output.status,
-              str::from_utf8(output.output) + str::from_utf8(output.error));
+              str::from_utf8_slice(output.output) + str::from_utf8_slice(output.error));
         Fail(output)
     }
     else {
@@ -455,7 +455,7 @@ fn built_library_exists(repo: &Path, short_name: &str) -> bool {
 fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
-    let test_output = str::from_utf8(p_output.output);
+    let test_output = str::from_utf8_slice(p_output.output);
     for s in test_output.split('\n') {
         result.push(s.to_owned());
     }
@@ -469,7 +469,7 @@ fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~
         Fail(_) => fail!("Command-line test failed"),
         Success(r) => r
     };
-    let test_output = str::from_utf8(p_output.output);
+    let test_output = str::from_utf8_slice(p_output.output);
     for s in test_output.split('\n') {
         result.push(s.to_owned());
     }
@@ -1204,7 +1204,7 @@ fn test_info() {
     let expected_info = ~"package foo"; // fill in
     let workspace = create_local_package(&PkgId::new("foo"));
     let output = command_line_test([~"info", ~"foo"], workspace.path());
-    assert_eq!(str::from_utf8(output.output), expected_info);
+    assert_eq!(str::from_utf8_owned(output.output), expected_info);
 }
 
 #[test]
@@ -1212,7 +1212,7 @@ fn test_uninstall() {
     let workspace = create_local_package(&PkgId::new("foo"));
     command_line_test([~"uninstall", ~"foo"], workspace.path());
     let output = command_line_test([~"list"], workspace.path());
-    assert!(!str::from_utf8(output.output).contains("foo"));
+    assert!(!str::from_utf8_slice(output.output).contains("foo"));
 }
 
 #[test]
@@ -1282,8 +1282,8 @@ fn test_extern_mod() {
     let outp = prog.finish_with_output();
     if !outp.status.success() {
         fail!("output was {}, error was {}",
-              str::from_utf8(outp.output),
-              str::from_utf8(outp.error));
+              str::from_utf8_slice(outp.output),
+              str::from_utf8_slice(outp.error));
     }
     assert!(exec_file.exists() && is_executable(&exec_file));
 }
@@ -1337,8 +1337,8 @@ fn test_extern_mod_simpler() {
     let outp = prog.finish_with_output();
     if !outp.status.success() {
         fail!("output was {}, error was {}",
-              str::from_utf8(outp.output),
-              str::from_utf8(outp.error));
+              str::from_utf8_slice(outp.output),
+              str::from_utf8_slice(outp.error));
     }
     assert!(exec_file.exists() && is_executable(&exec_file));
 }
@@ -2101,7 +2101,7 @@ fn test_rustpkg_test_creates_exec() {
 fn test_rustpkg_test_output() {
     let workspace = create_local_package_with_test(&PkgId::new("foo"));
     let output = command_line_test([~"test", ~"foo"], workspace.path());
-    let output_str = str::from_utf8(output.output);
+    let output_str = str::from_utf8_slice(output.output);
     // The first two assertions are separate because test output may
     // contain color codes, which could appear between "test f" and "ok".
     assert!(output_str.contains("test f"));
@@ -2132,7 +2132,7 @@ fn test_rustpkg_test_cfg() {
               "#[test] #[cfg(not(foobar))] fn f() { assert!('a' != 'a'); }");
     let output = command_line_test([~"test", ~"--cfg", ~"foobar", ~"foo"],
                                    foo_workspace);
-    let output_str = str::from_utf8(output.output);
+    let output_str = str::from_utf8_slice(output.output);
     assert!(output_str.contains("0 passed; 0 failed; 0 ignored; 0 measured"));
 }
 
@@ -2430,8 +2430,8 @@ fn correct_error_dependency() {
         Fail(ProcessOutput{ error: error, output: output, .. }) => {
             assert!(str::is_utf8(error));
             assert!(str::is_utf8(output));
-            let error_str = str::from_utf8(error);
-            let out_str   = str::from_utf8(output);
+            let error_str = str::from_utf8_slice(error);
+            let out_str   = str::from_utf8_slice(output);
             debug!("ss = {}", error_str);
             debug!("out_str = {}", out_str);
             if out_str.contains("Package badpkg depends on some_package_that_doesnt_exist") &&
