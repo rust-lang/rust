@@ -384,13 +384,34 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 /// This should produce either a finished executable or library.
 pub fn phase_6_link_output(sess: Session,
                            trans: &CrateTranslation,
+                           input: &input,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", (), |_|
+    let outputs = time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
                            &outputs.obj_filename,
                            &outputs.out_filename,
                            &trans.link));
+
+    // Write out dependency rules to the .d file if requested
+    if sess.opts.write_dependency_info {
+        match *input {
+            file_input(ref input_path) => {
+                let files: ~[@str] = sess.codemap.files.iter()
+                    .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
+                    .collect();
+                let mut output_path = outputs[0].dir_path();
+                let filestem = input_path.filestem().expect("input file must have stem");
+                output_path.push(Path::new(filestem).with_extension("d"));
+                let mut file = io::File::create(&output_path);
+                for output in outputs.iter() {
+                    write!(&mut file as &mut Writer,
+                           "{}: {}\n\n", output.display(), files.connect(" "));
+                }
+            }
+            str_input(_) => {}
+        }
+    }
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -438,7 +459,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     };
     phase_5_run_llvm_passes(sess, &trans, outputs);
     if stop_after_phase_5(sess) { return; }
-    phase_6_link_output(sess, &trans, outputs);
+    phase_6_link_output(sess, &trans, input, outputs);
 }
 
 struct IdentifiedAnnotation {
@@ -750,6 +771,7 @@ pub fn build_session_options(binary: @str,
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"), demitter);
     let test = matches.opt_present("test");
     let android_cross_path = matches.opt_str("android-cross-path");
+    let write_dependency_info = matches.opt_present("dep-info");
 
     let custom_passes = match matches.opt_str("passes") {
         None => ~[],
@@ -793,7 +815,8 @@ pub fn build_session_options(binary: @str,
         parse_only: parse_only,
         no_trans: no_trans,
         debugging_opts: debugging_opts,
-        android_cross_path: android_cross_path
+        android_cross_path: android_cross_path,
+        write_dependency_info: write_dependency_info,
     };
     return sopts;
 }
@@ -902,6 +925,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           or identified (fully parenthesized,
                           AST nodes and blocks with IDs)", "TYPE"),
   optflag("S", "",    "Compile only; do not assemble or link"),
+  optflag("", "dep-info",
+                        "Output dependency info to .d file after compiling"),
   optflag("", "save-temps",
                         "Write intermediate files (.bc, .opt.bc, .o)
                           in addition to normal output"),
