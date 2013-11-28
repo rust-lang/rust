@@ -41,8 +41,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
     let o = Process::new(ar, args.as_slice(), opts).finish_with_output();
     if !o.status.success() {
         sess.err(format!("{} failed with: {}", ar, o.status));
-        sess.note(format!("stdout ---\n{}", str::from_utf8(o.output)));
-        sess.note(format!("stderr ---\n{}", str::from_utf8(o.error)));
+        sess.note(format!("stdout ---\n{}", str::from_utf8_slice(o.output)));
+        sess.note(format!("stderr ---\n{}", str::from_utf8_slice(o.error)));
         sess.abort_if_errors();
     }
     o

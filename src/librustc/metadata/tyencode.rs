@@ -72,7 +72,7 @@ pub fn enc_ty(w: @mut MemWriter, cx: @ctxt, t: ty::t) {
             None => {
                 let wr = @mut MemWriter::new();
                 enc_sty(wr, cx, &ty::get(t).sty);
-                let s = str::from_utf8(*wr.inner_ref()).to_managed();
+                let s = str::from_utf8_slice(*wr.inner_ref()).to_managed();
                 cx.tcx.short_names_cache.insert(t, s);
                 s
           }

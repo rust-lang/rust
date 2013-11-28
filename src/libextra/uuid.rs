@@ -310,7 +310,7 @@ impl Uuid {
             s[i*2+0] = digit[0];
             s[i*2+1] = digit[1];
         }
-        str::from_utf8(s)
+        str::from_utf8_owned(s)
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hypen

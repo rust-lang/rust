@@ -70,12 +70,10 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
    let mut buffer = ~"";
 
-   for kv in pairs_sorted.iter() {
-       let (k,v) = (*kv).clone();
+   for &(ref k, v) in pairs_sorted.iter() {
        unsafe {
-           let b = str::raw::from_utf8(k);
            buffer.push_str(format!("{} {:0.3f}\n",
-                                   b.into_ascii().to_upper().into_str(), v));
+                                   k.to_ascii().to_upper().into_str(), v));
        }
    }
 

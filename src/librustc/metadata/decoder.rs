@@ -1274,8 +1274,8 @@ fn family_names_type(fam: Family) -> bool {
 fn read_path(d: ebml::Doc) -> (~str, uint) {
     reader::with_doc_data(d, |desc| {
         let pos = u64_from_be_bytes(desc, 0u, 4u) as uint;
-        let pathbytes = desc.slice(4u, desc.len());
-        let path = str::from_utf8(pathbytes);
+        let pathbytes = desc.slice_from(4u).to_owned();
+        let path = str::from_utf8_owned(pathbytes);
 
         (path, pos)
     })
