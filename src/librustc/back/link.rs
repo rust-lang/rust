@@ -598,8 +598,8 @@ pub fn sanitize(s: &str) -> ~str {
             ',' => result.push_str("$C$"),
 
             // '.' doesn't occur in types and functions, so reuse it
-            // for ':'
-            ':' => result.push_char('.'),
+            // for ':' and '-'
+            '-' | ':' => result.push_char('.'),
 
             // These are legal symbols
             'a' .. 'z'
