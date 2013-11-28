@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Computes the restrictions that result from a borrow.
-
+/*!
+ * Computes the restrictions that result from a borrow.
+ */
 
 use std::vec;
 use middle::borrowck::*;
@@ -26,11 +27,13 @@ pub enum RestrictionResult {
 pub fn compute_restrictions(bccx: &BorrowckCtxt,
                             span: Span,
                             cmt: mc::cmt,
+                            loan_region: ty::Region,
                             restr: RestrictionSet) -> RestrictionResult {
     let ctxt = RestrictionsContext {
         bccx: bccx,
         span: span,
-        cmt_original: cmt
+        cmt_original: cmt,
+        loan_region: loan_region,
     };
 
     ctxt.restrict(cmt, restr)
@@ -42,7 +45,8 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
 struct RestrictionsContext<'self> {
     bccx: &'self BorrowckCtxt,
     span: Span,
-    cmt_original: mc::cmt
+    cmt_original: mc::cmt,
+    loan_region: ty::Region,
 }
 
 impl<'self> RestrictionsContext<'self> {
@@ -169,12 +173,22 @@ impl<'self> RestrictionsContext<'self> {
                 }
             }
 
-            mc::cat_deref(cmt_base, _, pk @ mc::region_ptr(MutMutable, _)) => {
+            mc::cat_deref(cmt_base, _, pk @ mc::region_ptr(MutMutable, lt)) => {
                 // Because an `&mut` pointer does not inherit its
                 // mutability, we can only prevent mutation or prevent
                 // freezing if it is not aliased. Therefore, in such
                 // cases we restrict aliasing on `cmt_base`.
                 if restrictions != RESTR_EMPTY {
+                    if !self.bccx.is_subregion_of(self.loan_region, lt) {
+                        self.bccx.report(
+                            BckError {
+                                span: self.span,
+                                cmt: cmt_base,
+                                code: err_mut_pointer_too_short(
+                                    self.loan_region, lt, restrictions)});
+                        return Safe;
+                    }
+
                     // R-Deref-Mut-Borrowed-1
                     let result = self.restrict(
                         cmt_base,

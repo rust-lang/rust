@@ -443,7 +443,8 @@ pub enum bckerr_code {
     err_mutbl(LoanMutability),
     err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
-    err_freeze_aliasable_const
+    err_freeze_aliasable_const,
+    err_mut_pointer_too_short(ty::Region, ty::Region, RestrictionSet), // loan, ptr
 }
 
 // Combination of an error code and the categorization of the expression
@@ -669,6 +670,22 @@ impl BorrowckCtxt {
                 // supposed to be going away.
                 format!("unsafe borrow of aliasable, const value")
             }
+            err_mut_pointer_too_short(_, _, r) => {
+                let descr = match opt_loan_path(err.cmt) {
+                    Some(lp) => format!("`{}`", self.loan_path_to_str(lp)),
+                    None => ~"`&mut` pointer"
+                };
+
+                let tag = if r.intersects(RESTR_ALIAS) {
+                    "its contents are unique"
+                } else {
+                    "its contents are not otherwise mutable"
+                };
+
+                format!("lifetime of {} is too short to guarantee {} \
+                        so they can be safely reborrowed",
+                        descr, tag)
+            }
         }
     }
 
@@ -742,7 +759,24 @@ impl BorrowckCtxt {
                     "...but borrowed value is only valid for ",
                     super_scope,
                     "");
-          }
+            }
+
+            err_mut_pointer_too_short(loan_scope, ptr_scope, _) => {
+                let descr = match opt_loan_path(err.cmt) {
+                    Some(lp) => format!("`{}`", self.loan_path_to_str(lp)),
+                    None => ~"`&mut` pointer"
+                };
+                note_and_explain_region(
+                    self.tcx,
+                    format!("{} would have to be valid for ", descr),
+                    loan_scope,
+                    "...");
+                note_and_explain_region(
+                    self.tcx,
+                    format!("...but {} is only valid for ", descr),
+                    ptr_scope,
+                    "");
+            }
         }
     }
 
