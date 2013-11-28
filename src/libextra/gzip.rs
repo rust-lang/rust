@@ -195,6 +195,9 @@ impl GZip {
 
     /// Initialize a new GZip structure for compression.
     /// Write the gzip header to the writer.  The same writer should be passed to subsequent API calls.
+    /// file_name is the original filename to store in the gzip file.
+    /// mtime is the original modified time in seconds to store in the gzip file.
+    /// file_size is the original file size to store in the gzip file.
     /// Return the new GZip structure.
     pub fn compress_init<W: Writer>(writer: &mut W, file_name: &[u8], mtime: u32, file_size: u32) -> GZip {
         let mut gzip = GZip::new();
@@ -602,7 +605,7 @@ impl<W: Writer> GZipWriter<W> {
 
     /// Create a GZipWriter to compress data automatically when writing, with more info.
     /// file_name is the original filename to store in the gzip file.
-    /// mtime is the original modified time to store in the gzip file.
+    /// mtime is the original modified time in seconds to store in the gzip file.
     /// file_size is the original file size to store in the gzip file.
     pub fn with_file_info(inner_writer: W, file_name: &[u8], mtime: u32, file_size: u32) -> GZipWriter<W> {
         GZipWriter::with_size_factor(inner_writer, file_name, mtime, file_size, DEFAULT_COMPRESS_LEVEL, DEFAULT_SIZE_FACTOR)
@@ -611,6 +614,9 @@ impl<W: Writer> GZipWriter<W> {
     /// Create a GZipWriter to compress data automatically when writing.
     /// The compress_level (0-9) is a trade off in compression ratio vs compression speed.
     /// Control the internal IO buffer size with buf_size_factor.  See calc_buf_size() for the actual bytes computed.
+    /// file_name is the original filename to store in the gzip file.
+    /// mtime is the original modified time in seconds to store in the gzip file.
+    /// file_size is the original file size to store in the gzip file.
     /// buf_size_factor is used for internal IO buffers.  It is the power of 2.
     pub fn with_size_factor(mut inner_writer: W, file_name: &[u8], mtime: u32, file_size: u32, 
                             compress_level: uint, buf_size_factor: uint) -> GZipWriter<W> {
