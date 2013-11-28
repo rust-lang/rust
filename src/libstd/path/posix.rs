@@ -1319,3 +1319,89 @@ mod tests {
         // the full set of tests
     }
 }
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use super::*;
+
+    #[bench]
+    fn join_home_dir(bh: &mut BenchHarness) {
+        let posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.join("home");
+        });
+    }
+
+    #[bench]
+    fn join_abs_path_home_dir(bh: &mut BenchHarness) {
+        let posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.join("/home");
+        });
+    }
+
+    #[bench]
+    fn join_many_home_dir(bh: &mut BenchHarness) {
+        let posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.join_many(&["home"]);
+        });
+    }
+
+    #[bench]
+    fn join_many_abs_path_home_dir(bh: &mut BenchHarness) {
+        let posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.join_many(&["/home"]);
+        });
+    }
+
+    #[bench]
+    fn push_home_dir(bh: &mut BenchHarness) {
+        let mut posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.push("home");
+        });
+    }
+
+    #[bench]
+    fn push_abs_path_home_dir(bh: &mut BenchHarness) {
+        let mut posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.push("/home");
+        });
+    }
+
+    #[bench]
+    fn push_many_home_dir(bh: &mut BenchHarness) {
+        let mut posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.push_many(&["home"]);
+        });
+    }
+
+    #[bench]
+    fn push_many_abs_path_home_dir(bh: &mut BenchHarness) {
+        let mut posix_path = Path::new("/");
+        bh.iter(|| {
+            posix_path.push_many(&["/home"]);
+        });
+    }
+
+    #[bench]
+    fn ends_with_path_home_dir(bh: &mut BenchHarness) {
+        let posix_home_path = Path::new("/home");
+        bh.iter(|| {
+            posix_home_path.ends_with_path(&Path::new("home"));
+        });
+    }
+
+    #[bench]
+    fn ends_with_path_missmatch_jome_home(bh: &mut BenchHarness) {
+        let posix_home_path = Path::new("/home");
+        bh.iter(|| {
+            posix_home_path.ends_with_path(&Path::new("jome"));
+        });
+    }
+}
