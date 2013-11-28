@@ -1195,10 +1195,6 @@ impl ToJson for Json {
     fn to_json(&self) -> Json { (*self).clone() }
 }
 
-impl ToJson for @Json {
-    fn to_json(&self) -> Json { (**self).to_json() }
-}
-
 impl ToJson for int {
     fn to_json(&self) -> Json { Number(*self as f64) }
 }
@@ -1257,10 +1253,6 @@ impl ToJson for bool {
 
 impl ToJson for ~str {
     fn to_json(&self) -> Json { String((*self).clone()) }
-}
-
-impl ToJson for @~str {
-    fn to_json(&self) -> Json { String((**self).clone()) }
 }
 
 impl<A:ToJson,B:ToJson> ToJson for (A, B) {
