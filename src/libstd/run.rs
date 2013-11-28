@@ -14,6 +14,7 @@
 
 use cell::Cell;
 use comm::{stream, SharedChan};
+use io::IoError;
 use io::Reader;
 use io::process::ProcessExit;
 use io::process;
@@ -120,7 +121,7 @@ impl Process {
      * * options - Options to configure the environment of the process,
      *             the working directory and the standard IO streams.
      */
-    pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Process {
+    pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Result<Process, IoError> {
         let ProcessOptions { env, dir, in_fd, out_fd, err_fd } = options;
         let env = env.as_ref().map(|a| a.as_slice());
         let cwd = dir.as_ref().map(|a| a.as_str().unwrap());
@@ -139,8 +140,11 @@ impl Process {
             cwd: cwd,
             io: rtio,
         };
-        let inner = process::Process::new(rtconfig).unwrap();
-        Process { inner: inner }
+        // process::Process::new() either returns Ok(*) or raises io_error
+        match io::result(|| process::Process::new(rtconfig)) {
+            Ok(inner) => Ok(Process { inner: inner.unwrap() }),
+            Err(err) => Err(err),
+        }
     }
 
     /// Returns the unique id of the process
@@ -290,15 +294,15 @@ impl Process {
  *
  * The process's exit code
  */
-pub fn process_status(prog: &str, args: &[~str]) -> ProcessExit {
-    let mut prog = Process::new(prog, args, ProcessOptions {
+pub fn process_status(prog: &str, args: &[~str]) -> Result<ProcessExit, IoError> {
+    let prog = Process::new(prog, args, ProcessOptions {
         env: None,
         dir: None,
         in_fd: Some(unsafe { libc::dup(libc::STDIN_FILENO) }),
         out_fd: Some(unsafe { libc::dup(libc::STDOUT_FILENO) }),
         err_fd: Some(unsafe { libc::dup(libc::STDERR_FILENO) })
     });
-    prog.finish()
+    prog.and_then(|mut prog| Ok(prog.finish()))
 }
 
 /**
@@ -313,9 +317,9 @@ pub fn process_status(prog: &str, args: &[~str]) -> ProcessExit {
  *
  * The process's stdout/stderr output and exit code.
  */
-pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
-    let mut prog = Process::new(prog, args, ProcessOptions::new());
-    prog.finish_with_output()
+pub fn process_output(prog: &str, args: &[~str]) -> Result<ProcessOutput, IoError> {
+    let prog = Process::new(prog, args, ProcessOptions::new());
+    prog.and_then(|mut prog| Ok(prog.finish_with_output()))
 }
 
 #[cfg(test)]
@@ -334,10 +338,10 @@ mod tests {
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_process_status() {
-        let mut status = run::process_status("false", []);
+        let mut status = run::process_status("false", []).unwrap();
         assert!(status.matches_exit_status(1));
 
-        status = run::process_status("true", []);
+        status = run::process_status("true", []).unwrap();
         assert!(status.success());
     }
 
@@ -346,7 +350,7 @@ mod tests {
     fn test_process_output_output() {
 
         let run::ProcessOutput {status, output, error}
-             = run::process_output("echo", [~"hello"]);
+             = run::process_output("echo", [~"hello"]).unwrap();
         let output_str = str::from_utf8(output);
 
         assert!(status.success());
@@ -362,7 +366,7 @@ mod tests {
     fn test_process_output_error() {
 
         let run::ProcessOutput {status, output, error}
-             = run::process_output("mkdir", [~"."]);
+             = run::process_output("mkdir", [~"."]).unwrap();
 
         assert!(status.matches_exit_status(1));
         assert_eq!(output, ~[]);
@@ -383,7 +387,7 @@ mod tests {
             in_fd: Some(pipe_in.input),
             out_fd: Some(pipe_out.out),
             err_fd: Some(pipe_err.out)
-        });
+        }).unwrap();
 
         os::close(pipe_in.input);
         os::close(pipe_out.out);
@@ -420,14 +424,14 @@ mod tests {
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_once() {
-        let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
+        let mut prog = run::Process::new("false", [], run::ProcessOptions::new()).unwrap();
         assert!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_twice() {
-        let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
+        let mut prog = run::Process::new("false", [], run::ProcessOptions::new()).unwrap();
         assert!(prog.finish().matches_exit_status(1));
         assert!(prog.finish().matches_exit_status(1));
     }
@@ -436,7 +440,7 @@ mod tests {
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_with_output_once() {
 
-        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
+        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new()).unwrap();
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
         let output_str = str::from_utf8(output);
@@ -453,7 +457,7 @@ mod tests {
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_with_output_twice() {
 
-        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
+        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new()).unwrap();
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
@@ -482,14 +486,14 @@ mod tests {
         run::Process::new("pwd", [], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
-        })
+        }).unwrap()
     }
     #[cfg(unix,target_os="android")]
     fn run_pwd(dir: Option<&Path>) -> run::Process {
         run::Process::new("/system/bin/sh", [~"-c",~"pwd"], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
-        })
+        }).unwrap()
     }
 
     #[cfg(windows)]
@@ -497,7 +501,7 @@ mod tests {
         run::Process::new("cmd", [~"/c", ~"cd"], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
-        })
+        }).unwrap()
     }
 
     #[test]
@@ -537,14 +541,14 @@ mod tests {
         run::Process::new("env", [], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
-        })
+        }).unwrap()
     }
     #[cfg(unix,target_os="android")]
     fn run_env(env: Option<~[(~str, ~str)]>) -> run::Process {
         run::Process::new("/system/bin/sh", [~"-c",~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
-        })
+        }).unwrap()
     }
 
     #[cfg(windows)]
@@ -552,7 +556,7 @@ mod tests {
         run::Process::new("cmd", [~"/c", ~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
-        })
+        }).unwrap()
     }
 
     #[test]

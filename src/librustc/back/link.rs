@@ -376,14 +376,20 @@ pub mod write {
             ~"-o", object.as_str().unwrap().to_owned(),
             assembly.as_str().unwrap().to_owned()];
 
-        let prog = run::process_output(cc_prog, cc_args);
-
-        if !prog.status.success() {
-            sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
-            sess.note(format!("{} arguments: {}",
-                        cc_prog, cc_args.connect(" ")));
-            sess.note(str::from_utf8(prog.error + prog.output));
-            sess.abort_if_errors();
+        match run::process_output(cc_prog, cc_args) {
+            Ok(prog) => {
+                if !prog.status.success() {
+                    sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
+                    sess.note(format!("{} arguments: {}",
+                                cc_prog, cc_args.connect(" ")));
+                    sess.note(str::from_utf8(prog.error + prog.output));
+                    sess.abort_if_errors();
+                }
+            }
+            Err(err) => {
+                sess.err(format!("linking with `{}` failed: {}", cc_prog, err.desc));
+                sess.abort_if_errors();
+            }
         }
     }
 
@@ -945,14 +951,20 @@ pub fn link_binary(sess: Session,
     }
 
     // We run 'cc' here
-    let prog = run::process_output(cc_prog, cc_args);
-
-    if !prog.status.success() {
-        sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
-        sess.note(format!("{} arguments: {}",
-                    cc_prog, cc_args.connect(" ")));
-        sess.note(str::from_utf8(prog.error + prog.output));
-        sess.abort_if_errors();
+    match run::process_output(cc_prog, cc_args) {
+        Ok(prog) => {
+            if !prog.status.success() {
+                sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
+                sess.note(format!("{} arguments: {}",
+                            cc_prog, cc_args.connect(" ")));
+                sess.note(str::from_utf8(prog.error + prog.output));
+                sess.abort_if_errors();
+            }
+        }
+        Err(err) => {
+            sess.err(format!("linking with `{}` failed: {}", cc_prog, err.desc));
+            sess.abort_if_errors();
+        }
     }
 
     // On OSX, debuggers needs this utility to get run to do some munging of the

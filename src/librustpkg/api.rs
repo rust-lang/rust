@@ -169,7 +169,7 @@ pub fn build_library_in_workspace(exec: &mut workcache::Exec,
 
     let all_args = flags + absolute_paths + cc_args +
          ~[~"-o", out_name.as_str().unwrap().to_owned()];
-    let exit_process = run::process_status(tool, all_args);
+    let exit_process = run::process_status(tool, all_args).unwrap();
     if exit_process.success() {
         let out_name_str = out_name.as_str().unwrap().to_owned();
         exec.discover_output("binary",

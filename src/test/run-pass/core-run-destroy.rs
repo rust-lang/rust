@@ -27,7 +27,7 @@ fn test_destroy_once() {
     #[cfg(target_os="android")]
     static PROG: &'static str = "ls"; // android don't have echo binary
 
-    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new());
+    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new()).unwrap();
     p.destroy(); // this shouldn't crash (and nor should the destructor)
 }
 
@@ -38,7 +38,7 @@ fn test_destroy_twice() {
     #[cfg(target_os="android")]
     static PROG: &'static str = "ls"; // android don't have echo binary
 
-    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new());
+    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new()).unwrap();
     p.destroy(); // this shouldnt crash...
     io::io_error::cond.trap(|_| {}).inside(|| {
         p.destroy(); // ...and nor should this (and nor should the destructor)
@@ -58,13 +58,15 @@ fn test_destroy_actually_kills(force: bool) {
 
     #[cfg(unix,not(target_os="android"))]
     fn process_exists(pid: libc::pid_t) -> bool {
-        let run::ProcessOutput {output, _} = run::process_output("ps", [~"-p", pid.to_str()]);
+        let run::ProcessOutput {output, _} = run::process_output("ps",
+                                                                 [~"-p", pid.to_str()]).unwrap();
         str::from_utf8(output).contains(pid.to_str())
     }
 
     #[cfg(unix,target_os="android")]
     fn process_exists(pid: libc::pid_t) -> bool {
-        let run::ProcessOutput {output, _} = run::process_output("/system/bin/ps", [pid.to_str()]);
+        let run::ProcessOutput {output, _} = run::process_output("/system/bin/ps",
+                                                                 [pid.to_str()]).unwrap();
         str::from_utf8(output).contains(~"root")
     }
 
@@ -88,7 +90,7 @@ fn test_destroy_actually_kills(force: bool) {
     }
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new());
+    let mut p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new()).unwrap();
 
     assert!(process_exists(p.get_id()));
 
