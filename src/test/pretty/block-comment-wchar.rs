@@ -51,55 +51,54 @@ fn f() {
   CR4+2:                         (should align)
     */
     /*
-    // (NEL deliberately omitted)
+  NEL4+2:                        (should align)
     */
     /*
       Ogham Space Mark 4+2:          (should align)
     */
     /*
-᠎᠎᠎᠎  Mongolian Vowel Separator 4+2: (should align)
+      Ogham Space Mark 4+2: (should align)
     */
     /*
       Four-per-em space 4+2:         (should align)
     */
 
     /*
-   ᠎  Mongolian Vowel Sep   count 1: (should align)
-  ᠎   Mongolian Vowel Sep   count 2: (should align)
-  ᠎᠎  Mongolian Vowel Sep   count 3: (should align)
- ᠎    Mongolian Vowel Sep   count 4: (should align)
- ᠎ ᠎  Mongolian Vowel Sep   count 5: (should align)
- ᠎᠎   Mongolian Vowel Sep   count 6: (should align)
- ᠎᠎᠎  Mongolian Vowel Sep   count 7: (should align)
-᠎     Mongolian Vowel Sep   count 8: (should align)
-᠎  ᠎  Mongolian Vowel Sep   count 9: (should align)
-᠎ ᠎   Mongolian Vowel Sep   count A: (should align)
-᠎ ᠎᠎  Mongolian Vowel Sep   count B: (should align)
-᠎᠎    Mongolian Vowel Sep   count C: (should align)
-᠎᠎ ᠎  Mongolian Vowel Sep   count D: (should align)
-᠎᠎᠎   Mongolian Vowel Sep   count E: (should align)
-᠎᠎᠎᠎  Mongolian Vowel Sep   count F: (should align)
+      Ogham Space Mark   count 1: (should align)
+      Ogham Space Mark   count 2: (should align)
+      Ogham Space Mark   count 3: (should align)
+      Ogham Space Mark   count 4: (should align)
+      Ogham Space Mark   count 5: (should align)
+      Ogham Space Mark   count 6: (should align)
+      Ogham Space Mark   count 7: (should align)
+      Ogham Space Mark   count 8: (should align)
+      Ogham Space Mark   count 9: (should align)
+      Ogham Space Mark   count A: (should align)
+      Ogham Space Mark   count B: (should align)
+      Ogham Space Mark   count C: (should align)
+      Ogham Space Mark   count D: (should align)
+      Ogham Space Mark   count E: (should align)
+      Ogham Space Mark   count F: (should align)
     */
 
 
 /* */ /*
         Hello from offset 6
         Space 6+2:                     compare A
-᠎᠎᠎᠎᠎᠎  Mongolian Vowel Separator 6+2: compare B
+        Ogham Space Mark 6+2: compare B
       */
-/*᠎*/ /*
+/* */ /*
         Hello from another offset 6 with wchars establishing column offset
         Space 6+2:                     compare C
-᠎᠎᠎᠎᠎᠎  Mongolian Vowel Separator 6+2: compare D
+        Ogham Space Mark 6+2: compare D
       */
 }
 
 fn main() {
-    // Taken from http://en.wikipedia.org/wiki/Whitespace_character
+    // Taken from http://www.unicode.org/Public/UNIDATA/PropList.txt
     let chars =
-        ['\x0A', '\x0B', '\x0C', '\x0D', '\x20',
-         // '\x85', // for some reason Rust thinks NEL isn't whitespace
-         '\xA0', '\u1680', '\u180E', '\u2000', '\u2001', '\u2002', '\u2003',
+        ['\x0A', '\x0B', '\x0C', '\x0D', '\x20', '\x85',
+         '\xA0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003',
          '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A',
          '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'];
     for c in chars.iter() {
