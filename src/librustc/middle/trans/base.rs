@@ -1018,11 +1018,6 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     // The landing pad block is a cleanup
     SetCleanup(pad_bcx, llretval);
 
-    // Because we may have unwound across a stack boundary, we must call into
-    // the runtime to figure out which stack segment we are on and place the
-    // stack limit back into the TLS.
-    Call(pad_bcx, bcx.ccx().upcalls.reset_stack_limit, [], []);
-
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
     match bcx.fcx.personality {
@@ -1095,28 +1090,6 @@ pub fn load_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
     if type_is_immediate(cx.ccx(), t) { return Load(cx, v); }
     return v;
-}
-
-pub fn trans_trace(bcx: @mut Block, sp_opt: Option<Span>, trace_str: @str) {
-    if !bcx.sess().trace() { return; }
-    let _icx = push_ctxt("trans_trace");
-    add_comment(bcx, trace_str);
-    let V_trace_str = C_cstr(bcx.ccx(), trace_str);
-    let (V_filename, V_line) = match sp_opt {
-      Some(sp) => {
-        let sess = bcx.sess();
-        let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), loc.file.name), loc.line as int)
-      }
-      None => {
-        (C_cstr(bcx.ccx(), @"<runtime>"), 0)
-      }
-    };
-    let ccx = bcx.ccx();
-    let V_trace_str = PointerCast(bcx, V_trace_str, Type::i8p());
-    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
-    let args = ~[V_trace_str, V_filename, C_int(ccx, V_line)];
-    Call(bcx, ccx.upcalls.trace, args, []);
 }
 
 pub fn ignore_lhs(_bcx: @mut Block, local: &ast::Local) -> bool {
@@ -1313,12 +1286,6 @@ pub fn cleanup_and_leave(bcx: @mut Block,
     loop {
         debug!("cleanup_and_leave: leaving {}", cur.to_str());
 
-        if bcx.sess().trace() {
-            trans_trace(
-                bcx, None,
-                (format!("cleanup_and_leave({})", cur.to_str())).to_managed());
-        }
-
         let mut cur_scope = cur.scope;
         loop {
             cur_scope = match cur_scope {
@@ -1386,12 +1353,6 @@ pub fn cleanup_block(bcx: @mut Block, upto: Option<BasicBlockRef>) -> @mut Block
     let mut bcx = bcx;
     loop {
         debug!("cleanup_block: {}", cur.to_str());
-
-        if bcx.sess().trace() {
-            trans_trace(
-                bcx, None,
-                (format!("cleanup_block({})", cur.to_str())).to_managed());
-        }
 
         let mut cur_scope = cur.scope;
         loop {
