@@ -10,12 +10,12 @@
 
 fn takes_two(x: &int, y: &int) -> int { *x + *y }
 
-fn with<T>(f: &fn(x: &int) -> T) -> T {
+fn with<T>(f: |x: &int| -> T) -> T {
     f(&20)
 }
 
 fn has_one<'a>(x: &'a int) -> int {
-    do with |y| { takes_two(x, y) }
+    with(|y| takes_two(x, y))
 }
 
 pub fn main() {

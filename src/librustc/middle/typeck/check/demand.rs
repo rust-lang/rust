@@ -31,9 +31,11 @@ pub fn subtype(fcx: @mut FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 }
 
 pub fn suptype_with_fn(fcx: @mut FnCtxt,
-                       sp: Span, b_is_expected: bool,
-                       ty_a: ty::t, ty_b: ty::t,
-                       handle_err: &fn(Span, ty::t, ty::t, &ty::type_err)) {
+                       sp: Span,
+                       b_is_expected: bool,
+                       ty_a: ty::t,
+                       ty_b: ty::t,
+                       handle_err: |Span, ty::t, ty::t, &ty::type_err|) {
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
                           ty_b, ty_a) {

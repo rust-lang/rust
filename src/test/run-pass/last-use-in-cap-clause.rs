@@ -12,10 +12,10 @@
 
 struct A { a: ~int }
 
-fn foo() -> &'static fn() -> int {
+fn foo() -> 'static || -> int {
     let k = ~22;
     let _u = A {a: k.clone()};
-    let result: &'static fn() -> int = || 22;
+    let result: 'static || -> int = || 22;
     result
 }
 

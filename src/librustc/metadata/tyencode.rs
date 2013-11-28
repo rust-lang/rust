@@ -11,9 +11,9 @@
 // Type encoding
 
 use std::hashmap::HashMap;
-use std::rt::io;
-use std::rt::io::{Decorator, Writer, Seek};
-use std::rt::io::mem::MemWriter;
+use std::io;
+use std::io::{Decorator, Writer, Seek};
+use std::io::mem::MemWriter;
 use std::str;
 use std::fmt;
 
@@ -120,7 +120,7 @@ fn enc_mt(w: @mut MemWriter, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: @mut MemWriter, t: Option<T>, enc_f: &fn(T)) {
+fn enc_opt<T>(w: @mut MemWriter, t: Option<T>, enc_f: |T|) {
     match t {
         None => mywrite!(w, "n"),
         Some(v) => {
@@ -132,7 +132,7 @@ fn enc_opt<T>(w: @mut MemWriter, t: Option<T>, enc_f: &fn(T)) {
 
 fn enc_substs(w: @mut MemWriter, cx: @ctxt, substs: &ty::substs) {
     enc_region_substs(w, cx, &substs.regions);
-    do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
+    enc_opt(w, substs.self_ty, |t| enc_ty(w, cx, t));
     mywrite!(w, "[");
     for t in substs.tps.iter() { enc_ty(w, cx, *t); }
     mywrite!(w, "]");
@@ -155,35 +155,51 @@ fn enc_region_substs(w: @mut MemWriter, cx: @ctxt, substs: &ty::RegionSubsts) {
 
 fn enc_region(w: @mut MemWriter, cx: @ctxt, r: ty::Region) {
     match r {
-        ty::re_bound(br) => {
-            mywrite!(w, "b");
+        ty::ReLateBound(id, br) => {
+            mywrite!(w, "b[{}|", id);
             enc_bound_region(w, cx, br);
+            mywrite!(w, "]");
         }
-        ty::re_free(ref fr) => {
+        ty::ReEarlyBound(node_id, index, ident) => {
+            mywrite!(w, "B[{}|{}|{}]",
+                     node_id,
+                     index,
+                     cx.tcx.sess.str_of(ident));
+        }
+        ty::ReFree(ref fr) => {
             mywrite!(w, "f[{}|", fr.scope_id);
             enc_bound_region(w, cx, fr.bound_region);
             mywrite!(w, "]");
         }
-        ty::re_scope(nid) => mywrite!(w, "s{}|", nid),
-        ty::re_static => mywrite!(w, "t"),
-        ty::re_empty => mywrite!(w, "e"),
-        ty::re_infer(_) => {
+        ty::ReScope(nid) => {
+            mywrite!(w, "s{}|", nid);
+        }
+        ty::ReStatic => {
+            mywrite!(w, "t");
+        }
+        ty::ReEmpty => {
+            mywrite!(w, "e");
+        }
+        ty::ReInfer(_) => {
             // these should not crop up after typeck
             cx.diag.handler().bug("Cannot encode region variables");
         }
     }
 }
 
-fn enc_bound_region(w: @mut MemWriter, cx: @ctxt, br: ty::bound_region) {
+fn enc_bound_region(w: @mut MemWriter, cx: @ctxt, br: ty::BoundRegion) {
     match br {
-        ty::br_self => mywrite!(w, "s"),
-        ty::br_anon(idx) => mywrite!(w, "a{}|", idx),
-        ty::br_named(s) => mywrite!(w, "[{}]", cx.tcx.sess.str_of(s)),
-        ty::br_cap_avoid(id, br) => {
-            mywrite!(w, "c{}|", id);
-            enc_bound_region(w, cx, *br);
+        ty::BrAnon(idx) => {
+            mywrite!(w, "a{}|", idx);
         }
-        ty::br_fresh(id) => mywrite!(w, "{}", id),
+        ty::BrNamed(d, s) => {
+            mywrite!(w, "[{}|{}]",
+                     (cx.ds)(d),
+                     cx.tcx.sess.str_of(s));
+        }
+        ty::BrFresh(id) => {
+            mywrite!(w, "f{}|", id);
+        }
     }
 }
 
@@ -334,10 +350,10 @@ fn enc_purity(w: @mut MemWriter, p: purity) {
 
 fn enc_abi_set(w: @mut MemWriter, abis: AbiSet) {
     mywrite!(w, "[");
-    do abis.each |abi| {
+    abis.each(|abi| {
         mywrite!(w, "{},", abi.name());
         true
-    };
+    });
     mywrite!(w, "]")
 }
 
@@ -366,13 +382,15 @@ fn enc_closure_ty(w: @mut MemWriter, cx: @ctxt, ft: &ty::ClosureTy) {
 }
 
 fn enc_fn_sig(w: @mut MemWriter, cx: @ctxt, fsig: &ty::FnSig) {
-    mywrite!(w, "[");
+    mywrite!(w, "[{}|", fsig.binder_id);
     for ty in fsig.inputs.iter() {
         enc_ty(w, cx, *ty);
     }
     mywrite!(w, "]");
     if fsig.variadic {
-        mywrite!(w, "A");
+        mywrite!(w, "V");
+    } else {
+        mywrite!(w, "N");
     }
     enc_ty(w, cx, fsig.output);
 }

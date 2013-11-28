@@ -51,7 +51,7 @@ impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
     fn visit_block(&mut self, b:&ast::Block, _:()) {
         check_loans_in_block(self, b);
     }
-    fn visit_pat(&mut self, p:@ast::Pat, _:()) {
+    fn visit_pat(&mut self, p:&ast::Pat, _:()) {
         check_loans_in_pat(self, p);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
@@ -124,9 +124,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    pub fn each_issued_loan(&self,
-                            scope_id: ast::NodeId,
-                            op: &fn(&Loan) -> bool)
+    pub fn each_issued_loan(&self, scope_id: ast::NodeId, op: |&Loan| -> bool)
                             -> bool {
         //! Iterates over each loan that has been issued
         //! on entrance to `scope_id`, regardless of whether it is
@@ -134,38 +132,38 @@ impl<'self> CheckLoanCtxt<'self> {
         //! are issued for future scopes and thus they may have been
         //! *issued* but not yet be in effect.
 
-        do self.dfcx_loans.each_bit_on_entry_frozen(scope_id) |loan_index| {
+        self.dfcx_loans.each_bit_on_entry_frozen(scope_id, |loan_index| {
             let loan = &self.all_loans[loan_index];
             op(loan)
-        }
+        })
     }
 
     pub fn each_in_scope_loan(&self,
                               scope_id: ast::NodeId,
-                              op: &fn(&Loan) -> bool)
+                              op: |&Loan| -> bool)
                               -> bool {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
         let region_maps = self.tcx().region_maps;
-        do self.each_issued_loan(scope_id) |loan| {
+        self.each_issued_loan(scope_id, |loan| {
             if region_maps.is_subscope_of(scope_id, loan.kill_scope) {
                 op(loan)
             } else {
                 true
             }
-        }
+        })
     }
 
     pub fn each_in_scope_restriction(&self,
                                      scope_id: ast::NodeId,
                                      loan_path: @LoanPath,
-                                     op: &fn(&Loan, &Restriction) -> bool)
+                                     op: |&Loan, &Restriction| -> bool)
                                      -> bool {
         //! Iterates through all the in-scope restrictions for the
         //! given `loan_path`
 
-        do self.each_in_scope_loan(scope_id) |loan| {
+        self.each_in_scope_loan(scope_id, |loan| {
             let mut ret = true;
             for restr in loan.restrictions.iter() {
                 if restr.loan_path == loan_path {
@@ -176,7 +174,7 @@ impl<'self> CheckLoanCtxt<'self> {
                 }
             }
             ret
-        }
+        })
     }
 
     pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> ~[uint] {
@@ -184,10 +182,10 @@ impl<'self> CheckLoanCtxt<'self> {
         //! we encounter `scope_id`.
 
         let mut result = ~[];
-        do self.dfcx_loans.each_gen_bit_frozen(scope_id) |loan_index| {
+        self.dfcx_loans.each_gen_bit_frozen(scope_id, |loan_index| {
             result.push(loan_index);
             true
-        };
+        });
         return result;
     }
 
@@ -202,13 +200,13 @@ impl<'self> CheckLoanCtxt<'self> {
         let new_loan_indices = self.loans_generated_by(scope_id);
         debug!("new_loan_indices = {:?}", new_loan_indices);
 
-        do self.each_issued_loan(scope_id) |issued_loan| {
+        self.each_issued_loan(scope_id, |issued_loan| {
             for &new_loan_index in new_loan_indices.iter() {
                 let new_loan = &self.all_loans[new_loan_index];
                 self.report_error_if_loans_conflict(issued_loan, new_loan);
             }
             true
-        };
+        });
 
         for (i, &x) in new_loan_indices.iter().enumerate() {
             let old_loan = &self.all_loans[x];
@@ -319,7 +317,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
         debug!("check_if_path_is_moved(id={:?}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
-        do self.move_data.each_move_of(id, lp) |move, moved_lp| {
+        self.move_data.each_move_of(id, lp, |move, moved_lp| {
             self.bccx.report_use_of_moved_value(
                 span,
                 use_kind,
@@ -327,7 +325,7 @@ impl<'self> CheckLoanCtxt<'self> {
                 move,
                 moved_lp);
             false
-        };
+        });
     }
 
     pub fn check_assignment(&self, expr: @ast::Expr) {
@@ -359,13 +357,13 @@ impl<'self> CheckLoanCtxt<'self> {
         if self.is_local_variable(cmt) {
             assert!(cmt.mutbl.is_immutable()); // no "const" locals
             let lp = opt_loan_path(cmt).unwrap();
-            do self.move_data.each_assignment_of(expr.id, lp) |assign| {
+            self.move_data.each_assignment_of(expr.id, lp, |assign| {
                 self.bccx.report_reassigned_immutable_variable(
                     expr.span,
                     lp,
                     assign);
                 false
-            };
+            });
             return;
         }
 
@@ -548,16 +546,16 @@ impl<'self> CheckLoanCtxt<'self> {
             // `RESTR_MUTATE` restriction whenever the contents of an
             // owned pointer are borrowed, and hence while `v[*]` is not
             // restricted from being written, `v` is.
-            let cont = do this.each_in_scope_restriction(expr.id, loan_path)
-                |loan, restr|
-            {
+            let cont = this.each_in_scope_restriction(expr.id,
+                                                      loan_path,
+                                                      |loan, restr| {
                 if restr.set.intersects(RESTR_MUTATE) {
                     this.report_illegal_mutation(expr, loan_path, loan);
                     false
                 } else {
                     true
                 }
-            };
+            });
 
             if !cont { return false }
 
@@ -623,7 +621,7 @@ impl<'self> CheckLoanCtxt<'self> {
                 }
 
                 // Check for a non-const loan of `loan_path`
-                let cont = do this.each_in_scope_loan(expr.id) |loan| {
+                let cont = this.each_in_scope_loan(expr.id, |loan| {
                     if loan.loan_path == loan_path &&
                             loan.mutbl != ConstMutability {
                         this.report_illegal_mutation(expr,
@@ -633,7 +631,7 @@ impl<'self> CheckLoanCtxt<'self> {
                     } else {
                         true
                     }
-                };
+                });
 
                 if !cont { return false }
             }
@@ -668,7 +666,7 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     fn check_move_out_from_id(&self, id: ast::NodeId, span: Span) {
-        do self.move_data.each_path_moved_by(id) |_, move_path| {
+        self.move_data.each_path_moved_by(id, |_, move_path| {
             match self.analyze_move_out_from(id, move_path) {
                 MoveOk => {}
                 MoveWhileBorrowed(loan_path, loan_span) => {
@@ -684,7 +682,7 @@ impl<'self> CheckLoanCtxt<'self> {
                 }
             }
             true
-        };
+        });
     }
 
     pub fn analyze_move_out_from(&self,
@@ -698,11 +696,11 @@ impl<'self> CheckLoanCtxt<'self> {
         let mut ret = MoveOk;
 
         // check for a conflicting loan:
-        do self.each_in_scope_restriction(expr_id, move_path) |loan, _| {
+        self.each_in_scope_restriction(expr_id, move_path, |loan, _| {
             // Any restriction prevents moves.
             ret = MoveWhileBorrowed(loan.loan_path, loan.span);
             false
-        };
+        });
 
         ret
     }
@@ -849,7 +847,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
 }
 
 fn check_loans_in_pat<'a>(this: &mut CheckLoanCtxt<'a>,
-                          pat: @ast::Pat)
+                          pat: &ast::Pat)
 {
     this.check_for_conflicting_loans(pat.id);
     this.check_move_out_from_id(pat.id, pat.span);

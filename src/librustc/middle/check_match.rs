@@ -121,7 +121,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
         for pat in arm.pats.iter() {
 
             // Check that we do not match against a static NaN (#6804)
-            let pat_matches_nan: &fn(&Pat) -> bool = |p| {
+            let pat_matches_nan: |&Pat| -> bool = |p| {
                 match cx.tcx.def_map.find(&p.id) {
                     Some(&DefStatic(did, false)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
@@ -134,13 +134,13 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 }
             };
 
-            do walk_pat(*pat) |p| {
+            walk_pat(*pat, |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
                                                    use the is_nan method in a guard instead");
                 }
                 true
-            };
+            });
 
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
@@ -275,14 +275,14 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
-                let max_len = do m.rev_iter().fold(0) |max_len, r| {
+                let max_len = m.rev_iter().fold(0, |max_len, r| {
                   match r[0].node {
                     PatVec(ref before, _, ref after) => {
                       num::max(before.len() + after.len(), max_len)
                     }
                     _ => max_len
                   }
-                };
+                });
                 for n in iter::range(0u, max_len + 1) {
                   match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                     not_useful => (),
@@ -333,7 +333,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
 fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
     let pat = raw_pat(p);
     match pat.node {
-      PatWild => { None }
+      PatWild | PatWildMulti => { None }
       PatIdent(_, _, _) | PatEnum(_, _) => {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&DefVariant(_, id, _)) => Some(variant(id)),
@@ -369,7 +369,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
 fn is_wild(cx: &MatchCheckCtxt, p: @Pat) -> bool {
     let pat = raw_pat(p);
     match pat.node {
-      PatWild => { true }
+      PatWild | PatWildMulti => { true }
       PatIdent(_, _, _) => {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&DefVariant(_, _, _)) | Some(&DefStatic(*)) => { false }
@@ -454,14 +454,14 @@ fn missing_ctor(cx: &MatchCheckCtxt,
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
         // Find the lengths and slices of all vector patterns.
-        let vec_pat_lens = do m.iter().filter_map |r| {
+        let vec_pat_lens = m.iter().filter_map(|r| {
             match r[0].node {
                 PatVec(ref before, ref slice, ref after) => {
                     Some((before.len() + after.len(), slice.is_some()))
                 }
                 _ => None
             }
-        }.collect::<~[(uint, bool)]>();
+        }).collect::<~[(uint, bool)]>();
 
         // Sort them by length such that for patterns of the same length,
         // those with a destructured slice come first.
@@ -532,6 +532,10 @@ fn wild() -> @Pat {
     @Pat {id: 0, node: PatWild, span: dummy_sp()}
 }
 
+fn wild_multi() -> @Pat {
+    @Pat {id: 0, node: PatWildMulti, span: dummy_sp()}
+}
+
 fn specialize(cx: &MatchCheckCtxt,
                   r: &[@Pat],
                   ctor_id: &ctor,
@@ -545,6 +549,9 @@ fn specialize(cx: &MatchCheckCtxt,
             match n {
             PatWild => {
                 Some(vec::append(vec::from_elem(arity, wild()), r.tail()))
+            }
+            PatWildMulti => {
+                Some(vec::append(vec::from_elem(arity, wild_multi()), r.tail()))
             }
             PatIdent(_, _, _) => {
                 match cx.tcx.def_map.find(&pat_id) {
@@ -849,7 +856,7 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
       PatIdent(_, _, Some(sub)) => {
         is_refutable(cx, sub)
       }
-      PatWild | PatIdent(_, _, None) => { false }
+      PatWild | PatWildMulti | PatIdent(_, _, None) => { false }
       PatLit(@Expr {node: ExprLit(@Spanned { node: lit_nil, _}), _}) => {
         // "()"
         false
@@ -879,7 +886,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let mut by_ref_span = None;
     let mut any_by_move = false;
     for pat in pats.iter() {
-        do pat_bindings(def_map, *pat) |bm, id, span, _path| {
+        pat_bindings(def_map, *pat, |bm, id, span, _path| {
             match bm {
                 BindByRef(_) => {
                     by_ref_span = Some(span);
@@ -890,10 +897,10 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     }
                 }
             }
-        }
+        })
     }
 
-    let check_move: &fn(&Pat, Option<@Pat>) = |p, sub| {
+    let check_move: |&Pat, Option<@Pat>| = |p, sub| {
         // check legality of moving out of the enum
 
         // x @ Foo(*) is legal, but x @ Foo(y) isn't.
@@ -918,7 +925,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     for pat in pats.iter() {
-        do walk_pat(*pat) |p| {
+        walk_pat(*pat, |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
                     PatIdent(_, _, sub) => {
@@ -936,6 +943,6 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 }
             }
             true
-        };
+        });
     }
 }

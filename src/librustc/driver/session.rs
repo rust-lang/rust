@@ -31,9 +31,6 @@ use syntax;
 use std::int;
 use std::hashmap::{HashMap,HashSet};
 
-#[deriving(Eq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
-
 #[deriving(Clone)]
 pub enum crate_type {
     bin_crate,
@@ -42,7 +39,7 @@ pub enum crate_type {
 }
 
 pub struct config {
-    os: Os,
+    os: abi::Os,
     arch: abi::Architecture,
     target_strs: target_strs::t,
     int_type: int_ty,
@@ -79,6 +76,7 @@ pub static no_vectorize_loops:      uint = 1 << 26;
 pub static no_vectorize_slp:        uint = 1 << 27;
 pub static no_prepopulate_passes:   uint = 1 << 28;
 pub static use_softfp:              uint = 1 << 29;
+pub static gen_crate_map:           uint = 1 << 30;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -131,6 +129,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
       "Don't run LLVM's SLP vectorization passes",
       no_vectorize_slp),
      ("soft-float", "Generate software floating point library calls", use_softfp),
+     ("gen-crate-map", "Force generation of a toplevel crate map", gen_crate_map),
     ]
 }
 
@@ -334,6 +333,9 @@ impl Session_ {
     pub fn no_vectorize_slp(&self) -> bool {
         self.debugging_opt(no_vectorize_slp)
     }
+    pub fn gen_crate_map(&self) -> bool {
+        self.debugging_opt(gen_crate_map)
+    }
 
     // pointless function, now...
     pub fn str_of(&self, id: ast::Ident) -> @str {
@@ -384,8 +386,7 @@ pub fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: &fn() -> ~str)
-                       -> T {
+pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
@@ -410,15 +411,15 @@ pub fn building_library(req_crate_type: crate_type,
     }
 }
 
-pub fn sess_os_to_meta_os(os: Os) -> metadata::loader::Os {
+pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
     use metadata::loader;
 
     match os {
-        OsWin32 => loader::OsWin32,
-        OsLinux => loader::OsLinux,
-        OsAndroid => loader::OsAndroid,
-        OsMacos => loader::OsMacos,
-        OsFreebsd => loader::OsFreebsd
+        abi::OsWin32 => loader::OsWin32,
+        abi::OsLinux => loader::OsLinux,
+        abi::OsAndroid => loader::OsAndroid,
+        abi::OsMacos => loader::OsMacos,
+        abi::OsFreebsd => loader::OsFreebsd
     }
 }
 

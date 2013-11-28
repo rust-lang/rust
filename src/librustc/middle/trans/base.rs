@@ -85,7 +85,7 @@ use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -93,13 +93,13 @@ pub use middle::trans::context::task_llcx;
 
 local_data_key!(task_local_insn_key: ~[&'static str])
 
-pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
-    do local_data::get(task_local_insn_key) |c| {
+pub fn with_insn_ctxt(blk: |&[&'static str]|) {
+    local_data::get(task_local_insn_key, |c| {
         match c {
             Some(ctx) => blk(*ctx),
             None => ()
         }
-    }
+    })
 }
 
 pub fn init_insn_ctxt() {
@@ -111,23 +111,23 @@ pub struct _InsnCtxt { _x: () }
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
-        do local_data::modify(task_local_insn_key) |c| {
-            do c.map |mut ctx| {
+        local_data::modify(task_local_insn_key, |c| {
+            c.map(|mut ctx| {
                 ctx.pop();
                 ctx
-            }
-        }
+            })
+        })
     }
 }
 
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: {}", s);
-    do local_data::modify(task_local_insn_key) |c| {
-        do c.map |mut ctx| {
+    local_data::modify(task_local_insn_key, |c| {
+        c.map(|mut ctx| {
             ctx.push(s);
             ctx
-        }
-    }
+        })
+    });
     _InsnCtxt { _x: () }
 }
 
@@ -175,11 +175,11 @@ impl<'self> Drop for StatRecorder<'self> {
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
 pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
-    let llfn: ValueRef = do name.with_c_str |buf| {
+    let llfn: ValueRef = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMGetOrInsertFunction(llmod, buf, ty.to_ref())
         }
-    };
+    });
 
     lib::llvm::SetFunctionCallConv(llfn, cc);
     // Function addresses in Rust are never significant, allowing functions to be merged.
@@ -211,9 +211,9 @@ fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
         None => ()
     }
     let f = decl_rust_fn(ccx, inputs, output, name);
-    do csearch::get_item_attrs(ccx.tcx.cstore, did) |meta_items| {
+    csearch::get_item_attrs(ccx.tcx.cstore, did, |meta_items| {
         set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
-    }
+    });
     ccx.externs.insert(name.to_owned(), f);
     f
 }
@@ -285,9 +285,9 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
         None => ()
     }
     unsafe {
-        let c = do name.with_c_str |buf| {
+        let c = name.with_c_str(|buf| {
             llvm::LLVMAddGlobal(llmod, ty.to_ref(), buf)
-        };
+        });
         externs.insert(name.to_owned(), c);
         return c;
     }
@@ -495,16 +495,10 @@ pub fn set_always_inline(f: ValueRef) {
     lib::llvm::SetFunctionAttribute(f, lib::llvm::AlwaysInlineAttribute)
 }
 
-pub fn set_fixed_stack_segment(f: ValueRef) {
-    do "fixed-stack-segment".with_c_str |buf| {
-        unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
-    }
-}
-
 pub fn set_no_split_stack(f: ValueRef) {
-    do "no-split-stack".with_c_str |buf| {
+    "no-split-stack".with_c_str(|buf| {
         unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
-    }
+    })
 }
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
@@ -569,11 +563,11 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
 // Structural comparison: a rather involved form of glue.
 pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
     if cx.sess.opts.save_temps {
-        do s.with_c_str |buf| {
+        s.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMSetValueName(v, buf)
             }
-        }
+        })
     }
 }
 
@@ -675,7 +669,8 @@ pub fn compare_scalar_values(cx: @mut Block,
     }
 }
 
-pub type val_and_ty_fn<'self> = &'self fn(@mut Block, ValueRef, ty::t) -> @mut Block;
+pub type val_and_ty_fn<'self> = 'self |@mut Block, ValueRef, ty::t|
+                                       -> @mut Block;
 
 pub fn load_inbounds(cx: @mut Block, p: ValueRef, idxs: &[uint]) -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
@@ -709,12 +704,12 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
     match ty::get(t).sty {
       ty::ty_struct(*) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
+          expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
                   let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
-          }
+          })
       }
       ty::ty_estr(ty::vstore_fixed(_)) |
       ty::ty_evec(_, ty::vstore_fixed(_)) => {
@@ -793,10 +788,11 @@ pub fn cast_shift_const_rhs(op: ast::BinOp,
 }
 
 pub fn cast_shift_rhs(op: ast::BinOp,
-                      lhs: ValueRef, rhs: ValueRef,
-                      trunc: &fn(ValueRef, Type) -> ValueRef,
-                      zext: &fn(ValueRef, Type) -> ValueRef)
-                   -> ValueRef {
+                      lhs: ValueRef,
+                      rhs: ValueRef,
+                      trunc: |ValueRef, Type| -> ValueRef,
+                      zext: |ValueRef, Type| -> ValueRef)
+                      -> ValueRef {
     // Shifts may have any size int on the rhs
     unsafe {
         if ast_util::is_shift_binop(op) {
@@ -840,9 +836,9 @@ pub fn fail_if_zero(cx: @mut Block, span: Span, divrem: ast::BinOp,
                           ty_to_str(cx.ccx().tcx, rhs_t));
       }
     };
-    do with_cond(cx, is_zero) |bcx| {
+    with_cond(cx, is_zero, |bcx| {
         controlflow::trans_fail(bcx, Some(span), text)
-    }
+    })
 }
 
 pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
@@ -853,7 +849,8 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
+            match fn_ty.abis.for_target(ccx.sess.targ_cfg.os,
+                                        ccx.sess.targ_cfg.arch) {
                 Some(Rust) | Some(RustIntrinsic) => {
                     get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name, did)
                 }
@@ -962,16 +959,16 @@ pub fn need_invoke(bcx: @mut Block) -> bool {
 
 pub fn have_cached_lpad(bcx: @mut Block) -> bool {
     let mut res = false;
-    do in_lpad_scope_cx(bcx) |inf| {
+    in_lpad_scope_cx(bcx, |inf| {
         match inf.landing_pad {
           Some(_) => res = true,
           None => res = false
         }
-    }
+    });
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: @mut Block, f: &fn(si: &mut ScopeInfo)) {
+pub fn in_lpad_scope_cx(bcx: @mut Block, f: |si: &mut ScopeInfo|) {
     let mut bcx = bcx;
     let mut cur_scope = bcx.scope;
     loop {
@@ -996,7 +993,7 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
 
     let mut cached = None;
     let mut pad_bcx = bcx; // Guaranteed to be set below
-    do in_lpad_scope_cx(bcx) |inf| {
+    in_lpad_scope_cx(bcx, |inf| {
         // If there is a valid landing pad still around, use it
         match inf.landing_pad {
           Some(target) => cached = Some(target),
@@ -1005,7 +1002,7 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
             inf.landing_pad = Some(pad_bcx.llbb);
           }
         }
-    }
+    });
     // Can't return from block above
     match cached { Some(b) => return b, None => () }
     // The landing pad return type (the type being propagated). Not sure what
@@ -1190,9 +1187,9 @@ pub fn new_block(cx: @mut FunctionContext,
                  opt_node_info: Option<NodeInfo>)
               -> @mut Block {
     unsafe {
-        let llbb = do name.with_c_str |buf| {
+        let llbb = name.with_c_str(|buf| {
             llvm::LLVMAppendBasicBlockInContext(cx.ccx.llcx, cx.llfn, buf)
-        };
+        });
         let bcx = @mut Block::new(llbb,
                                   parent,
                                   is_lpad,
@@ -1435,7 +1432,8 @@ pub fn leave_block(bcx: @mut Block, out_of: @mut Block) -> @mut Block {
 pub fn with_scope(bcx: @mut Block,
                   opt_node_info: Option<NodeInfo>,
                   name: &str,
-                  f: &fn(@mut Block) -> @mut Block) -> @mut Block {
+                  f: |@mut Block| -> @mut Block)
+                  -> @mut Block {
     let _icx = push_ctxt("with_scope");
 
     debug!("with_scope(bcx={}, opt_node_info={:?}, name={})",
@@ -1453,7 +1451,8 @@ pub fn with_scope(bcx: @mut Block,
 pub fn with_scope_result(bcx: @mut Block,
                          opt_node_info: Option<NodeInfo>,
                          _name: &str,
-                         f: &fn(@mut Block) -> Result) -> Result {
+                         f: |@mut Block| -> Result)
+                         -> Result {
     let _icx = push_ctxt("with_scope_result");
 
     let scope = simple_block_scope(bcx.scope, opt_node_info);
@@ -1467,9 +1466,11 @@ pub fn with_scope_result(bcx: @mut Block,
     rslt(out_bcx, val)
 }
 
-pub fn with_scope_datumblock(bcx: @mut Block, opt_node_info: Option<NodeInfo>,
-                             name: &str, f: &fn(@mut Block) -> datum::DatumBlock)
-                          -> datum::DatumBlock {
+pub fn with_scope_datumblock(bcx: @mut Block,
+                             opt_node_info: Option<NodeInfo>,
+                             name: &str,
+                             f: |@mut Block| -> datum::DatumBlock)
+                             -> datum::DatumBlock {
     use middle::trans::datum::DatumBlock;
 
     let _icx = push_ctxt("with_scope_result");
@@ -1479,7 +1480,7 @@ pub fn with_scope_datumblock(bcx: @mut Block, opt_node_info: Option<NodeInfo>,
     DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
 }
 
-pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
+pub fn block_locals(b: &ast::Block, it: |@ast::Local|) {
     for s in b.stmts.iter() {
         match s.node {
           ast::StmtDecl(d, _) => {
@@ -1493,7 +1494,10 @@ pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
     }
 }
 
-pub fn with_cond(bcx: @mut Block, val: ValueRef, f: &fn(@mut Block) -> @mut Block) -> @mut Block {
+pub fn with_cond(bcx: @mut Block,
+                 val: ValueRef,
+                 f: |@mut Block| -> @mut Block)
+                 -> @mut Block {
     let _icx = push_ctxt("with_cond");
     let next_cx = base::sub_block(bcx, "next");
     let cond_cx = base::sub_block(bcx, "cond");
@@ -1610,18 +1614,18 @@ pub struct BasicBlocks {
 pub fn mk_staticallocas_basic_block(llfn: ValueRef) -> BasicBlockRef {
     unsafe {
         let cx = task_llcx();
-        do "static_allocas".with_c_str | buf| {
+        "static_allocas".with_c_str(|buf| {
             llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf)
-        }
+        })
     }
 }
 
 pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
     unsafe {
         let cx = task_llcx();
-        do "return".with_c_str |buf| {
+        "return".with_c_str(|buf| {
             llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf)
-        }
+        })
     }
 }
 
@@ -1761,9 +1765,9 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
 
     // Return an array containing the ValueRefs that we get from
     // llvm::LLVMGetParam for each argument.
-    do vec::from_fn(args.len()) |i| {
+    vec::from_fn(args.len(), |i| {
         unsafe { llvm::LLVMGetParam(cx.llfn, cx.arg_pos(i) as c_uint) }
-    }
+    })
 }
 
 pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
@@ -1888,9 +1892,9 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
                      id: ast::NodeId,
-                     attributes: &[ast::Attribute],
+                     _attributes: &[ast::Attribute],
                      output_type: ty::t,
-                     maybe_load_env: &fn(@mut FunctionContext)) {
+                     maybe_load_env: |@mut FunctionContext|) {
     ccx.stats.n_closures += 1;
     let _icx = push_ctxt("trans_closure");
     set_uwtable(llfndecl);
@@ -1917,12 +1921,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // Set up arguments to the function.
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
-
-    // Set the fixed stack segment flag if necessary.
-    if attr::contains_name(attributes, "fixed_stack_segment") {
-        set_no_inline(fcx.llfn);
-        set_fixed_stack_segment(fcx.llfn);
-    }
 
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 
@@ -2078,7 +2076,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     llfndecl: ValueRef)
 {
     // Translate variant arguments to function arguments.
-    let fn_args = do args.map |varg| {
+    let fn_args = args.map(|varg| {
         ast::arg {
             ty: (*varg.ty()).clone(),
             pat: ast_util::ident_to_pat(
@@ -2087,7 +2085,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                 special_idents::arg),
             id: varg.id(),
         }
-    };
+    });
 
     let no_substs: &[ty::t] = [];
     let ty_param_substs = match param_substs {
@@ -2305,14 +2303,14 @@ fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast:
                       llfn: ValueRef) {
     ccx.item_symbols.insert(node_id, sym);
 
-    if !*ccx.sess.building_library {
+    if !ccx.reachable.contains(&node_id) {
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
     // FIXME #4404 android JNI hacks
     let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == session::OsAndroid));
+                       ccx.sess.targ_cfg.os == OsAndroid));
     if is_entry {
         create_entry_wrapper(ccx, sp, llfn);
     }
@@ -2388,11 +2386,11 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             "main"
         };
         let llfn = decl_cdecl_fn(ccx.llmod, main_name, llfty);
-        let llbb = do "top".with_c_str |buf| {
+        let llbb = "top".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
             }
-        };
+        });
         let bld = ccx.builder.B;
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
@@ -2411,9 +2409,9 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 };
 
                 let args = {
-                    let opaque_rust_main = do "rust_main".with_c_str |buf| {
+                    let opaque_rust_main = "rust_main".with_c_str(|buf| {
                         llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p().to_ref(), buf)
-                    };
+                    });
 
                     ~[
                         C_null(Type::opaque_box(ccx).ptr_to()),
@@ -2434,9 +2432,9 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 (rust_main, args)
             };
 
-            let result = do args.as_imm_buf |buf, len| {
+            let result = args.as_imm_buf(|buf, len| {
                 llvm::LLVMBuildCall(bld, start_fn, buf, len as c_uint, noname())
-            };
+            });
 
             llvm::LLVMBuildRet(bld, result);
         }
@@ -2511,11 +2509,11 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                             unsafe {
                                 let llty = llvm::LLVMTypeOf(v);
-                                let g = do sym.with_c_str |buf| {
+                                let g = sym.with_c_str(|buf| {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
-                                };
+                                });
 
-                                if !*ccx.sess.building_library {
+                                if !ccx.reachable.contains(&id) {
                                     lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
                                 }
 
@@ -2546,6 +2544,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     inlineable = true;
                                 }
 
+                                if attr::contains_name(i.attrs, "thread_local") {
+                                    lib::llvm::set_thread_local(g, true);
+                                }
+
                                 if !inlineable {
                                     debug!("{} not inlined", sym);
                                     ccx.non_inlineable_statics.insert(id);
@@ -2573,9 +2575,9 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                     match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
                         Some(sect) => unsafe {
-                            do sect.with_c_str |buf| {
+                            sect.with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);
-                            }
+                            })
                         },
                         None => ()
                     }
@@ -2620,11 +2622,14 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             if attr::contains_name(ni.attrs, "crate_map") {
                                 if *ccx.sess.building_library {
                                     let s = "_rust_crate_map_toplevel";
-                                    let g = unsafe { do s.with_c_str |buf| {
-                                        let ty = type_of(ccx, ty);
-                                        llvm::LLVMAddGlobal(ccx.llmod,
-                                                            ty.to_ref(), buf)
-                                    } };
+                                    let g = unsafe {
+                                        s.with_c_str(|buf| {
+                                            let ty = type_of(ccx, ty);
+                                            llvm::LLVMAddGlobal(ccx.llmod,
+                                                                ty.to_ref(),
+                                                                buf)
+                                        })
+                                    };
                                     lib::llvm::SetLinkage(g,
                                         lib::llvm::ExternalWeakLinkage);
                                     g
@@ -2634,11 +2639,11 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             } else {
                                 let ident = foreign::link_name(ccx, ni);
                                 unsafe {
-                                    do ident.with_c_str |buf| {
+                                    ident.with_c_str(|buf| {
                                         let ty = type_of(ccx, ty);
                                         llvm::LLVMAddGlobal(ccx.llmod,
                                                             ty.to_ref(), buf)
-                                    }
+                                    })
                                 }
                             }
                         }
@@ -2762,6 +2767,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
          [i8p, Type::i8(), Type::i64(), Type::i32(), Type::i1()], Type::void());
 
     ifn!(intrinsics, "llvm.trap", [], Type::void());
+    ifn!(intrinsics, "llvm.debugtrap", [], Type::void());
     ifn!(intrinsics, "llvm.frameaddress", [Type::i32()], i8p);
 
     ifn!(intrinsics, "llvm.powi.f32", [Type::f32(), Type::i32()], Type::f32());
@@ -2905,11 +2911,11 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     }
 
     let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
-    let gc_metadata = do gc_metadata_name.with_c_str |buf| {
+    let gc_metadata = gc_metadata_name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
         }
-    };
+    });
     unsafe {
         llvm::LLVMSetGlobalConstant(gc_metadata, True);
         lib::llvm::SetLinkage(gc_metadata, lib::llvm::ExternalLinkage);
@@ -2921,11 +2927,11 @@ pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint) {
     let str_slice_type = Type::struct_([Type::i8p(), ccx.int_type], false);
     let elttype = Type::struct_([str_slice_type, ccx.int_type], false);
     let maptype = Type::array(&elttype, ccx.module_data.len() as u64);
-    let map = do "_rust_mod_map".with_c_str |buf| {
+    let map = "_rust_mod_map".with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
         }
-    };
+    });
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
 
@@ -2960,7 +2966,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = if *sess.building_library {
+    let mapname = if *sess.building_library && !sess.gen_crate_map() {
         format!("{}_{}_{}", mapmeta.name, mapmeta.vers, mapmeta.extras_hash)
     } else {
         ~"toplevel"
@@ -2974,14 +2980,14 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
         slicetype,          // sub crate-maps
         int_type.ptr_to(),  // event loop factory
     ], false);
-    let map = do sym_name.with_c_str |buf| {
+    let map = sym_name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
         }
-    };
+    });
     // On windows we'd like to export the toplevel cratemap
     // such that we can find it from libstd.
-    if targ_cfg.os == session::OsWin32 && "toplevel" == mapname {
+    if targ_cfg.os == OsWin32 && "toplevel" == mapname {
         lib::llvm::SetLinkage(map, lib::llvm::DLLExportLinkage);
     } else {
         lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
@@ -3000,11 +3006,11 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
                       cdata.name,
                       cstore::get_crate_vers(cstore, i),
                       cstore::get_crate_hash(cstore, i));
-        let cr = do nm.with_c_str |buf| {
+        let cr = nm.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
             }
-        };
+        });
         subcrates.push(p2i(ccx, cr));
         i += 1;
     }
@@ -3012,9 +3018,9 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         match ccx.tcx.lang_items.event_loop_factory() {
             Some(did) => unsafe {
                 let name = csearch::get_symbol(ccx.sess.cstore, did);
-                let global = do name.with_c_str |buf| {
+                let global = name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
-                };
+                });
                 global
             },
             None => C_null(ccx.int_type.ptr_to())
@@ -3024,9 +3030,9 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
     };
     unsafe {
         let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
-        let vec_elements = do "_crate_map_child_vectors".with_c_str |buf| {
+        let vec_elements = "_crate_map_child_vectors".with_c_str(|buf| {
             llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
-        };
+        });
         lib::llvm::SetLinkage(vec_elements, lib::llvm::InternalLinkage);
 
         llvm::LLVMSetInitializer(vec_elements, C_array(ccx.int_type, subcrates));
@@ -3078,23 +3084,23 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
     let llconst = C_struct([llmeta], false);
-    let mut llglobal = do "rust_metadata".with_c_str |buf| {
+    let mut llglobal = "rust_metadata".with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst).to_ref(), buf)
         }
-    };
+    });
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        do cx.sess.targ_cfg.target_strs.meta_sect_name.with_c_str |buf| {
+        cx.sess.targ_cfg.target_strs.meta_sect_name.with_c_str(|buf| {
             llvm::LLVMSetSection(llglobal, buf)
-        };
+        });
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
         let t_ptr_i8 = Type::i8p();
         llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8.to_ref());
-        let llvm_used = do "llvm.used".with_c_str |buf| {
+        let llvm_used = "llvm.used".with_c_str(|buf| {
             llvm::LLVMAddGlobal(cx.llmod, Type::array(&t_ptr_i8, 1).to_ref(), buf)
-        };
+        });
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
         llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
     }
@@ -3104,9 +3110,9 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
 pub fn write_abi_version(ccx: &mut CrateContext) {
     unsafe {
         let llval = C_uint(ccx, abi::abi_version);
-        let llglobal = do "rust_abi_version".with_c_str |buf| {
+        let llglobal = "rust_abi_version".with_c_str(|buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
-        };
+        });
         llvm::LLVMSetInitializer(llglobal, llval);
         llvm::LLVMSetGlobalConstant(llglobal, True);
     }
@@ -3157,17 +3163,17 @@ pub fn trans_crate(sess: session::Session,
     // __rust_crate_map_toplevel symbol (extra underscore) which it will
     // subsequently fail to find. So to mitigate that we just introduce
     // an alias from the symbol it expects to the one that actually exists.
-    if ccx.sess.targ_cfg.os == session::OsWin32 &&
+    if ccx.sess.targ_cfg.os == OsWin32 &&
        !*ccx.sess.building_library {
 
         let maptype = val_ty(ccx.crate_map).to_ref();
 
-        do "__rust_crate_map_toplevel".with_c_str |buf| {
+        "__rust_crate_map_toplevel".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAddAlias(ccx.llmod, maptype,
                                    ccx.crate_map, buf);
             }
-        }
+        })
     }
 
     glue::emit_tydescs(ccx);
@@ -3190,9 +3196,10 @@ pub fn trans_crate(sess: session::Session,
         println!("n_inlines: {}", ccx.stats.n_inlines);
         println!("n_closures: {}", ccx.stats.n_closures);
         println("fn stats:");
-        do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
+        sort::quick_sort(ccx.stats.fn_stats,
+                         |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_a > insns_b
-        }
+        });
         for tuple in ccx.stats.fn_stats.iter() {
             match *tuple {
                 (ref name, ms, insns) => {

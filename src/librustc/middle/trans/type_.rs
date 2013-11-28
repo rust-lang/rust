@@ -278,10 +278,6 @@ impl Type {
         Type::opaque_box(cx).ptr_to()
     }
 
-    pub fn enum_discrim(cx: &CrateContext) -> Type {
-        cx.int_type
-    }
-
     pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
         let tydesc_ptr = ctx.tydesc_type.ptr_to();
         let box_ty = match store {

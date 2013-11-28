@@ -148,7 +148,7 @@ use syntax::codemap::Span;
 pub enum CaptureMode {
     CapCopy, // Copy the value into the closure.
     CapMove, // Move the value into the closure.
-    CapRef,  // Reference directly from parent stack frame (used by `&fn()`).
+    CapRef,  // Reference directly from parent stack frame (used by `||`).
 }
 
 #[deriving(Encodable, Decodable)]
@@ -459,8 +459,6 @@ impl VisitContext {
             }
 
             ExprMatch(discr, ref arms) => {
-                // We must do this first so that `arms_have_by_move_bindings`
-                // below knows which bindings are moves.
                 for arm in arms.iter() {
                     self.consume_arm(arm);
                 }
@@ -616,7 +614,7 @@ impl VisitContext {
          * into itself or not based on its type and annotation.
          */
 
-        do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, path| {
+        pat_bindings(self.tcx.def_map, pat, |bm, id, _span, path| {
             let binding_moves = match bm {
                 BindByRef(_) => false,
                 BindByValue(_) => {
@@ -635,7 +633,7 @@ impl VisitContext {
             if binding_moves {
                 self.move_maps.moves_map.insert(id);
             }
-        }
+        })
     }
 
     pub fn use_receiver(&mut self,
@@ -657,27 +655,6 @@ impl VisitContext {
         self.consume_expr(arg_expr)
     }
 
-    pub fn arms_have_by_move_bindings(&mut self,
-                                      moves_map: MovesMap,
-                                      arms: &[Arm])
-                                      -> Option<@Pat> {
-        let mut ret = None;
-        for arm in arms.iter() {
-            for &pat in arm.pats.iter() {
-                let cont = do ast_util::walk_pat(pat) |p| {
-                    if moves_map.contains(&p.id) {
-                        ret = Some(p);
-                        false
-                    } else {
-                        true
-                    }
-                };
-                if !cont { return ret }
-            }
-        }
-        ret
-    }
-
     pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> @[CaptureVar] {
         debug!("compute_capture_vars(fn_expr_id={:?})", fn_expr_id);
         let _indenter = indenter();
@@ -686,7 +663,7 @@ impl VisitContext {
         let sigil = ty::ty_closure_sigil(fn_ty);
         let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
         if sigil == BorrowedSigil {
-            // &fn() captures everything by ref
+            // || captures everything by ref
             at_vec::from_fn(freevars.len(), |i| {
                 let fvar = &freevars[i];
                 CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef}

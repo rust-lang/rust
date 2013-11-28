@@ -12,9 +12,9 @@ use fmt;
 use from_str::from_str;
 use libc::exit;
 use option::{Some, None, Option};
-use rt::io;
-use rt::io::stdio::StdWriter;
-use rt::io::buffered::LineBufferedWriter;
+use io;
+use io::stdio::StdWriter;
+use io::buffered::LineBufferedWriter;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
 use u32;
@@ -63,8 +63,8 @@ fn parse_log_level(level: &str) -> Option<u32> {
 /// Also supports string log levels of error, warn, info, and debug
 fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
     let mut dirs = ~[];
-    for s in spec.split_iter(',') {
-        let parts: ~[&str] = s.split_iter('=').collect();
+    for s in spec.split(',') {
+        let parts: ~[&str] = s.split('=').collect();
         let mut log_level;
         let mut name = Some(parts[0].to_owned());
         match parts.len() {
@@ -135,7 +135,6 @@ fn update_entry(dirs: &[LogDirective], entry: &ModEntry) -> u32 {
     if longest_match >= 0 { return 1; } else { return 0; }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 /// Set log level for every entry in crate_map according to the sepecification
 /// in settings
 fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
@@ -143,19 +142,17 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
     if settings.len() > 0 {
         if settings == ~"::help" || settings == ~"?" {
             rterrln!("\nCrate log map:\n");
-            do iter_crate_map(crate_map) |entry| {
-                rterrln!(" {}", entry.name);
-            }
+            iter_crate_map(crate_map, |entry| rterrln!(" {}", entry.name));
             unsafe { exit(1); }
         }
         dirs = parse_logging_spec(settings);
     }
 
     let mut n_matches: u32 = 0;
-    do iter_crate_map(crate_map) |entry| {
+    iter_crate_map(crate_map, |entry| {
         let m = update_entry(dirs, entry);
         n_matches += m;
-    }
+    });
 
     if n_matches < (dirs.len() as u32) {
         rterrln!("warning: got {} RUST_LOG specs but only matched\n\
@@ -172,20 +169,18 @@ pub trait Logger {
 /// This logger emits output to the stderr of the process, and contains a lazily
 /// initialized event-loop driven handle to the stream.
 pub struct StdErrLogger {
-    priv handle: Option<LineBufferedWriter<StdWriter>>,
+    priv handle: LineBufferedWriter<StdWriter>,
 }
 
 impl StdErrLogger {
-    pub fn new() -> StdErrLogger { StdErrLogger { handle: None } }
+    pub fn new() -> StdErrLogger {
+        StdErrLogger { handle: LineBufferedWriter::new(io::stderr()) }
+    }
 }
 
 impl Logger for StdErrLogger {
     fn log(&mut self, args: &fmt::Arguments) {
-        // First time logging? Get a handle to the stderr of this process.
-        if self.handle.is_none() {
-            self.handle = Some(LineBufferedWriter::new(io::stderr()));
-        }
-        fmt::writeln(self.handle.get_mut_ref() as &mut io::Writer, args);
+        fmt::writeln(&mut self.handle as &mut io::Writer, args);
     }
 }
 

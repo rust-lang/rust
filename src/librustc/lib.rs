@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustc",
+       package_id = "rustc",
        vers = "0.9-pre",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
@@ -18,11 +19,8 @@
 #[crate_type = "lib"];
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-
-// Rustc tasks always run on a fixed_stack_segment, so code in this
-// module can call C functions (in particular, LLVM functions) with
-// impunity.
-#[allow(cstack)];
+#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
+#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 extern mod extra;
 extern mod syntax;
@@ -36,8 +34,8 @@ use driver::session;
 use middle::lint;
 
 use std::comm;
-use std::rt::io;
-use std::rt::io::Reader;
+use std::io;
+use std::io::Reader;
 use std::num;
 use std::os;
 use std::result;
@@ -53,8 +51,10 @@ use syntax::diagnostic;
 pub mod middle {
     pub mod trans;
     pub mod ty;
+    pub mod ty_fold;
     pub mod subst;
     pub mod resolve;
+    pub mod resolve_lifetime;
     pub mod typeck;
     pub mod check_loop;
     pub mod check_match;
@@ -78,7 +78,6 @@ pub mod middle {
     pub mod reachable;
     pub mod graph;
     pub mod cfg;
-    pub mod stack_check;
 }
 
 pub mod front {
@@ -262,9 +261,9 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = build_configuration(sess);
-    let pretty = do matches.opt_default("pretty", "normal").map |a| {
+    let pretty = matches.opt_default("pretty", "normal").map(|a| {
         parse_pretty(sess, a)
-    };
+    });
     match pretty {
       Some::<PpMode>(ppm) => {
         pretty_print_input(sess, cfg, &input, ppm);
@@ -323,7 +322,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
+pub fn monitor(f: proc(@diagnostic::Emitter)) {
     use std::comm::*;
 
     // XXX: This is a hack for newsched since it doesn't support split stacks.
@@ -339,7 +338,6 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
     let ch_capture = ch.clone();
     let mut task_builder = task::task();
     task_builder.name("rustc");
-    task_builder.supervised();
 
     // XXX: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
@@ -347,7 +345,7 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
         task_builder.opts.stack_size = Some(STACK_SIZE);
     }
 
-    match do task_builder.try {
+    match task_builder.try(proc() {
         let ch = ch_capture.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
@@ -370,7 +368,7 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
         // Due reasons explain in #7732, if there was a jit execution context it
         // must be consumed and passed along to our parent task.
         back::link::jit::consume_engine()
-    } {
+    }) {
         result::Ok(_) => { /* fallthrough */ }
         result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
@@ -405,9 +403,6 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
-    do monitor |demitter| {
-        run_compiler(owned_args, demitter);
-    }
-
-    return 0;
+    monitor(proc(demitter) run_compiler(owned_args, demitter));
+    0
 }

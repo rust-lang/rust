@@ -12,9 +12,11 @@
 
 use context::{BuildContext, Context, RustcFlags};
 use std::{os, run, str, task};
-use std::rt::io;
-use std::rt::io::fs;
-use std::rt::io::File;
+use std::io;
+use std::io::fs;
+use std::io::File;
+use std::io::process;
+use std::io::process::ProcessExit;
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
@@ -149,7 +151,7 @@ fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &st
         err_fd: None
     });
     let rslt = prog.finish_with_output();
-    if rslt.status != 0 {
+    if !rslt.status.success() {
         fail!("{} [git returned {:?}, output = {}, error = {}]", err_msg,
            rslt.status, str::from_utf8(rslt.output), str::from_utf8(rslt.error));
     }
@@ -237,7 +239,8 @@ fn rustpkg_exec() -> Path {
 fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
     match command_line_test_with_env(args, cwd, None) {
         Success(r) => r,
-        Fail(error) => fail!("Command line test failed with error {}", error)
+        Fail(error) => fail!("Command line test failed with error {}",
+                             error.status)
     }
 }
 
@@ -251,15 +254,15 @@ fn command_line_test_expect_fail(args: &[~str],
                                  expected_exitcode: int) {
     match command_line_test_with_env(args, cwd, env) {
         Success(_) => fail!("Should have failed with {}, but it succeeded", expected_exitcode),
-        Fail(error) if error == expected_exitcode => (), // ok
+        Fail(ref error) if error.status.matches_exit_status(expected_exitcode) => (), // ok
         Fail(other) => fail!("Expected to fail with {}, but failed with {} instead",
-                              expected_exitcode, other)
+                              expected_exitcode, other.status)
     }
 }
 
 enum ProcessResult {
     Success(ProcessOutput),
-    Fail(int) // exit code
+    Fail(ProcessOutput)
 }
 
 /// Runs `rustpkg` (based on the directory that this executable was
@@ -289,11 +292,11 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
                     cmd, args, str::from_utf8(output.output),
                    str::from_utf8(output.error),
                    output.status);
-    if output.status != 0 {
+    if !output.status.success() {
         debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} ---",
               cmd, args, output.status,
               str::from_utf8(output.output) + str::from_utf8(output.error));
-        Fail(output.status)
+        Fail(output)
     }
     else {
         Success(output)
@@ -381,9 +384,7 @@ fn executable_exists(repo: &Path, short_name: &str) -> bool {
 fn test_executable_exists(repo: &Path, short_name: &str) -> bool {
     debug!("test_executable_exists: repo = {}, short_name = {}", repo.display(), short_name);
     let exec = built_test_in_workspace(&PkgId::new(short_name), repo);
-    do exec.map_default(false) |exec| {
-        exec.exists() && is_rwx(&exec)
-    }
+    exec.map_default(false, |exec| exec.exists() && is_rwx(&exec))
 }
 
 fn remove_executable_file(p: &PkgId, workspace: &Path) {
@@ -454,7 +455,7 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
     let test_output = str::from_utf8(p_output.output);
-    for s in test_output.split_iter('\n') {
+    for s in test_output.split('\n') {
         result.push(s.to_owned());
     }
     result
@@ -468,7 +469,7 @@ fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~
         Success(r) => r
     };
     let test_output = str::from_utf8(p_output.output);
-    for s in test_output.split_iter('\n') {
+    for s in test_output.split('\n') {
         result.push(s.to_owned());
     }
     result
@@ -501,9 +502,9 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // should be able to do this w/o a process
             // FIXME (#9639): This needs to handle non-utf8 paths
             // n.b. Bumps time up by 2 seconds to get around granularity issues
-            if run::process_output("touch", [~"--date",
+            if !run::process_output("touch", [~"--date",
                                              ~"+2 seconds",
-                                             p.as_str().unwrap().to_owned()]).status != 0 {
+                                             p.as_str().unwrap().to_owned()]).status.success() {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -520,8 +521,8 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // should be able to do this w/o a process
             // FIXME (#9639): This needs to handle non-utf8 paths
             // n.b. Bumps time up by 2 seconds to get around granularity issues
-            if run::process_output("touch", [~"-A02",
-                                             p.as_str().unwrap().to_owned()]).status != 0 {
+            if !run::process_output("touch", [~"-A02",
+                                             p.as_str().unwrap().to_owned()]).status.success() {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -541,12 +542,12 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
     debug!("Frobbed? {:?}", maybe_p);
     match maybe_p {
         Some(ref p) => {
-            do io::io_error::cond.trap(|e| {
+            io::io_error::cond.trap(|e| {
                 cond.raise((p.clone(), format!("Bad path: {}", e.desc)));
-            }).inside {
+            }).inside(|| {
                 let mut w = File::open_mode(p, io::Append, io::Write);
                 w.write(bytes!("/* hi */\n"));
-            }
+            })
         }
         None => fail!("frob_source_file failed to find a source file in {}",
                            pkg_src_dir.display())
@@ -741,26 +742,26 @@ fn test_package_ids_must_be_relative_path_like() {
     assert!("github.com/catamorphism/test-pkg-0.1" ==
             PkgId::new("github.com/catamorphism/test-pkg").to_str());
 
-    do cond.trap(|(p, e)| {
+    cond.trap(|(p, e)| {
         assert!(p.filename().is_none())
         assert!("0-length pkgid" == e);
         whatever.clone()
-    }).inside {
+    }).inside(|| {
         let x = PkgId::new("");
         assert_eq!(~"foo-0.1", x.to_str());
-    }
+    });
 
-    do cond.trap(|(p, e)| {
+    cond.trap(|(p, e)| {
         let abs = os::make_absolute(&Path::new("foo/bar/quux"));
         assert_eq!(p, abs);
         assert!("absolute pkgid" == e);
         whatever.clone()
-    }).inside {
+    }).inside(|| {
         let zp = os::make_absolute(&Path::new("foo/bar/quux"));
         // FIXME (#9639): This needs to handle non-utf8 paths
         let z = PkgId::new(zp.as_str().unwrap());
         assert_eq!(~"foo-0.1", z.to_str());
-    }
+    })
 
 }
 
@@ -1091,8 +1092,28 @@ fn no_rebuilding() {
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("no_rebuilding failed: it tried to rebuild bar"),
+        Fail(ref status) if status.status.matches_exit_status(65) =>
+            fail!("no_rebuilding failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding failed for some other reason")
+    }
+}
+
+#[test]
+fn no_recopying() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    let workspace = workspace.path();
+    command_line_test([~"install", ~"foo"], workspace);
+    let foo_lib = installed_library_in_workspace(&p_id.path, workspace);
+    assert!(foo_lib.is_some());
+    // Now make `foo` read-only so that subsequent attempts to copy to it will fail
+    assert!(chmod_read_only(&foo_lib.unwrap()));
+
+    match command_line_test_partial([~"install", ~"foo"], workspace) {
+        Success(*) => (), // ok
+        Fail(ref status) if status.status.matches_exit_status(65) =>
+            fail!("no_recopying failed: it tried to re-copy foo"),
+        Fail(_) => fail!("no_copying failed for some other reason")
     }
 }
 
@@ -1109,7 +1130,8 @@ fn no_rebuilding_dep() {
     assert!(chmod_read_only(&bar_lib));
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
+        Fail(ref r) if r.status.matches_exit_status(65) =>
+            fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding_dep failed for some other reason")
     }
 }
@@ -1129,7 +1151,7 @@ fn do_rebuild_dep_dates_change() {
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => fail!("do_rebuild_dep_dates_change failed: it didn't rebuild bar"),
-        Fail(status) if status == 65 => (), // ok
+        Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_dates_change failed for some other reason")
     }
 }
@@ -1150,7 +1172,7 @@ fn do_rebuild_dep_only_contents_change() {
     // should adjust the datestamp
     match command_line_test_partial([~"build", ~"foo"], workspace) {
         Success(*) => fail!("do_rebuild_dep_only_contents_change failed: it didn't rebuild bar"),
-        Fail(status) if status == 65 => (), // ok
+        Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_only_contents_change failed for some other reason")
     }
 }
@@ -1256,7 +1278,7 @@ fn test_extern_mod() {
         err_fd: None
     });
     let outp = prog.finish_with_output();
-    if outp.status != 0 {
+    if !outp.status.success() {
         fail!("output was {}, error was {}",
               str::from_utf8(outp.output),
               str::from_utf8(outp.error));
@@ -1311,7 +1333,7 @@ fn test_extern_mod_simpler() {
         err_fd: None
     });
     let outp = prog.finish_with_output();
-    if outp.status != 0 {
+    if !outp.status.success() {
         fail!("output was {}, error was {}",
               str::from_utf8(outp.output),
               str::from_utf8(outp.error));
@@ -2126,7 +2148,7 @@ fn test_rebuild_when_needed() {
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
         Success(*) => fail!("test_rebuild_when_needed didn't rebuild"),
-        Fail(status) if status == 65 => (), // ok
+        Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("test_rebuild_when_needed failed for some other reason")
     }
 }
@@ -2146,7 +2168,8 @@ fn test_no_rebuilding() {
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("test_no_rebuilding failed: it rebuilt the tests"),
+        Fail(ref r) if r.status.matches_exit_status(65) =>
+            fail!("test_no_rebuilding failed: it rebuilt the tests"),
         Fail(_) => fail!("test_no_rebuilding failed for some other reason")
     }
 }
@@ -2273,7 +2296,7 @@ fn test_compile_error() {
     let result = command_line_test_partial([~"build", ~"foo"], foo_workspace);
     match result {
         Success(*) => fail!("Failed by succeeding!"), // should be a compile error
-        Fail(status) => {
+        Fail(ref status) => {
             debug!("Failed with status {:?}... that's good, right?", status);
         }
     }
@@ -2301,7 +2324,7 @@ fn test_c_dependency_ok() {
     let dir = dir.path();
     writeFile(&dir.join_many(["src", "cdep-0.1", "main.rs"]),
               "#[link_args = \"-lfoo\"]\nextern { fn f(); } \
-              \n#[fixed_stack_segment]\nfn main() { unsafe { f(); } }");
+              \nfn main() { unsafe { f(); } }");
     writeFile(&dir.join_many(["src", "cdep-0.1", "foo.c"]), "void f() {}");
 
     debug!("dir = {}", dir.display());
@@ -2322,7 +2345,7 @@ fn test_c_dependency_no_rebuilding() {
     let dir = dir.path();
     writeFile(&dir.join_many(["src", "cdep-0.1", "main.rs"]),
               "#[link_args = \"-lfoo\"]\nextern { fn f(); } \
-              \n#[fixed_stack_segment]\nfn main() { unsafe { f(); } }");
+              \nfn main() { unsafe { f(); } }");
     writeFile(&dir.join_many(["src", "cdep-0.1", "foo.c"]), "void f() {}");
 
     debug!("dir = {}", dir.display());
@@ -2341,9 +2364,11 @@ fn test_c_dependency_no_rebuilding() {
 
     match command_line_test_partial([~"build", ~"cdep"], dir) {
         Success(*) => (), // ok
-        Fail(status) if status == 65 => fail!("test_c_dependency_no_rebuilding failed: \
-                                              it tried to rebuild foo.c"),
-        Fail(_) => fail!("test_c_dependency_no_rebuilding failed for some other reason")
+        Fail(ref r) if r.status.matches_exit_status(65) =>
+            fail!("test_c_dependency_no_rebuilding failed: \
+                    it tried to rebuild foo.c"),
+        Fail(_) =>
+            fail!("test_c_dependency_no_rebuilding failed for some other reason")
     }
 }
 
@@ -2353,7 +2378,7 @@ fn test_c_dependency_yes_rebuilding() {
     let dir = dir.path();
     writeFile(&dir.join_many(["src", "cdep-0.1", "main.rs"]),
               "#[link_args = \"-lfoo\"]\nextern { fn f(); } \
-              \n#[fixed_stack_segment]\nfn main() { unsafe { f(); } }");
+              \nfn main() { unsafe { f(); } }");
     let c_file_name = dir.join_many(["src", "cdep-0.1", "foo.c"]);
     writeFile(&c_file_name, "void f() {}");
 
@@ -2378,8 +2403,40 @@ fn test_c_dependency_yes_rebuilding() {
     match command_line_test_partial([~"build", ~"cdep"], dir) {
         Success(*) => fail!("test_c_dependency_yes_rebuilding failed: \
                             it didn't rebuild and should have"),
-        Fail(status) if status == 65 => (),
+        Fail(ref r) if r.status.matches_exit_status(65) => (),
         Fail(_) => fail!("test_c_dependency_yes_rebuilding failed for some other reason")
+    }
+}
+
+// n.b. This might help with #10253, or at least the error will be different.
+#[test]
+fn correct_error_dependency() {
+    // Supposing a package we're trying to install via a dependency doesn't
+    // exist, we should throw a condition, and not ICE
+    let dir = create_local_package(&PkgId::new("badpkg"));
+
+    let dir = dir.path();
+    writeFile(&dir.join_many(["src", "badpkg-0.1", "main.rs"]),
+              "extern mod p = \"some_package_that_doesnt_exist\";
+               fn main() {}");
+
+    match command_line_test_partial([~"build", ~"badpkg"], dir) {
+        Fail(ProcessOutput{ error: error, output: output, _ }) => {
+            assert!(str::is_utf8(error));
+            assert!(str::is_utf8(output));
+            let error_str = str::from_utf8(error);
+            let out_str   = str::from_utf8(output);
+            debug!("ss = {}", error_str);
+            debug!("out_str = {}", out_str);
+            if out_str.contains("Package badpkg depends on some_package_that_doesnt_exist") &&
+                !error_str.contains("nonexistent_package") {
+                // Ok
+                ()
+            } else {
+                fail!("Wrong error");
+            }
+        }
+        Success(*)       => fail!("Test passed when it should have failed")
     }
 }
 

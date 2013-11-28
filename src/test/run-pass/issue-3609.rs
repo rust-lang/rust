@@ -4,7 +4,7 @@ use std::comm::Chan;
 use std::task;
 
 type RingBuffer = ~[f64];
-type SamplesFn = ~fn(samples: &RingBuffer);
+type SamplesFn = proc(samples: &RingBuffer);
 
 enum Msg
 {
@@ -14,13 +14,11 @@ enum Msg
 fn foo(name: ~str, samples_chan: Chan<Msg>) {
     do task::spawn
     {
-        let callback: SamplesFn =
-            |buffer|
-            {
-                for i in range(0u, buffer.len()) {
-                    error!("{}: {}", i, buffer[i])
-                }
-            };
+        let callback: SamplesFn = proc(buffer) {
+            for i in range(0u, buffer.len()) {
+                error!("{}: {}", i, buffer[i])
+            }
+        };
         samples_chan.send(GetSamples(name.clone(), callback));
     };
 }

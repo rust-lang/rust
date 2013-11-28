@@ -14,9 +14,9 @@
 
 extern mod extra;
 
-use std::rt::io;
-use std::rt::io::stdio::StdReader;
-use std::rt::io::buffered::BufferedReader;
+use std::io;
+use std::io::stdio::StdReader;
+use std::io::buffered::BufferedReader;
 use std::os;
 use std::uint;
 use std::unstable::intrinsics::cttz16;
@@ -51,9 +51,9 @@ impl Sudoku {
     }
 
     pub fn from_vec(vec: &[[u8, ..9], ..9]) -> Sudoku {
-        let g = do vec::from_fn(9u) |i| {
-            do vec::from_fn(9u) |j| { vec[i][j] }
-        };
+        let g = vec::from_fn(9u, |i| {
+            vec::from_fn(9u, |j| { vec[i][j] })
+        });
         return Sudoku::new(g)
     }
 
@@ -76,7 +76,7 @@ impl Sudoku {
             let line = match reader.read_line() {
                 Some(ln) => ln, None => break
             };
-            let comps: ~[&str] = line.trim().split_iter(',').collect();
+            let comps: ~[&str] = line.trim().split(',').collect();
 
             if comps.len() == 3u {
                 let row     = from_str::<uint>(comps[0]).unwrap() as u8;

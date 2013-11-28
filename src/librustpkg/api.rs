@@ -81,6 +81,11 @@ pub fn new_workcache_context(p: &Path) -> workcache::Context {
 
 pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Version,
                  lib: Path) {
+    build_lib_with_cfgs(sysroot, root, name, version, lib, ~[])
+}
+
+pub fn build_lib_with_cfgs(sysroot: Path, root: Path, name: ~str,
+                           version: Version, lib: Path, cfgs: ~[~str]) {
     let cx = default_context(sysroot, root.clone());
     let pkg_src = PkgSrc {
         source_workspace: root.clone(),
@@ -94,11 +99,16 @@ pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Version,
         tests: ~[],
         benchs: ~[]
     };
-    pkg_src.build(&cx, ~[], []);
+    pkg_src.build(&cx, cfgs, []);
 }
 
 pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Version,
                  main: Path) {
+    build_exe_with_cfgs(sysroot, root, name, version, main, ~[])
+}
+
+pub fn build_exe_with_cfgs(sysroot: Path, root: Path, name: ~str,
+                           version: Version, main: Path, cfgs: ~[~str]) {
     let cx = default_context(sysroot, root.clone());
     let pkg_src = PkgSrc {
         source_workspace: root.clone(),
@@ -113,7 +123,7 @@ pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Version,
         benchs: ~[]
     };
 
-    pkg_src.build(&cx, ~[], []);
+    pkg_src.build(&cx, cfgs, []);
 }
 
 pub fn install_pkg(cx: &BuildContext,
@@ -159,17 +169,16 @@ pub fn build_library_in_workspace(exec: &mut workcache::Exec,
 
     let all_args = flags + absolute_paths + cc_args +
          ~[~"-o", out_name.as_str().unwrap().to_owned()];
-    let exit_code = run::process_status(tool, all_args);
-    if exit_code != 0 {
-        command_failed.raise((tool.to_owned(), all_args, exit_code))
-    }
-    else {
+    let exit_process = run::process_status(tool, all_args);
+    if exit_process.success() {
         let out_name_str = out_name.as_str().unwrap().to_owned();
         exec.discover_output("binary",
                              out_name_str,
                              digest_only_date(&out_name));
         context.add_library_path(out_name.dir_path());
         out_name_str
+    } else {
+        command_failed.raise((tool.to_owned(), all_args, exit_process))
     }
 }
 

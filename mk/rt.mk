@@ -23,23 +23,6 @@
 # fit the experimental data (i.e., I was able to get the system
 # working under these assumptions).
 
-# Hack for passing flags into LIBUV, see below.
-LIBUV_FLAGS_i386 = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
-LIBUV_FLAGS_x86_64 = -m64 -fPIC
-ifeq ($(OSTYPE_$(1)), linux-androideabi)
-LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
-else ifeq ($(OSTYPE_$(1)), apple-darwin)
-  ifeq ($(HOST_$(1)), arm)
-    IOS_SDK := $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
-    LIBUV_FLAGS_arm := -fPIC -std=gnu99 -I$(IOS_SDK)/usr/include -I$(IOS_SDK)/usr/include/c++/4.2.1
-  else
-    LIBUV_FLAGS_arm := -fPIC -std=gnu99
-  endif
-else
-LIBUV_FLAGS_arm = -fPIC -std=gnu99
-endif
-LIBUV_FLAGS_mips = -fPIC -mips32r2 -msoft-float -mabi=32
-
 # when we're doing a snapshot build, we intentionally degrade as many
 # features in libuv and the runtime as possible, to ease portability.
 
@@ -90,14 +73,18 @@ endif
 endif
 
 RUNTIME_CXXS_$(1)_$(2) := \
-              rt/sync/lock_and_signal.cpp \
-              rt/rust_builtin.cpp \
-              rt/rust_upcall.cpp \
-              rt/miniz.cpp \
-              rt/rust_android_dummy.cpp \
-              rt/rust_test_helpers.cpp
+	      rt/rust_cxx_glue.cpp
 
-RUNTIME_CS_$(1)_$(2) :=
+RUNTIME_CS_$(1)_$(2) := \
+              rt/rust_builtin.c \
+              rt/rust_upcall.c \
+              rt/miniz.c \
+              rt/rust_android_dummy.c \
+              rt/rust_test_helpers.c
+
+# stage0 remove this after the next snapshot
+%.cpp:
+	@touch tmp/foo.o
 
 RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/record_sp.S
@@ -115,7 +102,7 @@ ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 MORESTACK_OBJS_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
 
-$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.cpp $$(MKFILE_DEPS)
+$$(RT_BUILD_DIR_$(1)_$(2))/rust_cxx_glue.o: rt/rust_cxx_glue.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
                  $$(SNAP_DEFINES) $$(RUNTIME_CXXFLAGS_$(1)_$(2))) $$<
@@ -205,9 +192,12 @@ LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv/$$(LIBUV_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
 
+# libuv triggers a few warnings on some platforms
+LIBUV_CFLAGS_$(1) := $(subst -Werror,,$(CFG_GCCISH_CFLAGS_$(1)))
+
 $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
 	(cd $(S)src/libuv/ && \
-	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
+	 $$(CFG_PYTHON) ./gyp_uv.py -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
 	   -D ninja \
 	   -DOS=$$(LIBUV_OSTYPE_$(1)) \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
@@ -218,15 +208,17 @@ $$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
+		CC="$$(CC_$(1)) $$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
+		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
 	$$(Q)$$(MAKE) -C $$(@D) \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
@@ -242,13 +234,13 @@ endif
 UV_SUPPORT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv_support)
 UV_SUPPORT_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/uv_support
 UV_SUPPORT_LIB_$(1) := $$(UV_SUPPORT_DIR_$(1))/$$(UV_SUPPORT_NAME_$(1))
-UV_SUPPORT_CS_$(1) := rt/rust_uv.cpp
-UV_SUPPORT_OBJS_$(1) := $$(UV_SUPPORT_CS_$(1):rt/%.cpp=$$(UV_SUPPORT_DIR_$(1))/%.o)
+UV_SUPPORT_CS_$(1) := rt/rust_uv.c
+UV_SUPPORT_OBJS_$(1) := $$(UV_SUPPORT_CS_$(1):rt/%.c=$$(UV_SUPPORT_DIR_$(1))/%.o)
 
-$$(UV_SUPPORT_DIR_$(1))/%.o: rt/%.cpp
+$$(UV_SUPPORT_DIR_$(1))/%.o: rt/%.c
 	@$$(call E, compile: $$@)
 	@mkdir -p $$(@D)
-	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, \
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
 		-I $$(S)src/libuv/include \
                  $$(RUNTIME_CFLAGS_$(1))) $$<
 

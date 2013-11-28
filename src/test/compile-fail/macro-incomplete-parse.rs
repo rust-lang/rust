@@ -13,7 +13,8 @@
 macro_rules! ignored_item {
     () => {
         fn foo() {}
-        fn bar() {} //~ ERROR macro expansion ignores token `fn`
+        fn bar() {}
+        , //~ ERROR macro expansion ignores token `,`
     }
 }
 

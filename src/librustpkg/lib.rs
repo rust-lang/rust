@@ -11,6 +11,7 @@
 // rustpkg - a package manager and build system for Rust
 
 #[link(name = "rustpkg",
+       package_id = "rustpkg",
        vers = "0.9-pre",
        uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
@@ -25,9 +26,10 @@ extern mod rustc;
 extern mod syntax;
 
 use std::{os, result, run, str, task};
+use std::io::process;
 use std::hashmap::HashSet;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 pub use std::path::Path;
 
 use extra::workcache;
@@ -68,7 +70,7 @@ mod search;
 mod sha1;
 mod source_control;
 mod target;
-#[cfg(test)]
+#[cfg(not(windows), test)] // FIXME test failure on windows: #10471
 mod tests;
 mod util;
 pub mod version;
@@ -163,14 +165,14 @@ impl<'self> PkgScript<'self> {
     /// is the command to pass to it (e.g., "build", "clean", "install")
     /// Returns a pair of an exit code and list of configs (obtained by
     /// calling the package script's configs() function if it exists
-    fn run_custom(exe: &Path, sysroot: &Path) -> (~[~str], int) {
+    fn run_custom(exe: &Path, sysroot: &Path) -> (~[~str], process::ProcessExit) {
         debug!("Running program: {} {} {}", exe.as_str().unwrap().to_owned(),
                sysroot.display(), "install");
         // FIXME #7401 should support commands besides `install`
         // FIXME (#9639): This needs to handle non-utf8 paths
         let status = run::process_status(exe.as_str().unwrap(),
                                          [sysroot.as_str().unwrap().to_owned(), ~"install"]);
-        if status != 0 {
+        if !status.success() {
             debug!("run_custom: first pkg command failed with {:?}", status);
             (~[], status)
         }
@@ -182,7 +184,7 @@ impl<'self> PkgScript<'self> {
                                              [sysroot.as_str().unwrap().to_owned(), ~"configs"]);
             debug!("run_custom: second pkg command did {:?}", output.status);
             // Run the configs() function to get the configs
-            let cfgs = str::from_utf8_slice(output.output).word_iter()
+            let cfgs = str::from_utf8_slice(output.output).words()
                 .map(|w| w.to_owned()).collect();
             (cfgs, output.status)
         }
@@ -253,7 +255,7 @@ impl CtxMethods for BuildContext {
             // argument
             let pkgid = PkgId::new(args[0].clone());
             let mut dest_ws = default_workspace();
-            do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
+            each_pkg_parent_workspace(&self.context, &pkgid, |workspace| {
                 debug!("found pkg {} in workspace {}, trying to build",
                        pkgid.to_str(), workspace.display());
                 dest_ws = determine_destination(os::getcwd(),
@@ -263,7 +265,7 @@ impl CtxMethods for BuildContext {
                                               false, pkgid.clone());
                 self.build(&mut pkg_src, what);
                 true
-            };
+            });
             // n.b. If this builds multiple packages, it only returns the workspace for
             // the last one. The whole building-multiple-packages-with-the-same-ID is weird
             // anyway and there are no tests for it, so maybe take it out
@@ -351,12 +353,10 @@ impl CtxMethods for BuildContext {
             }
             "list" => {
                 println("Installed packages:");
-                do installed_packages::list_installed_packages |pkg_id| {
-                    do pkg_id.path.display().with_str |s| {
-                        println(s);
-                    }
+                installed_packages::list_installed_packages(|pkg_id| {
+                    pkg_id.path.display().with_str(|s| println(s));
                     true
-                };
+                });
             }
             "prefer" => {
                 if args.len() < 1 {
@@ -400,12 +400,12 @@ impl CtxMethods for BuildContext {
                 else {
                     let rp = rust_path();
                     assert!(!rp.is_empty());
-                    do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
+                    each_pkg_parent_workspace(&self.context, &pkgid, |workspace| {
                         path_util::uninstall_package_from(workspace, &pkgid);
                         note(format!("Uninstalled package {} (was installed in {})",
                                   pkgid.to_str(), workspace.display()));
                         true
-                    };
+                    });
                 }
             }
             "unprefer" => {
@@ -469,23 +469,23 @@ impl CtxMethods for BuildContext {
                 // Build the package script if needed
                 let script_build = format!("build_package_script({})",
                                            package_script_path.display());
-                let pkg_exe = do self.workcache_context.with_prep(script_build) |prep| {
+                let pkg_exe = self.workcache_context.with_prep(script_build, |prep| {
                     let subsysroot = sysroot.clone();
                     let psp = package_script_path.clone();
                     let ws = workspace.clone();
                     let pid = pkgid.clone();
-                    do prep.exec |exec| {
+                    prep.exec(proc(exec) {
                         let mut pscript = PkgScript::parse(subsysroot.clone(),
                                                            psp.clone(),
                                                            &ws,
                                                            &pid);
                         pscript.build_custom(exec)
-                    }
-                };
+                    })
+                });
                 // We always *run* the package script
                 let (cfgs, hook_result) = PkgScript::run_custom(&Path::new(pkg_exe), &sysroot);
                 debug!("Command return code = {:?}", hook_result);
-                if hook_result != 0 {
+                if !hook_result.success() {
                     fail!("Error running custom build command")
                 }
                 custom = true;
@@ -618,7 +618,7 @@ impl CtxMethods for BuildContext {
                target_exec.display(), target_lib,
                maybe_executable, maybe_library);
 
-        do self.workcache_context.with_prep(id.install_tag()) |prep| {
+        self.workcache_context.with_prep(id.install_tag(), |prep| {
             for ee in maybe_executable.iter() {
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("binary",
@@ -636,7 +636,7 @@ impl CtxMethods for BuildContext {
             let sub_target_ex = target_exec.clone();
             let sub_target_lib = target_lib.clone();
             let sub_build_inputs = build_inputs.to_owned();
-            do prep.exec |exe_thing| {
+            prep.exec(proc(exe_thing) {
                 let mut outputs = ~[];
                 // Declare all the *inputs* to the declared input too, as inputs
                 for executable in subex.iter() {
@@ -682,8 +682,8 @@ impl CtxMethods for BuildContext {
                     outputs.push(target_lib.as_str().unwrap().to_owned());
                 }
                 outputs
-            }
-        }
+            })
+        })
     }
 
     fn prefer(&self, _id: &str, _vers: Option<~str>)  {
@@ -696,7 +696,7 @@ impl CtxMethods for BuildContext {
                 debug!("test: test_exec = {}", test_exec.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
-                if status != 0 {
+                if !status.success() {
                     fail!("Some tests failed");
                 }
             }
@@ -762,7 +762,7 @@ pub fn main_args(args: &[~str]) -> int {
                    matches.opt_present("help");
     let no_link = matches.opt_present("no-link");
     let no_trans = matches.opt_present("no-trans");
-    let supplied_sysroot = matches.opt_val("sysroot");
+    let supplied_sysroot = matches.opt_str("sysroot");
     let generate_asm = matches.opt_present("S") ||
         matches.opt_present("assembly");
     let parse_only = matches.opt_present("parse-only");
@@ -894,7 +894,7 @@ pub fn main_args(args: &[~str]) -> int {
     let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
     remaining_args.shift();
     let sroot = match supplied_sysroot {
-        Some(getopts::Val(s)) => Path::new(s),
+        Some(s) => Path::new(s),
         _ => filesearch::get_or_default_sysroot()
     };
 

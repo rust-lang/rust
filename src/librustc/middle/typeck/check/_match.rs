@@ -414,7 +414,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
     let tcx = pcx.fcx.ccx.tcx;
 
     match pat.node {
-      ast::PatWild => {
+      ast::PatWild | ast::PatWildMulti => {
         fcx.write_ty(pat.id, expected);
       }
       ast::PatLit(lt) => {
@@ -655,7 +655,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                          span: Span,
                          expected: ty::t) {
     let fcx = pcx.fcx;
-    let check_inner: &fn(ty::mt) = |e_inner| {
+    let check_inner: |ty::mt| = |e_inner| {
         check_pat(pcx, inner, e_inner.ty);
         fcx.write_ty(pat_id, expected);
     };

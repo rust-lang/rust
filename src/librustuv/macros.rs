@@ -27,10 +27,15 @@ macro_rules! uvdebug (
     })
 )
 
-pub fn dumb_println(args: &fmt::Arguments) {
-    use std::rt::io::native::stdio::stderr;
-    use std::rt::io::Writer;
+// get a handle for the current scheduler
+macro_rules! get_handle_to_current_scheduler(
+    () => (Local::borrow(|sched: &mut Scheduler| sched.make_handle()))
+)
 
-    let mut out = stderr();
-    fmt::writeln(&mut out as &mut Writer, args);
+pub fn dumb_println(args: &fmt::Arguments) {
+    use std::io::native::file::FileDesc;
+    use std::io;
+    use std::libc;
+    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
+    fmt::writeln(&mut out as &mut io::Writer, args);
 }

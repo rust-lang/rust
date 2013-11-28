@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows doesn't like 'extern mod extra'
+// xfail-fast check-fast doesn't like 'extern mod'
+// xfail-win32 TempDir may cause IoError on windows: #10463
 
 // These tests are here to exercise the functionality of the `tempfile` module.
 // One might expect these tests to be located in that module, but sadly they
@@ -24,8 +25,8 @@ use extra::tempfile::TempDir;
 use std::os;
 use std::task;
 use std::cell::Cell;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 
 fn test_tempdir() {
     let path = {
@@ -39,7 +40,7 @@ fn test_tempdir() {
 
 fn test_rm_tempdir() {
     let (rd, wr) = stream();
-    let f: ~fn() = || {
+    let f: proc() = proc() {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         wr.send(tmp.path().clone());
         fail!("fail to unwind past `tmp`");
@@ -51,7 +52,7 @@ fn test_rm_tempdir() {
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
     let cell = Cell::new(tmp);
-    let f: ~fn() = || {
+    let f: proc() = proc() {
         let _tmp = cell.take();
         fail!("fail to unwind past `tmp`");
     };
@@ -60,7 +61,7 @@ fn test_rm_tempdir() {
 
     let path;
     {
-        let f: ~fn() -> TempDir = || {
+        let f: proc() -> TempDir = proc() {
             TempDir::new("test_rm_tempdir").unwrap()
         };
         let tmp = task::try(f).expect("test_rm_tmdir");
@@ -135,7 +136,7 @@ pub fn test_rmdir_recursive_ok() {
     assert!(!root.join("bar").join("blat").exists());
 }
 
-fn in_tmpdir(f: &fn()) {
+fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").expect("can't make tmpdir");
     assert!(os::change_dir(tmpdir.path()));
 

@@ -9,7 +9,9 @@
 // except according to those terms.
 
 // aux-build:linkage-visibility.rs
-// xfail-fast windows doesn't like aux-build
+// xfail-fast check-fast doesn't like 'extern mod'
+// xfail-android: FIXME(#10379)
+// xfail-win32: std::unstable::dynamic_lib does not work on win32 well
 
 extern mod foo(name = "linkage-visibility");
 

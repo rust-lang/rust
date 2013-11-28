@@ -8,130 +8,161 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc::c_int;
+use std::cast;
+use std::libc::{c_int, c_void};
 
 use uvll;
-use super::{Watcher, Loop, NativeHandle, IdleCallback, status_to_maybe_uv_error};
+use super::{Loop, UvHandle};
+use std::rt::rtio::{Callback, PausibleIdleCallback};
 
-pub struct IdleWatcher(*uvll::uv_idle_t);
-impl Watcher for IdleWatcher { }
+pub struct IdleWatcher {
+    handle: *uvll::uv_idle_t,
+    idle_flag: bool,
+    closed: bool,
+    callback: ~Callback,
+}
 
 impl IdleWatcher {
-    pub fn new(loop_: &mut Loop) -> IdleWatcher {
-        unsafe {
-            let handle = uvll::malloc_handle(uvll::UV_IDLE);
-            assert!(handle.is_not_null());
-            assert_eq!(uvll::idle_init(loop_.native_handle(), handle), 0);
-            let mut watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            watcher.install_watcher_data();
-            return watcher
-        }
+    pub fn new(loop_: &mut Loop, cb: ~Callback) -> ~IdleWatcher {
+        let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
+        assert_eq!(unsafe {
+            uvll::uv_idle_init(loop_.handle, handle)
+        }, 0);
+        let me = ~IdleWatcher {
+            handle: handle,
+            idle_flag: false,
+            closed: false,
+            callback: cb,
+        };
+        return me.install();
     }
 
-    pub fn start(&mut self, cb: IdleCallback) {
-        {
-            let data = self.get_watcher_data();
-            data.idle_cb = Some(cb);
+    pub fn onetime(loop_: &mut Loop, f: proc()) {
+        let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
+        unsafe {
+            assert_eq!(uvll::uv_idle_init(loop_.handle, handle), 0);
+            let data: *c_void = cast::transmute(~f);
+            uvll::set_data_for_uv_handle(handle, data);
+            assert_eq!(uvll::uv_idle_start(handle, onetime_cb), 0)
         }
 
-        unsafe {
-            assert_eq!(uvll::idle_start(self.native_handle(), idle_cb), 0)
+        extern fn onetime_cb(handle: *uvll::uv_idle_t, status: c_int) {
+            assert_eq!(status, 0);
+            unsafe {
+                let data = uvll::get_data_for_uv_handle(handle);
+                let f: ~proc() = cast::transmute(data);
+                (*f)();
+                uvll::uv_idle_stop(handle);
+                uvll::uv_close(handle, close_cb);
+            }
         }
-    }
 
-    pub fn restart(&mut self) {
-        unsafe {
-            assert!(self.get_watcher_data().idle_cb.is_some());
-            assert_eq!(uvll::idle_start(self.native_handle(), idle_cb), 0)
-        }
-    }
-
-    pub fn stop(&mut self) {
-        // NB: Not resetting the Rust idle_cb to None here because `stop` is
-        // likely called from *within* the idle callback, causing a use after
-        // free
-
-        unsafe {
-            assert_eq!(uvll::idle_stop(self.native_handle()), 0);
+        extern fn close_cb(handle: *uvll::uv_handle_t) {
+            unsafe { uvll::free_handle(handle) }
         }
     }
 }
 
-impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
-    fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
-        IdleWatcher(handle)
+impl PausibleIdleCallback for IdleWatcher {
+    fn pause(&mut self) {
+        if self.idle_flag == true {
+            assert_eq!(unsafe {uvll::uv_idle_stop(self.handle) }, 0);
+            self.idle_flag = false;
+        }
     }
-    fn native_handle(&self) -> *uvll::uv_idle_t {
-        match self { &IdleWatcher(ptr) => ptr }
+    fn resume(&mut self) {
+        if self.idle_flag == false {
+            assert_eq!(unsafe { uvll::uv_idle_start(self.handle, idle_cb) }, 0)
+            self.idle_flag = true;
+        }
     }
+}
+
+impl UvHandle<uvll::uv_idle_t> for IdleWatcher {
+    fn uv_handle(&self) -> *uvll::uv_idle_t { self.handle }
 }
 
 extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-    let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-    let data = idle_watcher.get_watcher_data();
-    let cb: &IdleCallback = data.idle_cb.get_ref();
-    let status = status_to_maybe_uv_error(status);
-    (*cb)(idle_watcher, status);
+    assert_eq!(status, 0);
+    let idle: &mut IdleWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
+    idle.callback.call();
+}
+
+impl Drop for IdleWatcher {
+    fn drop(&mut self) {
+        self.pause();
+        self.close_async_();
+    }
 }
 
 #[cfg(test)]
 mod test {
-
-    use Loop;
     use super::*;
-    use std::unstable::run_in_bare_thread;
+    use std::rt::tube::Tube;
+    use std::rt::rtio::{Callback, PausibleIdleCallback};
+    use super::super::local_loop;
 
-    #[test]
-    #[ignore(reason = "valgrind - loop destroyed before watcher?")]
-    fn idle_new_then_close() {
-        do run_in_bare_thread {
-            let mut loop_ = Loop::new();
-            let idle_watcher = { IdleWatcher::new(&mut loop_) };
-            idle_watcher.close(||());
+    struct MyCallback(Tube<int>, int);
+    impl Callback for MyCallback {
+        fn call(&mut self) {
+            match *self {
+                MyCallback(ref mut tube, val) => tube.send(val)
+            }
         }
     }
 
     #[test]
-    fn idle_smoke_test() {
-        do run_in_bare_thread {
-            let mut loop_ = Loop::new();
-            let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-            let mut count = 10;
-            let count_ptr: *mut int = &mut count;
-            do idle_watcher.start |idle_watcher, status| {
-                let mut idle_watcher = idle_watcher;
-                assert!(status.is_none());
-                if unsafe { *count_ptr == 10 } {
-                    idle_watcher.stop();
-                    idle_watcher.close(||());
-                } else {
-                    unsafe { *count_ptr = *count_ptr + 1; }
-                }
-            }
-            loop_.run();
-            loop_.close();
-            assert_eq!(count, 10);
-        }
+    fn not_used() {
+        let cb = ~MyCallback(Tube::new(), 1);
+        let _idle = IdleWatcher::new(local_loop(), cb as ~Callback);
     }
 
     #[test]
-    fn idle_start_stop_start() {
-        do run_in_bare_thread {
-            let mut loop_ = Loop::new();
-            let mut idle_watcher = { IdleWatcher::new(&mut loop_) };
-            do idle_watcher.start |idle_watcher, status| {
-                let mut idle_watcher = idle_watcher;
-                assert!(status.is_none());
-                idle_watcher.stop();
-                do idle_watcher.start |idle_watcher, status| {
-                    assert!(status.is_none());
-                    let mut idle_watcher = idle_watcher;
-                    idle_watcher.stop();
-                    idle_watcher.close(||());
-                }
-            }
-            loop_.run();
-            loop_.close();
-        }
+    fn smoke_test() {
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle.resume();
+        tube.recv();
+    }
+
+    #[test] #[should_fail]
+    fn smoke_fail() {
+        let tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle.resume();
+        fail!();
+    }
+
+    #[test]
+    fn fun_combinations_of_methods() {
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle.resume();
+        tube.recv();
+        idle.pause();
+        idle.resume();
+        idle.resume();
+        tube.recv();
+        idle.pause();
+        idle.pause();
+        idle.resume();
+        tube.recv();
+    }
+
+    #[test]
+    fn pause_pauses() {
+        let mut tube = Tube::new();
+        let cb = ~MyCallback(tube.clone(), 1);
+        let mut idle1 = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let cb = ~MyCallback(tube.clone(), 2);
+        let mut idle2 = IdleWatcher::new(local_loop(), cb as ~Callback);
+        idle2.resume();
+        assert_eq!(tube.recv(), 2);
+        idle2.pause();
+        idle1.resume();
+        assert_eq!(tube.recv(), 1);
     }
 }

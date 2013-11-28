@@ -27,6 +27,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["bool"])),
+                inline: true,
                 const_nonmatching: false,
                 combine_substructure: |cx, span, substr| cs_op($op, $equal, cx, span, substr)
             }

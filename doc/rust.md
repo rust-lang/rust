@@ -254,6 +254,7 @@ common_escape : '\x5c'
 hex_digit : 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
           | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
           | dec_digit ;
+oct_digit : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' ;
 dec_digit : '0' | nonzero_dec ;
 nonzero_dec: '1' | '2' | '3' | '4'
            | '5' | '6' | '7' | '8' | '9' ;
@@ -318,8 +319,9 @@ r##"foo #"# bar"##;                // foo #"# bar
 ~~~~ {.ebnf .gram}
 
 num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
-        | '0' [       [ dec_digit | '_' ] + num_suffix ?
+        | '0' [       [ dec_digit | '_' ] * num_suffix ?
               | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
+              | 'o'   [ oct_digit | '_' ] + int_suffix ?
               | 'x'   [ hex_digit | '_' ] + int_suffix ? ] ;
 
 num_suffix : int_suffix | float_suffix ;
@@ -948,10 +950,10 @@ declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
 ~~~~ {.xfail-test}
-fn iter<T>(seq: &[T], f: &fn(T)) {
+fn iter<T>(seq: &[T], f: |T|) {
     for elt in seq.iter() { f(elt); }
 }
-fn map<T, U>(seq: &[T], f: &fn(T) -> U) -> ~[U] {
+fn map<T, U>(seq: &[T], f: |T| -> U) -> ~[U] {
     let mut acc = ~[];
     for elt in seq.iter() { acc.push(f(elt)); }
     acc
@@ -1129,9 +1131,8 @@ block.
 let fptr: extern "C" fn() -> ~[int] = new_vec;
 ~~~~
 
-Extern functions may be called from Rust code, but
-caution must be taken with respect to the size of the stack
-segment, just as when calling an extern function normally.
+Extern functions may be called directly from Rust code as Rust uses large,
+contiguous stack segments like C.
 
 ### Type definitions
 
@@ -1313,7 +1314,7 @@ These appear after the trait name, using the same syntax used in [generic functi
 trait Seq<T> {
    fn len(&self) -> uint;
    fn elt_at(&self, n: uint) -> T;
-   fn iter(&self, &fn(T));
+   fn iter(&self, |T|);
 }
 ~~~~
 
@@ -1548,6 +1549,7 @@ keyword for struct fields and enum variants). When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ~~~~
+# fn main() {}
 // Declare a private struct
 struct Foo;
 
@@ -1752,6 +1754,8 @@ names are effectively reserved. Some significant attributes include:
 * The `deriving` attribute, for automatically generating
   implementations of certain traits.
 * The `static_assert` attribute, for asserting that a static bool is true at compiletime
+* The `thread_local` attribute, for defining a `static mut` as a thread-local. Note that this is
+  only a low-level building block, and is not local to a *task*, nor does it provide safety.
 
 Other attributes may be added or removed during development of the language.
 
@@ -2347,9 +2351,9 @@ Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
-~~~~
+~~~~ {.xfail-test}
 # use std::task;
-# do task::spawn_unlinked {
+# do task::spawn {
 
 ([1, 2, 3, 4])[0];
 (["a", "b"])[10]; // fails
@@ -2605,7 +2609,7 @@ as an abbreviation for defining and capturing a separate function.
 Significantly, lambda expressions _capture their environment_,
 which regular [function definitions](#functions) do not.
 The exact type of capture depends on the [function type](#function-types) inferred for the lambda expression.
-In the simplest and least-expensive form (analogous to a ```&fn() { }``` expression),
+In the simplest and least-expensive form (analogous to a ```|| { }``` expression),
 the lambda expression captures its environment by reference,
 effectively borrowing pointers to all outer variables mentioned inside the function.
 Alternately, the compiler may infer that a lambda expression should copy or move values (depending on their type.)
@@ -2615,7 +2619,7 @@ In this example, we define a function `ten_times` that takes a higher-order func
 and call it with a lambda expression as an argument.
 
 ~~~~
-fn ten_times(f: &fn(int)) {
+fn ten_times(f: |int|) {
     let mut i = 0;
     while i < 10 {
         f(i);
@@ -2701,22 +2705,16 @@ A `loop` expression is only permitted in the body of a loop.
 do_expr : "do" expr [ '|' ident_list '|' ] ? '{' block '}' ;
 ~~~~
 
-A _do expression_ provides a more-familiar block-syntax for a [lambda expression](#lambda-expressions),
-including a special translation of [return expressions](#return-expressions) inside the supplied block.
+A _do expression_ provides a more-familiar block syntax
+for invoking a function and passing it a newly-created a procedure.
 
-Any occurrence of a [return expression](#return-expressions)
-inside this `block` expression is rewritten
-as a reference to an (anonymous) flag set in the caller's environment,
-which is checked on return from the `expr` and, if set,
-causes a corresponding return from the caller.
-In this way, the meaning of `return` statements in language built-in control blocks is preserved,
-if they are rewritten using lambda functions and `do` expressions as abstractions.
-
-The optional `ident_list` and `block` provided in a `do` expression are parsed as though they constitute a lambda expression;
+The optional `ident_list` and `block` provided in a `do` expression are parsed
+as though they constitute a procedure expression;
 if the `ident_list` is missing, an empty `ident_list` is implied.
 
-The lambda expression is then provided as a _trailing argument_
-to the outermost [call](#call-expressions) or [method call](#method-call-expressions) expression
+The procedure expression is then provided as a _trailing argument_
+to the outermost [call](#call-expressions) or
+[method call](#method-call-expressions) expression
 in the `expr` following `do`.
 If the `expr` is a [path expression](#path-expressions), it is parsed as though it is a call expression.
 If the `expr` is a [field expression](#field-expressions), it is parsed as though it is a method call expression.
@@ -2724,10 +2722,10 @@ If the `expr` is a [field expression](#field-expressions), it is parsed as thoug
 In this example, both calls to `f` are equivalent:
 
 ~~~~
-# fn f(f: &fn(int)) { }
+# fn f(f: proc(int)) { }
 # fn g(i: int) { }
 
-f(|j| g(j));
+f(proc(j) { g(j) });
 
 do f |j| {
     g(j);
@@ -2737,10 +2735,10 @@ do f |j| {
 In this example, both calls to the (binary) function `k` are equivalent:
 
 ~~~~
-# fn k(x:int, f: &fn(int)) { }
+# fn k(x:int, f: proc(int)) { }
 # fn l(i: int) { }
 
-k(3, |j| l(j));
+k(3, proc(j) { l(j) });
 
 do k(3) |j| {
    l(j);
@@ -3159,7 +3157,7 @@ Borrowed pointers (`&`)
     Borrowed pointers arise by (automatic) conversion from owning pointers, managed pointers,
     or by applying the borrowing operator `&` to some other value,
     including [lvalues, rvalues or temporaries](#lvalues-rvalues-and-temporaries).
-    Borrowed pointers are written `&content`, or in some cases `&f/content` for some lifetime-variable `f`,
+    Borrowed pointers are written `&content`, or in some cases `&'f content` for some lifetime-variable `f`,
     for example `&int` means a borrowed pointer to an integer.
     Copying a borrowed pointer is a "shallow" operation:
     it involves only copying the pointer itself.
@@ -3192,7 +3190,7 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type Binop<'self> = &'self fn(int,int) -> int;
+type Binop<'self> = 'self |int,int| -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ~~~~
@@ -3239,7 +3237,7 @@ and the cast expression in `main`.
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~
-fn map<A: Clone, B: Clone>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
+fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> ~[B] {
     if xs.len() == 0 {
        return ~[];
     }
@@ -3594,9 +3592,9 @@ and releases them back to its environment when they are no longer needed.
 The default implementation of the service-provider interface
 consists of the C runtime functions `malloc` and `free`.
 
-The runtime memory-management system, in turn, supplies Rust tasks
-with facilities for allocating, extending and releasing stacks,
-as well as allocating and freeing heap data.
+The runtime memory-management system, in turn, supplies Rust tasks with
+facilities for allocating releasing stacks, as well as allocating and freeing
+heap data.
 
 ### Built in types
 
@@ -3759,7 +3757,6 @@ have come and gone during the course of Rust's development:
 
 Additional specific influences can be seen from the following languages:
 
-* The stack-growth implementation of Go.
 * The structural algebraic types and compilation manager of SML.
 * The attribute and assembly systems of C#.
 * The references and deterministic destructor system of C++.

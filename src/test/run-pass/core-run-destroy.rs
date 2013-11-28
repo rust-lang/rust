@@ -18,21 +18,31 @@
 use std::libc;
 use std::run;
 use std::str;
-use std::rt::io;
+use std::io;
 
 #[test]
 fn test_destroy_once() {
-    let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
+    #[cfg(not(target_os="android"))]
+    static PROG: &'static str = "echo";
+    #[cfg(target_os="android")]
+    static PROG: &'static str = "ls"; // android don't have echo binary
+
+    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new());
     p.destroy(); // this shouldn't crash (and nor should the destructor)
 }
 
 #[test]
 fn test_destroy_twice() {
-    let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
+    #[cfg(not(target_os="android"))]
+    static PROG: &'static str = "echo";
+    #[cfg(target_os="android")]
+    static PROG: &'static str = "ls"; // android don't have echo binary
+
+    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new());
     p.destroy(); // this shouldnt crash...
-    do io::io_error::cond.trap(|_| {}).inside {
+    io::io_error::cond.trap(|_| {}).inside(|| {
         p.destroy(); // ...and nor should this (and nor should the destructor)
-    }
+    })
 }
 
 fn test_destroy_actually_kills(force: bool) {
@@ -60,8 +70,6 @@ fn test_destroy_actually_kills(force: bool) {
 
     #[cfg(windows)]
     fn process_exists(pid: libc::pid_t) -> bool {
-        #[fixed_stack_segment];
-
         use std::libc::types::os::arch::extra::DWORD;
         use std::libc::funcs::extra::kernel32::{CloseHandle, GetExitCodeProcess, OpenProcess};
         use std::libc::consts::os::extra::{FALSE, PROCESS_QUERY_INFORMATION, STILL_ACTIVE };

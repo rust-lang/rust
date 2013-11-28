@@ -20,7 +20,7 @@ appropriate platform-specific path variant.
 Both `PosixPath` and `WindowsPath` implement a trait `GenericPath`, which
 contains the set of methods that behave the same for both paths. They each also
 implement some methods that could not be expressed in `GenericPath`, yet behave
-identically for both path flavors, such as `.component_iter()`.
+identically for both path flavors, such as `.components()`.
 
 The three main design goals of this module are 1) to avoid unnecessary
 allocation, 2) to behave the same regardless of which flavor of path is being
@@ -530,9 +530,7 @@ pub struct Display<'self, P> {
 
 impl<'self, P: GenericPath> fmt::Default for Display<'self, P> {
     fn fmt(d: &Display<P>, f: &mut fmt::Formatter) {
-        do d.with_str |s| {
-            f.pad(s)
-        }
+        d.with_str(|s| f.pad(s))
     }
 }
 
@@ -559,7 +557,7 @@ impl<'self, P: GenericPath> Display<'self, P> {
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// unicode replacement char. This involves allocation.
     #[inline]
-    pub fn with_str<T>(&self, f: &fn(&str) -> T) -> T {
+    pub fn with_str<T>(&self, f: |&str| -> T) -> T {
         let opt = if self.filename { self.path.filename_str() }
                   else { self.path.as_str() };
         match opt {

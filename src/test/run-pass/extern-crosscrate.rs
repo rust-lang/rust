@@ -13,7 +13,6 @@
 
 extern mod externcallback(vers = "0.1");
 
-#[fixed_stack_segment] #[inline(never)]
 fn fact(n: uint) -> uint {
     unsafe {
         info!("n = {}", n);

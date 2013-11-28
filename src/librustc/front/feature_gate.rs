@@ -23,6 +23,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
+use syntax::parse::token;
 
 use driver::session::Session;
 
@@ -36,6 +37,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("once_fns", Active),
     ("asm", Active),
     ("managed_boxes", Active),
+    ("non_ascii_idents", Active),
+    ("thread_local", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -76,6 +79,15 @@ impl Context {
 }
 
 impl Visitor<()> for Context {
+    fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
+        let s = token::ident_to_str(&id);
+
+        if !s.is_ascii() {
+            self.gate_feature("non_ascii_idents", sp,
+                              "non-ascii idents are not fully supported.");
+        }
+    }
+
     fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
         match i.node {
             ast::view_item_use(ref paths) => {
@@ -96,6 +108,17 @@ impl Visitor<()> for Context {
     }
 
     fn visit_item(&mut self, i: @ast::item, _:()) {
+        // NOTE: uncomment after snapshot
+        /*
+        for attr in i.attrs.iter() {
+            if "thread_local" == attr.name() {
+                self.gate_feature("thread_local", i.span,
+                                  "`#[thread_local]` is an experimental feature, and does not \
+                                  currently handle destructors. There is no corresponding \
+                                  `#[task_local]` mapping to the task model");
+            }
+        }
+        */
         match i.node {
             ast::item_enum(ref def, _) => {
                 for variant in def.variants.iter() {
@@ -141,11 +164,9 @@ impl Visitor<()> for Context {
             },
             ast::ty_box(_) => {
                 self.gate_feature("managed_boxes", t.span,
-                                  "The managed box syntax will be replaced \
-                                  by a library type, and a garbage \
-                                  collector is not yet implemented. \
-                                  Consider using the `std::rc::Rc` type \
-                                  for reference counted pointers.");
+                                  "The managed box syntax is being replaced by the `std::gc::Gc` \
+                                  and `std::rc::Rc` types. Equivalent functionality to managed \
+                                  trait objects will be implemented but is currently missing.");
             }
             _ => {}
         }

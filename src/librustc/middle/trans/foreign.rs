@@ -32,8 +32,8 @@ use syntax::codemap::Span;
 use syntax::{ast};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;
-use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
-                  Cdecl, Aapcs, C, AbiSet};
+use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System,
+                  Cdecl, Aapcs, C, AbiSet, Win64};
 use util::ppaux::{Repr, UserString};
 use middle::trans::type_::Type;
 
@@ -75,8 +75,9 @@ struct LlvmSignature {
 
 pub fn llvm_calling_convention(ccx: &mut CrateContext,
                                abis: AbiSet) -> Option<CallConv> {
+    let os = ccx.sess.targ_cfg.os;
     let arch = ccx.sess.targ_cfg.arch;
-    abis.for_arch(arch).map(|abi| {
+    abis.for_target(os, arch).map(|abi| {
         match abi {
             RustIntrinsic => {
                 // Intrinsics are emitted by monomorphic fn
@@ -89,9 +90,13 @@ pub fn llvm_calling_convention(ccx: &mut CrateContext,
                     format!("Foreign functions with Rust ABI"));
             }
 
+            // It's the ABI's job to select this, not us.
+            System => ccx.sess.bug("System abi should be selected elsewhere"),
+
             Stdcall => lib::llvm::X86StdcallCallConv,
             Fastcall => lib::llvm::X86FastcallCallConv,
             C => lib::llvm::CCallConv,
+            Win64 => lib::llvm::X86_64_Win64,
 
             // NOTE These API constants ought to be more specific
             Cdecl => lib::llvm::CCallConv,
@@ -394,11 +399,19 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
 
     let tys = foreign_types_for_id(ccx, node_id);
     let llfn_ty = lltype_for_fn_from_foreign_types(&tys);
+    let t = ty::node_id_to_type(ccx.tcx, node_id);
+    let cconv = match ty::get(t).sty {
+        ty::ty_bare_fn(ref fn_ty) => {
+            let c = llvm_calling_convention(ccx, fn_ty.abis);
+            c.unwrap_or(lib::llvm::CCallConv)
+        }
+        _ => lib::llvm::CCallConv
+    };
     let llfn = base::register_fn_llvmty(ccx,
                                         sp,
                                         sym,
                                         node_id,
-                                        lib::llvm::CCallConv,
+                                        cconv,
                                         llfn_ty);
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={:?}, llfn_ty={}, llfn={})",
@@ -506,11 +519,13 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         // Array for the arguments we will pass to the rust function.
         let mut llrust_args = ~[];
         let mut next_foreign_arg_counter: c_uint = 0;
-        let next_foreign_arg: &fn(pad: bool) -> c_uint = {
-            |pad: bool| {
-                next_foreign_arg_counter += if pad { 2 } else { 1 };
-                next_foreign_arg_counter - 1
-            }
+        let next_foreign_arg: |pad: bool| -> c_uint = |pad: bool| {
+            next_foreign_arg_counter += if pad {
+                2
+            } else {
+                1
+            };
+            next_foreign_arg_counter - 1
         };
 
         // If there is an out pointer on the foreign function
@@ -632,11 +647,11 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         }
 
         // Perform the call itself
-        let llrust_ret_val = do llrust_args.as_imm_buf |ptr, len| {
+        let llrust_ret_val = llrust_args.as_imm_buf(|ptr, len| {
             debug!("calling llrustfn = {}", ccx.tn.val_to_str(llrustfn));
             llvm::LLVMBuildCall(builder, llrustfn, ptr,
                                 len as c_uint, noname())
-        };
+        });
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {

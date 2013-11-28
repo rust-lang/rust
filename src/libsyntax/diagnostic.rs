@@ -11,7 +11,8 @@
 use codemap::{Pos, Span};
 use codemap;
 
-use std::rt::io;
+use std::io;
+use std::io::stdio::StdWriter;
 use std::local_data;
 use extra::term;
 
@@ -197,39 +198,44 @@ fn diagnosticcolor(lvl: level) -> term::color::Color {
 }
 
 fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
-    local_data_key!(tls_terminal: @Option<term::Terminal>)
+    local_data_key!(tls_terminal: ~Option<term::Terminal<StdWriter>>)
 
-    let stderr = @mut io::stderr() as @mut io::Writer;
     fn is_stderr_screen() -> bool {
-        #[fixed_stack_segment];
         use std::libc;
         unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
     }
+    fn write_pretty<T: Writer>(term: &mut term::Terminal<T>, s: &str, c: term::attr::Attr) {
+        term.attr(c);
+        term.write(s.as_bytes());
+        term.reset();
+    }
 
     if is_stderr_screen() {
-        let t = match local_data::get(tls_terminal, |v| v.map(|k| *k)) {
-            None => {
-                let t = term::Terminal::new(stderr);
-                let tls = @match t {
-                    Ok(t) => Some(t),
-                    Err(_) => None
-                };
-                local_data::set(tls_terminal, tls);
-                &*tls
+        local_data::get_mut(tls_terminal, |term| {
+            match term {
+                Some(term) => {
+                    match **term {
+                        Some(ref mut term) => write_pretty(term, msg, color),
+                        None => io::stderr().write(msg.as_bytes())
+                    }
+                }
+                None => {
+                    let t = ~match term::Terminal::new(io::stderr()) {
+                        Ok(mut term) => {
+                            write_pretty(&mut term, msg, color);
+                            Some(term)
+                        }
+                        Err(_) => {
+                            io::stderr().write(msg.as_bytes());
+                            None
+                        }
+                    };
+                    local_data::set(tls_terminal, t);
+                }
             }
-            Some(tls) => &*tls
-        };
-
-        match t {
-            &Some(ref term) => {
-                term.attr(color);
-                write!(stderr, "{}", msg);
-                term.reset();
-            },
-            _ => write!(stderr, "{}", msg)
-        }
+        });
     } else {
-        write!(stderr, "{}", msg);
+        io::stderr().write(msg.as_bytes());
     }
 }
 
@@ -308,9 +314,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
-        do skip.times() {
-            s.push_char(' ');
-        }
+        skip.times(|| s.push_char(' '));
         let orig = fm.get_line(lines.lines[0] as int);
         for pos in range(0u, left-skip) {
             let curChar = (orig[pos] as char);
@@ -329,9 +333,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            do num_squigglies.times() {
-                s.push_char('~')
-            }
+            num_squigglies.times(|| s.push_char('~'));
         }
         print_maybe_styled(s + "\n", term::attr::ForegroundColor(diagnosticcolor(lvl)));
     }
@@ -348,9 +350,11 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
     }
 }
 
-pub fn expect<T:Clone>(diag: @mut span_handler,
-                       opt: Option<T>,
-                       msg: &fn() -> ~str) -> T {
+pub fn expect<T:Clone>(
+              diag: @mut span_handler,
+              opt: Option<T>,
+              msg: || -> ~str)
+              -> T {
     match opt {
        Some(ref t) => (*t).clone(),
        None => diag.handler().bug(msg()),

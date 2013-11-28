@@ -33,6 +33,7 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                     Literal(Path::new(~["std", "to_bytes", "Cb"]))
                 ],
                 ret_ty: Literal(Path::new(~["bool"])),
+                inline: true,
                 const_nonmatching: false,
                 combine_substructure: iter_bytes_substructure
             }
@@ -81,15 +82,15 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @
         _ => cx.span_bug(span, "Impossible substructure in `deriving(IterBytes)`")
     }
 
-    for &(_, field, _) in fields.iter() {
-        exprs.push(call_iterbytes(field));
+    for &FieldInfo { self_, _ } in fields.iter() {
+        exprs.push(call_iterbytes(self_));
     }
 
     if exprs.len() == 0 {
         cx.span_bug(span, "#[deriving(IterBytes)] needs at least one field");
     }
 
-    do exprs.slice(1, exprs.len()).iter().fold(exprs[0]) |prev, me| {
+    exprs.slice(1, exprs.len()).iter().fold(exprs[0], |prev, me| {
         cx.expr_binary(span, BiAnd, prev, *me)
-    }
+    })
 }

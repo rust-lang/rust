@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[link(name = "rustdoc",
+       package_id = "rustdoc",
        vers = "0.9-pre",
        uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6",
        url = "https://github.com/mozilla/rust/tree/master/src/librustdoc")];
@@ -25,10 +26,10 @@ extern mod extra;
 
 use std::cell::Cell;
 use std::local_data;
-use std::rt::io;
-use std::rt::io::File;
-use std::rt::io::mem::MemWriter;
-use std::rt::io::Decorator;
+use std::io;
+use std::io::File;
+use std::io::mem::MemWriter;
+use std::io::Decorator;
 use std::str;
 use extra::getopts;
 use extra::getopts::groups;
@@ -95,6 +96,7 @@ pub fn opts() -> ~[groups::OptGroup] {
         optopt("o", "output", "where to place the output", "PATH"),
         optmulti("L", "library-path", "directory to add to crate search path",
                  "DIR"),
+        optmulti("", "cfg", "pass a --cfg to rustc", ""),
         optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
         optmulti("", "passes", "space separated list of passes to also run, a \
                                 value of `list` will print available passes",
@@ -193,11 +195,12 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 
     // First, parse the crate and extract all relevant information.
     let libs = Cell::new(matches.opt_strs("L").map(|s| Path::new(s.as_slice())));
+    let cfgs = Cell::new(matches.opt_strs("cfg"));
     let cr = Cell::new(Path::new(cratefile));
     info!("starting to run rustc");
     let (crate, analysis) = do std::task::try {
         let cr = cr.take();
-        core::run_core(libs.take().move_iter().collect(), &cr)
+        core::run_core(libs.take().move_iter().collect(), cfgs.take(), &cr)
     }.unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);
@@ -212,12 +215,12 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
                         default_passes = false;
                     }
                     clean::NameValue(~"passes", ref value) => {
-                        for pass in value.word_iter() {
+                        for pass in value.words() {
                             passes.push(pass.to_owned());
                         }
                     }
                     clean::NameValue(~"plugins", ref value) => {
-                        for p in value.word_iter() {
+                        for p in value.words() {
                             plugins.push(p.to_owned());
                         }
                     }

@@ -6,7 +6,6 @@ mod a {
     }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         a::free(transmute(0));

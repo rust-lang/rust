@@ -10,9 +10,9 @@
 
 // Testing that we can drop the || in do exprs
 
-fn f(_f: &fn() -> bool) -> bool { true }
+fn f(_f: proc() -> bool) -> bool { true }
 
-fn d(_f: &fn()) { }
+fn d(_f: proc()) { }
 
 pub fn main() {
     do d { }

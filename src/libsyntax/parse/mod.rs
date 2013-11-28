@@ -19,8 +19,8 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 use std::str;
 
 pub mod lexer;
@@ -177,19 +177,14 @@ pub fn parse_tts_from_source_str(
 // consumed all of the input before returning the function's
 // result.
 pub fn parse_from_source_str<T>(
-    f: &fn(&Parser) -> T,
-    name: @str, ss: codemap::FileSubstr,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @mut ParseSess
-) -> T {
-    let p = new_parser_from_source_substr(
-        sess,
-        cfg,
-        name,
-        ss,
-        source
-    );
+                             f: |&Parser| -> T,
+                             name: @str,
+                             ss: codemap::FileSubstr,
+                             source: @str,
+                             cfg: ast::CrateConfig,
+                             sess: @mut ParseSess)
+                             -> T {
+    let p = new_parser_from_source_substr(sess, cfg, name, ss, source);
     let r = f(&p);
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
@@ -332,9 +327,9 @@ mod test {
     use super::*;
     use extra::serialize::Encodable;
     use extra;
-    use std::rt::io;
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
     use std::str;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
@@ -354,7 +349,7 @@ mod test {
     }
 
     // produce a codemap::span
-    fn sp (a: uint, b: uint) -> Span {
+    fn sp(a: u32, b: u32) -> Span {
         Span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
     }
 
@@ -368,7 +363,7 @@ mod test {
                         segments: ~[
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
-                                lifetime: None,
+                                lifetimes: opt_vec::Empty,
                                 types: opt_vec::Empty,
                             }
                         ],
@@ -387,12 +382,12 @@ mod test {
                             segments: ~[
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
                             ]
@@ -592,7 +587,7 @@ mod test {
                             segments: ~[
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
                             ],
@@ -614,7 +609,7 @@ mod test {
                                segments: ~[
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetime: None,
+                                    lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
                                ],
@@ -641,7 +636,7 @@ mod test {
                                     segments: ~[
                                         ast::PathSegment {
                                             identifier: str_to_ident("b"),
-                                            lifetime: None,
+                                            lifetimes: opt_vec::Empty,
                                             types: opt_vec::Empty,
                                         }
                                     ],
@@ -669,7 +664,7 @@ mod test {
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("int"),
-                                                lifetime: None,
+                                                lifetimes: opt_vec::Empty,
                                                 types: opt_vec::Empty,
                                             }
                                         ],
@@ -687,7 +682,7 @@ mod test {
                                                     ast::PathSegment {
                                                         identifier:
                                                             str_to_ident("b"),
-                                                        lifetime: None,
+                                                        lifetimes: opt_vec::Empty,
                                                         types: opt_vec::Empty,
                                                     }
                                                 ],
@@ -724,8 +719,8 @@ mod test {
                                                                 identifier:
                                                                 str_to_ident(
                                                                     "b"),
-                                                                lifetime:
-                                                                    None,
+                                                                lifetimes:
+                                                                opt_vec::Empty,
                                                                 types:
                                                                 opt_vec::Empty
                                                             }

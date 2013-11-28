@@ -79,9 +79,9 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
         let mut externs = HashMap::new();
-        do cstore::iter_crate_data(cx.sess.cstore) |n, meta| {
+        cstore::iter_crate_data(cx.sess.cstore, |n, meta| {
             externs.insert(n, meta.clean());
-        }
+        });
 
         Crate {
             name: match maybe_meta {
@@ -835,7 +835,7 @@ impl Clean<Path> for ast::Path {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct PathSegment {
     name: ~str,
-    lifetime: Option<Lifetime>,
+    lifetimes: ~[Lifetime],
     types: ~[Type],
 }
 
@@ -843,7 +843,7 @@ impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self) -> PathSegment {
         PathSegment {
             name: self.identifier.clean(),
-            lifetime: self.lifetime.clean(),
+            lifetimes: self.lifetimes.clean(),
             types: self.types.clean()
         }
     }
@@ -1137,6 +1137,7 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
     use syntax::ast::*;
     match p.node {
         PatWild => ~"_",
+        PatWildMulti => ~"..",
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
         PatStruct(*) => fail!("tried to get argument name from pat_struct, \

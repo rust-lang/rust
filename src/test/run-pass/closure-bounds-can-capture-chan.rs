@@ -10,7 +10,7 @@
 
 use std::comm;
 
-fn foo(blk: ~fn:Send()) {
+fn foo(blk: proc()) {
     blk();
 }
 

@@ -52,13 +52,13 @@ pub type path = ~[path_elt];
 
 pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
                          -> ~str {
-    let strs = do p.map |e| {
+    let strs = p.map(|e| {
         match *e {
             path_mod(s) | path_name(s) | path_pretty_name(s, _) => {
                 itr.get(s.name)
             }
         }
-    };
+    });
     strs.connect(sep)
 }
 
@@ -111,18 +111,24 @@ pub enum ast_node {
     node_trait_method(@trait_method, DefId /* trait did */,
                       @path /* path to the trait */),
     node_method(@method, DefId /* impl did */, @path /* path to the impl */),
+
+    /// node_variant represents a variant of an enum, e.g., for
+    /// `enum A { B, C, D }`, there would be a node_item for `A`, and a
+    /// node_variant item for each of `B`, `C`, and `D`.
     node_variant(variant, @item, @path),
     node_expr(@Expr),
     node_stmt(@Stmt),
     node_arg(@Pat),
     node_local(Ident),
     node_block(Block),
+
+    /// node_struct_ctor represents a tuple struct.
     node_struct_ctor(@struct_def, @item, @path),
     node_callee_scope(@Expr)
 }
 
 impl ast_node {
-    pub fn with_attrs<T>(&self, f: &fn(Option<&[Attribute]>) -> T) -> T {
+    pub fn with_attrs<T>(&self, f: |Option<&[Attribute]>| -> T) -> T {
         let attrs = match *self {
             node_item(i, _) => Some(i.attrs.as_slice()),
             node_foreign_item(fi, _, _, _) => Some(fi.attrs.as_slice()),
@@ -236,7 +242,7 @@ impl Ctx {
         visit::walk_block(self, b, ());
     }
 
-    fn map_pat(&mut self, pat: @Pat) {
+    fn map_pat(&mut self, pat: &Pat) {
         match pat.node {
             PatIdent(_, ref path, _) => {
                 // Note: this is at least *potentially* a pattern...
@@ -339,7 +345,7 @@ impl Visitor<()> for Ctx {
         self.path.pop();
     }
 
-    fn visit_pat(&mut self, pat: @Pat, _: ()) {
+    fn visit_pat(&mut self, pat: &Pat, _: ()) {
         self.map_pat(pat);
         visit::walk_pat(self, pat, ())
     }
@@ -480,11 +486,22 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
     }
 }
 
-pub fn node_item_query<Result>(items: map, id: NodeId,
-                               query: &fn(@item) -> Result,
-                               error_msg: ~str) -> Result {
+pub fn node_item_query<Result>(items: map, id: NodeId, query: |@item| -> Result, error_msg: ~str)
+                       -> Result {
     match items.find(&id) {
         Some(&node_item(it, _)) => query(it),
         _ => fail!("{}", error_msg)
+    }
+}
+
+pub fn item_span(items: map,
+                 id: ast::NodeId)
+                 -> Span {
+    match items.find(&id) {
+        Some(&node_item(item, _)) => item.span,
+        r => {
+            fail!(format!("item_span: expected item with id {} but found {:?}",
+                           id, r))
+        }
     }
 }

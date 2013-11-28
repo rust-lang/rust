@@ -14,8 +14,8 @@ use extra::sync;
 fn main() {
     let x = ~sync::RWLock::new();
     let mut y = None;
-    do x.write_cond |cond| {
+    x.write_cond(|cond| {
         y = Some(cond);
-    }
+    });
     y.unwrap().wait();
 }

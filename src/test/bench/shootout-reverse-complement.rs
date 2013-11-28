@@ -90,7 +90,6 @@ static COMPLEMENTS: [u8, ..256] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
 
-#[fixed_stack_segment]
 fn main() {
     unsafe {
         let mode = "r";

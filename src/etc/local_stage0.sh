@@ -3,8 +3,8 @@
 TARG_DIR=$1
 PREFIX=$2
 
-BINDIR=bin
-LIBDIR=lib
+LIB_DIR=lib
+LIB_PREFIX=lib
 
 OS=`uname -s`
 case $OS in
@@ -21,7 +21,8 @@ case $OS in
     (*)
 	BIN_SUF=.exe
 	LIB_SUF=.dll
-	LIBDIR=bin
+	LIB_DIR=bin
+	LIB_PREFIX=
 	break
 	;;
 esac
@@ -31,7 +32,7 @@ if [ -z $PREFIX ]; then
     exit 1
 fi
 
-if [ ! -e ${PREFIX}/bin/rustc ]; then
+if [ ! -e ${PREFIX}/bin/rustc${BIN_SUF} ]; then
     echo "No local rust installed at ${PREFIX}"
     exit 1
 fi
@@ -41,9 +42,9 @@ if [ -z $TARG_DIR ]; then
     exit 1
 fi
 
-cp ${PREFIX}/bin/rustc ${TARG_DIR}/stage0/bin/
-cp ${PREFIX}/lib/rustc/${TARG_DIR}/${LIBDIR}/* ${TARG_DIR}/stage0/${LIBDIR}/
-cp ${PREFIX}/lib/libextra*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
-cp ${PREFIX}/lib/librust*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
-cp ${PREFIX}/lib/libstd*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
-cp ${PREFIX}/lib/libsyntax*${LIB_SUF} ${TARG_DIR}/stage0/${LIBDIR}/
+cp ${PREFIX}/bin/rustc${BIN_SUF} ${TARG_DIR}/stage0/bin/
+cp ${PREFIX}/${LIB_DIR}/rustc/${TARG_DIR}/${LIB_DIR}/* ${TARG_DIR}/stage0/${LIB_DIR}/
+cp ${PREFIX}/${LIB_DIR}/${LIB_PREFIX}extra*${LIB_SUF} ${TARG_DIR}/stage0/${LIB_DIR}/
+cp ${PREFIX}/${LIB_DIR}/${LIB_PREFIX}rust*${LIB_SUF} ${TARG_DIR}/stage0/${LIB_DIR}/
+cp ${PREFIX}/${LIB_DIR}/${LIB_PREFIX}std*${LIB_SUF} ${TARG_DIR}/stage0/${LIB_DIR}/
+cp ${PREFIX}/${LIB_DIR}/${LIB_PREFIX}syntax*${LIB_SUF} ${TARG_DIR}/stage0/${LIB_DIR}/

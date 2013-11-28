@@ -22,8 +22,8 @@ use middle::typeck;
 use middle;
 
 use std::hashmap::{HashMap, HashSet};
-use std::rt::io::{Writer, Seek, Decorator};
-use std::rt::io::mem::MemWriter;
+use std::io::{Writer, Seek, Decorator};
+use std::io::mem::MemWriter;
 use std::str;
 use std::vec;
 
@@ -52,10 +52,10 @@ use std::cast;
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
 
-pub type encode_inlined_item<'self> = &'self fn(ecx: &EncodeContext,
-                                   ebml_w: &mut writer::Encoder,
-                                   path: &[ast_map::path_elt],
-                                   ii: ast::inlined_item);
+pub type encode_inlined_item<'self> = 'self |ecx: &EncodeContext,
+                                             ebml_w: &mut writer::Encoder,
+                                             path: &[ast_map::path_elt],
+                                             ii: ast::inlined_item|;
 
 pub struct EncodeParams<'self> {
     diag: @mut span_handler,
@@ -119,17 +119,6 @@ fn encode_impl_type_basename(ecx: &EncodeContext,
 
 pub fn encode_def_id(ebml_w: &mut writer::Encoder, id: DefId) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
-}
-
-fn encode_region_param(ecx: &EncodeContext,
-                       ebml_w: &mut writer::Encoder,
-                       it: @ast::item) {
-    let opt_rp = ecx.tcx.region_paramd_items.find(&it.id);
-    for rp in opt_rp.iter() {
-        ebml_w.start_tag(tag_region_param);
-        rp.encode(ebml_w);
-        ebml_w.end_tag();
-    }
 }
 
 #[deriving(Clone)]
@@ -205,11 +194,38 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
     }
 }
 
+fn encode_region_param_defs(ebml_w: &mut writer::Encoder,
+                            ecx: &EncodeContext,
+                            params: @[ty::RegionParameterDef]) {
+    for param in params.iter() {
+        ebml_w.start_tag(tag_region_param_def);
+
+        ebml_w.start_tag(tag_region_param_def_ident);
+        encode_name(ecx, ebml_w, param.ident);
+        ebml_w.end_tag();
+
+        ebml_w.wr_tagged_str(tag_region_param_def_def_id,
+                             def_to_str(param.def_id));
+
+        ebml_w.end_tag();
+    }
+}
+
+fn encode_item_variances(ebml_w: &mut writer::Encoder,
+                         ecx: &EncodeContext,
+                         id: ast::NodeId) {
+    let v = ty::item_variances(ecx.tcx, ast_util::local_def(id));
+    ebml_w.start_tag(tag_item_variances);
+    v.encode(ebml_w);
+    ebml_w.end_tag();
+}
+
 fn encode_bounds_and_type(ebml_w: &mut writer::Encoder,
                           ecx: &EncodeContext,
                           tpt: &ty::ty_param_bounds_and_ty) {
     encode_ty_type_param_defs(ebml_w, ecx, tpt.generics.type_param_defs,
                               tag_items_data_item_ty_param_bounds);
+    encode_region_param_defs(ebml_w, ecx, tpt.generics.region_param_defs);
     encode_type(ecx, ebml_w, tpt.ty);
 }
 
@@ -519,8 +535,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// * For enums, iterates through the node IDs of the variants.
 ///
 /// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id(item: @item, callback: &fn(NodeId) -> bool)
-                          -> bool {
+fn each_auxiliary_node_id(item: @item, callback: |NodeId| -> bool) -> bool {
     let mut continue_ = true;
     match item.node {
         item_enum(ref enum_def, _) => {
@@ -600,12 +615,12 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
 
-        do each_auxiliary_node_id(*item) |auxiliary_node_id| {
+        each_auxiliary_node_id(*item, |auxiliary_node_id| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(auxiliary_node_id)));
             ebml_w.end_tag();
             true
-        };
+        });
 
         match item.node {
             item_impl(*) => {
@@ -896,7 +911,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                      index: @mut ~[entry<i64>]) {
         index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
     }
-    let add_to_index: &fn() = || add_to_index(item, ebml_w, index);
+    let add_to_index: || = || add_to_index(item, ebml_w, index);
 
     debug!("encoding info for item at {}",
            ecx.tcx.sess.codemap.span_to_str(item.span));
@@ -976,7 +991,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
-        encode_region_param(ecx, ebml_w, item);
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
@@ -986,6 +1000,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 't');
+        encode_item_variances(ebml_w, ecx, item.id);
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
@@ -994,7 +1009,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
         (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
-        encode_region_param(ecx, ebml_w, item);
 
         // Encode inherent implementations for this enumeration.
         encode_inherent_implementations(ecx, ebml_w, def_id);
@@ -1027,10 +1041,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(ebml_w, 'S');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
 
+        encode_item_variances(ebml_w, ecx, item.id);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
-        encode_region_param(ecx, ebml_w, item);
         encode_visibility(ebml_w, vis);
 
         /* Encode def_ids for each field and method
@@ -1075,7 +1089,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'i');
-        encode_region_param(ecx, ebml_w, item);
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
@@ -1135,7 +1148,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'I');
-        encode_region_param(ecx, ebml_w, item);
+        encode_item_variances(ebml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_ty_type_param_defs(ebml_w, ecx,
                                   trait_def.generics.type_param_defs,
@@ -1398,7 +1411,7 @@ fn create_index<T:Clone + Hash + IterBytes + 'static>(
 fn encode_index<T:'static>(
                 ebml_w: &mut writer::Encoder,
                 buckets: ~[@~[entry<T>]],
-                write_fn: &fn(@mut MemWriter, &T)) {
+                write_fn: |@mut MemWriter, &T|) {
     ebml_w.start_tag(tag_index);
     let mut bucket_locs = ~[];
     ebml_w.start_tag(tag_index_buckets);
@@ -1487,8 +1500,8 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
 
 // So there's a special crate attribute called 'link' which defines the
 // metadata that Rust cares about for linking crates. This attribute requires
-// 'name' and 'vers' items, so if the user didn't provide them we will throw
-// them in anyway with default values.
+// 'name', 'vers' and 'package_id' items, so if the user didn't provide them we
+// will throw them in anyway with default values.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
                           crate: &Crate) -> ~[Attribute] {
 
@@ -1505,9 +1518,20 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
             attr::mk_name_value_item_str(@"vers",
                                          ecx.link_meta.vers);
 
-        let mut meta_items = ~[name_item, vers_item];
+        let pkgid_item = match ecx.link_meta.package_id {
+                Some(pkg_id) =>  attr::mk_name_value_item_str(@"package_id",
+                                                              pkg_id),
+                // uses package_id equal to name;
+                // this should never happen here but package_id is an Option
+                // FIXME (#10370): change package_id in LinkMeta to @str instead of Option<@str>
+                _ => attr::mk_name_value_item_str(@"package_id",
+                                                  ecx.link_meta.name)
+        };
 
-        for &mi in items.iter().filter(|mi| "name" != mi.name() && "vers" != mi.name()) {
+        let mut meta_items = ~[name_item, vers_item, pkgid_item];
+
+        for &mi in items.iter().filter(|mi| "name" != mi.name() && "vers" != mi.name() &&
+                                            "package_id" != mi.name()) {
             meta_items.push(mi);
         }
         let link_item = attr::mk_list_item(@"link", meta_items);
@@ -1546,13 +1570,13 @@ fn encode_crate_deps(ecx: &EncodeContext,
 
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = ~[];
-        do cstore::iter_crate_data(cstore) |key, val| {
+        cstore::iter_crate_data(cstore, |key, val| {
             let dep = decoder::CrateDep {cnum: key,
                        name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
             deps.push(dep);
-        };
+        });
 
         // Sort by cnum
         extra::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
@@ -1673,12 +1697,12 @@ fn encode_misc_info(ecx: &EncodeContext,
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
 
-        do each_auxiliary_node_id(item) |auxiliary_node_id| {
+        each_auxiliary_node_id(item, |auxiliary_node_id| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(auxiliary_node_id)));
             ebml_w.end_tag();
             true
-        };
+        });
     }
 
     // Encode reexports for the root module.

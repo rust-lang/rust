@@ -24,6 +24,7 @@ pub mod simd;
 #[cfg(not(test))]
 pub mod lang;
 pub mod sync;
+pub mod mutex;
 pub mod atomics;
 pub mod raw;
 
@@ -35,7 +36,7 @@ for it to terminate.
 The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
-pub fn run_in_bare_thread(f: ~fn()) {
+pub fn run_in_bare_thread(f: proc()) {
     use cell::Cell;
     use rt::thread::Thread;
 
@@ -72,7 +73,6 @@ fn test_run_in_bare_thread_exchange() {
 /// can't run correctly un-altered. Valgrind is there to help
 /// you notice weirdness in normal, un-doctored code paths!
 pub fn running_on_valgrind() -> bool {
-    #[fixed_stack_segment]; #[inline(never)];
     unsafe { rust_running_on_valgrind() != 0 }
 }
 

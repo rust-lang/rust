@@ -27,7 +27,6 @@
 
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
-use std::task;
 use std::util::replace;
 
 /// A type encapsulating the result of a computation which may not be complete
@@ -36,7 +35,7 @@ pub struct Future<A> {
 }
 
 enum FutureState<A> {
-    Pending(~fn() -> A),
+    Pending(proc() -> A),
     Evaluating,
     Forced(A)
 }
@@ -92,7 +91,7 @@ impl<A> Future<A> {
         Future {state: Forced(val)}
     }
 
-    pub fn from_fn(f: ~fn() -> A) -> Future<A> {
+    pub fn from_fn(f: proc() -> A) -> Future<A> {
         /*!
          * Create a future from a function.
          *
@@ -120,7 +119,7 @@ impl<A:Send> Future<A> {
         }
     }
 
-    pub fn spawn(blk: ~fn() -> A) -> Future<A> {
+    pub fn spawn(blk: proc() -> A) -> Future<A> {
         /*!
          * Create a future from a unique closure.
          *
@@ -130,28 +129,11 @@ impl<A:Send> Future<A> {
 
         let (port, chan) = oneshot();
 
-        do task::spawn_with(chan) |chan| {
+        do spawn {
             chan.send(blk());
         }
 
         Future::from_port(port)
-    }
-
-    pub fn spawn_with<B: Send>(v: B, blk: ~fn(B) -> A) -> Future<A> {
-        /*!
-         * Create a future from a unique closure taking one argument.
-         *
-         * The closure and its argument will be moved into a new task. The
-         * closure will be run and its result used as the value of the future.
-         */
-
-         let (port, chan) = oneshot();
-
-         do task::spawn_with((v, chan)) |(v, chan)| {
-            chan.send(blk(v));
-         }
-
-         Future::from_port(port)
     }
 }
 
@@ -179,7 +161,7 @@ mod test {
 
     #[test]
     fn test_from_fn() {
-        let mut f = Future::from_fn(|| ~"brail");
+        let mut f = Future::from_fn(proc() ~"brail");
         assert_eq!(f.get(), ~"brail");
     }
 
@@ -203,20 +185,14 @@ mod test {
 
     #[test]
     fn test_spawn() {
-        let mut f = Future::spawn(|| ~"bale");
+        let mut f = Future::spawn(proc() ~"bale");
         assert_eq!(f.get(), ~"bale");
-    }
-
-    #[test]
-    fn test_spawn_with() {
-        let mut f = Future::spawn_with(~"gale", |s| { s });
-        assert_eq!(f.get(), ~"gale");
     }
 
     #[test]
     #[should_fail]
     fn test_futurefail() {
-        let mut f = Future::spawn(|| fail!());
+        let mut f = Future::spawn(proc() fail!());
         let _x: ~str = f.get();
     }
 

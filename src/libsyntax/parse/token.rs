@@ -169,9 +169,9 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
       /* Literals */
       LIT_CHAR(c) => {
           let mut res = ~"'";
-          do char::from_u32(c).unwrap().escape_default |c| {
+          char::from_u32(c).unwrap().escape_default(|c| {
               res.push_char(c);
-          }
+          });
           res.push_char('\'');
           res
       }

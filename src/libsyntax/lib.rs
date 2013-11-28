@@ -14,6 +14,7 @@
  */
 
 #[link(name = "syntax",
+       package_id = "syntax",
        vers = "0.9-pre",
        uuid = "9311401b-d6ea-4cd9-a1d9-61f89499c645")];
 
@@ -21,6 +22,8 @@
 #[crate_type = "lib"];
 
 #[feature(macro_rules, globs, managed_boxes)];
+#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
+#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 extern mod extra;
 
@@ -28,6 +31,7 @@ pub mod util {
     pub mod interner;
     #[cfg(test)]
     pub mod parser_testing;
+    pub mod small_vector;
 }
 
 pub mod syntax {
@@ -80,7 +84,6 @@ pub mod ext {
     pub mod concat;
     pub mod concat_idents;
     pub mod log_syntax;
-    pub mod auto_encode;
     pub mod source_util;
 
     pub mod trace_macros;

@@ -25,7 +25,6 @@ use middle::trans::glue;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::attr;
 use util::ppaux::ty_to_str;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
@@ -35,7 +34,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        item: &ast::foreign_item,
                        path: ast_map::path,
                        substs: @param_substs,
-                       attributes: &[ast::Attribute],
+                       _attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
@@ -149,11 +148,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
     set_always_inline(fcx.llfn);
 
-    // Set the fixed stack segment flag if necessary.
-    if attr::contains_name(attributes, "fixed_stack_segment") {
-        set_fixed_stack_segment(fcx.llfn);
-    }
-
     let mut bcx = fcx.entry_bcx.unwrap();
     let first_real_arg = fcx.arg_pos(0u);
 
@@ -163,7 +157,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     // This requires that atomic intrinsics follow a specific naming pattern:
     // "atomic_<operation>[_<ordering>], and no ordering means SeqCst
     if name.starts_with("atomic_") {
-        let split : ~[&str] = name.split_iter('_').collect();
+        let split : ~[&str] = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
         let order = if split.len() == 2 {
             lib::llvm::SequentiallyConsistent
@@ -233,6 +227,11 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.trap"));
             Call(bcx, llfn, [], []);
             Unreachable(bcx);
+        }
+        "breakpoint" => {
+            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.debugtrap"));
+            Call(bcx, llfn, [], []);
+            RetVoid(bcx);
         }
         "size_of" => {
             let tp_ty = substs.tys[0];

@@ -24,6 +24,7 @@ use parse::attr::parser_attr;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt, EOF};
 use print;
+use util::small_vector::SmallVector;
 
 struct ParserAnyMacro {
     parser: @Parser,
@@ -54,9 +55,15 @@ impl AnyMacro for ParserAnyMacro {
         self.ensure_complete_parse(true);
         ret
     }
-    fn make_item(&self) -> Option<@ast::item> {
-        let attrs = self.parser.parse_outer_attributes();
-        let ret = self.parser.parse_item(attrs);
+    fn make_items(&self) -> SmallVector<@ast::item> {
+        let mut ret = SmallVector::zero();
+        loop {
+            let attrs = self.parser.parse_outer_attributes();
+            match self.parser.parse_item(attrs) {
+                Some(item) => ret.push(item),
+                None => break
+            }
+        }
         self.ensure_complete_parse(false);
         ret
     }

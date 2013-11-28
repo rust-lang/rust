@@ -18,7 +18,7 @@ pub fn main() {
             name: DynTestName(~"test"),
             should_fail: false
         },
-        testfn: DynTestFn(|| ()),
+        testfn: DynTestFn(proc() ()),
     };
     do_swap(&mut test);
 }
@@ -34,8 +34,8 @@ pub enum TestName {
 }
 
 pub enum TestFn {
-    DynTestFn(~fn()),
-    DynBenchFn(~fn(&mut int))
+    DynTestFn(proc()),
+    DynBenchFn(proc(&mut int))
 }
 
 pub struct TestDesc {

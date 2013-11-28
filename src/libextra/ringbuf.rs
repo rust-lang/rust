@@ -499,35 +499,35 @@ mod tests {
 
     #[bench]
     fn bench_new(b: &mut test::BenchHarness) {
-        do b.iter {
+        b.iter(|| {
             let _: RingBuf<u64> = RingBuf::new();
-        }
+        })
     }
 
     #[bench]
     fn bench_push_back(b: &mut test::BenchHarness) {
         let mut deq = RingBuf::new();
-        do b.iter {
+        b.iter(|| {
             deq.push_back(0);
-        }
+        })
     }
 
     #[bench]
     fn bench_push_front(b: &mut test::BenchHarness) {
         let mut deq = RingBuf::new();
-        do b.iter {
+        b.iter(|| {
             deq.push_front(0);
-        }
+        })
     }
 
     #[bench]
     fn bench_grow(b: &mut test::BenchHarness) {
         let mut deq = RingBuf::new();
-        do b.iter {
-            do 65.times {
+        b.iter(|| {
+            65.times(|| {
                 deq.push_front(1);
-            }
-        }
+            })
+        })
     }
 
     #[deriving(Clone, Eq)]

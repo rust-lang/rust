@@ -29,7 +29,7 @@
 use container::Container;
 use iter::Iterator;
 use option::{Some, None};
-use rt::io::Writer;
+use io::Writer;
 use str::OwnedStr;
 use to_bytes::IterBytes;
 use vec::ImmutableVector;
@@ -83,10 +83,10 @@ impl<A:IterBytes> Hash for A {
     #[inline]
     fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
         let mut s = State::new(k0, k1);
-        do self.iter_bytes(true) |bytes| {
+        self.iter_bytes(true, |bytes| {
             s.input(bytes);
             true
-        };
+        });
         s.result_u64()
     }
 }
@@ -94,14 +94,14 @@ impl<A:IterBytes> Hash for A {
 fn hash_keyed_2<A: IterBytes,
                 B: IterBytes>(a: &A, b: &B, k0: u64, k1: u64) -> u64 {
     let mut s = State::new(k0, k1);
-    do a.iter_bytes(true) |bytes| {
+    a.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do b.iter_bytes(true) |bytes| {
+    });
+    b.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
+    });
     s.result_u64()
 }
 
@@ -109,18 +109,18 @@ fn hash_keyed_3<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C, k0: u64, k1: u64) -> u64 {
     let mut s = State::new(k0, k1);
-    do a.iter_bytes(true) |bytes| {
+    a.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do b.iter_bytes(true) |bytes| {
+    });
+    b.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do c.iter_bytes(true) |bytes| {
+    });
+    c.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
+    });
     s.result_u64()
 }
 
@@ -136,22 +136,22 @@ fn hash_keyed_4<A: IterBytes,
                 k1: u64)
                 -> u64 {
     let mut s = State::new(k0, k1);
-    do a.iter_bytes(true) |bytes| {
+    a.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do b.iter_bytes(true) |bytes| {
+    });
+    b.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do c.iter_bytes(true) |bytes| {
+    });
+    c.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do d.iter_bytes(true) |bytes| {
+    });
+    d.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
+    });
     s.result_u64()
 }
 
@@ -169,26 +169,26 @@ fn hash_keyed_5<A: IterBytes,
                 k1: u64)
                 -> u64 {
     let mut s = State::new(k0, k1);
-    do a.iter_bytes(true) |bytes| {
+    a.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do b.iter_bytes(true) |bytes| {
+    });
+    b.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do c.iter_bytes(true) |bytes| {
+    });
+    c.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do d.iter_bytes(true) |bytes| {
+    });
+    d.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
-    do e.iter_bytes(true) |bytes| {
+    });
+    e.iter_bytes(true, |bytes| {
         s.input(bytes);
         true
-    };
+    });
     s.result_u64()
 }
 
@@ -408,7 +408,7 @@ mod tests {
     // Hash just the bytes of the slice, without length prefix
     struct Bytes<'self>(&'self [u8]);
     impl<'self> IterBytes for Bytes<'self> {
-        fn iter_bytes(&self, _lsb0: bool, f: &fn(&[u8]) -> bool) -> bool {
+        fn iter_bytes(&self, _lsb0: bool, f: |&[u8]| -> bool) -> bool {
             f(**self)
         }
     }

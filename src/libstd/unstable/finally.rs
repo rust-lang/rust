@@ -15,26 +15,26 @@ stack closures that emulates Java-style try/finally blocks.
 # Example
 
  ```
-do || {
+(|| {
     ...
-}.finally {
+}).finally(|| {
     always_run_this();
-}
+})
  ```
 */
 
 use ops::Drop;
 
-#[cfg(test)] use task::{failing, spawn};
+#[cfg(test)] use task::failing;
 
 pub trait Finally<T> {
-    fn finally(&self, dtor: &fn()) -> T;
+    fn finally(&self, dtor: ||) -> T;
 }
 
 macro_rules! finally_fn {
     ($fnty:ty) => {
         impl<T> Finally<T> for $fnty {
-            fn finally(&self, dtor: &fn()) -> T {
+            fn finally(&self, dtor: ||) -> T {
                 let _d = Finallyalizer {
                     dtor: dtor
                 };
@@ -44,8 +44,8 @@ macro_rules! finally_fn {
     }
 }
 
-impl<'self,T> Finally<T> for &'self fn() -> T {
-    fn finally(&self, dtor: &fn()) -> T {
+impl<'self,T> Finally<T> for 'self || -> T {
+    fn finally(&self, dtor: ||) -> T {
         let _d = Finallyalizer {
             dtor: dtor
         };
@@ -54,11 +54,10 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
     }
 }
 
-finally_fn!(~fn() -> T)
 finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {
-    dtor: &'self fn()
+    dtor: 'self ||
 }
 
 #[unsafe_destructor]
@@ -71,13 +70,13 @@ impl<'self> Drop for Finallyalizer<'self> {
 #[test]
 fn test_success() {
     let mut i = 0;
-    do (|| {
+    (|| {
         i = 10;
-    }).finally {
+    }).finally(|| {
         assert!(!failing());
         assert_eq!(i, 10);
         i = 20;
-    }
+    });
     assert_eq!(i, 20);
 }
 
@@ -85,19 +84,19 @@ fn test_success() {
 #[should_fail]
 fn test_fail() {
     let mut i = 0;
-    do (|| {
+    (|| {
         i = 10;
         fail!();
-    }).finally {
+    }).finally(|| {
         assert!(failing());
         assert_eq!(i, 10);
-    }
+    })
 }
 
 #[test]
 fn test_retval() {
-    let closure: &fn() -> int = || 10;
-    let i = do closure.finally { };
+    let closure: || -> int = || 10;
+    let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }
 
@@ -107,14 +106,5 @@ fn test_compact() {
     fn but_always_run_this_function() { }
     do_some_fallible_work.finally(
         but_always_run_this_function);
-}
-
-#[test]
-fn test_owned() {
-    fn spawn_with_finalizer(f: ~fn()) {
-        do spawn { do f.finally { } }
-    }
-    let owned: ~fn() = || { };
-    spawn_with_finalizer(owned);
 }
 

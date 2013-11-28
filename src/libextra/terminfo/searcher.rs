@@ -13,8 +13,8 @@
 
 use std::{os, str};
 use std::os::getenv;
-use std::rt::io;
-use std::rt::io::File;
+use std::io;
+use std::io::File;
 
 /// Return path to database entry for `term`
 pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
@@ -36,7 +36,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
             match getenv("TERMINFO_DIRS") {
-                Some(dirs) => for i in dirs.split_iter(':') {
+                Some(dirs) => for i in dirs.split(':') {
                     if i == "" {
                         dirs_to_search.push(Path::new("/usr/share/terminfo"));
                     } else {

@@ -50,6 +50,7 @@
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot, IntType, UintType};
 use middle::ty;
+use middle::ty_fold;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
 use middle::typeck::infer::to_str::InferStr;
@@ -93,6 +94,20 @@ pub fn resolver(infcx: @mut InferCtxt, modes: uint) -> ResolveState {
         err: None,
         v_seen: ~[],
         type_depth: 0
+    }
+}
+
+impl ty_fold::TypeFolder for ResolveState {
+    fn tcx(&self) -> ty::ctxt {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+        self.resolve_type(t)
+    }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        self.resolve_region(r)
     }
 }
 
@@ -166,11 +181,7 @@ impl ResolveState {
                     typ
                 } else {
                     self.type_depth += 1;
-                    let result = ty::fold_regions_and_ty(
-                        self.infcx.tcx, typ,
-                        |r| self.resolve_region(r),
-                        |t| self.resolve_type(t),
-                        |t| self.resolve_type(t));
+                    let result = ty_fold::super_fold_ty(self, typ);
                     self.type_depth -= 1;
                     result
                 }
@@ -181,21 +192,21 @@ impl ResolveState {
     pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
         debug!("Resolve_region({})", orig.inf_str(self.infcx));
         match orig {
-          ty::re_infer(ty::ReVar(rid)) => self.resolve_region_var(rid),
+          ty::ReInfer(ty::ReVar(rid)) => self.resolve_region_var(rid),
           _ => orig
         }
     }
 
     pub fn resolve_region_var(&mut self, rid: RegionVid) -> ty::Region {
         if !self.should(resolve_rvar) {
-            return ty::re_infer(ty::ReVar(rid));
+            return ty::ReInfer(ty::ReVar(rid));
         }
         self.infcx.region_vars.resolve_var(rid)
     }
 
     pub fn assert_not_rvar(&mut self, rid: RegionVid, r: ty::Region) {
         match r {
-          ty::re_infer(ty::ReVar(rid2)) => {
+          ty::ReInfer(ty::ReVar(rid2)) => {
             self.err = Some(region_var_bound_by_region_var(rid, rid2));
           }
           _ => { }

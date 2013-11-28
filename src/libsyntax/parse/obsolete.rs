@@ -39,6 +39,11 @@ pub enum ObsoleteSyntax {
     ObsoleteConstPointer,
     ObsoleteEmptyImpl,
     ObsoleteLoopAsContinue,
+    ObsoleteEnumWildcard,
+    ObsoleteStructWildcard,
+    ObsoleteVecDotDotWildcard,
+    ObsoleteBoxedClosure,
+    ObsoleteClosureType,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -78,7 +83,7 @@ impl ParserObsoleteMethods for Parser {
             ),
             ObsoleteBareFnType => (
                 "bare function type",
-                "use `&fn` or `extern fn` instead"
+                "use `|A| -> B` or `extern fn(A) -> B` instead"
             ),
             ObsoleteNamedExternModule => (
                 "named external module",
@@ -112,6 +117,28 @@ impl ParserObsoleteMethods for Parser {
                 "`loop` instead of `continue`",
                 "`loop` is now only used for loops and `continue` is used for \
                  skipping iterations"
+            ),
+            ObsoleteEnumWildcard => (
+                "enum wildcard",
+                "use `..` instead of `*` for matching all enum fields"
+            ),
+            ObsoleteStructWildcard => (
+                "struct wildcard",
+                "use `..` instead of `_` for matching trailing struct fields"
+            ),
+            ObsoleteVecDotDotWildcard => (
+                "vec slice wildcard",
+                "use `..` instead of `.._` for matching slices"
+            ),
+            ObsoleteBoxedClosure => (
+                "managed or owned closure",
+                "managed closures have been removed and owned closures are \
+                 now written `proc()`"
+            ),
+            ObsoleteClosureType => (
+                "closure type",
+                "closures are now written `|A| -> B` rather than `&fn(A) -> \
+                 B`."
             ),
         };
 

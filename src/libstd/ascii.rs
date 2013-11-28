@@ -55,6 +55,74 @@ impl Ascii {
     pub fn eq_ignore_case(self, other: Ascii) -> bool {
         ASCII_LOWER_MAP[self.chr] == ASCII_LOWER_MAP[other.chr]
     }
+
+    // the following methods are like ctype, and the implementation is inspired by musl
+
+    /// Check if the character is a letter (a-z, A-Z)
+    #[inline]
+    pub fn is_alpha(&self) -> bool {
+        (self.chr >= 0x41 && self.chr <= 0x5A) || (self.chr >= 0x61 && self.chr <= 0x7A)
+    }
+
+    /// Check if the character is a number (0-9)
+    #[inline]
+    pub fn is_digit(&self) -> bool {
+        self.chr >= 0x31 && self.chr <= 0x39
+    }
+
+    /// Check if the character is a letter or number
+    #[inline]
+    pub fn is_alnum(&self) -> bool {
+        self.is_alpha() || self.is_digit()
+    }
+
+    /// Check if the character is a space or horizontal tab
+    #[inline]
+    pub fn is_blank(&self) -> bool {
+        self.chr == ' ' as u8 || self.chr == '\t' as u8
+    }
+
+    /// Check if the character is a control character
+    #[inline]
+    pub fn is_control(&self) -> bool {
+        self.chr <= 0x20 || self.chr == 0x7F
+    }
+
+    /// Checks if the character is printable (except space)
+    #[inline]
+    pub fn is_graph(&self) -> bool {
+        (self.chr - 0x21) < 0x5E
+    }
+
+    /// Checks if the character is printable (including space)
+    #[inline]
+    pub fn is_print(&self) -> bool {
+        (self.chr - 0x20) < 0x5F
+    }
+
+    /// Checks if the character is lowercase
+    #[inline]
+    pub fn is_lower(&self) -> bool {
+        (self.chr - 'a' as u8) < 26
+    }
+
+    /// Checks if the character is uppercase
+    #[inline]
+    pub fn is_upper(&self) -> bool {
+        (self.chr - 'A' as u8) < 26
+    }
+
+    /// Checks if the character is punctuation
+    #[inline]
+    pub fn is_punctuation(&self) -> bool {
+        self.is_graph() && !self.is_alnum()
+    }
+
+    /// Checks if the character is a valid hex digit
+    #[inline]
+    pub fn is_hex(&self) -> bool {
+        self.is_digit() || ((self.chr | 32u8) - 'a' as u8) < 6
+    }
 }
 
 impl ToStr for Ascii {
@@ -112,7 +180,7 @@ impl<'self> AsciiCast<&'self [Ascii]> for &'self str {
 
     #[inline]
     fn is_ascii(&self) -> bool {
-        self.byte_iter().all(|b| b.is_ascii())
+        self.bytes().all(|b| b.is_ascii())
     }
 }
 
@@ -222,7 +290,7 @@ impl<'self> AsciiStr for &'self [Ascii] {
 
     #[inline]
     fn eq_ignore_case(self, other: &[Ascii]) -> bool {
-        do self.iter().zip(other.iter()).all |(&a, &b)| { a.eq_ignore_case(b) }
+        self.iter().zip(other.iter()).all(|(&a, &b)| a.eq_ignore_case(b))
     }
 }
 
@@ -235,7 +303,7 @@ impl ToStrConsume for ~[Ascii] {
 
 impl IterBytes for Ascii {
     #[inline]
-    fn iter_bytes(&self, _lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
+    fn iter_bytes(&self, _lsb0: bool, f: |buf: &[u8]| -> bool) -> bool {
         f([self.to_byte()])
     }
 }
@@ -326,7 +394,7 @@ unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> ~str {
-    let bytes = string.byte_iter().map(|b| map[b]).to_owned_vec();
+    let bytes = string.bytes().map(|b| map[b]).to_owned_vec();
 
     str::raw::from_utf8_owned(bytes)
 }
@@ -430,8 +498,8 @@ mod tests {
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
-        assert!("banana".iter().all(|c| c.is_ascii()));
-        assert!(!"ประเทศไทย中华Việt Nam".iter().all(|c| c.is_ascii()));
+        assert!("banana".chars().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
     }
 
     #[test]

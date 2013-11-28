@@ -88,14 +88,18 @@ pub use self::util::set_exit_status;
 pub use self::util::default_sched_threads;
 
 // Re-export of the functionality in the kill module
-pub use self::kill::{KillHandle, BlockedTask};
+pub use self::kill::BlockedTask;
 
 // XXX: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
     pub use super::select::SelectInner;
     pub use super::select::{SelectInner, SelectPortInner};
+    #[cfg(stage0)]
+    #[cfg(windows)]
     pub use super::local_ptr::maybe_tls_key;
+    #[cfg(not(stage0), not(windows))]
+    pub use super::local_ptr::RT_TLS_PTR;
 }
 
 // Internal macros used by the runtime.
@@ -116,8 +120,10 @@ mod kill;
 /// The coroutine task scheduler, built on the `io` event loop.
 pub mod sched;
 
-/// Synchronous I/O.
-pub mod io;
+#[cfg(stage0)]
+pub mod io {
+    pub use io::stdio;
+}
 
 /// The EventLoop and internal synchronous I/O interface.
 pub mod rtio;
@@ -205,7 +211,7 @@ pub mod borrowck;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(argc: int, argv: **u8, main: ~fn()) -> int {
+pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 
     init(argc, argv);
     let exit_code = run(main);
@@ -219,7 +225,7 @@ pub fn start(argc: int, argv: **u8, main: ~fn()) -> int {
 ///
 /// This is appropriate for running code that must execute on the main thread,
 /// such as the platform event loop and GUI.
-pub fn start_on_main_thread(argc: int, argv: **u8, main: ~fn()) -> int {
+pub fn start_on_main_thread(argc: int, argv: **u8, main: proc()) -> int {
     init(argc, argv);
     let exit_code = run_on_main_thread(main);
     cleanup();
@@ -252,15 +258,15 @@ pub fn cleanup() {
 /// Configures the runtime according to the environment, by default
 /// using a task scheduler with the same number of threads as cores.
 /// Returns a process exit code.
-pub fn run(main: ~fn()) -> int {
+pub fn run(main: proc()) -> int {
     run_(main, false)
 }
 
-pub fn run_on_main_thread(main: ~fn()) -> int {
+pub fn run_on_main_thread(main: proc()) -> int {
     run_(main, true)
 }
 
-fn run_(main: ~fn(), use_main_sched: bool) -> int {
+fn run_(main: proc(), use_main_sched: bool) -> int {
     static DEFAULT_ERROR_CODE: int = 101;
 
     let nscheds = util::default_sched_threads();
@@ -338,14 +344,14 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     // When the main task exits, after all the tasks in the main
     // task tree, shut down the schedulers and set the exit code.
-    let handles = Cell::new(handles);
-    let on_exit: ~fn(UnwindResult) = |exit_success| {
+    let handles = handles;
+    let on_exit: proc(UnwindResult) = proc(exit_success) {
         unsafe {
             assert!(!(*exited_already.get()).swap(true, SeqCst),
                     "the runtime already exited");
         }
 
-        let mut handles = handles.take();
+        let mut handles = handles;
         for handle in handles.mut_iter() {
             handle.send(Shutdown);
         }
@@ -463,8 +469,6 @@ pub fn in_green_task_context() -> bool {
 }
 
 pub fn new_event_loop() -> ~rtio::EventLoop {
-    #[fixed_stack_segment]; #[allow(cstack)];
-
     match crate_map::get_crate_map() {
         None => {}
         Some(map) => {

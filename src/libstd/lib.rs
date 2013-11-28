@@ -44,6 +44,7 @@
 //!     use std::prelude::*;
 
 #[link(name = "std",
+       package_id = "std",
        vers = "0.9-pre",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
@@ -63,9 +64,11 @@
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
+#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
+#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
-// things and all of the std::rt::io tests have an I/O interface to run on top
+// things and all of the std::io tests have an I/O interface to run on top
 // of
 #[cfg(test)] extern mod rustuv(vers = "0.9-pre");
 
@@ -130,6 +133,7 @@ pub mod owned;
 pub mod managed;
 pub mod borrow;
 pub mod rc;
+pub mod gc;
 
 
 /* Core language traits */
@@ -176,6 +180,7 @@ pub mod local_data;
 pub mod libc;
 pub mod c_str;
 pub mod os;
+pub mod io;
 pub mod path;
 pub mod rand;
 pub mod run;
@@ -222,6 +227,7 @@ mod std {
     pub use logging;
     pub use option;
     pub use os;
+    pub use io;
     pub use rt;
     pub use str;
     pub use to_bytes;

@@ -25,7 +25,7 @@ pub static RED_ZONE: uint = 20 * 1024;
 // then misalign the regs again.
 pub struct Context {
     /// The context entry point, saved here for later destruction
-    priv start: Option<~~fn()>,
+    priv start: Option<~proc()>,
     /// Hold the registers while the task or scheduler is suspended
     priv regs: ~Registers,
     /// Lower bound and upper bound for the stack
@@ -41,25 +41,31 @@ impl Context {
         }
     }
 
-    /// Create a new context that will resume execution by running ~fn()
-    pub fn new(start: ~fn(), stack: &mut StackSegment) -> Context {
+    /// Create a new context that will resume execution by running proc()
+    pub fn new(start: proc(), stack: &mut StackSegment) -> Context {
         // FIXME #7767: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
         let start = ~start;
 
         // The C-ABI function that is the task entry point
-        extern fn task_start_wrapper(f: &~fn()) { (*f)() }
+        extern fn task_start_wrapper(f: &proc()) {
+            // XXX(pcwalton): This may be sketchy.
+            unsafe {
+                let f: &|| = transmute(f);
+                (*f)()
+            }
+        }
 
         let fp: *c_void = task_start_wrapper as *c_void;
-        let argp: *c_void = unsafe { transmute::<&~fn(), *c_void>(&*start) };
+        let argp: *c_void = unsafe { transmute::<&proc(), *c_void>(&*start) };
         let sp: *uint = stack.end();
         let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };
         // Save and then immediately load the current context,
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
         unsafe {
-            swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs));
+            rust_swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs));
         };
 
         initialize_call_frame(&mut *regs, fp, argp, sp);
@@ -104,8 +110,8 @@ impl Context {
             // stack limit in the OS-specified TLS slot. This also  means that
             // we cannot call any more rust functions after record_stack_bounds
             // returns because they would all likely fail due to the limit being
-            // invalid for the current task. Lucky for us `swap_registers` is a
-            // C function so we don't have to worry about that!
+            // invalid for the current task. Lucky for us `rust_swap_registers`
+            // is a C function so we don't have to worry about that!
             match in_context.stack_bounds {
                 Some((lo, hi)) => record_stack_bounds(lo, hi),
                 // If we're going back to one of the original contexts or
@@ -113,14 +119,13 @@ impl Context {
                 // the stack limit to 0 to make morestack never fail
                 None => record_stack_bounds(0, uint::max_value),
             }
-            swap_registers(out_regs, in_regs)
+            rust_swap_registers(out_regs, in_regs)
         }
     }
 }
 
 extern {
-    #[rust_stack]
-    fn swap_registers(out_regs: *mut Registers, in_regs: *Registers);
+    fn rust_swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
 
 // Register contexts used in various architectures
@@ -143,7 +148,7 @@ extern {
 //
 // These structures/functions are roughly in-sync with the source files inside
 // of src/rt/arch/$arch. The only currently used function from those folders is
-// the `swap_registers` function, but that's only because for now segmented
+// the `rust_swap_registers` function, but that's only because for now segmented
 // stacks are disabled.
 
 #[cfg(target_arch = "x86")]
@@ -306,8 +311,8 @@ pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
         //   https://github.com/mozilla/rust/issues/3445#issuecomment-26114839
         //
         // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
-        asm!("mov $0, %gs:0x08" :: "r"(stack_lo) :: "volatile");
-        asm!("mov $0, %gs:0x10" :: "r"(stack_hi) :: "volatile");
+        asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
+        asm!("mov $0, %gs:0x10" :: "r"(stack_lo) :: "volatile");
     }
 }
 
@@ -376,7 +381,6 @@ pub unsafe fn record_sp_limit(limit: uint) {
     unsafe fn target_record_sp_limit(limit: uint) {
         return record_sp_limit(limit as *c_void);
         extern {
-            #[rust_stack]
             fn record_sp_limit(limit: *c_void);
         }
     }
@@ -450,7 +454,6 @@ pub unsafe fn get_sp_limit() -> uint {
     unsafe fn target_get_sp_limit() -> uint {
         return get_sp_limit() as uint;
         extern {
-            #[rust_stack]
             fn get_sp_limit() -> *c_void;
         }
     }

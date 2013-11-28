@@ -10,8 +10,11 @@
 
 // error-pattern:task '<unnamed>' failed at 'test'
 
+use std::task;
+
 fn main() {
-    do spawn {
+    do task::try {
         fail!("test");
-    }
+        1
+    }.unwrap()
 }

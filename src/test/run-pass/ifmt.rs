@@ -14,16 +14,15 @@
 #[deny(warnings)];
 
 use std::fmt;
-use std::rt::io::Decorator;
-use std::rt::io::mem::MemWriter;
-use std::rt::io;
-use std::rt::io::Writer;
+use std::io::Decorator;
+use std::io::mem::MemWriter;
+use std::io;
+use std::io::Writer;
 use std::str;
 
 struct A;
 struct B;
 
-#[fmt="foo"]
 impl fmt::Signed for A {
     fn fmt(_: &A, f: &mut fmt::Formatter) { f.buf.write("aloha".as_bytes()); }
 }

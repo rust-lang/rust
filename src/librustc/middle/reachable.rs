@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,12 +18,11 @@
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
-use middle::resolve;
 
 use std::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{def_id_of_def, is_local, local_def};
+use syntax::ast_util::{def_id_of_def, is_local};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::visit::Visitor;
@@ -105,8 +104,6 @@ struct ReachableContext {
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     worklist: @mut ~[ast::NodeId],
-    // Known reexports of modules
-    exp_map2: resolve::ExportMap2,
 }
 
 struct MarkSymbolVisitor {
@@ -173,14 +170,12 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 impl ReachableContext {
     // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::method_map,
-           exp_map2: resolve::ExportMap2) -> ReachableContext {
+    fn new(tcx: ty::ctxt, method_map: typeck::method_map) -> ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
             reachable_symbols: @mut HashSet::new(),
             worklist: @mut ~[],
-            exp_map2: exp_map2,
         }
     }
 
@@ -255,19 +250,6 @@ impl ReachableContext {
         }
     }
 
-    fn propagate_mod(&self, id: ast::NodeId) {
-        match self.exp_map2.find(&id) {
-            Some(l) => {
-                for reexport in l.iter() {
-                    if reexport.reexport && is_local(reexport.def_id) {
-                        self.worklist.push(reexport.def_id.node);
-                    }
-                }
-            }
-            None => {}
-        }
-    }
-
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&self) {
         let mut visitor = self.init_visitor();
@@ -278,112 +260,98 @@ impl ReachableContext {
                 continue
             }
             scanned.insert(search_item);
-            self.reachable_symbols.insert(search_item);
-
-            // Find the AST block corresponding to the item and visit it,
-            // marking all path expressions that resolve to something
-            // interesting.
             match self.tcx.items.find(&search_item) {
-                Some(&ast_map::node_item(item, _)) => {
-                    match item.node {
-                        ast::item_fn(_, _, _, _, ref search_block) => {
-                            if item_might_be_inlined(item) {
-                                visit::walk_block(&mut visitor, search_block, ())
-                            }
-                        }
-
-                        // Our recursion into modules involves looking up their
-                        // public reexports and the destinations of those
-                        // exports. Privacy will put them in the worklist, but
-                        // we won't find them in the ast_map, so this is where
-                        // we deal with publicly re-exported items instead.
-                        ast::item_mod(*) => self.propagate_mod(item.id),
-
-                        // Implementations of exported structs/enums need to get
-                        // added to the worklist (as all their methods should be
-                        // accessible)
-                        ast::item_struct(*) | ast::item_enum(*) => {
-                            let def = local_def(item.id);
-                            let impls = match self.tcx.inherent_impls.find(&def) {
-                                Some(&impls) => impls,
-                                None => continue
-                            };
-                            for imp in impls.iter() {
-                                if is_local(imp.did) {
-                                    self.worklist.push(imp.did.node);
-                                }
-                            }
-                        }
-
-                        // Propagate through this impl
-                        ast::item_impl(_, _, _, ref methods) => {
-                            for method in methods.iter() {
-                                self.worklist.push(method.id);
-                            }
-                        }
-
-                        // Default methods of exported traits need to all be
-                        // accessible.
-                        ast::item_trait(_, _, ref methods) => {
-                            for method in methods.iter() {
-                                match *method {
-                                    ast::required(*) => {}
-                                    ast::provided(ref method) => {
-                                        self.worklist.push(method.id);
-                                    }
-                                }
-                            }
-                        }
-
-                        // These are normal, nothing reachable about these
-                        // inherently and their children are already in the
-                        // worklist
-                        ast::item_static(*) | ast::item_ty(*) |
-                            ast::item_foreign_mod(*) => {}
-
-                        _ => {
-                            self.tcx.sess.span_bug(item.span,
-                                                   "found non-function item \
-                                                    in worklist?!")
-                        }
-                    }
-                }
-                Some(&ast_map::node_trait_method(trait_method, _, _)) => {
-                    match *trait_method {
-                        ast::required(*) => {
-                            // Keep going, nothing to get exported
-                        }
-                        ast::provided(ref method) => {
-                            visit::walk_block(&mut visitor, &method.body, ())
-                        }
-                    }
-                }
-                Some(&ast_map::node_method(method, did, _)) => {
-                    if method_might_be_inlined(self.tcx, method, did) {
-                        visit::walk_block(&mut visitor, &method.body, ())
-                    }
-                }
-                // Nothing to recurse on for these
-                Some(&ast_map::node_foreign_item(*)) |
-                Some(&ast_map::node_variant(*)) |
-                Some(&ast_map::node_struct_ctor(*)) => {}
-                Some(_) => {
-                    let ident_interner = token::get_ident_interner();
-                    let desc = ast_map::node_id_to_str(self.tcx.items,
-                                                       search_item,
-                                                       ident_interner);
-                    self.tcx.sess.bug(format!("found unexpected thingy in \
-                                               worklist: {}",
-                                               desc))
-                }
-                None if search_item == ast::CRATE_NODE_ID => {
-                    self.propagate_mod(search_item);
-                }
+                Some(item) => self.propagate_node(item, search_item,
+                                                  &mut visitor),
+                None if search_item == ast::CRATE_NODE_ID => {}
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
                                                {}",
                                               search_item))
                 }
+            }
+        }
+    }
+
+    fn propagate_node(&self, node: &ast_map::ast_node,
+                      search_item: ast::NodeId,
+                      visitor: &mut MarkSymbolVisitor) {
+        if !*self.tcx.sess.building_library {
+            // If we are building an executable, then there's no need to flag
+            // anything as external except for `extern fn` types. These
+            // functions may still participate in some form of native interface,
+            // but all other rust-only interfaces can be private (they will not
+            // participate in linkage after this product is produced)
+            match *node {
+                ast_map::node_item(item, _) => {
+                    match item.node {
+                        ast::item_fn(_, ast::extern_fn, _, _, _) => {
+                            self.reachable_symbols.insert(search_item);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        } else {
+            // If we are building a library, then reachable symbols will
+            // continue to participate in linkage after this product is
+            // produced. In this case, we traverse the ast node, recursing on
+            // all reachable nodes from this one.
+            self.reachable_symbols.insert(search_item);
+        }
+
+        match *node {
+            ast_map::node_item(item, _) => {
+                match item.node {
+                    ast::item_fn(_, _, _, _, ref search_block) => {
+                        if item_might_be_inlined(item) {
+                            visit::walk_block(visitor, search_block, ())
+                        }
+                    }
+
+                    // These are normal, nothing reachable about these
+                    // inherently and their children are already in the
+                    // worklist, as determined by the privacy pass
+                    ast::item_static(*) | ast::item_ty(*) |
+                    ast::item_mod(*) | ast::item_foreign_mod(*) |
+                    ast::item_impl(*) | ast::item_trait(*) |
+                    ast::item_struct(*) | ast::item_enum(*) => {}
+
+                    _ => {
+                        self.tcx.sess.span_bug(item.span,
+                                               "found non-function item \
+                                                in worklist?!")
+                    }
+                }
+            }
+            ast_map::node_trait_method(trait_method, _, _) => {
+                match *trait_method {
+                    ast::required(*) => {
+                        // Keep going, nothing to get exported
+                    }
+                    ast::provided(ref method) => {
+                        visit::walk_block(visitor, &method.body, ())
+                    }
+                }
+            }
+            ast_map::node_method(method, did, _) => {
+                if method_might_be_inlined(self.tcx, method, did) {
+                    visit::walk_block(visitor, &method.body, ())
+                }
+            }
+            // Nothing to recurse on for these
+            ast_map::node_foreign_item(*) |
+            ast_map::node_variant(*) |
+            ast_map::node_struct_ctor(*) => {}
+            _ => {
+                let ident_interner = token::get_ident_interner();
+                let desc = ast_map::node_id_to_str(self.tcx.items,
+                                                   search_item,
+                                                   ident_interner);
+                self.tcx.sess.bug(format!("found unexpected thingy in \
+                                           worklist: {}",
+                                           desc))
             }
         }
     }
@@ -404,10 +372,9 @@ impl ReachableContext {
 
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
-                      exp_map2: resolve::ExportMap2,
                       exported_items: &privacy::ExportedItems)
                       -> @mut HashSet<ast::NodeId> {
-    let reachable_context = ReachableContext::new(tcx, method_map, exp_map2);
+    let reachable_context = ReachableContext::new(tcx, method_map);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
     //         a result of the privacy pass

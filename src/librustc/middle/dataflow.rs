@@ -18,7 +18,7 @@
 
 
 use std::cast;
-use std::rt::io;
+use std::io;
 use std::uint;
 use std::vec;
 use std::hashmap::HashMap;
@@ -208,17 +208,17 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     fn compute_id_range(&mut self, id: ast::NodeId) -> (uint, uint) {
         let mut expanded = false;
         let len = self.nodeid_to_bitset.len();
-        let n = do self.nodeid_to_bitset.find_or_insert_with(id) |_| {
+        let n = self.nodeid_to_bitset.find_or_insert_with(id, |_| {
             expanded = true;
             len
-        };
+        });
         if expanded {
             let entry = if self.oper.initial_value() { uint::max_value } else {0};
-            do self.words_per_id.times {
+            self.words_per_id.times(|| {
                 self.gens.push(0);
                 self.kills.push(0);
                 self.on_entry.push(entry);
-            }
+            })
         }
         let start = *n * self.words_per_id;
         let end = start + self.words_per_id;
@@ -234,7 +234,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
     pub fn each_bit_on_entry_frozen(&self,
                                     id: ast::NodeId,
-                                    f: &fn(uint) -> bool) -> bool {
+                                    f: |uint| -> bool)
+                                    -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
         if !self.nodeid_to_bitset.contains_key(&id) {
@@ -249,7 +250,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
     pub fn each_bit_on_entry(&mut self,
                              id: ast::NodeId,
-                             f: &fn(uint) -> bool) -> bool {
+                             f: |uint| -> bool)
+                             -> bool {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
 
@@ -260,9 +262,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         self.each_bit(on_entry, f)
     }
 
-    pub fn each_gen_bit(&mut self,
-                        id: ast::NodeId,
-                        f: &fn(uint) -> bool) -> bool {
+    pub fn each_gen_bit(&mut self, id: ast::NodeId, f: |uint| -> bool)
+                        -> bool {
         //! Iterates through each bit in the gen set for `id`.
 
         let (start, end) = self.compute_id_range(id);
@@ -272,9 +273,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         self.each_bit(gens, f)
     }
 
-    pub fn each_gen_bit_frozen(&self,
-                               id: ast::NodeId,
-                               f: &fn(uint) -> bool) -> bool {
+    pub fn each_gen_bit_frozen(&self, id: ast::NodeId, f: |uint| -> bool)
+                               -> bool {
         //! Iterates through each bit in the gen set for `id`.
         if !self.nodeid_to_bitset.contains_key(&id) {
             return true;
@@ -286,9 +286,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         self.each_bit(gens, f)
     }
 
-    fn each_bit(&self,
-                words: &[uint],
-                f: &fn(uint) -> bool) -> bool {
+    fn each_bit(&self, words: &[uint], f: |uint| -> bool) -> bool {
         //! Helper for iterating over the bits in a bit set.
 
         for (word_index, &word) in words.iter().enumerate() {
@@ -837,12 +835,12 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         debug!("DataFlowContext::walk_pat(pat={}, in_out={})",
                pat.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
 
-        do ast_util::walk_pat(pat) |p| {
+        ast_util::walk_pat(pat, |p| {
             debug!("  p.id={:?} in_out={}", p.id, bits_to_str(reslice(in_out)));
             self.merge_with_entry_set(p.id, in_out);
             self.dfcx.apply_gen_kill(p.id, in_out);
             true
-        };
+        });
     }
 
     fn walk_pat_alternatives(&mut self,
@@ -978,9 +976,8 @@ fn join_bits<O:DataFlowOperator>(oper: &O,
 }
 
 #[inline]
-fn bitwise(out_vec: &mut [uint],
-           in_vec: &[uint],
-           op: &fn(uint, uint) -> uint) -> bool {
+fn bitwise(out_vec: &mut [uint], in_vec: &[uint], op: |uint, uint| -> uint)
+           -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
     for (out_elt, in_elt) in out_vec.mut_iter().zip(in_vec.iter()) {

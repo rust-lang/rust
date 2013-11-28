@@ -82,7 +82,7 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
 
         // 2. Split the line into fields ("words").
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
 
         // 3. Match the vector of fields against a vector pattern.
         match fields {
@@ -295,7 +295,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -351,7 +351,7 @@ The `raise` method maps a value of the condition's input type to its output type
 The input type should therefore convey all relevant information to the condition handler.
 The output type should convey all relevant information _for continuing execution at the site of error_.
 When the error site raises a condition handler,
-the `Condition::raise` method searches task-local storage (TLS) for the innermost installed _handler_,
+the `Condition::raise` method searches for the innermost installed task-local condition _handler_,
 and if any such handler is found, calls it with the provided input value.
 If no handler is found, `Condition::raise` will fail the task with an appropriate error message.
 
@@ -396,7 +396,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -457,7 +457,7 @@ condition! {
 
 fn main() {
     // Trap the condition:
-    do malformed_line::cond.trap(|_| (-1,-1)).inside {
+    malformed_line::cond.trap(|_| (-1,-1)).inside(|| {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -465,7 +465,7 @@ fn main() {
                 println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    }
+    })
 }
 
 fn read_int_pairs() -> ~[(int,int)] {
@@ -473,7 +473,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -535,7 +535,7 @@ condition! {
 
 fn main() {
     // Trap the condition and return `None`
-    do malformed_line::cond.trap(|_| None).inside {
+    malformed_line::cond.trap(|_| None).inside(|| {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -543,7 +543,7 @@ fn main() {
             println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    }
+    })
 }
 
 fn read_int_pairs() -> ~[(int,int)] {
@@ -551,7 +551,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -631,7 +631,7 @@ condition! {
 
 fn main() {
     // Trap the condition and return `UsePreviousLine`
-    do malformed_line::cond.trap(|_| UsePreviousLine).inside {
+    malformed_line::cond.trap(|_| UsePreviousLine).inside(|| {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -639,7 +639,7 @@ fn main() {
             println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    }
+    })
 }
 
 fn read_int_pairs() -> ~[(int,int)] {
@@ -647,7 +647,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
@@ -758,10 +758,10 @@ condition! {
 
 fn main() {
     // Trap the `malformed_int` condition and return -1
-    do malformed_int::cond.trap(|_| -1).inside {
+    malformed_int::cond.trap(|_| -1).inside(|| {
 
         // Trap the `malformed_line` condition and return `UsePreviousLine`
-        do malformed_line::cond.trap(|_| UsePreviousLine).inside {
+        malformed_line::cond.trap(|_| UsePreviousLine).inside(|| {
 
             // The protected logic.
             let pairs = read_int_pairs();
@@ -769,8 +769,8 @@ fn main() {
                 println!("{:4.4d}, {:4.4d}", a, b);
             }
 
-        }
-    }
+        })
+    })
 }
 
 // Parse an int; if parsing fails, call the condition handler and
@@ -787,7 +787,7 @@ fn read_int_pairs() -> ~[(int,int)] {
     let fi = FileInput::from_args();
     while ! fi.eof() {
         let line = fi.read_line();
-        let fields = line.word_iter().to_owned_vec();
+        let fields = line.words().to_owned_vec();
         match fields {
 
             // Delegate parsing ints to helper function that will

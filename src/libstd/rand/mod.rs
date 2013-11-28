@@ -577,11 +577,24 @@ impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
     }
 }
 static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
+type TaskRngInner = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
 /// The task-local RNG.
-pub type TaskRng = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
+#[no_send]
+pub struct TaskRng {
+    // This points into TLS (specifically, it points to the endpoint
+    // of a ~ stored in TLS, to make it robust against TLS moving
+    // things internally) and so this struct cannot be legally
+    // transferred between tasks *and* it's unsafe to deallocate the
+    // RNG other than when a task is finished.
+    //
+    // The use of unsafe code here is OK if the invariants above are
+    // satisfied; and it allows us to avoid (unnecessarily) using a
+    // GC'd or RC'd pointer.
+    priv rng: *mut TaskRngInner
+}
 
 // used to make space in TLS for a random number generator
-local_data_key!(TASK_RNG_KEY: @mut TaskRng)
+local_data_key!(TASK_RNG_KEY: ~TaskRngInner)
 
 /// Retrieve the lazily-initialized task-local random number
 /// generator, seeded by the system. Intended to be used in method
@@ -594,34 +607,34 @@ local_data_key!(TASK_RNG_KEY: @mut TaskRng)
 /// if the operating system random number generator is rigged to give
 /// the same sequence always. If absolute consistency is required,
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
-pub fn task_rng() -> @mut TaskRng {
-    let r = local_data::get(TASK_RNG_KEY, |k| k.map(|k| *k));
-    match r {
+pub fn task_rng() -> TaskRng {
+    local_data::get_mut(TASK_RNG_KEY, |rng| match rng {
         None => {
-            let rng = @mut reseeding::ReseedingRng::new(StdRng::new(),
+            let mut rng = ~reseeding::ReseedingRng::new(StdRng::new(),
                                                         TASK_RNG_RESEED_THRESHOLD,
                                                         TaskRngReseeder);
+            let ptr = &mut *rng as *mut TaskRngInner;
+
             local_data::set(TASK_RNG_KEY, rng);
-            rng
+
+            TaskRng { rng: ptr }
         }
-        Some(rng) => rng
-    }
+        Some(rng) => TaskRng { rng: &mut **rng }
+    })
 }
 
-// Allow direct chaining with `task_rng`
-impl<R: Rng> Rng for @mut R {
-    #[inline]
+impl Rng for TaskRng {
     fn next_u32(&mut self) -> u32 {
-        (**self).next_u32()
+        unsafe { (*self.rng).next_u32() }
     }
-    #[inline]
+
     fn next_u64(&mut self) -> u64 {
-        (**self).next_u64()
+        unsafe { (*self.rng).next_u64() }
     }
 
     #[inline]
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        (**self).fill_bytes(bytes);
+        unsafe { (*self.rng).fill_bytes(bytes) }
     }
 }
 
@@ -646,6 +659,46 @@ impl<R: Rng> Rng for @mut R {
 pub fn random<T: Rand>() -> T {
     task_rng().gen()
 }
+
+/// A wrapper for generating floating point numbers uniformly in the
+/// open interval `(0,1)` (not including either endpoint).
+///
+/// Use `Closed01` for the closed interval `[0,1]`, and the default
+/// `Rand` implementation for `f32` and `f64` for the half-open
+/// `[0,1)`.
+///
+/// # Example
+/// ```rust
+/// use std::rand::{random, Open01};
+///
+/// fn main() {
+///     println!("f32 from (0,1): {}", *random::<Open01<f32>>());
+///
+///     let x: Open01<f64> = random();
+///     println!("f64 from (0,1): {}", *x);
+/// }
+/// ```
+pub struct Open01<F>(F);
+
+/// A wrapper for generating floating point numbers uniformly in the
+/// closed interval `[0,1]` (including both endpoints).
+///
+/// Use `Open01` for the closed interval `(0,1)`, and the default
+/// `Rand` implementation of `f32` and `f64` for the half-open
+/// `[0,1)`.
+///
+/// # Example
+/// ```rust
+/// use std::rand::{random, Closed01};
+///
+/// fn main() {
+///     println!("f32 from [0,1]: {}", *random::<Closed01<f32>>());
+///
+///     let x: Closed01<f64> = random();
+///     println!("f64 from [0,1]: {}", *x);
+/// }
+/// ```
+pub struct Closed01<F>(F);
 
 #[cfg(test)]
 mod test {
@@ -846,44 +899,44 @@ mod bench {
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
-        }
+        });
         bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_isaac(bh: &mut BenchHarness) {
         let mut rng = IsaacRng::new();
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
-        }
+        });
         bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_isaac64(bh: &mut BenchHarness) {
         let mut rng = Isaac64Rng::new();
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
-        }
+        });
         bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_std(bh: &mut BenchHarness) {
         let mut rng = StdRng::new();
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
             }
-        }
+        });
         bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
     }
 
@@ -891,8 +944,8 @@ mod bench {
     fn rand_shuffle_100(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
         let x : &mut[uint] = [1,..100];
-        do bh.iter {
+        bh.iter(|| {
             rng.shuffle_mut(x);
-        }
+        })
     }
 }

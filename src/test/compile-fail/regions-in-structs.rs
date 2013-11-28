@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct yes0<'self> {
-  x: &uint, //~ ERROR Illegal anonymous lifetime: anonymous lifetimes are not permitted here
-}
-
 struct yes1<'self> {
   x: &'self uint,
 }
 
-struct yes2<'self> {
-  x: &'foo uint, //~ ERROR Illegal lifetime 'foo: only 'self is allowed
+struct yes2<'a> {
+  x: &'a uint,
 }
+
+struct StructDecl {
+    a: &'a int, //~ ERROR use of undeclared lifetime name `'a`
+    b: &'self int, //~ ERROR use of undeclared lifetime name `'self`
+}
+
 
 fn main() {}

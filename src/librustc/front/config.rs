@@ -13,16 +13,14 @@ use syntax::fold::ast_fold;
 use syntax::{ast, fold, attr};
 
 struct Context<'self> {
-    in_cfg: &'self fn(attrs: &[ast::Attribute]) -> bool,
+    in_cfg: 'self |attrs: &[ast::Attribute]| -> bool,
 }
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
 pub fn strip_unconfigured_items(crate: ast::Crate) -> ast::Crate {
     let config = crate.config.clone();
-    do strip_items(crate) |attrs| {
-        in_cfg(config, attrs)
-    }
+    strip_items(crate, |attrs| in_cfg(config, attrs))
 }
 
 impl<'self> fold::ast_fold for Context<'self> {
@@ -42,20 +40,12 @@ impl<'self> fold::ast_fold for Context<'self> {
 }
 
 pub fn strip_items(crate: ast::Crate,
-                   in_cfg: &fn(attrs: &[ast::Attribute]) -> bool)
+                   in_cfg: |attrs: &[ast::Attribute]| -> bool)
                    -> ast::Crate {
     let ctxt = Context {
         in_cfg: in_cfg,
     };
     ctxt.fold_crate(crate)
-}
-
-fn filter_item(cx: &Context, item: @ast::item) -> Option<@ast::item> {
-    if item_in_cfg(cx, item) {
-        Some(item)
-    } else {
-        None
-    }
 }
 
 fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
@@ -68,14 +58,13 @@ fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
 }
 
 fn fold_mod(cx: &Context, m: &ast::_mod) -> ast::_mod {
-    let filtered_items = do m.items.iter().filter_map |a| {
-        filter_item(cx, *a).and_then(|x| cx.fold_item(x))
-    }.collect();
-    let filtered_view_items = do m.view_items.iter().filter_map |a| {
-        do filter_view_item(cx, a).map |x| {
-            cx.fold_view_item(x)
-        }
-    }.collect();
+    let filtered_items = m.items.iter()
+            .filter(|&a| item_in_cfg(cx, *a))
+            .flat_map(|&x| cx.fold_item(x).move_iter())
+            .collect();
+    let filtered_view_items = m.view_items.iter().filter_map(|a| {
+        filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
+    }).collect();
     ast::_mod {
         view_items: filtered_view_items,
         items: filtered_items
@@ -96,11 +85,9 @@ fn fold_foreign_mod(cx: &Context, nm: &ast::foreign_mod) -> ast::foreign_mod {
                            .iter()
                            .filter_map(|a| filter_foreign_item(cx, *a))
                            .collect();
-    let filtered_view_items = do nm.view_items.iter().filter_map |a| {
-        do filter_view_item(cx, a).map |x| {
-            cx.fold_view_item(x)
-        }
-    }.collect();
+    let filtered_view_items = nm.view_items.iter().filter_map(|a| {
+        filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
+    }).collect();
     ast::foreign_mod {
         abis: nm.abis,
         view_items: filtered_view_items,
@@ -128,31 +115,28 @@ fn fold_item_underscore(cx: &Context, item: &ast::item_) -> ast::item_ {
     fold::noop_fold_item_underscore(&item, cx)
 }
 
-fn filter_stmt(cx: &Context, stmt: @ast::Stmt) -> Option<@ast::Stmt> {
+fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
     match stmt.node {
       ast::StmtDecl(decl, _) => {
         match decl.node {
           ast::DeclItem(item) => {
-            if item_in_cfg(cx, item) {
-                Some(stmt)
-            } else {
-                None
-            }
+            item_in_cfg(cx, item)
           }
-          _ => Some(stmt)
+          _ => true
         }
       }
-      _ => Some(stmt),
+      _ => true
     }
 }
 
 fn fold_block(cx: &Context, b: &ast::Block) -> ast::Block {
-    let resulting_stmts = do b.stmts.iter().filter_map |a| {
-        filter_stmt(cx, *a).and_then(|stmt| cx.fold_stmt(stmt))
-    }.collect();
-    let filtered_view_items = do b.view_items.iter().filter_map |a| {
+    let resulting_stmts = b.stmts.iter()
+            .filter(|&a| retain_stmt(cx, *a))
+            .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())
+            .collect();
+    let filtered_view_items = b.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
-    }.collect();
+    }).collect();
     ast::Block {
         view_items: filtered_view_items,
         stmts: resulting_stmts,

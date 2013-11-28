@@ -15,8 +15,10 @@
 use prelude::*;
 
 use cast;
-use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback};
+use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback,
+               Callback};
 use unstable::sync::Exclusive;
+use io::native;
 use util;
 
 /// This is the only exported function from this module.
@@ -25,11 +27,12 @@ pub fn event_loop() -> ~EventLoop {
 }
 
 struct BasicLoop {
-    work: ~[~fn()],               // pending work
-    idle: Option<*BasicPausible>, // only one is allowed
-    remotes: ~[(uint, ~fn())],
+    work: ~[proc()],                  // pending work
+    idle: Option<*mut BasicPausible>, // only one is allowed
+    remotes: ~[(uint, ~Callback)],
     next_remote: uint,
-    messages: Exclusive<~[Message]>
+    messages: Exclusive<~[Message]>,
+    io: ~IoFactory,
 }
 
 enum Message { RunRemote(uint), RemoveRemote(uint) }
@@ -53,6 +56,7 @@ impl BasicLoop {
             next_remote: 0,
             remotes: ~[],
             messages: Exclusive::new(~[]),
+            io: ~native::IoFactory as ~IoFactory,
         }
     }
 
@@ -67,13 +71,13 @@ impl BasicLoop {
 
     fn remote_work(&mut self) {
         let messages = unsafe {
-            do self.messages.with |messages| {
+            self.messages.with(|messages| {
                 if messages.len() > 0 {
                     Some(util::replace(messages, ~[]))
                 } else {
                     None
                 }
-            }
+            })
         };
         let messages = match messages {
             Some(m) => m, None => return
@@ -86,8 +90,8 @@ impl BasicLoop {
     fn message(&mut self, message: Message) {
         match message {
             RunRemote(i) => {
-                match self.remotes.iter().find(|& &(id, _)| id == i) {
-                    Some(&(_, ref f)) => (*f)(),
+                match self.remotes.mut_iter().find(|& &(id, _)| id == i) {
+                    Some(&(_, ref mut f)) => f.call(),
                     None => unreachable!()
                 }
             }
@@ -106,7 +110,7 @@ impl BasicLoop {
             match self.idle {
                 Some(idle) => {
                     if (*idle).active {
-                        (*(*idle).work.get_ref())();
+                        (*idle).work.call();
                     }
                 }
                 None => {}
@@ -135,39 +139,40 @@ impl EventLoop for BasicLoop {
             unsafe {
                 // We block here if we have no messages to process and we may
                 // receive a message at a later date
-                do self.messages.hold_and_wait |messages| {
+                self.messages.hold_and_wait(|messages| {
                     self.remotes.len() > 0 &&
                         messages.len() == 0 &&
                         self.work.len() == 0
-                }
+                })
             }
         }
     }
 
-    fn callback(&mut self, f: ~fn()) {
+    fn callback(&mut self, f: proc()) {
         self.work.push(f);
     }
 
     // XXX: Seems like a really weird requirement to have an event loop provide.
-    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback {
-        let callback = ~BasicPausible::new(self);
+    fn pausible_idle_callback(&mut self, cb: ~Callback) -> ~PausibleIdleCallback {
+        let callback = ~BasicPausible::new(self, cb);
         rtassert!(self.idle.is_none());
         unsafe {
-            let cb_ptr: &*BasicPausible = cast::transmute(&callback);
+            let cb_ptr: &*mut BasicPausible = cast::transmute(&callback);
             self.idle = Some(*cb_ptr);
         }
         return callback as ~PausibleIdleCallback;
     }
 
-    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallback {
+    fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {
         let id = self.next_remote;
         self.next_remote += 1;
         self.remotes.push((id, f));
         ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback
     }
 
-    /// This has no bindings for local I/O
-    fn io<'a>(&'a mut self, _: &fn(&'a mut IoFactory)) {}
+    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|) {
+        f(self.io)
+    }
 }
 
 struct BasicRemote {
@@ -184,9 +189,9 @@ impl BasicRemote {
 impl RemoteCallback for BasicRemote {
     fn fire(&mut self) {
         unsafe {
-            do self.queue.hold_and_signal |queue| {
+            self.queue.hold_and_signal(|queue| {
                 queue.push(RunRemote(self.id));
-            }
+            })
         }
     }
 }
@@ -194,44 +199,35 @@ impl RemoteCallback for BasicRemote {
 impl Drop for BasicRemote {
     fn drop(&mut self) {
         unsafe {
-            do self.queue.hold_and_signal |queue| {
+            self.queue.hold_and_signal(|queue| {
                 queue.push(RemoveRemote(self.id));
-            }
+            })
         }
     }
 }
 
 struct BasicPausible {
     eloop: *mut BasicLoop,
-    work: Option<~fn()>,
+    work: ~Callback,
     active: bool,
 }
 
 impl BasicPausible {
-    fn new(eloop: &mut BasicLoop) -> BasicPausible {
+    fn new(eloop: &mut BasicLoop, cb: ~Callback) -> BasicPausible {
         BasicPausible {
             active: false,
-            work: None,
+            work: cb,
             eloop: eloop,
         }
     }
 }
 
 impl PausibleIdleCallback for BasicPausible {
-    fn start(&mut self, f: ~fn()) {
-        rtassert!(!self.active && self.work.is_none());
-        self.active = true;
-        self.work = Some(f);
-    }
     fn pause(&mut self) {
         self.active = false;
     }
     fn resume(&mut self) {
         self.active = true;
-    }
-    fn close(&mut self) {
-        self.active = false;
-        self.work = None;
     }
 }
 
@@ -244,13 +240,12 @@ impl Drop for BasicPausible {
 }
 
 fn time() -> Time {
-    #[fixed_stack_segment]; #[inline(never)];
     extern {
-        fn get_time(sec: &mut i64, nsec: &mut i32);
+        fn rust_get_time(sec: &mut i64, nsec: &mut i32);
     }
     let mut sec = 0;
     let mut nsec = 0;
-    unsafe { get_time(&mut sec, &mut nsec) }
+    unsafe { rust_get_time(&mut sec, &mut nsec) }
 
     Time { sec: sec as u64, nsec: nsec as u64 }
 }

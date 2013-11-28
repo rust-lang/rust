@@ -59,9 +59,9 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::jso
     {
         &extra::json::List(ref interfaces) =>
         {
-          do interfaces.map |interface| {
+          interfaces.map(|interface| {
                 add_interface(store, managed_ip.clone(), (*interface).clone())
-          }
+          })
         }
         _ =>
         {

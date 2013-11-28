@@ -14,7 +14,6 @@ pub mod Bar {
     }
 
     extern {
-        #[rust_stack]
         pub fn foo(v: *Foo) -> Foo;
     }
 }

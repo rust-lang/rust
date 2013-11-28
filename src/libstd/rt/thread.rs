@@ -35,7 +35,7 @@ static DEFAULT_STACK_SIZE: libc::size_t = 1024*1024;
 
 impl Thread {
 
-    pub fn start(main: ~fn()) -> Thread {
+    pub fn start(main: proc()) -> Thread {
         // This is the starting point of rust os threads. The first thing we do
         // is make sure that we don't trigger __morestack (also why this has a
         // no_split_stack annotation), and then we extract the main function
@@ -45,10 +45,10 @@ impl Thread {
             use rt::context;
             unsafe {
                 context::record_stack_bounds(0, uint::max_value);
-                let f: ~~fn() = cast::transmute(trampoline);
+                let f: ~proc() = cast::transmute(trampoline);
                 (*f)();
             }
-            unsafe { cast::transmute(0) }
+            unsafe { cast::transmute(0 as rust_thread_return) }
         }
 
         let native = native_thread_create(thread_start, ~main);
@@ -67,9 +67,7 @@ impl Thread {
 
 #[cfg(windows)]
 fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_thread_return,
-                        tramp: ~~fn()) -> rust_thread {
-    #[fixed_stack_segment];
-
+                        tramp: ~proc()) -> rust_thread {
     unsafe {
         let ptr: *mut libc::c_void = cast::transmute(tramp);
         CreateThread(ptr::mut_null(), DEFAULT_STACK_SIZE, thread_start, ptr, 0, ptr::mut_null())
@@ -78,16 +76,13 @@ fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_threa
 
 #[cfg(windows)]
 fn native_thread_join(native: rust_thread) {
-    #[fixed_stack_segment];
     use libc::consts::os::extra::INFINITE;
     unsafe { WaitForSingleObject(native, INFINITE); }
 }
 
 #[cfg(unix)]
 fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_thread_return,
-                        tramp: ~~fn()) -> rust_thread {
-    #[fixed_stack_segment];
-
+                        tramp: ~proc()) -> rust_thread {
     use unstable::intrinsics;
     let mut native: libc::pthread_t = unsafe { intrinsics::uninit() };
 
@@ -107,27 +102,17 @@ fn native_thread_create(thread_start: extern "C" fn(*libc::c_void) -> rust_threa
 
 #[cfg(unix)]
 fn native_thread_join(native: rust_thread) {
-    #[fixed_stack_segment];
     unsafe { assert!(pthread_join(native, ptr::null()) == 0) }
 }
 
 impl Drop for Thread {
     fn drop(&mut self) {
-        #[fixed_stack_segment]; #[inline(never)];
         assert!(self.joined);
     }
 }
 
-#[cfg(windows, target_arch = "x86")]
-extern "stdcall" {
-    fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES, dwStackSize: SIZE_T,
-                    lpStartAddress: extern "C" fn(*libc::c_void) -> rust_thread_return,
-                    lpParameter: LPVOID, dwCreationFlags: DWORD, lpThreadId: LPDWORD) -> HANDLE;
-    fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
-}
-
-#[cfg(windows, target_arch = "x86_64")]
-extern {
+#[cfg(windows)]
+extern "system" {
     fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES, dwStackSize: SIZE_T,
                     lpStartAddress: extern "C" fn(*libc::c_void) -> rust_thread_return,
                     lpParameter: LPVOID, dwCreationFlags: DWORD, lpThreadId: LPDWORD) -> HANDLE;

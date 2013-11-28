@@ -18,7 +18,7 @@ use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
 
-use std::rt::io;
+use std::io;
 use std::str;
 use std::uint;
 
@@ -60,14 +60,14 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let mut i = 0u;
         let mut j = lines.len();
         // first line of all-stars should be omitted
-        if lines.len() > 0 && lines[0].iter().all(|c| c == '*') {
+        if lines.len() > 0 && lines[0].chars().all(|c| c == '*') {
             i += 1;
         }
         while i < j && lines[i].trim().is_empty() {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines[j - 1].iter().skip(1).all(|c| c == '*') {
+        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
             j -= 1;
         }
         while j > i && lines[j - 1].trim().is_empty() {
@@ -82,7 +82,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let mut can_trim = true;
         let mut first = true;
         for line in lines.iter() {
-            for (j, c) in line.iter().enumerate() {
+            for (j, c) in line.chars().enumerate() {
                 if j > i || !"* \t".contains_char(c) {
                     can_trim = false;
                     break;
@@ -106,9 +106,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
 
         if can_trim {
-            do lines.map |line| {
-                line.slice(i + 1, line.len()).to_owned()
-            }
+            lines.map(|line| line.slice(i + 1, line.len()).to_owned())
         } else {
             lines
         }
@@ -124,7 +122,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     if comment.starts_with("/*") {
         let lines = comment.slice(3u, comment.len() - 2u)
-            .any_line_iter()
+            .lines_any()
             .map(|s| s.to_owned())
             .collect::<~[~str]>();
 
@@ -377,10 +375,10 @@ pub fn gather_comments_and_literals(span_diagnostic:
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
-            do with_str_from(rdr, bstart) |s| {
+            with_str_from(rdr, bstart, |s| {
                 debug!("tok lit: {}", s);
                 literals.push(lit {lit: s.to_owned(), pos: sp.lo});
-            }
+            })
         } else {
             debug!("tok: {}", token::to_str(get_ident_interner(), &tok));
         }

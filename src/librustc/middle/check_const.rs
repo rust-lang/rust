@@ -33,7 +33,7 @@ impl Visitor<bool> for CheckCrateVisitor {
     fn visit_item(&mut self, i:@item, env:bool) {
         check_item(self, self.sess, self.ast_map, self.def_map, i, env);
     }
-    fn visit_pat(&mut self, p:@Pat, env:bool) {
+    fn visit_pat(&mut self, p:&Pat, env:bool) {
         check_pat(self, p, env);
     }
     fn visit_expr(&mut self, ex:@Expr, env:bool) {
@@ -81,7 +81,7 @@ pub fn check_item(v: &mut CheckCrateVisitor,
     }
 }
 
-pub fn check_pat(v: &mut CheckCrateVisitor, p: @Pat, _is_const: bool) {
+pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
     fn is_str(e: @Expr) -> bool {
         match e.node {
             ExprVstore(
@@ -117,7 +117,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprUnary(_, UnDeref, _) => { }
           ExprUnary(_, UnBox(_), _) | ExprUnary(_, UnUniq, _) => {
             sess.span_err(e.span,
-                          "disallowed operator in constant expression");
+                          "cannot do allocations in constant expressions");
             return;
           }
           ExprLit(@codemap::Spanned {node: lit_str(*), _}) => { }
@@ -191,28 +191,19 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                     e.span,
                     "borrowed pointers in constants may only refer to \
                      immutable values");
-          }
+          },
+          ExprVstore(_, ExprVstoreUniq) |
+          ExprVstore(_, ExprVstoreBox) |
+          ExprVstore(_, ExprVstoreMutBox) => {
+              sess.span_err(e.span, "cannot allocate vectors in constant expressions")
+          },
+
           _ => {
             sess.span_err(e.span,
                           "constant contains unimplemented expression type");
             return;
           }
         }
-    }
-    match e.node {
-        ExprLit(@codemap::Spanned {node: lit_int(v, t), _}) => {
-            if (v as u64) > ast_util::int_ty_max(
-                if t == ty_i { sess.targ_cfg.int_type } else { t }) {
-                sess.span_err(e.span, "literal out of range for its type");
-            }
-        }
-        ExprLit(@codemap::Spanned {node: lit_uint(v, t), _}) => {
-            if v > ast_util::uint_ty_max(
-                if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
-                sess.span_err(e.span, "literal out of range for its type");
-            }
-        }
-        _ => ()
     }
     visit::walk_expr(v, e, is_const);
 }

@@ -225,7 +225,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
         segments: ~[
             ast::PathSegment {
                 identifier: identifier,
-                lifetime: None,
+                lifetimes: opt_vec::Empty,
                 types: opt_vec::Empty,
             }
         ],
@@ -254,12 +254,12 @@ pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
 }
 
 pub fn public_methods(ms: ~[@method]) -> ~[@method] {
-    do ms.move_iter().filter |m| {
+    ms.move_iter().filter(|m| {
         match m.vis {
             public => true,
             _   => false
         }
-    }.collect()
+    }).collect()
 }
 
 // extract a TypeMethod from a trait_method. if the trait_method is
@@ -497,7 +497,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
         visit::walk_stmt(self, statement, env)
     }
 
-    fn visit_pat(&mut self, pattern: @Pat, env: ()) {
+    fn visit_pat(&mut self, pattern: &Pat, env: ()) {
         self.operation.visit_id(pattern.id);
         visit::walk_pat(self, pattern, env)
     }
@@ -636,7 +636,7 @@ pub fn is_item_impl(item: @ast::item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
+pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
     }
@@ -657,7 +657,7 @@ pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
                 slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
                 after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        PatWild | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
+        PatWild | PatWildMulti | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
         PatEnum(_, _) => {
             true
         }
@@ -665,11 +665,11 @@ pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    fn each_view_item(&self, f: &fn(&ast::view_item) -> bool) -> bool;
+    fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool;
 }
 
 struct EachViewItemData<'self> {
-    callback: &'self fn(&ast::view_item) -> bool,
+    callback: 'self |&ast::view_item| -> bool,
 }
 
 impl<'self> Visitor<()> for EachViewItemData<'self> {
@@ -679,7 +679,7 @@ impl<'self> Visitor<()> for EachViewItemData<'self> {
 }
 
 impl EachViewItem for ast::Crate {
-    fn each_view_item(&self, f: &fn(&ast::view_item) -> bool) -> bool {
+    fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool {
         let mut visit = EachViewItemData {
             callback: f,
         };
@@ -948,7 +948,7 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
         for (idx,seg) in a.iter().enumerate() {
             if (seg.identifier.name != b[idx].identifier.name)
                 // FIXME #7743: ident -> name problems in lifetime comparison?
-                || (seg.lifetime != b[idx].lifetime)
+                || (seg.lifetimes != b[idx].lifetimes)
                 // can types contain idents?
                 || (seg.types != b[idx].types) {
                 return false;
@@ -966,7 +966,9 @@ mod test {
     use std::hashmap::HashMap;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
-        PathSegment{identifier:id.clone(), lifetime: None, types: opt_vec::Empty}
+        PathSegment {identifier:id.clone(),
+                     lifetimes: opt_vec::Empty,
+                     types: opt_vec::Empty}
     }
 
     #[test] fn idents_name_eq_test() {

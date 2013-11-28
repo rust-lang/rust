@@ -29,7 +29,6 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn count(n: uint) -> uint {
     unsafe {
         task::deschedule();
@@ -38,11 +37,11 @@ fn count(n: uint) -> uint {
 }
 
 pub fn main() {
-    do 10u.times {
+    10u.times(|| {
         do task::spawn {
             let result = count(5u);
             info!("result = {}", result);
             assert_eq!(result, 16u);
         };
-    }
+    })
 }

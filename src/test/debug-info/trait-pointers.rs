@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-// xfail-android
+// xfail-android: FIXME(#10381)
 
 // compile-flags:-Z extra-debug-info
 // debugger:run

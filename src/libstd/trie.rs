@@ -107,43 +107,43 @@ impl<T> TrieMap<T> {
 
     /// Visit all key-value pairs in reverse order
     #[inline]
-    pub fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+    pub fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         self.root.each_reverse(f)
     }
 
     /// Visit all key-value pairs in order
     #[inline]
-    pub fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+    pub fn each<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         self.root.each(f)
     }
 
     /// Visit all keys in order
     #[inline]
-    pub fn each_key(&self, f: &fn(&uint) -> bool) -> bool {
+    pub fn each_key(&self, f: |&uint| -> bool) -> bool {
         self.each(|k, _| f(k))
     }
 
     /// Visit all values in order
     #[inline]
-    pub fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) -> bool {
+    pub fn each_value<'a>(&'a self, f: |&'a T| -> bool) -> bool {
         self.each(|_, v| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
     #[inline]
-    pub fn mutate_values(&mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
+    pub fn mutate_values(&mut self, f: |&uint, &mut T| -> bool) -> bool {
         self.root.mutate_values(f)
     }
 
     /// Visit all keys in reverse order
     #[inline]
-    pub fn each_key_reverse(&self, f: &fn(&uint) -> bool) -> bool {
+    pub fn each_key_reverse(&self, f: |&uint| -> bool) -> bool {
         self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
     #[inline]
-    pub fn each_value_reverse(&self, f: &fn(&T) -> bool) -> bool {
+    pub fn each_value_reverse(&self, f: |&T| -> bool) -> bool {
         self.each_reverse(|_, v| f(v))
     }
 
@@ -158,7 +158,7 @@ impl<T> TrieMap<T> {
 
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
-    fn bound_iter<'a>(&'a self, key: uint, upper: bool) -> TrieMapIterator<'a, T> {
+    fn bound<'a>(&'a self, key: uint, upper: bool) -> TrieMapIterator<'a, T> {
         let mut node: &'a TrieNode<T> = &self.root;
         let mut idx = 0;
         let mut it = TrieMapIterator {
@@ -193,14 +193,14 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
-    pub fn lower_bound_iter<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
-        self.bound_iter(key, false)
+    pub fn lower_bound<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
+        self.bound(key, false)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
-    pub fn upper_bound_iter<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
-        self.bound_iter(key, true)
+    pub fn upper_bound<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
+        self.bound(key, true)
     }
 }
 
@@ -266,11 +266,11 @@ impl TrieSet {
 
     /// Visit all values in order
     #[inline]
-    pub fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
+    pub fn each(&self, f: |&uint| -> bool) -> bool { self.map.each_key(f) }
 
     /// Visit all values in reverse order
     #[inline]
-    pub fn each_reverse(&self, f: &fn(&uint) -> bool) -> bool {
+    pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
         self.map.each_key_reverse(f)
     }
 
@@ -282,14 +282,14 @@ impl TrieSet {
 
     /// Get an iterator pointing to the first value that is not less than `val`.
     /// If all values in the set are less than `val` an empty iterator is returned.
-    pub fn lower_bound_iter<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
-        TrieSetIterator{iter: self.map.lower_bound_iter(val)}
+    pub fn lower_bound<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
+        TrieSetIterator{iter: self.map.lower_bound(val)}
     }
 
     /// Get an iterator pointing to the first value that key is greater than `val`.
     /// If all values in the set are not greater than `val` an empty iterator is returned.
-    pub fn upper_bound_iter<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
-        TrieSetIterator{iter: self.map.upper_bound_iter(val)}
+    pub fn upper_bound<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
+        TrieSetIterator{iter: self.map.upper_bound(val)}
     }
 }
 
@@ -328,7 +328,7 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+    fn each<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         for elt in self.children.iter() {
             match *elt {
                 Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
@@ -339,7 +339,7 @@ impl<T> TrieNode<T> {
         true
     }
 
-    fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
+    fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         for elt in self.children.rev_iter() {
             match *elt {
                 Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
@@ -350,7 +350,7 @@ impl<T> TrieNode<T> {
         true
     }
 
-    fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
+    fn mutate_values<'a>(&'a mut self, f: |&uint, &mut T| -> bool) -> bool {
         for child in self.children.mut_iter() {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
@@ -373,7 +373,8 @@ fn chunk(n: uint, idx: uint) -> uint {
 
 fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
     match *child {
-        External(_, ref mut value) => Some(value),
+        External(stored, ref mut value) if stored == key => Some(value),
+        External(*) => None,
         Internal(ref mut x) => find_mut(&mut x.children[chunk(key, idx)], key, idx + 1),
         Nothing => None
     }
@@ -488,7 +489,7 @@ pub struct TrieSetIterator<'self> {
 
 impl<'self> Iterator<uint> for TrieSetIterator<'self> {
     fn next(&mut self) -> Option<uint> {
-        do self.iter.next().map |(key, _)| { key }
+        self.iter.next().map(|(key, _)| key)
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
@@ -534,6 +535,16 @@ mod test_map {
             None => fail!(), Some(x) => *x = new
         }
         assert_eq!(m.find(&5), Some(&new));
+    }
+
+    #[test]
+    fn test_find_mut_missing() {
+        let mut m = TrieMap::new();
+        assert!(m.find_mut(&0).is_none());
+        assert!(m.insert(1, 12));
+        assert!(m.find_mut(&0).is_none());
+        assert!(m.insert(2, 8));
+        assert!(m.find_mut(&0).is_none());
     }
 
     #[test]
@@ -583,12 +594,12 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        do m.each |k, v| {
+        m.each(|k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n += 1;
             true
-        };
+        });
     }
 
     #[test]
@@ -600,7 +611,7 @@ mod test_map {
         }
 
         let mut n = uint::max_value - 10000;
-        do m.each |k, v| {
+        m.each(|k, v| {
             if n == uint::max_value - 5000 { false } else {
                 assert!(n < uint::max_value - 5000);
 
@@ -609,7 +620,7 @@ mod test_map {
                 n += 1;
                 true
             }
-        };
+        });
     }
 
     #[test]
@@ -623,12 +634,12 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        do m.each_reverse |k, v| {
+        m.each_reverse(|k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
             true
-        };
+        });
     }
 
     #[test]
@@ -640,7 +651,7 @@ mod test_map {
         }
 
         let mut n = uint::max_value - 1;
-        do m.each_reverse |k, v| {
+        m.each_reverse(|k, v| {
             if n == uint::max_value - 5000 { false } else {
                 assert!(n > uint::max_value - 5000);
 
@@ -649,7 +660,7 @@ mod test_map {
                 n -= 1;
                 true
             }
-        };
+        });
     }
 
     #[test]
@@ -702,10 +713,10 @@ mod test_map {
     }
 
     #[test]
-    fn test_bound_iter() {
+    fn test_bound() {
         let empty_map : TrieMap<uint> = TrieMap::new();
-        assert_eq!(empty_map.lower_bound_iter(0).next(), None);
-        assert_eq!(empty_map.upper_bound_iter(0).next(), None);
+        assert_eq!(empty_map.lower_bound(0).next(), None);
+        assert_eq!(empty_map.upper_bound(0).next(), None);
 
         let last = 999u;
         let step = 3u;
@@ -718,8 +729,8 @@ mod test_map {
         }
 
         for i in range(0u, last - step) {
-            let mut lb = map.lower_bound_iter(i);
-            let mut ub = map.upper_bound_iter(i);
+            let mut lb = map.lower_bound(i);
+            let mut ub = map.upper_bound(i);
             let next_key = i - i % step + step;
             let next_pair = (next_key, &value);
             if (i % step == 0) {
@@ -730,15 +741,15 @@ mod test_map {
             assert_eq!(ub.next(), Some(next_pair));
         }
 
-        let mut lb = map.lower_bound_iter(last - step);
+        let mut lb = map.lower_bound(last - step);
         assert_eq!(lb.next(), Some((last - step, &value)));
-        let mut ub = map.upper_bound_iter(last - step);
+        let mut ub = map.upper_bound(last - step);
         assert_eq!(ub.next(), None);
 
         for i in range(last - step + 1, last) {
-            let mut lb = map.lower_bound_iter(i);
+            let mut lb = map.lower_bound(i);
             assert_eq!(lb.next(), None);
-            let mut ub = map.upper_bound_iter(i);
+            let mut ub = map.upper_bound(i);
             assert_eq!(ub.next(), None);
         }
     }
@@ -766,11 +777,11 @@ mod test_set {
 
         let mut i = 0;
 
-        do trie.each |x| {
+        trie.each(|x| {
             assert_eq!(expected[i], *x);
             i += 1;
             true
-        };
+        });
     }
 
     #[test]

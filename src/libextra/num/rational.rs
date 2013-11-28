@@ -292,36 +292,36 @@ impl<T: FromStr + Clone + Integer + Ord>
     FromStr for Ratio<T> {
     /// Parses `numer/denom`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
-        let split: ~[&str] = s.splitn_iter('/', 1).collect();
+        let split: ~[&str] = s.splitn('/', 1).collect();
         if split.len() < 2 {
             return None
         }
         let a_option: Option<T> = FromStr::from_str(split[0]);
-        do a_option.and_then |a| {
+        a_option.and_then(|a| {
             let b_option: Option<T> = FromStr::from_str(split[1]);
-            do b_option.and_then |b| {
+            b_option.and_then(|b| {
                 Some(Ratio::new(a.clone(), b.clone()))
-            }
-        }
+            })
+        })
     }
 }
 impl<T: FromStrRadix + Clone + Integer + Ord>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
-        let split: ~[&str] = s.splitn_iter('/', 1).collect();
+        let split: ~[&str] = s.splitn('/', 1).collect();
         if split.len() < 2 {
             None
         } else {
             let a_option: Option<T> = FromStrRadix::from_str_radix(split[0],
                                                                    radix);
-            do a_option.and_then |a| {
+            a_option.and_then(|a| {
                 let b_option: Option<T> =
                     FromStrRadix::from_str_radix(split[1], radix);
-                do b_option.and_then |b| {
+                b_option.and_then(|b| {
                     Some(Ratio::new(a.clone(), b.clone()))
-                }
-            }
+                })
+            })
         }
     }
 }

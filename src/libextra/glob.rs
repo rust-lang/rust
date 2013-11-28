@@ -24,8 +24,8 @@
  */
 
 use std::{os, path};
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use std::path::is_sep;
 
 use sort;
@@ -102,7 +102,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
 
     let root_len = pat_root.map_default(0u, |p| p.as_vec().len());
     let dir_patterns = pattern.slice_from(root_len.min(&pattern.len()))
-                       .split_terminator_iter(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
+                       .split_terminator(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
 
     let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();
 
@@ -209,7 +209,7 @@ impl Pattern {
      */
     pub fn new(pattern: &str) -> Pattern {
 
-        let chars = pattern.iter().to_owned_vec();
+        let chars = pattern.chars().to_owned_vec();
         let mut tokens = ~[];
         let mut i = 0;
 
@@ -272,7 +272,7 @@ impl Pattern {
      */
     pub fn escape(s: &str) -> ~str {
         let mut escaped = ~"";
-        for c in s.iter() {
+        for c in s.chars() {
             match c {
                 // note that ! does not need escaping because it is only special inside brackets
                 '?' | '*' | '[' | ']' => {
@@ -310,9 +310,9 @@ impl Pattern {
      */
     pub fn matches_path(&self, path: &Path) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        do path.as_str().map_default(false) |s| {
+        path.as_str().map_default(false, |s| {
             self.matches(s)
-        }
+        })
     }
 
     /**
@@ -328,9 +328,9 @@ impl Pattern {
      */
     pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        do path.as_str().map_default(false) |s| {
+        path.as_str().map_default(false, |s| {
             self.matches_with(s, options)
-        }
+        })
     }
 
     fn matches_from(&self,
@@ -586,10 +586,10 @@ mod test {
         let pats = ["[a-z123]", "[1a-z23]", "[123a-z]"];
         for &p in pats.iter() {
             let pat = Pattern::new(p);
-            for c in "abcdefghijklmnopqrstuvwxyz".iter() {
+            for c in "abcdefghijklmnopqrstuvwxyz".chars() {
                 assert!(pat.matches(c.to_str()));
             }
-            for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".iter() {
+            for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars() {
                 let options = MatchOptions {case_sensitive: false, .. MatchOptions::new()};
                 assert!(pat.matches_with(c.to_str(), options));
             }

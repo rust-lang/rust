@@ -82,8 +82,7 @@ pub fn have_crate_data(cstore: &CStore, cnum: ast::CrateNum) -> bool {
     cstore.metas.contains_key(&cnum)
 }
 
-pub fn iter_crate_data(cstore: &CStore,
-                       i: &fn(ast::CrateNum, @crate_metadata)) {
+pub fn iter_crate_data(cstore: &CStore, i: |ast::CrateNum, @crate_metadata|) {
     for (&k, &v) in cstore.metas.iter() {
         i(k, v);
     }
@@ -114,7 +113,7 @@ pub fn get_used_libraries<'a>(cstore: &'a CStore) -> &'a [@str] {
 }
 
 pub fn add_used_link_args(cstore: &mut CStore, args: &str) {
-    for s in args.split_iter(' ') {
+    for s in args.split(' ') {
         cstore.used_link_args.push(s.to_managed());
     }
 }
@@ -160,9 +159,9 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         });
     }
 
-    let sorted = do extra::sort::merge_sort(result) |a, b| {
+    let sorted = extra::sort::merge_sort(result, |a, b| {
         (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
-    };
+    });
 
     debug!("sorted:");
     for x in sorted.iter() {

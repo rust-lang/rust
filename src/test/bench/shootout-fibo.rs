@@ -10,7 +10,6 @@
 
 extern mod extra;
 
-use std::int;
 use std::os;
 
 fn fib(n: int) -> int {

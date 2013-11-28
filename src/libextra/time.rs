@@ -10,8 +10,8 @@
 
 #[allow(missing_doc)];
 
-use std::rt::io::Reader;
-use std::rt::io::mem::BufReader;
+use std::io::Reader;
+use std::io::mem::BufReader;
 use std::num;
 use std::str;
 
@@ -21,8 +21,8 @@ pub mod rustrt {
     use super::Tm;
 
     extern {
-        pub fn get_time(sec: &mut i64, nsec: &mut i32);
-        pub fn precise_time_ns(ns: &mut u64);
+        pub fn rust_get_time(sec: &mut i64, nsec: &mut i32);
+        pub fn rust_precise_time_ns(ns: &mut u64);
         pub fn rust_tzset();
         pub fn rust_gmtime(sec: i64, nsec: i32, result: &mut Tm);
         pub fn rust_localtime(sec: i64, nsec: i32, result: &mut Tm);
@@ -63,12 +63,10 @@ impl Ord for Timespec {
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
 pub fn get_time() -> Timespec {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         let mut sec = 0i64;
         let mut nsec = 0i32;
-        rustrt::get_time(&mut sec, &mut nsec);
+        rustrt::rust_get_time(&mut sec, &mut nsec);
         return Timespec::new(sec, nsec);
     }
 }
@@ -79,11 +77,9 @@ pub fn get_time() -> Timespec {
  * in nanoseconds since an unspecified epoch.
  */
 pub fn precise_time_ns() -> u64 {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         let mut ns = 0u64;
-        rustrt::precise_time_ns(&mut ns);
+        rustrt::rust_precise_time_ns(&mut ns);
         ns
     }
 }
@@ -98,8 +94,6 @@ pub fn precise_time_s() -> f64 {
 }
 
 pub fn tzset() {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         rustrt::rust_tzset();
     }
@@ -143,8 +137,6 @@ pub fn empty_tm() -> Tm {
 
 /// Returns the specified time in UTC
 pub fn at_utc(clock: Timespec) -> Tm {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         let Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
@@ -160,8 +152,6 @@ pub fn now_utc() -> Tm {
 
 /// Returns the specified time in the local timezone
 pub fn at(clock: Timespec) -> Tm {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         let Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
@@ -179,8 +169,6 @@ pub fn now() -> Tm {
 impl Tm {
     /// Convert time to the seconds from January 1, 1970
     pub fn to_timespec(&self) -> Timespec {
-        #[fixed_stack_segment]; #[inline(never)];
-
         unsafe {
             let sec = match self.tm_gmtoff {
                 0_i32 => rustrt::rust_timegm(self),
@@ -260,7 +248,7 @@ impl Tm {
 pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        for ch in needle.byte_iter() {
+        for ch in needle.bytes() {
             if s[i] != ch {
                 return false;
             }
@@ -966,11 +954,10 @@ mod tests {
 
     use std::f64;
     use std::result::{Err, Ok};
-    use std::libc;
 
     #[cfg(windows)]
-    #[fixed_stack_segment]
     fn set_time_zone() {
+        use std::libc;
         // Windows crt doesn't see any environment variable set by
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.
@@ -982,9 +969,9 @@ mod tests {
             // Windows does not understand "America/Los_Angeles".
             // PST+08 may look wrong, but not! "PST" indicates
             // the name of timezone. "+08" means UTC = local + 08.
-            do "TZ=PST+08".with_c_str |env| {
+            "TZ=PST+08".with_c_str(|env| {
                 _putenv(env);
-            }
+            })
         }
         tzset();
     }
@@ -1018,18 +1005,17 @@ mod tests {
 
     fn test_precise_time() {
         let s0 = precise_time_s();
-        let ns1 = precise_time_ns();
-
         debug!("s0={} sec", f64::to_str_digits(s0, 9u));
         assert!(s0 > 0.);
-        let ns0 = (s0 * 1000000000.) as u64;
-        debug!("ns0={:?} ns", ns0);
 
-        debug!("ns1={:?} ns", ns0);
+        let ns0 = precise_time_ns();
+        let ns1 = precise_time_ns();
+        debug!("ns0={:?} ns", ns0);
+        debug!("ns1={:?} ns", ns1);
         assert!(ns1 >= ns0);
 
         let ns2 = precise_time_ns();
-        debug!("ns2={:?} ns", ns0);
+        debug!("ns2={:?} ns", ns2);
         assert!(ns2 >= ns1);
     }
 

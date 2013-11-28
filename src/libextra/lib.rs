@@ -21,6 +21,7 @@ Rust extras are part of the standard Rust distribution.
 */
 
 #[link(name = "extra",
+       package_id = "extra",
        vers = "0.9-pre",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libextra")];
@@ -37,6 +38,8 @@ Rust extras are part of the standard Rust distribution.
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
+#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
+#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 use std::str::{StrSlice, OwnedStr};
 
@@ -67,6 +70,7 @@ pub mod sort;
 
 pub mod dlist;
 pub mod treemap;
+pub mod btree;
 
 // And ... other stuff
 

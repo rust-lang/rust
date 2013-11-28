@@ -145,8 +145,8 @@ condition! {
     bad_parse: () -> ();
 }
 
-fn take_nonempty_prefix<T: Iterator<char>>(rdr: &mut T,
-                        pred: &fn(char) -> bool) -> (~str, Option<char>) {
+fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
+                        -> (~str, Option<char>) {
     let mut buf = ~"";
     let mut ch = rdr.next();
     loop {
@@ -176,7 +176,7 @@ fn take_num<T: Iterator<char>>(rdr: &mut T) -> (uint, Option<char>) {
 
 fn take_ident<T: Iterator<char>>(rdr: &mut T) -> (Identifier, Option<char>) {
     let (s,ch) = take_nonempty_prefix(rdr, char::is_alphanumeric);
-    if s.iter().all(char::is_digit) {
+    if s.chars().all(char::is_digit) {
         match from_str::<uint>(s) {
             None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
             Some(i) => (Numeric(i), ch)
@@ -238,14 +238,14 @@ pub fn parse(s: &str) -> Option<Version> {
     }
     let s = s.trim();
     let mut bad = false;
-    do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside {
-        let v = parse_iter(&mut s.iter());
+    bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside(|| {
+        let v = parse_iter(&mut s.chars());
         if bad || v.to_str() != s.to_owned() {
             None
         } else {
             Some(v)
         }
-    }
+    })
 }
 
 #[test]

@@ -15,7 +15,7 @@ use ext::base;
 use ext::build::AstBuilder;
 use rsparse = parse;
 use parse::token;
-
+use opt_vec;
 use std::fmt::parse;
 use std::hashmap::{HashMap, HashSet};
 use std::vec;
@@ -464,7 +464,7 @@ impl Context {
                 sp,
                 true,
                 rtpath("Method"),
-                Some(life),
+                opt_vec::with(life),
                 ~[]
             ), None);
             let st = ast::item_static(ty, ast::MutImmutable, method);
@@ -582,7 +582,8 @@ impl Context {
                     self.ecx.ident_of("rt"),
                     self.ecx.ident_of("Piece"),
                 ],
-                Some(self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
+                opt_vec::with(
+                    self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
                 ~[]
             ), None);
         let ty = ast::ty_fixed_length_vec(
@@ -741,12 +742,12 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
                                "format argument must be a string literal.");
 
     let mut err = false;
-    do parse::parse_error::cond.trap(|m| {
+    parse::parse_error::cond.trap(|m| {
         if !err {
             err = true;
             ecx.span_err(efmt.span, m);
         }
-    }).inside {
+    }).inside(|| {
         for piece in parse::Parser::new(fmt) {
             if !err {
                 cx.verify_piece(&piece);
@@ -754,7 +755,7 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
                 cx.pieces.push(piece);
             }
         }
-    }
+    });
     if err { return MRExpr(efmt) }
 
     // Make sure that all arguments were used and all arguments have types.

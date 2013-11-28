@@ -40,7 +40,7 @@ impl SmallBitv {
     pub fn bits_op(&mut self,
                    right_bits: uint,
                    nbits: uint,
-                   f: &fn(uint, uint) -> uint)
+                   f: |uint, uint| -> uint)
                    -> bool {
         let mask = small_mask(nbits);
         let old_b: uint = self.bits;
@@ -140,7 +140,7 @@ impl BigBitv {
     pub fn process(&mut self,
                    b: &BigBitv,
                    nbits: uint,
-                   op: &fn(uint, uint) -> uint)
+                   op: |uint, uint| -> uint)
                    -> bool {
         let len = b.storage.len();
         assert_eq!(self.storage.len(), len);
@@ -161,12 +161,14 @@ impl BigBitv {
     }
 
     #[inline]
-    pub fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
+    pub fn each_storage(&mut self, op: |v: &mut uint| -> bool) -> bool {
         self.storage.mut_iter().advance(|elt| op(elt))
     }
 
     #[inline]
-    pub fn negate(&mut self) { do self.each_storage |w| { *w = !*w; true }; }
+    pub fn negate(&mut self) {
+        self.each_storage(|w| { *w = !*w; true });
+    }
 
     #[inline]
     pub fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
@@ -358,26 +360,32 @@ impl Bitv {
     #[inline]
     pub fn clear(&mut self) {
         match self.rep {
-          Small(ref mut b) => b.clear(),
-          Big(ref mut s) => { do s.each_storage() |w| { *w = 0u; true }; }
+            Small(ref mut b) => b.clear(),
+            Big(ref mut s) => {
+                s.each_storage(|w| { *w = 0u; true });
+            }
         }
     }
 
     /// Set all bits to 1
     #[inline]
     pub fn set_all(&mut self) {
-      match self.rep {
-        Small(ref mut b) => b.set_all(),
-        Big(ref mut s) => { do s.each_storage() |w| { *w = !0u; true }; }
-      }
+        match self.rep {
+            Small(ref mut b) => b.set_all(),
+            Big(ref mut s) => {
+                s.each_storage(|w| { *w = !0u; true });
+            }
+        }
     }
 
     /// Invert all bits
     #[inline]
     pub fn negate(&mut self) {
-      match self.rep {
-        Small(ref mut b) => b.negate(),
-        Big(ref mut s) => { do s.each_storage() |w| { *w = !*w; true }; }
+        match self.rep {
+            Small(ref mut b) => b.negate(),
+            Big(ref mut s) => {
+                s.each_storage(|w| { *w = !*w; true });
+            }
       }
     }
 
@@ -413,7 +421,7 @@ impl Bitv {
     }
 
     #[inline]
-    pub fn rev_liter<'a>(&'a self) -> Invert<BitvIterator<'a>> {
+    pub fn rev_iter<'a>(&'a self) -> Invert<BitvIterator<'a>> {
         self.iter().invert()
     }
 
@@ -512,7 +520,7 @@ impl Bitv {
         true
     }
 
-    pub fn ones(&self, f: &fn(uint) -> bool) -> bool {
+    pub fn ones(&self, f: |uint| -> bool) -> bool {
         range(0u, self.nbits).advance(|i| !self.get(i) || f(i))
     }
 
@@ -542,7 +550,7 @@ pub fn from_bools(bools: &[bool]) -> Bitv {
  * Create a `Bitv` of the specified length where the value at each
  * index is `f(index)`.
  */
-pub fn from_fn(len: uint, f: &fn(index: uint) -> bool) -> Bitv {
+pub fn from_fn(len: uint, f: |index: uint| -> bool) -> Bitv {
     let mut bitv = Bitv::new(len, false);
     for i in range(0u, len) {
         bitv.set(i, f(i));
@@ -557,7 +565,7 @@ impl ops::Index<uint,bool> for Bitv {
 }
 
 #[inline]
-fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
+fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
     if bits == 0 {
         return true;
     }
@@ -651,10 +659,10 @@ impl BitvSet {
     /// Creates a new bit vector set from the given bit vector
     pub fn from_bitv(bitv: Bitv) -> BitvSet {
         let mut size = 0;
-        do bitv.ones |_| {
+        bitv.ones(|_| {
             size += 1;
             true
-        };
+        });
         let Bitv{rep, _} = bitv;
         match rep {
             Big(b) => BitvSet{ size: size, bitv: b },
@@ -675,7 +683,7 @@ impl BitvSet {
     }
 
     #[inline]
-    fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
+    fn other_op(&mut self, other: &BitvSet, f: |uint, uint| -> uint) {
         fn nbits(mut w: uint) -> uint {
             let mut bits = 0;
             for _ in range(0u, uint::bits) {
@@ -722,39 +730,39 @@ impl BitvSet {
         BitvSetIterator {set: self, next_idx: 0}
     }
 
-    pub fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        for (i, w1, w2) in self.common_iter(other) {
+    pub fn difference(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
+        for (i, w1, w2) in self.commons(other) {
             if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
                 return false
             }
         };
         /* everything we have that they don't also shows up */
-        self.outlier_iter(other).advance(|(mine, i, w)|
+        self.outliers(other).advance(|(mine, i, w)|
             !mine || iterate_bits(i, w, |b| f(&b))
         )
     }
 
-    pub fn symmetric_difference(&self, other: &BitvSet,
-                            f: &fn(&uint) -> bool) -> bool {
-        for (i, w1, w2) in self.common_iter(other) {
+    pub fn symmetric_difference(&self, other: &BitvSet, f: |&uint| -> bool)
+                                -> bool {
+        for (i, w1, w2) in self.commons(other) {
             if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
                 return false
             }
         };
-        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+        self.outliers(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 
-    pub fn intersection(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        self.common_iter(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
+    pub fn intersection(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
+        self.commons(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
     }
 
-    pub fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        for (i, w1, w2) in self.common_iter(other) {
+    pub fn union(&self, other: &BitvSet, f: |&uint| -> bool) -> bool {
+        for (i, w1, w2) in self.commons(other) {
             if !iterate_bits(i, w1 | w2, |b| f(&b)) {
                 return false
             }
         };
-        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+        self.outliers(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 }
 
@@ -763,12 +771,12 @@ impl cmp::Eq for BitvSet {
         if self.size != other.size {
             return false;
         }
-        for (_, w1, w2) in self.common_iter(other) {
+        for (_, w1, w2) in self.commons(other) {
             if w1 != w2 {
                 return false;
             }
         }
-        for (_, _, w) in self.outlier_iter(other) {
+        for (_, _, w) in self.outliers(other) {
             if w != 0 {
                 return false;
             }
@@ -786,7 +794,7 @@ impl Container for BitvSet {
 
 impl Mutable for BitvSet {
     fn clear(&mut self) {
-        do self.bitv.each_storage |w| { *w = 0; true };
+        self.bitv.each_storage(|w| { *w = 0; true });
         self.size = 0;
     }
 }
@@ -797,13 +805,11 @@ impl Set<uint> for BitvSet {
     }
 
     fn is_disjoint(&self, other: &BitvSet) -> bool {
-        do self.intersection(other) |_| {
-            false
-        }
+        self.intersection(other, |_| false)
     }
 
     fn is_subset(&self, other: &BitvSet) -> bool {
-        for (_, w1, w2) in self.common_iter(other) {
+        for (_, w1, w2) in self.commons(other) {
             if w1 & w2 != w1 {
                 return false;
             }
@@ -811,7 +817,7 @@ impl Set<uint> for BitvSet {
         /* If anything is not ours, then everything is not ours so we're
            definitely a subset in that case. Otherwise if there's any stray
            ones that 'other' doesn't have, we're not a subset. */
-        for (mine, _, w) in self.outlier_iter(other) {
+        for (mine, _, w) in self.outliers(other) {
             if !mine {
                 return true;
             } else if w != 0 {
@@ -865,7 +871,7 @@ impl BitvSet {
     /// both have in common. The three yielded arguments are (bit location,
     /// w1, w2) where the bit location is the number of bits offset so far,
     /// and w1/w2 are the words coming from the two vectors self, other.
-    fn common_iter<'a>(&'a self, other: &'a BitvSet)
+    fn commons<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), &'a ~[uint]), (uint, uint, uint),
                Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<&'a ~[uint]>>> {
         let min = num::min(self.bitv.storage.len(), other.bitv.storage.len());
@@ -881,7 +887,7 @@ impl BitvSet {
     /// The yielded arguments are a `bool`, the bit offset, and a word. The `bool`
     /// is true if the word comes from `self`, and `false` if it comes from
     /// `other`.
-    fn outlier_iter<'a>(&'a self, other: &'a BitvSet)
+    fn outliers<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), uint), (bool, uint, uint),
                Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<uint>>> {
         let slen = self.bitv.storage.len();
@@ -1356,18 +1362,18 @@ mod tests {
     fn test_small_clear() {
         let mut b = Bitv::new(14, true);
         b.clear();
-        do b.ones |i| {
+        b.ones(|i| {
             fail!("found 1 at {:?}", i)
-        };
+        });
     }
 
     #[test]
     fn test_big_clear() {
         let mut b = Bitv::new(140, true);
         b.clear();
-        do b.ones |i| {
+        b.ones(|i| {
             fail!("found 1 at {:?}", i)
-        };
+        });
     }
 
     #[test]
@@ -1402,11 +1408,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
-        do a.intersection(&b) |x| {
+        a.intersection(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1426,11 +1432,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 500];
-        do a.difference(&b) |x| {
+        a.difference(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1452,11 +1458,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
-        do a.symmetric_difference(&b) |x| {
+        a.symmetric_difference(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1481,11 +1487,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
-        do a.union(&b) |x| {
+        a.union(&b, |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
             true
-        };
+        });
         assert_eq!(i, expected.len());
     }
 
@@ -1532,27 +1538,27 @@ mod tests {
     fn bench_uint_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = 0 as uint;
-        do b.iter {
+        b.iter(|| {
             bitv |= (1 << ((r.next_u32() as uint) % uint::bits));
-        }
+        })
     }
 
     #[bench]
     fn bench_small_bitv_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = SmallBitv::new(uint::bits);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::bits, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_big_bitv_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = BigBitv::new(~[0]);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::bits, true);
-        }
+        })
     }
 
     #[bench]
@@ -1561,87 +1567,87 @@ mod tests {
         let mut storage = ~[];
         storage.grow(BENCH_BITS / uint::bits, &0u);
         let mut bitv = BigBitv::new(storage);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = Bitv::new(BENCH_BITS, false);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = Bitv::new(uint::bits, false);
-        do b.iter {
+        b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::bits, true);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_set_small(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
-        do b.iter {
+        b.iter(|| {
             bitv.insert((r.next_u32() as uint) % uint::bits);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_set_big(b: &mut BenchHarness) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
-        do b.iter {
+        b.iter(|| {
             bitv.insert((r.next_u32() as uint) % BENCH_BITS);
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_big_union(b: &mut BenchHarness) {
         let mut b1 = Bitv::new(BENCH_BITS, false);
         let b2 = Bitv::new(BENCH_BITS, false);
-        do b.iter {
+        b.iter(|| {
             b1.union(&b2);
-        }
+        })
     }
 
     #[bench]
     fn bench_btv_small_iter(b: &mut BenchHarness) {
         let bitv = Bitv::new(uint::bits, false);
-        do b.iter {
+        b.iter(|| {
             let mut _sum = 0;
             for pres in bitv.iter() {
                 _sum += pres as uint;
             }
-        }
+        })
     }
 
     #[bench]
     fn bench_bitv_big_iter(b: &mut BenchHarness) {
         let bitv = Bitv::new(BENCH_BITS, false);
-        do b.iter {
+        b.iter(|| {
             let mut _sum = 0;
             for pres in bitv.iter() {
                 _sum += pres as uint;
             }
-        }
+        })
     }
 
     #[bench]
     fn bench_bitvset_iter(b: &mut BenchHarness) {
         let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
                                               |idx| {idx % 3 == 0}));
-        do b.iter {
+        b.iter(|| {
             let mut _sum = 0;
             for idx in bitv.iter() {
                 _sum += idx;
             }
-        }
+        })
     }
 }

@@ -415,15 +415,15 @@ impl FromStrRadix for $T {
 
 /// Convert to a string as a byte slice in a given base.
 #[inline]
-pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
+pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     // The radix can be as low as 2, so we need at least 64 characters for a
     // base 2 number, and then we need another for a possible '-' character.
     let mut buf = [0u8, ..65];
     let mut cur = 0;
-    do strconv::int_to_str_bytes_common(n, radix, strconv::SignNeg) |i| {
+    strconv::int_to_str_bytes_common(n, radix, strconv::SignNeg, |i| {
         buf[cur] = i;
         cur += 1;
-    }
+    });
     f(buf.slice(0, cur))
 }
 
@@ -440,9 +440,9 @@ impl ToStrRadix for $T {
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
         let mut buf: ~[u8] = ~[];
-        do strconv::int_to_str_bytes_common(*self, radix, strconv::SignNeg) |i| {
+        strconv::int_to_str_bytes_common(*self, radix, strconv::SignNeg, |i| {
             buf.push(i);
-        }
+        });
         // We know we generated valid utf-8, so we don't need to go through that
         // check.
         unsafe { str::raw::from_utf8_owned(buf) }

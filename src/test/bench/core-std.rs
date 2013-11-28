@@ -21,7 +21,7 @@ use std::rand;
 use std::str;
 use std::util;
 use std::vec;
-use std::rt::io::File;
+use std::io::File;
 
 macro_rules! bench (
     ($argv:expr, $id:ident) => (maybe_run_test($argv, stringify!($id).to_owned(), $id))
@@ -40,7 +40,7 @@ fn main() {
     bench!(argv, is_utf8_multibyte);
 }
 
-fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
+fn maybe_run_test(argv: &[~str], name: ~str, test: ||) {
     let mut run_test = false;
 
     if os::getenv("RUST_BENCH").is_some() {
@@ -70,7 +70,7 @@ fn shift_push() {
 }
 
 fn read_line() {
-    use std::rt::io::buffered::BufferedReader;
+    use std::io::buffered::BufferedReader;
 
     let mut path = Path::new(env!("CFG_SRC_DIR"));
     path.push("src/test/bench/shootout-k-nucleotide.data");

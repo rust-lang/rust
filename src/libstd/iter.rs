@@ -65,7 +65,7 @@ the rest of the rust manuals.
 */
 
 use cmp;
-use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating};
+use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating, ToPrimitive};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
 use cmp::{Eq, Ord};
@@ -115,8 +115,8 @@ pub trait Iterator<A> {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().chain(b.iter());
-    /// assert_eq!(it.next().get(), &0);
-    /// assert_eq!(it.next().get(), &1);
+    /// assert_eq!(it.next().unwrap(), &0);
+    /// assert_eq!(it.next().unwrap(), &1);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -135,7 +135,7 @@ pub trait Iterator<A> {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
-    /// assert_eq!(it.next().get(), (&0, &1));
+    /// assert_eq!(it.next().unwrap(), (&0, &1));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -151,12 +151,12 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
-    /// assert_eq!(it.next().get(), 2);
-    /// assert_eq!(it.next().get(), 4);
+    /// assert_eq!(it.next().unwrap(), 2);
+    /// assert_eq!(it.next().unwrap(), 4);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn map<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, Self> {
+    fn map<'r, B>(self, f: 'r |A| -> B) -> Map<'r, A, B, Self> {
         Map{iter: self, f: f}
     }
 
@@ -169,11 +169,11 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
-    /// assert_eq!(it.next().get(), &2);
+    /// assert_eq!(it.next().unwrap(), &2);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> Filter<'r, A, Self> {
+    fn filter<'r>(self, predicate: 'r |&A| -> bool) -> Filter<'r, A, Self> {
         Filter{iter: self, predicate: predicate}
     }
 
@@ -186,11 +186,11 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
-    /// assert_eq!(it.next().get(), 4);
+    /// assert_eq!(it.next().unwrap(), 4);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMap<'r, A, B, Self> {
+    fn filter_map<'r, B>(self, f: 'r |A| -> Option<B>) -> FilterMap<'r, A, B, Self> {
         FilterMap { iter: self, f: f }
     }
 
@@ -202,8 +202,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
-    /// assert_eq!(it.next().get(), (0, &100));
-    /// assert_eq!(it.next().get(), (1, &200));
+    /// assert_eq!(it.next().unwrap(), (0, &100));
+    /// assert_eq!(it.next().unwrap(), (1, &200));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -243,13 +243,13 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 2, 1];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
-    /// assert_eq!(it.next().get(), &3);
-    /// assert_eq!(it.next().get(), &2);
-    /// assert_eq!(it.next().get(), &1);
+    /// assert_eq!(it.next().unwrap(), &3);
+    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next().unwrap(), &1);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhile<'r, A, Self> {
+    fn skip_while<'r>(self, predicate: 'r |&A| -> bool) -> SkipWhile<'r, A, Self> {
         SkipWhile{iter: self, flag: false, predicate: predicate}
     }
 
@@ -262,12 +262,12 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 2, 1];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
-    /// assert_eq!(it.next().get(), &1);
-    /// assert_eq!(it.next().get(), &2);
+    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next().unwrap(), &2);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhile<'r, A, Self> {
+    fn take_while<'r>(self, predicate: 'r |&A| -> bool) -> TakeWhile<'r, A, Self> {
         TakeWhile{iter: self, flag: false, predicate: predicate}
     }
 
@@ -279,8 +279,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
-    /// assert_eq!(it.next().get(), &4);
-    /// assert_eq!(it.next().get(), &5);
+    /// assert_eq!(it.next().unwrap(), &4);
+    /// assert_eq!(it.next().unwrap(), &5);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -296,9 +296,9 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
-    /// assert_eq!(it.next().get(), &1);
-    /// assert_eq!(it.next().get(), &2);
-    /// assert_eq!(it.next().get(), &3);
+    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next().unwrap(), &3);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -319,15 +319,15 @@ pub trait Iterator<A> {
     ///   *fac = *fac * x;
     ///   Some(*fac)
     /// });
-    /// assert_eq!(it.next().get(), 1);
-    /// assert_eq!(it.next().get(), 2);
-    /// assert_eq!(it.next().get(), 6);
-    /// assert_eq!(it.next().get(), 24);
-    /// assert_eq!(it.next().get(), 120);
+    /// assert_eq!(it.next().unwrap(), 1);
+    /// assert_eq!(it.next().unwrap(), 2);
+    /// assert_eq!(it.next().unwrap(), 6);
+    /// assert_eq!(it.next().unwrap(), 24);
+    /// assert_eq!(it.next().unwrap(), 120);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
+    fn scan<'r, St, B>(self, initial_state: St, f: 'r |&mut St, A| -> Option<B>)
         -> Scan<'r, A, B, Self, St> {
         Scan{iter: self, f: f, state: initial_state}
     }
@@ -349,7 +349,7 @@ pub trait Iterator<A> {
     /// }
     /// ```
     #[inline]
-    fn flat_map<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
+    fn flat_map<'r, B, U: Iterator<B>>(self, f: 'r |A| -> U)
         -> FlatMap<'r, A, Self, U> {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
@@ -401,7 +401,7 @@ pub trait Iterator<A> {
     ///println(sum.to_str());
     /// ```
     #[inline]
-    fn inspect<'r>(self, f: &'r fn(&A)) -> Inspect<'r, A, Self> {
+    fn inspect<'r>(self, f: 'r |&A|) -> Inspect<'r, A, Self> {
         Inspect{iter: self, f: f}
     }
 
@@ -424,19 +424,16 @@ pub trait Iterator<A> {
         ByRef{iter: self}
     }
 
-    /// An adaptation of an external iterator to the for-loop protocol of rust.
+    /// Apply a function to each element, or stop iterating if the
+    /// function returns `false`.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
-    ///
-    /// for i in count(0, 10) {
-    ///     println!("{}", i);
-    /// }
+    /// range(0, 5).advance(|x| {print!("{} ", x); true});
     /// ```
     #[inline]
-    fn advance(&mut self, f: &fn(A) -> bool) -> bool {
+    fn advance(&mut self, f: |A| -> bool) -> bool {
         loop {
             match self.next() {
                 Some(x) => {
@@ -485,7 +482,7 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.nth(2).get() == &3);
+    /// assert!(it.nth(2).unwrap() == &3);
     /// assert!(it.nth(2) == None);
     /// ```
     #[inline]
@@ -506,7 +503,7 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().get() == &5);
+    /// assert!(a.iter().last().unwrap() == &5);
     /// ```
     #[inline]
     fn last(&mut self) -> Option<A> {
@@ -525,7 +522,7 @@ pub trait Iterator<A> {
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
-    fn fold<B>(&mut self, init: B, f: &fn(B, A) -> B) -> B {
+    fn fold<B>(&mut self, init: B, f: |B, A| -> B) -> B {
         let mut accum = init;
         loop {
             match self.next() {
@@ -561,7 +558,7 @@ pub trait Iterator<A> {
     /// assert!(!a.iter().all(|&x| *x > 2));
     /// ```
     #[inline]
-    fn all(&mut self, f: &fn(A) -> bool) -> bool {
+    fn all(&mut self, f: |A| -> bool) -> bool {
         for x in *self { if !f(x) { return false; } }
         true
     }
@@ -578,14 +575,14 @@ pub trait Iterator<A> {
     /// assert!(!it.any(|&x| *x == 3));
     /// ```
     #[inline]
-    fn any(&mut self, f: &fn(A) -> bool) -> bool {
+    fn any(&mut self, f: |A| -> bool) -> bool {
         for x in *self { if f(x) { return true; } }
         false
     }
 
     /// Return the first element satisfying the specified predicate
     #[inline]
-    fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
+    fn find(&mut self, predicate: |&A| -> bool) -> Option<A> {
         for x in *self {
             if predicate(&x) { return Some(x) }
         }
@@ -594,7 +591,7 @@ pub trait Iterator<A> {
 
     /// Return the index of the first element satisfying the specified predicate
     #[inline]
-    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+    fn position(&mut self, predicate: |A| -> bool) -> Option<uint> {
         let mut i = 0;
         for x in *self {
             if predicate(x) {
@@ -607,7 +604,7 @@ pub trait Iterator<A> {
 
     /// Count the number of elements satisfying the specified predicate
     #[inline]
-    fn count(&mut self, predicate: &fn(A) -> bool) -> uint {
+    fn count(&mut self, predicate: |A| -> bool) -> uint {
         let mut i = 0;
         for x in *self {
             if predicate(x) { i += 1 }
@@ -625,7 +622,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
-    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+    fn max_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |max: Option<(A, B)>, x| {
             let x_val = f(&x);
             match max {
@@ -649,7 +646,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
-    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+    fn min_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |min: Option<(A, B)>, x| {
             let x_val = f(&x);
             match min {
@@ -732,7 +729,7 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
     ///
     /// If no element matches, None is returned.
     #[inline]
-    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+    fn rposition(&mut self, predicate: |A| -> bool) -> Option<uint> {
         let (lower, upper) = self.size_hint();
         assert!(upper == Some(lower));
         let mut i = lower;
@@ -865,7 +862,7 @@ pub trait OrdIterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().max().get() == &5);
+    /// assert!(a.iter().max().unwrap() == &5);
     /// ```
     fn max(&mut self) -> Option<A>;
 
@@ -875,7 +872,7 @@ pub trait OrdIterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min().get() == &1);
+    /// assert!(a.iter().min().unwrap() == &1);
     /// ```
     fn min(&mut self) -> Option<A>;
 }
@@ -1126,7 +1123,7 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 /// An iterator which maps the values of `iter` with `f`
 pub struct Map<'self, A, B, T> {
     priv iter: T,
-    priv f: &'self fn(A) -> B
+    priv f: 'self |A| -> B
 }
 
 impl<'self, A, B, T> Map<'self, A, B, T> {
@@ -1175,7 +1172,7 @@ impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'s
 /// An iterator which filters the elements of `iter` with `predicate`
 pub struct Filter<'self, A, T> {
     priv iter: T,
-    priv predicate: &'self fn(&A) -> bool
+    priv predicate: 'self |&A| -> bool
 }
 
 impl<'self, A, T: Iterator<A>> Iterator<A> for Filter<'self, A, T> {
@@ -1219,7 +1216,7 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'sel
 /// An iterator which uses `f` to both filter and map elements from `iter`
 pub struct FilterMap<'self, A, B, T> {
     priv iter: T,
-    priv f: &'self fn(A) -> Option<B>
+    priv f: 'self |A| -> Option<B>
 }
 
 impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'self, A, B, T> {
@@ -1362,7 +1359,7 @@ impl<'self, A, T: Iterator<A>> Peekable<A, T> {
 pub struct SkipWhile<'self, A, T> {
     priv iter: T,
     priv flag: bool,
-    priv predicate: &'self fn(&A) -> bool
+    priv predicate: 'self |&A| -> bool
 }
 
 impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
@@ -1400,7 +1397,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
 pub struct TakeWhile<'self, A, T> {
     priv iter: T,
     priv flag: bool,
-    priv predicate: &'self fn(&A) -> bool
+    priv predicate: 'self |&A| -> bool
 }
 
 impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhile<'self, A, T> {
@@ -1547,7 +1544,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
 /// An iterator to maintain state while iterating another iterator
 pub struct Scan<'self, A, B, T, St> {
     priv iter: T,
-    priv f: &'self fn(&mut St, A) -> Option<B>,
+    priv f: 'self |&mut St, A| -> Option<B>,
 
     /// The current internal state to be passed to the closure next.
     state: St
@@ -1571,7 +1568,7 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
 ///
 pub struct FlatMap<'self, A, T, U> {
     priv iter: T,
-    priv f: &'self fn(A) -> U,
+    priv f: 'self |A| -> U,
     priv frontiter: Option<U>,
     priv backiter: Option<U>,
 }
@@ -1702,7 +1699,7 @@ impl<T> Fuse<T> {
 /// element before yielding it.
 pub struct Inspect<'self, A, T> {
     priv iter: T,
-    priv f: &'self fn(&A)
+    priv f: 'self |&A|
 }
 
 impl<'self, A, T> Inspect<'self, A, T> {
@@ -1754,7 +1751,7 @@ for Inspect<'self, A, T> {
 
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct Unfold<'self, A, St> {
-    priv f: &'self fn(&mut St) -> Option<A>,
+    priv f: 'self |&mut St| -> Option<A>,
     /// Internal state that will be yielded on the next iteration
     state: St
 }
@@ -1763,8 +1760,8 @@ impl<'self, A, St> Unfold<'self, A, St> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the iterator
     #[inline]
-    pub fn new<'a>(initial_state: St, f: &'a fn(&mut St) -> Option<A>)
-        -> Unfold<'a, A, St> {
+    pub fn new<'a>(initial_state: St, f: 'a |&mut St| -> Option<A>)
+               -> Unfold<'a, A, St> {
         Unfold {
             f: f,
             state: initial_state
@@ -1829,7 +1826,8 @@ pub fn range<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> Range<A> {
     Range{state: start, stop: stop, one: One::one()}
 }
 
-impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
+// FIXME: #10414: Unfortunate type bound
+impl<A: Add<A, A> + Ord + Clone + ToPrimitive> Iterator<A> for Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.state < self.stop {
@@ -1841,13 +1839,42 @@ impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
         }
     }
 
-    // FIXME: #8606 Implement size_hint() on Range
-    // Blocked on #8605 Need numeric trait for converting to `Option<uint>`
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // This first checks if the elements are representable as i64. If they aren't, try u64 (to
+        // handle cases like range(huge, huger)). We don't use uint/int because the difference of
+        // the i64/u64 might lie within their range.
+        let bound = match self.state.to_i64() {
+            Some(a) => {
+                let sz = self.stop.to_i64().map(|b| b.checked_sub(&a));
+                match sz {
+                    Some(Some(bound)) => bound.to_uint(),
+                    _ => None,
+                }
+            },
+            None => match self.state.to_u64() {
+                Some(a) => {
+                    let sz = self.stop.to_u64().map(|b| b.checked_sub(&a));
+                    match sz {
+                        Some(Some(bound)) => bound.to_uint(),
+                        _ => None
+                    }
+                },
+                None => None
+            }
+        };
+
+        match bound {
+            Some(b) => (b, Some(b)),
+            // Standard fallback for unbounded/unrepresentable bounds
+            None => (0, None)
+        }
+    }
 }
 
 /// `Integer` is required to ensure the range will be the same regardless of
 /// the direction it is consumed.
-impl<A: Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
+impl<A: Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.stop > self.state {
@@ -1868,11 +1895,12 @@ pub struct RangeInclusive<A> {
 
 /// Return an iterator over the range [start, stop]
 #[inline]
-pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> RangeInclusive<A> {
+pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One + ToPrimitive>(start: A, stop: A)
+    -> RangeInclusive<A> {
     RangeInclusive{range: range(start, stop), done: false}
 }
 
-impl<A: Add<A, A> + Eq + Ord + Clone> Iterator<A> for RangeInclusive<A> {
+impl<A: Add<A, A> + Eq + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
@@ -1904,7 +1932,8 @@ impl<A: Add<A, A> + Eq + Ord + Clone> Iterator<A> for RangeInclusive<A> {
     }
 }
 
-impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclusive<A> {
+impl<A: Sub<A, A> + Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A>
+    for RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.range.stop > self.range.state {
@@ -2184,6 +2213,7 @@ mod tests {
 
     use cmp;
     use uint;
+    use num;
 
     #[test]
     fn test_counter_from_iter() {
@@ -2644,13 +2674,13 @@ mod tests {
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do v.iter().rposition |_elt| {
+        v.iter().rposition(|_elt| {
             if i == 2 {
                 fail!()
             }
             i += 1;
             false
-        };
+        });
     }
 
 
@@ -2801,12 +2831,51 @@ mod tests {
 
     #[test]
     fn test_range() {
+        /// A mock type to check Range when ToPrimitive returns None
+        struct Foo;
+
+        impl ToPrimitive for Foo {
+            fn to_i64(&self) -> Option<i64> { None }
+            fn to_u64(&self) -> Option<u64> { None }
+        }
+
+        impl Add<Foo, Foo> for Foo {
+            fn add(&self, _: &Foo) -> Foo {
+                Foo
+            }
+        }
+
+        impl Ord for Foo {
+            fn lt(&self, _: &Foo) -> bool {
+                false
+            }
+        }
+
+        impl Clone for Foo {
+            fn clone(&self) -> Foo {
+                Foo
+            }
+        }
+
+        impl num::One for Foo {
+            fn one() -> Foo {
+                Foo
+            }
+        }
+
         assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
+        assert_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
         assert_eq!(range(0i, 5).invert().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
         assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
         assert_eq!(range(200, -5).invert().collect::<~[int]>(), ~[]);
         assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
         assert_eq!(range(200, 200).invert().collect::<~[int]>(), ~[]);
+
+        assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
+        // this test is only meaningful when sizeof uint < sizeof u64
+        assert_eq!(range(uint::max_value - 1, uint::max_value).size_hint(), (1, Some(1)));
+        assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
+        assert_eq!(range(Foo, Foo).size_hint(), (0, None));
     }
 
     #[test]

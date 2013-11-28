@@ -26,7 +26,6 @@ fn static_bound_set(a: &'static mut libc::c_int) {
     *a = 3;
 }
 
-#[fixed_stack_segment] #[inline(never)]
 unsafe fn run() {
     assert!(rust_dbg_static_mut == 3);
     rust_dbg_static_mut = 4;

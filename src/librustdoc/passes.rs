@@ -16,7 +16,6 @@ use std::local_data;
 
 use syntax::ast;
 
-use core;
 use clean;
 use clean::Item;
 use plugins;
@@ -58,19 +57,9 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = HashSet::new();
     let crate = Cell::new(crate);
-    let exported_items = do local_data::get(super::analysiskey) |analysis| {
-        let analysis = analysis.unwrap();
-        let mut exported_items = analysis.exported_items.clone();
-        {
-            let mut finder = ExportedItemsFinder {
-                exported_items: &mut exported_items,
-                analysis: analysis,
-            };
-            let c = finder.fold_crate(crate.take());
-            crate.put_back(c);
-        }
-        exported_items
-    };
+    let exported_items = local_data::get(super::analysiskey, |analysis| {
+        analysis.unwrap().exported_items.clone()
+    });
     let mut crate = crate.take();
 
     // strip all private items
@@ -88,32 +77,6 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
         crate = stripper.fold_crate(crate);
     }
     (crate, None)
-}
-
-struct ExportedItemsFinder<'self> {
-    exported_items: &'self mut HashSet<ast::NodeId>,
-    analysis: &'self core::CrateAnalysis,
-}
-
-impl<'self> fold::DocFolder for ExportedItemsFinder<'self> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.inner {
-            clean::ModuleItem(*) => {
-                if self.analysis.exported_items.contains(&i.id) {
-                    match self.analysis.reexports.find(&i.id) {
-                        Some(l) => {
-                            for &id in l.iter() {
-                                self.exported_items.insert(id);
-                            }
-                        }
-                        None => {}
-                    }
-                }
-            }
-            _ => {}
-        }
-        return self.fold_item_recur(i);
-    }
 }
 
 struct Stripper<'self> {
@@ -265,10 +228,10 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
 }
 
 pub fn unindent(s: &str) -> ~str {
-    let lines = s.any_line_iter().collect::<~[&str]>();
+    let lines = s.lines_any().collect::<~[&str]>();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = do lines.iter().fold(uint::max_value) |min_indent, line| {
+    let min_indent = lines.iter().fold(uint::max_value, |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
@@ -294,7 +257,7 @@ pub fn unindent(s: &str) -> ~str {
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            do line.iter().all |char| {
+            line.chars().all(|char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
@@ -303,22 +266,22 @@ pub fn unindent(s: &str) -> ~str {
                 } else {
                     false
                 }
-            };
+            });
             num::min(min_indent, spaces)
         }
-    };
+    });
 
     match lines {
         [head, .. tail] => {
             let mut unindented = ~[ head.trim() ];
-            unindented.push_all(do tail.map |&line| {
+            unindented.push_all(tail.map(|&line| {
                 if line.is_whitespace() {
                     line
                 } else {
                     assert!(line.len() >= min_indent);
                     line.slice_from(min_indent)
                 }
-            });
+            }));
             unindented.connect("\n")
         }
         [] => s.to_owned()

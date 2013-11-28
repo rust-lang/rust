@@ -14,8 +14,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
-
-use std::vec;
+use opt_vec;
 
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: Span,
@@ -40,6 +39,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
                         Borrowed(None, ast::MutMutable))
                 ],
                 ret_ty: Self,
+                inline: false,
                 const_nonmatching: false,
                 combine_substructure: rand_substructure
             }
@@ -59,7 +59,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         cx.ident_of("Rand"),
         cx.ident_of("rand")
     ];
-    let rand_call = || {
+    let rand_call = |span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
                             ~[ rng[0] ])
@@ -79,7 +79,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
             let rand_name = cx.path_all(span,
                                         true,
                                         rand_ident.clone(),
-                                        None,
+                                        opt_vec::Empty,
                                         ~[]);
             let rand_name = cx.expr_path(rand_name);
 
@@ -104,7 +104,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
                                               value_ref,
                                               variant_count);
 
-            let mut arms = do variants.iter().enumerate().map |(i, id_sum)| {
+            let mut arms = variants.iter().enumerate().map(|(i, id_sum)| {
                 let i_expr = cx.expr_uint(span, i);
                 let pat = cx.pat_lit(span, i_expr);
 
@@ -112,10 +112,10 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
                     (ident, ref summary) => {
                         cx.arm(span,
                                ~[ pat ],
-                               rand_thing(cx, span, ident, summary, || rand_call()))
+                               rand_thing(cx, span, ident, summary, |sp| rand_call(sp)))
                     }
                 }
-            }.collect::<~[ast::Arm]>();
+            }).collect::<~[ast::Arm]>();
 
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(span));
@@ -128,23 +128,25 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };
 
-    fn rand_thing(cx: @ExtCtxt, span: Span,
+    fn rand_thing(cx: @ExtCtxt,
+                  span: Span,
                   ctor_ident: Ident,
-                  summary: &Either<uint, ~[Ident]>,
-                  rand_call: &fn() -> @Expr) -> @Expr {
+                  summary: &StaticFields,
+                  rand_call: |Span| -> @Expr)
+                  -> @Expr {
         match *summary {
-            Left(count) => {
-                if count == 0 {
+            Unnamed(ref fields) => {
+                if fields.is_empty() {
                     cx.expr_ident(span, ctor_ident)
                 } else {
-                    let exprs = vec::from_fn(count, |_| rand_call());
+                    let exprs = fields.map(|span| rand_call(*span));
                     cx.expr_call_ident(span, ctor_ident, exprs)
                 }
             }
-            Right(ref fields) => {
-                let rand_fields = do fields.map |ident| {
-                    cx.field_imm(span, *ident, rand_call())
-                };
+            Named(ref fields) => {
+                let rand_fields = fields.map(|&(ident, span)| {
+                    cx.field_imm(span, ident, rand_call(span))
+                });
                 cx.expr_struct_ident(span, ctor_ident, rand_fields)
             }
         }

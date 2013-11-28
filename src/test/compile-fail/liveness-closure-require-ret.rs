@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn force(f: &fn() -> int) -> int { f() }
+fn force(f: || -> int) -> int { f() }
 fn main() { info!("{:?}", force(|| {})); } //~ ERROR mismatched types

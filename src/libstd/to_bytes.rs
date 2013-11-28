@@ -18,10 +18,11 @@ use cast;
 use container::Container;
 use iter::Iterator;
 use option::{None, Option, Some};
+use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
 
-pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
+pub type Cb<'self> = 'self |buf: &[u8]| -> bool;
 
 ///
 /// A trait to implement in order to make a type hashable;
@@ -325,6 +326,13 @@ impl<A:IterBytes> IterBytes for @mut A {
     }
 }
 
+impl<A:IterBytes> IterBytes for Rc<A> {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.borrow().iter_bytes(lsb0, f)
+    }
+}
+
 impl<A:IterBytes> IterBytes for ~A {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
@@ -358,15 +366,15 @@ pub trait ToBytes {
 
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
-        use rt::io::mem;
-        use rt::io::Writer;
+        use io::mem;
+        use io::Writer;
 
-        do mem::with_mem_writer |wr| {
-            do self.iter_bytes(lsb0) |bytes| {
+        mem::with_mem_writer(|wr| {
+            self.iter_bytes(lsb0, |bytes| {
                 wr.write(bytes);
                 true
-            };
-        }
+            });
+        })
     }
 }
 

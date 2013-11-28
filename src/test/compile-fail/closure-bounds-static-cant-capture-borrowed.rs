@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn bar(blk: &fn:'static()) {
+fn bar(blk: ||:'static) {
 }
 
 fn foo(x: &()) {
-    do bar {
+    bar(|| {
         let _ = x; //~ ERROR does not fulfill `'static`
-    }
+    })
 }
 
 fn main() {

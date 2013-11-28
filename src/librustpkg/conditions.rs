@@ -10,9 +10,10 @@
 
 // Useful conditions
 
-pub use std::path::Path;
 pub use package_id::PkgId;
-pub use std::rt::io::FileStat;
+pub use std::io::FileStat;
+pub use std::io::process::ProcessExit;
+pub use std::path::Path;
 
 condition! {
     pub bad_path: (Path, ~str) -> Path;
@@ -57,5 +58,5 @@ condition! {
 condition! {
     // str is output of applying the command (first component)
     // to the args (second component)
-    pub command_failed: (~str, ~[~str], int) -> ~str;
+    pub command_failed: (~str, ~[~str], ProcessExit) -> ~str;
 }

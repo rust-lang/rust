@@ -109,8 +109,8 @@ mod test_foreign_items {
     pub mod rustrt {
         extern {
             #[cfg(bogus)]
-            pub fn rust_get_stdin() -> ~str;
-            pub fn rust_get_stdin() -> ~str;
+            pub fn write() -> ~str;
+            pub fn write() -> ~str;
         }
     }
 }

@@ -180,7 +180,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         let mut ret = Some(t);
-        do fcx.opt_node_ty_substs(id) |substs| {
+        fcx.opt_node_ty_substs(id, |substs| {
           let mut new_tps = ~[];
           for subst in substs.tps.iter() {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
@@ -190,7 +190,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
           }
           write_substs_to_tcx(tcx, id, new_tps);
           ret.is_some()
-        };
+        });
         ret
       }
     }
@@ -278,7 +278,7 @@ fn visit_block(b: &ast::Block, wbcx: &mut WbCtxt) {
     visit::walk_block(wbcx, b, ());
 }
 
-fn visit_pat(p: @ast::Pat, wbcx: &mut WbCtxt) {
+fn visit_pat(p: &ast::Pat, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -323,7 +323,7 @@ impl Visitor<()> for WbCtxt {
     fn visit_stmt(&mut self, s:@ast::Stmt, _:()) { visit_stmt(s, self); }
     fn visit_expr(&mut self, ex:@ast::Expr, _:()) { visit_expr(ex, self); }
     fn visit_block(&mut self, b:&ast::Block, _:()) { visit_block(b, self); }
-    fn visit_pat(&mut self, p:@ast::Pat, _:()) { visit_pat(p, self); }
+    fn visit_pat(&mut self, p:&ast::Pat, _:()) { visit_pat(p, self); }
     fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(l, self); }
 }
 

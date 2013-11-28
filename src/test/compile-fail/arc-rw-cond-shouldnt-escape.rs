@@ -14,8 +14,6 @@ use extra::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None;
-    do x.write_cond |_one, cond| {
-        y = Some(cond);
-    }
+    x.write_cond(|_one, cond| y = Some(cond));
     y.unwrap().wait();
 }

@@ -28,7 +28,7 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, IterBytes, ToStr)]
+#[deriving(Clone, IterBytes, ToStr, TotalEq, TotalOrd)]
 pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
@@ -110,6 +110,7 @@ pub enum SyntaxContext_ {
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
 pub type Name = uint;
+
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = uint;
 
@@ -156,9 +157,8 @@ pub struct Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     identifier: Ident,
-    /// The lifetime parameter for this path segment. Currently only one
-    /// lifetime parameter is allowed.
-    lifetime: Option<Lifetime>,
+    /// The lifetime parameters for this path segment.
+    lifetimes: OptVec<Lifetime>,
     /// The type parameters for this path segment, if present.
     types: OptVec<Ty>,
 }
@@ -167,12 +167,14 @@ pub type CrateNum = int;
 
 pub type NodeId = int;
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, ToStr)]
+#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub struct DefId {
     crate: CrateNum,
     node: NodeId,
 }
 
+/// Item definitions in the currently-compiled crate would have the CrateNum
+/// LOCAL_CRATE in their DefId.
 pub static LOCAL_CRATE: CrateNum = 0;
 pub static CRATE_NODE_ID: NodeId = 0;
 
@@ -244,11 +246,23 @@ pub enum Def {
               @Def,     // closed over def
               NodeId,  // expr node that creates the closure
               NodeId), // id for the block/body of the closure expr
+
+    /// Note that if it's a tuple struct's definition, the node id
+    /// of the DefId refers to the struct_def.ctor_id (whereas normally it
+    /// refers to the item definition's id).
     DefStruct(DefId),
     DefTyParamBinder(NodeId), /* struct, impl or trait with ty params */
     DefRegion(NodeId),
     DefLabel(NodeId),
     DefMethod(DefId /* method */, Option<DefId> /* trait */),
+}
+
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+pub enum DefRegion {
+    DefStaticRegion,
+    DefEarlyBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
+    DefLateBoundRegion(/* binder_id */ NodeId, /* depth */ uint, /* lifetime decl */ NodeId),
+    DefFreeRegion(/* block scope */ NodeId, /* lifetime decl */ NodeId),
 }
 
 // The set of MetaItems that define the compilation environment of the crate,
@@ -329,6 +343,7 @@ pub enum BindingMode {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Pat_ {
     PatWild,
+    PatWildMulti,
     // A pat_ident may either be a new bound variable,
     // or a nullary enum (in which case the second field
     // is None).
@@ -442,6 +457,7 @@ pub enum Stmt_ {
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
+/// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct Local {
     ty: Ty,
@@ -544,6 +560,10 @@ pub enum Expr_ {
     ExprAssignOp(NodeId, BinOp, @Expr, @Expr),
     ExprField(@Expr, Ident, ~[Ty]),
     ExprIndex(NodeId, @Expr, @Expr),
+
+    /// Expression that looks like a "name". For example,
+    /// `std::vec::from_elem::<uint>` is an ExprPath that's the "name" part
+    /// of a function call.
     ExprPath(Path),
 
     /// The special identifier `self`.
@@ -852,7 +872,6 @@ pub enum ty_ {
     ty_bare_fn(@TyBareFn),
     ty_tup(~[Ty]),
     ty_path(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
-    ty_mac(mac),
     ty_typeof(@Expr),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

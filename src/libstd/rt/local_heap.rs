@@ -302,9 +302,7 @@ pub unsafe fn local_free(ptr: *libc::c_char) {
 }
 
 pub fn live_allocs() -> *mut Box {
-    do Local::borrow |task: &mut Task| {
-        task.heap.live_allocs
-    }
+    Local::borrow(|task: &mut Task| task.heap.live_allocs)
 }
 
 #[cfg(test)]
@@ -313,15 +311,11 @@ mod bench {
 
     #[bench]
     fn alloc_managed_small(bh: &mut BenchHarness) {
-        do bh.iter {
-            @10;
-        }
+        bh.iter(|| { @10; });
     }
 
     #[bench]
     fn alloc_managed_big(bh: &mut BenchHarness) {
-        do bh.iter {
-            @[10, ..1000];
-        }
+        bh.iter(|| { @[10, ..1000]; });
     }
 }

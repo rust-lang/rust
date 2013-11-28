@@ -14,10 +14,10 @@ use extra::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None;
-    do x.write_downgrade |write_mode| {
-        do (&write_mode).write_cond |_one, cond| {
+    x.write_downgrade(|write_mode| {
+        (&write_mode).write_cond(|_one, cond| {
             y = Some(cond);
-        }
-    }
+        })
+    });
     y.unwrap().wait();
 }

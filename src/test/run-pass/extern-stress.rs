@@ -33,7 +33,6 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn count(n: uint) -> uint {
     unsafe {
         rustrt::rust_dbg_call(cb, n)
@@ -41,9 +40,9 @@ fn count(n: uint) -> uint {
 }
 
 pub fn main() {
-    do 100u.times {
+    100u.times(|| {
         do task::spawn {
             assert_eq!(count(5u), 16u);
         };
-    }
+    })
 }

@@ -20,7 +20,7 @@ fn add_int(x: &mut Ints, v: int) {
     util::swap(&mut values, &mut x.values);
 }
 
-fn iter_ints(x: &Ints, f: &fn(x: &int) -> bool) -> bool {
+fn iter_ints(x: &Ints, f: |x: &int| -> bool) -> bool {
     let l = x.values.len();
     range(0u, l).advance(|i| f(&x.values[i]))
 }
@@ -30,10 +30,10 @@ pub fn main() {
     add_int(ints, 22);
     add_int(ints, 44);
 
-    do iter_ints(ints) |i| {
+    iter_ints(ints, |i| {
         error!("int = {}", *i);
         true
-    };
+    });
 
     error!("ints={:?}", ints);
 }

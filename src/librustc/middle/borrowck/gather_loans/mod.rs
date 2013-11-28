@@ -87,7 +87,7 @@ impl<'self> visit::Visitor<()> for GatherLoanCtxt<'self> {
     fn visit_stmt(&mut self, s:@Stmt, _:()) {
         add_stmt_to_map(self, s);
     }
-    fn visit_pat(&mut self, p:@Pat, _:()) {
+    fn visit_pat(&mut self, p:&Pat, _:()) {
         add_pat_to_id_range(self, p);
     }
     fn visit_local(&mut self, l:@Local, _:()) {
@@ -119,7 +119,7 @@ pub fn gather_loans(bccx: &BorrowckCtxt,
 }
 
 fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
-                       p: @ast::Pat) {
+                       p: &ast::Pat) {
     // NB: This visitor function just adds the pat ids into the id
     // range. We gather loans that occur in patterns using the
     // `gather_pat()` method below. Eventually these two should be
@@ -161,27 +161,25 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
         None => {
             // Variable declarations without initializers are considered "moves":
             let tcx = this.bccx.tcx;
-            do pat_util::pat_bindings(tcx.def_map, local.pat)
-                |_, id, span, _| {
+            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
                 gather_moves::gather_decl(this.bccx,
                                           this.move_data,
                                           id,
                                           span,
                                           id);
-            }
+            })
         }
         Some(init) => {
             // Variable declarations with initializers are considered "assigns":
             let tcx = this.bccx.tcx;
-            do pat_util::pat_bindings(tcx.def_map, local.pat)
-                |_, id, span, _| {
+            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
                 gather_moves::gather_assignment(this.bccx,
                                                 this.move_data,
                                                 id,
                                                 span,
                                                 @LpVar(id),
                                                 id);
-            }
+            });
             let init_cmt = this.bccx.cat_expr(init);
             this.gather_pat(init_cmt, local.pat, None);
         }
@@ -277,7 +275,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
           // Currently these do not use adjustments, so we have to
           // hardcode this check here (note that the receiver DOES use
           // adjustments).
-          let scope_r = ty::re_scope(ex.id);
+          let scope_r = ty::ReScope(ex.id);
           let arg_cmt = this.bccx.cat_expr(arg);
           this.guarantee_valid(arg.id,
                                arg.span,
@@ -441,7 +439,7 @@ impl<'self> GatherLoanCtxt<'self> {
 
         // a loan for the empty region can never be dereferenced, so
         // it is always safe
-        if loan_region == ty::re_empty {
+        if loan_region == ty::ReEmpty {
             return;
         }
 
@@ -470,10 +468,10 @@ impl<'self> GatherLoanCtxt<'self> {
 
             restrictions::SafeIf(loan_path, restrictions) => {
                 let loan_scope = match loan_region {
-                    ty::re_scope(id) => id,
-                    ty::re_free(ref fr) => fr.scope_id,
+                    ty::ReScope(id) => id,
+                    ty::ReFree(ref fr) => fr.scope_id,
 
-                    ty::re_static => {
+                    ty::ReStatic => {
                         // If we get here, an error must have been
                         // reported in
                         // `lifetime::guarantee_lifetime()`, because
@@ -485,9 +483,10 @@ impl<'self> GatherLoanCtxt<'self> {
                         return;
                     }
 
-                    ty::re_empty |
-                    ty::re_bound(*) |
-                    ty::re_infer(*) => {
+                    ty::ReEmpty |
+                    ty::ReLateBound(*) |
+                    ty::ReEarlyBound(*) |
+                    ty::ReInfer(*) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
                             format!("Invalid borrow lifetime: {:?}", loan_region));
@@ -691,7 +690,7 @@ impl<'self> GatherLoanCtxt<'self> {
          * moves (non-`ref` bindings with linear type).
          */
 
-        do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
+        self.bccx.cat_pattern(discr_cmt, root_pat, |cmt, pat| {
             match pat.node {
               ast::PatIdent(bm, _, _) if self.pat_is_binding(pat) => {
                 match bm {
@@ -714,7 +713,7 @@ impl<'self> GatherLoanCtxt<'self> {
                     let cmt_discr = match arm_match_ids {
                         None => cmt,
                         Some((arm_id, match_id)) => {
-                            let arm_scope = ty::re_scope(arm_id);
+                            let arm_scope = ty::ReScope(arm_id);
                             if self.bccx.is_subregion_of(scope_r, arm_scope) {
                                 self.bccx.cat_discr(cmt, match_id)
                             } else {
@@ -780,7 +779,7 @@ impl<'self> GatherLoanCtxt<'self> {
 
               _ => {}
             }
-        }
+        })
     }
 
     pub fn vec_slice_info(&self, pat: @ast::Pat, slice_ty: ty::t)

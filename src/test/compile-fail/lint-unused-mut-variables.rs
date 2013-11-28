@@ -35,9 +35,9 @@ fn main() {
     let mut a = ~[];
     a.push(3);
     let mut a = ~[];
-    do callback {
+    callback(|| {
         a.push(3);
-    }
+    });
     let (mut a, b) = (1, 2);
     a = 34;
 
@@ -49,9 +49,13 @@ fn main() {
 
     let x = |mut y: int| y = 32;
     fn nothing(mut foo: int) { foo = 37; }
+
+    // leading underscore should avoid the warning, just like the
+    // unused variable lint.
+    let mut _allowed = 1;
 }
 
-fn callback(f: &fn()) {}
+fn callback(f: ||) {}
 
 // make sure the lint attribute can be turned off
 #[allow(unused_mut)]

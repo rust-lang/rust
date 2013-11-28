@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// LLVM wrappers are intended to be called from trans,
-// which already runs in a #[fixed_stack_segment]
-#[allow(cstack)];
 #[allow(non_uppercase_pattern_statics)];
 
 use std::c_str::ToCStr;
@@ -36,6 +33,7 @@ pub enum CallConv {
     ColdCallConv = 9,
     X86StdcallCallConv = 64,
     X86FastcallCallConv = 65,
+    X86_64_Win64 = 79,
 }
 
 pub enum Visibility {
@@ -1751,6 +1749,12 @@ pub fn SetUnnamedAddr(Global: ValueRef, Unnamed: bool) {
     }
 }
 
+pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
+    unsafe {
+        llvm::LLVMSetThreadLocal(global, is_thread_local as Bool);
+    }
+}
+
 pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
     unsafe {
         llvm::LLVMConstICmp(Pred as c_ushort, V1, V2)
@@ -1846,9 +1850,9 @@ pub struct TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let lltd = do string_rep.with_c_str |buf| {
+    let lltd = string_rep.with_c_str(|buf| {
         unsafe { llvm::LLVMCreateTargetData(buf) }
-    };
+    });
 
     TargetData {
         lltd: lltd,

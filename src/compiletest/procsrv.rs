@@ -11,6 +11,7 @@
 use std::os;
 use std::run;
 use std::str;
+use std::io::process::ProcessExit;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -21,11 +22,11 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
     assert!(prog.ends_with(".exe"));
     let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
-    env = do env.map() |pair| {
+    env = env.map(|pair| {
         let (k,v) = (*pair).clone();
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
-    };
+    });
     if prog.ends_with("rustc.exe") {
         env.push((~"RUST_THREADS", ~"1"));
     }
@@ -39,7 +40,7 @@ fn target_env(_lib_path: &str, _prog: &str) -> ~[(~str,~str)] {
     os::env()
 }
 
-pub struct Result {status: int, out: ~str, err: ~str}
+pub struct Result {status: ProcessExit, out: ~str, err: ~str}
 
 pub fn run(lib_path: &str,
            prog: &str,

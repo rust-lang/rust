@@ -1,6 +1,3 @@
-// xfail-test reading from os::args()[1] - bogus!
-
-use std::from_str::FromStr;
 use std::os;
 
 static PI: f64 = 3.141592653589793;
@@ -139,13 +136,23 @@ fn offset_momentum(bodies: &mut [Planet, ..N_BODIES]) {
 }
 
 fn main() {
-    let n: i32 = FromStr::from_str(os::args()[1]).unwrap();
+    let args = os::args();
+    let args = if os::getenv("RUST_BENCH").is_some() {
+        ~[~"", ~"1000"]
+    } else if args.len() <= 1u {
+        ~[~"", ~"1000"]
+    } else {
+        args
+    };
+
+    let n: i32 = from_str::<i32>(args[1]).unwrap();
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);
-    println!("{:.9f}", energy(&bodies) as float);
+    println!("{:.9f}", energy(&bodies) as f64);
 
     advance(&mut bodies, 0.01, n);
 
-    println!("{:.9f}", energy(&bodies) as float);
+    println!("{:.9f}", energy(&bodies) as f64);
 }
+

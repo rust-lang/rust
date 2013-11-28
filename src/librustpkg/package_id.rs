@@ -87,10 +87,10 @@ impl PkgId {
 
     pub fn hash(&self) -> ~str {
         // FIXME (#9639): hash should take a &[u8] so we can hash the real path
-        do self.path.display().with_str |s| {
+        self.path.display().with_str(|s| {
             let vers = self.version.to_str();
             format!("{}-{}-{}", s, hash(s + vers), vers)
-        }
+        })
     }
 
     pub fn short_name_with_version(&self) -> ~str {
@@ -102,8 +102,8 @@ impl PkgId {
         self.short_name.as_bytes() != self.path.as_vec()
     }
 
-    pub fn prefixes_iter(&self) -> Prefixes {
-        prefixes_iter(&self.path)
+    pub fn prefixes(&self) -> Prefixes {
+        prefixes(&self.path)
     }
 
     // This is the workcache function name for the *installed*
@@ -114,9 +114,9 @@ impl PkgId {
     }
 }
 
-pub fn prefixes_iter(p: &Path) -> Prefixes {
+pub fn prefixes(p: &Path) -> Prefixes {
     Prefixes {
-        components: p.str_component_iter().map(|x|x.unwrap().to_owned()).to_owned_vec(),
+        components: p.str_components().map(|x|x.unwrap().to_owned()).to_owned_vec(),
         remaining: ~[]
     }
 }

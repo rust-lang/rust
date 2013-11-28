@@ -290,9 +290,9 @@ impl Datum {
                 ByRef(_) => {
                     let cast = PointerCast(bcx, dst, val_ty(self.val));
                     let cmp = ICmp(bcx, lib::llvm::IntNE, cast, self.val);
-                    do with_cond(bcx, cmp) |bcx| {
+                    with_cond(bcx, cmp, |bcx| {
                         self.copy_to_no_check(bcx, action, dst)
-                    }
+                    })
                 }
                 ByValue => {
                     self.copy_to_no_check(bcx, action, dst)
@@ -524,7 +524,7 @@ impl Datum {
                        bcx: @mut Block,
                        ty: ty::t,
                        source: DatumCleanup,
-                       gep: &fn(ValueRef) -> ValueRef)
+                       gep: |ValueRef| -> ValueRef)
                        -> Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {
@@ -588,7 +588,7 @@ impl Datum {
         // result (which will be by-value).  Note that it is not
         // significant *which* region we pick here.
         let llval = self.to_ref_llval(bcx);
-        let rptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::re_static,
+        let rptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::ReStatic,
                                       self.ty);
         Datum {val: llval, ty: rptr_ty, mode: ByValue}
     }

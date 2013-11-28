@@ -27,10 +27,9 @@ struct Ccx {
     x: int
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
-        cast::transmute(libc::malloc(mem::size_of::<Bcx<'blk>>()
+        cast::transmute(libc::malloc(mem::size_of::<Bcx<'a>>()
             as libc::size_t))
     }
 }
@@ -39,7 +38,6 @@ fn h<'a>(bcx : &'a Bcx<'a>) -> &'a Bcx<'a> {
     return alloc(bcx.fcx.arena);
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn g(fcx : &Fcx) {
     let bcx = Bcx { fcx: fcx };
     let bcx2 = h(&bcx);

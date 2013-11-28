@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast windows doesn't like 'extern mod extra'
+// xfail-fast check-fast doesn't like 'extern mod extra'
+// xfail-win32 TempDir may cause IoError on windows: #10462
 
 extern mod extra;
 
@@ -16,7 +17,7 @@ use extra::glob::glob;
 use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
 use std::{os, unstable};
-use std::rt::io;
+use std::io;
 
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {

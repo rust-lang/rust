@@ -23,7 +23,7 @@ that do not need to record state.
 use iter::range;
 use option::{Some, None};
 use num;
-use rand::{Rng,Rand};
+use rand::{Rng, Rand, Open01};
 use clone::Clone;
 
 pub use self::range::Range;
@@ -205,12 +205,14 @@ mod ziggurat_tables;
 // the perf improvement (25-50%) is definitely worth the extra code
 // size from force-inlining.
 #[inline(always)]
-fn ziggurat<R:Rng>(rng: &mut R,
-                   symmetric: bool,
-                   X: ziggurat_tables::ZigTable,
-                   F: ziggurat_tables::ZigTable,
-                   pdf: &'static fn(f64) -> f64,
-                   zero_case: &'static fn(&mut R, f64) -> f64) -> f64 {
+fn ziggurat<R:Rng>(
+            rng: &mut R,
+            symmetric: bool,
+            X: ziggurat_tables::ZigTable,
+            F: ziggurat_tables::ZigTable,
+            pdf: 'static |f64| -> f64,
+            zero_case: 'static |&mut R, f64| -> f64)
+            -> f64 {
     static SCALE: f64 = (1u64 << 53) as f64;
     loop {
         // reimplement the f64 generation as an optimisation suggested
@@ -276,10 +278,12 @@ impl Rand for StandardNormal {
             let mut x = 1.0f64;
             let mut y = 0.0f64;
 
-            // FIXME #7755: infinities?
             while -2.0 * y < x * x {
-                x = rng.gen::<f64>().ln() / ziggurat_tables::ZIG_NORM_R;
-                y = rng.gen::<f64>().ln();
+                let x_ = *rng.gen::<Open01<f64>>();
+                let y_ = *rng.gen::<Open01<f64>>();
+
+                x = x_.ln() / ziggurat_tables::ZIG_NORM_R;
+                y = y_.ln();
             }
 
             if u < 0.0 { x - ziggurat_tables::ZIG_NORM_R } else { ziggurat_tables::ZIG_NORM_R - x }
@@ -442,17 +446,17 @@ mod tests {
     fn test_rand_sample() {
         let mut rand_sample = RandSample::<ConstRand>;
 
-        assert_eq!(*rand_sample.sample(task_rng()), 0);
-        assert_eq!(*rand_sample.ind_sample(task_rng()), 0);
+        assert_eq!(*rand_sample.sample(&mut task_rng()), 0);
+        assert_eq!(*rand_sample.ind_sample(&mut task_rng()), 0);
     }
 
     #[test]
     fn test_normal() {
         let mut norm = Normal::new(10.0, 10.0);
-        let rng = task_rng();
+        let mut rng = task_rng();
         for _ in range(0, 1000) {
-            norm.sample(rng);
-            norm.ind_sample(rng);
+            norm.sample(&mut rng);
+            norm.ind_sample(&mut rng);
         }
     }
     #[test]
@@ -464,10 +468,10 @@ mod tests {
     #[test]
     fn test_exp() {
         let mut exp = Exp::new(10.0);
-        let rng = task_rng();
+        let mut rng = task_rng();
         for _ in range(0, 1000) {
-            assert!(exp.sample(rng) >= 0.0);
-            assert!(exp.ind_sample(rng) >= 0.0);
+            assert!(exp.sample(&mut rng) >= 0.0);
+            assert!(exp.ind_sample(&mut rng) >= 0.0);
         }
     }
     #[test]
@@ -567,11 +571,11 @@ mod bench {
         let mut rng = XorShiftRng::new();
         let mut normal = Normal::new(-2.71828, 3.14159);
 
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 normal.sample(&mut rng);
             }
-        }
+        });
         bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
     #[bench]
@@ -579,11 +583,11 @@ mod bench {
         let mut rng = XorShiftRng::new();
         let mut exp = Exp::new(2.71828 * 3.14159);
 
-        do bh.iter {
+        bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 exp.sample(&mut rng);
             }
-        }
+        });
         bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }

@@ -17,7 +17,7 @@ use ops::Drop;
 #[cfg(unix)]
 use rand::reader::ReaderRng;
 #[cfg(unix)]
-use rt::io::File;
+use io::File;
 
 #[cfg(windows)]
 use cast;
@@ -71,7 +71,7 @@ impl OSRng {
     /// Create a new `OSRng`.
     #[cfg(windows)]
     pub fn new() -> OSRng {
-        externfn!(fn rust_win32_rand_acquire(phProv: *mut HCRYPTPROV))
+        extern { fn rust_win32_rand_acquire(phProv: *mut HCRYPTPROV); }
 
         let mut hcp = 0;
         unsafe {rust_win32_rand_acquire(&mut hcp)};
@@ -106,11 +106,14 @@ impl Rng for OSRng {
         unsafe { cast::transmute(v) }
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {
-        externfn!(fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD, pbBuffer: *mut BYTE))
-
-        do v.as_mut_buf |ptr, len| {
-            unsafe {rust_win32_rand_gen(self.hcryptprov, len as DWORD, ptr)}
+        extern {
+            fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD,
+                                   pbBuffer: *mut BYTE);
         }
+
+        v.as_mut_buf(|ptr, len| {
+            unsafe {rust_win32_rand_gen(self.hcryptprov, len as DWORD, ptr)}
+        })
     }
 }
 
@@ -123,7 +126,7 @@ impl Drop for OSRng {
 
     #[cfg(windows)]
     fn drop(&mut self) {
-        externfn!(fn rust_win32_rand_release(hProv: HCRYPTPROV))
+        extern { fn rust_win32_rand_release(hProv: HCRYPTPROV); }
 
         unsafe {rust_win32_rand_release(self.hcryptprov)}
     }
@@ -159,7 +162,7 @@ mod test {
         for _ in range(0, 20) {
             let (p, c) = comm::stream();
             chans.push(c);
-            do task::spawn_with(p) |p| {
+            do task::spawn {
                 // wait until all the tasks are ready to go.
                 p.recv();
 

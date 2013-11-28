@@ -49,8 +49,6 @@ pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
 }
 
 #[cfg(windows)]
-#[fixed_stack_segment]
-#[inline(never)]
 pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
     use cast::transmute;
     use c_str::ToCStr;
@@ -58,9 +56,14 @@ pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
 
     let sym = unsafe {
         let module = dl::open_internal();
-        let sym = do "__rust_crate_map_toplevel".with_c_str |buf| {
-            dl::symbol(module, buf)
+        let rust_crate_map_toplevel = if cfg!(target_arch = "x86") {
+            "__rust_crate_map_toplevel"
+        } else {
+            "_rust_crate_map_toplevel"
         };
+        let sym = rust_crate_map_toplevel.with_c_str(|buf| {
+            dl::symbol(module, buf)
+        });
         dl::close(module);
         sym
     };
@@ -81,8 +84,10 @@ fn version(crate_map: &CrateMap) -> i32 {
     }
 }
 
-fn do_iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry),
-                            visited: &mut HashSet<*CrateMap<'a>>) {
+fn do_iter_crate_map<'a>(
+                     crate_map: &'a CrateMap<'a>,
+                     f: |&ModEntry|,
+                     visited: &mut HashSet<*CrateMap<'a>>) {
     if visited.insert(crate_map as *CrateMap) {
         match version(crate_map) {
             2 => {
@@ -100,7 +105,7 @@ fn do_iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry),
 }
 
 /// Iterates recursively over `crate_map` and all child crate maps
-pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: &fn(&ModEntry)) {
+pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: |&ModEntry|) {
     // XXX: use random numbers as keys from the OS-level RNG when there is a nice
     //        way to do this
     let mut v: HashSet<*CrateMap<'a>> = HashSet::with_capacity_and_keys(0, 0, 32);
@@ -136,10 +141,10 @@ mod tests {
 
         let mut cnt = 0;
         unsafe {
-            do iter_crate_map(&root_crate) |entry| {
+            iter_crate_map(&root_crate, |entry| {
                 assert!(*entry.log_level == 3);
                 cnt += 1;
-            }
+            });
             assert!(cnt == 1);
         }
     }
@@ -178,10 +183,10 @@ mod tests {
 
         let mut cnt = 0;
         unsafe {
-            do iter_crate_map(&root_crate) |entry| {
+            iter_crate_map(&root_crate, |entry| {
                 assert!(*entry.log_level == cnt);
                 cnt += 1;
-            }
+            });
             assert!(cnt == 4);
         }
     }

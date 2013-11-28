@@ -216,16 +216,22 @@ fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
 /// Calls `f` with a string slice of the source text spanning from `start`
 /// up to but excluding `rdr.last_pos`, meaning the slice does not include
 /// the character `rdr.curr`.
-pub fn with_str_from<T>(rdr: @mut StringReader, start: BytePos, f: &fn(s: &str) -> T) -> T {
+pub fn with_str_from<T>(
+                     rdr: @mut StringReader,
+                     start: BytePos,
+                     f: |s: &str| -> T)
+                     -> T {
     with_str_from_to(rdr, start, rdr.last_pos, f)
 }
 
 /// Calls `f` with astring slice of the source text spanning from `start`
 /// up to but excluding `end`.
-fn with_str_from_to<T>(rdr: @mut StringReader,
-                       start: BytePos,
-                       end: BytePos,
-                       f: &fn(s: &str) -> T) -> T {
+fn with_str_from_to<T>(
+                    rdr: @mut StringReader,
+                    start: BytePos,
+                    end: BytePos,
+                    f: |s: &str| -> T)
+                    -> T {
     f(rdr.src.slice(
             byte_offset(rdr, start).to_uint(),
             byte_offset(rdr, end).to_uint()))
@@ -241,7 +247,7 @@ pub fn bump(rdr: &mut StringReader) {
         let last_char = rdr.curr;
         let next = rdr.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
-        rdr.pos = rdr.pos + BytePos(byte_offset_diff);
+        rdr.pos = rdr.pos + Pos::from_uint(byte_offset_diff);
         rdr.curr = next.ch;
         rdr.col = rdr.col + CharPos(1u);
         if last_char == '\n' {
@@ -251,7 +257,7 @@ pub fn bump(rdr: &mut StringReader) {
 
         if byte_offset_diff > 1 {
             rdr.filemap.record_multibyte_char(
-                BytePos(current_byte_offset), byte_offset_diff);
+                Pos::from_uint(current_byte_offset), byte_offset_diff);
         }
     } else {
         rdr.curr = unsafe { transmute(-1u32) }; // FIXME: #8971: unsound
@@ -312,7 +318,7 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
 
 pub fn is_line_non_doc_comment(s: &str) -> bool {
     let s = s.trim_right();
-    s.len() > 3 && s.iter().all(|ch| ch == '/')
+    s.len() > 3 && s.chars().all(|ch| ch == '/')
 }
 
 // PRECONDITION: rdr.curr is not whitespace
@@ -327,11 +333,11 @@ fn consume_any_line_comment(rdr: @mut StringReader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_bpos = rdr.pos - BytePos(3u);
+                let start_bpos = rdr.pos - BytePos(3);
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     bump(rdr);
                 }
-                let ret = do with_str_from(rdr, start_bpos) |string| {
+                let ret = with_str_from(rdr, start_bpos, |string| {
                     // but comments with only more "/"s are not
                     if !is_line_non_doc_comment(string) {
                         Some(TokenAndSpan{
@@ -341,7 +347,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                     } else {
                         None
                     }
-                };
+                });
 
                 if ret.is_some() {
                     return ret;
@@ -373,7 +379,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
 
 pub fn is_block_non_doc_comment(s: &str) -> bool {
     assert!(s.len() >= 1u);
-    s.slice(1u, s.len() - 1u).iter().all(|ch| ch == '*')
+    s.slice(1u, s.len() - 1u).chars().all(|ch| ch == '*')
 }
 
 // might return a sugared-doc-attr
@@ -381,7 +387,7 @@ fn consume_block_comment(rdr: @mut StringReader)
                       -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
     let is_doc_comment = rdr.curr == '*' || rdr.curr == '!';
-    let start_bpos = rdr.pos - BytePos(if is_doc_comment {3u} else {2u});
+    let start_bpos = rdr.pos - BytePos(if is_doc_comment {3} else {2});
 
     let mut level: int = 1;
     while level > 0 {
@@ -406,7 +412,7 @@ fn consume_block_comment(rdr: @mut StringReader)
     }
 
     let res = if is_doc_comment {
-        do with_str_from(rdr, start_bpos) |string| {
+        with_str_from(rdr, start_bpos, |string| {
             // but comments with only "*"s between two "/"s are not
             if !is_block_non_doc_comment(string) {
                 Some(TokenAndSpan{
@@ -416,7 +422,7 @@ fn consume_block_comment(rdr: @mut StringReader)
             } else {
                 None
             }
-        }
+        })
     } else {
         None
     };
@@ -646,7 +652,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             bump(rdr);
         }
 
-        return do with_str_from(rdr, start) |string| {
+        return with_str_from(rdr, start, |string| {
             if string == "_" {
                 token::UNDERSCORE
             } else {
@@ -655,7 +661,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 // FIXME: perform NFKC normalization here. (Issue #2253)
                 token::IDENT(str_to_ident(string), is_mod_name)
             }
-        }
+        })
     }
     if is_dec_digit(c) {
         return scan_number(c, rdr);
@@ -769,9 +775,9 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             while ident_continue(rdr.curr) {
                 bump(rdr);
             }
-            return do with_str_from(rdr, start) |lifetime_name| {
+            return with_str_from(rdr, start, |lifetime_name| {
                 token::LIFETIME(str_to_ident(lifetime_name))
-            }
+            })
         }
 
         // Otherwise it is a character constant:
@@ -809,7 +815,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                                // Byte offsetting here is okay because the
                                // character before position `start` is an
                                // ascii single quote.
-                               start - BytePos(1u),
+                               start - BytePos(1),
                                rdr.last_pos,
                                ~"unterminated character constant");
         }

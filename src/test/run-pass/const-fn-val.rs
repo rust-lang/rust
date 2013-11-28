@@ -12,7 +12,7 @@ fn foo() -> int {
     return 0xca7f000d;
 }
 
-struct Bar<'self> { f: &'self fn() -> int }
+struct Bar<'self> { f: 'self || -> int }
 
 static b : Bar<'static> = Bar { f: foo };
 

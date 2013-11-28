@@ -26,9 +26,9 @@ use util::common::time;
 use util::ppaux;
 
 use std::hashmap::{HashMap,HashSet};
-use std::rt::io;
-use std::rt::io::fs;
-use std::rt::io::mem::MemReader;
+use std::io;
+use std::io::fs;
+use std::io::mem::MemReader;
 use std::os;
 use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
@@ -69,11 +69,11 @@ pub fn source_name(input: &input) -> @str {
 pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        session::OsWin32 =>   @"win32",
-        session::OsMacos =>   @"macos",
-        session::OsLinux =>   @"linux",
-        session::OsAndroid => @"android",
-        session::OsFreebsd => @"freebsd"
+        abi::OsWin32 =>   @"win32",
+        abi::OsMacos =>   @"macos",
+        abi::OsLinux =>   @"linux",
+        abi::OsAndroid => @"android",
+        abi::OsFreebsd => @"freebsd"
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -85,11 +85,16 @@ pub fn default_configuration(sess: Session) ->
         abi::Mips =>   (@"big",    @"mips",   @"32")
     };
 
+    let fam = match sess.targ_cfg.os {
+        abi::OsWin32 => @"windows",
+        _ => @"unix"
+    };
+
     let mk = attr::mk_name_value_item_str;
     return ~[ // Target bindings.
-         attr::mk_word_item(os::FAMILY.to_managed()),
+         attr::mk_word_item(fam),
          mk(@"target_os", tos),
-         mk(@"target_family", os::FAMILY.to_managed()),
+         mk(@"target_family", fam),
          mk(@"target_arch", arch),
          mk(@"target_endian", end),
          mk(@"target_word_size", wordsz),
@@ -118,10 +123,10 @@ pub fn build_configuration(sess: Session) ->
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
-    do cfgspecs.move_iter().map |s| {
+    cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
-    }.collect::<ast::CrateConfig>()
+    }).collect::<ast::CrateConfig>()
 }
 
 pub enum input {
@@ -239,6 +244,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         time(time_passes, "resolution", (), |_|
              middle::resolve::resolve_crate(sess, lang_items, crate));
 
+    let named_region_map = time(time_passes, "lifetime resolution", (),
+                                |_| middle::resolve_lifetime::crate(sess, crate));
+
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(sess, crate, ast_map));
 
@@ -246,13 +254,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                         freevars::annotate_freevars(def_map, crate));
 
     let region_map = time(time_passes, "region resolution", (), |_|
-                          middle::region::resolve_crate(sess, def_map, crate));
+                          middle::region::resolve_crate(sess, crate));
 
-    let rp_set = time(time_passes, "region parameterization inference", (), |_|
-                      middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
-
-    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                            region_map, rp_set, lang_items);
+    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map, freevars,
+                            region_map, lang_items);
 
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(
@@ -278,9 +283,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "loop checking", (), |_|
          middle::check_loop::check_crate(ty_cx, crate));
 
-    time(time_passes, "stack checking", (), |_|
-         middle::stack_check::stack_check_crate(ty_cx, crate));
-
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
         time(time_passes, "compute moves", (), |_|
@@ -305,11 +307,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     let reachable_map =
         time(time_passes, "reachability checking", (), |_|
-             reachable::find_reachable(ty_cx, method_map, exp_map2,
-                                       &exported_items));
+             reachable::find_reachable(ty_cx, method_map, &exported_items));
 
     time(time_passes, "lint checking", (), |_|
-         lint::check_crate(ty_cx, crate));
+         lint::check_crate(ty_cx, &exported_items, crate));
 
     CrateAnalysis {
         exp_map2: exp_map2,
@@ -353,7 +354,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
     // segmented stacks are enabled.  However, unwind info directives in assembly
     // output are OK, so we generate assembly first and then run it through
     // an external assembler.
-    if sess.targ_cfg.os == session::OsWin32 &&
+    if sess.targ_cfg.os == abi::OsWin32 &&
         (sess.opts.output_type == link::output_type_object ||
          sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
@@ -428,7 +429,6 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
     return false;
 }
 
-#[fixed_stack_segment]
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     // We need nested scopes here, because the intermediate results can keep
@@ -567,19 +567,19 @@ pub fn pretty_print_input(sess: Session,
                         is_expanded);
 }
 
-pub fn get_os(triple: &str) -> Option<session::Os> {
+pub fn get_os(triple: &str) -> Option<abi::Os> {
     for &(name, os) in os_names.iter() {
         if triple.contains(name) { return Some(os) }
     }
     None
 }
-static os_names : &'static [(&'static str, session::Os)] = &'static [
-    ("mingw32", session::OsWin32),
-    ("win32",   session::OsWin32),
-    ("darwin",  session::OsMacos),
-    ("android", session::OsAndroid),
-    ("linux",   session::OsLinux),
-    ("freebsd", session::OsFreebsd)];
+static os_names : &'static [(&'static str, abi::Os)] = &'static [
+    ("mingw32", abi::OsWin32),
+    ("win32",   abi::OsWin32),
+    ("darwin",  abi::OsMacos),
+    ("android", abi::OsAndroid),
+    ("linux",   abi::OsLinux),
+    ("freebsd", abi::OsFreebsd)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {
@@ -703,12 +703,7 @@ pub fn build_session_options(binary: @str,
     }
 
     if debugging_opts & session::debug_llvm != 0 {
-        set_llvm_debug();
-
-        fn set_llvm_debug() {
-            #[fixed_stack_segment]; #[inline(never)];
-            unsafe { llvm::LLVMSetDebug(1); }
-        }
+        unsafe { llvm::LLVMSetDebug(1); }
     }
 
     let output_type =
@@ -762,7 +757,7 @@ pub fn build_session_options(binary: @str,
     }).move_iter().collect();
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
-        a.split_iter(' ').map(|arg| arg.to_owned()).collect()
+        a.split(' ').map(|arg| arg.to_owned()).collect()
     });
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"), demitter);
@@ -772,7 +767,7 @@ pub fn build_session_options(binary: @str,
     let custom_passes = match matches.opt_str("passes") {
         None => ~[],
         Some(s) => {
-            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
+            s.split(|c: char| c == ' ' || c == ',').map(|s| {
                 s.trim().to_owned()
             }).collect()
         }
@@ -780,7 +775,7 @@ pub fn build_session_options(binary: @str,
     let llvm_args = match matches.opt_str("llvm-args") {
         None => ~[],
         Some(s) => {
-            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
+            s.split(|c: char| c == ' ' || c == ',').map(|s| {
                 s.trim().to_owned()
             }).collect()
         }

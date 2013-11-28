@@ -29,9 +29,9 @@ use print::pprust;
 
 use std::char;
 use std::str;
-use std::rt::io;
-use std::rt::io::Decorator;
-use std::rt::io::mem::MemWriter;
+use std::io;
+use std::io::Decorator;
+use std::io::mem::MemWriter;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
@@ -331,7 +331,7 @@ pub fn synth_comment(s: @ps, text: ~str) {
     word(s.s, "*/");
 }
 
-pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T)) {
+pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: |@ps, &T|) {
     box(s, 0u, b);
     let mut first = true;
     for elt in elts.iter() {
@@ -342,8 +342,12 @@ pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T)) {
 }
 
 
-pub fn commasep_cmnt<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T),
-                               get_span: &fn(&T) -> codemap::Span) {
+pub fn commasep_cmnt<T>(
+                     s: @ps,
+                     b: breaks,
+                     elts: &[T],
+                     op: |@ps, &T|,
+                     get_span: |&T| -> codemap::Span) {
     box(s, 0u, b);
     let len = elts.len();
     let mut i = 0u;
@@ -454,9 +458,6 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
           word(s.s, "typeof(");
           print_expr(s, e);
           word(s.s, ")");
-      }
-      ast::ty_mac(_) => {
-          fail!("print_type doesn't know how to print a ty_mac");
       }
       ast::ty_infer => {
           fail!("print_type shouldn't see a ty_infer");
@@ -595,6 +596,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
 
         space(s.s);
         bopen(s);
+        print_inner_attributes(s, item.attrs);
         for meth in methods.iter() {
            print_method(s, *meth);
         }
@@ -702,7 +704,7 @@ pub fn print_struct(s: @ps,
     if ast_util::struct_def_is_tuple_like(struct_def) {
         if !struct_def.fields.is_empty() {
             popen(s);
-            do commasep(s, inconsistent, struct_def.fields) |s, field| {
+            commasep(s, inconsistent, struct_def.fields, |s, field| {
                 match field.node.kind {
                     ast::named_field(*) => fail!("unexpected named field"),
                     ast::unnamed_field => {
@@ -710,7 +712,7 @@ pub fn print_struct(s: @ps,
                         print_type(s, &field.node.ty);
                     }
                 }
-            }
+            });
             pclose(s);
         }
         word(s.s, ";");
@@ -1566,23 +1568,30 @@ fn print_path_(s: @ps,
             }
         }
 
-        if segment.lifetime.is_some() || !segment.types.is_empty() {
+        if !segment.lifetimes.is_empty() || !segment.types.is_empty() {
             if colons_before_params {
                 word(s.s, "::")
             }
             word(s.s, "<");
 
-            for lifetime in segment.lifetime.iter() {
-                print_lifetime(s, lifetime);
-                if !segment.types.is_empty() {
+            let mut comma = false;
+            for lifetime in segment.lifetimes.iter() {
+                if comma {
                     word_space(s, ",")
                 }
+                print_lifetime(s, lifetime);
+                comma = true;
             }
 
-            commasep(s,
-                     inconsistent,
-                     segment.types.map_to_vec(|t| (*t).clone()),
-                     print_type);
+            if !segment.types.is_empty() {
+                if comma {
+                    word_space(s, ",")
+                }
+                commasep(s,
+                         inconsistent,
+                         segment.types.map_to_vec(|t| (*t).clone()),
+                         print_type);
+            }
 
             word(s.s, ">")
         }
@@ -1606,6 +1615,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
      is that it doesn't matter */
     match pat.node {
       ast::PatWild => word(s.s, "_"),
+      ast::PatWildMulti => word(s.s, ".."),
       ast::PatIdent(binding_mode, ref path, sub) => {
           match binding_mode {
               ast::BindByRef(mutbl) => {
@@ -1689,18 +1699,19 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
       }
       ast::PatVec(ref before, slice, ref after) => {
         word(s.s, "[");
-        do commasep(s, inconsistent, *before) |s, &p| {
-            print_pat(s, p);
-        }
+        commasep(s, inconsistent, *before, |s, &p| print_pat(s, p));
         for &p in slice.iter() {
             if !before.is_empty() { word_space(s, ","); }
-            word(s.s, "..");
+            match p {
+                @ast::Pat { node: ast::PatWildMulti, _ } => {
+                    // this case is handled by print_pat
+                }
+                _ => word(s.s, ".."),
+            }
             print_pat(s, p);
             if !after.is_empty() { word_space(s, ","); }
         }
-        do commasep(s, inconsistent, *after) |s, &p| {
-            print_pat(s, p);
-        }
+        commasep(s, inconsistent, *after, |s, &p| print_pat(s, p));
         word(s.s, "]");
       }
     }
@@ -1905,7 +1916,8 @@ pub fn print_meta_item(s: @ps, item: &ast::MetaItem) {
 pub fn print_view_path(s: @ps, vp: &ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, ref path, _) => {
-        if path.segments.last().identifier != ident {
+        // FIXME(#6993) can't compare identifiers directly here
+        if path.segments.last().identifier.name != ident.name {
             print_ident(s, ident);
             space(s.s);
             word_space(s, "=");
@@ -1921,9 +1933,9 @@ pub fn print_view_path(s: @ps, vp: &ast::view_path) {
       ast::view_path_list(ref path, ref idents, _) => {
         print_path(s, path, false);
         word(s.s, "::{");
-        do commasep(s, inconsistent, (*idents)) |s, w| {
+        commasep(s, inconsistent, (*idents), |s, w| {
             print_ident(s, w.node.name);
-        }
+        });
         word(s.s, "}");
       }
     }
@@ -2037,9 +2049,7 @@ pub fn print_ty_fn(s: @ps,
     match id { Some(id) => { word(s.s, " "); print_ident(s, id); } _ => () }
 
     if opt_sigil != Some(ast::BorrowedSigil) {
-        do opt_bounds.as_ref().map |bounds| {
-            print_bounds(s, bounds, true);
-        };
+        opt_bounds.as_ref().map(|bounds| print_bounds(s, bounds, true));
     }
 
     match generics { Some(g) => print_generics(s, g), _ => () }
@@ -2101,7 +2111,7 @@ pub fn maybe_print_trailing_comment(s: @ps, span: codemap::Span,
         if (*cmnt).style != comments::trailing { return; }
         let span_line = cm.lookup_char_pos(span.hi);
         let comment_line = cm.lookup_char_pos((*cmnt).pos);
-        let mut next = (*cmnt).pos + BytePos(1u);
+        let mut next = (*cmnt).pos + BytePos(1);
         match next_pos { None => (), Some(p) => next = p }
         if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
                span_line.line == comment_line.line {
@@ -2141,9 +2151,7 @@ pub fn print_literal(s: @ps, lit: &ast::lit) {
       ast::lit_str(st, style) => print_string(s, st, style),
       ast::lit_char(ch) => {
           let mut res = ~"'";
-          do char::from_u32(ch).unwrap().escape_default |c| {
-              res.push_char(c);
-          }
+          char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
           res.push_char('\'');
           word(s.s, res);
       }
@@ -2275,7 +2283,7 @@ pub fn print_string(s: @ps, st: &str, style: ast::StrStyle) {
     word(s.s, st);
 }
 
-pub fn to_str<T>(t: &T, f: &fn(@ps, &T), intr: @ident_interner) -> ~str {
+pub fn to_str<T>(t: &T, f: |@ps, &T|, intr: @ident_interner) -> ~str {
     let wr = @mut MemWriter::new();
     let s = rust_printer(wr as @mut io::Writer, intr);
     f(s, t);

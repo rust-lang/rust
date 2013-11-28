@@ -15,7 +15,7 @@
 
 use std::{vec, str};
 use std::hashmap::HashMap;
-use std::rt::io;
+use std::io;
 use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
@@ -216,7 +216,7 @@ pub fn parse(file: &mut io::Reader,
     }
 
     let names_str = str::from_utf8(file.read_bytes(names_bytes as uint - 1)); // don't read NUL
-    let term_names: ~[~str] = names_str.split_iter('|').map(|s| s.to_owned()).collect();
+    let term_names: ~[~str] = names_str.split('|').map(|s| s.to_owned()).collect();
 
     file.read_byte(); // consume NUL
 

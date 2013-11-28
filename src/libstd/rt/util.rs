@@ -24,8 +24,6 @@ pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
-    #[fixed_stack_segment]; #[inline(never)];
-
     unsafe {
         return rust_get_num_cpus();
     }
@@ -70,30 +68,16 @@ pub fn default_sched_threads() -> uint {
 }
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use rt::io::native::stdio::stderr;
-    use rt::io::{Writer, io_error, ResourceUnavailable};
-    use rt::task::Task;
-    use rt::local::Local;
-
-    let mut out = stderr();
-    if Local::exists(None::<Task>) {
-        let mut again = true;
-        do io_error::cond.trap(|e| {
-            again = e.kind == ResourceUnavailable;
-        }).inside {
-            while again {
-                again = false;
-                fmt::writeln(&mut out as &mut Writer, args);
-            }
-        }
-    } else {
-        fmt::writeln(&mut out as &mut Writer, args);
-    }
+    use io::native::file::FileDesc;
+    use io;
+    use libc;
+    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
+    fmt::writeln(&mut out as &mut io::Writer, args);
 }
 
 pub fn abort(msg: &str) -> ! {
     let msg = if !msg.is_empty() { msg } else { "aborted" };
-    let hash = msg.iter().fold(0, |accum, val| accum + (val as uint) );
+    let hash = msg.chars().fold(0, |accum, val| accum + (val as uint) );
     let quote = match hash % 10 {
         0 => "
 It was from the artists and poets that the pertinent answers came, and I
@@ -132,7 +116,7 @@ weedy but not remembered; terrible spires and monoliths of lands that men never
 knew were lands...",
         4 => "
 There was a night when winds from unknown spaces whirled us irresistibly into
-limitless vacum beyond all thought and entity. Perceptions of the most
+limitless vacuum beyond all thought and entity. Perceptions of the most
 maddeningly untransmissible sort thronged upon us; perceptions of infinity
 which at the time convulsed us with joy, yet which are now partly lost to my
 memory and partly incapable of presentation to others.",
@@ -146,7 +130,6 @@ memory and partly incapable of presentation to others.",
     abort();
 
     fn abort() -> ! {
-        #[fixed_stack_segment]; #[inline(never)];
         unsafe { libc::abort() }
     }
 }

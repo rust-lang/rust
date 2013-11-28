@@ -804,7 +804,7 @@ confusing numbers that correspond to different units.
 We've already seen several function definitions. Like all other static
 declarations, such as `type`, functions can be declared both at the
 top level and inside other functions (or in modules, which we'll come
-back to [later](#modules-and-crates)). The `fn` keyword introduces a
+back to [later](#crates-and-the-module-system)). The `fn` keyword introduces a
 function. A function has an argument list, which is a parenthesized
 list of `expr: type` pairs separated by commas. An arrow `->`
 separates the argument list and the function's return type.
@@ -890,9 +890,7 @@ calling the destructor, and the owner determines whether the object is mutable.
 
 Ownership is recursive, so mutability is inherited recursively and a destructor
 destroys the contained tree of owned objects. Variables are top-level owners
-and destroy the contained object when they go out of scope. A box managed by
-the garbage collector starts a new ownership tree, and the destructor is called
-when it is collected.
+and destroy the contained object when they go out of scope.
 
 ~~~~
 // the struct owns the objects contained in the `x` and `y` fields
@@ -1007,51 +1005,6 @@ let r = ~13;
 let mut s = r; // box becomes mutable
 *s += 1;
 let t = s; // box becomes immutable
-~~~~
-
-# Managed boxes
-
-A managed box (`@`) is a heap allocation with the lifetime managed by a
-task-local garbage collector. It will be destroyed at some point after there
-are no references left to the box, no later than the end of the task. Managed
-boxes lack an owner, so they start a new ownership tree and don't inherit
-mutability. They do own the contained object, and mutability is defined by the
-type of the managed box (`@` or `@mut`). An object containing a managed box is
-not `Owned`, and can't be sent between tasks.
-
-~~~~
-let a = @5; // immutable
-
-let mut b = @5; // mutable variable, immutable box
-b = @10;
-
-let c = @mut 5; // immutable variable, mutable box
-*c = 10;
-
-let mut d = @mut 5; // mutable variable, mutable box
-*d += 5;
-d = @mut 15;
-~~~~
-
-A mutable variable and an immutable variable can refer to the same box, given
-that their types are compatible. Mutability of a box is a property of its type,
-however, so for example a mutable handle to an immutable box cannot be
-assigned a reference to a mutable box.
-
-~~~~
-let a = @1;     // immutable box
-let b = @mut 2; // mutable box
-
-let mut c : @int;       // declare a variable with type managed immutable int
-let mut d : @mut int;   // and one of type managed mutable int
-
-c = a;          // box type is the same, okay
-d = b;          // box type is the same, okay
-~~~~
-
-~~~~ {.xfail-test}
-// but b cannot be assigned to c, or a to d
-c = b;          // error
 ~~~~
 
 # Borrowed pointers
@@ -1240,58 +1193,80 @@ The indexing operator (`[]`) also auto-dereferences.
 
 # Vectors and strings
 
-A vector is a contiguous section of memory containing zero or more
-values of the same type. Like other types in Rust, vectors can be
-stored on the stack, the local heap, or the exchange heap. Borrowed
-pointers to vectors are also called 'slices'.
+A vector is a contiguous block of memory containing zero or more values of the
+same type. Rust also supports vector reference types, called slices, which are
+a view into a block of memory represented as a pointer and a length.
+
+Strings are represented as vectors of `u8`, with the guarantee of containing a
+valid UTF-8 sequence.
+
+Fixed-size vectors are an unboxed block of memory, with the element length as
+part of the type. A fixed-size vector owns the elements it contains, so the
+elements are mutable if the vector is mutable. Fixed-size strings do not exist.
 
 ~~~
-# enum Crayon {
-#     Almond, AntiqueBrass, Apricot,
-#     Aquamarine, Asparagus, AtomicTangerine,
-#     BananaMania, Beaver, Bittersweet,
-#     Black, BlizzardBlue, Blue
-# }
-// A fixed-size stack vector
-let stack_crayons: [Crayon, ..3] = [Almond, AntiqueBrass, Apricot];
+// A fixed-size vector
+let numbers = [1, 2, 3];
+let more_numbers = numbers;
 
-// A borrowed pointer to stack-allocated vector
-let stack_crayons: &[Crayon] = &[Aquamarine, Asparagus, AtomicTangerine];
-
-// A local heap (managed) vector of crayons
-let local_crayons: @[Crayon] = @[BananaMania, Beaver, Bittersweet];
-
-// An exchange heap (owned) vector of crayons
-let exchange_crayons: ~[Crayon] = ~[Black, BlizzardBlue, Blue];
+// The type of a fixed-size vector is written as `[Type, ..length]`
+let five_zeroes: [int, ..5] = [0, ..5];
 ~~~
 
-The `+` operator means concatenation when applied to vector types.
+A unique vector is dynamically sized, and has a destructor to clean up
+allocated memory on the heap. A unique vector owns the elements it contains, so
+the elements are mutable if the vector is mutable.
 
-~~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-# impl Clone for Crayon {
-#     fn clone(&self) -> Crayon {
-#         *self
-#     }
-# }
+~~~
+// A dynamically sized vector (unique vector)
+let mut numbers = ~[1, 2, 3];
+numbers.push(4);
+numbers.push(5);
 
-let my_crayons = ~[Almond, AntiqueBrass, Apricot];
-let your_crayons = ~[BananaMania, Beaver, Bittersweet];
+// The type of a unique vector is written as ~[int]
+let more_numbers: ~[int] = numbers;
 
-// Add two vectors to create a new one
-let our_crayons = my_crayons + your_crayons;
+// The original `numbers` value can no longer be used, due to move semantics.
 
-// .push_all() will append to a vector, provided it lives in a mutable slot
-let mut my_crayons = my_crayons;
-my_crayons.push_all(your_crayons);
-~~~~
+let mut string = ~"fo";
+string.push_char('o');
+~~~
 
-> ***Note:*** The above examples of vector addition use owned
-> vectors. Some operations on slices and stack vectors are
-> not yet well-supported. Owned vectors are often the most
-> usable.
+Slices are similar to fixed-size vectors, but the length is not part of the
+type. They simply point into a block of memory and do not have ownership over
+the elements.
+
+~~~
+// A slice
+let xs = &[1, 2, 3];
+
+// Slices have their type written as &[int]
+let ys: &[int] = xs;
+
+// Other vector types coerce to slices
+let three = [1, 2, 3];
+let zs: &[int] = three;
+
+// An unadorned string literal is an immutable string slice
+let string = "foobar";
+
+// A string slice type is written as &str
+let view: &str = string.slice(0, 3);
+~~~
+
+Mutable slices also exist, just as there are mutable references. However, there
+are no mutable string slices. Strings are a multi-byte encoding (UTF-8) of
+Unicode code points, so they cannot be freely mutated without the ability to
+alter the length.
+
+~~~
+let mut xs = [1, 2, 3];
+let view = xs.mut_slice(0, 2);
+view[0] = 5;
+
+// The type of a mutable slice is written as &mut [T]
+let ys: &mut [int] = &mut [1, 2, 3];
+~~~
 
 Square brackets denote indexing into a vector:
 
@@ -1319,102 +1294,58 @@ let score = match numbers {
 };
 ~~~~
 
-The elements of a vector _inherit the mutability of the vector_,
-and as such, individual elements may not be reassigned when the
-vector lives in an immutable slot.
-
-~~~ {.xfail-test}
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
-
-crayons[0] = Apricot; // ERROR: Can't assign to immutable vector
-~~~
-
-Moving it into a mutable slot makes the elements assignable.
-
-~~~
-# enum Crayon { Almond, AntiqueBrass, Apricot,
-#               Aquamarine, Asparagus, AtomicTangerine,
-#               BananaMania, Beaver, Bittersweet };
-let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
-
-// Put the vector into a mutable slot
-let mut mutable_crayons = crayons;
-
-// Now it's mutable to the bone
-mutable_crayons[0] = Apricot;
-~~~
-
-This is a simple example of Rust's _dual-mode data structures_, also
-referred to as _freezing and thawing_.
-
-Strings are implemented with vectors of `u8`, though they have a
-distinct type. They support most of the same allocation options as
-vectors, though the string literal without a storage sigil (for
-example, `"foo"`) is treated differently than a comparable vector
-(`[foo]`).  Whereas plain vectors are stack-allocated fixed-length
-vectors, plain strings are borrowed pointers to read-only (static)
-memory. All strings are immutable.
-
-~~~
-// A plain string is a slice to read-only (static) memory
-let stack_crayons: &str = "Almond, AntiqueBrass, Apricot";
-
-// The same thing, but with the `&`
-let stack_crayons: &str = &"Aquamarine, Asparagus, AtomicTangerine";
-
-// A local heap (managed) string
-let local_crayons: @str = @"BananaMania, Beaver, Bittersweet";
-
-// An exchange heap (owned) string
-let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
-~~~
-
-Both vectors and strings support a number of useful
-[methods](#methods), defined in [`std::vec`]
-and [`std::str`]. Here are some examples.
+Both vectors and strings support a number of useful [methods](#methods),
+defined in [`std::vec`] and [`std::str`].
 
 [`std::vec`]: std/vec/index.html
 [`std::str`]: std/str/index.html
 
+# Ownership escape hatches
+
+Ownership can cleanly describe tree-like data structures, and borrowed pointers provide non-owning
+references. However, more flexibility is often desired and Rust provides ways to escape from strict
+single parent ownership.
+
+The standard library provides the `std::rc::Rc` pointer type to express *shared ownership* over a
+reference counted box. As soon as all of the `Rc` pointers go out of scope, the box and the
+contained value are destroyed.
+
 ~~~
-# enum Crayon {
-#     Almond, AntiqueBrass, Apricot,
-#     Aquamarine, Asparagus, AtomicTangerine,
-#     BananaMania, Beaver, Bittersweet
-# }
-# fn unwrap_crayon(c: Crayon) -> int { 0 }
-# fn eat_crayon_wax(i: int) { }
-# fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
-# fn crayon_to_str(c: Crayon) -> &str { "" }
+use std::rc::Rc;
 
-let crayons = [Almond, AntiqueBrass, Apricot];
+// A fixed-size array allocated in a reference-counted box
+let x = Rc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+let y = x.clone(); // a new owner
+let z = x; // this moves `x` into `z`, rather than creating a new owner
 
-// Check the length of the vector
-assert!(crayons.len() == 3);
-assert!(!crayons.is_empty());
+assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-// Iterate over a vector, obtaining a pointer to each element
-// (`for` is explained in the container/iterator tutorial)
-for crayon in crayons.iter() {
-    let delicious_crayon_wax = unwrap_crayon(*crayon);
-    eat_crayon_wax(delicious_crayon_wax);
-}
-
-// Map vector elements
-let crayon_names = crayons.map(|v| crayon_to_str(*v));
-let favorite_crayon_name = crayon_names[0];
-
-// Remove whitespace from before and after the string
-let new_favorite_crayon_name = favorite_crayon_name.trim();
-
-if favorite_crayon_name.len() > 5 {
-   // Create a substring
-   println(favorite_crayon_name.slice_chars(0, 5));
-}
+// the variable is mutable, but not the contents of the box
+let mut a = Rc::new([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+a = z;
 ~~~
+
+A garbage collected pointer is provided via `std::gc::Gc`, with a task-local garbage collector
+having ownership of the box. It allows the creation of cycles, and the individual `Gc` pointers do
+not have a destructor.
+
+~~~
+use std::gc::Gc;
+
+// A fixed-size array allocated in a garbage-collected box
+let x = Gc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+let y = x; // does not perform a move, unlike with `Rc`
+let z = x;
+
+assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+~~~
+
+With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,
+it's possible to use *dynamic* mutability via types like `std::cell::Cell` where freezing is handled
+via dynamic checks and can fail at runtime.
+
+The `Rc` and `Gc` types are not sendable, so they cannot be used to share memory between tasks. Safe
+immutable and mutable shared memory is provided by the `extra::arc` module.
 
 # Closures
 
@@ -1435,7 +1366,7 @@ Rust also supports _closures_, functions that can access variables in
 the enclosing scope.
 
 ~~~~
-fn call_closure_with_ten(b: &fn(int)) { b(10); }
+fn call_closure_with_ten(b: |int|) { b(10); }
 
 let captured_var = 20;
 let closure = |arg| println!("captured_var={}, arg={}", captured_var, arg);
@@ -1459,7 +1390,7 @@ let square = |x: int| -> uint { (x * x) as uint };
 ~~~~
 
 There are several forms of closure, each with its own role. The most
-common, called a _stack closure_, has type `&fn` and can directly
+common, called a _stack closure_, has type `||` and can directly
 access local variables in the enclosing scope.
 
 ~~~~
@@ -1478,7 +1409,7 @@ pervasively in Rust code.
 
 ## Owned closures
 
-Owned closures, written `~fn` in analogy to the `~` pointer type,
+Owned closures, written `proc`,
 hold on to things that can safely be sent between
 processes. They copy the values they close over, much like managed
 closures, but they also own them: that is, no other code can access
@@ -1489,13 +1420,13 @@ for spawning [tasks][tasks].
 
 Rust closures have a convenient subtyping property: you can pass any kind of
 closure (as long as the arguments and return types match) to functions
-that expect a `&fn()`. Thus, when writing a higher-order function that
+that expect a `||`. Thus, when writing a higher-order function that
 only calls its function argument, and does nothing else with it, you
-should almost always declare the type of that argument as `&fn()`. That way,
+should almost always declare the type of that argument as `||`. That way,
 callers may pass any kind of closure.
 
 ~~~~
-fn call_twice(f: &fn()) { f(); f(); }
+fn call_twice(f: ||) { f(); f(); }
 let closure = || { "I'm a closure, and it doesn't matter what type I am"; };
 fn function() { "I'm a normal function"; }
 call_twice(closure);
@@ -1508,19 +1439,14 @@ call_twice(function);
 
 ## Do syntax
 
-The `do` expression provides a way to treat higher-order functions
-(functions that take closures as arguments) as control structures.
+The `do` expression makes it easier to call functions that take procedures
+as arguments.
 
-Consider this function that iterates over a vector of
-integers, passing in a pointer to each integer in the vector:
+Consider this function that takes a procedure:
 
 ~~~~
-fn each(v: &[int], op: &fn(v: &int)) {
-   let mut n = 0;
-   while n < v.len() {
-       op(&v[n]);
-       n += 1;
-   }
+fn call_it(op: proc(v: int)) {
+    op(10)
 }
 ~~~~
 
@@ -1529,31 +1455,29 @@ argument, we can write it in a way that has a pleasant, block-like
 structure.
 
 ~~~~
-# fn each(v: &[int], op: &fn(v: &int)) { }
-# fn do_some_work(i: &int) { }
-each([1, 2, 3], |n| {
-    do_some_work(n);
+# fn call_it(op: proc(v: int)) { }
+call_it(proc(n) {
+    println(n.to_str());
 });
 ~~~~
 
 This is such a useful pattern that Rust has a special form of function
-call that can be written more like a built-in control structure:
+call for these functions.
 
 ~~~~
-# fn each(v: &[int], op: &fn(v: &int)) { }
-# fn do_some_work(i: &int) { }
-do each([1, 2, 3]) |n| {
-    do_some_work(n);
+# fn call_it(op: proc(v: int)) { }
+do call_it() |n| {
+    println(n.to_str());
 }
 ~~~~
 
 The call is prefixed with the keyword `do` and, instead of writing the
-final closure inside the argument list, it appears outside of the
+final procedure inside the argument list, it appears outside of the
 parentheses, where it looks more like a typical block of
 code.
 
 `do` is a convenient way to create tasks with the `task::spawn`
-function.  `spawn` has the signature `spawn(fn: ~fn())`. In other
+function.  `spawn` has the signature `spawn(fn: proc())`. In other
 words, it is a function that takes an owned closure that takes no
 arguments.
 
@@ -1719,7 +1643,7 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: |v: &T| -> U) -> ~[U] {
     let mut accumulator = ~[];
     for element in vector.iter() {
         accumulator.push(function(element));
@@ -2619,21 +2543,25 @@ fn main() {
 ~~~~
 
 And here an example with multiple files:
+
 ~~~{.ignore}
 // a.rs - crate root
 use b::foo;
 mod b;
 fn main() { foo(); }
 ~~~
+
 ~~~{.ignore}
 // b.rs
 use b::c::bar;
 pub mod c;
 pub fn foo() { bar(); }
 ~~~
+
 ~~~
 // c.rs
 pub fn bar() { println("Baz!"); }
+# fn main() {}
 ~~~
 
 There also exist two short forms for importing multiple names at once:
@@ -2780,10 +2708,10 @@ extend with the `-L` switch).
 However, Rust also ships with rustpkg, a package manager that is able to automatically download and build
 libraries if you use it for building your crate. How it works is explained [here][rustpkg],
 but for this tutorial it's only important to know that you can optionally annotate an
-`extern mod` statement with an package id that rustpkg can use to identify it:
+`extern mod` statement with a package id that rustpkg can use to identify it:
 
 ~~~ {.ignore}
-extern mod rust = "github.com/mozilla/rust"; // pretend Rust is an simple library
+extern mod rust = "github.com/mozilla/rust"; // pretend Rust is a simple library
 ~~~
 
 [rustpkg]: rustpkg.html
@@ -2799,7 +2727,7 @@ the link name and the version. It also hashes the filename and the symbols in a 
 based on the link metadata, allowing you to use two different versions of the same library in a crate
 without conflict.
 
-Therefor, if you plan to compile your crate as a library, you should annotate it with that information:
+Therefore, if you plan to compile your crate as a library, you should annotate it with that information:
 
 ~~~~
 // lib.rs
@@ -2809,14 +2737,14 @@ Therefor, if you plan to compile your crate as a library, you should annotate it
 #[link(name = "farm", vers = "2.5")];
 
 // ...
-# pub fn farm() {}
+# fn farm() {}
 ~~~~
 
 You can also in turn require in a `extern mod` statement that certain link metadata items match some criteria.
 For that, Rust currently parses a comma-separated list of name/value pairs that appear after
 it, and ensures that they match the attributes provided in the `link` attribute of a crate file.
-This enables you to, eg, pick a a crate based on it's version number, or to link an library under an
-different name. For example, this two mod statements would both accept and select the crate define above:
+This enables you to, e.g., pick a crate based on its version number, or link a library under a
+different name. For example, these two `mod` statements would both accept and select the crate define above:
 
 ~~~~ {.xfail-test}
 extern mod farm(vers = "2.5");
@@ -2835,7 +2763,7 @@ or setting the crate type (library or executable) explicitly:
 
 // Turn on a warning
 #[warn(non_camel_case_types)]
-# pub fn farm() {}
+# fn farm() {}
 ~~~~
 
 If you're compiling your crate with `rustpkg`,
@@ -2856,7 +2784,9 @@ We define two crates, and use one of them as a library in the other.
 ~~~~
 // world.rs
 #[link(name = "world", vers = "0.42")];
+# extern mod extra;
 pub fn explore() -> &'static str { "world" }
+# fn main() {}
 ~~~~
 
 ~~~~ {.xfail-test}
@@ -2905,15 +2835,15 @@ This allows you to use common types and functions like `Option<T>` or `println`
 without needing to import them. And if you need something from `std` that's not in the prelude,
 you just have to import it with an `use` statement.
 
-For example, it re-exports `println` which is defined in `std::io::println`:
+For example, it re-exports `println` which is defined in `std::io::stdio::println`:
 
 ~~~
-use puts = std::rt::io::stdio::println;
+use puts = std::io::stdio::println;
 
 fn main() {
     println("println is imported per default.");
-    puts("Doesn't hinder you from importing it under an different name yourself.");
-    ::std::rt::io::stdio::println("Or from not using the automatic import.");
+    puts("Doesn't hinder you from importing it under a different name yourself.");
+    ::std::io::stdio::println("Or from not using the automatic import.");
 }
 ~~~
 

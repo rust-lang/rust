@@ -30,6 +30,7 @@
 *.cps
 *.log
 *.pdf
+*.epub
 *.html
 *.pg
 *.toc
@@ -88,3 +89,4 @@ config.stamp
 src/etc/dl
 .settings/
 build/
+i686-pc-mingw32/

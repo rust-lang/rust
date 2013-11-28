@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use either::{Left, Right};
 use option::{Option, Some, None};
 use cast::{transmute, transmute_mut_region, transmute_mut_unsafe};
 use clone::Clone;
@@ -23,7 +22,7 @@ use super::message_queue::MessageQueue;
 use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::{RemoteCallback, PausibleIdleCallback};
+use rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback};
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, Rng, Rand};
@@ -169,7 +168,8 @@ impl Scheduler {
     pub fn bootstrap(mut ~self, task: ~Task) {
 
         // Build an Idle callback.
-        self.idle_callback = Some(self.event_loop.pausible_idle_callback());
+        let cb = ~SchedRunner as ~Callback;
+        self.idle_callback = Some(self.event_loop.pausible_idle_callback(cb));
 
         // Initialize the TLS key.
         local_ptr::init_tls_key();
@@ -184,7 +184,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        self.idle_callback.get_mut_ref().start(Scheduler::run_sched_once);
+        self.idle_callback.get_mut_ref().resume();
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -202,7 +202,7 @@ impl Scheduler {
 
         // Close the idle callback.
         let mut sched: ~Scheduler = Local::take();
-        sched.idle_callback.get_mut_ref().close();
+        sched.idle_callback.take();
         // Make one go through the loop to run the close callback.
         sched.run();
 
@@ -236,9 +236,9 @@ impl Scheduler {
             // Our scheduler must be in the task before the event loop
             // is started.
             let self_sched = Cell::new(self);
-            do Local::borrow |stask: &mut Task| {
+            Local::borrow(|stask: &mut Task| {
                 stask.sched = Some(self_sched.take());
-            };
+            });
 
             (*event_loop).run();
         }
@@ -454,8 +454,7 @@ impl Scheduler {
     // * Task Routing Functions - Make sure tasks send up in the right
     // place.
 
-    fn process_task(mut ~self, mut task: ~Task,
-                    schedule_fn: SchedulingFn) {
+    fn process_task(mut ~self, mut task: ~Task, schedule_fn: SchedulingFn) {
         rtdebug!("processing a task");
 
         let home = task.take_unwrap_home();
@@ -539,9 +538,7 @@ impl Scheduler {
     /// As enqueue_task, but with the possibility for the blocked task to
     /// already have been killed.
     pub fn enqueue_blocked_task(&mut self, blocked_task: BlockedTask) {
-        do blocked_task.wake().map |task| {
-            self.enqueue_task(task);
-        };
+        blocked_task.wake().map(|task| self.enqueue_task(task));
     }
 
     // * Core Context Switching Functions
@@ -556,7 +553,7 @@ impl Scheduler {
 
     pub fn change_task_context(mut ~self,
                                next_task: ~Task,
-                               f: &fn(&mut Scheduler, ~Task)) {
+                               f: |&mut Scheduler, ~Task|) {
         // The current task is grabbed from TLS, not taken as an input.
         // Doing an unsafe_take to avoid writing back a null pointer -
         // We're going to call `put` later to do that.
@@ -568,8 +565,8 @@ impl Scheduler {
 
         // These transmutes do something fishy with a closure.
         let f_fake_region = unsafe {
-            transmute::<&fn(&mut Scheduler, ~Task),
-                        &fn(&mut Scheduler, ~Task)>(f)
+            transmute::<|&mut Scheduler, ~Task|,
+                        |&mut Scheduler, ~Task|>(f)
         };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
 
@@ -621,9 +618,6 @@ impl Scheduler {
         unsafe {
             let task: *mut Task = Local::unsafe_borrow();
             (*task).sched.get_mut_ref().run_cleanup_job();
-
-            // Must happen after running the cleanup job (of course).
-            (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
 
@@ -647,9 +641,9 @@ impl Scheduler {
     // * Context Swapping Helpers - Here be ugliness!
 
     pub fn resume_task_immediately(~self, task: ~Task) {
-        do self.change_task_context(task) |sched, stask| {
+        self.change_task_context(task, |sched, stask| {
             sched.sched_task = Some(stask);
-        }
+        })
     }
 
     fn resume_task_immediately_cl(sched: ~Scheduler,
@@ -678,7 +672,7 @@ impl Scheduler {
     /// in order to prevent that fn from performing further scheduling operations.
     /// Doing further scheduling could easily result in infinite recursion.
     pub fn deschedule_running_task_and_then(mut ~self,
-                                            f: &fn(&mut Scheduler, BlockedTask)) {
+                                            f: |&mut Scheduler, BlockedTask|) {
         // Trickier - we need to get the scheduler task out of self
         // and use it as the destination.
         let stask = self.sched_task.take_unwrap();
@@ -687,23 +681,18 @@ impl Scheduler {
     }
 
     pub fn switch_running_tasks_and_then(~self, next_task: ~Task,
-                                         f: &fn(&mut Scheduler, BlockedTask)) {
+                                         f: |&mut Scheduler, BlockedTask|) {
         // This is where we convert the BlockedTask-taking closure into one
-        // that takes just a Task, and is aware of the block-or-killed protocol.
-        do self.change_task_context(next_task) |sched, task| {
-            // Task might need to receive a kill signal instead of blocking.
-            // We can call the "and_then" only if it blocks successfully.
-            match BlockedTask::try_block(task) {
-                Left(killed_task) => sched.enqueue_task(killed_task),
-                Right(blocked_task) => f(sched, blocked_task),
-            }
-        }
+        // that takes just a Task
+        self.change_task_context(next_task, |sched, task| {
+            f(sched, BlockedTask::block(task))
+        })
     }
 
     fn switch_task(sched: ~Scheduler, task: ~Task) {
-        do sched.switch_running_tasks_and_then(task) |sched, last_task| {
+        sched.switch_running_tasks_and_then(task, |sched, last_task| {
             sched.enqueue_blocked_task(last_task);
-        };
+        });
     }
 
     // * Task Context Helpers
@@ -714,10 +703,10 @@ impl Scheduler {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();
-        do self.change_task_context(stask) |sched, mut dead_task| {
+        self.change_task_context(stask, |sched, mut dead_task| {
             let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
-        }
+        })
     }
 
     pub fn run_task(task: ~Task) {
@@ -727,9 +716,9 @@ impl Scheduler {
 
     pub fn run_task_later(next_task: ~Task) {
         let next_task = Cell::new(next_task);
-        do Local::borrow |sched: &mut Scheduler| {
+        Local::borrow(|sched: &mut Scheduler| {
             sched.enqueue_task(next_task.take());
-        };
+        });
     }
 
     /// Yield control to the scheduler, executing another task. This is guaranteed
@@ -740,9 +729,9 @@ impl Scheduler {
         self.yield_check_count = reset_yield_check(&mut self.rng);
         // Tell the scheduler to start stealing on the next iteration
         self.steal_for_yield = true;
-        do self.deschedule_running_task_and_then |sched, task| {
+        self.deschedule_running_task_and_then(|sched, task| {
             sched.enqueue_blocked_task(task);
-        }
+        })
     }
 
     pub fn maybe_yield(mut ~self) {
@@ -767,7 +756,7 @@ impl Scheduler {
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
-        let remote = self.event_loop.remote_callback(Scheduler::run_sched_once);
+        let remote = self.event_loop.remote_callback(~SchedRunner as ~Callback);
 
         return SchedHandle {
             remote: remote,
@@ -779,7 +768,7 @@ impl Scheduler {
 
 // Supporting types
 
-type SchedulingFn = ~fn(~Scheduler, ~Task);
+type SchedulingFn = extern "Rust" fn (~Scheduler, ~Task);
 
 pub enum SchedMessage {
     Wake,
@@ -802,6 +791,14 @@ impl SchedHandle {
     }
 }
 
+struct SchedRunner;
+
+impl Callback for SchedRunner {
+    fn call(&mut self) {
+        Scheduler::run_sched_once();
+    }
+}
+
 struct CleanupJob {
     task: ~Task,
     f: UnsafeTaskReceiver
@@ -821,18 +818,18 @@ impl CleanupJob {
     }
 }
 
-// XXX: Some hacks to put a &fn in Scheduler without borrowck
+// XXX: Some hacks to put a || closure in Scheduler without borrowck
 // complaining
 type UnsafeTaskReceiver = raw::Closure;
 trait ClosureConverter {
-    fn from_fn(&fn(&mut Scheduler, ~Task)) -> Self;
-    fn to_fn(self) -> &fn(&mut Scheduler, ~Task);
+    fn from_fn(|&mut Scheduler, ~Task|) -> Self;
+    fn to_fn(self) -> |&mut Scheduler, ~Task|;
 }
 impl ClosureConverter for UnsafeTaskReceiver {
-    fn from_fn(f: &fn(&mut Scheduler, ~Task)) -> UnsafeTaskReceiver {
+    fn from_fn(f: |&mut Scheduler, ~Task|) -> UnsafeTaskReceiver {
         unsafe { transmute(f) }
     }
-    fn to_fn(self) -> &fn(&mut Scheduler, ~Task) { unsafe { transmute(self) } }
+    fn to_fn(self) -> |&mut Scheduler, ~Task| { unsafe { transmute(self) } }
 }
 
 // On unix, we read randomness straight from /dev/urandom, but the
@@ -845,7 +842,6 @@ fn new_sched_rng() -> XorShiftRng {
     XorShiftRng::new()
 }
 #[cfg(unix)]
-#[fixed_stack_segment] #[inline(never)]
 fn new_sched_rng() -> XorShiftRng {
     use libc;
     use mem;
@@ -854,9 +850,9 @@ fn new_sched_rng() -> XorShiftRng {
     use iter::Iterator;
     use rand::SeedableRng;
 
-    let fd = do "/dev/urandom".with_c_str |name| {
+    let fd = "/dev/urandom".with_c_str(|name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }
-    };
+    });
     if fd == -1 {
         rtabort!("could not open /dev/urandom for reading.")
     }
@@ -864,13 +860,13 @@ fn new_sched_rng() -> XorShiftRng {
     let mut seeds = [0u32, .. 4];
     let size = mem::size_of_val(&seeds);
     loop {
-        let nbytes = do seeds.as_mut_buf |buf, _| {
+        let nbytes = seeds.as_mut_buf(|buf, _| {
             unsafe {
                 libc::read(fd,
                            buf as *mut libc::c_void,
                            size as libc::size_t)
             }
-        };
+        });
         rtassert!(nbytes as uint == size);
 
         if !seeds.iter().all(|x| *x == 0) {
@@ -983,7 +979,9 @@ mod test {
                 assert!(Task::on_appropriate_sched());
             };
 
-            let on_exit: ~fn(UnwindResult) = |exit_status| rtassert!(exit_status.is_success());
+            let on_exit: proc(UnwindResult) = proc(exit_status) {
+                rtassert!(exit_status.is_success())
+            };
             task.death.on_exit = Some(on_exit);
 
             sched.bootstrap(task);
@@ -1126,7 +1124,7 @@ mod test {
 
     #[test]
     fn test_io_callback() {
-        use rt::io::timer;
+        use io::timer;
 
         // This is a regression test that when there are no schedulable tasks
         // in the work queue, but we are performing I/O, that once we do put
@@ -1178,7 +1176,7 @@ mod test {
         use util;
 
         do run_in_bare_thread {
-            do stress_factor().times {
+            stress_factor().times(|| {
                 let sleepers = SleeperList::new();
                 let queue = WorkQueue::new();
                 let queues = ~[queue.clone()];
@@ -1195,19 +1193,22 @@ mod test {
 
                 let thread = do Thread::start {
                     let mut sched = sched.take();
-                    let bootstrap_task = ~Task::new_root(&mut sched.stack_pool, None, ||());
+                    let bootstrap_task =
+                        ~Task::new_root(&mut sched.stack_pool,
+                                        None,
+                                        proc()());
                     sched.bootstrap(bootstrap_task);
                 };
 
                 let mut stack_pool = StackPool::new();
-                let task = ~Task::new_root(&mut stack_pool, None, ||());
+                let task = ~Task::new_root(&mut stack_pool, None, proc()());
                 handle.send(TaskFromFriend(task));
 
                 handle.send(Shutdown);
                 util::ignore(handle);
 
                 thread.join();
-            }
+            })
         }
     }
 
@@ -1220,14 +1221,14 @@ mod test {
 
         do run_in_mt_newsched_task {
             let mut ports = ~[];
-            do 10.times {
+            10.times(|| {
                 let (port, chan) = oneshot();
                 let chan_cell = Cell::new(chan);
                 do spawntask_later {
                     chan_cell.take().send(());
                 }
                 ports.push(port);
-            }
+            });
 
             while !ports.is_empty() {
                 ports.pop().recv();
@@ -1317,7 +1318,7 @@ mod test {
     fn dont_starve_1() {
         use rt::comm::oneshot;
 
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_mt_newsched_task {
                 let (port, chan) = oneshot();
 
@@ -1329,14 +1330,14 @@ mod test {
 
                 chan.send(());
             }
-        }
+        })
     }
 
     #[test]
     fn dont_starve_2() {
         use rt::comm::oneshot;
 
-        do stress_factor().times {
+        stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot();
                 let (_port2, chan2) = stream();
@@ -1351,7 +1352,7 @@ mod test {
 
                 chan.send(());
             }
-        }
+        })
     }
 
     // Regression test for a logic bug that would cause single-threaded schedulers
@@ -1362,7 +1363,7 @@ mod test {
         use num::Times;
 
         do spawn_sched(SingleThreaded) {
-            do 5.times { deschedule(); }
+            5.times(|| { deschedule(); })
         }
         do spawn { }
         do spawn { }

@@ -11,6 +11,7 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 #[feature(struct_variant)];
+#[feature(globs)];
 #[deny(missing_doc)];
 
 struct Foo {
@@ -39,18 +40,28 @@ fn foo3() {}
 #[allow(missing_doc)] pub fn foo4() {}
 
 /// dox
-pub trait A {}
-trait B {}
-pub trait C {} //~ ERROR: missing documentation
+pub trait A {
+    /// dox
+    fn foo();
+    /// dox
+    fn foo_with_impl() {}
+}
+trait B {
+    fn foo();
+    fn foo_with_impl() {}
+}
+pub trait C { //~ ERROR: missing documentation
+    fn foo(); //~ ERROR: missing documentation
+    fn foo_with_impl() {} //~ ERROR: missing documentation
+}
 #[allow(missing_doc)] pub trait D {}
 
-trait Bar {
-    fn foo();
-    fn foo_with_impl() {
-    }
+impl Foo {
+    pub fn foo() {}
+    fn bar() {}
 }
 
-impl Foo {
+impl PubFoo {
     pub fn foo() {} //~ ERROR: missing documentation
     /// dox
     pub fn foo1() {}
@@ -119,5 +130,27 @@ pub enum PubBaz3 {
 
 #[doc(hidden)]
 pub fn baz() {}
+
+mod internal_impl {
+    /// dox
+    pub fn documented() {}
+    pub fn undocumented1() {} //~ ERROR: missing documentation
+    pub fn undocumented2() {} //~ ERROR: missing documentation
+    fn undocumented3() {}
+    /// dox
+    pub mod globbed {
+        /// dox
+        pub fn also_documented() {}
+        pub fn also_undocumented1() {} //~ ERROR: missing documentation
+        fn also_undocumented2() {}
+    }
+}
+/// dox
+pub mod public_interface {
+    pub use foo = internal_impl::documented;
+    pub use bar = internal_impl::undocumented1;
+    pub use internal_impl::{documented, undocumented2};
+    pub use internal_impl::globbed::*;
+}
 
 fn main() {}

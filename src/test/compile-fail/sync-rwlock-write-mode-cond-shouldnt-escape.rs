@@ -14,10 +14,10 @@ use extra::sync;
 fn main() {
     let x = ~sync::RWLock::new();
     let mut y = None;
-    do x.write_downgrade |write_mode| {
-        do (&write_mode).write_cond |cond| {
+    x.write_downgrade(|write_mode| {
+        (&write_mode).write_cond(|cond| {
             y = Some(cond);
-        }
-    }
+        })
+    });
     y.unwrap().wait();
 }

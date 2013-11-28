@@ -366,7 +366,7 @@ impl Uuid {
         }
 
         // Make sure all chars are either hex digits or hyphen
-        for (i, c) in us.iter().enumerate() {
+        for (i, c) in us.chars().enumerate() {
             match c {
                 '0'..'9' | 'A'..'F' | 'a'..'f' | '-' => {},
                 _ => return Err(ErrorInvalidCharacter(c, i)),
@@ -374,7 +374,7 @@ impl Uuid {
         }
 
         // Split string up by hyphens into groups
-        let hex_groups: ~[&str] = us.split_str_iter("-").collect();
+        let hex_groups: ~[&str] = us.split_str("-").collect();
 
         // Get the length of each group
         let group_lens: ~[uint] = hex_groups.iter().map(|&v| v.len()).collect();
@@ -407,7 +407,7 @@ impl Uuid {
 
         // At this point, we know we have a valid hex string, without hyphens
         assert!(vs.len() == 32);
-        assert!(vs.iter().all(|c| c.is_digit_radix(16)));
+        assert!(vs.chars().all(|c| c.is_digit_radix(16)));
 
         // Allocate output UUID buffer
         let mut ub = [0u8, ..16];
@@ -522,8 +522,8 @@ mod test {
     use std::str;
     use std::rand;
     use std::num::Zero;
-    use std::rt::io::Decorator;
-    use std::rt::io::mem::MemWriter;
+    use std::io::Decorator;
+    use std::io::mem::MemWriter;
 
     #[test]
     fn test_new_nil() {
@@ -650,7 +650,7 @@ mod test {
         let s = uuid1.to_simple_str();
 
         assert!(s.len() == 32);
-        assert!(s.iter().all(|c| c.is_digit_radix(16)));
+        assert!(s.chars().all(|c| c.is_digit_radix(16)));
     }
 
     #[test]
@@ -659,7 +659,7 @@ mod test {
         let s = uuid1.to_str();
 
         assert!(s.len() == 32);
-        assert!(s.iter().all(|c| c.is_digit_radix(16)));
+        assert!(s.chars().all(|c| c.is_digit_radix(16)));
     }
 
     #[test]
@@ -668,7 +668,7 @@ mod test {
         let s = uuid1.to_hyphenated_str();
 
         assert!(s.len() == 36);
-        assert!(s.iter().all(|c| c.is_digit_radix(16) || c == '-'));
+        assert!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
     }
 
     #[test]
@@ -679,7 +679,7 @@ mod test {
 
         assert!(ss.starts_with("urn:uuid:"));
         assert!(s.len() == 36);
-        assert!(s.iter().all(|c| c.is_digit_radix(16) || c == '-'));
+        assert!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
     }
 
     #[test]
@@ -689,7 +689,7 @@ mod test {
         let hs = uuid1.to_hyphenated_str();
         let ss = uuid1.to_str();
 
-        let hsn = str::from_chars(hs.iter().filter(|&c| c != '-').collect::<~[char]>());
+        let hsn = str::from_chars(hs.chars().filter(|&c| c != '-').collect::<~[char]>());
 
         assert!(hsn == ss);
     }
@@ -811,24 +811,24 @@ mod bench {
 
     #[bench]
     pub fn create_uuids(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             Uuid::new_v4();
-        }
+        })
     }
 
     #[bench]
     pub fn uuid_to_str(bh: &mut BenchHarness) {
         let u = Uuid::new_v4();
-        do bh.iter {
+        bh.iter(|| {
             u.to_str();
-        }
+        })
     }
 
     #[bench]
     pub fn parse_str(bh: &mut BenchHarness) {
         let s = "urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4";
-        do bh.iter {
+        bh.iter(|| {
             Uuid::parse_string(s);
-        }
+        })
     }
 }

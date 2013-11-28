@@ -11,8 +11,8 @@
 
 use std::option;
 use std::os;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use std::hashmap::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }
@@ -23,7 +23,7 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 
 /// Functions with type `pick` take a parent directory as well as
 /// a file found in that directory.
-pub type pick<'self> = &'self fn(path: &Path) -> FileMatch;
+pub type pick<'self> = 'self |path: &Path| -> FileMatch;
 
 pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
     if path.filename() == Some(file.as_vec()) {
@@ -35,7 +35,7 @@ pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
 
 pub trait FileSearch {
     fn sysroot(&self) -> @Path;
-    fn for_each_lib_search_path(&self, f: &fn(&Path) -> FileMatch);
+    fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch);
     fn get_target_lib_path(&self) -> Path;
     fn get_target_lib_file_path(&self, file: &Path) -> Path;
 }
@@ -51,7 +51,8 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     }
     impl FileSearch for FileSearchImpl {
         fn sysroot(&self) -> @Path { self.sysroot }
-        fn for_each_lib_search_path(&self, f: &fn(&Path) -> FileMatch) {
+
+        fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
             let mut visited_dirs = HashSet::new();
             let mut found = false;
 
@@ -117,7 +118,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 }
 
 pub fn search(filesearch: @FileSearch, pick: pick) {
-    do filesearch.for_each_lib_search_path() |lib_search_path| {
+    filesearch.for_each_lib_search_path(|lib_search_path| {
         debug!("searching {}", lib_search_path.display());
         match io::result(|| fs::readdir(lib_search_path)) {
             Ok(files) => {
@@ -139,7 +140,7 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
             }
             Err(*) => FileDoesntMatch,
         }
-    };
+    });
 }
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
@@ -197,7 +198,7 @@ pub fn rust_path() -> ~[Path] {
     let mut env_rust_path: ~[Path] = match get_rust_path() {
         Some(env_path) => {
             let env_path_components: ~[&str] =
-                env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
+                env_path.split_str(PATH_ENTRY_SEPARATOR).collect();
             env_path_components.map(|&s| Path::new(s))
         }
         None => ~[]

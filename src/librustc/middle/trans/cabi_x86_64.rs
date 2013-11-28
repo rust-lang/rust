@@ -337,9 +337,9 @@ pub fn compute_abi_info(_ccx: &mut CrateContext,
                         rty: Type,
                         ret_def: bool) -> FnType {
     fn x86_64_ty(ty: Type,
-                 is_mem_cls: &fn(cls: &[RegClass]) -> bool,
-                 attr: Attribute) -> ArgType {
-
+                 is_mem_cls: |cls: &[RegClass]| -> bool,
+                 attr: Attribute)
+                 -> ArgType {
         if !ty.is_reg_ty() {
             let cls = classify_ty(ty);
             if is_mem_cls(cls) {

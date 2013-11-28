@@ -109,13 +109,13 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
 
         debug!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
 
-        if outp.status != 0 {
+        if !outp.status.success() {
             continue;
         }
 
     let mut output = None;
     let output_text = str::from_utf8(outp.output);
-    for l in output_text.line_iter() {
+    for l in output_text.lines() {
         if !l.is_whitespace() {
             output = Some(l);
         }
@@ -143,7 +143,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
         let outp  = run::process_output("git", [~"clone", format!("https://{}",
                                                                   remote_path.as_str().unwrap()),
                                                 tmp_dir.as_str().unwrap().to_owned()]);
-        if outp.status == 0 {
+        if outp.status.success() {
             debug!("Cloned it... ( {}, {} )",
                    str::from_utf8(outp.output),
                    str::from_utf8(outp.error));
@@ -157,7 +157,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
                                             ~"tag", ~"-l"]);
             let output_text = str::from_utf8(outp.output);
             debug!("Full output: ( {} ) [{:?}]", output_text, outp.status);
-            for l in output_text.line_iter() {
+            for l in output_text.lines() {
                 debug!("A line of output: {}", l);
                 if !l.is_whitespace() {
                     output = Some(l);
@@ -187,7 +187,7 @@ pub fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
     debug!("Attempting to parse: {}", s);
     let mut parse_state = Start;
-    for c in s.iter() {
+    for c in s.chars() {
         if char::is_digit(c) {
             parse_state = SawDigit;
         }
@@ -207,7 +207,7 @@ pub fn try_parsing_version(s: &str) -> Option<Version> {
 /// Just an approximation
 fn is_url_like(p: &Path) -> bool {
     // check if there are more than 2 /-separated components
-    p.as_vec().split_iter(|b| *b == '/' as u8).nth(2).is_some()
+    p.as_vec().split(|b| *b == '/' as u8).nth(2).is_some()
 }
 
 /// If s is of the form foo#bar, where bar is a valid version
@@ -215,7 +215,7 @@ fn is_url_like(p: &Path) -> bool {
 /// Otherwise, return None.
 pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
     // Check for extra '#' characters separately
-    if s.split_iter('#').len() > 2 {
+    if s.split('#').len() > 2 {
         return None;
     }
     split_version_general(s, '#')

@@ -12,7 +12,7 @@ use std::task;
 
 pub fn main() {
     let (p, ch) = stream();
-    let _t = task::spawn(|| child(&ch) );
+    let _t = task::spawn(proc() child(&ch));
     let y = p.recv();
     error!("received");
     error!("{:?}", y);

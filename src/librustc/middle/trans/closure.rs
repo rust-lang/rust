@@ -51,7 +51,7 @@ use syntax::parse::token::special_idents;
 // };
 //
 // Note that the closure is itself a rust_opaque_box.  This is true
-// even for ~fn and &fn, because we wish to keep binary compatibility
+// even for ~fn and ||, because we wish to keep binary compatibility
 // between all kinds of closures.  The allocation strategy for this
 // closure depends on the closure type.  For a sendfn, the closure
 // (and the referenced type descriptors) will be allocated in the
@@ -422,11 +422,12 @@ pub fn trans_expr_fn(bcx: @mut Block,
     return bcx;
 }
 
-pub fn make_closure_glue(
-        cx: @mut Block,
-        v: ValueRef,
-        t: ty::t,
-        glue_fn: &fn(@mut Block, v: ValueRef, t: ty::t) -> @mut Block) -> @mut Block {
+pub fn make_closure_glue(cx: @mut Block,
+                         v: ValueRef,
+                         t: ty::t,
+                         glue_fn: |@mut Block, v: ValueRef, t: ty::t|
+                                   -> @mut Block)
+                         -> @mut Block {
     let _icx = push_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();
@@ -437,10 +438,10 @@ pub fn make_closure_glue(
         ast::OwnedSigil | ast::ManagedSigil => {
             let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
             let box_ptr_v = Load(cx, box_cell_v);
-            do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
+            with_cond(cx, IsNotNull(cx, box_ptr_v), |bcx| {
                 let closure_ty = ty::mk_opaque_closure_ptr(tcx, sigil);
                 glue_fn(bcx, box_cell_v, closure_ty)
-            }
+            })
         }
     }
 }
@@ -480,7 +481,7 @@ pub fn make_opaque_cbox_free_glue(
     }
 
     let ccx = bcx.ccx();
-    do with_cond(bcx, IsNotNull(bcx, cbox)) |bcx| {
+    with_cond(bcx, IsNotNull(bcx, cbox), |bcx| {
         // Load the type descr found in the cbox
         let lltydescty = ccx.tydesc_type.ptr_to();
         let cbox = Load(bcx, cbox);
@@ -497,5 +498,5 @@ pub fn make_opaque_cbox_free_glue(
         glue::trans_exchange_free(bcx, cbox);
 
         bcx
-    }
+    })
 }

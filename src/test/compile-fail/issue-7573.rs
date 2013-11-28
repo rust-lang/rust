@@ -35,7 +35,7 @@ pub fn remove_package_from_database() {
 
 }
 
-pub fn list_database(f: &fn(&PkgId)) {
+pub fn list_database(f: |&PkgId|) {
     let stuff = ["foo", "bar"];
 
     for l in stuff.iter() {

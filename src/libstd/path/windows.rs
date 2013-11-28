@@ -112,7 +112,7 @@ impl ToCStr for Path {
 
 impl IterBytes for Path {
     #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: &fn(&[u8]) -> bool) -> bool {
+    fn iter_bytes(&self, lsb0: bool, f: |&[u8]| -> bool) -> bool {
         self.repr.iter_bytes(lsb0, f)
     }
 }
@@ -472,8 +472,8 @@ impl GenericPath for Path {
                   is_vol_relative(self) != is_vol_relative(other) {
             false
         } else {
-            let mut ita = self.str_component_iter().map(|x|x.unwrap());
-            let mut itb = other.str_component_iter().map(|x|x.unwrap());
+            let mut ita = self.str_components().map(|x|x.unwrap());
+            let mut itb = other.str_components().map(|x|x.unwrap());
             if "." == self.repr {
                 return itb.next() != Some("..");
             }
@@ -520,8 +520,8 @@ impl GenericPath for Path {
                 None
             }
         } else {
-            let mut ita = self.str_component_iter().map(|x|x.unwrap());
-            let mut itb = base.str_component_iter().map(|x|x.unwrap());
+            let mut ita = self.str_components().map(|x|x.unwrap());
+            let mut itb = base.str_components().map(|x|x.unwrap());
             let mut comps = ~[];
 
             let a_verb = is_verbatim(self);
@@ -569,8 +569,8 @@ impl GenericPath for Path {
 
     fn ends_with_path(&self, child: &Path) -> bool {
         if !child.is_relative() { return false; }
-        let mut selfit = self.str_component_iter().invert();
-        let mut childit = child.str_component_iter().invert();
+        let mut selfit = self.str_components().invert();
+        let mut childit = child.str_components().invert();
         loop {
             match (selfit.next(), childit.next()) {
                 (Some(a), Some(b)) => if a != b { return false; },
@@ -608,7 +608,7 @@ impl Path {
     /// \a\b\c and a\b\c.
     /// Does not distinguish between absolute and cwd-relative paths, e.g.
     /// C:\foo and C:foo.
-    pub fn str_component_iter<'a>(&'a self) -> StrComponentIter<'a> {
+    pub fn str_components<'a>(&'a self) -> StrComponentIter<'a> {
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
@@ -619,34 +619,34 @@ impl Path {
             None if self.repr[0] == sep as u8 => self.repr.slice_from(1),
             None => self.repr.as_slice()
         };
-        let ret = s.split_terminator_iter(sep).map(Some);
+        let ret = s.split_terminator(sep).map(Some);
         ret
     }
 
     /// Returns an iterator that yields each component of the path in reverse as an Option<&str>
-    /// See str_component_iter() for details.
-    pub fn rev_str_component_iter<'a>(&'a self) -> RevStrComponentIter<'a> {
-        self.str_component_iter().invert()
+    /// See str_components() for details.
+    pub fn rev_str_components<'a>(&'a self) -> RevStrComponentIter<'a> {
+        self.str_components().invert()
     }
 
     /// Returns an iterator that yields each component of the path in turn as a &[u8].
-    /// See str_component_iter() for details.
-    pub fn component_iter<'a>(&'a self) -> ComponentIter<'a> {
+    /// See str_components() for details.
+    pub fn components<'a>(&'a self) -> ComponentIter<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #[inline];
             x.unwrap().as_bytes()
         }
-        self.str_component_iter().map(convert)
+        self.str_components().map(convert)
     }
 
     /// Returns an iterator that yields each component of the path in reverse as a &[u8].
-    /// See str_component_iter() for details.
-    pub fn rev_component_iter<'a>(&'a self) -> RevComponentIter<'a> {
+    /// See str_components() for details.
+    pub fn rev_components<'a>(&'a self) -> RevComponentIter<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #[inline];
             x.unwrap().as_bytes()
         }
-        self.rev_str_component_iter().map(convert)
+        self.rev_str_components().map(convert)
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {
@@ -970,7 +970,8 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     }
     return None;
 
-    fn parse_two_comps<'a>(mut path: &'a str, f: &fn(char)->bool) -> Option<(uint, uint)> {
+    fn parse_two_comps<'a>(mut path: &'a str, f: |char| -> bool)
+                       -> Option<(uint, uint)> {
         let idx_a = match path.find(|x| f(x)) {
             None => return None,
             Some(x) => x
@@ -998,7 +999,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
     let mut comps: ~[&'a str] = ~[];
     let mut n_up = 0u;
     let mut changed = false;
-    for comp in s_.split_iter(f) {
+    for comp in s_.split(f) {
         if comp.is_empty() { changed = true }
         else if comp == "." { changed = true }
         else if comp == ".." {
@@ -1247,35 +1248,35 @@ mod tests {
         use path::null_byte::cond;
 
         let mut handled = false;
-        let mut p = do cond.trap(|v| {
+        let mut p = cond.trap(|v| {
             handled = true;
             assert_eq!(v.as_slice(), b!("foo\\bar", 0));
             (b!("\\bar").to_owned())
-        }).inside {
+        }).inside(|| {
             Path::new(b!("foo\\bar", 0))
-        };
+        });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\bar"));
 
         handled = false;
-        do cond.trap(|v| {
+        cond.trap(|v| {
             handled = true;
             assert_eq!(v.as_slice(), b!("f", 0, "o"));
             (b!("foo").to_owned())
-        }).inside {
+        }).inside(|| {
             p.set_filename(b!("f", 0, "o"))
-        };
+        });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\foo"));
 
         handled = false;
-        do cond.trap(|v| {
+        cond.trap(|v| {
             handled = true;
             assert_eq!(v.as_slice(), b!("f", 0, "o"));
             (b!("foo").to_owned())
-        }).inside {
+        }).inside(|| {
             p.push(b!("f", 0, "o"));
-        };
+        });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\foo\\foo"));
     }
@@ -1289,7 +1290,6 @@ mod tests {
             ($name:expr => $code:block) => (
                 {
                     let mut t = task::task();
-                    t.supervised();
                     t.name($name);
                     let res = do t.try $code;
                     assert!(res.is_err());
@@ -1298,29 +1298,29 @@ mod tests {
         )
 
         t!(~"from_vec() w\\nul" => {
-            do cond.trap(|_| {
+            cond.trap(|_| {
                 (b!("null", 0).to_owned())
-            }).inside {
+            }).inside(|| {
                 Path::new(b!("foo\\bar", 0))
-            };
+            });
         })
 
         t!(~"set_filename w\\nul" => {
             let mut p = Path::new(b!("foo\\bar"));
-            do cond.trap(|_| {
+            cond.trap(|_| {
                 (b!("null", 0).to_owned())
-            }).inside {
+            }).inside(|| {
                 p.set_filename(b!("foo", 0))
-            };
+            });
         })
 
         t!(~"push w\\nul" => {
             let mut p = Path::new(b!("foo\\bar"));
-            do cond.trap(|_| {
+            cond.trap(|_| {
                 (b!("null", 0).to_owned())
-            }).inside {
+            }).inside(|| {
                 p.push(b!("foo", 0))
-            };
+            });
         })
     }
 
@@ -1339,17 +1339,17 @@ mod tests {
 
         let mut called = false;
         let path = Path::new("foo");
-        do path.display().with_str |s| {
+        path.display().with_str(|s| {
             assert_eq!(s, "foo");
             called = true;
-        };
+        });
         assert!(called);
         called = false;
         let path = Path::new(b!("\\"));
-        do path.filename_display().with_str |s| {
+        path.filename_display().with_str(|s| {
             assert_eq!(s, "");
             called = true;
-        }
+        });
         assert!(called);
     }
 
@@ -2260,35 +2260,35 @@ mod tests {
     }
 
     #[test]
-    fn test_str_component_iter() {
+    fn test_str_components() {
         macro_rules! t(
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let comps = path.str_component_iter().map(|x|x.unwrap()).to_owned_vec();
+                    let comps = path.str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
                     assert!(comps.as_slice() == exp,
-                            "str_component_iter: Expected {:?}, found {:?}",
+                            "str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
-                    let comps = path.rev_str_component_iter().map(|x|x.unwrap()).to_owned_vec();
+                    let comps = path.rev_str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_str_component_iter: Expected {:?}, found {:?}",
+                            "rev_str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             );
             (v: [$($arg:expr),+], $exp:expr) => (
                 {
                     let path = Path::new(b!($($arg),+));
-                    let comps = path.str_component_iter().map(|x|x.unwrap()).to_owned_vec();
+                    let comps = path.str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
                     assert!(comps.as_slice() == exp,
-                            "str_component_iter: Expected {:?}, found {:?}",
+                            "str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
-                    let comps = path.rev_str_component_iter().map(|x|x.unwrap()).to_owned_vec();
+                    let comps = path.rev_str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_str_component_iter: Expected {:?}, found {:?}",
+                            "rev_str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             )
@@ -2335,19 +2335,19 @@ mod tests {
     }
 
     #[test]
-    fn test_component_iter() {
+    fn test_components_iter() {
         macro_rules! t(
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let comps = path.component_iter().to_owned_vec();
+                    let comps = path.components().to_owned_vec();
                     let exp: &[&[u8]] = $exp;
-                    assert!(comps.as_slice() == exp, "component_iter: Expected {:?}, found {:?}",
+                    assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
-                    let comps = path.rev_component_iter().to_owned_vec();
+                    let comps = path.rev_components().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
                     assert!(comps.as_slice() == exp,
-                            "rev_component_iter: Expected {:?}, found {:?}",
+                            "rev_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
             )
@@ -2355,6 +2355,6 @@ mod tests {
 
         t!(s: "a\\b\\c", [b!("a"), b!("b"), b!("c")]);
         t!(s: ".", [b!(".")]);
-        // since this is really a wrapper around str_component_iter, those tests suffice
+        // since this is really a wrapper around str_components, those tests suffice
     }
 }

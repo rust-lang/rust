@@ -10,8 +10,8 @@
 
 use std::libc;
 use std::os;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
@@ -22,6 +22,7 @@ use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
 use syntax::fold::ast_fold;
 use syntax::visit::Visitor;
+use syntax::util::small_vector::SmallVector;
 use rustc::back::link::output_type_exe;
 use rustc::back::link;
 use rustc::driver::session::{lib_crate, bin_crate};
@@ -36,6 +37,7 @@ pub use target::{Target, Build, Install};
 use extra::treemap::TreeMap;
 pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
 use workcache_support::{digest_file_with_date, digest_only_date};
+use messages::error;
 
 // It would be nice to have the list of commands in just one place -- for example,
 // you could update the match in rustpkg.rc but forget to update this list. I think
@@ -80,27 +82,25 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &CrateSetup)
             -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
-            attrs: do item.attrs.iter().filter_map |attr| {
+            attrs: item.attrs.iter().filter_map(|attr| {
                 if "main" != attr.name() {
                     Some(*attr)
                 } else {
                     None
                 }
-            }.collect(),
+            }).collect(),
             .. (*item).clone()
         }
     }
 
     fold::noop_fold_mod(&ast::_mod {
-        items: do m.items.map |item| {
-            strip_main(*item)
-        },
+        items: m.items.map(|item| strip_main(*item)),
         .. (*m).clone()
     }, fold)
 }
 
 fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &CrateSetup)
-             -> Option<@ast::item> {
+             -> SmallVector<@ast::item> {
     ctx.path.push(item.ident);
 
     let mut cmds = ~[];
@@ -143,7 +143,7 @@ struct CrateSetup {
 }
 
 impl fold::ast_fold for CrateSetup {
-    fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {
+    fn fold_item(&self, item: @ast::item) -> SmallVector<@ast::item> {
         fold_item(self.ctx, item, self)
     }
     fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
@@ -174,9 +174,9 @@ pub fn compile_input(context: &BuildContext,
                      deps: &mut DepMap,
                      flags: &[~str],
                      cfgs: &[~str],
-                     opt: bool,
+                     opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
-    assert!(in_file.component_iter().nth(1).is_some());
+    assert!(in_file.components().nth(1).is_some());
     let input = driver::file_input(in_file.clone());
     debug!("compile_input: {} / {:?}", in_file.display(), what);
     // tjc: by default, use the package ID name as the link name
@@ -240,7 +240,7 @@ pub fn compile_input(context: &BuildContext,
 
     let options = @session::options {
         crate_type: crate_type,
-        optimize: if opt { session::Aggressive } else { session::No },
+        optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
         addl_lib_search_paths: @mut context.additional_library_paths(),
@@ -407,7 +407,7 @@ pub fn compile_crate(ctxt: &BuildContext,
                      deps: &mut DepMap,
                      flags: &[~str],
                      cfgs: &[~str],
-                     opt: bool,
+                     opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     debug!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
     debug!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());
@@ -424,12 +424,14 @@ struct ViewItemVisitor<'self> {
     sess: session::Session,
     exec: &'self mut workcache::Exec,
     c: &'self ast::Crate,
-    save: &'self fn(Path),
+    save: 'self |Path|,
     deps: &'self mut DepMap
 }
 
 impl<'self> Visitor<()> for ViewItemVisitor<'self> {
     fn visit_view_item(&mut self, vi: &ast::view_item, env: ()) {
+        use conditions::nonexistent_package::cond;
+
         match vi.node {
             // ignore metadata, I guess
             ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
@@ -490,12 +492,21 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         // and the `PkgSrc` constructor will detect that;
                         // or else it's already in a workspace and we'll build into that
                         // workspace
-                        let pkg_src = PkgSrc::new(source_workspace,
-                                                  dest_workspace,
-                        // Use the rust_path_hack to search for dependencies iff
-                        // we were already using it
-                                                  self.context.context.use_rust_path_hack,
-                                                  pkg_id.clone());
+                        let pkg_src = cond.trap(|_| {
+                                 // Nonexistent package? Then print a better error
+                                 error(format!("Package {} depends on {}, but I don't know \
+                                               how to find it",
+                                               self.parent.path.display(),
+                                               pkg_id.path.display()));
+                                 fail!()
+                        }).inside(|| {
+                            PkgSrc::new(source_workspace.clone(),
+                                        dest_workspace.clone(),
+                                        // Use the rust_path_hack to search for dependencies iff
+                                        // we were already using it
+                                        self.context.context.use_rust_path_hack,
+                                        pkg_id.clone())
+                        });
                         let (outputs_disc, inputs_disc) =
                             self.context.install(
                                 pkg_src,
@@ -575,7 +586,7 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                                      exec: &mut workcache::Exec,
                                      c: &ast::Crate,
                                      deps: &mut DepMap,
-                                     save: &fn(Path)) {
+                                     save: |Path|) {
     debug!("In find_and_install_dependencies...");
     let mut visitor = ViewItemVisitor {
         context: context,

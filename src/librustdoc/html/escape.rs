@@ -25,7 +25,7 @@ impl<'self> fmt::Default for Escape<'self> {
         // characters to escape: http://stackoverflow.com/questions/7381974
         let pile_o_bits = s.as_slice();
         let mut last = 0;
-        for (i, ch) in s.byte_iter().enumerate() {
+        for (i, ch) in s.bytes().enumerate() {
             match ch as char {
                 '<' | '>' | '&' | '\'' | '"' => {
                     fmt.buf.write(pile_o_bits.slice(last, i).as_bytes());

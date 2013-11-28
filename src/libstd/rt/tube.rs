@@ -68,9 +68,9 @@ impl<T> Tube<T> {
                 assert!(self.p.refcount() > 1); // There better be somebody to wake us up
                 assert!((*state).blocked_task.is_none());
                 let sched: ~Scheduler = Local::take();
-                do sched.deschedule_running_task_and_then |_, task| {
+                sched.deschedule_running_task_and_then(|_, task| {
                     (*state).blocked_task = Some(task);
-                }
+                });
                 rtdebug!("waking after tube recv");
                 let buf = &mut (*state).buf;
                 assert!(!buf.is_empty());
@@ -103,11 +103,11 @@ mod test {
             let tube_clone = tube.clone();
             let tube_clone_cell = Cell::new(tube_clone);
             let sched: ~Scheduler = Local::take();
-            do sched.deschedule_running_task_and_then |sched, task| {
+            sched.deschedule_running_task_and_then(|sched, task| {
                 let mut tube_clone = tube_clone_cell.take();
                 tube_clone.send(1);
                 sched.enqueue_blocked_task(task);
-            }
+            });
 
             assert!(tube.recv() == 1);
         }
@@ -120,7 +120,7 @@ mod test {
             let tube_clone = tube.clone();
             let tube_clone = Cell::new(tube_clone);
             let sched: ~Scheduler = Local::take();
-            do sched.deschedule_running_task_and_then |sched, task| {
+            sched.deschedule_running_task_and_then(|sched, task| {
                 let tube_clone = Cell::new(tube_clone.take());
                 do sched.event_loop.callback {
                     let mut tube_clone = tube_clone.take();
@@ -129,7 +129,7 @@ mod test {
                     tube_clone.send(1);
                 }
                 sched.enqueue_blocked_task(task);
-            }
+            });
 
             assert!(tube.recv() == 1);
         }
@@ -144,14 +144,14 @@ mod test {
             let tube_clone = tube.clone();
             let tube_clone = Cell::new(tube_clone);
             let sched: ~Scheduler = Local::take();
-            do sched.deschedule_running_task_and_then |sched, task| {
+            sched.deschedule_running_task_and_then(|sched, task| {
                 callback_send(tube_clone.take(), 0);
 
                 fn callback_send(tube: Tube<int>, i: int) {
                     if i == 100 { return; }
 
                     let tube = Cell::new(Cell::new(tube));
-                    do Local::borrow |sched: &mut Scheduler| {
+                    Local::borrow(|sched: &mut Scheduler| {
                         let tube = tube.take();
                         do sched.event_loop.callback {
                             let mut tube = tube.take();
@@ -160,11 +160,11 @@ mod test {
                             tube.send(i);
                             callback_send(tube, i + 1);
                         }
-                    }
+                    })
                 }
 
                 sched.enqueue_blocked_task(task);
-            }
+            });
 
             for i in range(0, MAX) {
                 let j = tube.recv();

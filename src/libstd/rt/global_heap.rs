@@ -14,14 +14,12 @@ use unstable::raw;
 use mem::size_of;
 
 extern {
-    #[rust_stack]
     fn abort();
 }
 
 #[inline]
 pub fn get_box_size(body_size: uint, body_align: uint) -> uint {
     let header_size = size_of::<raw::Box<()>>();
-    // FIXME (#2699): This alignment calculation is suspicious. Is it right?
     let total_size = align_to(header_size, body_align) + body_size;
     total_size
 }
@@ -36,8 +34,6 @@ fn align_to(size: uint, align: uint) -> uint {
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 pub unsafe fn malloc_raw(size: uint) -> *c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     let p = malloc(size as size_t);
     if p.is_null() {
         // we need a non-allocating way to print an error here
@@ -48,8 +44,6 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 
 /// A wrapper around libc::realloc, aborting on out-of-memory
 pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
-    #[fixed_stack_segment]; #[inline(never)];
-
     let p = realloc(ptr, size as size_t);
     if p.is_null() {
         // we need a non-allocating way to print an error here
@@ -100,8 +94,6 @@ pub unsafe fn exchange_free_(ptr: *c_char) {
 }
 
 pub unsafe fn exchange_free(ptr: *c_char) {
-    #[fixed_stack_segment]; #[inline(never)];
-
     free(ptr as *c_void);
 }
 
@@ -111,15 +103,15 @@ mod bench {
 
     #[bench]
     fn alloc_owned_small(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             ~10;
-        }
+        })
     }
 
     #[bench]
     fn alloc_owned_big(bh: &mut BenchHarness) {
-        do bh.iter {
+        bh.iter(|| {
             ~[10, ..1000];
-        }
+        })
     }
 }

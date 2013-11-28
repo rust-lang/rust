@@ -91,7 +91,7 @@ impl<'self> FromHex for &'self str {
         let mut modulus = 0;
         let mut buf = 0u8;
 
-        for (idx, byte) in self.byte_iter().enumerate() {
+        for (idx, byte) in self.bytes().enumerate() {
             buf <<= 4;
 
             match byte as char {
@@ -174,9 +174,9 @@ mod tests {
     pub fn bench_to_hex(bh: & mut BenchHarness) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        do bh.iter {
+        bh.iter(|| {
             s.as_bytes().to_hex();
-        }
+        });
         bh.bytes = s.len() as u64;
     }
 
@@ -185,9 +185,9 @@ mod tests {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let b = s.as_bytes().to_hex();
-        do bh.iter {
+        bh.iter(|| {
             b.from_hex();
-        }
+        });
         bh.bytes = b.len() as u64;
     }
 }

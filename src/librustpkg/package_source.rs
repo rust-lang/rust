@@ -12,8 +12,8 @@ extern mod extra;
 
 use target::*;
 use package_id::PkgId;
-use std::rt::io;
-use std::rt::io::fs;
+use std::io;
+use std::io::fs;
 use std::os;
 use context::*;
 use crate::Crate;
@@ -27,6 +27,8 @@ use workcache_support;
 use workcache_support::{digest_only_date, digest_file_with_date, crate_tag};
 use extra::workcache;
 use extra::treemap::TreeMap;
+
+use rustc::driver::session;
 
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
@@ -118,7 +120,8 @@ impl PkgSrc {
 
         debug!("Checking dirs: {:?}", to_try.map(|p| p.display().to_str()).connect(":"));
 
-        let path = to_try.iter().find(|&d| d.exists());
+        let path = to_try.iter().find(|&d| d.is_dir()
+                                      && dir_has_crate_file(d));
 
         // See the comments on the definition of PkgSrc
         let mut build_in_destination = use_rust_path_hack;
@@ -129,7 +132,7 @@ impl PkgSrc {
             None => {
                 // See if any of the prefixes of this package ID form a valid package ID
                 // That is, is this a package ID that points into the middle of a workspace?
-                for (prefix, suffix) in id.prefixes_iter() {
+                for (prefix, suffix) in id.prefixes() {
                     let package_id = PkgId::new(prefix.as_str().unwrap());
                     let path = build_dir.join(&package_id.path);
                     debug!("in loop: checking if {} is a directory", path.display());
@@ -180,7 +183,7 @@ impl PkgSrc {
                                 || d.is_ancestor_of(&versionize(&id.path, &id.version)) {
                                 // Strip off the package ID
                                 source_workspace = d.clone();
-                                for _ in id.path.component_iter() {
+                                for _ in id.path.components() {
                                     source_workspace.pop();
                                 }
                                 // Strip off the src/ part
@@ -276,7 +279,7 @@ impl PkgSrc {
                 Some(local.clone())
             }
             DirToUse(clone_target) => {
-                if pkgid.path.component_iter().nth(1).is_none() {
+                if pkgid.path.components().nth(1).is_none() {
                     // If a non-URL, don't bother trying to fetch
                     return None;
                 }
@@ -288,11 +291,9 @@ impl PkgSrc {
 
                 let mut failed = false;
 
-                do cond.trap(|_| {
+                cond.trap(|_| {
                     failed = true;
-                }).inside {
-                    git_clone_url(url, &clone_target, &pkgid.version);
-                };
+                }).inside(|| git_clone_url(url, &clone_target, &pkgid.version));
 
                 if failed {
                     return None;
@@ -326,7 +327,7 @@ impl PkgSrc {
     }
 
     pub fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
-        let mut it = p.component_iter().peekable();
+        let mut it = p.components().peekable();
         if prefix > 0 {
             it.nth(prefix-1); // skip elements
         }
@@ -345,10 +346,10 @@ impl PkgSrc {
         self.find_crates_with_filter(|_| true);
     }
 
-    pub fn find_crates_with_filter(&mut self, filter: &fn(&str) -> bool) {
+    pub fn find_crates_with_filter(&mut self, filter: |&str| -> bool) {
         use conditions::missing_pkg_files::cond;
 
-        let prefix = self.start_dir.component_iter().len();
+        let prefix = self.start_dir.components().len();
         debug!("Matching against {}", self.id.short_name);
         for pth in fs::walk_dir(&self.start_dir) {
             let maybe_known_crate_set = match pth.filename_str() {
@@ -397,7 +398,7 @@ impl PkgSrc {
             debug!("build_crates: compiling {}", path.display());
             let cfgs = crate.cfgs + cfgs;
 
-            do ctx.workcache_context.with_prep(crate_tag(&path)) |prep| {
+            ctx.workcache_context.with_prep(crate_tag(&path), |prep| {
                 debug!("Building crate {}, declaring it as an input", path.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("file", path.as_str().unwrap(),
@@ -411,7 +412,7 @@ impl PkgSrc {
                 let sub_deps = deps.clone();
                 let inputs = inputs_to_discover.map(|&(ref k, ref p)|
                                                     (k.clone(), p.as_str().unwrap().to_owned()));
-                do prep.exec |exec| {
+                prep.exec(proc(exec) {
                     for &(ref kind, ref p) in inputs.iter() {
                         let pth = Path::new(p.clone());
                         exec.discover_input(*kind, *p, if *kind == ~"file" {
@@ -424,6 +425,7 @@ impl PkgSrc {
                     }
                     debug!("Compiling crate {}; its output will be in {}",
                            subpath.display(), sub_dir.display());
+                    let opt: session::OptLevel = subcx.context.rustc_flags.optimization_level;
                     let result = compile_crate(&subcx,
                                                exec,
                                                &id,
@@ -432,7 +434,7 @@ impl PkgSrc {
                                                &mut (sub_deps.clone()),
                                                sub_flags,
                                                subcfgs,
-                                               false,
+                                               opt,
                                                what);
                     // XXX: result is an Option<Path>. The following code did not take that
                     // into account. I'm not sure if the workcache really likes seeing the
@@ -441,8 +443,8 @@ impl PkgSrc {
                     let result = result.as_ref().map(|p|p.as_str().unwrap());
                     debug!("Result of compiling {} was {}", subpath.display(), result.to_str());
                     result.to_str()
-                }
-            };
+                })
+            });
         }
     }
 

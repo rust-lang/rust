@@ -13,8 +13,6 @@
 extern fn f(x: uint) -> uint { x * 2 }
 
 pub fn main() {
-    #[fixed_stack_segment];
-
     let x = f(22);
     assert_eq!(x, 44);
 }

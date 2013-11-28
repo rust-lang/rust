@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test - FIXME(#8538) some kind of problem linking induced by extern "C" fns that I do not understand
-// xfail-fast - windows doesn't like this
+// xfail-fast - check-fast doesn't like this
 
 // Smallest hello world with no runtime
 

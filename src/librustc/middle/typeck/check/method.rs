@@ -85,7 +85,6 @@ use middle::ty::*;
 use middle::ty;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
-use middle::typeck::check::vtable::VtableContext;
 use middle::typeck::check::vtable;
 use middle::typeck::check;
 use middle::typeck::infer;
@@ -99,7 +98,6 @@ use util::ppaux::Repr;
 use std::hashmap::HashSet;
 use std::result;
 use std::vec;
-use extra::list::Nil;
 use syntax::ast::{DefId, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, NodeId};
 use syntax::ast::{MutMutable, MutImmutable};
@@ -265,8 +263,7 @@ impl<'self> LookupContext<'self> {
         self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
-    fn deref(&self, ty: ty::t)
-                 -> Option<ty::t> {
+    fn deref(&self, ty: ty::t) -> Option<ty::t> {
         match ty::deref(self.tcx(), ty, false) {
             None => None,
             Some(t) => {
@@ -327,11 +324,10 @@ impl<'self> LookupContext<'self> {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, p);
                 }
-                ty_self(self_did) => {
+                ty_self(*) => {
                     // Call is of the form "self.foo()" and appears in one
                     // of a trait's default method implementations.
-                    self.push_inherent_candidates_from_self(
-                        self_ty, self_did);
+                    self.push_inherent_candidates_from_self(self_ty);
                 }
                 _ => { /* No bound methods in these types */ }
             }
@@ -382,14 +378,13 @@ impl<'self> LookupContext<'self> {
         // we find the trait the method came from, counting up the
         // methods from them.
         let mut method_count = 0;
-        do ty::each_bound_trait_and_supertraits(tcx, &[subtrait])
-            |bound_ref| {
+        ty::each_bound_trait_and_supertraits(tcx, &[subtrait], |bound_ref| {
             if bound_ref.def_id == trait_ref.def_id { false }
                 else {
                 method_count += ty::trait_methods(tcx, bound_ref.def_id).len();
                 true
             }
-        };
+        });
         return method_count + n_method;
     }
 
@@ -416,7 +411,7 @@ impl<'self> LookupContext<'self> {
         };
         let trait_ref = @TraitRef { def_id: did, substs: rcvr_substs.clone() };
 
-        do self.push_inherent_candidates_from_bounds_inner(&[trait_ref])
+        self.push_inherent_candidates_from_bounds_inner(&[trait_ref],
             |new_trait_ref, m, method_num, _bound_num| {
             let vtable_index =
                 self.get_method_index(new_trait_ref, trait_ref, method_num);
@@ -440,7 +435,7 @@ impl<'self> LookupContext<'self> {
                         real_index: vtable_index
                     })
             }
-        };
+        });
     }
 
     fn push_inherent_candidates_from_param(&self,
@@ -448,39 +443,27 @@ impl<'self> LookupContext<'self> {
                                            param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty={:?})",
                param_ty);
-        let _indenter = indenter();
-
-        let tcx = self.tcx();
-        let type_param_def = match tcx.ty_param_defs.find(&param_ty.def_id.node) {
-            Some(t) => t,
-            None => {
-                tcx.sess.span_bug(
-                    self.expr.span,
-                    format!("No param def for {:?}", param_ty));
-            }
-        };
-
         self.push_inherent_candidates_from_bounds(
-            rcvr_ty, type_param_def.bounds.trait_bounds,
+            rcvr_ty,
+            self.fcx.inh.param_env.type_param_bounds[param_ty.idx].trait_bounds,
             param_numbered(param_ty.idx));
     }
 
 
     fn push_inherent_candidates_from_self(&self,
-                                              self_ty: ty::t,
-                                              did: DefId) {
-        let tcx = self.tcx();
-
-        let trait_ref = ty::lookup_trait_def(tcx, did).trait_ref;
+                                          rcvr_ty: ty::t) {
+        debug!("push_inherent_candidates_from_self()");
         self.push_inherent_candidates_from_bounds(
-            self_ty, &[trait_ref], param_self);
+            rcvr_ty,
+            [self.fcx.inh.param_env.self_param_bound.unwrap()],
+            param_self)
     }
 
     fn push_inherent_candidates_from_bounds(&self,
                                             self_ty: ty::t,
                                             bounds: &[@TraitRef],
                                             param: param_index) {
-        do self.push_inherent_candidates_from_bounds_inner(bounds)
+        self.push_inherent_candidates_from_bounds_inner(bounds,
             |trait_ref, m, method_num, bound_num| {
             Candidate {
                 rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
@@ -494,21 +477,22 @@ impl<'self> LookupContext<'self> {
                         bound_num: bound_num,
                     })
             }
-        }
+        })
     }
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn push_inherent_candidates_from_bounds_inner(
-        &self,
-        bounds: &[@TraitRef],
-        mk_cand: &fn(trait_ref: @TraitRef, m: @ty::Method, method_num: uint,
-                     bound_num: uint) -> Candidate) {
-
+    fn push_inherent_candidates_from_bounds_inner(&self,
+                                                  bounds: &[@TraitRef],
+                                                  mk_cand: |tr: @TraitRef,
+                                                            m: @ty::Method,
+                                                            method_num: uint,
+                                                            bound_num: uint|
+                                                            -> Candidate) {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
-        do ty::each_bound_trait_and_supertraits(tcx, bounds) |bound_trait_ref| {
+        ty::each_bound_trait_and_supertraits(tcx, bounds, |bound_trait_ref| {
             let this_bound_idx = next_bound_idx;
             next_bound_idx += 1;
 
@@ -533,7 +517,7 @@ impl<'self> LookupContext<'self> {
                 }
             }
             true
-        };
+        });
     }
 
 
@@ -574,10 +558,7 @@ impl<'self> LookupContext<'self> {
         // determine the `self` of the impl with fresh
         // variables for each parameter:
         let location_info = &vtable::location_info_for_expr(self.self_expr);
-        let vcx = VtableContext {
-            ccx: self.fcx.ccx,
-            infcx: self.fcx.infcx()
-        };
+        let vcx = self.fcx.vtable_context();
         let ty::ty_param_substs_and_ty {
             substs: impl_substs,
             ty: impl_ty
@@ -802,12 +783,12 @@ impl<'self> LookupContext<'self> {
     }
 
     fn search_for_some_kind_of_autorefd_method(
-        &self,
-        kind: &fn(Region, ast::Mutability) -> ty::AutoRef,
-        autoderefs: uint,
-        mutbls: &[ast::Mutability],
-        mk_autoref_ty: &fn(ast::Mutability, ty::Region) -> ty::t)
-        -> Option<method_map_entry> {
+            &self,
+            kind: |Region, ast::Mutability| -> ty::AutoRef,
+            autoderefs: uint,
+            mutbls: &[ast::Mutability],
+            mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
+            -> Option<method_map_entry> {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region =
@@ -1010,7 +991,7 @@ impl<'self> LookupContext<'self> {
         };
         let (_, opt_transformed_self_ty, fn_sig) =
             replace_bound_regions_in_fn_sig(
-                tcx, @Nil, Some(transformed_self_ty), &bare_fn_ty.sig,
+                tcx, Some(transformed_self_ty), &bare_fn_ty.sig,
                 |br| self.fcx.infcx().next_region_var(
                     infer::BoundRegionInFnCall(self.expr.span, br)));
         let transformed_self_ty = opt_transformed_self_ty.unwrap();

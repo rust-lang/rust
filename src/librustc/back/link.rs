@@ -31,7 +31,8 @@ use std::ptr;
 use std::run;
 use std::str;
 use std::vec;
-use std::rt::io::fs;
+use std::io::fs;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
@@ -71,13 +72,13 @@ pub fn WriteOutputFile(
         Output: &Path,
         FileType: lib::llvm::FileType) {
     unsafe {
-        do Output.with_c_str |Output| {
+        Output.with_c_str(|Output| {
             let result = llvm::LLVMRustWriteOutputFile(
                     Target, PM, M, Output, FileType);
             if !result {
                 llvm_err(sess, ~"Could not write output");
             }
-        }
+        })
     }
 }
 
@@ -129,12 +130,12 @@ pub mod jit {
             for cratepath in r.iter() {
                 debug!("linking: {}", cratepath.display());
 
-                do cratepath.with_c_str |buf_t| {
+                cratepath.with_c_str(|buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
                     debug!("linked: {}", cratepath.display());
-                }
+                })
             }
 
             // We custom-build a JIT execution engine via some rust wrappers
@@ -148,9 +149,9 @@ pub mod jit {
             // Next, we need to get a handle on the _rust_main function by
             // looking up it's corresponding ValueRef and then requesting that
             // the execution engine compiles the function.
-            let fun = do "_rust_main".with_c_str |entry| {
+            let fun = "_rust_main".with_c_str(|entry| {
                 llvm::LLVMGetNamedFunction(m, entry)
-            };
+            });
             if fun.is_null() {
                 llvm::LLVMDisposeExecutionEngine(ee);
                 llvm::LLVMContextDispose(c);
@@ -247,9 +248,9 @@ pub mod write {
             llvm::LLVMInitializeMipsAsmParser();
 
             if sess.opts.save_temps {
-                do output.with_extension("no-opt.bc").with_c_str |buf| {
+                output.with_extension("no-opt.bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                }
+                })
             }
 
             configure_llvm(sess);
@@ -262,9 +263,9 @@ pub mod write {
             };
             let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
 
-            let tm = do sess.targ_cfg.target_strs.target_triple.with_c_str |T| {
-                do sess.opts.target_cpu.with_c_str |CPU| {
-                    do sess.opts.target_feature.with_c_str |Features| {
+            let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
+                sess.opts.target_cpu.with_c_str(|CPU| {
+                    sess.opts.target_feature.with_c_str(|Features| {
                         llvm::LLVMRustCreateTargetMachine(
                             T, CPU, Features,
                             lib::llvm::CodeModelDefault,
@@ -273,9 +274,9 @@ pub mod write {
                             true,
                             use_softfp
                         )
-                    }
-                }
-            };
+                    })
+                })
+            });
 
             // Create the two optimizing pass managers. These mirror what clang
             // does, and are by populated by LLVM's default PassManagerBuilder.
@@ -287,7 +288,7 @@ pub mod write {
             // If we're verifying or linting, add them to the function pass
             // manager.
             let addpass = |pass: &str| {
-                do pass.with_c_str |s| { llvm::LLVMRustAddPass(fpm, s) }
+                pass.with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
             };
             if !sess.no_verify() { assert!(addpass("verify")); }
             if sess.lint_llvm()  { assert!(addpass("lint"));   }
@@ -299,11 +300,11 @@ pub mod write {
             }
 
             for pass in sess.opts.custom_passes.iter() {
-                do pass.with_c_str |s| {
+                pass.with_c_str(|s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
                         sess.warn(format!("Unknown pass {}, ignoring", *pass));
                     }
-                }
+                })
             }
 
             // Finally, run the actual optimization passes
@@ -315,9 +316,9 @@ pub mod write {
             llvm::LLVMDisposePassManager(mpm);
 
             if sess.opts.save_temps {
-                do output.with_extension("bc").with_c_str |buf| {
+                output.with_extension("bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                }
+                })
             }
 
             if sess.opts.jit {
@@ -336,14 +337,14 @@ pub mod write {
                 match output_type {
                     output_type_none => {}
                     output_type_bitcode => {
-                        do output.with_c_str |buf| {
+                        output.with_c_str(|buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                        }
+                        })
                     }
                     output_type_llvm_assembly => {
-                        do output.with_c_str |output| {
+                        output.with_c_str(|output| {
                             llvm::LLVMRustPrintModule(cpm, llmod, output)
-                        }
+                        })
                     }
                     output_type_assembly => {
                         WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::AssemblyFile);
@@ -377,9 +378,8 @@ pub mod write {
 
         let prog = run::process_output(cc_prog, cc_args);
 
-        if prog.status != 0 {
-            sess.err(format!("building with `{}` failed with code {}",
-                        cc_prog, prog.status));
+        if !prog.status.success() {
+            sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
             sess.note(format!("{} arguments: {}",
                         cc_prog, cc_args.connect(" ")));
             sess.note(str::from_utf8(prog.error + prog.output));
@@ -415,9 +415,9 @@ pub mod write {
             add(*arg);
         }
 
-        do llvm_args.as_imm_buf |p, len| {
+        llvm_args.as_imm_buf(|p, len| {
             llvm::LLVMRustSetLLVMOptions(len as c_int, p);
-        }
+        })
     }
 
     unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,
@@ -634,6 +634,18 @@ pub fn build_link_meta(sess: Session,
         }
     }
 
+    fn crate_meta_pkgid(sess: Session, name: @str, opt_pkg_id: Option<@str>)
+        -> @str {
+        match opt_pkg_id {
+            Some(v) if !v.is_empty() => v,
+            _ => {
+                let pkg_id = name.clone();
+                warn_missing(sess, "package_id", pkg_id);
+                pkg_id
+            }
+        }
+    }
+
     let ProvidedMetas {
         name: opt_name,
         vers: opt_vers,
@@ -642,15 +654,16 @@ pub fn build_link_meta(sess: Session,
     } = provided_link_metas(sess, c);
     let name = crate_meta_name(sess, output, opt_name);
     let vers = crate_meta_vers(sess, opt_vers);
+    let pkg_id = crate_meta_pkgid(sess, name, opt_pkg_id);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
         crate_meta_extras_hash(symbol_hasher, cmh_items,
-                               dep_hashes, opt_pkg_id);
+                               dep_hashes, Some(pkg_id));
 
     LinkMeta {
         name: name,
         vers: vers,
-        package_id: opt_pkg_id,
+        package_id: Some(pkg_id),
         extras_hash: extras_hash
     }
 }
@@ -698,7 +711,7 @@ pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    for c in s.iter() {
+    for c in s.chars() {
         match c {
             // Escape these with $ sequences
             '@' => result.push_str("$SP$"),
@@ -723,7 +736,7 @@ pub fn sanitize(s: &str) -> ~str {
 
             _ => {
                 let mut tstr = ~"";
-                do char::escape_unicode(c) |c| { tstr.push_char(c); }
+                char::escape_unicode(c, |c| tstr.push_char(c));
                 result.push_char('$');
                 result.push_str(tstr.slice_from(1));
             }
@@ -864,13 +877,13 @@ pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str 
 }
 
 
-pub fn output_dll_filename(os: session::Os, lm: LinkMeta) -> ~str {
+pub fn output_dll_filename(os: abi::Os, lm: LinkMeta) -> ~str {
     let (dll_prefix, dll_suffix) = match os {
-        session::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-        session::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-        session::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-        session::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-        session::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+        abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
+        abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
     format!("{}{}-{}-{}{}", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
@@ -885,7 +898,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
     match sess.opts.linker {
         Some(ref linker) => linker.to_str(),
         None => match sess.targ_cfg.os {
-            session::OsAndroid =>
+            abi::OsAndroid =>
                 match &sess.opts.android_cross_path {
                     &Some(ref path) => {
                         format!("{}/bin/arm-linux-androideabi-gcc", *path)
@@ -895,7 +908,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
                                     (--android-cross-path)")
                     }
                 },
-            session::OsWin32 => ~"g++",
+            abi::OsWin32 => ~"g++",
             _ => ~"cc"
         }
     }
@@ -933,17 +946,18 @@ pub fn link_binary(sess: Session,
 
     // We run 'cc' here
     let prog = run::process_output(cc_prog, cc_args);
-    if 0 != prog.status {
-        sess.err(format!("linking with `{}` failed with code {}",
-                      cc_prog, prog.status));
+
+    if !prog.status.success() {
+        sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
         sess.note(format!("{} arguments: {}",
-                       cc_prog, cc_args.connect(" ")));
+                    cc_prog, cc_args.connect(" ")));
         sess.note(str::from_utf8(prog.error + prog.output));
         sess.abort_if_errors();
     }
 
-    // Clean up on Darwin
-    if sess.targ_cfg.os == session::OsMacos {
+    // On OSX, debuggers needs this utility to get run to do some munging of the
+    // symbols
+    if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
         // FIXME (#9639): This needs to handle non-utf8 paths
         run::process_status("dsymutil", [output.as_str().unwrap().to_owned()]);
     }
@@ -955,7 +969,7 @@ pub fn link_binary(sess: Session,
 }
 
 fn is_writeable(p: &Path) -> bool {
-    use std::rt::io;
+    use std::io;
 
     !p.exists() ||
         (match io::result(|| p.stat()) {
@@ -972,7 +986,7 @@ pub fn link_args(sess: Session,
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
-            config.os != session::OsWin32 {
+            config.os != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
         } else {
             stem
@@ -1016,7 +1030,7 @@ pub fn link_args(sess: Session,
         obj_filename.as_str().unwrap().to_owned()]);
 
     let lib_cmd = match sess.targ_cfg.os {
-        session::OsMacos => ~"-dynamiclib",
+        abi::OsMacos => ~"-dynamiclib",
         _ => ~"-shared"
     };
 
@@ -1058,6 +1072,13 @@ pub fn link_args(sess: Session,
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
+    if sess.targ_cfg.os == abi::OsLinux {
+        // GNU-style linkers will use this to omit linking to libraries which don't actually fulfill
+        // any relocations, but only for libraries which follow this flag. Thus, use it before
+        // specifing libraries to link to.
+        args.push(~"-Wl,--as-needed");
+    }
+
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
     for l in used_libs.iter() { args.push(~"-l" + *l); }
@@ -1067,7 +1088,7 @@ pub fn link_args(sess: Session,
 
         // On mac we need to tell the linker to let this library
         // be rpathed
-        if sess.targ_cfg.os == session::OsMacos {
+        if sess.targ_cfg.os == abi::OsMacos {
             // FIXME (#9639): This needs to handle non-utf8 paths
             args.push("-Wl,-install_name,@rpath/"
                       + output.filename_str().unwrap());
@@ -1076,7 +1097,14 @@ pub fn link_args(sess: Session,
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
-    if sess.targ_cfg.os == session::OsLinux {
+    if sess.targ_cfg.os == abi::OsLinux {
+        // GNU-style linkers supports optimization with -O. --gc-sections removes metadata and
+        // potentially other useful things, so don't include it. GNU ld doesn't need a numeric
+        // argument, but other linkers do.
+        if sess.opts.optimize == session::Default || sess.opts.optimize == session::Aggressive {
+            args.push(~"-Wl,-O1");
+        }
+
         args.push_all([~"-lrt", ~"-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
@@ -1084,12 +1112,12 @@ pub fn link_args(sess: Session,
         // have to be explicit about linking to it. See #2510
         args.push(~"-lm");
     }
-    else if sess.targ_cfg.os == session::OsAndroid {
+    else if sess.targ_cfg.os == abi::OsAndroid {
         args.push_all([~"-ldl", ~"-llog",  ~"-lsupc++", ~"-lgnustl_shared"]);
         args.push(~"-lm");
     }
 
-    if sess.targ_cfg.os == session::OsFreebsd {
+    if sess.targ_cfg.os == abi::OsFreebsd {
         args.push_all([~"-pthread", ~"-lrt",
                        ~"-L/usr/local/lib", ~"-lexecinfo",
                        ~"-L/usr/local/lib/gcc46",

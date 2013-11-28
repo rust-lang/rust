@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast #9205
+// xfail-win32 #9205
 
 pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 pub struct Floats { a: f64, b: u8, c: f64 }
@@ -23,7 +23,6 @@ mod rustrt {
     }
 }
 
-#[fixed_stack_segment] #[inline(never)]
 fn test1() {
     unsafe {
         let q = Quad { a: 0xaaaa_aaaa_aaaa_aaaa_u64,
@@ -43,8 +42,6 @@ fn test1() {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[fixed_stack_segment]
-#[inline(never)]
 fn test2() {
     unsafe {
         let f = Floats { a: 1.234567890e-15_f64,
