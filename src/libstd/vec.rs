@@ -975,6 +975,40 @@ pub trait ImmutableVector<'self, T> {
      * foreign interop.
      */
     fn as_imm_buf<U>(&self, f: |*T, uint| -> U) -> U;
+
+    /**
+     * Returns a mutable reference to the first element in this slice
+     * and adjusts the slice in place so that it no longer contains
+     * that element. O(1).
+     *
+     * Equivalent to:
+     *
+     * ```
+     *     let head = &self[0];
+     *     *self = self.slice_from(1);
+     *     head
+     * ```
+     *
+     * Fails if slice is empty.
+     */
+    fn shift_ref(&mut self) -> &'self T;
+
+    /**
+     * Returns a mutable reference to the last element in this slice
+     * and adjusts the slice in place so that it no longer contains
+     * that element. O(1).
+     *
+     * Equivalent to:
+     *
+     * ```
+     *     let tail = &self[self.len() - 1];
+     *     *self = self.slice_to(self.len() - 1);
+     *     tail
+     * ```
+     *
+     * Fails if slice is empty.
+     */
+    fn pop_ref(&mut self) -> &'self T;
 }
 
 impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
@@ -1145,6 +1179,20 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     fn as_imm_buf<U>(&self, f: |*T, uint| -> U) -> U {
         let s = self.repr();
         f(s.data, s.len)
+    }
+
+    fn shift_ref(&mut self) -> &'self T {
+        unsafe {
+            let s: &mut Slice<T> = cast::transmute(self);
+            &*raw::shift_ptr(s)
+        }
+    }
+
+    fn pop_ref(&mut self) -> &'self T {
+        unsafe {
+            let s: &mut Slice<T> = cast::transmute(self);
+            &*raw::pop_ptr(s)
+        }
     }
 }
 
@@ -1864,22 +1912,60 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 pub trait MutableVector<'self, T> {
     /// Return a slice that points into another slice.
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
+
     /**
      * Returns a slice of self from `start` to the end of the vec.
      *
      * Fails when `start` points outside the bounds of self.
      */
     fn mut_slice_from(self, start: uint) -> &'self mut [T];
+
     /**
      * Returns a slice of self from the start of the vec to `end`.
      *
      * Fails when `end` points outside the bounds of self.
      */
     fn mut_slice_to(self, end: uint) -> &'self mut [T];
+
     /// Returns an iterator that allows modifying each value
     fn mut_iter(self) -> VecMutIterator<'self, T>;
+
     /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'self, T>;
+
+    /**
+     * Returns a mutable reference to the first element in this slice
+     * and adjusts the slice in place so that it no longer contains
+     * that element. O(1).
+     *
+     * Equivalent to:
+     *
+     * ```
+     *     let head = &mut self[0];
+     *     *self = self.mut_slice_from(1);
+     *     head
+     * ```
+     *
+     * Fails if slice is empty.
+     */
+    fn mut_shift_ref(&mut self) -> &'self mut T;
+
+    /**
+     * Returns a mutable reference to the last element in this slice
+     * and adjusts the slice in place so that it no longer contains
+     * that element. O(1).
+     *
+     * Equivalent to:
+     *
+     * ```
+     *     let tail = &mut self[self.len() - 1];
+     *     *self = self.mut_slice_to(self.len() - 1);
+     *     tail
+     * ```
+     *
+     * Fails if slice is empty.
+     */
+    fn mut_pop_ref(&mut self) -> &'self mut T;
 
     /**
      * Swaps two elements in a vector
@@ -1981,6 +2067,20 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
     fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
         self.mut_iter().invert()
+    }
+
+    fn mut_shift_ref(&mut self) -> &'self mut T {
+        unsafe {
+            let s: &mut Slice<T> = cast::transmute(self);
+            cast::transmute_mut(&*raw::shift_ptr(s))
+        }
+    }
+
+    fn mut_pop_ref(&mut self) -> &'self mut T {
+        unsafe {
+            let s: &mut Slice<T> = cast::transmute(self);
+            cast::transmute_mut(&*raw::pop_ptr(s))
+        }
     }
 
     fn swap(self, a: uint, b: uint) {
@@ -2193,6 +2293,31 @@ pub mod raw {
                 ptr::copy_memory(p_dst, p_src, count)
             })
         })
+    }
+
+    /**
+     * Returns a pointer to first element in slice and adjusts
+     * slice so it no longer contains that element. Fails if
+     * slice is empty. O(1).
+     */
+    pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> *T {
+        if slice.len == 0 { fail!("shift on empty slice"); }
+        let head: *T = slice.data;
+        slice.data = ptr::offset(slice.data, 1);
+        slice.len -= 1;
+        head
+    }
+
+    /**
+     * Returns a pointer to last element in slice and adjusts
+     * slice so it no longer contains that element. Fails if
+     * slice is empty. O(1).
+     */
+    pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> *T {
+        if slice.len == 0 { fail!("pop on empty slice"); }
+        let tail: *T = ptr::offset(slice.data, (slice.len - 1) as int);
+        slice.len -= 1;
+        tail
     }
 }
 
@@ -3826,6 +3951,75 @@ mod tests {
         assert!(empty.ends_with(empty));
         assert!(!empty.ends_with(bytes!("foo")));
         assert!(bytes!("foobar").ends_with(empty));
+    }
+
+    #[test]
+    fn test_shift_ref() {
+        let mut x: &[int] = [1, 2, 3, 4, 5];
+        let h = x.shift_ref();
+        assert_eq!(*h, 1);
+        assert_eq!(x.len(), 4);
+        assert_eq!(x[0], 2);
+        assert_eq!(x[3], 5);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_shift_ref_empty() {
+        let mut x: &[int] = [];
+        x.shift_ref();
+    }
+
+    #[test]
+    fn test_pop_ref() {
+        let mut x: &[int] = [1, 2, 3, 4, 5];
+        let h = x.pop_ref();
+        assert_eq!(*h, 5);
+        assert_eq!(x.len(), 4);
+        assert_eq!(x[0], 1);
+        assert_eq!(x[3], 4);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_pop_ref_empty() {
+        let mut x: &[int] = [];
+        x.pop_ref();
+    }
+
+
+    #[test]
+    fn test_mut_shift_ref() {
+        let mut x: &mut [int] = [1, 2, 3, 4, 5];
+        let h = x.mut_shift_ref();
+        assert_eq!(*h, 1);
+        assert_eq!(x.len(), 4);
+        assert_eq!(x[0], 2);
+        assert_eq!(x[3], 5);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_mut_shift_ref_empty() {
+        let mut x: &mut [int] = [];
+        x.mut_shift_ref();
+    }
+
+    #[test]
+    fn test_mut_pop_ref() {
+        let mut x: &mut [int] = [1, 2, 3, 4, 5];
+        let h = x.mut_pop_ref();
+        assert_eq!(*h, 5);
+        assert_eq!(x.len(), 4);
+        assert_eq!(x[0], 1);
+        assert_eq!(x[3], 4);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_mut_pop_ref_empty() {
+        let mut x: &mut [int] = [];
+        x.mut_pop_ref();
     }
 }
 

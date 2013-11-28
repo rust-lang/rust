@@ -447,17 +447,22 @@ impl<'self> GatherLoanCtxt<'self> {
 
         // Check that the lifetime of the borrow does not exceed
         // the lifetime of the data being borrowed.
-        lifetime::guarantee_lifetime(self.bccx, self.item_ub, root_ub,
-                                     borrow_span, cmt, loan_region, req_mutbl);
+        if lifetime::guarantee_lifetime(self.bccx, self.item_ub, root_ub,
+                                        borrow_span, cmt, loan_region,
+                                        req_mutbl).is_err() {
+            return; // reported an error, no sense in reporting more.
+        }
 
         // Check that we don't allow mutable borrows of non-mutable data.
-        check_mutability(self.bccx, borrow_span, cmt, req_mutbl);
+        if check_mutability(self.bccx, borrow_span, cmt, req_mutbl).is_err() {
+            return; // reported an error, no sense in reporting more.
+        }
 
         // Compute the restrictions that are required to enforce the
         // loan is safe.
         let restr = restrictions::compute_restrictions(
             self.bccx, borrow_span,
-            cmt, self.restriction_set(req_mutbl));
+            cmt, loan_region, self.restriction_set(req_mutbl));
 
         // Create the loan record (if needed).
         let loan = match restr {
@@ -554,25 +559,29 @@ impl<'self> GatherLoanCtxt<'self> {
         fn check_mutability(bccx: &BorrowckCtxt,
                             borrow_span: Span,
                             cmt: mc::cmt,
-                            req_mutbl: LoanMutability) {
+                            req_mutbl: LoanMutability) -> Result<(),()> {
             //! Implements the M-* rules in doc.rs.
 
             match req_mutbl {
                 ConstMutability => {
                     // Data of any mutability can be lent as const.
+                    Ok(())
                 }
 
                 ImmutableMutability => {
                     // both imm and mut data can be lent as imm;
                     // for mutable data, this is a freeze
+                    Ok(())
                 }
 
                 MutableMutability => {
                     // Only mutable data can be lent as mutable.
                     if !cmt.mutbl.is_mutable() {
-                        bccx.report(BckError {span: borrow_span,
-                                              cmt: cmt,
-                                              code: err_mutbl(req_mutbl)});
+                        Err(bccx.report(BckError {span: borrow_span,
+                                                  cmt: cmt,
+                                                  code: err_mutbl(req_mutbl)}))
+                    } else {
+                        Ok(())
                     }
                 }
             }

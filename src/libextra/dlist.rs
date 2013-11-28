@@ -225,8 +225,9 @@ impl<T> Deque<T> for DList<T> {
     /// Provide a mutable reference to the back element, or None if the list is empty
     #[inline]
     fn back_mut<'a>(&'a mut self) -> Option<&'a mut T> {
-        let mut tmp = self.list_tail.resolve(); // FIXME: #3511: shouldn't need variable
-        tmp.as_mut().map(|tail| &mut tail.value)
+        let tmp: Option<&'a mut Node<T>> =
+            self.list_tail.resolve(); // FIXME: #3511: shouldn't need variable
+        tmp.map(|tail| &mut tail.value)
     }
 
     /// Add an element first in the list
