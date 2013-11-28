@@ -299,22 +299,20 @@ impl fmt::Default for clean::Type {
                 f.buf.write(s.as_bytes());
             }
             clean::Closure(ref decl) => {
-                f.buf.write(match decl.sigil {
-                    ast::BorrowedSigil => "&amp;",
-                    ast::ManagedSigil => "@",
-                    ast::OwnedSigil => "~",
-                }.as_bytes());
-                match decl.region {
-                    Some(ref region) => write!(f.buf, "{} ", *region),
-                    None => {}
-                }
-                write!(f.buf, "{}{}fn{}",
+                let region = match decl.region {
+                    Some(ref region) => format!("{} ", *region),
+                    None => ~"",
+                };
+
+                write!(f.buf, "{}{}{arrow, select, yes{ -&gt; {ret}} other{}}",
                        PuritySpace(decl.purity),
-                       match decl.onceness {
-                           ast::Once => "once ",
-                           ast::Many => "",
+                       match decl.sigil {
+                           ast::OwnedSigil => format!("proc({})", decl.decl.inputs),
+                           ast::BorrowedSigil => format!("{}|{}|", region, decl.decl.inputs),
+                           ast::ManagedSigil => format!("@{}fn({})", region, decl.decl.inputs),
                        },
-                       decl.decl);
+                       arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
+                       ret = decl.decl.output);
                 // XXX: where are bounds and lifetimes printed?!
             }
             clean::BareFunction(ref decl) => {
@@ -374,18 +372,24 @@ impl fmt::Default for clean::Type {
 
 impl fmt::Default for clean::FnDecl {
     fn fmt(d: &clean::FnDecl, f: &mut fmt::Formatter) {
+        write!(f.buf, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
+               args = d.inputs,
+               arrow = match d.output { clean::Unit => "no", _ => "yes" },
+               ret = d.output);
+    }
+}
+
+impl fmt::Default for ~[clean::Argument] {
+    fn fmt(inputs: &~[clean::Argument], f: &mut fmt::Formatter) {
         let mut args = ~"";
-        for (i, input) in d.inputs.iter().enumerate() {
+        for (i, input) in inputs.iter().enumerate() {
             if i > 0 { args.push_str(", "); }
             if input.name.len() > 0 {
                 args.push_str(format!("{}: ", input.name));
             }
             args.push_str(format!("{}", input.type_));
         }
-        write!(f.buf, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
-               args = args,
-               arrow = match d.output { clean::Unit => "no", _ => "yes" },
-               ret = d.output);
+        f.buf.write(args.as_bytes());
     }
 }
 
