@@ -199,9 +199,10 @@ impl GZip {
     pub fn compress_init<W: Writer>(writer: &mut W, file_name: &[u8], mtime: u32, file_size: u32) -> GZip {
         let mut gzip = GZip::new();
         gzip.mtime = mtime;
-        gzip.filename = if file_name.len() > 0 { Some(file_name.to_owned()) } else { None };
+        let file_name = file_name.iter().filter_map(|&c| if c != 0 { Some(c) } else { None }).collect::<~[u8]>();
+        gzip.filename = if file_name.len() > 0 { Some(file_name) } else { None };
         // Only handles filename for now.  If other fields like comment or extra fields are needed, add their flags here.
-        gzip.flags |= if gzip.filename.is_some() { FNAME } else { 0 };
+        gzip.flags |= if gzip.filename.is_some() && gzip.filename.get_ref().len() > 0 { FNAME } else { 0 };
         gzip.original_size = file_size;
         gzip.writeHeader(writer);
         gzip.writeHeaderExtra(writer);
@@ -318,6 +319,7 @@ impl GZip {
         }
 
         if (self.flags & FNAME) == FNAME {
+            println(format!("filename: {:?}", *self.filename.get_ref()));
             writer.write(*self.filename.get_ref());
             writer.write([0u8]);
         }
@@ -594,7 +596,8 @@ impl<W: Writer> GZipWriter<W> {
 
     /// Create a GZipWriter to compress data automatically when writing, with minimal info.
     pub fn new(inner_writer: W) -> GZipWriter<W> {
-        GZipWriter::with_size_factor(inner_writer, [0u8], 0u32, 0u32, DEFAULT_COMPRESS_LEVEL, DEFAULT_SIZE_FACTOR)
+        // Use "" for filename, no mtime, and no original_size.
+        GZipWriter::with_size_factor(inner_writer, [0u8, ..0], 0u32, 0u32, DEFAULT_COMPRESS_LEVEL, DEFAULT_SIZE_FACTOR)
     }
 
     /// Create a GZipWriter to compress data automatically when writing, with more info.
@@ -842,7 +845,9 @@ mod tests {
     use std::io::io_error;
     use super::GZipReader;
     use super::GZipWriter;
-
+    use super::GZip;
+    use super::DEFAULT_COMPRESS_LEVEL;
+    use super::DEFAULT_SIZE_FACTOR;
 
     #[test]
     fn test_generate_crc_table() {
@@ -854,119 +859,120 @@ mod tests {
     fn test_gzip_reader() {
 
         let original_data = bytes!("ABCDEFGH\r\n");
-        let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
-        match GZipReader::new(comp_reader) {
-            Ok(gzip_reader) => {
-                let mut gzip_reader = gzip_reader;
-                let mut out_buf = [0u8, ..64];
-                let out_len = gzip_reader.read(out_buf);
-                let decomp_buf = out_buf.slice(0, out_len.unwrap());
-                assert!(( decomp_buf.eq(&original_data) ));
-            },
-            Err(e) => fail!(e)
-        }
+        let comp_data = ~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00];
+        let comp_reader = MemReader::new(comp_data);
+        let mut gzip_reader = GZipReader::new(comp_reader);
+        let mut out_buf = [0u8, ..64];
+        let out_len = gzip_reader.read(out_buf);
+        let decomp_buf = out_buf.slice(0, out_len.unwrap());
+        assert!(( decomp_buf.eq(&original_data) ));
     }
 
     #[test]
     fn test_gzip_reader_bad_header_signature() {
 
-        let comp_reader = MemReader::new(~[0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
-        match GZipReader::new(comp_reader) {
-            Ok(_) => fail!(~"Should not succeed"),
-            Err(e) => {  debug!("{:?}", e)  }
-        }
+        let mut expected_error = false;
+        io_error::cond.trap(|e| {
+            expected_error = true;
+            debug!("{:?}", e);
+        }).inside(|| {
+            let comp_reader = MemReader::new(~[0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
+            GZipReader::new(comp_reader);
+        });
+        assert!(expected_error);
     }
 
     #[test]
     fn test_gzip_reader_bad_header_too_short() {
 
-        let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00]);
-        match GZipReader::new(comp_reader) {
-            Ok(_) => fail!(~"Should not succeed"),
-            Err(e) => {  debug!("{:?}", e)  }
-        }
+        let mut expected_error = false;
+        io_error::cond.trap(|e| {
+            expected_error = true;
+            debug!("{:?}", e);
+        }).inside(|| {
+            let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00]);
+            GZipReader::new(comp_reader);
+        });
+        assert!(expected_error);
     }
 
     #[test]
     fn test_gzip_reader_bad_crc() {
 
         let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x02, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0A, 0x00, 0x00, 0x00]);
-        match GZipReader::new(comp_reader) {
-            Ok(gzip_reader) => {
-                let mut gzip_reader = gzip_reader;
-                let mut expected_error = false;
-                do io_error::cond.trap(|c| {
-                    expected_error = true;
-                    debug!("{:?}", c);
-                }).inside {
-                    let mut out_buf = [0u8, ..64];
-                    loop {
-                        match gzip_reader.read(out_buf) {
-                            Some(_) => (),
-                            None    => break
-                        }
-                    }
-                    assert!(expected_error);
+        let mut expected_error = false;
+        let mut gzip_reader = GZipReader::new(comp_reader);
+        io_error::cond.trap(|c| {
+            expected_error = true;
+            debug!("{:?}", c);
+        }).inside(|| {
+            let mut out_buf = [0u8, ..64];
+            loop {
+                match gzip_reader.read(out_buf) {
+                    Some(_) => (),
+                    None    => break
                 }
-            },
-            Err(e) => fail!(e)
-        }
+            }
+        });
+        assert!(expected_error);
     }
 
     #[test]
     fn test_gzip_reader_bad_data() {
 
         let comp_reader = MemReader::new(~[0x1f, 0x8B, 0x08, 0x08, 0x54, 0x3C, 0x3D, 0x52, 0x00, 0x03, 0x74, 0x65, 0x73, 0x74, 0x31, 0x00, 0x73, 0x74, 0x72, 0x76, 0x71, 0x75, 0x73, 0xF7, 0xE0, 0xE5, 0x94, 0xA6, 0xD7, 0xD0, 0x0A, 0x00, 0x00, 0x00]);
-        match GZipReader::new(comp_reader) {
-            Ok(gzip_reader) => {
-                let mut gzip_reader = gzip_reader;
-                let mut expected_error = false;
-                do io_error::cond.trap(|c| {
-                    expected_error = true;
-                    debug!("{:?}", c);
-                }).inside {
-                    let mut out_buf = [0u8, ..64];
-                    loop {
-                        match gzip_reader.read(out_buf) {
-                            Some(_) => (),
-                            None    => break
-                        }
-                    }
-                    assert!(expected_error);
+        let mut expected_error = false;
+        let mut gzip_reader = GZipReader::new(comp_reader);
+        io_error::cond.trap(|c| {
+            expected_error = true;
+            debug!("{:?}", c);
+        }).inside(|| {
+            let mut out_buf = [0u8, ..64];
+            loop {
+                match gzip_reader.read(out_buf) {
+                    Some(_) => (),
+                    None    => break
                 }
-            },
-            Err(e) => fail!(e)
-        }
+            }
+        });
+        assert!(expected_error);
     }
 
     #[test]
-    fn test_gzip_writer() {
+    fn test_gzip_writer_with_size() {
 
         // Compress the data
-        let original_data = bytes!("ABCDEFGH");
-        let mut comp_data;
-        match (GZipWriter::new(MemWriter::new())) {
-            Ok(gzip_writer) => {
-                let mut gzip_writer = gzip_writer;
-                gzip_writer.write(original_data);
-                gzip_writer.finalize();
-                comp_data = gzip_writer.inner().inner();
-            },
-            Err(e) => fail!(e)
-        }
+        let original_data = bytes!("ABCDEFGH\r\n");
+        let file_name = ~"test1";
+        let mut gzip_writer = GZipWriter::with_size_factor(MemWriter::new(), file_name.as_bytes(), 0u32, original_data.len() as u32, DEFAULT_COMPRESS_LEVEL, DEFAULT_SIZE_FACTOR);
+        gzip_writer.write(original_data);
+        gzip_writer.finalize();
+        let comp_data = gzip_writer.inner().inner();
 
         // Decompress the compressed data to compare to the original.
-        match GZipReader::new(MemReader::new(comp_data)) {
-            Ok(gzip_reader) => {
-                let mut gzip_reader = gzip_reader;
-                let mut out_buf = [0u8, ..64];
-                let out_len = gzip_reader.read(out_buf);
-                let decomp_buf = out_buf.slice(0, out_len.unwrap());
-                assert!(( decomp_buf.eq(&original_data) ));
-            },
-            Err(e) => fail!(e)
-        }
+        let mut gzip_reader = GZipReader::new(MemReader::new(comp_data));
+        let mut out_buf = [0u8, ..64];
+        let out_len = gzip_reader.read(out_buf);
+        let decomp_buf = out_buf.slice(0, out_len.unwrap());
+        assert!(( decomp_buf.eq(&original_data) ));
+    }
 
+    #[test]
+    fn test_gzip_writer_new() {
+
+        // Compress the data
+        let original_data = bytes!("ABCDEFGH\r\n");
+        let mut gzip_writer = GZipWriter::new(MemWriter::new());
+        gzip_writer.write(original_data);
+        gzip_writer.finalize();
+        let comp_data = gzip_writer.inner().inner();
+
+        // Decompress the compressed data to compare to the original.
+        let mut gzip_reader = GZipReader::new(MemReader::new(comp_data));
+        let mut out_buf = [0u8, ..64];
+        let out_len = gzip_reader.read(out_buf);
+        let decomp_buf = out_buf.slice(0, out_len.unwrap());
+        assert!(( decomp_buf.eq(&original_data) ));
     }
 
 }

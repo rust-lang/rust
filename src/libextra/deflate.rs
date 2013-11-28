@@ -835,9 +835,9 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 
 #[cfg(test)]
 mod tests {
-    use std::rt::io::mem::MemWriter;
-    use std::rt::io::mem::MemReader;
-    use std::rt::io::Decorator;
+    use std::io::mem::MemWriter;
+    use std::io::mem::MemReader;
+    use std::io::Decorator;
     use std::vec;
     use std::num;
     use std::ptr;
@@ -1246,10 +1246,10 @@ mod tests {
 
         let mut rnd = rand::rng();
         let mut words = ~[];
-        do 2000.times {
+        2000.times(|| {
             let range = rnd.gen_range(1u, 10);
             words.push(rnd.gen_vec::<u8>(range));
-        }
+        });
 
         let in_buf  = words.concat_vec();
         let mut in_bytes = in_buf.len();
@@ -1291,10 +1291,10 @@ mod tests {
 
         let mut rnd = rand::rng();
         let mut words = ~[];
-        do 20000.times {
+        20000.times(|| {
             let range = rnd.gen_range(1u, 10);
             words.push(rnd.gen_vec::<u8>(range));
-        }
+        });
 
         let in_buf  = words.concat_vec();
         let mut in_bytes = in_buf.len();
@@ -1369,10 +1369,10 @@ mod tests {
 
         let mut rnd = rand::rng();
         let mut words = ~[];
-        do 20000.times {
+        20000.times(|| {
             let range = rnd.gen_range(1u, 10);
             words.push(rnd.gen_vec::<u8>(range));
-        }
+        });
 
         let in_buf  = words.concat_vec();
         let mut in_bytes = in_buf.len();
@@ -1666,15 +1666,15 @@ mod tests {
     fn test_flate_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
-        do 20.times {
+        20.times(|| {
             let range = r.gen_range(1u, 10);
             words.push(r.gen_vec::<u8>(range));
-        }
-        do 20.times {
+        });
+        20.times(|| {
             let mut input = ~[];
-            do 2000.times {
+            2000.times(|| {
                 input.push_all(r.choose(words));
-            }
+            });
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
             let cmp = deflate_bytes(input);
@@ -1683,7 +1683,7 @@ mod tests {
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(input, out);
-        }
+        });
     }
 
     #[test]
