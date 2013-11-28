@@ -172,7 +172,7 @@ impl Scheduler {
         self.idle_callback = Some(self.event_loop.pausible_idle_callback(cb));
 
         // Initialize the TLS key.
-        local_ptr::init_tls_key();
+        local_ptr::init();
 
         // Create a task for the scheduler with an empty context.
         let sched_task = ~Task::new_sched_task();
