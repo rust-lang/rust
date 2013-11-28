@@ -238,7 +238,7 @@ pub fn trans_break_cont(bcx: @mut Block,
                 loop_break: Some(brk),
                 loop_label: l,
                 parent,
-                _
+                ..
             }) => {
                 // If we're looking for a labeled loop, check the label...
                 target = if to_end {

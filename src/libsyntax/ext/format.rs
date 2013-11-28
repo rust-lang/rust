@@ -125,7 +125,7 @@ impl Context {
     /// format strings.
     fn verify_piece(&mut self, p: &parse::Piece) {
         match *p {
-            parse::String(*) => {}
+            parse::String(..) => {}
             parse::CurrentArgument => {
                 if self.nest_level == 0 {
                     self.ecx.span_err(self.fmtsp,
@@ -173,7 +173,7 @@ impl Context {
 
     fn verify_count(&mut self, c: parse::Count) {
         match c {
-            parse::CountImplied | parse::CountIs(*) => {}
+            parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
                 self.verify_arg_type(Left(i), Unsigned);
             }

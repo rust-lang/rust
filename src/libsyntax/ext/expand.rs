@@ -313,7 +313,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
                    fld: &MacroExpander)
                    -> SmallVector<@ast::item> {
     match it.node {
-        ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
+        ast::item_mac(..) => expand_item_mac(extsbox, cx, it, fld),
         ast::item_mod(_) | ast::item_foreign_mod(_) => {
             cx.mod_push(it.ident);
             let macro_escape = contains_macro_escape(it.attrs);
@@ -342,7 +342,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
     let (pth, tts, ctxt) = match it.node {
         item_mac(codemap::Spanned {
             node: mac_invoc_tt(ref pth, ref tts, ctxt),
-            _
+            ..
         }) => {
             (pth, (*tts).clone(), ctxt)
         }
@@ -430,8 +430,8 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
     let is_non_escaping_block =
         |t : &@Transformer| -> bool{
         match t {
-            &@BlockInfo(BlockInfo {macros_escape:false,_}) => true,
-            &@BlockInfo(BlockInfo {_}) => false,
+            &@BlockInfo(BlockInfo {macros_escape:false,..}) => true,
+            &@BlockInfo(BlockInfo {..}) => false,
             _ => fail!("special identifier {:?} was bound to a non-BlockInfo",
                         special_block_name)
         }
@@ -1400,7 +1400,7 @@ mod test {
         visit::walk_crate(&mut path_finder, &renamed_ast, ());
 
         match path_finder.path_accumulator {
-            [ast::Path{segments:[ref seg],_}] =>
+            [ast::Path{segments:[ref seg],..}] =>
                 assert_eq!(mtwt_resolve(seg.identifier),a2_name),
             _ => assert_eq!(0,1)
         }
@@ -1415,7 +1415,7 @@ mod test {
         let mut path_finder = new_path_finder(~[]);
         visit::walk_crate(&mut path_finder, &double_renamed, ());
         match path_finder.path_accumulator {
-            [ast::Path{segments:[ref seg],_}] =>
+            [ast::Path{segments:[ref seg],..}] =>
                 assert_eq!(mtwt_resolve(seg.identifier),a3_name),
             _ => assert_eq!(0,1)
         }

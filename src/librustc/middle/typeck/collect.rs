@@ -74,7 +74,7 @@ impl visit::Visitor<()> for CollectItemTypesVisitor {
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
-        let ty::ty_param_bounds_and_ty { ty: ty, _ } =
+        let ty::ty_param_bounds_and_ty { ty: ty, .. } =
             ccx.get_item_ty(lang_item);
         ccx.tcx.intrinsic_defs.insert(lang_item, ty);
     }
@@ -184,7 +184,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
     match tcx.items.get_copy(&trait_id) {
         ast_map::node_item(@ast::item {
             node: ast::item_trait(ref generics, _, ref ms),
-            _
+            ..
         }, _) => {
             let trait_ty_generics =
                 ty_generics(ccx, generics, 0);
@@ -811,7 +811,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
             tcx.tcache.insert(local_def(it.id), tpt);
             return tpt;
         }
-        ast::item_trait(*) => {
+        ast::item_trait(..) => {
             tcx.sess.span_bug(
                 it.span,
                 format!("Invoked ty_of_item on trait"));
@@ -827,9 +827,9 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
             tcx.tcache.insert(local_def(it.id), tpt);
             return tpt;
         }
-        ast::item_impl(*) | ast::item_mod(_) |
+        ast::item_impl(..) | ast::item_mod(_) |
         ast::item_foreign_mod(_) => fail!(),
-        ast::item_mac(*) => fail!("item macros unimplemented")
+        ast::item_mac(..) => fail!("item macros unimplemented")
     }
 }
 

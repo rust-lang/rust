@@ -241,7 +241,7 @@ impl<T> Deque<T> for DList<T> {
     ///
     /// O(1)
     fn pop_front(&mut self) -> Option<T> {
-        self.pop_front_node().map(|~Node{value, _}| value)
+        self.pop_front_node().map(|~Node{value, ..}| value)
     }
 
     /// Add an element last in the list
@@ -255,7 +255,7 @@ impl<T> Deque<T> for DList<T> {
     ///
     /// O(1)
     fn pop_back(&mut self) -> Option<T> {
-        self.pop_back_node().map(|~Node{value, _}| value)
+        self.pop_back_node().map(|~Node{value, ..}| value)
     }
 }
 

@@ -618,7 +618,7 @@ pub enum token_tree {
 
     // a kleene-style repetition sequence with a span, a tt_forest,
     // an optional separator, and a boolean where true indicates
-    // zero or more (*), and false indicates one or more (+).
+    // zero or more (..), and false indicates one or more (+).
     tt_seq(Span, @~[token_tree], Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.

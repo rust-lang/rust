@@ -14,7 +14,7 @@ static C: E = V;
 fn f(a: &E) {
     match *a {
         V => {}
-        VV(*) => fail!()
+        VV(..) => fail!()
     }
 }
 

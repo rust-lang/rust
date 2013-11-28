@@ -278,7 +278,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
                                             version {}", SCHEMA_VERSION))
                     }
                 }
-                Some(*) => return Err(~"malformed json"),
+                Some(..) => return Err(~"malformed json"),
                 None => return Err(~"expected a schema version"),
             }
             let crate = match obj.pop(&~"crate") {
@@ -293,7 +293,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
             let plugin_output = ~[];
             Ok((crate, plugin_output))
         }
-        Ok(*) => Err(~"malformed json input: expected an object at the top"),
+        Ok(..) => Err(~"malformed json input: expected an object at the top"),
     }
 }
 

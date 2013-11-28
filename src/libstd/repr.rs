@@ -550,7 +550,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
                         _align: uint)
                         -> bool {
         match self.var_stk.pop() {
-            SearchingFor(*) => fail!("enum value matched no variant"),
+            SearchingFor(..) => fail!("enum value matched no variant"),
             _ => true
         }
     }

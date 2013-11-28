@@ -127,13 +127,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                sp: Span,
                id: ast::NodeId) {
     match fk {
-        &visit::fk_anon(*) |
-        &visit::fk_fn_block(*) => {
+        &visit::fk_anon(..) |
+        &visit::fk_fn_block(..) => {
             // Closures are checked as part of their containing fn item.
         }
 
-        &visit::fk_item_fn(*) |
-        &visit::fk_method(*) => {
+        &visit::fk_item_fn(..) |
+        &visit::fk_method(..) => {
             debug!("borrowck_fn(id={:?})", id);
 
             // Check the body of fn items.
@@ -305,7 +305,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
     //! traverses the CMT.
 
     match cmt.cat {
-        mc::cat_rvalue(*) |
+        mc::cat_rvalue(..) |
         mc::cat_static_item |
         mc::cat_copied_upvar(_) => {
             None
@@ -497,14 +497,14 @@ impl BorrowckCtxt {
                                adj: @ty::AutoAdjustment)
                                -> mc::cmt {
         match *adj {
-            ty::AutoAddEnv(*) => {
+            ty::AutoAddEnv(..) => {
                 // no autoderefs
                 mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
             }
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
-                    autoderefs: autoderefs, _}) => {
+                    autoderefs: autoderefs, ..}) => {
                 mc::cat_expr_autoderefd(self.tcx, self.method_map, expr,
                                         autoderefs)
             }
@@ -657,10 +657,10 @@ impl BorrowckCtxt {
                      self.cmt_to_str(err.cmt),
                      self.mut_to_str(lk))
             }
-            err_out_of_root_scope(*) => {
+            err_out_of_root_scope(..) => {
                 format!("cannot root managed value long enough")
             }
-            err_out_of_scope(*) => {
+            err_out_of_scope(..) => {
                 format!("borrowed value does not live long enough")
             }
             err_freeze_aliasable_const => {
@@ -733,7 +733,7 @@ impl BorrowckCtxt {
     pub fn note_and_explain_bckerr(&self, err: BckError) {
         let code = err.code;
         match code {
-            err_mutbl(*) | err_freeze_aliasable_const(*) => {}
+            err_mutbl(..) | err_freeze_aliasable_const(..) => {}
 
             err_out_of_root_scope(super_scope, sub_scope) => {
                 note_and_explain_region(

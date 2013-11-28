@@ -1091,7 +1091,7 @@ fn no_rebuilding() {
     command_line_test([~"build", ~"foo"], workspace);
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
-        Success(*) => (), // ok
+        Success(..) => (), // ok
         Fail(ref status) if status.status.matches_exit_status(65) =>
             fail!("no_rebuilding failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding failed for some other reason")
@@ -1110,7 +1110,7 @@ fn no_recopying() {
     assert!(chmod_read_only(&foo_lib.unwrap()));
 
     match command_line_test_partial([~"install", ~"foo"], workspace) {
-        Success(*) => (), // ok
+        Success(..) => (), // ok
         Fail(ref status) if status.status.matches_exit_status(65) =>
             fail!("no_recopying failed: it tried to re-copy foo"),
         Fail(_) => fail!("no_copying failed for some other reason")
@@ -1129,7 +1129,7 @@ fn no_rebuilding_dep() {
     // Now make `bar` read-only so that subsequent rebuilds of it will fail
     assert!(chmod_read_only(&bar_lib));
     match command_line_test_partial([~"build", ~"foo"], workspace) {
-        Success(*) => (), // ok
+        Success(..) => (), // ok
         Fail(ref r) if r.status.matches_exit_status(65) =>
             fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
         Fail(_) => fail!("no_rebuilding_dep failed for some other reason")
@@ -1150,7 +1150,7 @@ fn do_rebuild_dep_dates_change() {
     assert!(chmod_read_only(&bar_lib_name));
 
     match command_line_test_partial([~"build", ~"foo"], workspace) {
-        Success(*) => fail!("do_rebuild_dep_dates_change failed: it didn't rebuild bar"),
+        Success(..) => fail!("do_rebuild_dep_dates_change failed: it didn't rebuild bar"),
         Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_dates_change failed for some other reason")
     }
@@ -1171,7 +1171,7 @@ fn do_rebuild_dep_only_contents_change() {
 
     // should adjust the datestamp
     match command_line_test_partial([~"build", ~"foo"], workspace) {
-        Success(*) => fail!("do_rebuild_dep_only_contents_change failed: it didn't rebuild bar"),
+        Success(..) => fail!("do_rebuild_dep_only_contents_change failed: it didn't rebuild bar"),
         Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("do_rebuild_dep_only_contents_change failed for some other reason")
     }
@@ -1729,7 +1729,7 @@ fn test_cfg_fail() {
                        ~"build",
                        ~"foo"],
                       workspace) {
-        Success(*) => fail!("test_cfg_fail failed"),
+        Success(..) => fail!("test_cfg_fail failed"),
         _          => ()
     }
 }
@@ -2116,7 +2116,7 @@ fn test_rustpkg_test_failure_exit_status() {
     let res = command_line_test_partial([~"test", ~"foo"], foo_workspace);
     match res {
         Fail(_) => {},
-        Success(*) => fail!("Expected test failure but got success")
+        Success(..) => fail!("Expected test failure but got success")
     }
 }
 
@@ -2147,7 +2147,7 @@ fn test_rebuild_when_needed() {
     frob_source_file(foo_workspace, &foo_id, "test.rs");
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
-        Success(*) => fail!("test_rebuild_when_needed didn't rebuild"),
+        Success(..) => fail!("test_rebuild_when_needed didn't rebuild"),
         Fail(ref r) if r.status.matches_exit_status(65) => (), // ok
         Fail(_) => fail!("test_rebuild_when_needed failed for some other reason")
     }
@@ -2167,7 +2167,7 @@ fn test_no_rebuilding() {
                             foo_workspace).expect("test_no_rebuilding failed");
     chmod_read_only(&test_executable);
     match command_line_test_partial([~"test", ~"foo"], foo_workspace) {
-        Success(*) => (), // ok
+        Success(..) => (), // ok
         Fail(ref r) if r.status.matches_exit_status(65) =>
             fail!("test_no_rebuilding failed: it rebuilt the tests"),
         Fail(_) => fail!("test_no_rebuilding failed for some other reason")
@@ -2295,7 +2295,7 @@ fn test_compile_error() {
     writeFile(&main_crate, "pub fn main() { if 42 != ~\"the answer\" { fail!(); } }");
     let result = command_line_test_partial([~"build", ~"foo"], foo_workspace);
     match result {
-        Success(*) => fail!("Failed by succeeding!"), // should be a compile error
+        Success(..) => fail!("Failed by succeeding!"), // should be a compile error
         Fail(ref status) => {
             debug!("Failed with status {:?}... that's good, right?", status);
         }
@@ -2363,7 +2363,7 @@ fn test_c_dependency_no_rebuilding() {
     assert!(chmod_read_only(&c_library_path));
 
     match command_line_test_partial([~"build", ~"cdep"], dir) {
-        Success(*) => (), // ok
+        Success(..) => (), // ok
         Fail(ref r) if r.status.matches_exit_status(65) =>
             fail!("test_c_dependency_no_rebuilding failed: \
                     it tried to rebuild foo.c"),
@@ -2401,7 +2401,7 @@ fn test_c_dependency_yes_rebuilding() {
     }
 
     match command_line_test_partial([~"build", ~"cdep"], dir) {
-        Success(*) => fail!("test_c_dependency_yes_rebuilding failed: \
+        Success(..) => fail!("test_c_dependency_yes_rebuilding failed: \
                             it didn't rebuild and should have"),
         Fail(ref r) if r.status.matches_exit_status(65) => (),
         Fail(_) => fail!("test_c_dependency_yes_rebuilding failed for some other reason")
@@ -2421,7 +2421,7 @@ fn correct_error_dependency() {
                fn main() {}");
 
     match command_line_test_partial([~"build", ~"badpkg"], dir) {
-        Fail(ProcessOutput{ error: error, output: output, _ }) => {
+        Fail(ProcessOutput{ error: error, output: output, .. }) => {
             assert!(str::is_utf8(error));
             assert!(str::is_utf8(output));
             let error_str = str::from_utf8(error);
@@ -2436,7 +2436,7 @@ fn correct_error_dependency() {
                 fail!("Wrong error");
             }
         }
-        Success(*)       => fail!("Test passed when it should have failed")
+        Success(..)       => fail!("Test passed when it should have failed")
     }
 }
 

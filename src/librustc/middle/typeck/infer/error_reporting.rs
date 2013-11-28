@@ -472,7 +472,7 @@ impl ErrorReportingHelpers for InferCtxt {
             infer::BoundRegionInTypeOrImpl(_) => {
                 format!(" for region in type/impl")
             }
-            infer::BoundRegionInCoherence(*) => {
+            infer::BoundRegionInCoherence(..) => {
                 format!(" for coherence check")
             }
         };

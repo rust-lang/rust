@@ -166,7 +166,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
                           &ProcRes);
         }
 
-        let ProcRes{ stdout, _ } = ProcRes;
+        let ProcRes{ stdout, .. } = ProcRes;
         srcs.push(stdout);
         round += 1;
     }

@@ -386,7 +386,7 @@ pub fn self_exe_path() -> Option<Path> {
 
         match io::result(|| io::fs::readlink(&Path::new("/proc/self/exe"))) {
             Ok(Some(path)) => Some(path.as_vec().to_owned()),
-            Ok(None) | Err(*) => None
+            Ok(None) | Err(..) => None
         }
     }
 

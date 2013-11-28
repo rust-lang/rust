@@ -135,12 +135,12 @@ fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
                       sp: Span,
                       id: ast::NodeId) {
     match fk {
-        &visit::fk_item_fn(*) | &visit::fk_method(*) => {
+        &visit::fk_item_fn(..) | &visit::fk_method(..) => {
             fail!("cannot occur, due to visit_item override");
         }
 
         // Visit closures as part of the containing item.
-        &visit::fk_anon(*) | &visit::fk_fn_block(*) => {
+        &visit::fk_anon(..) | &visit::fk_fn_block(..) => {
             this.push_repeating_id(body.id);
             visit::walk_fn(this, fk, decl, body, sp, id, ());
             this.pop_repeating_id(body.id);
@@ -305,7 +305,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
           this.pop_repeating_id(body.id);
       }
 
-      ast::ExprFnBlock(*) | ast::ExprProc(*) => {
+      ast::ExprFnBlock(..) | ast::ExprProc(..) => {
           gather_moves::gather_captures(this.bccx, this.move_data, ex);
           visit::walk_expr(this, ex, ());
       }
@@ -353,14 +353,14 @@ impl<'self> GatherLoanCtxt<'self> {
         let _i = indenter();
 
         match *adjustment {
-            ty::AutoAddEnv(*) => {
+            ty::AutoAddEnv(..) => {
                 debug!("autoaddenv -- no autoref");
                 return;
             }
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
-                    autoref: None, _ }) => {
+                    autoref: None, .. }) => {
                 debug!("no autoref");
                 return;
             }
@@ -489,9 +489,9 @@ impl<'self> GatherLoanCtxt<'self> {
                     }
 
                     ty::ReEmpty |
-                    ty::ReLateBound(*) |
-                    ty::ReEarlyBound(*) |
-                    ty::ReInfer(*) => {
+                    ty::ReLateBound(..) |
+                    ty::ReEarlyBound(..) |
+                    ty::ReInfer(..) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
                             format!("Invalid borrow lifetime: {:?}", loan_region));

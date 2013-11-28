@@ -70,7 +70,7 @@ impl EffectCheckVisitor {
         debug!("effect: checking index with base type {}",
                 ppaux::ty_to_str(self.tcx, base_type));
         match ty::get(base_type).sty {
-            ty::ty_estr(*) => {
+            ty::ty_estr(..) => {
                 self.tcx.sess.span_err(e.span,
                     "modification of string types is not allowed");
             }
@@ -106,7 +106,7 @@ impl Visitor<()> for EffectCheckVisitor {
     fn visit_block(&mut self, block: &ast::Block, _:()) {
         let old_unsafe_context = self.unsafe_context;
         let is_unsafe = match block.rules {
-            ast::UnsafeBlock(*) => true, ast::DefaultBlock => false
+            ast::UnsafeBlock(..) => true, ast::DefaultBlock => false
         };
         if is_unsafe && self.unsafe_context == SafeContext {
             self.unsafe_context = UnsafeBlock(block.id)
@@ -154,10 +154,10 @@ impl Visitor<()> for EffectCheckVisitor {
             ast::ExprAddrOf(ast::MutMutable, base) => {
                 self.check_str_index(base);
             }
-            ast::ExprInlineAsm(*) => {
+            ast::ExprInlineAsm(..) => {
                 self.require_unsafe(expr.span, "use of inline assembly")
             }
-            ast::ExprPath(*) => {
+            ast::ExprPath(..) => {
                 match ty::resolve_expr(self.tcx, expr) {
                     ast::DefStatic(_, true) => {
                         self.require_unsafe(expr.span, "use of mutable static")

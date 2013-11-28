@@ -59,8 +59,8 @@ fn smoke_failure() {
         io: io,
     };
     match io::result(|| Process::new(args)) {
-        Ok(*) => fail!(),
-        Err(*) => {}
+        Ok(..) => fail!(),
+        Err(..) => {}
     }
 }
 

@@ -83,7 +83,7 @@ fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
                 }
             }
         }
-        StaticEnum(*) => {
+        StaticEnum(..) => {
             cx.span_fatal(span, "`Zero` cannot be derived for enums, \
                                  only structs")
         }

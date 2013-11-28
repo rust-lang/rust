@@ -29,7 +29,7 @@ fn main() {
         _ => ()
     }
     match 'c' {
-        S { _ } => (),   //~ ERROR mismatched types: expected `char` but found a structure pattern
+        S { .. } => (),   //~ ERROR mismatched types: expected `char` but found a structure pattern
 
         _ => ()
     }

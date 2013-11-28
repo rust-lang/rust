@@ -455,7 +455,7 @@ impl<T:Send> Exclusive<T> {
         let Exclusive { x: x } = self;
         // Someday we might need to unkillably unwrap an Exclusive, but not today.
         let inner = x.unwrap();
-        let ExData { data: user_data, _ } = inner; // will destroy the LittleLock
+        let ExData { data: user_data, .. } = inner; // will destroy the LittleLock
         user_data
     }
 }

@@ -111,8 +111,8 @@ impl<K: Clone + TotalOrd, V: Clone> Node<K, V>{
     ///Differentiates between leaf and branch nodes.
     fn is_leaf(&self) -> bool{
         match self{
-            &LeafNode(*) => true,
-            &BranchNode(*) => false
+            &LeafNode(..) => true,
+            &BranchNode(..) => false
         }
     }
 
@@ -208,7 +208,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Node<K, V>{
     fn to_str(&self) -> ~str{
         match *self{
             LeafNode(ref leaf) => leaf.to_str(),
-            BranchNode(*) => ~""
+            BranchNode(..) => ~""
         }
     }
 }

@@ -973,7 +973,7 @@ fn is_writeable(p: &Path) -> bool {
 
     !p.exists() ||
         (match io::result(|| p.stat()) {
-            Err(*) => false,
+            Err(..) => false,
             Ok(m) => m.perm & io::UserWrite == io::UserWrite
         })
 }

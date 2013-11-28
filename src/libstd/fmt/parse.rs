@@ -217,7 +217,7 @@ impl<'self> Parser<'self> {
                 self.cur.next();
                 true
             }
-            Some(*) | None => false,
+            Some(..) | None => false,
         }
     }
 
@@ -251,7 +251,7 @@ impl<'self> Parser<'self> {
         loop {
             match self.cur.clone().next() {
                 Some((_, c)) if char::is_whitespace(c) => { self.cur.next(); }
-                Some(*) | None => { return }
+                Some(..) | None => { return }
             }
         }
     }
@@ -284,7 +284,7 @@ impl<'self> Parser<'self> {
                 Some((pos, '}')) | Some((pos, '{')) => {
                     return self.input.slice(start, pos);
                 }
-                Some(*) => { self.cur.next(); }
+                Some(..) => { self.cur.next(); }
                 None => {
                     self.cur.next();
                     return self.input.slice(start, self.input.len());
@@ -340,7 +340,7 @@ impl<'self> Parser<'self> {
                         spec.fill = Some(c);
                         self.cur.next();
                     }
-                    Some(*) | None => {}
+                    Some(..) | None => {}
                 }
             }
             None => {}
@@ -449,7 +449,7 @@ impl<'self> Parser<'self> {
             self.ws();
             match self.cur.clone().next() {
                 Some((_, '}')) => { break }
-                Some(*) | None => {}
+                Some(..) | None => {}
             }
         }
         // The "other" selector must be present
@@ -493,10 +493,10 @@ impl<'self> Parser<'self> {
                             }
                         }
                     }
-                    Some(*) | None => {}
+                    Some(..) | None => {}
                 }
             }
-            Some(*) | None => {}
+            Some(..) | None => {}
         }
 
         // Next, generate all the arms
@@ -547,7 +547,7 @@ impl<'self> Parser<'self> {
             self.ws();
             match self.cur.clone().next() {
                 Some((_, '}')) => { break }
-                Some(*) | None => {}
+                Some(..) | None => {}
             }
         }
 
@@ -597,7 +597,7 @@ impl<'self> Parser<'self> {
                 self.cur.next();
                 pos
             }
-            Some(*) | None => { return self.input.slice(0, 0); }
+            Some(..) | None => { return self.input.slice(0, 0); }
         };
         let mut end;
         loop {

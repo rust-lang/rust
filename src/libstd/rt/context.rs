@@ -97,10 +97,10 @@ impl Context {
     pub fn swap(out_context: &mut Context, in_context: &Context) {
         rtdebug!("swapping contexts");
         let out_regs: &mut Registers = match out_context {
-            &Context { regs: ~ref mut r, _ } => r
+            &Context { regs: ~ref mut r, .. } => r
         };
         let in_regs: &Registers = match in_context {
-            &Context { regs: ~ref r, _ } => r
+            &Context { regs: ~ref r, .. } => r
         };
 
         rtdebug!("noting the stack limit and doing raw swap");
