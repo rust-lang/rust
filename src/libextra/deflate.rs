@@ -56,7 +56,7 @@ See gzip.rs for sample usage.
 
 */
 
-use std::rt::io::{Reader, Writer};
+use std::io::{Reader, Writer};
 use std::{vec, num, ptr};
 use std::libc::{c_void, size_t, c_int, c_uint};
 
@@ -222,12 +222,12 @@ pub fn calc_buf_size(buf_size_factor: uint) -> uint {
 
 /// Compression data structure
 struct Deflator {
-    tdefl_compressor: *c_void,
-    in_buf: ~[u8],
-    out_buf: ~[u8],
-    in_offset: uint,
-    in_buf_total: uint,
-    out_offset: uint,
+    priv tdefl_compressor: *c_void,
+    priv in_buf: ~[u8],
+    priv out_buf: ~[u8],
+    priv in_offset: uint,
+    priv in_buf_total: uint,
+    priv out_offset: uint,
     read_total: uint,
     write_total: uint,
 }
@@ -241,7 +241,6 @@ impl Deflator {
     /// Creates the Deflator structure and allocates the underlying tdefl_compressor structure.
     /// Allocates the IO buffers with buf_size_factor.  The buf_size_factor is a power of 2 of K: 2^buf_size_factor X 1K.
     pub fn with_size_factor(buf_size_factor: uint) -> Deflator {
-        #[fixed_stack_segment];
         #[inline(never)];
         unsafe {
             Deflator {
@@ -260,7 +259,6 @@ impl Deflator {
     /// Releases the underlying tdefl_compressor structure.  After this call, the instance can not be used any more.
     /// Called by the drop() destructor.
     fn free(&mut self) {
-        #[fixed_stack_segment];
         #[inline(never)];
         unsafe {
             if self.tdefl_compressor != ptr::null() {
@@ -276,7 +274,6 @@ impl Deflator {
     /// add_zlib_header set to true to add the ZLib-format header in front of and an ADLER32 CRC at the end of the deflated data.
     /// add_crc32 set to true to add an ADLER32 CRC at the end of the deflated data regardless how add_zlib is set.
     pub fn init(&self, compress_level: uint, add_zlib_header: bool, add_crc32: bool) -> DeflateStatus {
-        #[fixed_stack_segment];
         #[inline(never)];
 
         let compress_level = num::min(MAX_COMPRESS_LEVEL, compress_level);
@@ -300,13 +297,9 @@ impl Deflator {
         self.compress_stream(
             // upcall function to read data for compression
             |in_buf| {
-                if in_reader.eof() {
-                    0                           // Return 0 for EOF
-                } else {
-                    match in_reader.read(in_buf) {
-                        Some(nread) => nread,   // Return number of bytes read, including 0 for EOF
+                match in_reader.read(in_buf) {
+                    Some(nread) => nread,   // Return number of bytes read, including 0 for EOF
                         None => 0               // Return 0 for EOF
-                    }
                 }
             },
             // upcall function to write compressed data
@@ -331,8 +324,8 @@ impl Deflator {
     /// The is_eof flag is set for the last batch of compressed data.
     /// Write_fn can return an abort flag to abort the compression.
     pub fn compress_stream(&mut self, 
-                           read_fn:  &fn(in_buf: &mut [u8])->uint, 
-                           write_fn: &fn(out_buf: &[u8], is_eof: bool)->bool) -> DeflateStatus {
+                           read_fn:  |in_buf: &mut [u8]|->uint, 
+                           write_fn: |out_buf: &[u8], is_eof: bool|->bool) -> DeflateStatus {
 
         let out_buf_total = self.out_buf.len();
 
@@ -382,7 +375,7 @@ impl Deflator {
     pub fn compress_write(&mut self,
                           input_buf: &[u8],
                           final_write: bool,
-                          write_fn: &fn(out_buf: &[u8], is_eof: bool)) -> DeflateStatus {
+                          write_fn: |out_buf: &[u8], is_eof: bool|) -> DeflateStatus {
 
         let out_buf_total = self.out_buf.len();
         let input_total = input_buf.len();
@@ -453,7 +446,6 @@ impl Deflator {
                         in_buf:  &[u8], in_offset:  uint, in_bytes:  &mut uint, 
                         out_buf: &[u8], out_offset: uint, out_bytes: &mut uint, 
                         final_input: bool) -> DeflateStatus {
-        #[fixed_stack_segment];
         #[inline(never)];
 
         let mut status : c_int = 0;
@@ -462,8 +454,8 @@ impl Deflator {
         let in_buf_next  = in_buf.slice(in_offset, in_offset + *in_bytes);
         let out_buf_next = out_buf.slice(out_offset, out_offset + *out_bytes);
 
-        do in_buf_next.as_imm_buf |in_next_ptr, _| {
-            do out_buf_next.as_imm_buf |out_next_ptr, _| {
+        in_buf_next.as_imm_buf(|in_next_ptr, _| {
+            out_buf_next.as_imm_buf(|out_next_ptr, _| {
                 unsafe {
                     status = rustrt::tdefl_compress(self.tdefl_compressor, 
                                                     in_next_ptr as *c_void, 
@@ -472,8 +464,8 @@ impl Deflator {
                                                     &mut out_bytes_sz, 
                                                     if final_input { TDEFL_FINISH } else { TDEFL_NO_FLUSH });
                 }
-            }
-        }
+            })
+        });
 
         *in_bytes = in_bytes_sz as uint;
         *out_bytes = out_bytes_sz as uint;
@@ -492,14 +484,14 @@ impl Drop for Deflator {
 
 /// Decompression data structure
 struct Inflator {
-    tinfl_decompressor: *c_void,
-    in_buf: ~[u8],
-    out_buf: ~[u8],
-    in_offset: uint,                // beginning of the pending input data for decompression
-    in_buf_total: uint,             // end of the pending input data for decompression
-    out_begin: uint,                // beginning of cached output
-    out_offset: uint,               // end of the cached output, beginning of available space for decompression.
-    decomp_done: bool,
+    priv tinfl_decompressor: *c_void,
+    priv in_buf: ~[u8],
+    priv out_buf: ~[u8],
+    priv in_offset: uint,                // beginning of the pending input data for decompression
+    priv in_buf_total: uint,             // end of the pending input data for decompression
+    priv out_begin: uint,                // beginning of cached output
+    priv out_offset: uint,               // end of the cached output, beginning of available space for decompression.
+    priv decomp_done: bool,
     read_total: uint,
     write_total: uint,
 }
@@ -513,7 +505,6 @@ impl Inflator {
     /// Creates the Inflator structure and allocates the underlying tdefl_compressor structure.
     /// Allocates the IO buffers with buf_size_factor.  The buf_size_factor is a power of 2 of K: 2^buf_size_factor X 1K.
     pub fn with_size_factor(buf_size_factor: uint) -> Inflator {
-        #[fixed_stack_segment];
         #[inline(never)];
         unsafe {
             Inflator {
@@ -533,7 +524,6 @@ impl Inflator {
 
     /// Releases the underlying tinfl_decompressor structure.  After this call, the instance must not be used anymore.
     fn free(&mut self) {
-        #[fixed_stack_segment];
         #[inline(never)];
         unsafe {
             if self.tinfl_decompressor != ptr::null() {
@@ -594,9 +584,9 @@ impl Inflator {
     ///
     /// The callback rest_fn takes in the rest_buf buffer containing any extra unprocessed input data.
     pub fn decompress_stream(&mut self, 
-                             read_fn:  &fn(in_buf: &mut [u8])->uint, 
-                             write_fn: &fn(out_buf: &[u8], is_eof: bool)->bool,
-                             rest_fn:  &fn(rest_buf: &[u8]) ) -> InflateStatus {
+                             read_fn:  |in_buf: &mut [u8]|->uint, 
+                             write_fn: |out_buf: &[u8], is_eof: bool|->bool,
+                             rest_fn:  |rest_buf: &[u8]| ) -> InflateStatus {
 
         let out_buf_total = self.out_buf.len();
 
@@ -648,7 +638,7 @@ impl Inflator {
     /// The decompressed data are returned to caller one batch at a time.
     /// After reaching the end of output, the remaining unprocessed input data can be retrieved with get_rest().
     pub fn decompress_read(&mut self, 
-                           read_fn:  &fn(in_buf: &mut [u8])->uint, 
+                           read_fn:  |in_buf: &mut [u8]|->uint, 
                            output_buf: &mut [u8]) -> Result<uint, InflateStatus> {
 
         let out_buf_total = self.out_buf.len();
@@ -739,7 +729,6 @@ impl Inflator {
     pub fn decompress_buf(&self,
                           in_buf:  &[u8], in_offset:  uint, in_bytes:  &mut uint, final_input: bool, 
                           out_buf: &[u8], out_offset: uint, out_bytes: &mut uint, reuse_out_buf: bool) -> InflateStatus {
-        #[fixed_stack_segment];
         #[inline(never)];
 
         let mut status : c_int = 0;
@@ -751,9 +740,9 @@ impl Inflator {
             if final_input   { 0 } else { TINFL_FLAG_HAS_MORE_INPUT } |
             if reuse_out_buf { 0 } else { TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF };
 
-        do in_buf_next.as_imm_buf |in_next_ptr, _| {
-            do out_buf.as_imm_buf |out_base_ptr, _| {
-                do out_buf_next.as_imm_buf |out_next_ptr, _| {
+        in_buf_next.as_imm_buf( |in_next_ptr, _| {
+            out_buf.as_imm_buf( |out_base_ptr, _| {
+                out_buf_next.as_imm_buf( |out_next_ptr, _| {
                     unsafe {
                         status = rustrt::tinfl_decompress(self.tinfl_decompressor, 
                                                           in_next_ptr as *c_void, 
@@ -763,9 +752,9 @@ impl Inflator {
                                                           &mut out_bytes_sz, 
                                                           decompress_flags);
                     }
-                }
-            }
-        }
+                })
+            })
+        });
 
         *in_bytes = in_bytes_sz as uint;
         *out_bytes = out_bytes_sz as uint;
@@ -783,9 +772,9 @@ impl Drop for Inflator {
 
 
 fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    #[fixed_stack_segment]; #[inline(never)];
+    #[inline(never)];
 
-    do bytes.as_imm_buf |b, len| {
+    bytes.as_imm_buf( |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -799,7 +788,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
             rustrt::mz_free(res);
             out
         }
-    }
+    })
 }
 
 /// Compress a byte buffer to a buffer in heap
@@ -813,9 +802,9 @@ pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 }
 
 fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    #[fixed_stack_segment]; #[inline(never)];
+    #[inline(never)];
 
-    do bytes.as_imm_buf |b, len| {
+    bytes.as_imm_buf( |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -825,11 +814,11 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
                                                      flags);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
-                                            outsz as uint);
+                                             outsz as uint);
             rustrt::mz_free(res);
             out
         }
-    }
+    })
 }
 
 /// Decompress a byte buffer to a buffer in heap
