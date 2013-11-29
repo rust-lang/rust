@@ -217,17 +217,17 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
             _ => {
                 ~"an interpolated " +
                     match (*nt) {
-                      nt_item(*) => ~"item",
-                      nt_block(*) => ~"block",
-                      nt_stmt(*) => ~"statement",
-                      nt_pat(*) => ~"pattern",
-                      nt_attr(*) => fail!("should have been handled"),
-                      nt_expr(*) => fail!("should have been handled above"),
-                      nt_ty(*) => ~"type",
-                      nt_ident(*) => ~"identifier",
-                      nt_path(*) => ~"path",
-                      nt_tt(*) => ~"tt",
-                      nt_matchers(*) => ~"matcher sequence"
+                      nt_item(..) => ~"item",
+                      nt_block(..) => ~"block",
+                      nt_stmt(..) => ~"statement",
+                      nt_pat(..) => ~"pattern",
+                      nt_attr(..) => fail!("should have been handled"),
+                      nt_expr(..) => fail!("should have been handled above"),
+                      nt_ty(..) => ~"type",
+                      nt_ident(..) => ~"identifier",
+                      nt_path(..) => ~"path",
+                      nt_tt(..) => ~"tt",
+                      nt_matchers(..) => ~"matcher sequence"
                     }
             }
         }
@@ -260,10 +260,10 @@ pub fn can_begin_expr(t: &Token) -> bool {
       BINOP(OR) => true, // in lambda syntax
       OROR => true, // in lambda syntax
       MOD_SEP => true,
-      INTERPOLATED(nt_expr(*))
-      | INTERPOLATED(nt_ident(*))
-      | INTERPOLATED(nt_block(*))
-      | INTERPOLATED(nt_path(*)) => true,
+      INTERPOLATED(nt_expr(..))
+      | INTERPOLATED(nt_ident(..))
+      | INTERPOLATED(nt_block(..))
+      | INTERPOLATED(nt_path(..)) => true,
       _ => false
     }
 }
@@ -303,7 +303,7 @@ pub fn is_ident(t: &Token) -> bool {
 
 pub fn is_ident_or_path(t: &Token) -> bool {
     match *t {
-      IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
+      IDENT(_, _) | INTERPOLATED(nt_path(..)) => true,
       _ => false
     }
 }

@@ -88,39 +88,39 @@ impl<'self> fold::DocFolder for Stripper<'self> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             // These items can all get re-exported
-            clean::TypedefItem(*) | clean::StaticItem(*) |
-            clean::StructItem(*) | clean::EnumItem(*) |
-            clean::TraitItem(*) | clean::FunctionItem(*) |
-            clean::VariantItem(*) | clean::MethodItem(*) |
-            clean::ForeignFunctionItem(*) | clean::ForeignStaticItem(*) => {
+            clean::TypedefItem(..) | clean::StaticItem(..) |
+            clean::StructItem(..) | clean::EnumItem(..) |
+            clean::TraitItem(..) | clean::FunctionItem(..) |
+            clean::VariantItem(..) | clean::MethodItem(..) |
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
                 if !self.exported_items.contains(&i.id) {
                     return None;
                 }
             }
 
-            clean::ViewItemItem(*) => {
+            clean::ViewItemItem(..) => {
                 if i.visibility != Some(ast::public) {
                     return None
                 }
             }
 
-            clean::StructFieldItem(*) => {
+            clean::StructFieldItem(..) => {
                 if i.visibility == Some(ast::private) {
                     return None;
                 }
             }
 
             // handled below
-            clean::ModuleItem(*) => {}
+            clean::ModuleItem(..) => {}
 
             // impls/tymethods have no control over privacy
-            clean::ImplItem(*) | clean::TyMethodItem(*) => {}
+            clean::ImplItem(..) | clean::TyMethodItem(..) => {}
         }
 
         let fastreturn = match i.inner {
             // nothing left to do for traits (don't want to filter their
             // methods out, visibility controlled by the trait)
-            clean::TraitItem(*) => true,
+            clean::TraitItem(..) => true,
 
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
@@ -159,12 +159,12 @@ impl<'self> fold::DocFolder for ImplStripper<'self> {
         match i.inner {
             clean::ImplItem(ref imp) => {
                 match imp.trait_ {
-                    Some(clean::ResolvedPath{ id, _ }) => {
+                    Some(clean::ResolvedPath{ id, .. }) => {
                         if !self.contains(&id) {
                             return None;
                         }
                     }
-                    Some(*) | None => {}
+                    Some(..) | None => {}
                 }
             }
             _ => {}

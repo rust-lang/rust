@@ -399,7 +399,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_expr(expr, in_out, loop_scopes);
             }
 
-            ast::StmtMac(*) => {
+            ast::StmtMac(..) => {
                 self.tcx().sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
@@ -568,7 +568,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
-            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ast::ExprLoop(ref blk, _) => {
                 //
@@ -706,8 +706,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::ExprLogLevel |
-            ast::ExprLit(*) |
-            ast::ExprPath(*) |
+            ast::ExprLit(..) |
+            ast::ExprPath(..) |
             ast::ExprSelf => {
             }
 
@@ -734,7 +734,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_block(blk, in_out, loop_scopes);
             }
 
-            ast::ExprMac(*) => {
+            ast::ExprMac(..) => {
                 self.tcx().sess.span_bug(expr.span, "unexpanded macro");
             }
         }

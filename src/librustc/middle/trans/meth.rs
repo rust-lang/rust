@@ -113,7 +113,7 @@ pub fn trans_method(ccx: @mut CrateContext,
         let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
         let self_ty = match param_substs {
             None => self_ty,
-            Some(@param_substs {tys: ref tys, self_ty: ref self_sub, _}) => {
+            Some(@param_substs {tys: ref tys, self_ty: ref self_sub, ..}) => {
                 ty::subst_tps(ccx.tcx, *tys, *self_sub, self_ty)
             }
         };
@@ -361,7 +361,7 @@ pub fn trans_monomorphized_callee(bcx: @mut Block,
               })
           }
       }
-      typeck::vtable_param(*) => {
+      typeck::vtable_param(..) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
       }
     };
@@ -437,7 +437,7 @@ pub fn trans_trait_callee(bcx: @mut Block,
     // make a local copy for trait if needed
     let self_ty = expr_ty_adjusted(bcx, self_expr);
     let self_scratch = match ty::get(self_ty).sty {
-        ty::ty_trait(_, _, ty::RegionTraitStore(*), _, _) => {
+        ty::ty_trait(_, _, ty::RegionTraitStore(..), _, _) => {
             unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr))
         }
         _ => {

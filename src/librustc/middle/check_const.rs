@@ -86,9 +86,9 @@ pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
         match e.node {
             ExprVstore(
                 @Expr { node: ExprLit(@codemap::Spanned {
-                    node: lit_str(*),
-                    _}),
-                       _ },
+                    node: lit_str(..),
+                    ..}),
+                       .. },
                 ExprVstoreUniq
             ) => true,
             _ => false
@@ -120,8 +120,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                           "cannot do allocations in constant expressions");
             return;
           }
-          ExprLit(@codemap::Spanned {node: lit_str(*), _}) => { }
-          ExprBinary(*) | ExprUnary(*) => {
+          ExprLit(@codemap::Spanned {node: lit_str(..), ..}) => { }
+          ExprBinary(..) | ExprUnary(..) => {
             if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
@@ -147,7 +147,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                              items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(&DefStatic(*)) |
+              Some(&DefStatic(..)) |
               Some(&DefFn(_, _)) |
               Some(&DefVariant(_, _, _)) |
               Some(&DefStruct(_)) => { }
@@ -166,8 +166,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           }
           ExprCall(callee, _, NoSugar) => {
             match def_map.find(&callee.id) {
-                Some(&DefStruct(*)) => {}    // OK.
-                Some(&DefVariant(*)) => {}    // OK.
+                Some(&DefStruct(..)) => {}    // OK.
+                Some(&DefVariant(..)) => {}    // OK.
                 _ => {
                     sess.span_err(
                         e.span,
@@ -181,12 +181,12 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprVstore(_, ExprVstoreSlice) |
           ExprVec(_, MutImmutable) |
           ExprAddrOf(MutImmutable, _) |
-          ExprField(*) |
-          ExprIndex(*) |
-          ExprTup(*) |
-          ExprRepeat(*) |
-          ExprStruct(*) => { }
-          ExprAddrOf(*) => {
+          ExprField(..) |
+          ExprIndex(..) |
+          ExprTup(..) |
+          ExprRepeat(..) |
+          ExprStruct(..) => { }
+          ExprAddrOf(..) => {
                 sess.span_err(
                     e.span,
                     "borrowed pointers in constants may only refer to \
@@ -251,7 +251,7 @@ impl Visitor<()> for CheckItemRecursionVisitor {
 
     fn visit_expr(&mut self, e: @Expr, _: ()) {
         match e.node {
-            ExprPath(*) => match self.env.def_map.find(&e.id) {
+            ExprPath(..) => match self.env.def_map.find(&e.id) {
                 Some(&DefStatic(def_id, _)) if ast_util::is_local(def_id) =>
                     match self.env.ast_map.get_copy(&def_id.node) {
                         ast_map::node_item(it, _) => {

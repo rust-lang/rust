@@ -298,7 +298,7 @@ impl IrMaps {
         self.num_vars += 1;
 
         match vk {
-            Local(LocalInfo { id: node_id, _ }) | Arg(node_id, _) => {
+            Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             },
             ImplicitRet => {}
@@ -321,7 +321,7 @@ impl IrMaps {
 
     pub fn variable_name(&mut self, var: Variable) -> @str {
         match self.var_kinds[*var] {
-            Local(LocalInfo { ident: nm, _ }) | Arg(_, nm) => {
+            Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
                 self.tcx.sess.str_of(nm)
             },
             ImplicitRet => @"<implicit-ret>"
@@ -394,14 +394,14 @@ fn visit_fn(v: &mut LivenessVisitor,
     match *fk {
         visit::fk_method(_, _, method) => {
             match method.explicit_self.node {
-                sty_value(_) | sty_region(*) | sty_box(_) | sty_uniq(_) => {
+                sty_value(_) | sty_region(..) | sty_box(_) | sty_uniq(_) => {
                     fn_maps.add_variable(Arg(method.self_id,
                                              special_idents::self_));
                 }
                 sty_static => {}
             }
         }
-        visit::fk_item_fn(*) | visit::fk_anon(*) | visit::fk_fn_block(*) => {}
+        visit::fk_item_fn(..) | visit::fk_anon(..) | visit::fk_fn_block(..) => {}
     }
 
     // gather up the various local variables, significant expressions,
@@ -486,7 +486,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @mut IrMaps) {
         }
         visit::walk_expr(v, expr, this);
       }
-      ExprFnBlock(*) | ExprProc(*) => {
+      ExprFnBlock(..) | ExprProc(..) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -521,25 +521,25 @@ fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @mut IrMaps) {
       }
 
       // live nodes required for interesting control flow:
-      ExprIf(*) | ExprMatch(*) | ExprWhile(*) | ExprLoop(*) => {
+      ExprIf(..) | ExprMatch(..) | ExprWhile(..) | ExprLoop(..) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(v, expr, this);
       }
-      ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+      ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
       ExprBinary(_, op, _, _) if ast_util::lazy_binop(op) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(v, expr, this);
       }
 
       // otherwise, live nodes are not required:
-      ExprIndex(*) | ExprField(*) | ExprVstore(*) | ExprVec(*) |
-      ExprCall(*) | ExprMethodCall(*) | ExprTup(*) | ExprLogLevel |
-      ExprBinary(*) | ExprAddrOf(*) |
-      ExprDoBody(*) | ExprCast(*) | ExprUnary(*) | ExprBreak(_) |
-      ExprAgain(_) | ExprLit(_) | ExprRet(*) | ExprBlock(*) |
-      ExprAssign(*) | ExprAssignOp(*) | ExprMac(*) |
-      ExprStruct(*) | ExprRepeat(*) | ExprParen(*) |
-      ExprInlineAsm(*) => {
+      ExprIndex(..) | ExprField(..) | ExprVstore(..) | ExprVec(..) |
+      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) | ExprLogLevel |
+      ExprBinary(..) | ExprAddrOf(..) |
+      ExprDoBody(..) | ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
+      ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
+      ExprAssign(..) | ExprAssignOp(..) | ExprMac(..) |
+      ExprStruct(..) | ExprRepeat(..) | ExprParen(..) |
+      ExprInlineAsm(..) => {
           visit::walk_expr(v, expr, this);
       }
     }
@@ -956,7 +956,7 @@ impl Liveness {
             return self.propagate_through_expr(expr, succ);
           }
 
-          StmtMac(*) => {
+          StmtMac(..) => {
             self.tcx.sess.span_bug(stmt.span, "unexpanded macro");
           }
         }
@@ -1073,7 +1073,7 @@ impl Liveness {
             self.propagate_through_loop(expr, Some(cond), blk, succ)
           }
 
-          ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+          ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
@@ -1243,7 +1243,7 @@ impl Liveness {
           }
 
           ExprLogLevel |
-          ExprLit(*) => {
+          ExprLit(..) => {
             succ
           }
 
@@ -1251,7 +1251,7 @@ impl Liveness {
             self.propagate_through_block(blk, succ)
           }
 
-          ExprMac(*) => {
+          ExprMac(..) => {
             self.tcx.sess.span_bug(expr.span, "unexpanded macro");
           }
         }
@@ -1493,18 +1493,18 @@ fn check_expr(this: &mut Liveness, expr: @Expr) {
       }
 
       // no correctness conditions related to liveness
-      ExprCall(*) | ExprMethodCall(*) | ExprIf(*) | ExprMatch(*) |
-      ExprWhile(*) | ExprLoop(*) | ExprIndex(*) | ExprField(*) |
-      ExprVstore(*) | ExprVec(*) | ExprTup(*) | ExprLogLevel |
-      ExprBinary(*) | ExprDoBody(*) |
-      ExprCast(*) | ExprUnary(*) | ExprRet(*) | ExprBreak(*) |
-      ExprAgain(*) | ExprLit(_) | ExprBlock(*) |
-      ExprMac(*) | ExprAddrOf(*) | ExprStruct(*) | ExprRepeat(*) |
-      ExprParen(*) | ExprFnBlock(*) | ExprProc(*) | ExprPath(*) |
-      ExprSelf(*) => {
+      ExprCall(..) | ExprMethodCall(..) | ExprIf(..) | ExprMatch(..) |
+      ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
+      ExprVstore(..) | ExprVec(..) | ExprTup(..) | ExprLogLevel |
+      ExprBinary(..) | ExprDoBody(..) |
+      ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
+      ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
+      ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
+      ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprPath(..) |
+      ExprSelf(..) => {
         visit::walk_expr(this, expr, ());
       }
-      ExprForLoop(*) => fail!("non-desugared expr_for_loop")
+      ExprForLoop(..) => fail!("non-desugared expr_for_loop")
     }
 }
 

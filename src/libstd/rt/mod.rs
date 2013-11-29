@@ -96,7 +96,7 @@ pub mod shouldnt_be_public {
     pub use super::select::SelectInner;
     pub use super::select::{SelectInner, SelectPortInner};
     pub use super::local_ptr::native::maybe_tls_key;
-    #[cfg(not(stage0), not(windows), not(target_os = "android"))]
+    #[cfg(not(windows), not(target_os = "android"))]
     pub use super::local_ptr::compiled::RT_TLS_PTR;
 }
 

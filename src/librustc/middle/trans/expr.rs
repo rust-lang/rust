@@ -193,7 +193,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     };
     debug!("unadjusted datum: {}", datum.to_str(bcx.ccx()));
     match *adjustment {
-        AutoAddEnv(*) => {
+        AutoAddEnv(..) => {
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
         }
         AutoDerefRef(ref adj) => {
@@ -209,24 +209,24 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                 None => {
                     datum
                 }
-                Some(AutoUnsafe(*)) | // region + unsafe ptrs have same repr
-                Some(AutoPtr(*)) => {
+                Some(AutoUnsafe(..)) | // region + unsafe ptrs have same repr
+                Some(AutoPtr(..)) => {
                     unpack_datum!(bcx, auto_ref(bcx, datum))
                 }
-                Some(AutoBorrowVec(*)) => {
+                Some(AutoBorrowVec(..)) => {
                     unpack_datum!(bcx, auto_slice(bcx, adj.autoderefs,
                                                   expr, datum))
                 }
-                Some(AutoBorrowVecRef(*)) => {
+                Some(AutoBorrowVecRef(..)) => {
                     unpack_datum!(bcx, auto_slice_and_ref(bcx, adj.autoderefs,
                                                           expr, datum))
                 }
-                Some(AutoBorrowFn(*)) => {
+                Some(AutoBorrowFn(..)) => {
                     let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span,
                                                     datum.ty, Some(adjustment));
                     unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
                 }
-                Some(AutoBorrowObj(*)) => {
+                Some(AutoBorrowObj(..)) => {
                     unpack_datum!(bcx, auto_borrow_obj(
                         bcx, adj.autoderefs, expr, datum))
                 }
@@ -364,7 +364,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         let source_data_ptr = GEPi(bcx, source_llval, [0u, abi::trt_field_box]);
         let source_data = Load(bcx, source_data_ptr); // always a ptr
         let target_data = match source_store {
-            ty::BoxTraitStore(*) => {
+            ty::BoxTraitStore(..) => {
                 // For deref of @T or @mut T, create a dummy datum and
                 // use the datum's deref method. This is more work
                 // than just calling GEPi ourselves, but it ensures
@@ -388,7 +388,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                                                      autoderefs));
                 derefd_datum.to_rptr(bcx).to_value_llval(bcx)
             }
-            ty::UniqTraitStore(*) => {
+            ty::UniqTraitStore(..) => {
                 // For a ~T box, there may or may not be a header,
                 // depending on whether the type T references managed
                 // boxes. However, since we do not *know* the type T
@@ -410,7 +410,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                     Load(bcx, borrow_offset_ptr);
                 InBoundsGEP(bcx, llopaque, [borrow_offset])
             }
-            ty::RegionTraitStore(*) => {
+            ty::RegionTraitStore(..) => {
                 source_data
             }
         };
@@ -709,14 +709,14 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
-        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s, _), _}) => {
+        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s, _), ..}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::ExprVstore(contents, ast::ExprVstoreSlice) |
         ast::ExprVstore(contents, ast::ExprVstoreMutSlice) => {
             return tvec::trans_slice_vstore(bcx, expr, contents, dest);
         }
-        ast::ExprVec(*) | ast::ExprRepeat(*) => {
+        ast::ExprVec(..) | ast::ExprRepeat(..) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
         ast::ExprFnBlock(ref decl, ref body) |
@@ -832,7 +832,7 @@ fn trans_def_dps_unadjusted(bcx: @mut Block, ref_expr: &ast::Expr,
                     let repr = adt::represent_type(ccx, ty);
                     adt::trans_start_init(bcx, repr, lldest, 0);
                 }
-                ty::ty_bare_fn(*) => {
+                ty::ty_bare_fn(..) => {
                     let fn_data = callee::trans_fn_ref(bcx, def_id, ref_expr.id);
                     Store(bcx, fn_data.llfn, lldest);
                 }
@@ -1672,14 +1672,14 @@ pub enum cast_kind {
 pub fn cast_type_kind(t: ty::t) -> cast_kind {
     match ty::get(t).sty {
         ty::ty_char       => cast_integral,
-        ty::ty_float(*)   => cast_float,
-        ty::ty_ptr(*)     => cast_pointer,
-        ty::ty_rptr(*)    => cast_pointer,
-        ty::ty_bare_fn(*) => cast_pointer,
-        ty::ty_int(*)     => cast_integral,
-        ty::ty_uint(*)    => cast_integral,
+        ty::ty_float(..)   => cast_float,
+        ty::ty_ptr(..)     => cast_pointer,
+        ty::ty_rptr(..)    => cast_pointer,
+        ty::ty_bare_fn(..) => cast_pointer,
+        ty::ty_int(..)     => cast_integral,
+        ty::ty_uint(..)    => cast_integral,
         ty::ty_bool       => cast_integral,
-        ty::ty_enum(*)    => cast_enum,
+        ty::ty_enum(..)    => cast_enum,
         _                 => cast_other
     }
 }

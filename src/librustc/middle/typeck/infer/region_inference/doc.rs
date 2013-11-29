@@ -192,10 +192,10 @@ going on:
     fn weird() {
         let mut x: ~Foo = ~Foo { ... };
         'a: add(&mut (*x).f,
-                'b: inc(&mut (*x).f)) // (*)
+                'b: inc(&mut (*x).f)) // (..)
     }
 
-The important part is the line marked `(*)` which contains a call to
+The important part is the line marked `(..)` which contains a call to
 `add()`. The first argument is a mutable borrow of the field `f`.  The
 second argument also borrows the field `f`. Now, in the current borrow
 checker, the first borrow is given the lifetime of the call to
@@ -248,7 +248,7 @@ this similar but unsound example:
     }
     fn weird() {
         let mut x: ~Foo = ~Foo { ... };
-        'a: add(&mut (*x).f, consume(x)) // (*)
+        'a: add(&mut (*x).f, consume(x)) // (..)
     }
 
 In this case, the second argument to `add` actually consumes `x`, thus

@@ -178,7 +178,7 @@ impl<T, E: ToStr> Result<T, E> {
     pub fn iter<'r>(&'r self) -> OptionIterator<&'r T> {
         match *self {
             Ok(ref t) => Some(t),
-            Err(*) => None,
+            Err(..) => None,
         }.move_iter()
     }
 
@@ -186,7 +186,7 @@ impl<T, E: ToStr> Result<T, E> {
     #[inline]
     pub fn iter_err<'r>(&'r self) -> OptionIterator<&'r E> {
         match *self {
-            Ok(*) => None,
+            Ok(..) => None,
             Err(ref t) => Some(t),
         }.move_iter()
     }

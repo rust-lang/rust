@@ -313,7 +313,7 @@ impl fold::ast_fold for NestedItemsDropper {
                     node: ast::DeclItem(_),
                     span: _
                 }, _) => None,
-                ast::StmtMac(*) => fail!("unexpanded macro in astencode")
+                ast::StmtMac(..) => fail!("unexpanded macro in astencode")
             }
         }).collect();
         let blk_sans_items = ast::Block {
@@ -483,7 +483,7 @@ impl tr for ty::Region {
                                                                      index,
                                                                      ident),
             ty::ReScope(id) => ty::ReScope(xcx.tr_id(id)),
-            ty::ReEmpty | ty::ReStatic | ty::ReInfer(*) => *self,
+            ty::ReEmpty | ty::ReStatic | ty::ReInfer(..) => *self,
             ty::ReFree(ref fr) => {
                 ty::ReFree(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
                                             bound_region: fr.bound_region.tr(xcx)})

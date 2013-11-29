@@ -114,7 +114,7 @@ impl FileDesc {
 
 impl io::Reader for FileDesc {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.inner_read(buf) { Ok(n) => Some(n), Err(*) => None }
+        match self.inner_read(buf) { Ok(n) => Some(n), Err(..) => None }
     }
     fn eof(&mut self) -> bool { false }
 }

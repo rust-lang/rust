@@ -146,7 +146,7 @@ impl PkgSrc {
                                 source_workspace: source,
                                 destination_workspace: destination,
                                 start_dir: start,
-                                id: id, _ } => {
+                                id: id, .. } => {
                                 let result = PkgSrc {
                                     source_workspace: source.clone(),
                                     build_in_destination: build_in_destination,

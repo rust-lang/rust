@@ -35,7 +35,7 @@ impl parser_attr for Parser {
             debug!("parse_outer_attributes: self.token={:?}",
                    self.token);
             match *self.token {
-              token::INTERPOLATED(token::nt_attr(*)) => {
+              token::INTERPOLATED(token::nt_attr(..)) => {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
@@ -121,7 +121,7 @@ impl parser_attr for Parser {
         let mut next_outer_attrs: ~[ast::Attribute] = ~[];
         loop {
             let attr = match *self.token {
-                token::INTERPOLATED(token::nt_attr(*)) => {
+                token::INTERPOLATED(token::nt_attr(..)) => {
                     self.parse_attribute(true)
                 }
                 token::POUND => {
@@ -164,7 +164,7 @@ impl parser_attr for Parser {
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
-                    ast::lit_str(*) => (),
+                    ast::lit_str(..) => (),
                     _ => {
                         self.span_err(
                             lit.span,

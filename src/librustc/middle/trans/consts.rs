@@ -133,10 +133,10 @@ fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
         Some(ref mt) => {
             assert!(mt.mutbl != ast::MutMutable);
             let dv = match ty::get(t).sty {
-                ty::ty_ptr(*) | ty::ty_rptr(*) => {
+                ty::ty_ptr(..) | ty::ty_rptr(..) => {
                      const_deref_ptr(cx, v)
                 }
-                ty::ty_enum(*) | ty::ty_struct(*) => {
+                ty::ty_enum(..) | ty::ty_struct(..) => {
                     const_deref_newtype(cx, v, t)
                 }
                 _ => {
@@ -162,7 +162,7 @@ pub fn get_const_val(cx: @mut CrateContext,
         }
         match cx.tcx.items.get_copy(&def_id.node) {
             ast_map::node_item(@ast::item {
-                node: ast::item_static(_, ast::MutImmutable, _), _
+                node: ast::item_static(_, ast::MutImmutable, _), ..
             }, _) => {
                 trans_const(cx, ast::MutImmutable, def_id.node);
             }
@@ -419,7 +419,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match ty::get(bt).sty {
-                  ty::ty_estr(*) => {assert!(len > 0); len - 1},
+                  ty::ty_estr(..) => {assert!(len > 0); len - 1},
                   _ => len
               };
               if iv >= len {
@@ -533,7 +533,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
             match sub.node {
               ast::ExprLit(ref lit) => {
                 match lit.node {
-                  ast::lit_str(*) => { const_expr(cx, sub) }
+                  ast::lit_str(..) => { const_expr(cx, sub) }
                   _ => { cx.sess.span_bug(e.span, "bad const-slice lit") }
                 }
               }

@@ -246,15 +246,15 @@ mod tests {
     #[test]
     fn connect_err() {
         match PipeWatcher::connect(local_loop(), &"path/to/nowhere".to_c_str()) {
-            Ok(*) => fail!(),
-            Err(*) => {}
+            Ok(..) => fail!(),
+            Err(..) => {}
         }
     }
 
     #[test]
     fn bind_err() {
         match PipeListener::bind(local_loop(), &"path/to/nowhere".to_c_str()) {
-            Ok(*) => fail!(),
+            Ok(..) => fail!(),
             Err(e) => assert_eq!(e.name(), ~"EACCES"),
         }
     }
@@ -263,8 +263,8 @@ mod tests {
     fn bind() {
         let p = next_test_unix().to_c_str();
         match PipeListener::bind(local_loop(), &p) {
-            Ok(*) => {}
-            Err(*) => fail!(),
+            Ok(..) => {}
+            Err(..) => fail!(),
         }
     }
 

@@ -549,7 +549,7 @@ pub mod groups {
                 long_name: long_name,
                 hasarg: hasarg,
                 occur: occur,
-                _
+                ..
             } = (*self).clone();
 
             match (short_name.len(), long_name.len()) {
@@ -686,7 +686,7 @@ pub mod groups {
                          hint: hint,
                          desc: desc,
                          hasarg: hasarg,
-                         _} = (*optref).clone();
+                         ..} = (*optref).clone();
 
             let mut row = " ".repeat(4);
 

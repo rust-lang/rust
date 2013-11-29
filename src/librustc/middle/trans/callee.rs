@@ -95,11 +95,11 @@ pub fn trans(bcx: @mut Block, expr: &ast::Expr) -> Callee {
     fn datum_callee(bcx: @mut Block, expr: &ast::Expr) -> Callee {
         let DatumBlock {bcx, datum} = expr::trans_to_datum(bcx, expr);
         match ty::get(datum.ty).sty {
-            ty::ty_bare_fn(*) => {
+            ty::ty_bare_fn(..) => {
                 let llval = datum.to_appropriate_llval(bcx);
                 return Callee {bcx: bcx, data: Fn(FnData {llfn: llval})};
             }
-            ty::ty_closure(*) => {
+            ty::ty_closure(..) => {
                 return Callee {bcx: bcx, data: Closure(datum)};
             }
             _ => {
@@ -138,19 +138,19 @@ pub fn trans(bcx: @mut Block, expr: &ast::Expr) -> Callee {
             ast::DefStruct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ref_expr.id))
             }
-            ast::DefStatic(*) |
-            ast::DefArg(*) |
-            ast::DefLocal(*) |
-            ast::DefBinding(*) |
-            ast::DefUpvar(*) |
-            ast::DefSelf(*) => {
+            ast::DefStatic(..) |
+            ast::DefArg(..) |
+            ast::DefLocal(..) |
+            ast::DefBinding(..) |
+            ast::DefUpvar(..) |
+            ast::DefSelf(..) => {
                 datum_callee(bcx, ref_expr)
             }
-            ast::DefMod(*) | ast::DefForeignMod(*) | ast::DefTrait(*) |
-            ast::DefTy(*) | ast::DefPrimTy(*) |
-            ast::DefUse(*) | ast::DefTyParamBinder(*) |
-            ast::DefRegion(*) | ast::DefLabel(*) | ast::DefTyParam(*) |
-            ast::DefSelfTy(*) | ast::DefMethod(*) => {
+            ast::DefMod(..) | ast::DefForeignMod(..) | ast::DefTrait(..) |
+            ast::DefTy(..) | ast::DefPrimTy(..) |
+            ast::DefUse(..) | ast::DefTyParamBinder(..) |
+            ast::DefRegion(..) | ast::DefLabel(..) | ast::DefTyParam(..) |
+            ast::DefSelfTy(..) | ast::DefMethod(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("Cannot translate def {:?} \
@@ -718,7 +718,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             // The `noalias` attribute on the return value is useful to a function ptr caller.
             match ty::get(ret_ty).sty {
                 // `~` pointer return values never alias because ownership is transferred
-                ty::ty_uniq(*) |
+                ty::ty_uniq(..) |
                 ty::ty_evec(_, ty::vstore_uniq) => {
                     attrs.push((0, NoAliasAttribute));
                 }

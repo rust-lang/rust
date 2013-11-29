@@ -128,13 +128,13 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 // recur along an ExpnInfo chain to find the original expression
 fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
     match *expn_info {
-        ExpnInfo { call_site: ref call_site, _ } => {
+        ExpnInfo { call_site: ref call_site, .. } => {
             match call_site.expn_info {
                 Some(next_expn_info) => {
                     match *next_expn_info {
                         ExpnInfo {
-                            callee: NameAndSpan { name: ref name, _ },
-                            _
+                            callee: NameAndSpan { name: ref name, .. },
+                            ..
                         } => {
                             // Don't recurse into file using "include!"
                             if "include" == *name  {

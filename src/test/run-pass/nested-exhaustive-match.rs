@@ -12,9 +12,9 @@ struct Foo { foo: bool, bar: Option<int>, baz: int }
 
 pub fn main() {
     match @Foo{foo: true, bar: Some(10), baz: 20} {
-      @Foo{foo: true, bar: Some(_), _} => {}
-      @Foo{foo: false, bar: None, _} => {}
-      @Foo{foo: true, bar: None, _} => {}
-      @Foo{foo: false, bar: Some(_), _} => {}
+      @Foo{foo: true, bar: Some(_), ..} => {}
+      @Foo{foo: false, bar: None, ..} => {}
+      @Foo{foo: true, bar: None, ..} => {}
+      @Foo{foo: false, bar: Some(_), ..} => {}
     }
 }

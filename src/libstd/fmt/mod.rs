@@ -768,7 +768,7 @@ impl<'self> Formatter<'self> {
                         Left(parse::Few) => value < 8,
                         Left(parse::Many) => value >= 8,
 
-                        Right(*) => false
+                        Right(..) => false
                     };
                     if run {
                         return self.runplural(value, s.result);

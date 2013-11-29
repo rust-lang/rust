@@ -73,7 +73,7 @@ fn get_ast_and_resolve(cpath: &Path,
     let mut crate = phase_1_parse_input(sess, cfg.clone(), &input);
     crate = phase_2_configure_and_expand(sess, cfg, crate);
     let driver::driver::CrateAnalysis {
-        exported_items, ty_cx, _
+        exported_items, ty_cx, ..
     } = phase_3_run_analysis_passes(sess, &crate);
 
     debug!("crate: {:?}", crate);

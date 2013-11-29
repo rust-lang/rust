@@ -300,7 +300,7 @@ pub fn create_captured_var_metadata(bcx: @mut Block,
             cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
         }
         Some(ast_map::node_local(ident)) => ident,
-        Some(ast_map::node_arg(@ast::Pat { node: ast::PatIdent(_, ref path, _), _ })) => {
+        Some(ast_map::node_arg(@ast::Pat { node: ast::PatIdent(_, ref path, _), .. })) => {
             ast_util::path_to_ident(path)
         }
         _ => {
@@ -388,14 +388,14 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
     // Extract the span of the self argument from the method's AST
     let fnitem = bcx.ccx().tcx.items.get_copy(&bcx.fcx.id);
     let span = match fnitem {
-        ast_map::node_method(@ast::method { explicit_self: explicit_self, _ }, _, _) => {
+        ast_map::node_method(@ast::method { explicit_self: explicit_self, .. }, _, _) => {
             explicit_self.span
         }
         ast_map::node_trait_method(
             @ast::provided(
                 @ast::method {
                     explicit_self: explicit_self,
-                    _
+                    ..
                 }),
             _,
             _) => {
@@ -570,7 +570,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                 generics: ref generics,
                 body: ref top_level_block,
                 span: span,
-                _
+                ..
             },
             _,
             _) => {
@@ -603,15 +603,15 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                     generics: ref generics,
                     body: ref top_level_block,
                     span: span,
-                    _
+                    ..
                 }),
             _,
             _) => {
             (ident, fn_decl, generics, top_level_block, span, true)
         }
-        ast_map::node_foreign_item(@ast::foreign_item { _ }, _, _, _) |
-        ast_map::node_variant(*) |
-        ast_map::node_struct_ctor(*) => {
+        ast_map::node_foreign_item(@ast::foreign_item { .. }, _, _, _) |
+        ast_map::node_variant(..) |
+        ast_map::node_struct_ctor(..) => {
             return FunctionWithoutDebugInfo;
         }
         _ => cx.sess.bug(format!("create_function_debug_context: \
@@ -744,7 +744,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                                name_to_append_suffix_to: &mut ~str)
                             -> DIArray {
         let self_type = match param_substs {
-            Some(@param_substs{ self_ty: self_type, _ }) => self_type,
+            Some(@param_substs{ self_ty: self_type, .. }) => self_type,
             _ => None
         };
 
@@ -798,13 +798,13 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
         // Handle other generic parameters
         let actual_types = match param_substs {
-            Some(@param_substs { tys: ref types, _ }) => types,
+            Some(@param_substs { tys: ref types, .. }) => types,
             None => {
                 return create_DIArray(DIB(cx), template_params);
             }
         };
 
-        for (index, &ast::TyParam{ ident: ident, _ }) in generics.ty_params.iter().enumerate() {
+        for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
             // Add actual type name to <...> clause of function name
             let actual_type_name = ppaux::ty_to_str(cx.tcx, actual_type);
@@ -843,10 +843,10 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                       default: uint)
                    -> uint {
         match *top_level_block {
-            ast::Block { stmts: ref statements, _ } if statements.len() > 0 => {
+            ast::Block { stmts: ref statements, .. } if statements.len() > 0 => {
                 span_start(cx, statements[0].span).line
             }
-            ast::Block { expr: Some(@ref expr), _ } => {
+            ast::Block { expr: Some(@ref expr), .. } => {
                 span_start(cx, expr.span).line
             }
             _ => default
@@ -1171,7 +1171,7 @@ impl RecursiveTypeDescription {
 
     fn metadata(&self) -> DICompositeType {
         match *self {
-            UnfinishedMetadata { metadata_stub, _ } => metadata_stub,
+            UnfinishedMetadata { metadata_stub, .. } => metadata_stub,
             FinalMetadata(metadata) => metadata
         }
     }
@@ -1517,7 +1517,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
                 } as @MemberDescriptionFactory,
             }
         }
-        adt::NullablePointer { nonnull: ref struct_def, nndiscr, _ } => {
+        adt::NullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
             let (metadata_stub,
                  variant_llvm_type,
                  member_description_factory) = describe_variant(cx,
@@ -2227,7 +2227,7 @@ fn get_namespace_and_span_for_item(cx: &mut CrateContext,
     let containing_scope = namespace_for_item(cx, def_id, warning_span).scope;
     let definition_span = if def_id.crate == ast::LOCAL_CRATE {
         let definition_span = match cx.tcx.items.find(&def_id.node) {
-            Some(&ast_map::node_item(@ast::item { span, _ }, _)) => span,
+            Some(&ast_map::node_item(@ast::item { span, .. }, _)) => span,
             ref node => {
                 cx.sess.span_warn(warning_span,
                     format!("debuginfo::get_namespace_and_span_for_item() \
@@ -2328,7 +2328,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 ast::StmtDecl(@ref decl, _) => walk_decl(cx, decl, scope_stack, scope_map),
                 ast::StmtExpr(@ref exp, _) |
                 ast::StmtSemi(@ref exp, _) => walk_expr(cx, exp, scope_stack, scope_map),
-                ast::StmtMac(*) => () // ignore macros (which should be expanded anyway)
+                ast::StmtMac(..) => () // ignore macros (which should be expanded anyway)
             }
         }
 
@@ -2342,7 +2342,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                  scope_stack: &mut ~[ScopeStackEntry],
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         match *decl {
-            codemap::Spanned { node: ast::DeclLocal(@ref local), _ } => {
+            codemap::Spanned { node: ast::DeclLocal(@ref local), .. } => {
                 scope_map.insert(local.id, scope_stack.last().scope_metadata);
 
                 walk_pattern(cx, local.pat, scope_stack, scope_map);
@@ -2453,7 +2453,7 @@ fn populate_scope_map(cx: &mut CrateContext,
             ast::PatStruct(_, ref field_pats, _) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
 
-                for &ast::FieldPat { pat: sub_pat, _ } in field_pats.iter() {
+                for &ast::FieldPat { pat: sub_pat, .. } in field_pats.iter() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
             }
@@ -2604,14 +2604,14 @@ fn populate_scope_map(cx: &mut CrateContext,
                 })
             }
 
-            ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, _ }, ref block) |
-            ast::ExprProc(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
+            ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, .. }, ref block) |
+            ast::ExprProc(ast::fn_decl { inputs: ref inputs, .. }, ref block) => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,
                                scope_map,
                                |cx, scope_stack, scope_map| {
-                    for &ast::arg { pat: pattern, _ } in inputs.iter() {
+                    for &ast::arg { pat: pattern, .. } in inputs.iter() {
                         walk_pattern(cx, pattern, scope_stack, scope_map);
                     }
 
@@ -2622,7 +2622,7 @@ fn populate_scope_map(cx: &mut CrateContext,
             // ast::expr_loop_body(@ref inner_exp) |
             ast::ExprDoBody(@ref inner_exp)   => {
                 let inner_expr_is_expr_fn_block = match *inner_exp {
-                    ast::Expr { node: ast::ExprFnBlock(*), _ } => true,
+                    ast::Expr { node: ast::ExprFnBlock(..), .. } => true,
                     _ => false
                 };
 
@@ -2680,7 +2680,7 @@ fn populate_scope_map(cx: &mut CrateContext,
             }
 
             ast::ExprStruct(_, ref fields, ref base_exp) => {
-                for &ast::Field { expr: @ref exp, _ } in fields.iter() {
+                for &ast::Field { expr: @ref exp, .. } in fields.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);
                 }
 
@@ -2691,8 +2691,8 @@ fn populate_scope_map(cx: &mut CrateContext,
             }
 
             ast::ExprInlineAsm(ast::inline_asm { inputs: ref inputs,
-                                                   outputs: ref outputs,
-                                                   _ }) => {
+                                                 outputs: ref outputs,
+                                                 .. }) => {
                 // inputs, outputs: ~[(@str, @expr)]
                 for &(_, @ref exp) in inputs.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);

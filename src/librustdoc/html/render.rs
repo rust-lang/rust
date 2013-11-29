@@ -423,7 +423,7 @@ impl<'self> SourceCollector<'self> {
             let mut r = match io::result(|| File::open(&p)) {
                 Ok(r) => r,
                 // eew macro hacks
-                Err(*) => return filename == "<std-macros>"
+                Err(..) => return filename == "<std-macros>"
             };
 
             // read everything
@@ -491,12 +491,12 @@ impl DocFolder for Cache {
         match item.inner {
             clean::ImplItem(ref i) => {
                 match i.trait_ {
-                    Some(clean::ResolvedPath{ id, _ }) => {
+                    Some(clean::ResolvedPath{ id, .. }) => {
                         let v = self.implementors.find_or_insert_with(id, |_|{
                             ~[]
                         });
                         match i.for_ {
-                            clean::ResolvedPath{_} => {
+                            clean::ResolvedPath{..} => {
                                 v.unshift(PathType(i.for_.clone()));
                             }
                             _ => {
@@ -506,7 +506,7 @@ impl DocFolder for Cache {
                             }
                         }
                     }
-                    Some(*) | None => {}
+                    Some(..) | None => {}
                 }
             }
             _ => {}
@@ -516,21 +516,21 @@ impl DocFolder for Cache {
         match item.name {
             Some(ref s) => {
                 let parent = match item.inner {
-                    clean::TyMethodItem(*) |
-                    clean::StructFieldItem(*) |
-                    clean::VariantItem(*) => {
+                    clean::TyMethodItem(..) |
+                    clean::StructFieldItem(..) |
+                    clean::VariantItem(..) => {
                         Some((Some(*self.parent_stack.last()),
                               self.stack.slice_to(self.stack.len() - 1)))
 
                     }
-                    clean::MethodItem(*) => {
+                    clean::MethodItem(..) => {
                         if self.parent_stack.len() == 0 {
                             None
                         } else {
                             let last = self.parent_stack.last();
                             let amt = match self.paths.find(last) {
                                 Some(&(_, "trait")) => self.stack.len() - 1,
-                                Some(*) | None => self.stack.len(),
+                                Some(..) | None => self.stack.len(),
                             };
                             Some((Some(*last), self.stack.slice_to(amt)))
                         }
@@ -562,10 +562,10 @@ impl DocFolder for Cache {
             } else { false }
         } else { false };
         match item.inner {
-            clean::StructItem(*) | clean::EnumItem(*) |
-            clean::TypedefItem(*) | clean::TraitItem(*) |
-            clean::FunctionItem(*) | clean::ModuleItem(*) |
-            clean::ForeignFunctionItem(*) | clean::VariantItem(*) => {
+            clean::StructItem(..) | clean::EnumItem(..) |
+            clean::TypedefItem(..) | clean::TraitItem(..) |
+            clean::FunctionItem(..) | clean::ModuleItem(..) |
+            clean::ForeignFunctionItem(..) | clean::VariantItem(..) => {
                 self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
             }
             _ => {}
@@ -573,12 +573,12 @@ impl DocFolder for Cache {
 
         // Maintain the parent stack
         let parent_pushed = match item.inner {
-            clean::TraitItem(*) | clean::EnumItem(*) | clean::StructItem(*) => {
+            clean::TraitItem(..) | clean::EnumItem(..) | clean::StructItem(..) => {
                 self.parent_stack.push(item.id); true
             }
             clean::ImplItem(ref i) => {
                 match i.for_ {
-                    clean::ResolvedPath{ id, _ } => {
+                    clean::ResolvedPath{ id, .. } => {
                         self.parent_stack.push(id); true
                     }
                     _ => false
@@ -592,9 +592,9 @@ impl DocFolder for Cache {
         let ret = match self.fold_item_recur(item) {
             Some(item) => {
                 match item {
-                    clean::Item{ attrs, inner: clean::ImplItem(i), _ } => {
+                    clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
                         match i.for_ {
-                            clean::ResolvedPath { id, _ } => {
+                            clean::ResolvedPath { id, .. } => {
                                 let v = self.impls.find_or_insert_with(id, |_| {
                                     ~[]
                                 });
@@ -608,7 +608,7 @@ impl DocFolder for Cache {
                                     Some(clean::NameValue(_, dox)) => {
                                         v.push((i, Some(dox)));
                                     }
-                                    Some(*) | None => {
+                                    Some(..) | None => {
                                         v.push((i, None));
                                     }
                                 }
@@ -620,7 +620,7 @@ impl DocFolder for Cache {
                     // Private modules may survive the strip-private pass if
                     // they contain impls for public types, but those will get
                     // stripped here
-                    clean::Item { inner: clean::ModuleItem(ref m), _ }
+                    clean::Item { inner: clean::ModuleItem(ref m), .. }
                             if m.items.len() == 0 => None,
                     i => Some(i),
                 }
@@ -800,7 +800,7 @@ impl Context {
         match item.inner {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
-            clean::ModuleItem(*) => {
+            clean::ModuleItem(..) => {
                 let name = item.name.get_ref().to_owned();
                 let item = Cell::new(item);
                 self.recurse(name, |this| {
@@ -833,28 +833,28 @@ impl Context {
 
 fn shortty(item: &clean::Item) -> &'static str {
     match item.inner {
-        clean::ModuleItem(*)          => "mod",
-        clean::StructItem(*)          => "struct",
-        clean::EnumItem(*)            => "enum",
-        clean::FunctionItem(*)        => "fn",
-        clean::TypedefItem(*)         => "typedef",
-        clean::StaticItem(*)          => "static",
-        clean::TraitItem(*)           => "trait",
-        clean::ImplItem(*)            => "impl",
-        clean::ViewItemItem(*)        => "viewitem",
-        clean::TyMethodItem(*)        => "tymethod",
-        clean::MethodItem(*)          => "method",
-        clean::StructFieldItem(*)     => "structfield",
-        clean::VariantItem(*)         => "variant",
-        clean::ForeignFunctionItem(*) => "ffi",
-        clean::ForeignStaticItem(*)   => "ffs",
+        clean::ModuleItem(..)          => "mod",
+        clean::StructItem(..)          => "struct",
+        clean::EnumItem(..)            => "enum",
+        clean::FunctionItem(..)        => "fn",
+        clean::TypedefItem(..)         => "typedef",
+        clean::StaticItem(..)          => "static",
+        clean::TraitItem(..)           => "trait",
+        clean::ImplItem(..)            => "impl",
+        clean::ViewItemItem(..)        => "viewitem",
+        clean::TyMethodItem(..)        => "tymethod",
+        clean::MethodItem(..)          => "method",
+        clean::StructFieldItem(..)     => "structfield",
+        clean::VariantItem(..)         => "variant",
+        clean::ForeignFunctionItem(..) => "ffi",
+        clean::ForeignStaticItem(..)   => "ffs",
     }
 }
 
 impl<'self> Item<'self> {
     fn ismodule(&self) -> bool {
         match self.item.inner {
-            clean::ModuleItem(*) => true, _ => false
+            clean::ModuleItem(..) => true, _ => false
         }
     }
 }
@@ -895,11 +895,11 @@ impl<'self> fmt::Default for Item<'self> {
         // Write the breadcrumb trail header for the top
         write!(fmt.buf, "<h1 class='fqn'>");
         match it.item.inner {
-            clean::ModuleItem(*) => write!(fmt.buf, "Module "),
-            clean::FunctionItem(*) => write!(fmt.buf, "Function "),
-            clean::TraitItem(*) => write!(fmt.buf, "Trait "),
-            clean::StructItem(*) => write!(fmt.buf, "Struct "),
-            clean::EnumItem(*) => write!(fmt.buf, "Enum "),
+            clean::ModuleItem(..) => write!(fmt.buf, "Module "),
+            clean::FunctionItem(..) => write!(fmt.buf, "Function "),
+            clean::TraitItem(..) => write!(fmt.buf, "Trait "),
+            clean::StructItem(..) => write!(fmt.buf, "Struct "),
+            clean::EnumItem(..) => write!(fmt.buf, "Enum "),
             _ => {}
         }
         let cur = it.cx.current.as_slice();
@@ -931,7 +931,7 @@ impl<'self> fmt::Default for Item<'self> {
 
 fn item_path(item: &clean::Item) -> ~str {
     match item.inner {
-        clean::ModuleItem(*) => *item.name.get_ref() + "/index.html",
+        clean::ModuleItem(..) => *item.name.get_ref() + "/index.html",
         _ => shortty(item) + "." + *item.name.get_ref() + ".html"
     }
 }
@@ -982,31 +982,31 @@ fn item_module(w: &mut Writer, cx: &Context,
         match (&i1.inner, &i2.inner) {
             (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
                 match (&a.inner, &b.inner) {
-                    (&clean::ExternMod(*), _) => true,
-                    (_, &clean::ExternMod(*)) => false,
+                    (&clean::ExternMod(..), _) => true,
+                    (_, &clean::ExternMod(..)) => false,
                     _ => idx1 < idx2,
                 }
             }
-            (&clean::ViewItemItem(*), _) => true,
-            (_, &clean::ViewItemItem(*)) => false,
-            (&clean::ModuleItem(*), _) => true,
-            (_, &clean::ModuleItem(*)) => false,
-            (&clean::StructItem(*), _) => true,
-            (_, &clean::StructItem(*)) => false,
-            (&clean::EnumItem(*), _) => true,
-            (_, &clean::EnumItem(*)) => false,
-            (&clean::StaticItem(*), _) => true,
-            (_, &clean::StaticItem(*)) => false,
-            (&clean::ForeignFunctionItem(*), _) => true,
-            (_, &clean::ForeignFunctionItem(*)) => false,
-            (&clean::ForeignStaticItem(*), _) => true,
-            (_, &clean::ForeignStaticItem(*)) => false,
-            (&clean::TraitItem(*), _) => true,
-            (_, &clean::TraitItem(*)) => false,
-            (&clean::FunctionItem(*), _) => true,
-            (_, &clean::FunctionItem(*)) => false,
-            (&clean::TypedefItem(*), _) => true,
-            (_, &clean::TypedefItem(*)) => false,
+            (&clean::ViewItemItem(..), _) => true,
+            (_, &clean::ViewItemItem(..)) => false,
+            (&clean::ModuleItem(..), _) => true,
+            (_, &clean::ModuleItem(..)) => false,
+            (&clean::StructItem(..), _) => true,
+            (_, &clean::StructItem(..)) => false,
+            (&clean::EnumItem(..), _) => true,
+            (_, &clean::EnumItem(..)) => false,
+            (&clean::StaticItem(..), _) => true,
+            (_, &clean::StaticItem(..)) => false,
+            (&clean::ForeignFunctionItem(..), _) => true,
+            (_, &clean::ForeignFunctionItem(..)) => false,
+            (&clean::ForeignStaticItem(..), _) => true,
+            (_, &clean::ForeignStaticItem(..)) => false,
+            (&clean::TraitItem(..), _) => true,
+            (_, &clean::TraitItem(..)) => false,
+            (&clean::FunctionItem(..), _) => true,
+            (_, &clean::FunctionItem(..)) => false,
+            (&clean::TypedefItem(..), _) => true,
+            (_, &clean::TypedefItem(..)) => false,
             _ => idx1 < idx2,
         }
     }
@@ -1026,21 +1026,21 @@ fn item_module(w: &mut Writer, cx: &Context,
             }
             curty = myty;
             write!(w, "<h2>{}</h2>\n<table>", match myitem.inner {
-                clean::ModuleItem(*)          => "Modules",
-                clean::StructItem(*)          => "Structs",
-                clean::EnumItem(*)            => "Enums",
-                clean::FunctionItem(*)        => "Functions",
-                clean::TypedefItem(*)         => "Type Definitions",
-                clean::StaticItem(*)          => "Statics",
-                clean::TraitItem(*)           => "Traits",
-                clean::ImplItem(*)            => "Implementations",
-                clean::ViewItemItem(*)        => "Reexports",
-                clean::TyMethodItem(*)        => "Type Methods",
-                clean::MethodItem(*)          => "Methods",
-                clean::StructFieldItem(*)     => "Struct Fields",
-                clean::VariantItem(*)         => "Variants",
-                clean::ForeignFunctionItem(*) => "Foreign Functions",
-                clean::ForeignStaticItem(*)   => "Foreign Statics",
+                clean::ModuleItem(..)          => "Modules",
+                clean::StructItem(..)          => "Structs",
+                clean::EnumItem(..)            => "Enums",
+                clean::FunctionItem(..)        => "Functions",
+                clean::TypedefItem(..)         => "Type Definitions",
+                clean::StaticItem(..)          => "Statics",
+                clean::TraitItem(..)           => "Traits",
+                clean::ImplItem(..)            => "Implementations",
+                clean::ViewItemItem(..)        => "Reexports",
+                clean::TyMethodItem(..)        => "Type Methods",
+                clean::MethodItem(..)          => "Methods",
+                clean::StructFieldItem(..)     => "Struct Fields",
+                clean::VariantItem(..)         => "Variants",
+                clean::ForeignFunctionItem(..) => "Foreign Functions",
+                clean::ForeignStaticItem(..)   => "Foreign Statics",
             });
         }
 
@@ -1450,7 +1450,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
         Some(ref ty) => {
             write!(w, "{} for ", *ty);
             match *ty {
-                clean::ResolvedPath { id, _ } => Some(id),
+                clean::ResolvedPath { id, .. } => Some(id),
                 _ => None,
             }
         }
@@ -1527,7 +1527,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
                             for method in t.methods.iter() {
                                 let n = method.item().name.clone();
                                 match i.methods.iter().find(|m| m.name == n) {
-                                    Some(*) => continue,
+                                    Some(..) => continue,
                                     None => {}
                                 }
 

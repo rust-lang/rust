@@ -233,7 +233,7 @@ impl CtxMethods for BuildContext {
                     self.build(&mut pkg_src, what);
                     match pkg_src {
                         PkgSrc { destination_workspace: ws,
-                                 id: id, _ } => {
+                                 id: id, .. } => {
                             Some((id, ws))
                         }
                     }
@@ -244,7 +244,7 @@ impl CtxMethods for BuildContext {
                     self.build(&mut pkg_src, what);
                     match pkg_src {
                         PkgSrc { destination_workspace: ws,
-                                 id: id, _ } => {
+                                 id: id, .. } => {
                             Some((id, ws))
                         }
                     }

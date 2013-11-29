@@ -1149,7 +1149,7 @@ impl Resolver {
         let is_public = item.vis == ast::public;
 
         match item.node {
-            item_mod(*) => {
+            item_mod(..) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
@@ -1165,7 +1165,7 @@ impl Resolver {
                 ModuleReducedGraphParent(name_bindings.get_module())
             }
 
-            item_foreign_mod(*) => parent,
+            item_foreign_mod(..) => parent,
 
             // These items live in the value namespace.
             item_static(_, m, _) => {
@@ -1187,7 +1187,7 @@ impl Resolver {
             }
 
             // These items live in the type namespace.
-            item_ty(*) => {
+            item_ty(..) => {
                 let (name_bindings, _) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
@@ -1253,7 +1253,7 @@ impl Resolver {
                 match ty {
                     &Ty {
                         node: ty_path(ref path, _, _),
-                        _
+                        ..
                     } if path.segments.len() == 1 => {
                         let name = path_to_ident(path);
 
@@ -1395,7 +1395,7 @@ impl Resolver {
                 new_parent
             }
 
-            item_mac(*) => {
+            item_mac(..) => {
                 fail!("item macros unimplemented")
             }
         }
@@ -1622,7 +1622,7 @@ impl Resolver {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
           DefTy(def_id) => {
             match child_name_bindings.type_def {
-              Some(TypeNsDef { module_def: Some(module_def), _ }) => {
+              Some(TypeNsDef { module_def: Some(module_def), .. }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
                 module_def.def_id = Some(def_id);
@@ -1662,7 +1662,7 @@ impl Resolver {
                 child_name_bindings.define_value(def, dummy_sp(), is_public);
             }
           }
-          DefFn(*) | DefStaticMethod(*) | DefStatic(*) => {
+          DefFn(..) | DefStaticMethod(..) | DefStatic(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             child_name_bindings.define_value(def, dummy_sp(), is_public);
@@ -1732,15 +1732,15 @@ impl Resolver {
             }
             self.structs.insert(def_id);
           }
-          DefMethod(*) => {
+          DefMethod(..) => {
               debug!("(building reduced graph for external crate) \
                       ignoring {:?}", def);
               // Ignored; handled elsewhere.
           }
-          DefSelf(*) | DefArg(*) | DefLocal(*) |
-          DefPrimTy(*) | DefTyParam(*) | DefBinding(*) |
-          DefUse(*) | DefUpvar(*) | DefRegion(*) |
-          DefTyParamBinder(*) | DefLabel(*) | DefSelfTy(*) => {
+          DefSelf(..) | DefArg(..) | DefLocal(..) |
+          DefPrimTy(..) | DefTyParam(..) | DefBinding(..) |
+          DefUse(..) | DefUpvar(..) | DefRegion(..) |
+          DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
             fail!("didn't expect `{:?}`", def);
           }
         }
@@ -1817,7 +1817,7 @@ impl Resolver {
                                 match child_name_bindings.type_def {
                                     Some(TypeNsDef {
                                         module_def: Some(module_def),
-                                        _
+                                        ..
                                     }) => {
                                         // We already have a module. This
                                         // is OK.
@@ -2211,7 +2211,7 @@ impl Resolver {
                     assert!(module_.glob_count >= 1);
                     module_.glob_count -= 1;
                 }
-                SingleImport(*) => {
+                SingleImport(..) => {
                     // Ignore.
                 }
             }
@@ -2278,7 +2278,7 @@ impl Resolver {
         // search imports as well.
         let mut used_reexport = false;
         match (value_result, type_result) {
-            (BoundResult(*), BoundResult(*)) => {} // Continue.
+            (BoundResult(..), BoundResult(..)) => {} // Continue.
             _ => {
                 // If there is an unresolved glob at this point in the
                 // containing module, bail out. We don't know enough to be
@@ -2365,7 +2365,7 @@ impl Resolver {
         // external modules.
         let mut used_public = false;
         match type_result {
-            BoundResult(*) => {}
+            BoundResult(..) => {}
             _ => {
                 match containing_module.external_module_children
                                        .find(&source.name) {
@@ -3386,16 +3386,16 @@ impl Resolver {
         let is_ty_param;
 
         match def_like {
-            DlDef(d @ DefLocal(*)) | DlDef(d @ DefUpvar(*)) |
-            DlDef(d @ DefArg(*)) | DlDef(d @ DefBinding(*)) => {
+            DlDef(d @ DefLocal(..)) | DlDef(d @ DefUpvar(..)) |
+            DlDef(d @ DefArg(..)) | DlDef(d @ DefBinding(..)) => {
                 def = d;
                 is_ty_param = false;
             }
-            DlDef(d @ DefTyParam(*)) => {
+            DlDef(d @ DefTyParam(..)) => {
                 def = d;
                 is_ty_param = true;
             }
-            DlDef(d @ DefSelf(*))
+            DlDef(d @ DefSelf(..))
                     if allow_capturing_self == DontAllowCapturingSelf => {
                 def = d;
                 is_ty_param = false;
@@ -3666,7 +3666,7 @@ impl Resolver {
                                                                 *foreign_item,
                                                                 ()));
                             }
-                            foreign_item_static(*) => {
+                            foreign_item_static(..) => {
                                 visit::walk_foreign_item(this,
                                                          *foreign_item,
                                                          ());
@@ -3688,13 +3688,13 @@ impl Resolver {
                                       NoSelfBinding);
             }
 
-            item_static(*) => {
+            item_static(..) => {
                 self.with_constant_rib(|this| {
                     visit::walk_item(this, item, ());
                 });
             }
 
-          item_mac(*) => {
+          item_mac(..) => {
             fail!("item macros unimplemented")
           }
         }
@@ -3734,7 +3734,7 @@ impl Resolver {
         f(self);
 
         match type_parameters {
-            HasTypeParameters(*) => {
+            HasTypeParameters(..) => {
                 self.type_ribs.pop();
             }
 
@@ -4282,7 +4282,7 @@ impl Resolver {
                                 "an enum variant");
                             self.record_def(pattern.id, (def, lp));
                         }
-                        FoundStructOrEnumVariant(*) => {
+                        FoundStructOrEnumVariant(..) => {
                             self.resolve_error(pattern.span,
                                                   format!("declaration of `{}` \
                                                         shadows an enum \
@@ -4301,7 +4301,7 @@ impl Resolver {
                                 "a constant");
                             self.record_def(pattern.id, (def, lp));
                         }
-                        FoundConst(*) => {
+                        FoundConst(..) => {
                             self.resolve_error(pattern.span,
                                                   "only irrefutable patterns \
                                                    allowed here");
@@ -4384,11 +4384,11 @@ impl Resolver {
                 PatIdent(binding_mode, ref path, _) => {
                     // This must be an enum variant, struct, or constant.
                     match self.resolve_path(pat_id, path, ValueNS, false) {
-                        Some(def @ (DefVariant(*), _)) |
-                        Some(def @ (DefStruct(*), _)) => {
+                        Some(def @ (DefVariant(..), _)) |
+                        Some(def @ (DefStruct(..), _)) => {
                             self.record_def(pattern.id, def);
                         }
-                        Some(def @ (DefStatic(*), _)) => {
+                        Some(def @ (DefStatic(..), _)) => {
                             self.enforce_default_binding_mode(
                                 pattern,
                                 binding_mode,
@@ -4419,10 +4419,10 @@ impl Resolver {
                 PatEnum(ref path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(pat_id, path, ValueNS, false) {
-                        Some(def @ (DefFn(*), _))      |
-                        Some(def @ (DefVariant(*), _)) |
-                        Some(def @ (DefStruct(*), _))  |
-                        Some(def @ (DefStatic(*), _)) => {
+                        Some(def @ (DefFn(..), _))      |
+                        Some(def @ (DefVariant(..), _)) |
+                        Some(def @ (DefStruct(..), _))  |
+                        Some(def @ (DefStatic(..), _)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
@@ -4516,7 +4516,7 @@ impl Resolver {
                         // considered as not having a private component because
                         // the lookup happened only within the current module.
                         match def.def {
-                            def @ DefVariant(*) | def @ DefStruct(*) => {
+                            def @ DefVariant(..) | def @ DefStruct(..) => {
                                 return FoundStructOrEnumVariant(def, AllPublic);
                             }
                             def @ DefStatic(_, false) => {
@@ -4655,7 +4655,7 @@ impl Resolver {
                     None => {}
                 }
             }
-            Some(*) | None => {} // Continue.
+            Some(..) | None => {} // Continue.
         }
 
         // Finally, search through external children.
@@ -4975,7 +4975,7 @@ impl Resolver {
                         // First-class methods are not supported yet; error
                         // out here.
                         match def {
-                            (DefMethod(*), _) => {
+                            (DefMethod(..), _) => {
                                 self.resolve_error(expr.span,
                                                       "first-class methods \
                                                        are not supported");
@@ -5078,7 +5078,7 @@ impl Resolver {
                 })
             }
 
-            ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 match self.search_ribs(self.label_ribs, label, expr.span,
@@ -5192,7 +5192,7 @@ impl Resolver {
                 let i = self.lang_items.not_trait();
                 self.add_fixed_trait_for_expr(expr.id, i);
             }
-            ExprIndex(*) => {
+            ExprIndex(..) => {
                 let i = self.lang_items.index_trait();
                 self.add_fixed_trait_for_expr(expr.id, i);
             }
@@ -5345,7 +5345,7 @@ impl Resolver {
                                         descr: &str) {
         match pat_binding_mode {
             BindByValue(_) => {}
-            BindByRef(*) => {
+            BindByRef(..) => {
                 self.resolve_error(
                     pat.span,
                     format!("cannot use `ref` binding mode with {}",
@@ -5375,7 +5375,7 @@ impl Resolver {
         if vi.span == dummy_sp() { return }
 
         match vi.node {
-            view_item_extern_mod(*) => {} // ignore
+            view_item_extern_mod(..) => {} // ignore
             view_item_use(ref path) => {
                 for p in path.iter() {
                     match p.node {
@@ -5486,7 +5486,7 @@ pub fn resolve_crate(session: Session,
     let mut resolver = Resolver(session, lang_items, crate.span);
     resolver.resolve(crate);
     let Resolver { def_map, export_map2, trait_map, last_private,
-                   external_exports, _ } = resolver;
+                   external_exports, .. } = resolver;
     CrateMap {
         def_map: def_map,
         exp_map2: export_map2,

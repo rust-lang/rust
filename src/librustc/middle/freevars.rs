@@ -47,10 +47,10 @@ impl Visitor<int> for CollectFreevarsVisitor {
     fn visit_expr(&mut self, expr:@ast::Expr, depth:int) {
 
             match expr.node {
-              ast::ExprFnBlock(*) | ast::ExprProc(*) => {
+              ast::ExprFnBlock(..) | ast::ExprProc(..) => {
                 visit::walk_expr(self, expr, depth + 1)
               }
-              ast::ExprPath(*) | ast::ExprSelf => {
+              ast::ExprPath(..) | ast::ExprSelf => {
                   let mut i = 0;
                   match self.def_map.find(&expr.id) {
                     None => fail!("path not found"),

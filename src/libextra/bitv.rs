@@ -663,7 +663,7 @@ impl BitvSet {
             size += 1;
             true
         });
-        let Bitv{rep, _} = bitv;
+        let Bitv{rep, ..} = bitv;
         match rep {
             Big(b) => BitvSet{ size: size, bitv: b },
             Small(SmallBitv{bits}) =>
@@ -678,7 +678,7 @@ impl BitvSet {
     /// Consumes this set to return the underlying bit vector
     pub fn unwrap(self) -> Bitv {
         let cap = self.capacity();
-        let BitvSet{bitv, _} = self;
+        let BitvSet{bitv, ..} = self;
         return Bitv{ nbits:cap, rep: Big(bitv) };
     }
 

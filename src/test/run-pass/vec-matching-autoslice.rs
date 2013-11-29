@@ -1,7 +1,7 @@
 pub fn main() {
     let x = @[1, 2, 3];
     match x {
-        [2, .._] => fail!(),
+        [2, ..] => fail!(),
         [1, ..tail] => {
             assert_eq!(tail, [2, 3]);
         }

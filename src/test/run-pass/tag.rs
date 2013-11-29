@@ -22,7 +22,7 @@ impl Eq for colour {
             }
             green => {
                 match (*other) {
-                    red(*) => false,
+                    red(..) => false,
                     green => true
                 }
             }

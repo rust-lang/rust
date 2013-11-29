@@ -44,7 +44,7 @@ pub fn expand_syntax_ext(cx: @base::ExtCtxt,
                     ast::lit_bool(b) => {
                         accumulator.push_str(format!("{}", b));
                     }
-                    ast::lit_binary(*) => {
+                    ast::lit_binary(..) => {
                         cx.span_err(e.span, "cannot concatenate a binary literal");
                     }
                 }
