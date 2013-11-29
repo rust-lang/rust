@@ -27,12 +27,19 @@ use util::ppaux;
 
 use std::hashmap::{HashMap,HashSet};
 use std::io;
+use std::io::Decorator;
 use std::io::fs;
+use std::io::fs::File;
 use std::io::mem::MemReader;
+use std::io::mem::MemWriter;
 use std::os;
+use std::str;
 use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
 use extra::getopts;
+use extra::json;
+use extra::serialize::Encodable;
+use extra::treemap;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -567,6 +574,34 @@ pub fn pretty_print_input(sess: Session,
                         is_expanded);
 }
 
+pub fn emit_ast(sess: Session,
+                cfg: ast::CrateConfig,
+                input: &input,
+                ofile: &Option<Path>) {
+    let expanded_crate = {
+        let crate = phase_1_parse_input(sess, cfg.clone(), input);
+        phase_2_configure_and_expand(sess, cfg, crate)
+    };
+
+    let crate_json_str = {
+        let w = @mut MemWriter::new();
+        expanded_crate.encode(&mut json::Encoder(w as @mut io::Writer));
+        str::from_utf8(*w.inner_ref())
+    };
+    let crate_json = match json::from_str(crate_json_str) {
+        Ok(j) => j,
+        Err(_) => fail!("Rust generated JSON is invalid??")
+    };
+
+    let mut json = ~treemap::TreeMap::new();
+    json.insert(~"crate", crate_json);
+    let writer = match *ofile {
+        None => @mut io::stdout() as @mut Writer,
+        Some(ref out_file) => @mut File::create(out_file) as @mut Writer
+    };
+    json::Object(json).to_writer(writer);
+}
+
 pub fn get_os(triple: &str) -> Option<abi::Os> {
     for &(name, os) in os_names.iter() {
         if triple.contains(name) { return Some(os) }
@@ -910,6 +945,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           typed (crates expanded, with type annotations),
                           or identified (fully parenthesized,
                           AST nodes and blocks with IDs)", "TYPE"),
+  optflag("", "emit-ast", "Dump syntax in JSON after phase 2"),
   optflag("S", "",    "Compile only; do not assemble or link"),
   optflag("", "save-temps",
                         "Write intermediate files (.bc, .opt.bc, .o)

@@ -26,7 +26,7 @@ extern mod syntax;
 use driver::driver::{host_triple, optgroups, early_error};
 use driver::driver::{str_input, file_input, build_session_options};
 use driver::driver::{build_session, build_configuration, parse_pretty};
-use driver::driver::{PpMode, pretty_print_input, list_metadata};
+use driver::driver::{PpMode, pretty_print_input, emit_ast, list_metadata};
 use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
@@ -268,6 +268,10 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
       }
       None::<PpMode> => {/* continue */ }
+    }
+    if matches.opt_present("emit-ast") {
+        emit_ast(sess, cfg, &input, &ofile);
+        return;
     }
     let ls = matches.opt_present("ls");
     if ls {
