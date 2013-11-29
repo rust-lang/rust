@@ -1036,31 +1036,26 @@ pub fn upperhex(buf: &[u8], f: &mut Formatter) {
     f.pad_integral(local.slice_to(buf.len()), "0x", true);
 }
 
-// FIXME(#4375) shouldn't need an inner module
 macro_rules! integer(($signed:ident, $unsigned:ident) => {
-    mod $signed {
-        use super::*;
-
-        // Signed is special because it actuall emits the negative sign,
-        // nothing else should do that, however.
-        impl Signed for $signed {
-            fn fmt(c: &$signed, f: &mut Formatter) {
-                ::$unsigned::to_str_bytes(c.abs() as $unsigned, 10, |buf| {
-                    f.pad_integral(buf, "", *c >= 0);
-                })
-            }
+    // Signed is special because it actuall emits the negative sign,
+    // nothing else should do that, however.
+    impl Signed for $signed {
+        fn fmt(c: &$signed, f: &mut Formatter) {
+            ::$unsigned::to_str_bytes(c.abs() as $unsigned, 10, |buf| {
+                f.pad_integral(buf, "", *c >= 0);
+            })
         }
-        int_base!($signed, $unsigned, 2, Binary, "0b")
-        int_base!($signed, $unsigned, 8, Octal, "0o")
-        int_base!($signed, $unsigned, 16, LowerHex, "0x")
-        upper_hex!($signed, $unsigned)
-
-        int_base!($unsigned, $unsigned, 2, Binary, "0b")
-        int_base!($unsigned, $unsigned, 8, Octal, "0o")
-        int_base!($unsigned, $unsigned, 10, Unsigned, "")
-        int_base!($unsigned, $unsigned, 16, LowerHex, "0x")
-        upper_hex!($unsigned, $unsigned)
     }
+    int_base!($signed, $unsigned, 2, Binary, "0b")
+    int_base!($signed, $unsigned, 8, Octal, "0o")
+    int_base!($signed, $unsigned, 16, LowerHex, "0x")
+    upper_hex!($signed, $unsigned)
+
+    int_base!($unsigned, $unsigned, 2, Binary, "0b")
+    int_base!($unsigned, $unsigned, 8, Octal, "0o")
+    int_base!($unsigned, $unsigned, 10, Unsigned, "")
+    int_base!($unsigned, $unsigned, 16, LowerHex, "0x")
+    upper_hex!($unsigned, $unsigned)
 })
 
 integer!(int, uint)

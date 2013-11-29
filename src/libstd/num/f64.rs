@@ -12,18 +12,19 @@
 
 #[allow(missing_doc)];
 
-use default::Default;
-use libc::c_int;
-use num::{Zero, One, strconv};
-use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
-use num;
 use prelude::*;
+
+use cmath::c_double_utils;
+use default::Default;
+use libc::{c_double, c_int};
+use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
+use num::{Zero, One, strconv};
+use num;
 use to_str;
+use unstable::intrinsics;
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
-
-use self::delegated::*;
 
 macro_rules! delegate(
     (
@@ -35,22 +36,14 @@ macro_rules! delegate(
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
-        // An inner module is required to get the #[inline] attribute on the
-        // functions.
-        mod delegated {
-            use cmath::c_double_utils;
-            use libc::{c_double, c_int};
-            use unstable::intrinsics;
-
-            $(
-                #[inline]
-                pub fn $name($( $arg : $arg_ty ),*) -> $rv {
-                    unsafe {
-                        $bound_name($( $arg ),*)
-                    }
+        $(
+            #[inline]
+            pub fn $name($( $arg : $arg_ty ),*) -> $rv {
+                unsafe {
+                    $bound_name($( $arg ),*)
                 }
-            )*
-        }
+            }
+        )*
     )
 )
 
