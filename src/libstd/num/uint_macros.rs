@@ -26,8 +26,6 @@ use num::{CheckedDiv, Zero, One, strconv};
 use prelude::*;
 use str;
 
-pub use cmp::{min, max};
-
 pub static bits : uint = $bits;
 pub static bytes : uint = ($bits / 8);
 
