@@ -18,12 +18,12 @@ struct C { c: int }
 pub fn main() {
     match A {a: 10, b: @20} {
         x@A {a, b: @20} => { assert!(x.a == 10); assert!(a == 10); }
-        A {b: _b, _} => { fail!(); }
+        A {b: _b, ..} => { fail!(); }
     }
-    let mut x@B {b, _} = B {a: 10, b: C {c: 20}};
+    let mut x@B {b, ..} = B {a: 10, b: C {c: 20}};
     x.b.c = 30;
     assert_eq!(b.c, 20);
-    let mut y@D {d, _} = D {a: 10, d: C {c: 20}};
+    let mut y@D {d, ..} = D {a: 10, d: C {c: 20}};
     y.d.c = 30;
     assert_eq!(d.c, 20);
 }

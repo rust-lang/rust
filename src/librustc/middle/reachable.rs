@@ -73,7 +73,7 @@ fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::method,
     if is_local(impl_src) {
         match tcx.items.find(&impl_src.node) {
             Some(&ast_map::node_item(item, _)) => item_might_be_inlined(item),
-            Some(*) | None => {
+            Some(..) | None => {
                 tcx.sess.span_bug(method.span, "impl did is not an item")
             }
         }
@@ -134,11 +134,11 @@ impl Visitor<()> for MarkSymbolVisitor {
                     }
                 self.reachable_symbols.insert(def_id.node);
             }
-            ast::ExprMethodCall(*) => {
+            ast::ExprMethodCall(..) => {
                 match self.method_map.find(&expr.id) {
                     Some(&typeck::method_map_entry {
                         origin: typeck::method_static(def_id),
-                        _
+                        ..
                     }) => {
                         if ReachableContext::
                             def_id_represents_local_inlined_item(
@@ -191,7 +191,7 @@ impl ReachableContext {
         match tcx.items.find(&node_id) {
             Some(&ast_map::node_item(item, _)) => {
                 match item.node {
-                    ast::item_fn(*) => item_might_be_inlined(item),
+                    ast::item_fn(..) => item_might_be_inlined(item),
                     _ => false,
                 }
             }
@@ -313,10 +313,10 @@ impl ReachableContext {
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    ast::item_static(*) | ast::item_ty(*) |
-                    ast::item_mod(*) | ast::item_foreign_mod(*) |
-                    ast::item_impl(*) | ast::item_trait(*) |
-                    ast::item_struct(*) | ast::item_enum(*) => {}
+                    ast::item_static(..) | ast::item_ty(..) |
+                    ast::item_mod(..) | ast::item_foreign_mod(..) |
+                    ast::item_impl(..) | ast::item_trait(..) |
+                    ast::item_struct(..) | ast::item_enum(..) => {}
 
                     _ => {
                         self.tcx.sess.span_bug(item.span,
@@ -327,7 +327,7 @@ impl ReachableContext {
             }
             ast_map::node_trait_method(trait_method, _, _) => {
                 match *trait_method {
-                    ast::required(*) => {
+                    ast::required(..) => {
                         // Keep going, nothing to get exported
                     }
                     ast::provided(ref method) => {
@@ -341,9 +341,9 @@ impl ReachableContext {
                 }
             }
             // Nothing to recurse on for these
-            ast_map::node_foreign_item(*) |
-            ast_map::node_variant(*) |
-            ast_map::node_struct_ctor(*) => {}
+            ast_map::node_foreign_item(..) |
+            ast_map::node_variant(..) |
+            ast_map::node_struct_ctor(..) => {}
             _ => {
                 let ident_interner = token::get_ident_interner();
                 let desc = ast_map::node_id_to_str(self.tcx.items,

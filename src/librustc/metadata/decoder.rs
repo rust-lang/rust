@@ -503,7 +503,7 @@ pub enum DefLike {
 pub fn def_like_to_def(def_like: DefLike) -> ast::Def {
     match def_like {
         DlDef(def) => return def,
-        DlImpl(*) => fail!("found impl in def_like_to_def"),
+        DlImpl(..) => fail!("found impl in def_like_to_def"),
         DlField => fail!("found field in def_like_to_def")
     }
 }

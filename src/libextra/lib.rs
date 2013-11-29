@@ -38,8 +38,6 @@ Rust extras are part of the standard Rust distribution.
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
-#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
-#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 use std::str::{StrSlice, OwnedStr};
 

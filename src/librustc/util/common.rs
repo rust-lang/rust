@@ -71,7 +71,7 @@ impl<'self> Visitor<()> for LoopQueryVisitor<'self> {
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
-          ast::ExprLoop(*) | ast::ExprWhile(*) => {}
+          ast::ExprLoop(..) | ast::ExprWhile(..) => {}
           _ => visit::walk_expr(self, e, ())
         }
     }

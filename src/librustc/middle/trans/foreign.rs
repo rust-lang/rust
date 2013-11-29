@@ -98,7 +98,7 @@ pub fn llvm_calling_convention(ccx: &mut CrateContext,
             C => lib::llvm::CCallConv,
             Win64 => lib::llvm::X86_64_Win64,
 
-            // NOTE These API constants ought to be more specific
+            // These API constants ought to be more specific...
             Cdecl => lib::llvm::CCallConv,
             Aapcs => lib::llvm::CCallConv,
         }
@@ -347,7 +347,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
-            ast::foreign_item_fn(*) => {
+            ast::foreign_item_fn(..) => {
                 let (abis, mut path) = match ccx.tcx.items.get_copy(&foreign_item.id) {
                     ast_map::node_foreign_item(_, abis, _, path) => (abis, (*path).clone()),
                     _ => fail!("Unable to find foreign item in tcx.items table.")

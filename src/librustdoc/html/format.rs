@@ -277,7 +277,7 @@ impl fmt::Default for clean::Type {
                 external_path(f.buf, path, false, fqn.as_slice(), kind, crate);
                 typarams(f.buf, tp);
             }
-            clean::Self(*) => f.buf.write("Self".as_bytes()),
+            clean::Self(..) => f.buf.write("Self".as_bytes()),
             clean::Primitive(prim) => {
                 let s = match prim {
                     ast::ty_int(ast::ty_i) => "int",

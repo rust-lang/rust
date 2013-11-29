@@ -216,13 +216,13 @@ fn with_appropriate_checker(cx: &Context,
         ty::ty_closure(ty::ClosureTy {
             sigil: OwnedSigil,
             bounds: bounds,
-            _
+            ..
         }) => {
             b(|cx, fv| check_for_uniq(cx, fv, bounds))
         }
         ty::ty_closure(ty::ClosureTy {
             sigil: ManagedSigil,
-            _
+            ..
         }) => {
             // can't happen
         }
@@ -230,7 +230,7 @@ fn with_appropriate_checker(cx: &Context,
             sigil: BorrowedSigil,
             bounds: bounds,
             region: region,
-            _
+            ..
         }) => {
             b(|cx, fv| check_for_block(cx, fv, bounds, region))
         }
@@ -442,9 +442,9 @@ fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
                 sp,
                 "mutable variables cannot be implicitly captured");
         }
-        DefLocal(*) | DefArg(*) => { /* ok */ }
+        DefLocal(..) | DefArg(..) => { /* ok */ }
         DefUpvar(_, def1, _, _) => { check_imm_free_var(cx, *def1, sp); }
-        DefBinding(*) | DefSelf(*) => { /*ok*/ }
+        DefBinding(..) | DefSelf(..) => { /*ok*/ }
         _ => {
             cx.tcx.sess.span_bug(
                 sp,
@@ -480,7 +480,7 @@ pub fn check_send(cx: &Context, ty: ty::t, sp: Span) -> bool {
 pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
-          ty::ty_param(*) => {
+          ty::ty_param(..) => {
             tcx.sess.span_err(sp, "value may contain borrowed \
                                    pointers; add `'static` bound");
           }
@@ -529,7 +529,7 @@ pub fn check_cast_for_escaping_regions(
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
     match ty::get(target_ty).sty {
-        ty::ty_trait(*) => {}
+        ty::ty_trait(..) => {}
         _ => { return; }
     }
 
@@ -591,7 +591,7 @@ pub fn check_cast_for_escaping_regions(
 
     fn is_ReScope(r: ty::Region) -> bool {
         match r {
-            ty::ReScope(*) => true,
+            ty::ReScope(..) => true,
             _ => false
         }
     }

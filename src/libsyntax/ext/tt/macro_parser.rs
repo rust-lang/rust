@@ -193,8 +193,8 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
     fn n_rec(p_s: @mut ParseSess, m: &matcher, res: &[@named_match],
              ret_val: &mut HashMap<Ident, @named_match>) {
         match *m {
-          codemap::Spanned {node: match_tok(_), _} => (),
-          codemap::Spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
+          codemap::Spanned {node: match_tok(_), .. } => (),
+          codemap::Spanned {node: match_seq(ref more_ms, _, _, _, _), .. } => {
             for next_m in more_ms.iter() {
                 n_rec(p_s, next_m, res, ret_val)
             };

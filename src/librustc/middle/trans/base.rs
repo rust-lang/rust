@@ -230,7 +230,7 @@ fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t, name: &
             }
         }
         // `~` pointer return values never alias because ownership is transferred
-        ty::ty_uniq(*) |
+        ty::ty_uniq(..) |
         ty::ty_evec(_, ty::vstore_uniq) => {
             unsafe {
                 llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
@@ -246,9 +246,9 @@ fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t, name: &
         let llarg = unsafe { llvm::LLVMGetParam(llfn, (offset + i) as c_uint) };
         match ty::get(arg_ty).sty {
             // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(*) |
+            ty::ty_uniq(..) |
             ty::ty_evec(_, ty::vstore_uniq) |
-            ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
+            ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
@@ -702,7 +702,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
 
     let mut cx = cx;
     match ty::get(t).sty {
-      ty::ty_struct(*) => {
+      ty::ty_struct(..) => {
           let repr = adt::represent_type(cx.ccx(), t);
           expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
@@ -854,7 +854,7 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
                 Some(Rust) | Some(RustIntrinsic) => {
                     get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name, did)
                 }
-                Some(*) | None => {
+                Some(..) | None => {
                     let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
                     let cconv = c.unwrap_or(lib::llvm::CCallConv);
                     let llty = type_of_fn_from_ty(ccx, t);
@@ -1046,11 +1046,11 @@ pub fn find_bcx_for_scope(bcx: @mut Block, scope_id: ast::NodeId) -> @mut Block 
         cur_scope = match cur_scope {
             Some(inf) => {
                 match inf.node_info {
-                    Some(NodeInfo { id, _ }) if id == scope_id => {
+                    Some(NodeInfo { id, .. }) if id == scope_id => {
                         return bcx_sid
                     }
                     // FIXME(#6268, #6248) hacky cleanup for nested method calls
-                    Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
+                    Some(NodeInfo { callee_id: Some(id), .. }) if id == scope_id => {
                         return bcx_sid
                     }
                     _ => inf.parent
@@ -1171,7 +1171,7 @@ pub fn trans_stmt(cx: @mut Block, s: &ast::Stmt) -> @mut Block {
                 ast::DeclItem(i) => trans_item(cx.fcx.ccx, i)
             }
         }
-        ast::StmtMac(*) => cx.tcx().sess.bug("unexpanded macro")
+        ast::StmtMac(..) => cx.tcx().sess.bug("unexpanded macro")
     }
 
     return bcx;
@@ -2261,7 +2261,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
             trans_struct_def(ccx, struct_def);
         }
       }
-      ast::item_trait(*) => {
+      ast::item_trait(..) => {
         // Inside of this trait definition, we won't be actually translating any
         // functions, but the trait still needs to be walked. Otherwise default
         // methods with items will not get translated and will cause ICE's when
@@ -2607,11 +2607,11 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                     foreign = true;
 
                     match ni.node {
-                        ast::foreign_item_fn(*) => {
+                        ast::foreign_item_fn(..) => {
                             let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
                             foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
-                        ast::foreign_item_static(*) => {
+                        ast::foreign_item_static(..) => {
                             // Treat the crate map static specially in order to
                             // a weak-linkage-like functionality where it's
                             // dynamically resolved at runtime. If we're
@@ -3157,7 +3157,7 @@ pub fn trans_crate(sess: session::Session,
     decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, ccx.crate_map);
 
-    // NOTE win32: wart with exporting crate_map symbol
+    // win32: wart with exporting crate_map symbol
     // We set the crate map (_rust_crate_map_toplevel) to use dll_export
     // linkage but that ends up causing the linker to look for a
     // __rust_crate_map_toplevel symbol (extra underscore) which it will

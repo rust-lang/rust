@@ -324,7 +324,7 @@ impl<'self> LookupContext<'self> {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, p);
                 }
-                ty_self(*) => {
+                ty_self(..) => {
                     // Call is of the form "self.foo()" and appears in one
                     // of a trait's default method implementations.
                     self.push_inherent_candidates_from_self(self_ty);
@@ -740,7 +740,7 @@ impl<'self> LookupContext<'self> {
                     })
             }
 
-            ty_closure(*) => {
+            ty_closure(..) => {
                 // This case should probably be handled similarly to
                 // Trait instances.
                 None
@@ -760,13 +760,13 @@ impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         match ty::get(self_ty).sty {
-            ty_bare_fn(*) | ty_box(*) | ty_uniq(*) | ty_rptr(*) |
+            ty_bare_fn(..) | ty_box(..) | ty_uniq(..) | ty_rptr(..) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
-            ty_self(_) | ty_param(*) | ty_nil | ty_bot | ty_bool |
-            ty_char | ty_int(*) | ty_uint(*) |
-            ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_struct(*) | ty_tup(*) |
-            ty_estr(*) | ty_evec(*) | ty_trait(*) | ty_closure(*) => {
+            ty_self(_) | ty_param(..) | ty_nil | ty_bot | ty_bool |
+            ty_char | ty_int(..) | ty_uint(..) |
+            ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) | ty_tup(..) |
+            ty_estr(..) | ty_evec(..) | ty_trait(..) | ty_closure(..) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [MutImmutable, MutMutable],
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
@@ -929,7 +929,7 @@ impl<'self> LookupContext<'self> {
         assert!(candidate.method_ty.explicit_self != sty_static);
 
         let transformed_self_ty = match candidate.origin {
-            method_object(*) => {
+            method_object(..) => {
                 // For annoying reasons, we've already handled the
                 // substitution for object calls.
                 candidate.method_ty.transformed_self_ty.unwrap()
@@ -1066,7 +1066,7 @@ impl<'self> LookupContext<'self> {
             ast::sty_value(_) => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
-            ast::sty_region(*) | ast::sty_box(*) | ast::sty_uniq(*) => {
+            ast::sty_region(..) | ast::sty_box(..) | ast::sty_uniq(..) => {
                 let transformed_self_ty =
                     method_ty.transformed_self_ty.clone().unwrap();
                 match ty::get(transformed_self_ty).sty {
@@ -1108,10 +1108,10 @@ impl<'self> LookupContext<'self> {
          */
 
         match candidate.origin {
-            method_static(*) | method_param(*) => {
+            method_static(..) | method_param(..) => {
                 return; // not a call to a trait instance
             }
-            method_object(*) => {}
+            method_object(..) => {}
         }
 
         match candidate.method_ty.explicit_self {
@@ -1129,7 +1129,7 @@ impl<'self> LookupContext<'self> {
                      through an object");
             }
 
-            ast::sty_region(*) | ast::sty_box(*) | ast::sty_uniq(*) => {}
+            ast::sty_region(..) | ast::sty_box(..) | ast::sty_uniq(..) => {}
         }
 
         if ty::type_has_self(method_fty) { // reason (a) above
@@ -1155,8 +1155,8 @@ impl<'self> LookupContext<'self> {
             }
             // XXX: does this properly enforce this on everything now
             // that self has been merged in? -sully
-            method_param(method_param { trait_id: trait_id, _ }) |
-            method_object(method_object { trait_id: trait_id, _ }) => {
+            method_param(method_param { trait_id: trait_id, .. }) |
+            method_object(method_object { trait_id: trait_id, .. }) => {
                 bad = self.tcx().destructor_for_type.contains_key(&trait_id);
             }
         }

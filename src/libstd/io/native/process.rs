@@ -129,7 +129,7 @@ impl rtio::RtioProcess for Process {
         // and we kill it, then on unix we might ending up killing a
         // newer process that happens to have the same (re-used) id
         match self.exit_code {
-            Some(*) => return Err(io::IoError {
+            Some(..) => return Err(io::IoError {
                 kind: io::OtherIoError,
                 desc: "can't kill an exited process",
                 detail: None,

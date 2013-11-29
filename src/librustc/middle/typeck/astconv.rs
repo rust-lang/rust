@@ -329,7 +329,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                             ty::vstore_slice(r) => {
                                 ty::RegionTraitStore(r)
                             }
-                            ty::vstore_fixed(*) => {
+                            ty::vstore_fixed(..) => {
                                 tcx.sess.span_err(
                                     path.span,
                                     "@trait, ~trait or &trait are the only supported \
@@ -459,7 +459,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         // Kind bounds on path types are only supported for traits.
         match a_def {
             // But don't emit the error if the user meant to do a trait anyway.
-            ast::DefTrait(*) => { },
+            ast::DefTrait(..) => { },
             _ if bounds.is_some() =>
                 tcx.sess.span_err(ast_ty.span,
                     "kind bounds can only be used on trait types"),
@@ -810,6 +810,6 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
             let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundStatic); set
         }
         // &'r Trait is sugar for &'r Trait:<no-bounds>.
-        (&None, ty::RegionTraitStore(*)) => ty::EmptyBuiltinBounds(),
+        (&None, ty::RegionTraitStore(..)) => ty::EmptyBuiltinBounds(),
     }
 }

@@ -577,7 +577,7 @@ impl<K, V> Iterator<(K, V)> for HashMapMoveIterator<K, V> {
     fn next(&mut self) -> Option<(K, V)> {
         for elt in self.iter {
             match elt {
-                Some(Bucket {key, value, _}) => return Some((key, value)),
+                Some(Bucket {key, value, ..}) => return Some((key, value)),
                 None => {},
             }
         }

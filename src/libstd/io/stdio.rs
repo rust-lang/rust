@@ -247,7 +247,7 @@ impl StdWriter {
                     }
                 }
             }
-            File(*) => {
+            File(..) => {
                 io_error::cond.raise(IoError {
                     kind: OtherIoError,
                     desc: "stream is not a tty",
@@ -273,7 +273,7 @@ impl StdWriter {
                     Err(e) => io_error::cond.raise(e),
                 }
             }
-            File(*) => {
+            File(..) => {
                 io_error::cond.raise(IoError {
                     kind: OtherIoError,
                     desc: "stream is not a tty",
@@ -286,8 +286,8 @@ impl StdWriter {
     /// Returns whether this stream is attached to a TTY instance or not.
     pub fn isatty(&self) -> bool {
         match self.inner {
-            TTY(*) => true,
-            File(*) => false,
+            TTY(..) => true,
+            File(..) => false,
         }
     }
 }

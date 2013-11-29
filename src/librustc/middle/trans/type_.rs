@@ -283,7 +283,7 @@ impl Type {
         let box_ty = match store {
             ty::BoxTraitStore => Type::opaque_box(ctx),
             ty::UniqTraitStore => Type::unique(ctx, &Type::i8()),
-            ty::RegionTraitStore(*) => Type::i8()
+            ty::RegionTraitStore(..) => Type::i8()
         };
         Type::struct_([tydesc_ptr, box_ty.ptr_to()], false)
     }

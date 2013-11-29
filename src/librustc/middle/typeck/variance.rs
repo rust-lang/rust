@@ -338,7 +338,7 @@ impl<'self> Visitor<()> for TermsContext<'self> {
         // tcx, we rely on the fact that all inferreds for a particular
         // item are assigned continuous indices.
         match item.node {
-            ast::item_trait(*) => {
+            ast::item_trait(..) => {
                 self.add_inferred(item.id, SelfParam, 0, item.id);
             }
             _ => { }
@@ -372,13 +372,13 @@ impl<'self> Visitor<()> for TermsContext<'self> {
                 visit::walk_item(self, item, ());
             }
 
-            ast::item_impl(*) |
-            ast::item_static(*) |
-            ast::item_fn(*) |
-            ast::item_mod(*) |
-            ast::item_foreign_mod(*) |
-            ast::item_ty(*) |
-            ast::item_mac(*) => {
+            ast::item_impl(..) |
+            ast::item_static(..) |
+            ast::item_fn(..) |
+            ast::item_mod(..) |
+            ast::item_foreign_mod(..) |
+            ast::item_ty(..) |
+            ast::item_mac(..) => {
                 visit::walk_item(self, item, ());
             }
         }
@@ -460,7 +460,7 @@ impl<'self> Visitor<()> for ConstraintContext<'self> {
                 }
             }
 
-            ast::item_struct(*) => {
+            ast::item_struct(..) => {
                 let struct_fields = ty::lookup_struct_fields(tcx, did);
                 for field_info in struct_fields.iter() {
                     assert_eq!(field_info.id.crate, ast::LOCAL_CRATE);
@@ -469,7 +469,7 @@ impl<'self> Visitor<()> for ConstraintContext<'self> {
                 }
             }
 
-            ast::item_trait(*) => {
+            ast::item_trait(..) => {
                 let methods = ty::trait_methods(tcx, did);
                 for method in methods.iter() {
                     match method.transformed_self_ty {
@@ -493,13 +493,13 @@ impl<'self> Visitor<()> for ConstraintContext<'self> {
                 }
             }
 
-            ast::item_static(*) |
-            ast::item_fn(*) |
-            ast::item_mod(*) |
-            ast::item_foreign_mod(*) |
-            ast::item_ty(*) |
-            ast::item_impl(*) |
-            ast::item_mac(*) => {
+            ast::item_static(..) |
+            ast::item_fn(..) |
+            ast::item_mod(..) |
+            ast::item_foreign_mod(..) |
+            ast::item_ty(..) |
+            ast::item_impl(..) |
+            ast::item_mac(..) => {
                 visit::walk_item(self, item, ());
             }
         }
@@ -659,7 +659,7 @@ impl<'self> ConstraintContext<'self> {
                                                  substs, variance);
             }
 
-            ty::ty_param(ty::param_ty { def_id: ref def_id, _ }) => {
+            ty::ty_param(ty::param_ty { def_id: ref def_id, .. }) => {
                 assert_eq!(def_id.crate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.find(&def_id.node) {
                     Some(&index) => {
@@ -679,19 +679,19 @@ impl<'self> ConstraintContext<'self> {
                 self.add_constraint(index, variance);
             }
 
-            ty::ty_bare_fn(ty::BareFnTy { sig: ref sig, _ }) => {
+            ty::ty_bare_fn(ty::BareFnTy { sig: ref sig, .. }) => {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_closure(ty::ClosureTy { sig: ref sig, region, _ }) => {
+            ty::ty_closure(ty::ClosureTy { sig: ref sig, region, .. }) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_infer(*) | ty::ty_err | ty::ty_type |
-            ty::ty_opaque_box | ty::ty_opaque_closure_ptr(*) |
-            ty::ty_unboxed_vec(*) => {
+            ty::ty_infer(..) | ty::ty_err | ty::ty_type |
+            ty::ty_opaque_box | ty::ty_opaque_closure_ptr(..) |
+            ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
                     format!("Unexpected type encountered in \
                             variance inference: {}",
@@ -770,12 +770,12 @@ impl<'self> ConstraintContext<'self> {
 
             ty::ReStatic => { }
 
-            ty::ReLateBound(*) => {
+            ty::ReLateBound(..) => {
                 // We do not infer variance for region parameters on
                 // methods or in fn types.
             }
 
-            ty::ReFree(*) | ty::ReScope(*) | ty::ReInfer(*) |
+            ty::ReFree(..) | ty::ReScope(..) | ty::ReInfer(..) |
             ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
@@ -822,7 +822,7 @@ struct SolveContext<'self> {
 }
 
 fn solve_constraints(constraints_cx: ConstraintContext) {
-    let ConstraintContext { terms_cx, constraints, _ } = constraints_cx;
+    let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
     let solutions = vec::from_elem(terms_cx.num_inferred(), ty::Bivariant);
     let mut solutions_cx = SolveContext {
         terms_cx: terms_cx,

@@ -21,7 +21,7 @@ impl<T> Container for SmallVector<T> {
     fn len(&self) -> uint {
         match *self {
             Zero => 0,
-            One(*) => 1,
+            One(..) => 1,
             Many(ref vals) => vals.len()
         }
     }
@@ -53,7 +53,7 @@ impl<T> SmallVector<T> {
     pub fn push(&mut self, v: T) {
         match *self {
             Zero => *self = One(v),
-            One(*) => {
+            One(..) => {
                 let one = util::replace(self, Zero);
                 match one {
                     One(v1) => util::replace(self, Many(~[v1, v])),
@@ -99,7 +99,7 @@ impl<T> Iterator<T> for SmallVectorMoveIterator<T> {
     fn next(&mut self) -> Option<T> {
         match *self {
             ZeroIterator => None,
-            OneIterator(*) => {
+            OneIterator(..) => {
                 let mut replacement = ZeroIterator;
                 util::swap(self, &mut replacement);
                 match replacement {
@@ -114,7 +114,7 @@ impl<T> Iterator<T> for SmallVectorMoveIterator<T> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         match *self {
             ZeroIterator => (0, Some(0)),
-            OneIterator(*) => (1, Some(1)),
+            OneIterator(..) => (1, Some(1)),
             ManyIterator(ref inner) => inner.size_hint()
         }
     }

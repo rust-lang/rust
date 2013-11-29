@@ -335,7 +335,7 @@ impl Task {
     pub fn is_home_no_tls(&self, sched: &~Scheduler) -> bool {
         match self.task_type {
             GreenTask(Some(AnySched)) => { false }
-            GreenTask(Some(Sched(SchedHandle { sched_id: ref id, _}))) => {
+            GreenTask(Some(Sched(SchedHandle { sched_id: ref id, .. }))) => {
                 *id == sched.sched_id()
             }
             GreenTask(None) => {
@@ -351,7 +351,7 @@ impl Task {
     pub fn homed(&self) -> bool {
         match self.task_type {
             GreenTask(Some(AnySched)) => { false }
-            GreenTask(Some(Sched(SchedHandle { _ }))) => { true }
+            GreenTask(Some(Sched(SchedHandle { .. }))) => { true }
             GreenTask(None) => {
                 rtabort!("task without home");
             }
@@ -372,7 +372,7 @@ impl Task {
                     rtdebug!("anysched task in sched check ****");
                     sched_run_anything
                 }
-                GreenTask(Some(Sched(SchedHandle { sched_id: ref id, _ }))) => {
+                GreenTask(Some(Sched(SchedHandle { sched_id: ref id, ..}))) => {
                     rtdebug!("homed task in sched check ****");
                     *id == sched_id
                 }
@@ -470,7 +470,7 @@ impl Coroutine {
     /// Destroy coroutine and try to reuse stack segment.
     pub fn recycle(self, stack_pool: &mut StackPool) {
         match self {
-            Coroutine { current_stack_segment, _ } => {
+            Coroutine { current_stack_segment, .. } => {
                 stack_pool.give_segment(current_stack_segment);
             }
         }

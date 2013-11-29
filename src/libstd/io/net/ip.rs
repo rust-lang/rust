@@ -56,8 +56,8 @@ pub struct SocketAddr {
 impl ToStr for SocketAddr {
     fn to_str(&self) -> ~str {
         match self.ip {
-            Ipv4Addr(*) => format!("{}:{}", self.ip.to_str(), self.port),
-            Ipv6Addr(*) => format!("[{}]:{}", self.ip.to_str(), self.port),
+            Ipv4Addr(..) => format!("{}:{}", self.ip.to_str(), self.port),
+            Ipv6Addr(..) => format!("[{}]:{}", self.ip.to_str(), self.port),
         }
     }
 }

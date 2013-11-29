@@ -97,12 +97,12 @@ pub enum TestFn {
 impl TestFn {
     fn padding(&self) -> NamePadding {
         match self {
-            &StaticTestFn(*)   => PadNone,
-            &StaticBenchFn(*)  => PadOnRight,
-            &StaticMetricFn(*) => PadOnRight,
-            &DynTestFn(*)      => PadNone,
-            &DynMetricFn(*)    => PadOnRight,
-            &DynBenchFn(*)     => PadOnRight,
+            &StaticTestFn(..)   => PadNone,
+            &StaticBenchFn(..)  => PadOnRight,
+            &StaticMetricFn(..) => PadOnRight,
+            &DynTestFn(..)      => PadNone,
+            &DynMetricFn(..)    => PadOnRight,
+            &DynBenchFn(..)     => PadOnRight,
         }
     }
 }

@@ -542,7 +542,7 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
         ast::ExprWhile(cond, _) => {
             match cond.node {
                 ast::ExprLit(@codemap::Spanned {
-                    node: ast::lit_bool(true), _}) =>
+                    node: ast::lit_bool(true), ..}) =>
                 {
                     cx.span_lint(while_true, e.span,
                                  "denote infinite loops with loop { ... }");
@@ -720,7 +720,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                             cx.span_lint(ctypes, ty.span,
                                          "found enum type without foreign-function-safe \
                                           representation annotation in foreign module");
-                            // NOTE this message could be more helpful
+                            // hmm... this message could be more helpful
                         }
                     }
                     _ => ()
@@ -785,10 +785,10 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
 
 fn check_heap_item(cx: &Context, it: &ast::item) {
     match it.node {
-        ast::item_fn(*) |
-        ast::item_ty(*) |
-        ast::item_enum(*) |
-        ast::item_struct(*) => check_heap_type(cx, it.span,
+        ast::item_fn(..) |
+        ast::item_ty(..) |
+        ast::item_enum(..) |
+        ast::item_struct(..) => check_heap_type(cx, it.span,
                                                ty::node_id_to_type(cx.tcx,
                                                                    it.id)),
         _ => ()
@@ -892,7 +892,7 @@ fn check_heap_expr(cx: &Context, e: &ast::Expr) {
 
 fn check_path_statement(cx: &Context, s: &ast::Stmt) {
     match s.node {
-        ast::StmtSemi(@ast::Expr { node: ast::ExprPath(_), _ }, _) => {
+        ast::StmtSemi(@ast::Expr { node: ast::ExprPath(_), .. }, _) => {
             cx.span_lint(path_statement, s.span,
                          "path statement with no effect");
         }
@@ -922,10 +922,10 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     }
 
     match it.node {
-        ast::item_ty(*) | ast::item_struct(*) => {
+        ast::item_ty(..) | ast::item_struct(..) => {
             check_case(cx, "type", it.ident, it.span)
         }
-        ast::item_trait(*) => {
+        ast::item_trait(..) => {
             check_case(cx, "trait", it.ident, it.span)
         }
         ast::item_enum(ref enum_definition, _) => {
@@ -1001,7 +1001,7 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
                       ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
             // `let mut _a = 1;` doesn't need a warning.
             let initial_underscore = match path.segments {
-                [ast::PathSegment { identifier: id, _ }] => {
+                [ast::PathSegment { identifier: id, .. }] => {
                     cx.tcx.sess.str_of(id).starts_with("_")
                 }
                 _ => {
@@ -1027,8 +1027,8 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         ast::ExprVstore(e2, ast::ExprVstoreUniq) |
         ast::ExprVstore(e2, ast::ExprVstoreBox) => {
             match e2.node {
-                ast::ExprLit(@codemap::Spanned{node: ast::lit_str(*), _}) |
-                ast::ExprVec(*) => {}
+                ast::ExprLit(@codemap::Spanned{node: ast::lit_str(..), ..}) |
+                ast::ExprVec(..) => {}
                 _ => return
             }
         }
@@ -1038,7 +1038,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
 
     match cx.tcx.adjustments.find_copy(&e.id) {
         Some(@ty::AutoDerefRef(ty::AutoDerefRef {
-            autoref: Some(ty::AutoBorrowVec(*)), _ })) => {
+            autoref: Some(ty::AutoBorrowVec(..)), .. })) => {
             cx.span_lint(unnecessary_allocation, e.span,
                          "unnecessary allocation, the sigil can be removed");
         }
@@ -1071,11 +1071,11 @@ fn check_missing_doc_attrs(cx: &Context,
 
 fn check_missing_doc_item(cx: &mut Context, it: &ast::item) { // XXX doesn't need to be mut
     let desc = match it.node {
-        ast::item_fn(*) => "a function",
-        ast::item_mod(*) => "a module",
-        ast::item_enum(*) => "an enum",
-        ast::item_struct(*) => "a struct",
-        ast::item_trait(*) => "a trait",
+        ast::item_fn(..) => "a function",
+        ast::item_mod(..) => "a module",
+        ast::item_enum(..) => "an enum",
+        ast::item_struct(..) => "a struct",
+        ast::item_trait(..) => "a trait",
         _ => return
     };
     check_missing_doc_attrs(cx, it.id, it.attrs, it.span, desc);
@@ -1091,13 +1091,13 @@ fn check_missing_doc_method(cx: &Context, m: &ast::method) {
         Some(md) => {
             match md.container {
                 // Always check default methods defined on traits.
-                ty::TraitContainer(*) => {}
+                ty::TraitContainer(..) => {}
                 // For methods defined on impls, it depends on whether
                 // it is an implementation for a trait or is a plain
                 // impl.
                 ty::ImplContainer(cid) => {
                     match ty::impl_trait_ref(cx.tcx, cid) {
-                        Some(*) => return, // impl for trait: don't doc
+                        Some(..) => return, // impl for trait: don't doc
                         None => {} // plain impl: doc according to privacy
                     }
                 }
@@ -1128,9 +1128,9 @@ fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
 /// #[unstable] (or none of them) attributes.
 fn check_stability(cx: &Context, e: &ast::Expr) {
     let def = match e.node {
-        ast::ExprMethodCall(*) |
-        ast::ExprPath(*) |
-        ast::ExprStruct(*) => {
+        ast::ExprMethodCall(..) |
+        ast::ExprPath(..) |
+        ast::ExprStruct(..) => {
             match cx.tcx.def_map.find(&e.id) {
                 Some(&def) => def,
                 None => return
@@ -1178,17 +1178,17 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     let (lint, label) = match stability {
         // no stability attributes == Unstable
         None => (unstable, "unmarked"),
-        Some(attr::Stability { level: attr::Unstable, _ }) =>
+        Some(attr::Stability { level: attr::Unstable, .. }) =>
                 (unstable, "unstable"),
-        Some(attr::Stability { level: attr::Experimental, _ }) =>
+        Some(attr::Stability { level: attr::Experimental, .. }) =>
                 (experimental, "experimental"),
-        Some(attr::Stability { level: attr::Deprecated, _ }) =>
+        Some(attr::Stability { level: attr::Deprecated, .. }) =>
                 (deprecated, "deprecated"),
         _ => return
     };
 
     let msg = match stability {
-        Some(attr::Stability { text: Some(ref s), _ }) => {
+        Some(attr::Stability { text: Some(ref s), .. }) => {
             format!("use of {} item: {}", label, *s)
         }
         _ => format!("use of {} item", label)

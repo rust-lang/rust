@@ -686,7 +686,7 @@ fn mutate_values<'r,
                  -> bool {
     match *node {
       Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
-                     right: ref mut right, _}) => {
+                     right: ref mut right, ..}) => {
         if !mutate_values(left,  |k,v| f(k,v)) { return false }
         if !f(key, value) { return false }
         if !mutate_values(right, |k,v| f(k,v)) { return false }
@@ -801,13 +801,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                     (remove(&mut save.left, key), true)
                 } else {
                     let new = save.left.take_unwrap();
-                    let ~TreeNode{value, _} = replace(save, new);
+                    let ~TreeNode{value, ..} = replace(save, new);
                     *save = save.left.take_unwrap();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
                 let new = save.right.take_unwrap();
-                let ~TreeNode{value, _} = replace(save, new);
+                let ~TreeNode{value, ..} = replace(save, new);
                 (Some(value), true)
             } else {
                 (None, false)
@@ -843,7 +843,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
       }
     }
     return match node.take() {
-        Some(~TreeNode{value, _}) => Some(value), None => fail!()
+        Some(~TreeNode{value, ..}) => Some(value), None => fail!()
     };
 }
 

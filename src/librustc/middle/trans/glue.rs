@@ -127,8 +127,8 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
     if field == abi::tydesc_field_take_glue {
         match ty::get(t).sty {
-          ty::ty_unboxed_vec(*) |
-              ty::ty_uniq(*) |
+          ty::ty_unboxed_vec(..) |
+              ty::ty_uniq(..) |
               ty::ty_estr(ty::vstore_uniq) |
               ty::ty_evec(_, ty::vstore_uniq) => { return ty::mk_u32(); }
           _ => ()
@@ -142,14 +142,14 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
     if field == abi::tydesc_field_free_glue {
         match ty::get(t).sty {
-          ty::ty_bare_fn(*) |
-          ty::ty_closure(*) |
-          ty::ty_box(*) |
+          ty::ty_bare_fn(..) |
+          ty::ty_closure(..) |
+          ty::ty_box(..) |
           ty::ty_opaque_box |
-          ty::ty_uniq(*) |
+          ty::ty_uniq(..) |
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
           ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) |
-          ty::ty_opaque_closure_ptr(*) => (),
+          ty::ty_opaque_closure_ptr(..) => (),
           _ => { return ty::mk_u32(); }
         }
     }
@@ -373,7 +373,7 @@ pub fn make_free_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
                               None);
         trans_free(bcx, v)
       }
-      ty::ty_uniq(*) => {
+      ty::ty_uniq(..) => {
         uniq::make_free_glue(bcx, v, t)
       }
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
@@ -602,8 +602,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     }
 
     let has_header = match ty::get(t).sty {
-        ty::ty_box(*) => true,
-        ty::ty_uniq(*) => ty::type_contents(ccx.tcx, t).owns_managed(),
+        ty::ty_box(..) => true,
+        ty::ty_uniq(..) => ty::type_contents(ccx.tcx, t).owns_managed(),
         _ => false
     };
 

@@ -211,7 +211,7 @@ impl MoveData {
         }
 
         let index = match *lp {
-            LpVar(*) => {
+            LpVar(..) => {
                 let index = MovePathIndex(self.paths.len());
 
                 self.paths.push(MovePath {
@@ -284,7 +284,7 @@ impl MoveData {
             }
             None => {
                 match *lp {
-                    LpVar(*) => { }
+                    LpVar(..) => { }
                     LpExtend(b, _, _) => {
                         self.add_existing_base_paths(b, result);
                     }
@@ -394,7 +394,7 @@ impl MoveData {
                     let path = *self.path_map.get(&path.loan_path);
                     self.kill_moves(path, kill_id, dfcx_moves);
                 }
-                LpExtend(*) => {}
+                LpExtend(..) => {}
             }
         }
 
@@ -405,7 +405,7 @@ impl MoveData {
                     let kill_id = tcx.region_maps.encl_scope(id);
                     dfcx_assign.add_kill(kill_id, assignment_index);
                 }
-                LpExtend(*) => {
+                LpExtend(..) => {
                     tcx.sess.bug("Var assignment for non var path");
                 }
             }

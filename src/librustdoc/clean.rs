@@ -151,19 +151,19 @@ impl Item {
     }
 
     pub fn is_mod(&self) -> bool {
-        match self.inner { ModuleItem(*) => true, _ => false }
+        match self.inner { ModuleItem(..) => true, _ => false }
     }
     pub fn is_trait(&self) -> bool {
-        match self.inner { TraitItem(*) => true, _ => false }
+        match self.inner { TraitItem(..) => true, _ => false }
     }
     pub fn is_struct(&self) -> bool {
-        match self.inner { StructItem(*) => true, _ => false }
+        match self.inner { StructItem(..) => true, _ => false }
     }
     pub fn is_enum(&self) -> bool {
-        match self.inner { EnumItem(*) => true, _ => false }
+        match self.inner { EnumItem(..) => true, _ => false }
     }
     pub fn is_fn(&self) -> bool {
-        match self.inner { FunctionItem(*) => true, _ => false }
+        match self.inner { FunctionItem(..) => true, _ => false }
     }
 }
 
@@ -538,13 +538,13 @@ pub enum TraitMethod {
 impl TraitMethod {
     pub fn is_req(&self) -> bool {
         match self {
-            &Required(*) => true,
+            &Required(..) => true,
             _ => false,
         }
     }
     pub fn is_def(&self) -> bool {
         match self {
-            &Provided(*) => true,
+            &Provided(..) => true,
             _ => false,
         }
     }
@@ -1140,17 +1140,17 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
         PatWildMulti => ~"..",
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
-        PatStruct(*) => fail!("tried to get argument name from pat_struct, \
+        PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
-        PatTup(*) => ~"(tuple arg NYI)",
+        PatTup(..) => ~"(tuple arg NYI)",
         PatBox(p) => name_from_pat(p),
         PatUniq(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
-        PatLit(*) => fail!("tried to get argument name from pat_lit, \
+        PatLit(..) => fail!("tried to get argument name from pat_lit, \
                             which is not allowed in function arguments"),
-        PatRange(*) => fail!("tried to get argument name from pat_range, \
+        PatRange(..) => fail!("tried to get argument name from pat_range, \
                               which is not allowed in function arguments"),
-        PatVec(*) => fail!("tried to get argument name from pat_vec, \
+        PatVec(..) => fail!("tried to get argument name from pat_vec, \
                              which is not allowed in function arguments")
     }
 }

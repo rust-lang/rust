@@ -226,7 +226,7 @@ impl Ctx {
         }
         visit::walk_fn(self, fk, decl, body, sp, id, ());
         match *fk {
-            visit::fk_method(*) => { self.path.pop(); }
+            visit::fk_method(..) => { self.path.pop(); }
             _ => {}
         }
     }
@@ -338,7 +338,7 @@ impl Visitor<()> for Ctx {
             item_mod(_) | item_foreign_mod(_) => {
                 self.path.push(path_mod(i.ident));
             }
-            item_impl(*) => {} // this was guessed above.
+            item_impl(..) => {} // this was guessed above.
             _ => self.path.push(path_name(i.ident))
         }
         visit::walk_item(self, i, ());
@@ -407,7 +407,7 @@ pub fn map_decoded_item(diag: @mut span_handler,
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now. Likewise with foreign items.
     match *ii {
-        ii_item(*) => {} // fallthrough
+        ii_item(..) => {} // fallthrough
         ii_foreign(i) => {
             cx.map.insert(i.id, node_foreign_item(i,
                                                   AbiSet::Intrinsic(),
@@ -431,16 +431,16 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
       Some(&node_item(item, path)) => {
         let path_str = path_ident_to_str(path, item.ident, itr);
         let item_str = match item.node {
-          item_static(*) => ~"static",
-          item_fn(*) => ~"fn",
-          item_mod(*) => ~"mod",
-          item_foreign_mod(*) => ~"foreign mod",
-          item_ty(*) => ~"ty",
-          item_enum(*) => ~"enum",
-          item_struct(*) => ~"struct",
-          item_trait(*) => ~"trait",
-          item_impl(*) => ~"impl",
-          item_mac(*) => ~"macro"
+          item_static(..) => ~"static",
+          item_fn(..) => ~"fn",
+          item_mod(..) => ~"mod",
+          item_foreign_mod(..) => ~"foreign mod",
+          item_ty(..) => ~"ty",
+          item_enum(..) => ~"enum",
+          item_struct(..) => ~"struct",
+          item_trait(..) => ~"trait",
+          item_impl(..) => ~"impl",
+          item_mac(..) => ~"macro"
         };
         format!("{} {} (id={})", item_str, path_str, id)
       }

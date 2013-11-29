@@ -21,10 +21,9 @@ use unstable::finally::Finally;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
-#[cfg(stage0)] // only remove this attribute after the next snapshot
 pub use self::native::*;
 
-#[cfg(not(stage0), not(windows), not(target_os = "android"))]
+#[cfg(not(windows), not(target_os = "android"))]
 pub use self::compiled::*;
 
 /// Borrow the thread-local value from thread-local storage.

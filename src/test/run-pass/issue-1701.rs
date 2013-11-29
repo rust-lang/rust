@@ -16,10 +16,10 @@ enum animal { cat(pattern), dog(breed), rabbit(name, ear_kind), tiger }
 
 fn noise(a: animal) -> Option<~str> {
     match a {
-      cat(*)    => { Some(~"meow") }
-      dog(*)    => { Some(~"woof") }
-      rabbit(*) => { None }
-      tiger(*)  => { Some(~"roar") }
+      cat(..)    => { Some(~"meow") }
+      dog(..)    => { Some(~"woof") }
+      rabbit(..) => { None }
+      tiger(..)  => { Some(~"roar") }
     }
 }
 

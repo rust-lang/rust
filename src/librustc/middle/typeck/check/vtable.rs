@@ -248,7 +248,7 @@ fn lookup_vtable(vcx: &VtableContext,
     // If the type is self or a param, we look at the trait/supertrait
     // bounds to see if they include the trait we are looking for.
     let vtable_opt = match ty::get(ty).sty {
-        ty::ty_param(param_ty {idx: n, _}) => {
+        ty::ty_param(param_ty {idx: n, ..}) => {
             let type_param_bounds: &[@ty::TraitRef] =
                 vcx.param_env.type_param_bounds[n].trait_bounds;
             lookup_vtable_from_bounds(vcx,
@@ -559,7 +559,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
 
     let cx = fcx.ccx;
     match ex.node {
-      ast::ExprPath(*) => {
+      ast::ExprPath(..) => {
         fcx.opt_node_ty_substs(ex.id, |substs| {
             debug!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
@@ -631,7 +631,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                   match (&ty::get(ty).sty, store) {
                       (&ty::ty_box(mt), ty::BoxTraitStore) |
                       (&ty::ty_uniq(mt), ty::UniqTraitStore) |
-                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*))
+                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
                         if !mutability_allowed(mt.mutbl, target_mutbl) => {
                           fcx.tcx().sess.span_err(ex.span,
                                                   format!("types differ in mutability"));
@@ -639,7 +639,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
 
                       (&ty::ty_box(mt), ty::BoxTraitStore) |
                       (&ty::ty_uniq(mt), ty::UniqTraitStore) |
-                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(*)) => {
+                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..)) => {
                           let location_info =
                               &location_info_for_expr(ex);
                           let vcx = fcx.vtable_context();

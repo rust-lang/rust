@@ -177,7 +177,6 @@ extern "rust-intrinsic" {
     pub fn abort() -> !;
 
     /// Execute a breakpoint trap, for inspection by a debugger.
-    #[cfg(not(stage0))]
     pub fn breakpoint();
 
     /// Atomic compare and exchange, sequentially consistent.

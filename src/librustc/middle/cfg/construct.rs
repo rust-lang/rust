@@ -43,7 +43,7 @@ pub fn construct(tcx: ty::ctxt,
     };
     let entry = cfg_builder.add_node(0, []);
     let exit = cfg_builder.block(blk, entry);
-    let CFGBuilder {exit_map, graph, _} = cfg_builder;
+    let CFGBuilder {exit_map, graph, ..} = cfg_builder;
     CFG {exit_map: exit_map,
          graph: graph,
          entry: entry,
@@ -72,7 +72,7 @@ impl CFGBuilder {
                 self.expr(expr, pred)
             }
 
-            ast::StmtMac(*) => {
+            ast::StmtMac(..) => {
                 self.tcx.sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
@@ -95,8 +95,8 @@ impl CFGBuilder {
         match pat.node {
             ast::PatIdent(_, _, None) |
             ast::PatEnum(_, None) |
-            ast::PatLit(*) |
-            ast::PatRange(*) |
+            ast::PatLit(..) |
+            ast::PatRange(..) |
             ast::PatWild | ast::PatWildMulti => {
                 self.add_node(pat.id, [pred])
             }
@@ -239,7 +239,7 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ast::ExprLoop(ref body, _) => {
                 //
@@ -405,13 +405,13 @@ impl CFGBuilder {
             }
 
             ast::ExprLogLevel |
-            ast::ExprMac(*) |
-            ast::ExprInlineAsm(*) |
+            ast::ExprMac(..) |
+            ast::ExprInlineAsm(..) |
             ast::ExprSelf |
-            ast::ExprFnBlock(*) |
-            ast::ExprProc(*) |
-            ast::ExprLit(*) |
-            ast::ExprPath(*) => {
+            ast::ExprFnBlock(..) |
+            ast::ExprProc(..) |
+            ast::ExprLit(..) |
+            ast::ExprPath(..) => {
                 self.straightline(expr, pred, [])
             }
         }

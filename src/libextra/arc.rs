@@ -256,7 +256,7 @@ impl<T:Send> MutexArc<T> {
     pub fn unwrap(self) -> T {
         let MutexArc { x: x } = self;
         let inner = x.unwrap();
-        let MutexArcInner { failed: failed, data: data, _ } = inner;
+        let MutexArcInner { failed: failed, data: data, .. } = inner;
         if failed {
             fail!("Can't unwrap poisoned MutexArc - another task failed inside!");
         }
@@ -504,9 +504,9 @@ impl<T:Freeze + Send> RWArc<T> {
      * in write mode.
      */
     pub fn unwrap(self) -> T {
-        let RWArc { x: x, _ } = self;
+        let RWArc { x: x, .. } = self;
         let inner = x.unwrap();
-        let RWArcInner { failed: failed, data: data, _ } = inner;
+        let RWArcInner { failed: failed, data: data, .. } = inner;
         if failed {
             fail!("Can't unwrap poisoned RWArc - another task failed inside!")
         }

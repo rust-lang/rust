@@ -212,7 +212,7 @@ impl RtioProcess for Process {
         // Make sure (on the home scheduler) that we have an exit status listed
         let _m = self.fire_homing_missile();
         match self.exit_status {
-            Some(*) => {}
+            Some(..) => {}
             None => {
                 // If there's no exit code previously listed, then the
                 // process's exit callback has yet to be invoked. We just

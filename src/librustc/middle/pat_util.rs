@@ -30,9 +30,9 @@ pub fn pat_id_map(dm: resolve::DefMap, pat: &Pat) -> PatIdMap {
 
 pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
-        PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(*) => {
+        PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
             match dm.find(&pat.id) {
-                Some(&DefVariant(*)) | Some(&DefStruct(*)) => true,
+                Some(&DefVariant(..)) | Some(&DefStruct(..)) => true,
                 _ => false
             }
         }
@@ -42,7 +42,7 @@ pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: &Pat) -> bool {
 
 pub fn pat_is_const(dm: resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
-        PatIdent(_, _, None) | PatEnum(*) => {
+        PatIdent(_, _, None) | PatEnum(..) => {
             match dm.find(&pat.id) {
                 Some(&DefStatic(_, false)) => true,
                 _ => false
@@ -54,7 +54,7 @@ pub fn pat_is_const(dm: resolve::DefMap, pat: &Pat) -> bool {
 
 pub fn pat_is_binding(dm: resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
-        PatIdent(*) => {
+        PatIdent(..) => {
             !pat_is_variant_or_struct(dm, pat) &&
             !pat_is_const(dm, pat)
         }
@@ -64,7 +64,7 @@ pub fn pat_is_binding(dm: resolve::DefMap, pat: &Pat) -> bool {
 
 pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
-        PatIdent(*) => pat_is_binding(dm, pat),
+        PatIdent(..) => pat_is_binding(dm, pat),
         PatWild | PatWildMulti => true,
         _ => false
     }
@@ -93,7 +93,7 @@ pub fn pat_binding_ids(dm: resolve::DefMap, pat: &Pat) -> ~[NodeId] {
 }
 
 /// Checks if the pattern contains any patterns that bind something to
-/// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(*)`.
+/// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
 pub fn pat_contains_bindings(dm: resolve::DefMap, pat: &Pat) -> bool {
     let mut contains_bindings = false;
     walk_pat(pat, |p| {

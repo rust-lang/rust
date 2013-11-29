@@ -19,7 +19,7 @@ static C: E = S1 { u: 23 };
 
 pub fn main() {
     match C {
-        S0 { _ } => fail!(),
+        S0 { .. } => fail!(),
         S1 { u } => assert!(u == 23)
     }
 }
