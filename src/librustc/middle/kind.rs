@@ -182,17 +182,6 @@ fn with_appropriate_checker(cx: &Context,
         check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
-    fn check_for_box(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
-        // all captured data must be owned
-        let id = ast_util::def_id_of_def(fv.def).node;
-        let var_t = ty::node_id_to_type(cx.tcx, id);
-
-        // check that only immutable variables are implicitly copied in
-        check_imm_free_var(cx, fv.def, fv.span);
-
-        check_freevar_bounds(cx, fv.span, var_t, bounds, None);
-    }
-
     fn check_for_block(cx: &Context, fv: &freevar_entry,
                        bounds: ty::BuiltinBounds, region: ty::Region) {
         let id = ast_util::def_id_of_def(fv.def).node;
@@ -225,6 +214,7 @@ fn with_appropriate_checker(cx: &Context,
             ..
         }) => {
             // can't happen
+            fail!("internal error: saw closure with managed sigil (@fn)");
         }
         ty::ty_closure(ty::ClosureTy {
             sigil: BorrowedSigil,
