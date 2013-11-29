@@ -68,7 +68,7 @@ impl Eq for Path {
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
-        Path::new_opt(s)
+        Path::init_opt(s)
     }
 }
 
@@ -111,7 +111,7 @@ impl<'self> BytesContainer for &'self Path {
 }
 
 impl GenericPathUnsafe for Path {
-    unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
+    unsafe fn init_unchecked<T: BytesContainer>(path: T) -> Path {
         let path = Path::normalize(path.container_as_bytes());
         assert!(!path.is_empty());
         let idx = path.rposition_elem(&sep_byte);
@@ -218,7 +218,7 @@ impl GenericPath for Path {
 
     fn root_path(&self) -> Option<Path> {
         if self.is_absolute() {
-            Some(Path::new("/"))
+            Some(Path::init("/"))
         } else {
             None
         }
@@ -287,7 +287,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect_vec(&sep_byte)))
+            Some(Path::init(comps.connect_vec(&sep_byte)))
         }
     }
 
@@ -314,14 +314,14 @@ impl Path {
     ///
     /// Raises the `null_byte` condition if the vector contains a NUL.
     #[inline]
-    pub fn new<T: BytesContainer>(path: T) -> Path {
-        GenericPath::new(path)
+    pub fn init<T: BytesContainer>(path: T) -> Path {
+        GenericPath::init(path)
     }
 
     /// Returns a new Path from a byte vector or string, if possible
     #[inline]
-    pub fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
-        GenericPath::new_opt(path)
+    pub fn init_opt<T: BytesContainer>(path: T) -> Option<Path> {
+        GenericPath::init_opt(path)
     }
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
@@ -471,51 +471,51 @@ mod tests {
     #[test]
     fn test_paths() {
         let empty: &[u8] = [];
-        t!(v: Path::new(empty), b!("."));
-        t!(v: Path::new(b!("/")), b!("/"));
-        t!(v: Path::new(b!("a/b/c")), b!("a/b/c"));
-        t!(v: Path::new(b!("a/b/c", 0xff)), b!("a/b/c", 0xff));
-        t!(v: Path::new(b!(0xff, "/../foo", 0x80)), b!("foo", 0x80));
-        let p = Path::new(b!("a/b/c", 0xff));
+        t!(v: Path::init(empty), b!("."));
+        t!(v: Path::init(b!("/")), b!("/"));
+        t!(v: Path::init(b!("a/b/c")), b!("a/b/c"));
+        t!(v: Path::init(b!("a/b/c", 0xff)), b!("a/b/c", 0xff));
+        t!(v: Path::init(b!(0xff, "/../foo", 0x80)), b!("foo", 0x80));
+        let p = Path::init(b!("a/b/c", 0xff));
         assert_eq!(p.as_str(), None);
 
-        t!(s: Path::new(""), ".");
-        t!(s: Path::new("/"), "/");
-        t!(s: Path::new("hi"), "hi");
-        t!(s: Path::new("hi/"), "hi");
-        t!(s: Path::new("/lib"), "/lib");
-        t!(s: Path::new("/lib/"), "/lib");
-        t!(s: Path::new("hi/there"), "hi/there");
-        t!(s: Path::new("hi/there.txt"), "hi/there.txt");
+        t!(s: Path::init(""), ".");
+        t!(s: Path::init("/"), "/");
+        t!(s: Path::init("hi"), "hi");
+        t!(s: Path::init("hi/"), "hi");
+        t!(s: Path::init("/lib"), "/lib");
+        t!(s: Path::init("/lib/"), "/lib");
+        t!(s: Path::init("hi/there"), "hi/there");
+        t!(s: Path::init("hi/there.txt"), "hi/there.txt");
 
-        t!(s: Path::new("hi/there/"), "hi/there");
-        t!(s: Path::new("hi/../there"), "there");
-        t!(s: Path::new("../hi/there"), "../hi/there");
-        t!(s: Path::new("/../hi/there"), "/hi/there");
-        t!(s: Path::new("foo/.."), ".");
-        t!(s: Path::new("/foo/.."), "/");
-        t!(s: Path::new("/foo/../.."), "/");
-        t!(s: Path::new("/foo/../../bar"), "/bar");
-        t!(s: Path::new("/./hi/./there/."), "/hi/there");
-        t!(s: Path::new("/./hi/./there/./.."), "/hi");
-        t!(s: Path::new("foo/../.."), "..");
-        t!(s: Path::new("foo/../../.."), "../..");
-        t!(s: Path::new("foo/../../bar"), "../bar");
+        t!(s: Path::init("hi/there/"), "hi/there");
+        t!(s: Path::init("hi/../there"), "there");
+        t!(s: Path::init("../hi/there"), "../hi/there");
+        t!(s: Path::init("/../hi/there"), "/hi/there");
+        t!(s: Path::init("foo/.."), ".");
+        t!(s: Path::init("/foo/.."), "/");
+        t!(s: Path::init("/foo/../.."), "/");
+        t!(s: Path::init("/foo/../../bar"), "/bar");
+        t!(s: Path::init("/./hi/./there/."), "/hi/there");
+        t!(s: Path::init("/./hi/./there/./.."), "/hi");
+        t!(s: Path::init("foo/../.."), "..");
+        t!(s: Path::init("foo/../../.."), "../..");
+        t!(s: Path::init("foo/../../bar"), "../bar");
 
-        assert_eq!(Path::new(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
-        assert_eq!(Path::new(b!("/foo/../../bar")).into_vec(),
+        assert_eq!(Path::init(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
+        assert_eq!(Path::init(b!("/foo/../../bar")).into_vec(),
                    b!("/bar").to_owned());
 
-        let p = Path::new(b!("foo/bar", 0x80));
+        let p = Path::init(b!("foo/bar", 0x80));
         assert_eq!(p.as_str(), None);
     }
 
     #[test]
     fn test_opt_paths() {
-        assert_eq!(Path::new_opt(b!("foo/bar", 0)), None);
-        t!(v: Path::new_opt(b!("foo/bar")).unwrap(), b!("foo/bar"));
-        assert_eq!(Path::new_opt("foo/bar\0"), None);
-        t!(s: Path::new_opt("foo/bar").unwrap(), "foo/bar");
+        assert_eq!(Path::init_opt(b!("foo/bar", 0)), None);
+        t!(v: Path::init_opt(b!("foo/bar")).unwrap(), b!("foo/bar"));
+        assert_eq!(Path::init_opt("foo/bar\0"), None);
+        t!(s: Path::init_opt("foo/bar").unwrap(), "foo/bar");
     }
 
     #[test]
@@ -528,7 +528,7 @@ mod tests {
             assert_eq!(v.as_slice(), b!("foo/bar", 0));
             (b!("/bar").to_owned())
         }).inside(|| {
-            Path::new(b!("foo/bar", 0))
+            Path::init(b!("foo/bar", 0))
         });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("/bar"));
@@ -576,12 +576,12 @@ mod tests {
             cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside(|| {
-                Path::new(b!("foo/bar", 0))
+                Path::init(b!("foo/bar", 0))
             });
         })
 
         t!(~"set_filename w/nul" => {
-            let mut p = Path::new(b!("foo/bar"));
+            let mut p = Path::init(b!("foo/bar"));
             cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside(|| {
@@ -590,7 +590,7 @@ mod tests {
         })
 
         t!(~"push w/nul" => {
-            let mut p = Path::new(b!("foo/bar"));
+            let mut p = Path::init(b!("foo/bar"));
             cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside(|| {
@@ -604,7 +604,7 @@ mod tests {
         macro_rules! t(
             ($path:expr, $disp:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     assert_eq!(path.$disp().to_str(), ~$exp);
                 }
             )
@@ -620,7 +620,7 @@ mod tests {
             ($path:expr, $exp:expr) => (
                 {
                     let mut called = false;
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     path.display().with_str(|s| {
                         assert_eq!(s, $exp);
                         called = true;
@@ -631,7 +631,7 @@ mod tests {
             ($path:expr, $exp:expr, filename) => (
                 {
                     let mut called = false;
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     path.filename_display().with_str(|s| {
                         assert_eq!(s, $exp);
                         called = true;
@@ -654,7 +654,7 @@ mod tests {
         macro_rules! t(
             ($path:expr, $exp:expr, $expf:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     let f = format!("{}", path.display());
                     assert_eq!(f.as_slice(), $exp);
                     let f = format!("{}", path.filename_display());
@@ -677,20 +677,20 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     assert_eq!(path.$op(), ($exp).as_bytes());
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     let left = path.$op().map(|x| str::from_utf8_slice(x));
                     assert_eq!(left, $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     assert_eq!(path.$op(), $exp);
                 }
             );
@@ -762,7 +762,7 @@ mod tests {
                 {
                     let path = ($path);
                     let join = ($join);
-                    let mut p1 = Path::new(path);
+                    let mut p1 = Path::init(path);
                     let p2 = p1.clone();
                     p1.push(join);
                     assert_eq!(p1, p2.join(join));
@@ -781,8 +781,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
-                    let mut p = Path::new($path);
-                    let push = Path::new($push);
+                    let mut p = Path::init($path);
+                    let push = Path::init($push);
                     p.push(&push);
                     assert_eq!(p.as_str(), Some($exp));
                 }
@@ -804,14 +804,14 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
-                    let mut p = Path::new($path);
+                    let mut p = Path::init($path);
                     p.push_many($push);
                     assert_eq!(p.as_str(), Some($exp));
                 }
             );
             (v: $path:expr, $push:expr, $exp:expr) => (
                 {
-                    let mut p = Path::new($path);
+                    let mut p = Path::init($path);
                     p.push_many($push);
                     assert_eq!(p.as_vec(), $exp);
                 }
@@ -835,7 +835,7 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $left:expr, $right:expr) => (
                 {
-                    let mut p = Path::new($path);
+                    let mut p = Path::init($path);
                     let result = p.pop();
                     assert_eq!(p.as_str(), Some($left));
                     assert_eq!(result, $right);
@@ -843,7 +843,7 @@ mod tests {
             );
             (v: [$($path:expr),+], [$($left:expr),+], $right:expr) => (
                 {
-                    let mut p = Path::new(b!($($path),+));
+                    let mut p = Path::init(b!($($path),+));
                     let result = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(result, $right);
@@ -869,21 +869,21 @@ mod tests {
 
     #[test]
     fn test_root_path() {
-        assert_eq!(Path::new(b!("a/b/c")).root_path(), None);
-        assert_eq!(Path::new(b!("/a/b/c")).root_path(), Some(Path::new("/")));
+        assert_eq!(Path::init(b!("a/b/c")).root_path(), None);
+        assert_eq!(Path::init(b!("/a/b/c")).root_path(), Some(Path::init("/")));
     }
 
     #[test]
     fn test_join() {
-        t!(v: Path::new(b!("a/b/c")).join(b!("..")), b!("a/b"));
-        t!(v: Path::new(b!("/a/b/c")).join(b!("d")), b!("/a/b/c/d"));
-        t!(v: Path::new(b!("a/", 0x80, "/c")).join(b!(0xff)), b!("a/", 0x80, "/c/", 0xff));
-        t!(s: Path::new("a/b/c").join(".."), "a/b");
-        t!(s: Path::new("/a/b/c").join("d"), "/a/b/c/d");
-        t!(s: Path::new("a/b").join("c/d"), "a/b/c/d");
-        t!(s: Path::new("a/b").join("/c/d"), "/c/d");
-        t!(s: Path::new(".").join("a/b"), "a/b");
-        t!(s: Path::new("/").join("a/b"), "/a/b");
+        t!(v: Path::init(b!("a/b/c")).join(b!("..")), b!("a/b"));
+        t!(v: Path::init(b!("/a/b/c")).join(b!("d")), b!("/a/b/c/d"));
+        t!(v: Path::init(b!("a/", 0x80, "/c")).join(b!(0xff)), b!("a/", 0x80, "/c/", 0xff));
+        t!(s: Path::init("a/b/c").join(".."), "a/b");
+        t!(s: Path::init("/a/b/c").join("d"), "/a/b/c/d");
+        t!(s: Path::init("a/b").join("c/d"), "a/b/c/d");
+        t!(s: Path::init("a/b").join("/c/d"), "/c/d");
+        t!(s: Path::init(".").join("a/b"), "a/b");
+        t!(s: Path::init("/").join("a/b"), "/a/b");
     }
 
     #[test]
@@ -891,8 +891,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
-                    let join = Path::new($join);
+                    let path = Path::init($path);
+                    let join = Path::init($join);
                     let res = path.join(&join);
                     assert_eq!(res.as_str(), Some($exp));
                 }
@@ -914,14 +914,14 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     let res = path.join_many($join);
                     assert_eq!(res.as_str(), Some($exp));
                 }
             );
             (v: $path:expr, $join:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     let res = path.join_many($join);
                     assert_eq!(res.as_vec(), $exp);
                 }
@@ -943,51 +943,51 @@ mod tests {
     fn test_with_helpers() {
         let empty: &[u8] = [];
 
-        t!(v: Path::new(b!("a/b/c")).with_filename(b!("d")), b!("a/b/d"));
-        t!(v: Path::new(b!("a/b/c", 0xff)).with_filename(b!(0x80)), b!("a/b/", 0x80));
-        t!(v: Path::new(b!("/", 0xff, "/foo")).with_filename(b!(0xcd)),
+        t!(v: Path::init(b!("a/b/c")).with_filename(b!("d")), b!("a/b/d"));
+        t!(v: Path::init(b!("a/b/c", 0xff)).with_filename(b!(0x80)), b!("a/b/", 0x80));
+        t!(v: Path::init(b!("/", 0xff, "/foo")).with_filename(b!(0xcd)),
               b!("/", 0xff, "/", 0xcd));
-        t!(s: Path::new("a/b/c").with_filename("d"), "a/b/d");
-        t!(s: Path::new(".").with_filename("foo"), "foo");
-        t!(s: Path::new("/a/b/c").with_filename("d"), "/a/b/d");
-        t!(s: Path::new("/").with_filename("foo"), "/foo");
-        t!(s: Path::new("/a").with_filename("foo"), "/foo");
-        t!(s: Path::new("foo").with_filename("bar"), "bar");
-        t!(s: Path::new("/").with_filename("foo/"), "/foo");
-        t!(s: Path::new("/a").with_filename("foo/"), "/foo");
-        t!(s: Path::new("a/b/c").with_filename(""), "a/b");
-        t!(s: Path::new("a/b/c").with_filename("."), "a/b");
-        t!(s: Path::new("a/b/c").with_filename(".."), "a");
-        t!(s: Path::new("/a").with_filename(""), "/");
-        t!(s: Path::new("foo").with_filename(""), ".");
-        t!(s: Path::new("a/b/c").with_filename("d/e"), "a/b/d/e");
-        t!(s: Path::new("a/b/c").with_filename("/d"), "a/b/d");
-        t!(s: Path::new("..").with_filename("foo"), "../foo");
-        t!(s: Path::new("../..").with_filename("foo"), "../../foo");
-        t!(s: Path::new("..").with_filename(""), "..");
-        t!(s: Path::new("../..").with_filename(""), "../..");
+        t!(s: Path::init("a/b/c").with_filename("d"), "a/b/d");
+        t!(s: Path::init(".").with_filename("foo"), "foo");
+        t!(s: Path::init("/a/b/c").with_filename("d"), "/a/b/d");
+        t!(s: Path::init("/").with_filename("foo"), "/foo");
+        t!(s: Path::init("/a").with_filename("foo"), "/foo");
+        t!(s: Path::init("foo").with_filename("bar"), "bar");
+        t!(s: Path::init("/").with_filename("foo/"), "/foo");
+        t!(s: Path::init("/a").with_filename("foo/"), "/foo");
+        t!(s: Path::init("a/b/c").with_filename(""), "a/b");
+        t!(s: Path::init("a/b/c").with_filename("."), "a/b");
+        t!(s: Path::init("a/b/c").with_filename(".."), "a");
+        t!(s: Path::init("/a").with_filename(""), "/");
+        t!(s: Path::init("foo").with_filename(""), ".");
+        t!(s: Path::init("a/b/c").with_filename("d/e"), "a/b/d/e");
+        t!(s: Path::init("a/b/c").with_filename("/d"), "a/b/d");
+        t!(s: Path::init("..").with_filename("foo"), "../foo");
+        t!(s: Path::init("../..").with_filename("foo"), "../../foo");
+        t!(s: Path::init("..").with_filename(""), "..");
+        t!(s: Path::init("../..").with_filename(""), "../..");
 
-        t!(v: Path::new(b!("hi/there", 0x80, ".txt")).with_extension(b!("exe")),
+        t!(v: Path::init(b!("hi/there", 0x80, ".txt")).with_extension(b!("exe")),
               b!("hi/there", 0x80, ".exe"));
-        t!(v: Path::new(b!("hi/there.txt", 0x80)).with_extension(b!(0xff)),
+        t!(v: Path::init(b!("hi/there.txt", 0x80)).with_extension(b!(0xff)),
               b!("hi/there.", 0xff));
-        t!(v: Path::new(b!("hi/there", 0x80)).with_extension(b!(0xff)),
+        t!(v: Path::init(b!("hi/there", 0x80)).with_extension(b!(0xff)),
               b!("hi/there", 0x80, ".", 0xff));
-        t!(v: Path::new(b!("hi/there.", 0xff)).with_extension(empty), b!("hi/there"));
-        t!(s: Path::new("hi/there.txt").with_extension("exe"), "hi/there.exe");
-        t!(s: Path::new("hi/there.txt").with_extension(""), "hi/there");
-        t!(s: Path::new("hi/there.txt").with_extension("."), "hi/there..");
-        t!(s: Path::new("hi/there.txt").with_extension(".."), "hi/there...");
-        t!(s: Path::new("hi/there").with_extension("txt"), "hi/there.txt");
-        t!(s: Path::new("hi/there").with_extension("."), "hi/there..");
-        t!(s: Path::new("hi/there").with_extension(".."), "hi/there...");
-        t!(s: Path::new("hi/there.").with_extension("txt"), "hi/there.txt");
-        t!(s: Path::new("hi/.foo").with_extension("txt"), "hi/.foo.txt");
-        t!(s: Path::new("hi/there.txt").with_extension(".foo"), "hi/there..foo");
-        t!(s: Path::new("/").with_extension("txt"), "/");
-        t!(s: Path::new("/").with_extension("."), "/");
-        t!(s: Path::new("/").with_extension(".."), "/");
-        t!(s: Path::new(".").with_extension("txt"), ".");
+        t!(v: Path::init(b!("hi/there.", 0xff)).with_extension(empty), b!("hi/there"));
+        t!(s: Path::init("hi/there.txt").with_extension("exe"), "hi/there.exe");
+        t!(s: Path::init("hi/there.txt").with_extension(""), "hi/there");
+        t!(s: Path::init("hi/there.txt").with_extension("."), "hi/there..");
+        t!(s: Path::init("hi/there.txt").with_extension(".."), "hi/there...");
+        t!(s: Path::init("hi/there").with_extension("txt"), "hi/there.txt");
+        t!(s: Path::init("hi/there").with_extension("."), "hi/there..");
+        t!(s: Path::init("hi/there").with_extension(".."), "hi/there...");
+        t!(s: Path::init("hi/there.").with_extension("txt"), "hi/there.txt");
+        t!(s: Path::init("hi/.foo").with_extension("txt"), "hi/.foo.txt");
+        t!(s: Path::init("hi/there.txt").with_extension(".foo"), "hi/there..foo");
+        t!(s: Path::init("/").with_extension("txt"), "/");
+        t!(s: Path::init("/").with_extension("."), "/");
+        t!(s: Path::init("/").with_extension(".."), "/");
+        t!(s: Path::init(".").with_extension("txt"), ".");
     }
 
     #[test]
@@ -997,9 +997,9 @@ mod tests {
                 {
                     let path = $path;
                     let arg = $arg;
-                    let mut p1 = Path::new(path);
+                    let mut p1 = Path::init(path);
                     p1.$set(arg);
-                    let p2 = Path::new(path);
+                    let p2 = Path::init(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
             );
@@ -1007,9 +1007,9 @@ mod tests {
                 {
                     let path = $path;
                     let arg = $arg;
-                    let mut p1 = Path::new(path);
+                    let mut p1 = Path::init(path);
                     p1.$set(arg);
-                    let p2 = Path::new(path);
+                    let p2 = Path::init(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
             )
@@ -1069,39 +1069,39 @@ mod tests {
             )
         )
 
-        t!(v: Path::new(b!("a/b/c")), Some(b!("c")), b!("a/b"), Some(b!("c")), None);
-        t!(v: Path::new(b!("a/b/", 0xff)), Some(b!(0xff)), b!("a/b"), Some(b!(0xff)), None);
-        t!(v: Path::new(b!("hi/there.", 0xff)), Some(b!("there.", 0xff)), b!("hi"),
+        t!(v: Path::init(b!("a/b/c")), Some(b!("c")), b!("a/b"), Some(b!("c")), None);
+        t!(v: Path::init(b!("a/b/", 0xff)), Some(b!(0xff)), b!("a/b"), Some(b!(0xff)), None);
+        t!(v: Path::init(b!("hi/there.", 0xff)), Some(b!("there.", 0xff)), b!("hi"),
               Some(b!("there")), Some(b!(0xff)));
-        t!(s: Path::new("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
-        t!(s: Path::new("."), None, Some("."), None, None);
-        t!(s: Path::new("/"), None, Some("/"), None, None);
-        t!(s: Path::new(".."), None, Some(".."), None, None);
-        t!(s: Path::new("../.."), None, Some("../.."), None, None);
-        t!(s: Path::new("hi/there.txt"), Some("there.txt"), Some("hi"),
+        t!(s: Path::init("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
+        t!(s: Path::init("."), None, Some("."), None, None);
+        t!(s: Path::init("/"), None, Some("/"), None, None);
+        t!(s: Path::init(".."), None, Some(".."), None, None);
+        t!(s: Path::init("../.."), None, Some("../.."), None, None);
+        t!(s: Path::init("hi/there.txt"), Some("there.txt"), Some("hi"),
               Some("there"), Some("txt"));
-        t!(s: Path::new("hi/there"), Some("there"), Some("hi"), Some("there"), None);
-        t!(s: Path::new("hi/there."), Some("there."), Some("hi"),
+        t!(s: Path::init("hi/there"), Some("there"), Some("hi"), Some("there"), None);
+        t!(s: Path::init("hi/there."), Some("there."), Some("hi"),
               Some("there"), Some(""));
-        t!(s: Path::new("hi/.there"), Some(".there"), Some("hi"), Some(".there"), None);
-        t!(s: Path::new("hi/..there"), Some("..there"), Some("hi"),
+        t!(s: Path::init("hi/.there"), Some(".there"), Some("hi"), Some(".there"), None);
+        t!(s: Path::init("hi/..there"), Some("..there"), Some("hi"),
               Some("."), Some("there"));
-        t!(s: Path::new(b!("a/b/", 0xff)), None, Some("a/b"), None, None);
-        t!(s: Path::new(b!("a/b/", 0xff, ".txt")), None, Some("a/b"), None, Some("txt"));
-        t!(s: Path::new(b!("a/b/c.", 0x80)), None, Some("a/b"), Some("c"), None);
-        t!(s: Path::new(b!(0xff, "/b")), Some("b"), None, Some("b"), None);
+        t!(s: Path::init(b!("a/b/", 0xff)), None, Some("a/b"), None, None);
+        t!(s: Path::init(b!("a/b/", 0xff, ".txt")), None, Some("a/b"), None, Some("txt"));
+        t!(s: Path::init(b!("a/b/c.", 0x80)), None, Some("a/b"), Some("c"), None);
+        t!(s: Path::init(b!(0xff, "/b")), Some("b"), None, Some("b"), None);
     }
 
     #[test]
     fn test_dir_path() {
-        t!(v: Path::new(b!("hi/there", 0x80)).dir_path(), b!("hi"));
-        t!(v: Path::new(b!("hi", 0xff, "/there")).dir_path(), b!("hi", 0xff));
-        t!(s: Path::new("hi/there").dir_path(), "hi");
-        t!(s: Path::new("hi").dir_path(), ".");
-        t!(s: Path::new("/hi").dir_path(), "/");
-        t!(s: Path::new("/").dir_path(), "/");
-        t!(s: Path::new("..").dir_path(), "..");
-        t!(s: Path::new("../..").dir_path(), "../..");
+        t!(v: Path::init(b!("hi/there", 0x80)).dir_path(), b!("hi"));
+        t!(v: Path::init(b!("hi", 0xff, "/there")).dir_path(), b!("hi", 0xff));
+        t!(s: Path::init("hi/there").dir_path(), "hi");
+        t!(s: Path::init("hi").dir_path(), ".");
+        t!(s: Path::init("/hi").dir_path(), "/");
+        t!(s: Path::init("/").dir_path(), "/");
+        t!(s: Path::init("..").dir_path(), "..");
+        t!(s: Path::init("../..").dir_path(), "../..");
     }
 
     #[test]
@@ -1109,7 +1109,7 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $abs:expr, $rel:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     assert_eq!(path.is_absolute(), $abs);
                     assert_eq!(path.is_relative(), $rel);
                 }
@@ -1130,8 +1130,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $dest:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
-                    let dest = Path::new($dest);
+                    let path = Path::init($path);
+                    let dest = Path::init($dest);
                     assert_eq!(path.is_ancestor_of(&dest), $exp);
                 }
             )
@@ -1164,15 +1164,15 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $child:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
-                    let child = Path::new($child);
+                    let path = Path::init($path);
+                    let child = Path::init($child);
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             );
             (v: $path:expr, $child:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
-                    let child = Path::new($child);
+                    let path = Path::init($path);
+                    let child = Path::init($child);
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             )
@@ -1203,8 +1203,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $other:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
-                    let other = Path::new($other);
+                    let path = Path::init($path);
+                    let other = Path::init($other);
                     let res = path.path_relative_from(&other);
                     assert_eq!(res.as_ref().and_then(|x| x.as_str()), $exp);
                 }
@@ -1248,7 +1248,7 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::init($path);
                     let comps = path.components().to_owned_vec();
                     let exp: &[&str] = $exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).to_owned_vec();
@@ -1262,7 +1262,7 @@ mod tests {
             );
             (v: [$($arg:expr),+], [$([$($exp:expr),*]),*]) => (
                 {
-                    let path = Path::new(b!($($arg),+));
+                    let path = Path::init(b!($($arg),+));
                     let comps = path.components().to_owned_vec();
                     let exp: &[&[u8]] = [$(b!($($exp),*)),*];
                     assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
@@ -1297,7 +1297,7 @@ mod tests {
         macro_rules! t(
             (v: [$($arg:expr),+], $exp:expr) => (
                 {
-                    let path = Path::new(b!($($arg),+));
+                    let path = Path::init(b!($($arg),+));
                     let comps = path.str_components().to_owned_vec();
                     let exp: &[Option<&str>] = $exp;
                     assert!(comps.as_slice() == exp,
@@ -1327,7 +1327,7 @@ mod bench {
 
     #[bench]
     fn join_home_dir(bh: &mut BenchHarness) {
-        let posix_path = Path::new("/");
+        let posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.join("home");
         });
@@ -1335,7 +1335,7 @@ mod bench {
 
     #[bench]
     fn join_abs_path_home_dir(bh: &mut BenchHarness) {
-        let posix_path = Path::new("/");
+        let posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.join("/home");
         });
@@ -1343,7 +1343,7 @@ mod bench {
 
     #[bench]
     fn join_many_home_dir(bh: &mut BenchHarness) {
-        let posix_path = Path::new("/");
+        let posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.join_many(&["home"]);
         });
@@ -1351,7 +1351,7 @@ mod bench {
 
     #[bench]
     fn join_many_abs_path_home_dir(bh: &mut BenchHarness) {
-        let posix_path = Path::new("/");
+        let posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.join_many(&["/home"]);
         });
@@ -1359,7 +1359,7 @@ mod bench {
 
     #[bench]
     fn push_home_dir(bh: &mut BenchHarness) {
-        let mut posix_path = Path::new("/");
+        let mut posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.push("home");
         });
@@ -1367,7 +1367,7 @@ mod bench {
 
     #[bench]
     fn push_abs_path_home_dir(bh: &mut BenchHarness) {
-        let mut posix_path = Path::new("/");
+        let mut posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.push("/home");
         });
@@ -1375,7 +1375,7 @@ mod bench {
 
     #[bench]
     fn push_many_home_dir(bh: &mut BenchHarness) {
-        let mut posix_path = Path::new("/");
+        let mut posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.push_many(&["home"]);
         });
@@ -1383,7 +1383,7 @@ mod bench {
 
     #[bench]
     fn push_many_abs_path_home_dir(bh: &mut BenchHarness) {
-        let mut posix_path = Path::new("/");
+        let mut posix_path = Path::init("/");
         bh.iter(|| {
             posix_path.push_many(&["/home"]);
         });
@@ -1391,17 +1391,17 @@ mod bench {
 
     #[bench]
     fn ends_with_path_home_dir(bh: &mut BenchHarness) {
-        let posix_home_path = Path::new("/home");
+        let posix_home_path = Path::init("/home");
         bh.iter(|| {
-            posix_home_path.ends_with_path(&Path::new("home"));
+            posix_home_path.ends_with_path(&Path::init("home"));
         });
     }
 
     #[bench]
     fn ends_with_path_missmatch_jome_home(bh: &mut BenchHarness) {
-        let posix_home_path = Path::new("/home");
+        let posix_home_path = Path::init("/home");
         bh.iter(|| {
-            posix_home_path.ends_with_path(&Path::new("jome"));
+            posix_home_path.ends_with_path(&Path::init("jome"));
         });
     }
 }

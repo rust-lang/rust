@@ -336,7 +336,7 @@ fn mkdir(path: &Path) {
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
 fn clean_srcpath(src: &[u8], f: |&str|) {
-    let p = Path::new(src);
+    let p = Path::init(src);
     if p.as_vec() != bytes!(".") {
         for c in p.str_components().map(|x|x.unwrap()) {
             if ".." == c {
@@ -411,7 +411,7 @@ impl<'self> DocFolder for SourceCollector<'self> {
 impl<'self> SourceCollector<'self> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> bool {
-        let p = Path::new(filename);
+        let p = Path::init(filename);
 
         // Read the contents of the file
         let mut contents = ~[];
