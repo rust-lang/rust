@@ -901,7 +901,7 @@ impl<'self> Formatter<'self> {
                 // case where the maximum length will matter.
                 let char_len = s.char_len();
                 if char_len >= max {
-                    let nchars = ::uint::min(max, char_len);
+                    let nchars = ::cmp::min(max, char_len);
                     self.buf.write(s.slice_chars(0, nchars).as_bytes());
                     return
                 }
