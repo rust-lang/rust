@@ -13,13 +13,13 @@ use cast::{transmute, transmute_mut_region, transmute_mut_unsafe};
 use clone::Clone;
 use unstable::raw;
 use super::sleeper_list::SleeperList;
-use super::work_queue::WorkQueue;
 use super::stack::{StackPool};
 use super::rtio::EventLoop;
 use super::context::Context;
 use super::task::{Task, AnySched, Sched};
 use super::message_queue::MessageQueue;
 use rt::kill::BlockedTask;
+use rt::deque;
 use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback};
@@ -39,14 +39,14 @@ use vec::{OwnedVector};
 /// in too much allocation and too many events.
 pub struct Scheduler {
     /// There are N work queues, one per scheduler.
-    priv work_queue: WorkQueue<~Task>,
+    work_queue: deque::Worker<~Task>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
-    work_queues: ~[WorkQueue<~Task>],
+    work_queues: ~[deque::Stealer<~Task>],
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
-    priv message_queue: MessageQueue<SchedMessage>,
+    message_queue: MessageQueue<SchedMessage>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
     sleeper_list: SleeperList,
@@ -56,33 +56,33 @@ pub struct Scheduler {
     /// not active since there are multiple event sources that may
     /// wake the scheduler. It just prevents the scheduler from pushing
     /// multiple handles onto the sleeper list.
-    priv sleepy: bool,
+    sleepy: bool,
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
     stack_pool: StackPool,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
-    priv sched_task: Option<~Task>,
+    sched_task: Option<~Task>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
-    priv cleanup_job: Option<CleanupJob>,
+    cleanup_job: Option<CleanupJob>,
     /// Should this scheduler run any task, or only pinned tasks?
     run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
     /// them to.
-    priv friend_handle: Option<SchedHandle>,
+    friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A toggleable idle callback
-    priv idle_callback: Option<~PausibleIdleCallback>,
+    idle_callback: Option<~PausibleIdleCallback>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
     /// will yield.
-    priv yield_check_count: uint,
+    yield_check_count: uint,
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
-    priv steal_for_yield: bool,
+    steal_for_yield: bool,
 
     // n.b. currently destructors of an object are run in top-to-bottom in order
     //      of field declaration. Due to its nature, the pausible idle callback
@@ -115,8 +115,8 @@ impl Scheduler {
     // * Initialization Functions
 
     pub fn new(event_loop: ~EventLoop,
-               work_queue: WorkQueue<~Task>,
-               work_queues: ~[WorkQueue<~Task>],
+               work_queue: deque::Worker<~Task>,
+               work_queues: ~[deque::Stealer<~Task>],
                sleeper_list: SleeperList)
         -> Scheduler {
 
@@ -127,8 +127,8 @@ impl Scheduler {
     }
 
     pub fn new_special(event_loop: ~EventLoop,
-                       work_queue: WorkQueue<~Task>,
-                       work_queues: ~[WorkQueue<~Task>],
+                       work_queue: deque::Worker<~Task>,
+                       work_queues: ~[deque::Stealer<~Task>],
                        sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>)
@@ -440,11 +440,11 @@ impl Scheduler {
         let start_index = self.rng.gen_range(0, len);
         for index in range(0, len).map(|i| (i + start_index) % len) {
             match work_queues[index].steal() {
-                Some(task) => {
+                deque::Data(task) => {
                     rtdebug!("found task by stealing");
                     return Some(task)
                 }
-                None => ()
+                _ => ()
             }
         };
         rtdebug!("giving up on stealing");
@@ -889,6 +889,7 @@ mod test {
     use borrow::to_uint;
     use rt::sched::{Scheduler};
     use cell::Cell;
+    use rt::deque::BufferPool;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
     use rt::basic;
@@ -994,7 +995,6 @@ mod test {
     #[test]
     fn test_schedule_home_states() {
         use rt::sleeper_list::SleeperList;
-        use rt::work_queue::WorkQueue;
         use rt::sched::Shutdown;
         use borrow;
         use rt::comm::*;
@@ -1002,14 +1002,15 @@ mod test {
         do run_in_bare_thread {
 
             let sleepers = SleeperList::new();
-            let normal_queue = WorkQueue::new();
-            let special_queue = WorkQueue::new();
-            let queues = ~[normal_queue.clone(), special_queue.clone()];
+            let mut pool = BufferPool::init();
+            let (normal_worker, normal_stealer) = pool.deque();
+            let (special_worker, special_stealer) = pool.deque();
+            let queues = ~[normal_stealer, special_stealer];
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
                 basic::event_loop(),
-                normal_queue,
+                normal_worker,
                 queues.clone(),
                 sleepers.clone());
 
@@ -1020,7 +1021,7 @@ mod test {
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
                 basic::event_loop(),
-                special_queue.clone(),
+                special_worker,
                 queues.clone(),
                 sleepers.clone(),
                 false,
@@ -1169,7 +1170,6 @@ mod test {
     // Used to deadlock because Shutdown was never recvd.
     #[test]
     fn no_missed_messages() {
-        use rt::work_queue::WorkQueue;
         use rt::sleeper_list::SleeperList;
         use rt::stack::StackPool;
         use rt::sched::{Shutdown, TaskFromFriend};
@@ -1178,13 +1178,13 @@ mod test {
         do run_in_bare_thread {
             stress_factor().times(|| {
                 let sleepers = SleeperList::new();
-                let queue = WorkQueue::new();
-                let queues = ~[queue.clone()];
+                let mut pool = BufferPool::init();
+                let (worker, stealer) = pool.deque();
 
                 let mut sched = ~Scheduler::new(
                     basic::event_loop(),
-                    queue,
-                    queues.clone(),
+                    worker,
+                    ~[stealer],
                     sleepers.clone());
 
                 let mut handle = sched.make_handle();
