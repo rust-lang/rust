@@ -13,8 +13,9 @@
 #[allow(missing_doc)];
 
 use clone::Clone;
-
-pub use self::inner::*;
+#[cfg(not(test))] use cmp::*;
+#[cfg(not(test))] use default::Default;
+#[cfg(not(test))] use num::Zero;
 
 /// Method extensions to pairs where both types satisfy the `Clone` bound
 pub trait CopyableTuple<T, U> {
@@ -86,116 +87,109 @@ macro_rules! tuple_impls {
             })+
         }
     )+) => {
-        pub mod inner {
-            use clone::Clone;
-            #[cfg(not(test))] use cmp::*;
-            #[cfg(not(test))] use default::Default;
-            #[cfg(not(test))] use num::Zero;
+        $(
+            pub trait $move_trait<$($T),+> {
+                $(fn $get_fn(self) -> $T;)+
+            }
 
-            $(
-                pub trait $move_trait<$($T),+> {
-                    $(fn $get_fn(self) -> $T;)+
-                }
+            impl<$($T),+> $move_trait<$($T),+> for ($($T,)+) {
+                $(
+                    #[inline]
+                    fn $get_fn(self) -> $T {
+                        let $move_pattern = self;
+                        $ret
+                    }
+                )+
+            }
 
-                impl<$($T),+> $move_trait<$($T),+> for ($($T,)+) {
-                    $(
-                        #[inline]
-                        fn $get_fn(self) -> $T {
-                            let $move_pattern = self;
-                            $ret
-                        }
-                    )+
-                }
+            pub trait $immutable_trait<$($T),+> {
+                $(fn $get_ref_fn<'a>(&'a self) -> &'a $T;)+
+            }
 
-                pub trait $immutable_trait<$($T),+> {
-                    $(fn $get_ref_fn<'a>(&'a self) -> &'a $T;)+
-                }
+            impl<$($T),+> $immutable_trait<$($T),+> for ($($T,)+) {
+                $(
+                    #[inline]
+                    fn $get_ref_fn<'a>(&'a self) -> &'a $T {
+                        let $ref_pattern = *self;
+                        $ret
+                    }
+                )+
+            }
 
-                impl<$($T),+> $immutable_trait<$($T),+> for ($($T,)+) {
-                    $(
-                        #[inline]
-                        fn $get_ref_fn<'a>(&'a self) -> &'a $T {
-                            let $ref_pattern = *self;
-                            $ret
-                        }
-                    )+
+            impl<$($T:Clone),+> Clone for ($($T,)+) {
+                fn clone(&self) -> ($($T,)+) {
+                    ($(self.$get_ref_fn().clone(),)+)
                 }
+            }
 
-                impl<$($T:Clone),+> Clone for ($($T,)+) {
-                    fn clone(&self) -> ($($T,)+) {
-                        ($(self.$get_ref_fn().clone(),)+)
-                    }
+            #[cfg(not(test))]
+            impl<$($T:Eq),+> Eq for ($($T,)+) {
+                #[inline]
+                fn eq(&self, other: &($($T,)+)) -> bool {
+                    $(*self.$get_ref_fn() == *other.$get_ref_fn())&&+
                 }
+                #[inline]
+                fn ne(&self, other: &($($T,)+)) -> bool {
+                    $(*self.$get_ref_fn() != *other.$get_ref_fn())||+
+                }
+            }
 
-                #[cfg(not(test))]
-                impl<$($T:Eq),+> Eq for ($($T,)+) {
-                    #[inline]
-                    fn eq(&self, other: &($($T,)+)) -> bool {
-                        $(*self.$get_ref_fn() == *other.$get_ref_fn())&&+
-                    }
-                    #[inline]
-                    fn ne(&self, other: &($($T,)+)) -> bool {
-                        $(*self.$get_ref_fn() != *other.$get_ref_fn())||+
-                    }
+            #[cfg(not(test))]
+            impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {
+                #[inline]
+                fn equals(&self, other: &($($T,)+)) -> bool {
+                    $(self.$get_ref_fn().equals(other.$get_ref_fn()))&&+
                 }
+            }
 
-                #[cfg(not(test))]
-                impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {
-                    #[inline]
-                    fn equals(&self, other: &($($T,)+)) -> bool {
-                        $(self.$get_ref_fn().equals(other.$get_ref_fn()))&&+
-                    }
+            #[cfg(not(test))]
+            impl<$($T:Ord + Eq),+> Ord for ($($T,)+) {
+                #[inline]
+                fn lt(&self, other: &($($T,)+)) -> bool {
+                    lexical_ord!(lt, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
                 }
+                #[inline]
+                fn le(&self, other: &($($T,)+)) -> bool {
+                    lexical_ord!(le, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                }
+                #[inline]
+                fn ge(&self, other: &($($T,)+)) -> bool {
+                    lexical_ord!(ge, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                }
+                #[inline]
+                fn gt(&self, other: &($($T,)+)) -> bool {
+                    lexical_ord!(gt, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                }
+            }
 
-                #[cfg(not(test))]
-                impl<$($T:Ord + Eq),+> Ord for ($($T,)+) {
-                    #[inline]
-                    fn lt(&self, other: &($($T,)+)) -> bool {
-                        lexical_ord!(lt, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
-                    }
-                    #[inline]
-                    fn le(&self, other: &($($T,)+)) -> bool {
-                        lexical_ord!(le, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
-                    }
-                    #[inline]
-                    fn ge(&self, other: &($($T,)+)) -> bool {
-                        lexical_ord!(ge, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
-                    }
-                    #[inline]
-                    fn gt(&self, other: &($($T,)+)) -> bool {
-                        lexical_ord!(gt, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
-                    }
+            #[cfg(not(test))]
+            impl<$($T:TotalOrd),+> TotalOrd for ($($T,)+) {
+                #[inline]
+                fn cmp(&self, other: &($($T,)+)) -> Ordering {
+                    lexical_cmp!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
                 }
+            }
 
-                #[cfg(not(test))]
-                impl<$($T:TotalOrd),+> TotalOrd for ($($T,)+) {
-                    #[inline]
-                    fn cmp(&self, other: &($($T,)+)) -> Ordering {
-                        lexical_cmp!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
-                    }
+            #[cfg(not(test))]
+            impl<$($T:Default),+> Default for ($($T,)+) {
+                #[inline]
+                fn default() -> ($($T,)+) {
+                    ($({ let x: $T = Default::default(); x},)+)
                 }
+            }
 
-                #[cfg(not(test))]
-                impl<$($T:Default),+> Default for ($($T,)+) {
-                    #[inline]
-                    fn default() -> ($($T,)+) {
-                        ($({ let x: $T = Default::default(); x},)+)
-                    }
+            #[cfg(not(test))]
+            impl<$($T:Zero),+> Zero for ($($T,)+) {
+                #[inline]
+                fn zero() -> ($($T,)+) {
+                    ($({ let x: $T = Zero::zero(); x},)+)
                 }
-
-                #[cfg(not(test))]
-                impl<$($T:Zero),+> Zero for ($($T,)+) {
-                    #[inline]
-                    fn zero() -> ($($T,)+) {
-                        ($({ let x: $T = Zero::zero(); x},)+)
-                    }
-                    #[inline]
-                    fn is_zero(&self) -> bool {
-                        $(self.$get_ref_fn().is_zero())&&+
-                    }
+                #[inline]
+                fn is_zero(&self) -> bool {
+                    $(self.$get_ref_fn().is_zero())&&+
                 }
-            )+
-        }
+            }
+        )+
     }
 }
 

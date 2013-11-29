@@ -17,7 +17,6 @@ use io::stdio::StdWriter;
 use io::buffered::LineBufferedWriter;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
-use u32;
 use vec::ImmutableVector;
 #[cfg(test)] use cast::transmute;
 
@@ -46,7 +45,7 @@ fn parse_log_level(level: &str) -> Option<u32> {
             let position = log_level_names.iter().position(|&name| name == level);
             match position {
                 Some(position) => {
-                    log_level = Some(u32::min(MAX_LOG_LEVEL, (position + 1) as u32))
+                    log_level = Some(::cmp::min(MAX_LOG_LEVEL, (position + 1) as u32))
                 },
                 _ => {
                     log_level = None;
