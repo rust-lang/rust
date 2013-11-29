@@ -30,7 +30,7 @@ use std::io::fs;
 
 fn test_tempdir() {
     let path = {
-        let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
+        let p = TempDir::new_in(&Path::init("."), "foobar").unwrap();
         let p = p.path();
         assert!(p.as_vec().ends_with(bytes!("foobar")));
         p.clone()
@@ -83,7 +83,7 @@ fn test_rm_tempdir() {
 // Ideally these would be in std::os but then core would need
 // to depend on std
 fn recursive_mkdir_rel() {
-    let path = Path::new("frob");
+    let path = Path::init("frob");
     let cwd = os::getcwd();
     debug!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
@@ -94,21 +94,21 @@ fn recursive_mkdir_rel() {
 }
 
 fn recursive_mkdir_dot() {
-    let dot = Path::new(".");
+    let dot = Path::init(".");
     fs::mkdir_recursive(&dot, io::UserRWX);
-    let dotdot = Path::new("..");
+    let dotdot = Path::init("..");
     fs::mkdir_recursive(&dotdot, io::UserRWX);
 }
 
 fn recursive_mkdir_rel_2() {
-    let path = Path::new("./frob/baz");
+    let path = Path::init("./frob/baz");
     let cwd = os::getcwd();
     debug!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::UserRWX);
     assert!(path.is_dir());
     assert!(path.dir_path().is_dir());
-    let path2 = Path::new("quux/blat");
+    let path2 = Path::init("quux/blat");
     debug!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
     fs::mkdir_recursive(&path2, io::UserRWX);

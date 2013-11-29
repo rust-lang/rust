@@ -719,7 +719,7 @@ pub fn build_session_options(binary: @str,
         } else if matches.opt_present("emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::new(m));
+    let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::init(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
     let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
     let target_feature = matches.opt_str("target-feature").unwrap_or(~"");
@@ -753,7 +753,7 @@ pub fn build_session_options(binary: @str,
     let statik = debugging_opts & session::statik != 0;
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
-      Path::new(s.as_slice())
+      Path::init(s.as_slice())
     }).move_iter().collect();
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
