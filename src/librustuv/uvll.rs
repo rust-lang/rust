@@ -723,7 +723,7 @@ extern {
 }
 
 // various platform libraries required by libuv
-#[cfg(not(stage0))]
+#[cfg(not(stage0), not(target_os = "android"))]
 #[link(name = "pthread")]
 extern {}
 #[cfg(stage0)]

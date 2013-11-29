@@ -19,9 +19,9 @@ endif
 %.a: %.o
 	ar crus $@ $<
 %.dylib: %.o
-	ld -o $@ $< -dylib
+	$(CC) -dynamiclib -Wl,-dylib -o $@ $<
 %.so: %.o
-	ld -o $@ $< -shared
+	$(CC) -o $@ $< -shared
 $(TMPDIR)/lib%.o: %.c
 	$(CC) -c -o $@ $<
 

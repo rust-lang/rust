@@ -924,9 +924,10 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	@rm -rf $(3)/test/run-make/$$*
 	@mkdir -p $(3)/test/run-make/$$*
 	@echo maketest: $$*
-	@python $(S)src/etc/maketest.py $$(dir $$<) \
+	$$(Q)python $(S)src/etc/maketest.py $$(dir $$<) \
 	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	    $(3)/test/run-make/$$*
+	    $(3)/test/run-make/$$* \
+	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))"
 	@touch $$@
 
 endef

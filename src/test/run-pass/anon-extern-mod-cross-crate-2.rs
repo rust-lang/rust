@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-pretty
 // aux-build:anon-extern-mod-cross-crate-1.rs
 extern mod anonexternmod;
 

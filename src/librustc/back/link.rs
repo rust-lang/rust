@@ -1112,7 +1112,7 @@ fn link_args(sess: Session,
         // follow this flag. Thus, use it before specifing libraries to link to.
         args.push(~"-Wl,--as-needed");
 
-        // GNU-style linkers supports optimization with -O. --gc-sections
+        // GNU-style linkers support optimization with -O. --gc-sections
         // removes metadata and potentially other useful things, so don't
         // include it. GNU ld doesn't need a numeric argument, but other linkers
         // do.
@@ -1212,7 +1212,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
         }
     }
 
-    // This is a fallback of three differnet cases of linking:
+    // This is a fallback of three different  cases of linking:
     //
     // * When creating a dynamic library, all inputs are required to be dynamic
     //   as well
@@ -1223,7 +1223,8 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     let crates = cstore::get_used_crates(cstore, cstore::RequireDynamic);
     for &(cnum, ref path) in crates.iter() {
         let cratepath = match *path {
-            Some(ref p) => p.clone(), None => {
+            Some(ref p) => p.clone(),
+            None => {
                 sess.err(format!("could not find dynamic library for: `{}`",
                                  cstore::get_crate_data(sess.cstore, cnum).name));
                 return

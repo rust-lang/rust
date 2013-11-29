@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-pretty
 // aux-build:foreign_lib.rs
 
 // The purpose of this test is to check that we can

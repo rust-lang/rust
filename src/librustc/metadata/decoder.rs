@@ -1533,9 +1533,9 @@ pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
 pub fn get_native_libraries(cdata: Cmd) -> ~[~str] {
     let libraries = reader::get_doc(reader::Doc(cdata.data), tag_native_libraries);
     let mut result = ~[];
-    do reader::tagged_docs(libraries, tag_native_libraries_lib) |lib_doc| {
+    reader::tagged_docs(libraries, tag_native_libraries_lib, |lib_doc| {
         result.push(lib_doc.as_str());
         true
-    };
+    });
     return result;
 }
