@@ -141,7 +141,7 @@ impl FsRequest {
         }).map(|req| unsafe {
             let mut paths = ~[];
             let path = CString::new(path.with_ref(|p| p), false);
-            let parent = Path::new(path);
+            let parent = Path::init(path);
             c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
                                       Some(req.get_result() as uint),
                                       |rel| {
@@ -157,7 +157,7 @@ impl FsRequest {
             uvll::uv_fs_readlink(loop_.handle, req,
                                  path.with_ref(|p| p), cb)
         }).map(|req| {
-            Path::new(unsafe {
+            Path::init(unsafe {
                 CString::new(req.get_ptr() as *libc::c_char, false)
             })
         })
@@ -245,7 +245,7 @@ impl FsRequest {
 
     pub fn mkstat(&self) -> FileStat {
         let path = unsafe { uvll::get_path_from_fs_req(self.req) };
-        let path = unsafe { Path::new(CString::new(path, false)) };
+        let path = unsafe { Path::init(CString::new(path, false)) };
         let stat = self.get_stat();
         fn to_msec(stat: uvll::uv_timespec_t) -> u64 {
             // Be sure to cast to u64 first to prevent overflowing if the tv_sec

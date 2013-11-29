@@ -29,7 +29,7 @@ particular bits of it, etc.
 
     use std::io::{File, fs};
 
-    let path = Path::new("foo.txt");
+    let path = Path::init("foo.txt");
 
     // create the file, whether it exists or not
     let mut file = File::create(&path);
@@ -40,7 +40,7 @@ particular bits of it, etc.
     file.read_to_end();
 
     println!("{}", path.stat().size);
-    fs::symlink(&path, &Path::new("bar.txt"));
+    fs::symlink(&path, &Path::init("bar.txt"));
     fs::unlink(&path);
 
 */
@@ -95,7 +95,7 @@ impl File {
     ///
     ///     use std::io::{File, io_error, Open, ReadWrite};
     ///
-    ///     let p = Path::new("/some/file/path.txt");
+    ///     let p = Path::init("/some/file/path.txt");
     ///
     ///     io_error::cond.trap(|_| {
     ///         // hoo-boy...
@@ -157,7 +157,7 @@ impl File {
     ///
     ///     use std::io::File;
     ///
-    ///     let contents = File::open(&Path::new("foo.txt")).read_to_end();
+    ///     let contents = File::open(&Path::init("foo.txt")).read_to_end();
     pub fn open(path: &Path) -> Option<File> {
         File::open_mode(path, Open, Read)
     }
@@ -172,7 +172,7 @@ impl File {
     ///
     ///     use std::io::File;
     ///
-    ///     let mut f = File::create(&Path::new("foo.txt"));
+    ///     let mut f = File::create(&Path::init("foo.txt"));
     ///     f.write(bytes!("This is a sample file"));
     pub fn create(path: &Path) -> Option<File> {
         File::open_mode(path, Truncate, Write)
@@ -229,7 +229,7 @@ impl File {
 ///
 ///     use std::io::fs;
 ///
-///     let p = Path::new("/some/file/path.txt");
+///     let p = Path::init("/some/file/path.txt");
 ///     fs::unlink(&p);
 ///     // if we made it here without failing, then the
 ///     // unlink operation was successful
@@ -260,7 +260,7 @@ pub fn unlink(path: &Path) {
 ///     use std::io;
 ///     use std::io::fs;
 ///
-///     let p = Path::new("/some/file/path.txt");
+///     let p = Path::init("/some/file/path.txt");
 ///     match io::result(|| fs::stat(&p)) {
 ///         Ok(stat) => { /* ... */ }
 ///         Err(e) => { /* handle error */ }
@@ -277,7 +277,7 @@ pub fn stat(path: &Path) -> FileStat {
 
 fn dummystat() -> FileStat {
     FileStat {
-        path: Path::new(""),
+        path: Path::init(""),
         size: 0,
         kind: io::TypeFile,
         perm: 0,
@@ -317,7 +317,7 @@ pub fn lstat(path: &Path) -> FileStat {
 ///
 ///     use std::io::fs;
 ///
-///     fs::rename(&Path::new("foo"), &Path::new("bar"));
+///     fs::rename(&Path::init("foo"), &Path::init("bar"));
 ///     // Oh boy, nothing was raised!
 ///
 /// # Errors
@@ -339,7 +339,7 @@ pub fn rename(from: &Path, to: &Path) {
 ///
 ///     use std::io::fs;
 ///
-///     fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
+///     fs::copy(&Path::init("foo.txt"), &Path::init("bar.txt"));
 ///     // Oh boy, nothing was raised!
 ///
 /// # Errors
@@ -386,10 +386,10 @@ pub fn copy(from: &Path, to: &Path) {
 ///     use std::io;
 ///     use std::io::fs;
 ///
-///     fs::chmod(&Path::new("file.txt"), io::UserFile);
-///     fs::chmod(&Path::new("file.txt"), io::UserRead | io::UserWrite);
-///     fs::chmod(&Path::new("dir"),      io::UserDir);
-///     fs::chmod(&Path::new("file.exe"), io::UserExec);
+///     fs::chmod(&Path::init("file.txt"), io::UserFile);
+///     fs::chmod(&Path::init("file.txt"), io::UserRead | io::UserWrite);
+///     fs::chmod(&Path::init("dir"),      io::UserDir);
+///     fs::chmod(&Path::init("file.exe"), io::UserExec);
 ///
 /// # Errors
 ///
@@ -448,7 +448,7 @@ pub fn readlink(path: &Path) -> Option<Path> {
 ///     use std::libc::S_IRWXU;
 ///     use std::io::fs;
 ///
-///     let p = Path::new("/some/dir");
+///     let p = Path::init("/some/dir");
 ///     fs::mkdir(&p, S_IRWXU as int);
 ///     // If we got here, our directory exists! Horray!
 ///
@@ -467,7 +467,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) {
 ///
 ///     use std::io::fs;
 ///
-///     let p = Path::new("/some/dir");
+///     let p = Path::init("/some/dir");
 ///     fs::rmdir(&p);
 ///     // good riddance, you mean ol' directory
 ///
@@ -990,12 +990,12 @@ mod test {
     })
 
     test!(fn recursive_mkdir_slash() {
-        mkdir_recursive(&Path::new("/"), io::UserRWX);
+        mkdir_recursive(&Path::init("/"), io::UserRWX);
     })
 
     test!(fn unicode_path_is_dir() {
-        assert!(Path::new(".").is_dir());
-        assert!(!Path::new("test/stdtest/fs.rs").is_dir());
+        assert!(Path::init(".").is_dir());
+        assert!(!Path::init("test/stdtest/fs.rs").is_dir());
 
         let tmpdir = tmpdir();
 
@@ -1012,20 +1012,20 @@ mod test {
     })
 
     test!(fn unicode_path_exists() {
-        assert!(Path::new(".").exists());
-        assert!(!Path::new("test/nonexistent-bogus-path").exists());
+        assert!(Path::init(".").exists());
+        assert!(!Path::init("test/nonexistent-bogus-path").exists());
 
         let tmpdir = tmpdir();
         let unicode = tmpdir.clone();
         let unicode = unicode.join(format!("test-각丁ー再见"));
         mkdir(&unicode, io::UserRWX);
         assert!(unicode.exists());
-        assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
+        assert!(!Path::init("test/unicode-bogus-path-각丁ー再见").exists());
     })
 
     test!(fn copy_file_does_not_exist() {
-        let from = Path::new("test/nonexistent-bogus-path");
-        let to = Path::new("test/other-bogus-path");
+        let from = Path::init("test/nonexistent-bogus-path");
+        let to = Path::init("test/other-bogus-path");
         match io::result(|| copy(&from, &to)) {
             Ok(..) => fail!(),
             Err(..) => {
