@@ -191,7 +191,7 @@ impl Database {
                     Err(e) => fail!("Couldn't parse workcache database (from file {}): {}",
                                     self.db_filename.display(), e.to_str()),
                     Ok(r) => {
-                        let mut decoder = json::Decoder(r);
+                        let mut decoder = json::Decoder::init(r);
                         self.db_cache = Decodable::decode(&mut decoder);
                     }
             }
@@ -258,7 +258,7 @@ enum Work<'self, T> {
 
 fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
     let writer = @mut MemWriter::new();
-    let mut encoder = json::Encoder(writer as @mut io::Writer);
+    let mut encoder = json::Encoder::init(writer as @mut io::Writer);
     t.encode(&mut encoder);
     str::from_utf8(writer.inner_ref().as_slice())
 }
@@ -267,7 +267,7 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     debug!("json decoding: {}", s);
     let j = json::from_str(s).unwrap();
-    let mut decoder = json::Decoder(j);
+    let mut decoder = json::Decoder::init(j);
     Decodable::decode(&mut decoder)
 }
 
