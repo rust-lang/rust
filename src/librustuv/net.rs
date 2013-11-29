@@ -1076,21 +1076,22 @@ mod test {
         use std::rt::task::Task;
         use std::rt::task::UnwindResult;
         use std::rt::thread::Thread;
-        use std::rt::work_queue::WorkQueue;
+        use std::rt::deque::BufferPool;
         use std::unstable::run_in_bare_thread;
         use uvio::UvEventLoop;
 
         do run_in_bare_thread {
             let sleepers = SleeperList::new();
-            let work_queue1 = WorkQueue::new();
-            let work_queue2 = WorkQueue::new();
-            let queues = ~[work_queue1.clone(), work_queue2.clone()];
+            let mut pool = BufferPool::init();
+            let (worker1, stealer1) = pool.deque();
+            let (worker2, stealer2) = pool.deque();
+            let queues = ~[stealer1, stealer2];
 
             let loop1 = ~UvEventLoop::new() as ~EventLoop;
-            let mut sched1 = ~Scheduler::new(loop1, work_queue1, queues.clone(),
+            let mut sched1 = ~Scheduler::new(loop1, worker1, queues.clone(),
                                              sleepers.clone());
             let loop2 = ~UvEventLoop::new() as ~EventLoop;
-            let mut sched2 = ~Scheduler::new(loop2, work_queue2, queues.clone(),
+            let mut sched2 = ~Scheduler::new(loop2, worker2, queues.clone(),
                                              sleepers.clone());
 
             let handle1 = Cell::new(sched1.make_handle());
