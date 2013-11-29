@@ -84,7 +84,6 @@ use rt::sched::{Scheduler, Shutdown, TaskFromFriend};
 use rt::task::{Task, Sched};
 use rt::task::UnwindResult;
 use rt::thread::Thread;
-use rt::work_queue::WorkQueue;
 use rt::{in_green_task_context, new_event_loop};
 use task::SingleThreaded;
 use task::TaskOpts;
@@ -111,11 +110,11 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
             // Since this is a 1:1 scheduler we create a queue not in
             // the stealee set. The run_anything flag is set false
             // which will disable stealing.
-            let work_queue = WorkQueue::new();
+            let (worker, _stealer) = (*sched).work_queue.pool().deque();
 
             // Create a new scheduler to hold the new task
             let mut new_sched = ~Scheduler::new_special(new_event_loop(),
-                                                        work_queue,
+                                                        worker,
                                                         (*sched).work_queues.clone(),
                                                         (*sched).sleeper_list.clone(),
                                                         false,
