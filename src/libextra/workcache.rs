@@ -256,9 +256,9 @@ enum Work<'self, T> {
     WorkFromTask(&'self Prep<'self>, PortOne<(Exec, T)>),
 }
 
-fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
-    let writer = @mut MemWriter::new();
-    let mut encoder = json::Encoder::init(writer as @mut io::Writer);
+fn json_encode<'self, T:Encodable<json::Encoder<'self>>>(t: &T) -> ~str {
+    let mut writer = MemWriter::new();
+    let mut encoder = json::Encoder::init(&mut writer as &mut io::Writer);
     t.encode(&mut encoder);
     str::from_utf8(writer.inner_ref().as_slice())
 }
@@ -396,15 +396,15 @@ impl<'self> Prep<'self> {
         return true;
     }
 
-    pub fn exec<T:Send +
-        Encodable<json::Encoder> +
+    pub fn exec<'self, T:Send +
+        Encodable<json::Encoder<'self>> +
         Decodable<json::Decoder>>(
             &'self self, blk: proc(&mut Exec) -> T) -> T {
         self.exec_work(blk).unwrap()
     }
 
-    fn exec_work<T:Send +
-        Encodable<json::Encoder> +
+    fn exec_work<'self, T:Send +
+        Encodable<json::Encoder<'self>> +
         Decodable<json::Decoder>>( // FIXME(#5121)
             &'self self, blk: proc(&mut Exec) -> T) -> Work<'self, T> {
         let mut bo = Some(blk);
@@ -449,7 +449,7 @@ impl<'self> Prep<'self> {
 }
 
 impl<'self, T:Send +
-       Encodable<json::Encoder> +
+       Encodable<json::Encoder<'self>> +
        Decodable<json::Decoder>>
     Work<'self, T> { // FIXME(#5121)
 
