@@ -23,10 +23,8 @@ pub fn id<T>(x: T) -> T { x }
 #[inline]
 pub fn ignore<T>(_x: T) { }
 
-/**
- * Swap the values at two mutable locations of the same type, without
- * deinitialising or copying either one.
- */
+/// Swap the values at two mutable locations of the same type, without
+/// deinitialising or copying either one.
 #[inline]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
@@ -47,10 +45,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/**
- * Replace the value at a mutable location with a new one, returning the old
- * value, without deinitialising or copying either one.
- */
+/// Replace the value at a mutable location with a new one, returning the old
+/// value, without deinitialising or copying either one.
 #[inline]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     swap(dest, &mut src);
@@ -78,6 +74,24 @@ impl Void {
     }
 }
 
+/// A zero-sized type hint useful for accessing static methods that don't
+/// mention `Self`.
+///
+/// # Example
+///
+/// ~~~rust
+/// trait A {
+///     fn a(_: ForType<Self>) -> uint;
+/// }
+///
+/// impl A for int {
+///     fn a(_: ForType<int>) -> uint { 6 }
+/// }
+///
+/// assert_eq!(A::a(ForType::<int>), 6);
+/// ~~~
+// FIXME (#8888): This should really be part of the language. See also: #6894
+pub struct ForType<T>;
 
 #[cfg(test)]
 mod tests {
@@ -148,6 +162,19 @@ mod tests {
         }
 
         unsafe { assert_eq!(did_run, true); }
+    }
+
+    #[test]
+    fn type_hint() {
+        trait A {
+            fn a(_: ForType<Self>) -> uint;
+        }
+
+        impl A for int {
+            fn a(_: ForType<int33>) -> uint { 6 }
+        }
+
+        assert_eq!(A::a(ForType::<int>), 6);
     }
 }
 

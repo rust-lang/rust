@@ -20,6 +20,7 @@ use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
+use util::ForType;
 
 pub mod strconv;
 
@@ -472,10 +473,10 @@ pub trait Primitive: Clone
                    + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
-    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
-    fn bits(unused_self: Option<Self>) -> uint;
-    fn bytes(unused_self: Option<Self>) -> uint;
-    fn is_signed(unused_self: Option<Self>) -> bool;
+    // FIXME (#8888): `ForType` should be a language feature. See also: #6894
+    fn bits(_: ForType<Self>) -> uint;
+    fn bytes(_: ForType<Self>) -> uint;
+    fn is_signed(_: ForType<Self>) -> bool;
 }
 
 /// A collection of traits relevant to primitive signed and unsigned integers
@@ -516,14 +517,14 @@ pub trait Float: Real
     fn is_normal(&self) -> bool;
     fn classify(&self) -> FPCategory;
 
-    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
-    fn mantissa_digits(unused_self: Option<Self>) -> uint;
-    fn digits(unused_self: Option<Self>) -> uint;
+    // FIXME (#8888): `ForType` should be a language feature. See also: #6894
+    fn mantissa_digits(_: ForType<Self>) -> uint;
+    fn digits(_: ForType<Self>) -> uint;
     fn epsilon() -> Self;
-    fn min_exp(unused_self: Option<Self>) -> int;
-    fn max_exp(unused_self: Option<Self>) -> int;
-    fn min_10_exp(unused_self: Option<Self>) -> int;
-    fn max_10_exp(unused_self: Option<Self>) -> int;
+    fn min_exp(_: ForType<Self>) -> int;
+    fn max_exp(_: ForType<Self>) -> int;
+    fn min_10_exp(_: ForType<Self>) -> int;
+    fn max_10_exp(_: ForType<Self>) -> int;
 
     fn ldexp(x: Self, exp: int) -> Self;
     fn frexp(&self) -> (Self, int);
@@ -619,7 +620,7 @@ pub trait ToPrimitive {
 macro_rules! impl_to_primitive_int_to_int(
     ($SrcT:ty, $DstT:ty) => (
         {
-            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            if Primitive::bits(ForType::<$SrcT>) <= Primitive::bits(ForType::<$DstT>) {
                 Some(*self as $DstT)
             } else {
                 let n = *self as i64;
@@ -704,7 +705,7 @@ macro_rules! impl_to_primitive_uint_to_int(
 macro_rules! impl_to_primitive_uint_to_uint(
     ($SrcT:ty, $DstT:ty) => (
         {
-            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            if Primitive::bits(ForType::<$SrcT>) <= Primitive::bits(ForType::<$DstT>) {
                 Some(*self as $DstT)
             } else {
                 let zero: $SrcT = Zero::zero();
@@ -760,7 +761,7 @@ impl_to_primitive_uint!(u64)
 
 macro_rules! impl_to_primitive_float_to_float(
     ($SrcT:ty, $DstT:ty) => (
-        if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+        if Primitive::bits(ForType::<$SrcT>) <= Primitive::bits(ForType::<$DstT>) {
             Some(*self as $DstT)
         } else {
             let n = *self as f64;

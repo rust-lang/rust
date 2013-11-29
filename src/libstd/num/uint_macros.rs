@@ -21,8 +21,9 @@ use default::Default;
 use num::BitCount;
 use num::{ToStrRadix, FromStrRadix};
 use num::{CheckedDiv, Zero, One, strconv};
-use prelude::*;
 use str;
+use util::ForType;
+use prelude::*;
 
 pub use cmp::{min, max};
 
@@ -302,13 +303,13 @@ impl ToStrRadix for $T {
 
 impl Primitive for $T {
     #[inline]
-    fn bits(_: Option<$T>) -> uint { bits }
+    fn bits(_: ForType<$T>) -> uint { bits }
 
     #[inline]
-    fn bytes(_: Option<$T>) -> uint { bits / 8 }
+    fn bytes(_: ForType<$T>) -> uint { bits / 8 }
 
     #[inline]
-    fn is_signed(_: Option<$T>) -> bool { false }
+    fn is_signed(_: ForType<$T>) -> bool { false }
 }
 
 impl BitCount for $T {
@@ -339,6 +340,7 @@ mod tests {
     use num;
     use mem;
     use u16;
+    use util::ForType;
 
     #[test]
     fn test_num() {
@@ -430,9 +432,8 @@ mod tests {
 
     #[test]
     fn test_primitive() {
-        let none: Option<$T> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<$T>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<$T>());
+        assert_eq!(Primitive::bits(ForType::<$T>), mem::size_of::<$T>() * 8);
+        assert_eq!(Primitive::bytes(ForType::<$T>), mem::size_of::<$T>());
     }
 
     #[test]
