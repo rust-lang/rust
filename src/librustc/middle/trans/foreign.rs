@@ -10,32 +10,31 @@
 
 
 use back::{link};
-use std::libc::c_uint;
-use lib::llvm::{ValueRef, CallConv, StructRetAttribute};
 use lib::llvm::llvm;
+use lib::llvm::{ValueRef, CallConv, StructRetAttribute};
 use lib;
-use middle::trans::machine;
-use middle::trans::base;
 use middle::trans::base::push_ctxt;
-use middle::trans::cabi;
+use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::builder::noname;
+use middle::trans::cabi;
 use middle::trans::common::*;
+use middle::trans::machine;
+use middle::trans::type_::Type;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
-use middle::ty;
 use middle::ty::FnSig;
-
-use std::uint;
+use middle::ty;
+use std::cmp;
+use std::libc::c_uint;
 use std::vec;
+use syntax::abi::{Cdecl, Aapcs, C, AbiSet, Win64};
+use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
+use syntax::parse::token::special_idents;
 use syntax::{ast};
 use syntax::{attr, ast_map};
-use syntax::parse::token::special_idents;
-use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System,
-                  Cdecl, Aapcs, C, AbiSet, Win64};
 use util::ppaux::{Repr, UserString};
-use middle::trans::type_::Type;
 
 ///////////////////////////////////////////////////////////////////////////
 // Type definitions
@@ -332,7 +331,7 @@ pub fn trans_native_call(bcx: @mut Block,
             let llrust_size = machine::llsize_of_store(ccx, llrust_ret_ty);
             let llforeign_align = machine::llalign_of_min(ccx, llforeign_ret_ty);
             let llrust_align = machine::llalign_of_min(ccx, llrust_ret_ty);
-            let llalign = uint::min(llforeign_align, llrust_align);
+            let llalign = cmp::min(llforeign_align, llrust_align);
             debug!("llrust_size={:?}", llrust_size);
             base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
                               C_uint(ccx, llrust_size), llalign as u32);
