@@ -10,13 +10,19 @@
 
 //! Operations and constants for `i64`
 
-use num::{BitCount, CheckedAdd, CheckedSub};
+#[allow(non_uppercase_statics)];
+
+use prelude::*;
+
+use default::Default;
 #[cfg(target_word_size = "64")]
 use num::CheckedMul;
+use num::{BitCount, CheckedAdd, CheckedSub};
+use num::{CheckedDiv, Zero, One, strconv};
+use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
+use str;
 use unstable::intrinsics;
-
-pub use self::generated::*;
 
 int_module!(i64, 64)
 

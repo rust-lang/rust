@@ -10,11 +10,17 @@
 
 //! Operations and constants for `i8`
 
-use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
-use option::{Option, Some, None};
-use unstable::intrinsics;
+#[allow(non_uppercase_statics)];
 
-pub use self::generated::*;
+use prelude::*;
+
+use default::Default;
+use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use num::{CheckedDiv, Zero, One, strconv};
+use num::{ToStrRadix, FromStrRadix};
+use option::{Option, Some, None};
+use str;
+use unstable::intrinsics;
 
 int_module!(i8, 8)
 
