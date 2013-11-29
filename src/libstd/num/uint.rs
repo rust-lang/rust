@@ -10,13 +10,20 @@
 
 //! Operations and constants for `uint`
 
-use num;
-use num::{CheckedAdd, CheckedSub, CheckedMul};
-use option::{Option, Some, None};
-use unstable::intrinsics;
-use mem;
+#[allow(non_uppercase_statics)];
 
-pub use self::generated::*;
+use prelude::*;
+
+use default::Default;
+use mem;
+use num::BitCount;
+use num::{CheckedAdd, CheckedSub, CheckedMul};
+use num::{CheckedDiv, Zero, One, strconv};
+use num::{ToStrRadix, FromStrRadix};
+use num;
+use option::{Option, Some, None};
+use str;
+use unstable::intrinsics;
 
 uint_module!(uint, int, ::int::bits)
 

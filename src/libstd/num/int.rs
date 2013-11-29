@@ -12,16 +12,18 @@
 
 #[allow(non_uppercase_statics)];
 
+use prelude::*;
+
+use default::Default;
 use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use num::{CheckedDiv, Zero, One, strconv};
+use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
+use str;
 use unstable::intrinsics;
 
-pub use self::generated::*;
-
-#[cfg(target_word_size = "32")] pub static bits: uint = 32;
-#[cfg(target_word_size = "64")] pub static bits: uint = 64;
-
-int_module!(int, super::bits)
+#[cfg(target_word_size = "32")] int_module!(int, 32)
+#[cfg(target_word_size = "64")] int_module!(int, 64)
 
 #[cfg(target_word_size = "32")]
 impl BitCount for int {

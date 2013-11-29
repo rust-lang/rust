@@ -10,13 +10,20 @@
 
 //! Operations and constants for `u64`
 
-use num::{CheckedAdd, CheckedSub};
+#[allow(non_uppercase_statics)];
+
+use prelude::*;
+
+use default::Default;
+use num::BitCount;
 #[cfg(target_word_size = "64")]
 use num::CheckedMul;
+use num::{CheckedAdd, CheckedSub};
+use num::{CheckedDiv, Zero, One, strconv};
+use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
+use str;
 use unstable::intrinsics;
-
-pub use self::generated::*;
 
 uint_module!(u64, i64, 64)
 

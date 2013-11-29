@@ -8,23 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME(#4375):  This shouldn't have to be a nested module named 'generated'...
-// FIXME(#10716): ... but now that we could solve that, the import lines and
-//                attributes still prevent a removal of that module.
-
 #[macro_escape];
 #[doc(hidden)];
 
-macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
-
-#[allow(non_uppercase_statics)];
-
-use default::Default;
-use num::BitCount;
-use num::{ToStrRadix, FromStrRadix};
-use num::{CheckedDiv, Zero, One, strconv};
-use prelude::*;
-use str;
+macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
 pub static bits : uint = $bits;
 pub static bytes : uint = ($bits / 8);
@@ -554,4 +541,4 @@ mod tests {
     }
 }
 
-}))
+))
