@@ -135,7 +135,7 @@ impl Visitor<()> for Context {
                 }
             }
 
-            ast::item_foreign_mod(*) => {
+            ast::item_foreign_mod(..) => {
                 if attr::contains_name(i.attrs, "link_args") &&
                     cfg!(stage0, remove_this_on_next_snapshot) { // NOTE: snap
                     self.gate_feature("link_args", i.span,

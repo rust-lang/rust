@@ -46,6 +46,7 @@ via `close` and `delete` methods.
 #[crate_type = "dylib"];
 
 #[feature(macro_rules, globs)];
+#[allow(attribute_usage)]; // NOTE: remove after the next snapshot
 
 use std::cast::transmute;
 use std::cast;

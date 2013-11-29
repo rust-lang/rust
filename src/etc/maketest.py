@@ -6,6 +6,7 @@ import sys
 
 os.putenv('RUSTC', os.path.abspath(sys.argv[2]))
 os.putenv('TMPDIR', os.path.abspath(sys.argv[3]))
+os.putenv('CC', sys.argv[4])
 
 proc = subprocess.Popen(['make', '-C', sys.argv[1]],
                         stdout = subprocess.PIPE,

@@ -83,7 +83,7 @@ impl Context {
         let rlib_prefix = format!("lib{}-", crate_name);
 
         let mut matches = ~[];
-        do filesearch::search(filesearch) |path| {
+        filesearch::search(filesearch, |path| {
             match path.filename_str() {
                 None => FileDoesntMatch,
                 Some(file) => {
@@ -135,7 +135,7 @@ impl Context {
                     }
                 }
             }
-        }
+        });
 
         match matches.len() {
             0 => None,
@@ -180,7 +180,7 @@ impl Context {
                     lib.rlib = Some(path.clone());
                     return true;
                 }
-                Some(*) | None => {}
+                Some(..) | None => {}
             }
         }
         return false;
@@ -200,7 +200,7 @@ impl Context {
                     lib.dylib = Some(path.clone());
                     return true;
                 }
-                Some(*) | None => {}
+                Some(..) | None => {}
             }
         }
         return false;
@@ -360,7 +360,7 @@ pub fn list_file_metadata(sess: Session,
     let crate_name = path.filename_str().unwrap();
     let crate_name = if crate_name.starts_with("lib") {
         crate_name.slice_from(3) } else { crate_name };
-    let crate_name = crate_name.split_iter('-').next().unwrap();
+    let crate_name = crate_name.split('-').next().unwrap();
     match get_metadata_section(sess, os, path, crate_name) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {

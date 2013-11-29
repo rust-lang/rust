@@ -187,9 +187,9 @@ fn visit_item(e: &Env, i: @ast::item) {
             for m in link_args.iter() {
                 match m.meta_item_list() {
                     Some(items) => {
-                        let kind = do items.iter().find |k| {
+                        let kind = items.iter().find(|k| {
                             "kind" == k.name()
-                        }.and_then(|a| a.value_str());
+                        }).and_then(|a| a.value_str());
                         let kind = match kind {
                             Some(k) if "static" == k => cstore::NativeStatic,
                             Some(k) => {
@@ -198,9 +198,9 @@ fn visit_item(e: &Env, i: @ast::item) {
                             }
                             None => cstore::NativeUnknown
                         };
-                        let n = do items.iter().find |n| {
+                        let n = items.iter().find(|n| {
                             "name" == n.name()
-                        }.and_then(|a| a.value_str());
+                        }).and_then(|a| a.value_str());
                         let n = match n {
                             Some(n) => n,
                             None => {

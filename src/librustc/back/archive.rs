@@ -27,7 +27,7 @@ pub struct Archive {
 
 fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
         paths: &[&Path]) -> ProcessOutput {
-    let ar = sess.opts.ar.clone().unwrap_or(~"ar");
+    let ar = sess.opts.ar.clone().unwrap_or_else(|| ~"ar");
     let mut args = ~[args.to_owned()];
     let mut paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
     args.extend(&mut paths);
@@ -64,7 +64,17 @@ impl Archive {
 
     /// Read a file in the archive
     pub fn read(&self, file: &str) -> ~[u8] {
-        run_ar(self.sess, "p", None, [&self.dst, &Path::new(file)]).output
+        // Apparently if "ar p" is used on windows, it generates a corrupt file
+        // which has bad headers and LLVM will immediately choke on it
+        if cfg!(windows) && cfg!(windows) { // FIXME(#10734) double-and
+            let loc = TempDir::new("rsar").unwrap();
+            let archive = os::make_absolute(&self.dst);
+            run_ar(self.sess, "x", Some(loc.path()), [&archive,
+                                                      &Path::init(file)]);
+            fs::File::open(&loc.path().join(file)).read_to_end()
+        } else {
+            run_ar(self.sess, "p", None, [&self.dst, &Path::init(file)]).output
+        }
     }
 
     /// Adds all of the contents of a native library to this archive. This will
@@ -77,7 +87,7 @@ impl Archive {
     /// Adds all of the contents of the rlib at the specified path to this
     /// archive.
     pub fn add_rlib(&mut self, rlib: &Path) {
-        let name = rlib.filename_str().unwrap().split_iter('-').next().unwrap();
+        let name = rlib.filename_str().unwrap().split('-').next().unwrap();
         self.add_archive(rlib, name);
     }
 
