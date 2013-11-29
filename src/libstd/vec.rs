@@ -2463,15 +2463,14 @@ impl<A> Default for @[A] {
 }
 
 macro_rules! iterator {
-    /* FIXME: #4375 Cannot attach documentation/attributes to a macro generated struct.
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
+        /// An iterator for iterating over a vector.
         pub struct $name<'self, T> {
             priv ptr: $ptr,
             priv end: $ptr,
-            priv lifetime: $elem // FIXME: #5922
+            priv lifetime: Option<$elem> // FIXME: #5922
         }
-    };*/
-    (impl $name:ident -> $elem:ty) => {
+
         impl<'self, T> Iterator<$elem> for $name<'self, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
@@ -2502,11 +2501,7 @@ macro_rules! iterator {
                 (exact, Some(exact))
             }
         }
-    }
-}
 
-macro_rules! double_ended_iterator {
-    (impl $name:ident -> $elem:ty) => {
         impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -2548,15 +2543,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
     }
 }
 
-//iterator!{struct VecIterator -> *T, &'self T}
-/// An iterator for iterating over a vector.
-pub struct VecIterator<'self, T> {
-    priv ptr: *T,
-    priv end: *T,
-    priv lifetime: Option<&'self ()> // FIXME: #5922
-}
-iterator!{impl VecIterator -> &'self T}
-double_ended_iterator!{impl VecIterator -> &'self T}
+iterator!{struct VecIterator -> *T, &'self T}
 pub type RevIterator<'self, T> = Invert<VecIterator<'self, T>>;
 
 impl<'self, T> ExactSize<&'self T> for VecIterator<'self, T> {}
@@ -2566,15 +2553,7 @@ impl<'self, T> Clone for VecIterator<'self, T> {
     fn clone(&self) -> VecIterator<'self, T> { *self }
 }
 
-//iterator!{struct VecMutIterator -> *mut T, &'self mut T}
-/// An iterator for mutating the elements of a vector.
-pub struct VecMutIterator<'self, T> {
-    priv ptr: *mut T,
-    priv end: *mut T,
-    priv lifetime: Option<&'self mut ()> // FIXME: #5922
-}
-iterator!{impl VecMutIterator -> &'self mut T}
-double_ended_iterator!{impl VecMutIterator -> &'self mut T}
+iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.

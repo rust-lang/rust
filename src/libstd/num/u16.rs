@@ -10,11 +10,18 @@
 
 //! Operations and constants for `u16`
 
-use num::{CheckedAdd, CheckedSub, CheckedMul};
-use option::{Option, Some, None};
-use unstable::intrinsics;
+#[allow(non_uppercase_statics)];
 
-pub use self::generated::*;
+use prelude::*;
+
+use default::Default;
+use num::BitCount;
+use num::{CheckedAdd, CheckedSub, CheckedMul};
+use num::{CheckedDiv, Zero, One, strconv};
+use num::{ToStrRadix, FromStrRadix};
+use option::{Option, Some, None};
+use str;
+use unstable::intrinsics;
 
 uint_module!(u16, i16, 16)
 
