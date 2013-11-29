@@ -66,7 +66,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
                 stmts.push(cx.stmt_expr(call));
             };
 
-            for (i, &FieldInfo {name, span, self_, _}) in fields.iter().enumerate() {
+            for (i, &FieldInfo {name, span, self_, .. }) in fields.iter().enumerate() {
                 if i > 0 {
                     push(cx.expr_str(span, @", "));
                 }
@@ -96,9 +96,9 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
 
         EnumMatching(_, variant, ref fields) => {
             match variant.node.kind {
-                ast::tuple_variant_kind(*) =>
+                ast::tuple_variant_kind(..) =>
                     doit("(", @")", variant.node.name, *fields),
-                ast::struct_variant_kind(*) =>
+                ast::struct_variant_kind(..) =>
                     doit("{", @"}", variant.node.name, *fields),
             }
         }

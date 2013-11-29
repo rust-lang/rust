@@ -157,7 +157,7 @@ fn main() {
     let (m, _, n) = (14, 15, 16);
 
     // ignored struct field
-    let Struct { b: o, _ } = Struct { a: 17, b: 18 };
+    let Struct { b: o, .. } = Struct { a: 17, b: 18 };
 
     // one struct destructured, one not
     let (Struct { a: p, b: q }, r) = (Struct { a: 19, b: 20 }, Struct { a: 21, b: 22 });
@@ -188,7 +188,7 @@ fn main() {
     let (ref ff, gg) = (46, (47, 48));
 
     // ref binding in struct
-    let Struct { b: ref hh, _ } = Struct { a: 49, b: 50 };
+    let Struct { b: ref hh, .. } = Struct { a: 49, b: 50 };
 
     // univariant enum
     let Unit(ii) = Unit(51);

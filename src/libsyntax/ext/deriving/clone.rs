@@ -87,16 +87,16 @@ fn cs_clone(
             ctor_ident = variant.node.name;
             all_fields = af;
         },
-        EnumNonMatching(*) => cx.span_bug(span,
+        EnumNonMatching(..) => cx.span_bug(span,
                                           format!("Non-matching enum variants in `deriving({})`",
                                                name)),
-        StaticEnum(*) | StaticStruct(*) => cx.span_bug(span,
+        StaticEnum(..) | StaticStruct(..) => cx.span_bug(span,
                                                        format!("Static method in `deriving({})`",
                                                             name))
     }
 
     match *all_fields {
-        [FieldInfo { name: None, _ }, .. _] => {
+        [FieldInfo { name: None, .. }, ..] => {
             // enum-like
             let subcalls = all_fields.map(|field| subcall(field.self_));
             cx.expr_call_ident(span, ctor_ident, subcalls)

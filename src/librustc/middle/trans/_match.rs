@@ -358,7 +358,7 @@ fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
             }
             unreachable!();
         }
-        ast::DefFn(*) |
+        ast::DefFn(..) |
         ast::DefStruct(_) => {
             return lit(UnitLikeStructLit(pat_id));
         }
@@ -618,7 +618,7 @@ fn enter_opt<'r>(bcx: @mut Block,
     let mut i = 0;
     enter_match(bcx, tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
-            ast::PatEnum(*) |
+            ast::PatEnum(..) |
             ast::PatIdent(_, _, None) if pat_is_const(tcx.def_map, p) => {
                 let const_def = tcx.def_map.get_copy(&p.id);
                 let const_def_id = ast_util::def_id_of_def(const_def);
@@ -724,7 +724,7 @@ fn enter_opt<'r>(bcx: @mut Block,
                 // submatch. Thus, including a default match would
                 // cause the default match to fire spuriously.
                 match *opt {
-                    vec_len(*) => None,
+                    vec_len(..) => None,
                     _ => Some(vec::from_elem(variant_size, dummy))
                 }
             }
@@ -935,15 +935,15 @@ fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
             ast::PatLit(l) => {
                 add_to_set(ccx.tcx, &mut found, lit(ExprLit(l)));
             }
-            ast::PatIdent(*) => {
+            ast::PatIdent(..) => {
                 // This is one of: an enum variant, a unit-like struct, or a
                 // variable binding.
                 match ccx.tcx.def_map.find(&cur.id) {
-                    Some(&ast::DefVariant(*)) => {
+                    Some(&ast::DefVariant(..)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
-                    Some(&ast::DefStruct(*)) => {
+                    Some(&ast::DefStruct(..)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
@@ -954,12 +954,12 @@ fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
                     _ => {}
                 }
             }
-            ast::PatEnum(*) | ast::PatStruct(*) => {
+            ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This could be one of: a tuple-like enum variant, a
                 // struct-like enum variant, or a struct.
                 match ccx.tcx.def_map.find(&cur.id) {
-                    Some(&ast::DefFn(*)) |
-                    Some(&ast::DefVariant(*)) => {
+                    Some(&ast::DefFn(..)) |
+                    Some(&ast::DefVariant(..)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
@@ -1078,7 +1078,7 @@ fn collect_record_or_struct_fields(bcx: @mut Block,
         match br.pats[col].node {
           ast::PatStruct(_, ref fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
-              ty::ty_struct(*) => {
+              ty::ty_struct(..) => {
                    extend(&mut fields, *fs);
                    found = true;
               }
@@ -1168,8 +1168,8 @@ fn any_tuple_struct_pat(bcx: @mut Block, m: &[Match], col: uint) -> bool {
         match pat.node {
             ast::PatEnum(_, Some(_)) => {
                 match bcx.tcx().def_map.find(&pat.id) {
-                    Some(&ast::DefFn(*)) |
-                    Some(&ast::DefStruct(*)) => true,
+                    Some(&ast::DefFn(..)) |
+                    Some(&ast::DefStruct(..)) => true,
                     _ => false
                 }
             }
@@ -1599,7 +1599,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
         let pat_ty = node_id_type(bcx, pat_id);
         let llbox = Load(bcx, val);
         let unboxed = match ty::get(pat_ty).sty {
-            ty::ty_uniq(*) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
+            ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
             _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
         };
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
@@ -1636,7 +1636,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                 test_val = Load(bcx, val);
                 kind = compare;
             },
-            vec_len(*) => {
+            vec_len(..) => {
                 let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
                 let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
                 let (_, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
@@ -1708,7 +1708,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                                           t, ast::BiGe)
                               }
                               range_result(
-                                  Result {val: vbegin, _},
+                                  Result {val: vbegin, ..},
                                   Result {bcx, val: vend}) => {
                                   let Result {bcx, val: llge} =
                                       compare_scalar_types(
@@ -1748,7 +1748,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                                   rslt(bcx, value)
                               }
                               range_result(
-                                  Result {val: vbegin, _},
+                                  Result {val: vbegin, ..},
                                   Result {bcx, val: vend}) => {
                                   let llge =
                                       compare_scalar_values(
@@ -2172,8 +2172,8 @@ fn bind_irrefutable_pat(bcx: @mut Block,
                         }
                     }
                 }
-                Some(&ast::DefFn(*)) |
-                Some(&ast::DefStruct(*)) => {
+                Some(&ast::DefFn(..)) |
+                Some(&ast::DefStruct(..)) => {
                     match *sub_pats {
                         None => {
                             // This is a unit-like struct. Nothing to do here.
@@ -2221,7 +2221,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
             let pat_ty = node_id_type(bcx, pat.id);
             let llbox = Load(bcx, val);
             let unboxed = match ty::get(pat_ty).sty {
-                ty::ty_uniq(*) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
+                ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
                     _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
             };
             bcx = bind_irrefutable_pat(bcx, inner, unboxed, binding_mode);
@@ -2230,7 +2230,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
             let loaded_val = Load(bcx, val);
             bcx = bind_irrefutable_pat(bcx, inner, loaded_val, binding_mode);
         }
-        ast::PatVec(*) => {
+        ast::PatVec(..) => {
             bcx.tcx().sess.span_bug(
                 pat.span,
                 format!("vector patterns are never irrefutable!"));

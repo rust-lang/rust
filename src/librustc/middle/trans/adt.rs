@@ -247,7 +247,7 @@ pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
     }
 }
 
-// NOTE this should probably all be in ty
+// this should probably all be in ty
 struct Case { discr: Disr, tys: ~[ty::t] }
 impl Case {
     fn is_zerolen(&self, cx: &mut CrateContext) -> bool {
@@ -386,8 +386,8 @@ pub fn incomplete_type_of(cx: &mut CrateContext, r: &Repr, name: &str) -> Type {
 }
 pub fn finish_type_of(cx: &mut CrateContext, r: &Repr, llty: &mut Type) {
     match *r {
-        CEnum(*) | General(*) => { }
-        Univariant(ref st, _) | NullablePointer{ nonnull: ref st, _ } =>
+        CEnum(..) | General(..) => { }
+        Univariant(ref st, _) | NullablePointer{ nonnull: ref st, .. } =>
             llty.set_struct_body(struct_llfields(cx, st, false), st.packed)
     }
 }
@@ -395,7 +395,7 @@ pub fn finish_type_of(cx: &mut CrateContext, r: &Repr, llty: &mut Type) {
 fn generic_type_of(cx: &mut CrateContext, r: &Repr, name: Option<&str>, sizing: bool) -> Type {
     match *r {
         CEnum(ity, _, _) => ll_inttype(cx, ity),
-        Univariant(ref st, _) | NullablePointer{ nonnull: ref st, _ } => {
+        Univariant(ref st, _) | NullablePointer{ nonnull: ref st, .. } => {
             match name {
                 None => Type::struct_(struct_llfields(cx, st, sizing), st.packed),
                 Some(name) => { assert_eq!(sizing, false); Type::named_struct(name) }
@@ -461,13 +461,13 @@ fn struct_llfields(cx: &mut CrateContext, st: &Struct, sizing: bool) -> ~[Type] 
 pub fn trans_switch(bcx: @mut Block, r: &Repr, scrutinee: ValueRef)
     -> (_match::branch_kind, Option<ValueRef>) {
     match *r {
-        CEnum(*) | General(*) => {
+        CEnum(..) | General(..) => {
             (_match::switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
         }
-        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
             (_match::switch, Some(nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee)))
         }
-        Univariant(*) => {
+        Univariant(..) => {
             (_match::single, None)
         }
     }
@@ -490,11 +490,11 @@ pub fn trans_get_discr(bcx: @mut Block, r: &Repr, scrutinee: ValueRef, cast_to: 
             val = load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr);
             signed = ity.is_signed();
         }
-        Univariant(*) => {
+        Univariant(..) => {
             val = C_u8(0);
             signed = false;
         }
-        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
             val = nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee);
             signed = false;
         }
@@ -552,10 +552,10 @@ pub fn trans_case(bcx: @mut Block, r: &Repr, discr: Disr) -> _match::opt_result 
             _match::single_result(rslt(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
                                                        discr as u64, true)))
         }
-        Univariant(*) => {
+        Univariant(..) => {
             bcx.ccx().sess.bug("no cases for univariants or structs")
         }
-        NullablePointer{ _ } => {
+        NullablePointer{ .. } => {
             assert!(discr == 0 || discr == 1);
             _match::single_result(rslt(bcx, C_i1(discr != 0)))
         }
@@ -583,10 +583,10 @@ pub fn trans_start_init(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr) {
             Store(bcx, C_bool(true),
                   GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
-        Univariant(*) => {
+        Univariant(..) => {
             assert_eq!(discr, 0);
         }
-        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
             if discr != nndiscr {
                 let llptrptr = GEPi(bcx, val, [0, ptrfield]);
                 let llptrty = type_of::type_of(bcx.ccx(), nonnull.fields[ptrfield]);
@@ -609,13 +609,14 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
  */
 pub fn num_args(r: &Repr, discr: Disr) -> uint {
     match *r {
-        CEnum(*) => 0,
+        CEnum(..) => 0,
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(_, ref cases) => cases[discr].fields.len() - 1,
-        NullablePointer{ nonnull: ref nonnull, nndiscr, nullfields: ref nullfields, _ } => {
+        NullablePointer{ nonnull: ref nonnull, nndiscr,
+                         nullfields: ref nullfields, .. } => {
             if discr == nndiscr { nonnull.fields.len() } else { nullfields.len() }
         }
     }
@@ -628,7 +629,7 @@ pub fn trans_field_ptr(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr,
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
-        CEnum(*) => {
+        CEnum(..) => {
             bcx.ccx().sess.bug("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
@@ -638,7 +639,8 @@ pub fn trans_field_ptr(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr,
         General(_, ref cases) => {
             struct_field_ptr(bcx, &cases[discr], val, ix + 1, true)
         }
-        NullablePointer{ nonnull: ref nonnull, nullfields: ref nullfields, nndiscr, _ } => {
+        NullablePointer{ nonnull: ref nonnull, nullfields: ref nullfields,
+                         nndiscr, .. } => {
             if (discr == nndiscr) {
                 struct_field_ptr(bcx, nonnull, val, ix, false)
             } else {
@@ -718,7 +720,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
             let contents = build_const_struct(ccx, st, vals);
             C_struct(contents, st.packed)
         }
-        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
+        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
             if discr == nndiscr {
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             } else {
@@ -789,18 +791,18 @@ pub fn const_get_discrim(ccx: &mut CrateContext, r: &Repr, val: ValueRef)
     match *r {
         CEnum(ity, _, _) => {
             match ity {
-                attr::SignedInt(*) => const_to_int(val) as Disr,
-                attr::UnsignedInt(*) => const_to_uint(val) as Disr
+                attr::SignedInt(..) => const_to_int(val) as Disr,
+                attr::UnsignedInt(..) => const_to_uint(val) as Disr
             }
         }
         General(ity, _) => {
             match ity {
-                attr::SignedInt(*) => const_to_int(const_get_elt(ccx, val, [0])) as Disr,
-                attr::UnsignedInt(*) => const_to_uint(const_get_elt(ccx, val, [0])) as Disr
+                attr::SignedInt(..) => const_to_int(const_get_elt(ccx, val, [0])) as Disr,
+                attr::UnsignedInt(..) => const_to_uint(const_get_elt(ccx, val, [0])) as Disr
             }
         }
-        Univariant(*) => 0,
-        NullablePointer{ nndiscr, ptrfield, _ } => {
+        Univariant(..) => 0,
+        NullablePointer{ nndiscr, ptrfield, .. } => {
             if is_null(const_struct_field(ccx, val, ptrfield)) {
                 /* subtraction as uint is ok because nndiscr is either 0 or 1 */
                 (1 - nndiscr) as Disr
@@ -821,10 +823,10 @@ pub fn const_get_discrim(ccx: &mut CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: &mut CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {
-        CEnum(*) => ccx.sess.bug("element access in C-like enum const"),
-        Univariant(*) => const_struct_field(ccx, val, ix),
-        General(*) => const_struct_field(ccx, val, ix + 1),
-        NullablePointer{ _ } => const_struct_field(ccx, val, ix)
+        CEnum(..) => ccx.sess.bug("element access in C-like enum const"),
+        Univariant(..) => const_struct_field(ccx, val, ix),
+        General(..) => const_struct_field(ccx, val, ix + 1),
+        NullablePointer{ .. } => const_struct_field(ccx, val, ix)
     }
 }
 

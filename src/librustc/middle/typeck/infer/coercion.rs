@@ -115,13 +115,13 @@ impl Coerce {
                 });
             }
 
-            ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil, _}) => {
+            ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_fn(a, sty_a, b)
                 });
             }
 
-            ty::ty_trait(_, _, ty::RegionTraitStore(*), m, _) => {
+            ty::ty_trait(_, _, ty::RegionTraitStore(..), m, _) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_object(a, sty_a, b, m)
                 });

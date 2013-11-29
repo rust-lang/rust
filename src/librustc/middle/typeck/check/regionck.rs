@@ -164,7 +164,7 @@ pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::Block) {
 }
 
 impl Visitor<()> for Rcx {
-    // (*) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
+    // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
     // types of arguments that must be inferred. This could be
@@ -176,7 +176,7 @@ impl Visitor<()> for Rcx {
 
     fn visit_expr(&mut self, ex:@ast::Expr, _:()) { visit_expr(self, ex); }
 
-        //visit_pat: visit_pat, // (*) see above
+        //visit_pat: visit_pat, // (..) see above
 
     fn visit_arm(&mut self, a:&ast::Arm, _:()) { visit_arm(self, a); }
 
@@ -264,11 +264,11 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
         // operators is a hopeless mess and I can't figure out how to
         // represent it. - ndm
         //
-        // ast::expr_assign_op(*) |
+        // ast::expr_assign_op(..) |
 
-        ast::ExprIndex(*) |
-        ast::ExprBinary(*) |
-        ast::ExprUnary(*) if has_method_map => {
+        ast::ExprIndex(..) |
+        ast::ExprBinary(..) |
+        ast::ExprUnary(..) if has_method_map => {
             tcx.region_maps.record_cleanup_scope(expr.id);
         }
         ast::ExprBinary(_, ast::BiAnd, lhs, rhs) |
@@ -276,8 +276,8 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
             tcx.region_maps.record_cleanup_scope(lhs.id);
             tcx.region_maps.record_cleanup_scope(rhs.id);
         }
-        ast::ExprCall(*) |
-        ast::ExprMethodCall(*) => {
+        ast::ExprCall(..) |
+        ast::ExprMethodCall(..) => {
             tcx.region_maps.record_cleanup_scope(expr.id);
         }
         ast::ExprMatch(_, ref arms) => {
@@ -427,7 +427,7 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprFnBlock(*) | ast::ExprProc(*) => {
+        ast::ExprFnBlock(..) | ast::ExprProc(..) => {
             check_expr_fn_block(rcx, expr);
         }
 
@@ -462,7 +462,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             match ty::get(function_type).sty {
                 ty::ty_closure(
                     ty::ClosureTy {
-                        sigil: ast::BorrowedSigil, region: region, _}) => {
+                        sigil: ast::BorrowedSigil, region: region, ..}) => {
                     if get_freevars(tcx, expr.id).is_empty() {
                         // No free variables means that the environment
                         // will be NULL at runtime and hence the closure
@@ -504,7 +504,7 @@ fn constrain_callee(rcx: &mut Rcx,
 
     let callee_ty = rcx.resolve_node_type(callee_id);
     match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(*) => { }
+        ty::ty_bare_fn(..) => { }
         ty::ty_closure(ref closure_ty) => {
             rcx.fcx.mk_subr(true, infer::InvokeClosure(callee_expr.span),
                             call_region, closure_ty.region);
@@ -1004,7 +1004,7 @@ pub mod guarantor {
                 guarantor(rcx, e)
             }
 
-            ast::ExprPath(*) | ast::ExprSelf => {
+            ast::ExprPath(..) | ast::ExprSelf => {
                 // Either a variable or constant and hence resides
                 // in constant memory or on the stack frame.  Either way,
                 // not guaranteed by a region pointer.
@@ -1013,39 +1013,39 @@ pub mod guarantor {
 
             // All of these expressions are rvalues and hence their
             // value is not guaranteed by a region pointer.
-            ast::ExprInlineAsm(*) |
-            ast::ExprMac(*) |
+            ast::ExprInlineAsm(..) |
+            ast::ExprMac(..) |
             ast::ExprLit(_) |
-            ast::ExprUnary(*) |
-            ast::ExprAddrOf(*) |
-            ast::ExprBinary(*) |
-            ast::ExprVstore(*) |
-            ast::ExprBreak(*) |
-            ast::ExprAgain(*) |
-            ast::ExprRet(*) |
+            ast::ExprUnary(..) |
+            ast::ExprAddrOf(..) |
+            ast::ExprBinary(..) |
+            ast::ExprVstore(..) |
+            ast::ExprBreak(..) |
+            ast::ExprAgain(..) |
+            ast::ExprRet(..) |
             ast::ExprLogLevel |
-            ast::ExprWhile(*) |
-            ast::ExprLoop(*) |
-            ast::ExprAssign(*) |
-            ast::ExprAssignOp(*) |
-            ast::ExprCast(*) |
-            ast::ExprCall(*) |
-            ast::ExprMethodCall(*) |
-            ast::ExprStruct(*) |
-            ast::ExprTup(*) |
-            ast::ExprIf(*) |
-            ast::ExprMatch(*) |
-            ast::ExprFnBlock(*) |
-            ast::ExprProc(*) |
-            ast::ExprDoBody(*) |
-            ast::ExprBlock(*) |
-            ast::ExprRepeat(*) |
-            ast::ExprVec(*) => {
+            ast::ExprWhile(..) |
+            ast::ExprLoop(..) |
+            ast::ExprAssign(..) |
+            ast::ExprAssignOp(..) |
+            ast::ExprCast(..) |
+            ast::ExprCall(..) |
+            ast::ExprMethodCall(..) |
+            ast::ExprStruct(..) |
+            ast::ExprTup(..) |
+            ast::ExprIf(..) |
+            ast::ExprMatch(..) |
+            ast::ExprFnBlock(..) |
+            ast::ExprProc(..) |
+            ast::ExprDoBody(..) |
+            ast::ExprBlock(..) |
+            ast::ExprRepeat(..) |
+            ast::ExprVec(..) => {
                 assert!(!ty::expr_is_lval(
                     rcx.fcx.tcx(), rcx.fcx.inh.method_map, expr));
                 None
             }
-            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
         }
     }
 
@@ -1056,7 +1056,7 @@ pub mod guarantor {
         debug!("before adjustments, cat={:?}", expr_ct.cat);
 
         match rcx.fcx.inh.adjustments.find(&expr.id) {
-            Some(&@ty::AutoAddEnv(*)) => {
+            Some(&@ty::AutoAddEnv(..)) => {
                 // This is basically an rvalue, not a pointer, no regions
                 // involved.
                 expr_ct.cat = ExprCategorization {
@@ -1166,14 +1166,14 @@ pub mod guarantor {
             ty::ty_estr(ty::vstore_slice(r)) => {
                 BorrowedPointer(r)
             }
-            ty::ty_uniq(*) |
+            ty::ty_uniq(..) |
             ty::ty_estr(ty::vstore_uniq) |
             ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
             ty::ty_evec(_, ty::vstore_uniq) => {
                 OwnedPointer
             }
-            ty::ty_box(*) |
-            ty::ty_ptr(*) |
+            ty::ty_box(..) |
+            ty::ty_ptr(..) |
             ty::ty_evec(_, ty::vstore_box) |
             ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
             ty::ty_estr(ty::vstore_box) => {
@@ -1255,8 +1255,8 @@ pub mod guarantor {
                 let r = ty::ty_region(rcx.fcx.tcx(), pat.span, rptr_ty);
                 link_ref_bindings_in_pat(rcx, p, Some(r));
             }
-            ast::PatLit(*) => {}
-            ast::PatRange(*) => {}
+            ast::PatLit(..) => {}
+            ast::PatRange(..) => {}
             ast::PatVec(ref before, ref slice, ref after) => {
                 let vec_ty = rcx.resolve_node_type(pat.id);
                 let vstore = ty::ty_vstore(vec_ty);

@@ -193,7 +193,7 @@ impl ConstEvalVisitor {
         let cn = match e.node {
             ast::ExprLit(lit) => {
                 match lit.node {
-                    ast::lit_str(*) | ast::lit_float(*) => general_const,
+                    ast::lit_str(..) | ast::lit_float(..) => general_const,
                     _ => integral_const
                 }
             }
@@ -246,7 +246,7 @@ impl ConstEvalVisitor {
             // surrounding nonlocal constants. But we don't yet.
             ast::ExprPath(_) => self.lookup_constness(e),
 
-            ast::ExprRepeat(*) => general_const,
+            ast::ExprRepeat(..) => general_const,
 
             _ => non_const
         };

@@ -221,7 +221,7 @@ fn ignored_tuple_element((m, _, n): (int, u16, i32)) {
     zzz();
 }
 
-fn ignored_struct_field(Struct { b: o, _ }: Struct) {
+fn ignored_struct_field(Struct { b: o, .. }: Struct) {
     zzz();
 }
 
@@ -262,7 +262,7 @@ fn ref_binding_in_tuple((ref ff, gg): (int, (int, int))) {
     zzz();
 }
 
-fn ref_binding_in_struct(Struct { b: ref hh, _ }: Struct) {
+fn ref_binding_in_struct(Struct { b: ref hh, .. }: Struct) {
     zzz();
 }
 

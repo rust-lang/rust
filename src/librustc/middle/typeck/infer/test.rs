@@ -126,14 +126,14 @@ impl Env {
             }
 
             return match it.node {
-                ast::item_const(*) | ast::item_fn(*) |
-                ast::item_foreign_mod(*) | ast::item_ty(*) => {
+                ast::item_const(..) | ast::item_fn(..) |
+                ast::item_foreign_mod(..) | ast::item_ty(..) => {
                     None
                 }
 
-                ast::item_enum(*) | ast::item_struct(*) |
-                ast::item_trait(*) | ast::item_impl(*) |
-                ast::item_mac(*) => {
+                ast::item_enum(..) | ast::item_struct(..) |
+                ast::item_trait(..) | ast::item_impl(..) |
+                ast::item_mac(..) => {
                     None
                 }
 

@@ -69,7 +69,7 @@ fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr
     };
 
     match *substr.fields {
-        StaticStruct(*) => {
+        StaticStruct(..) => {
             cx.span_err(span, "`FromPrimitive` cannot be derived for structs");
             return cx.expr_fail(span, @"");
         }

@@ -875,11 +875,11 @@ impl Decoder {
     fn expected(&self, expected: &str, found: &Json) -> ! {
         let found_s = match *found {
             Null => "null",
-            List(*) => "list",
-            Object(*) => "object",
-            Number(*) => "number",
-            String(*) => "string",
-            Boolean(*) => "boolean"
+            List(..) => "list",
+            Object(..) => "object",
+            Number(..) => "number",
+            String(..) => "string",
+            Boolean(..) => "boolean"
         };
         self.err(format!("expected {expct} but found {fnd}: {val}",
                          expct=expected, fnd=found_s, val=found.to_str()))

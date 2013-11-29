@@ -45,7 +45,7 @@ pub fn stmt_id(s: &Stmt) -> NodeId {
       StmtDecl(_, id) => id,
       StmtExpr(_, id) => id,
       StmtSemi(_, id) => id,
-      StmtMac(*) => fail!("attempted to analyze unexpanded stmt")
+      StmtMac(..) => fail!("attempted to analyze unexpanded stmt")
     }
 }
 
@@ -194,7 +194,7 @@ pub fn float_ty_to_str(t: float_ty) -> ~str {
 }
 
 pub fn is_call_expr(e: @Expr) -> bool {
-    match e.node { ExprCall(*) => true, _ => false }
+    match e.node { ExprCall(..) => true, _ => false }
 }
 
 pub fn block_from_expr(e: @Expr) -> Block {
@@ -338,7 +338,7 @@ impl inlined_item_utils for inlined_item {
  referring to a def_self */
 pub fn is_self(d: ast::Def) -> bool {
   match d {
-    DefSelf(*)           => true,
+    DefSelf(..)           => true,
     DefUpvar(_, d, _, _) => is_self(*d),
     _                     => false
   }
@@ -537,8 +537,8 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
                 env: ()) {
         if !self.pass_through_items {
             match *function_kind {
-                visit::fk_method(*) if self.visited_outermost => return,
-                visit::fk_method(*) => self.visited_outermost = true,
+                visit::fk_method(..) if self.visited_outermost => return,
+                visit::fk_method(..) => self.visited_outermost = true,
                 _ => {}
             }
         }
@@ -570,7 +570,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
 
         if !self.pass_through_items {
             match *function_kind {
-                visit::fk_method(*) => self.visited_outermost = false,
+                visit::fk_method(..) => self.visited_outermost = false,
                 _ => {}
             }
         }
@@ -631,7 +631,7 @@ pub fn compute_id_range_for_inlined_item(item: &inlined_item) -> id_range {
 
 pub fn is_item_impl(item: @ast::item) -> bool {
     match item.node {
-       item_impl(*) => true,
+       item_impl(..) => true,
        _            => false
     }
 }
@@ -706,7 +706,7 @@ pub fn struct_def_is_tuple_like(struct_def: &ast::struct_def) -> bool {
 /// and false otherwise.
 pub fn pat_is_ident(pat: @ast::Pat) -> bool {
     match pat.node {
-        ast::PatIdent(*) => true,
+        ast::PatIdent(..) => true,
         _ => false,
     }
 }

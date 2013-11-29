@@ -625,7 +625,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
       }
       // I think it's reasonable to hide the context here:
       ast::item_mac(codemap::Spanned { node: ast::mac_invoc_tt(ref pth, ref tts, _),
-                                   _}) => {
+                                   ..}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
         word(s.s, "! ");
@@ -706,7 +706,7 @@ pub fn print_struct(s: @ps,
             popen(s);
             commasep(s, inconsistent, struct_def.fields, |s, field| {
                 match field.node.kind {
-                    ast::named_field(*) => fail!("unexpected named field"),
+                    ast::named_field(..) => fail!("unexpected named field"),
                     ast::unnamed_field => {
                         maybe_print_comment(s, field.span.lo);
                         print_type(s, &field.node.ty);
@@ -955,7 +955,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
                                       attrs: &[ast::Attribute],
                                       close_box: bool) {
     match blk.rules {
-      ast::UnsafeBlock(*) => word_space(s, "unsafe"),
+      ast::UnsafeBlock(..) => word_space(s, "unsafe"),
       ast::DefaultBlock => ()
     }
     maybe_print_comment(s, blk.span.lo);
@@ -1215,7 +1215,7 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         print_mutability(s, m);
         // Avoid `& &e` => `&&e`.
         match (m, &expr.node) {
-            (ast::MutImmutable, &ast::ExprAddrOf(*)) => space(s.s),
+            (ast::MutImmutable, &ast::ExprAddrOf(..)) => space(s.s),
             _ => { }
         }
         print_expr(s, expr);
@@ -1639,7 +1639,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
       ast::PatEnum(ref path, ref args_) => {
         print_path(s, path, true);
         match *args_ {
-          None => word(s.s, "(*)"),
+          None => word(s.s, "(..)"),
           Some(ref args) => {
             if !args.is_empty() {
               popen(s);
@@ -1666,7 +1666,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
                       get_span);
         if etc {
             if fields.len() != 0u { word_space(s, ","); }
-            word(s.s, "_");
+            word(s.s, "..");
         }
         word(s.s, "}");
       }
@@ -1703,7 +1703,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
         for &p in slice.iter() {
             if !before.is_empty() { word_space(s, ","); }
             match p {
-                @ast::Pat { node: ast::PatWildMulti, _ } => {
+                @ast::Pat { node: ast::PatWildMulti, .. } => {
                     // this case is handled by print_pat
                 }
                 _ => word(s.s, ".."),

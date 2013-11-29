@@ -7,7 +7,7 @@ fn main() {
     }
 
     match ~[~"foo", ~"bar", ~"baz"] {
-        [a, _, _, .._] => { println(a); }
+        [a, _, _, ..] => { println(a); }
         [~"foo", ~"bar", ~"baz", ~"foo", ~"bar"] => { } //~ ERROR unreachable pattern
         _ => { }
     }

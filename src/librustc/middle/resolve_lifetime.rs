@@ -60,11 +60,11 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
                   item: @ast::item,
                   _: &'self ScopeChain<'self>) {
         let scope = match item.node {
-            ast::item_fn(*) | // fn lifetimes get added in visit_fn below
-            ast::item_mod(*) |
-            ast::item_mac(*) |
-            ast::item_foreign_mod(*) |
-            ast::item_static(*) => {
+            ast::item_fn(..) | // fn lifetimes get added in visit_fn below
+            ast::item_mod(..) |
+            ast::item_mac(..) |
+            ast::item_foreign_mod(..) |
+            ast::item_static(..) => {
                 RootScope
             }
             ast::item_ty(_, ref generics) |
@@ -97,7 +97,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
                 visit::walk_fn(self, fk, fd, b, s, n, &scope1);
                 debug!("popping fn scope id={} due to item/method", n);
             }
-            visit::fk_anon(*) | visit::fk_fn_block(*) => {
+            visit::fk_anon(..) | visit::fk_fn_block(..) => {
                 visit::walk_fn(self, fk, fd, b, s, n, scope);
             }
         }
@@ -107,8 +107,8 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
                 ty: &ast::Ty,
                 scope: &'self ScopeChain<'self>) {
         match ty.node {
-            ast::ty_closure(@ast::TyClosure { lifetimes: ref lifetimes, _ }) |
-            ast::ty_bare_fn(@ast::TyBareFn { lifetimes: ref lifetimes, _ }) => {
+            ast::ty_closure(@ast::TyClosure { lifetimes: ref lifetimes, .. }) |
+            ast::ty_bare_fn(@ast::TyBareFn { lifetimes: ref lifetimes, .. }) => {
                 let scope1 = FnScope(ty.id, lifetimes, scope);
                 self.check_lifetime_names(lifetimes);
                 debug!("pushing fn scope id={} due to type", ty.id);

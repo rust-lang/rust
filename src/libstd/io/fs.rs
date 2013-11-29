@@ -678,7 +678,7 @@ impl path::Path {
     pub fn is_file(&self) -> bool {
         match io::result(|| self.stat()) {
             Ok(s) => s.kind == io::TypeFile,
-            Err(*) => false
+            Err(..) => false
         }
     }
 
@@ -693,7 +693,7 @@ impl path::Path {
     pub fn is_dir(&self) -> bool {
         match io::result(|| self.stat()) {
             Ok(s) => s.kind == io::TypeDirectory,
-            Err(*) => false
+            Err(..) => false
         }
     }
 }
@@ -1027,8 +1027,8 @@ mod test {
         let from = Path::new("test/nonexistent-bogus-path");
         let to = Path::new("test/other-bogus-path");
         match io::result(|| copy(&from, &to)) {
-            Ok(*) => fail!(),
-            Err(*) => {
+            Ok(..) => fail!(),
+            Err(..) => {
                 assert!(!from.exists());
                 assert!(!to.exists());
             }
@@ -1054,7 +1054,7 @@ mod test {
 
         File::create(&out);
         match io::result(|| copy(&out, &*tmpdir)) {
-            Ok(*) => fail!(), Err(*) => {}
+            Ok(..) => fail!(), Err(..) => {}
         }
     })
 
@@ -1076,7 +1076,7 @@ mod test {
         let out = tmpdir.join("out");
 
         match io::result(|| copy(&*tmpdir, &out)) {
-            Ok(*) => fail!(), Err(*) => {}
+            Ok(..) => fail!(), Err(..) => {}
         }
         assert!(!out.exists());
     })
@@ -1121,8 +1121,8 @@ mod test {
     test!(fn readlink_not_symlink() {
         let tmpdir = tmpdir();
         match io::result(|| readlink(&*tmpdir)) {
-            Ok(*) => fail!("wanted a failure"),
-            Err(*) => {}
+            Ok(..) => fail!("wanted a failure"),
+            Err(..) => {}
         }
     })
 
@@ -1142,13 +1142,13 @@ mod test {
 
         // can't link to yourself
         match io::result(|| link(&input, &input)) {
-            Ok(*) => fail!("wanted a failure"),
-            Err(*) => {}
+            Ok(..) => fail!("wanted a failure"),
+            Err(..) => {}
         }
         // can't link to something that doesn't exist
         match io::result(|| link(&tmpdir.join("foo"), &tmpdir.join("bar"))) {
-            Ok(*) => fail!("wanted a failure"),
-            Err(*) => {}
+            Ok(..) => fail!("wanted a failure"),
+            Err(..) => {}
         }
     })
 
@@ -1162,8 +1162,8 @@ mod test {
         assert!(stat(&file).perm & io::UserWrite == 0);
 
         match io::result(|| chmod(&tmpdir.join("foo"), io::UserRWX)) {
-            Ok(*) => fail!("wanted a failure"),
-            Err(*) => {}
+            Ok(..) => fail!("wanted a failure"),
+            Err(..) => {}
         }
 
         chmod(&file, io::UserFile);
@@ -1218,7 +1218,7 @@ mod test {
 
         match io::result(|| File::open_mode(&tmpdir.join("a"), io::Open,
                                             io::Read)) {
-            Ok(*) => fail!(), Err(*) => {}
+            Ok(..) => fail!(), Err(..) => {}
         }
         File::open_mode(&tmpdir.join("b"), io::Open, io::Write).unwrap();
         File::open_mode(&tmpdir.join("c"), io::Open, io::ReadWrite).unwrap();
@@ -1233,7 +1233,7 @@ mod test {
             let mut f = File::open_mode(&tmpdir.join("h"), io::Open,
                                         io::Read).unwrap();
             match io::result(|| f.write("wut".as_bytes())) {
-                Ok(*) => fail!(), Err(*) => {}
+                Ok(..) => fail!(), Err(..) => {}
             }
         }
         assert_eq!(stat(&tmpdir.join("h")).size, 3);
@@ -1267,8 +1267,8 @@ mod test {
         let tmpdir = tmpdir();
 
         match io::result(|| change_file_times(&tmpdir.join("a"), 100, 200)) {
-            Ok(*) => fail!(),
-            Err(*) => {}
+            Ok(..) => fail!(),
+            Err(..) => {}
         }
     }
 }

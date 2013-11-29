@@ -623,7 +623,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         });
 
         match item.node {
-            item_impl(*) => {
+            item_impl(..) => {
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl {} \
                         ({:?}/{:?})",
@@ -983,7 +983,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      item_ty(*) => {
+      item_ty(..) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
@@ -1242,7 +1242,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this trait.
         encode_inherent_implementations(ecx, ebml_w, def_id);
       }
-      item_mac(*) => fail!("item macros unimplemented")
+      item_mac(..) => fail!("item macros unimplemented")
     }
 }
 
@@ -1256,7 +1256,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
-      foreign_item_fn(*) => {
+      foreign_item_fn(..) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, purity_fn_family(impure_fn));
         encode_bounds_and_type(ebml_w, ecx,
@@ -1769,7 +1769,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         link_meta,
         reachable,
         non_inlineable_statics,
-        _
+        ..
     } = parms;
     let type_abbrevs = @mut HashMap::new();
     let stats = @mut stats;

@@ -44,8 +44,6 @@ via `close` and `delete` methods.
 #[crate_type = "lib"];
 
 #[feature(macro_rules, globs)];
-#[allow(unrecognized_lint)]; // NOTE: remove after the next snapshot
-#[allow(cstack)]; // NOTE: remove after the next snapshot.
 
 use std::cast::transmute;
 use std::cast;

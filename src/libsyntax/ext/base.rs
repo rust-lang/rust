@@ -340,7 +340,7 @@ impl ExtCtxt {
     pub fn expand_expr(@self, mut e: @ast::Expr) -> @ast::Expr {
         loop {
             match e.node {
-                ast::ExprMac(*) => {
+                ast::ExprMac(..) => {
                     let extsbox = @mut syntax_expander_table();
                     let expander = expand::MacroExpander {
                         extsbox: extsbox,
@@ -358,7 +358,7 @@ impl ExtCtxt {
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
         match *self.backtrace {
-            Some(@ExpnInfo {call_site: cs, _}) => cs,
+            Some(@ExpnInfo {call_site: cs, ..}) => cs,
             None => self.bug("missing top span")
         }
     }
@@ -381,7 +381,7 @@ impl ExtCtxt {
     pub fn bt_pop(&self) {
         match *self.backtrace {
             Some(@ExpnInfo {
-                call_site: Span {expn_info: prev, _}, _}) => {
+                call_site: Span {expn_info: prev, ..}, ..}) => {
                 *self.backtrace = prev
             }
             _ => self.bug("tried to pop without a push")

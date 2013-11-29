@@ -512,8 +512,8 @@ pub enum Region {
 impl Region {
     pub fn is_bound(&self) -> bool {
         match self {
-            &ty::ReEarlyBound(*) => true,
-            &ty::ReLateBound(*) => true,
+            &ty::ReEarlyBound(..) => true,
+            &ty::ReLateBound(..) => true,
             _ => false
         }
     }
@@ -1506,14 +1506,14 @@ pub fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
 pub fn type_is_self(ty: t) -> bool {
     match get(ty).sty {
-        ty_self(*) => true,
+        ty_self(..) => true,
         _ => false
     }
 }
 
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
-      ty_struct(*) | ty_tup(_) | ty_enum(*) | ty_closure(_) | ty_trait(*) |
+      ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) | ty_trait(..) |
       ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
       => true,
@@ -1647,7 +1647,7 @@ pub fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
-      ty_bare_fn(*) | ty_ptr(_) => true,
+      ty_bare_fn(..) | ty_ptr(_) => true,
       _ => false
     }
 }
@@ -2296,7 +2296,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 type_requires(cx, seen, r_ty, mt.ty)
             }
 
-            ty_ptr(*) => {
+            ty_ptr(..) => {
                 false           // unsafe ptrs can always be NULL
             }
 
@@ -2401,7 +2401,7 @@ pub fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 
 pub fn type_is_trait(ty: t) -> bool {
     match get(ty).sty {
-        ty_trait(*) => true,
+        ty_trait(..) => true,
         _ => false
     }
 }
@@ -2422,7 +2422,7 @@ pub fn type_is_char(ty: t) -> bool {
 
 pub fn type_is_bare_fn(ty: t) -> bool {
     match get(ty).sty {
-        ty_bare_fn(*) => true,
+        ty_bare_fn(..) => true,
         _ => false
     }
 }
@@ -2448,7 +2448,7 @@ pub fn type_is_signed(ty: t) -> bool {
 pub fn type_is_machine(ty: t) -> bool {
     match get(ty).sty {
         ty_int(ast::ty_i) | ty_uint(ast::ty_u) => false,
-        ty_int(*) | ty_uint(*) | ty_float(*) => true,
+        ty_int(..) | ty_uint(..) | ty_float(..) => true,
         _ => false
     }
 }
@@ -2497,11 +2497,11 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
         });
       }
 
-      ty_estr(vstore_slice(*)) | ty_evec(_, vstore_slice(*)) => {
+      ty_estr(vstore_slice(..)) | ty_evec(_, vstore_slice(..)) => {
         result = false;
       }
 
-      ty_infer(*) | ty_self(*) | ty_err => {
+      ty_infer(..) | ty_self(..) | ty_err => {
         cx.sess.bug("non concrete type in type_is_pod");
       }
     }
@@ -3010,10 +3010,10 @@ pub fn method_call_type_param_defs(tcx: ctxt,
           }
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
-              method_num: n_mth, _}) |
+              method_num: n_mth, ..}) |
           typeck::method_object(typeck::method_object {
               trait_id: trt_id,
-              method_num: n_mth, _}) => {
+              method_num: n_mth, ..}) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -3068,28 +3068,28 @@ pub fn expr_kind(tcx: ctxt,
         // generated via DPS.  However, assign_op (e.g., `x += y`) is an
         // exception, as its result is always unit.
         return match expr.node {
-            ast::ExprAssignOp(*) => RvalueStmtExpr,
+            ast::ExprAssignOp(..) => RvalueStmtExpr,
             _ => RvalueDpsExpr
         };
     }
 
     match expr.node {
-        ast::ExprPath(*) | ast::ExprSelf => {
+        ast::ExprPath(..) | ast::ExprSelf => {
             match resolve_expr(tcx, expr) {
-                ast::DefVariant(*) | ast::DefStruct(*) => RvalueDpsExpr,
+                ast::DefVariant(..) | ast::DefStruct(..) => RvalueDpsExpr,
 
                 // Fn pointers are just scalar values.
-                ast::DefFn(*) | ast::DefStaticMethod(*) => RvalueDatumExpr,
+                ast::DefFn(..) | ast::DefStaticMethod(..) => RvalueDatumExpr,
 
                 // Note: there is actually a good case to be made that
                 // def_args, particularly those of immediate type, ought to
                 // considered rvalues.
-                ast::DefStatic(*) |
-                ast::DefBinding(*) |
-                ast::DefUpvar(*) |
-                ast::DefArg(*) |
-                ast::DefLocal(*) |
-                ast::DefSelf(*) => LvalueExpr,
+                ast::DefStatic(..) |
+                ast::DefBinding(..) |
+                ast::DefUpvar(..) |
+                ast::DefArg(..) |
+                ast::DefLocal(..) |
+                ast::DefSelf(..) => LvalueExpr,
 
                 def => {
                     tcx.sess.span_bug(expr.span, format!(
@@ -3100,30 +3100,30 @@ pub fn expr_kind(tcx: ctxt,
         }
 
         ast::ExprUnary(_, ast::UnDeref, _) |
-        ast::ExprField(*) |
-        ast::ExprIndex(*) => {
+        ast::ExprField(..) |
+        ast::ExprIndex(..) => {
             LvalueExpr
         }
 
-        ast::ExprCall(*) |
-        ast::ExprMethodCall(*) |
-        ast::ExprStruct(*) |
-        ast::ExprTup(*) |
-        ast::ExprIf(*) |
-        ast::ExprMatch(*) |
-        ast::ExprFnBlock(*) |
-        ast::ExprProc(*) |
-        ast::ExprDoBody(*) |
-        ast::ExprBlock(*) |
-        ast::ExprRepeat(*) |
-        ast::ExprLit(@codemap::Spanned {node: lit_str(*), _}) |
+        ast::ExprCall(..) |
+        ast::ExprMethodCall(..) |
+        ast::ExprStruct(..) |
+        ast::ExprTup(..) |
+        ast::ExprIf(..) |
+        ast::ExprMatch(..) |
+        ast::ExprFnBlock(..) |
+        ast::ExprProc(..) |
+        ast::ExprDoBody(..) |
+        ast::ExprBlock(..) |
+        ast::ExprRepeat(..) |
+        ast::ExprLit(@codemap::Spanned {node: lit_str(..), ..}) |
         ast::ExprVstore(_, ast::ExprVstoreSlice) |
         ast::ExprVstore(_, ast::ExprVstoreMutSlice) |
-        ast::ExprVec(*) => {
+        ast::ExprVec(..) => {
             RvalueDpsExpr
         }
 
-        ast::ExprCast(*) => {
+        ast::ExprCast(..) => {
             match tcx.node_types.find(&(expr.id as uint)) {
                 Some(&t) => {
                     if type_is_trait(t) {
@@ -3149,24 +3149,24 @@ pub fn expr_kind(tcx: ctxt,
             }
         }
 
-        ast::ExprBreak(*) |
-        ast::ExprAgain(*) |
-        ast::ExprRet(*) |
-        ast::ExprWhile(*) |
-        ast::ExprLoop(*) |
-        ast::ExprAssign(*) |
-        ast::ExprInlineAsm(*) |
-        ast::ExprAssignOp(*) => {
+        ast::ExprBreak(..) |
+        ast::ExprAgain(..) |
+        ast::ExprRet(..) |
+        ast::ExprWhile(..) |
+        ast::ExprLoop(..) |
+        ast::ExprAssign(..) |
+        ast::ExprInlineAsm(..) |
+        ast::ExprAssignOp(..) => {
             RvalueStmtExpr
         }
 
-        ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
+        ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
         ast::ExprLogLevel |
         ast::ExprLit(_) | // Note: lit_str is carved out above
-        ast::ExprUnary(*) |
-        ast::ExprAddrOf(*) |
-        ast::ExprBinary(*) |
+        ast::ExprUnary(..) |
+        ast::ExprAddrOf(..) |
+        ast::ExprBinary(..) |
         ast::ExprVstore(_, ast::ExprVstoreBox) |
         ast::ExprVstore(_, ast::ExprVstoreMutBox) |
         ast::ExprVstore(_, ast::ExprVstoreUniq) => {
@@ -3175,7 +3175,7 @@ pub fn expr_kind(tcx: ctxt,
 
         ast::ExprParen(e) => expr_kind(tcx, method_map, e),
 
-        ast::ExprMac(*) => {
+        ast::ExprMac(..) => {
             tcx.sess.span_bug(
                 expr.span,
                 "macro expression remains after expansion");
@@ -3188,7 +3188,7 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
       ast::StmtDecl(_, id) | StmtExpr(_, id) | StmtSemi(_, id) => {
         return id;
       }
-      ast::StmtMac(*) => fail!("unexpanded macro in trans")
+      ast::StmtMac(..) => fail!("unexpanded macro in trans")
     }
 }
 
@@ -3356,13 +3356,13 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
-        terr_regions_does_not_outlive(*) => {
+        terr_regions_does_not_outlive(..) => {
             format!("lifetime mismatch")
         }
-        terr_regions_not_same(*) => {
+        terr_regions_not_same(..) => {
             format!("lifetimes are not the same")
         }
-        terr_regions_no_overlap(*) => {
+        terr_regions_no_overlap(..) => {
             format!("lifetimes do not intersect")
         }
         terr_regions_insufficiently_polymorphic(br, _) => {
@@ -3482,7 +3482,7 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
         match cx.items.find(&id.node) {
             Some(&ast_map::node_item(@ast::item {
                         node: item_trait(_, _, ref ms),
-                        _
+                        ..
                     }, _)) =>
                 match ast_util::split_trait_methods(*ms) {
                    (_, p) => p.map(|m| method(cx, ast_util::local_def(m.id)))
@@ -3589,7 +3589,7 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
         match cx.items.find(&id.node) {
             Some(&ast_map::node_item(@ast::item {
                                      node: ast::item_impl(_, ref opt_trait, _, _),
-                                     _},
+                                     ..},
                                      _)) => {
                 match opt_trait {
                     &Some(ref t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
@@ -3865,7 +3865,7 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
         match cx.items.get_copy(&id.node) {
           ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
-                    _
+                    ..
                 }, _) => {
             let mut last_discriminant: Option<Disr> = None;
             @enum_definition.variants.iter().map(|variant| {
@@ -3960,7 +3960,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
 pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
     if is_local(did) {
         match tcx.items.find(&did.node) {
-            Some(&ast_map::node_item(@ast::item {attrs: ref attrs, _}, _)) =>
+            Some(&ast_map::node_item(@ast::item {attrs: ref attrs, ..}, _)) =>
                 attrs.iter().advance(|attr| f(attr.node.value)),
             _ => tcx.sess.bug(format!("has_attr: {:?} is not an item",
                                       did))
@@ -4022,7 +4022,7 @@ pub fn lookup_field_type(tcx: ctxt,
     }
     else {
         match tcx.tcache.find(&id) {
-           Some(&ty_param_bounds_and_ty {ty, _}) => ty,
+           Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
            None => {
                let tpt = csearch::get_field_type(tcx, struct_id, id);
                tcx.tcache.insert(id, tpt);
@@ -4224,7 +4224,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 
         fn fold_vstore(&mut self, vstore: vstore) -> vstore {
             match vstore {
-                vstore_fixed(*) | vstore_uniq | vstore_box => vstore,
+                vstore_fixed(..) | vstore_uniq | vstore_box => vstore,
                 vstore_slice(_) => vstore_slice(ReStatic)
             }
         }
@@ -4307,7 +4307,7 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
             return 0;
         }
       },
-      Err(*) => {
+      Err(..) => {
         tcx.ty_ctxt().sess.span_err(count_expr.span,
                                     "expected constant integer for repeat count \
                                      but found variable");
@@ -4574,11 +4574,11 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
             ReStatic => {}
 
             ReEmpty |
-            ReEarlyBound(*) |
-            ReLateBound(*) |
-            ReFree(*) |
-            ReScope(*) |
-            ReInfer(*) => {
+            ReEarlyBound(..) |
+            ReLateBound(..) |
+            ReFree(..) |
+            ReScope(..) |
+            ReInfer(..) => {
                 tcx.sess.bug("non-static region found when hashing a type")
             }
         }

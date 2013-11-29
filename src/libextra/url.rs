@@ -74,7 +74,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
             None => break,
-            Some(*) => buf[0] as char,
+            Some(..) => buf[0] as char,
         };
 
         match ch {
@@ -138,7 +138,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
             None => break,
-            Some(*) => buf[0] as char
+            Some(..) => buf[0] as char
         };
         match ch {
           '%' => {
@@ -199,7 +199,7 @@ fn encode_plus(s: &str) -> ~str {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            Some(*) => buf[0] as char,
+            Some(..) => buf[0] as char,
             None => break,
         };
         match ch {
@@ -253,7 +253,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            Some(*) => buf[0] as char,
+            Some(..) => buf[0] as char,
             None => break,
         };
         match ch {
@@ -318,7 +318,7 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     loop {
         let mut buf = [0];
         let ch = match rdr.read(buf) {
-            Some(*) => buf[0] as char,
+            Some(..) => buf[0] as char,
             None => break,
         };
         if ch == c {

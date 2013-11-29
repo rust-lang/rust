@@ -1047,7 +1047,7 @@ pub trait Buffer: Reader {
         let mut buf = [0, ..4];
         match self.read(buf.mut_slice_to(width)) {
             Some(n) if n == width => {}
-            Some(*) | None => return None // read error
+            Some(..) | None => return None // read error
         }
         match str::from_utf8_slice_opt(buf.slice_to(width)) {
             Some(s) => Some(s.char_at(0)),

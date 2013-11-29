@@ -244,10 +244,10 @@ impl RegionVarBindings {
 
         debug!("RegionVarBindings: make_subregion({:?}, {:?})", sub, sup);
         match (sub, sup) {
-          (ReEarlyBound(*), _) |
-          (ReLateBound(*), _) |
-          (_, ReEarlyBound(*)) |
-          (_, ReLateBound(*)) => {
+          (ReEarlyBound(..), _) |
+          (ReLateBound(..), _) |
+          (_, ReEarlyBound(..)) |
+          (_, ReLateBound(..)) => {
             self.tcx.sess.span_bug(
                 origin.span(),
                 format!("Cannot relate bound region: {} <= {}",
@@ -493,10 +493,10 @@ impl RegionVarBindings {
 
     fn lub_concrete_regions(&self, a: Region, b: Region) -> Region {
         match (a, b) {
-          (ReLateBound(*), _) |
-          (_, ReLateBound(*)) |
-          (ReEarlyBound(*), _) |
-          (_, ReEarlyBound(*)) => {
+          (ReLateBound(..), _) |
+          (_, ReLateBound(..)) |
+          (ReEarlyBound(..), _) |
+          (_, ReEarlyBound(..)) => {
             self.tcx.sess.bug(
                 format!("Cannot relate bound region: LUB({}, {})",
                         a.repr(self.tcx),
@@ -553,8 +553,8 @@ impl RegionVarBindings {
 
           // For these types, we cannot define any additional
           // relationship:
-          (ReInfer(ReSkolemized(*)), _) |
-          (_, ReInfer(ReSkolemized(*))) => {
+          (ReInfer(ReSkolemized(..)), _) |
+          (_, ReInfer(ReSkolemized(..))) => {
             if a == b {a} else {ReStatic}
           }
         }
@@ -597,10 +597,10 @@ impl RegionVarBindings {
                          -> cres<Region> {
         debug!("glb_concrete_regions({:?}, {:?})", a, b);
         match (a, b) {
-            (ReLateBound(*), _) |
-            (_, ReLateBound(*)) |
-            (ReEarlyBound(*), _) |
-            (_, ReEarlyBound(*)) => {
+            (ReLateBound(..), _) |
+            (_, ReLateBound(..)) |
+            (ReEarlyBound(..), _) |
+            (_, ReEarlyBound(..)) => {
               self.tcx.sess.bug(
                   format!("Cannot relate bound region: GLB({}, {})",
                           a.repr(self.tcx),
@@ -649,8 +649,8 @@ impl RegionVarBindings {
 
             // For these types, we cannot define any additional
             // relationship:
-            (ReInfer(ReSkolemized(*)), _) |
-            (_, ReInfer(ReSkolemized(*))) => {
+            (ReInfer(ReSkolemized(..)), _) |
+            (_, ReInfer(ReSkolemized(..))) => {
                 if a == b {
                     Ok(a)
                 } else {
@@ -779,11 +779,11 @@ impl RegionVarBindings {
                   }
                 }
               }
-              ConstrainVarSubReg(*) => {
+              ConstrainVarSubReg(..) => {
                 // This is a contraction constraint.  Ignore it.
                 false
               }
-              ConstrainRegSubReg(*) => {
+              ConstrainRegSubReg(..) => {
                 // No region variables involved. Ignore.
                 false
               }
@@ -831,7 +831,7 @@ impl RegionVarBindings {
                    var_data: &mut [VarData]) {
         self.iterate_until_fixed_point("Contraction", |constraint| {
             match *constraint {
-              ConstrainRegSubVar(*) => {
+              ConstrainRegSubVar(..) => {
                 // This is an expansion constraint.  Ignore.
                 false
               }
@@ -848,7 +848,7 @@ impl RegionVarBindings {
                 let a_data = &mut var_data[a_vid.to_uint()];
                 self.contract_node(a_vid, a_data, b_region)
               }
-              ConstrainRegSubReg(*) => {
+              ConstrainRegSubReg(..) => {
                 // No region variables involved. Ignore.
                 false
               }
@@ -934,9 +934,9 @@ impl RegionVarBindings {
     {
         for (constraint, _) in self.constraints.iter() {
             let (sub, sup) = match *constraint {
-                ConstrainVarSubVar(*) |
-                ConstrainRegSubVar(*) |
-                ConstrainVarSubReg(*) => {
+                ConstrainVarSubVar(..) |
+                ConstrainRegSubVar(..) |
+                ConstrainVarSubReg(..) => {
                     continue;
                 }
                 ConstrainRegSubReg(sub, sup) => {
@@ -1065,7 +1065,7 @@ impl RegionVarBindings {
                                    dummy_idx,
                                    *constraint);
                 }
-                ConstrainRegSubReg(*) => {
+                ConstrainRegSubReg(..) => {
                     // Relations between two concrete regions do not
                     // require an edge in the graph.
                 }
@@ -1214,7 +1214,7 @@ impl RegionVarBindings {
             process_edges(self, &mut state, graph, node_idx, dir);
         }
 
-        let WalkState {result, dup_found, _} = state;
+        let WalkState {result, dup_found, ..} = state;
         return (result, dup_found);
 
         fn process_edges(this: &RegionVarBindings,
@@ -1243,7 +1243,7 @@ impl RegionVarBindings {
                         });
                     }
 
-                    ConstrainRegSubReg(*) => {}
+                    ConstrainRegSubReg(..) => {}
                 }
                 true
             });

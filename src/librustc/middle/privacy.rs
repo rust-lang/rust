@@ -50,7 +50,7 @@ impl Visitor<()> for ParentVisitor {
 
         let prev = self.curparent;
         match item.node {
-            ast::item_mod(*) => { self.curparent = item.id; }
+            ast::item_mod(..) => { self.curparent = item.id; }
             // Enum variants are parented to the enum definition itself beacuse
             // they inherit privacy
             ast::item_enum(ref def, _) => {
@@ -173,7 +173,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
         match item.node {
             // impls/extern blocks do not break the "public chain" because they
             // cannot have visibility qualifiers on them anyway
-            ast::item_impl(*) | ast::item_foreign_mod(*) => {}
+            ast::item_impl(..) | ast::item_foreign_mod(..) => {}
 
             // Private by default, hence we only retain the "public chain" if
             // `pub` is explicitly listed.
@@ -221,7 +221,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
                 let public_ty = match ty.node {
                     ast::ty_path(_, _, id) => {
                         match self.tcx.def_map.get_copy(&id) {
-                            ast::DefPrimTy(*) => true,
+                            ast::DefPrimTy(..) => true,
                             def => {
                                 let did = def_id_of_def(def);
                                 !is_local(did) ||
@@ -404,12 +404,12 @@ impl<'self> PrivacyVisitor<'self> {
                 //               where the method was defined?
                 Some(&ast_map::node_method(ref m, imp, _)) => {
                     match ty::impl_trait_ref(self.tcx, imp) {
-                        Some(*) => return Allowable,
+                        Some(..) => return Allowable,
                         _ if m.vis == ast::public => return Allowable,
                         _ => m.vis
                     }
                 }
-                Some(&ast_map::node_trait_method(*)) => {
+                Some(&ast_map::node_trait_method(..)) => {
                     return Allowable;
                 }
 
@@ -494,15 +494,15 @@ impl<'self> PrivacyVisitor<'self> {
                 match self.tcx.items.find(&id) {
                     Some(&ast_map::node_item(item, _)) => {
                         let desc = match item.node {
-                            ast::item_mod(*) => "module",
-                            ast::item_trait(*) => "trait",
+                            ast::item_mod(..) => "module",
+                            ast::item_trait(..) => "trait",
                             _ => return false,
                         };
                         let msg = format!("{} `{}` is private", desc,
                                           token::ident_to_str(&item.ident));
                         self.tcx.sess.span_note(span, msg);
                     }
-                    Some(*) | None => {}
+                    Some(..) | None => {}
                 }
             }
             Allowable => return true
@@ -516,7 +516,7 @@ impl<'self> PrivacyVisitor<'self> {
 
         match self.def_privacy(variant_info.id) {
             Allowable => {}
-            ExternallyDenied | DisallowedBy(*) => {
+            ExternallyDenied | DisallowedBy(..) => {
                 self.tcx.sess.span_err(span, "can only dereference enums \
                                               with a single, public variant");
             }
@@ -569,16 +569,16 @@ impl<'self> PrivacyVisitor<'self> {
             }
         };
         match self.tcx.def_map.get_copy(&path_id) {
-            ast::DefStaticMethod(*) => ck("static method"),
-            ast::DefFn(*) => ck("function"),
-            ast::DefStatic(*) => ck("static"),
-            ast::DefVariant(*) => ck("variant"),
-            ast::DefTy(*) => ck("type"),
-            ast::DefTrait(*) => ck("trait"),
-            ast::DefStruct(*) => ck("struct"),
-            ast::DefMethod(_, Some(*)) => ck("trait method"),
-            ast::DefMethod(*) => ck("method"),
-            ast::DefMod(*) => ck("module"),
+            ast::DefStaticMethod(..) => ck("static method"),
+            ast::DefFn(..) => ck("function"),
+            ast::DefStatic(..) => ck("static"),
+            ast::DefVariant(..) => ck("variant"),
+            ast::DefTy(..) => ck("type"),
+            ast::DefTrait(..) => ck("trait"),
+            ast::DefStruct(..) => ck("struct"),
+            ast::DefMethod(_, Some(..)) => ck("trait method"),
+            ast::DefMethod(..) => ck("method"),
+            ast::DefMod(..) => ck("module"),
             _ => {}
         }
     }
@@ -592,8 +592,8 @@ impl<'self> PrivacyVisitor<'self> {
             }
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            method_param(method_param { trait_id: trait_id, _ }) |
-            method_object(method_object { trait_id: trait_id, _ }) => {
+            method_param(method_param { trait_id: trait_id, .. }) |
+            method_object(method_object { trait_id: trait_id, .. }) => {
                 self.ensure_public(span, trait_id, None, "source trait");
             }
         }
@@ -707,7 +707,7 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
 
     fn visit_view_item(&mut self, a: &ast::view_item, _: ()) {
         match a.node {
-            ast::view_item_extern_mod(*) => {}
+            ast::view_item_extern_mod(..) => {}
             ast::view_item_use(ref uses) => {
                 for vpath in uses.iter() {
                     match vpath.node {
@@ -793,7 +793,7 @@ impl Visitor<()> for SanePrivacyVisitor {
         }
 
         let orig_in_fn = util::replace(&mut self.in_fn, match item.node {
-            ast::item_mod(*) => false, // modules turn privacy back on
+            ast::item_mod(..) => false, // modules turn privacy back on
             _ => self.in_fn,           // otherwise we inherit
         });
         visit::walk_item(self, item, ());
@@ -842,14 +842,14 @@ impl SanePrivacyVisitor {
                     ast::named_field(_, ast::private) => {
                         // Fields should really be private by default...
                     }
-                    ast::named_field(*) | ast::unnamed_field => {}
+                    ast::named_field(..) | ast::unnamed_field => {}
                 }
             }
         };
         match item.node {
             // implementations of traits don't need visibility qualifiers because
             // that's controlled by having the trait in scope.
-            ast::item_impl(_, Some(*), _, ref methods) => {
+            ast::item_impl(_, Some(..), _, ref methods) => {
                 check_inherited(item.span, item.vis,
                                 "visibility qualifiers have no effect on trait \
                                  impls");
@@ -896,7 +896,7 @@ impl SanePrivacyVisitor {
 
                     match v.node.kind {
                         ast::struct_variant_kind(ref s) => check_struct(s),
-                        ast::tuple_variant_kind(*) => {}
+                        ast::tuple_variant_kind(..) => {}
                     }
                 }
             }
@@ -910,14 +910,14 @@ impl SanePrivacyVisitor {
                             check_inherited(m.span, m.vis,
                                             "unnecessary visibility");
                         }
-                        ast::required(*) => {}
+                        ast::required(..) => {}
                     }
                 }
             }
 
-            ast::item_static(*) |
-            ast::item_fn(*) | ast::item_mod(*) | ast::item_ty(*) |
-            ast::item_mac(*) => {
+            ast::item_static(..) |
+            ast::item_fn(..) | ast::item_mod(..) | ast::item_ty(..) |
+            ast::item_mac(..) => {
                 check_not_priv(item.span, item.vis, "items are private by \
                                                      default");
             }
@@ -959,7 +959,7 @@ impl SanePrivacyVisitor {
 
                     match v.node.kind {
                         ast::struct_variant_kind(ref s) => check_struct(s),
-                        ast::tuple_variant_kind(*) => {}
+                        ast::tuple_variant_kind(..) => {}
                     }
                 }
             }
@@ -969,15 +969,15 @@ impl SanePrivacyVisitor {
             ast::item_trait(_, _, ref methods) => {
                 for m in methods.iter() {
                     match *m {
-                        ast::required(*) => {}
+                        ast::required(..) => {}
                         ast::provided(ref m) => check_inherited(m.span, m.vis),
                     }
                 }
             }
 
-            ast::item_static(*) |
-            ast::item_fn(*) | ast::item_mod(*) | ast::item_ty(*) |
-            ast::item_mac(*) => {}
+            ast::item_static(..) |
+            ast::item_fn(..) | ast::item_mod(..) | ast::item_ty(..) |
+            ast::item_mac(..) => {}
         }
     }
 }

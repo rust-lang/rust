@@ -82,7 +82,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @
         _ => cx.span_bug(span, "Impossible substructure in `deriving(IterBytes)`")
     }
 
-    for &FieldInfo { self_, _ } in fields.iter() {
+    for &FieldInfo { self_, .. } in fields.iter() {
         exprs.push(call_iterbytes(self_));
     }
 

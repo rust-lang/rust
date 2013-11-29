@@ -649,7 +649,7 @@ pub fn datestamp(p: &Path) -> Option<libc::time_t> {
             debug!("Date = {:?}", out);
             Some(out as libc::time_t)
         }
-        Err(*) => None,
+        Err(..) => None,
     }
 }
 

@@ -14,7 +14,7 @@ pub struct Foo<T> {
     data: T,
 }
 
-fn foo<T>(Foo{_}: Foo<T>) {
+fn foo<T>(Foo{..}: Foo<T>) {
 }
 
 pub fn main() {

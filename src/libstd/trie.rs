@@ -374,7 +374,7 @@ fn chunk(n: uint, idx: uint) -> uint {
 fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
     match *child {
         External(stored, ref mut value) if stored == key => Some(value),
-        External(*) => None,
+        External(..) => None,
         Internal(ref mut x) => find_mut(&mut x.children[chunk(key, idx)], key, idx + 1),
         Nothing => None
     }
@@ -426,7 +426,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
             _ => fail!()
         }
       }
-      External(*) => (None, false),
+      External(..) => (None, false),
       Internal(ref mut x) => {
           let ret = remove(&mut x.count, &mut x.children[chunk(key, idx)],
                            key, idx + 1);

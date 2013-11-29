@@ -154,7 +154,7 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
             sort::quick_sort(children, |p1, p2| p2.filename() <= p1.filename());
             children
         }
-        Err(*) => ~[]
+        Err(..) => ~[]
     }
 }
 

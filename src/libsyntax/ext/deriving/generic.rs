@@ -1087,7 +1087,7 @@ pub fn cs_fold(use_foldl: bool,
         EnumNonMatching(ref all_enums) => enum_nonmatch_f(cx, trait_span,
                                                           *all_enums,
                                                           substructure.nonself_args),
-        StaticEnum(*) | StaticStruct(*) => {
+        StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "Static function in `deriving`")
         }
     }
@@ -1125,7 +1125,7 @@ pub fn cs_same_method(f: |@ExtCtxt, Span, ~[@Expr]| -> @Expr,
         EnumNonMatching(ref all_enums) => enum_nonmatch_f(cx, trait_span,
                                                           *all_enums,
                                                           substructure.nonself_args),
-        StaticEnum(*) | StaticStruct(*) => {
+        StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "Static function in `deriving`")
         }
     }

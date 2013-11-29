@@ -6,7 +6,7 @@ struct Foo {
     y: ~uint,
 }
 
-fn foo(Foo {x, _}: Foo) -> *uint {
+fn foo(Foo {x, ..}: Foo) -> *uint {
     let addr: *uint = &*x;
     addr
 }

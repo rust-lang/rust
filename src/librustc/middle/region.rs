@@ -351,7 +351,7 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor,
                 stmt: @ast::Stmt,
                 cx: Context) {
     match stmt.node {
-        ast::StmtDecl(*) => {
+        ast::StmtDecl(..) => {
             visit::walk_stmt(visitor, stmt, cx);
         }
         ast::StmtExpr(_, stmt_id) |
@@ -360,7 +360,7 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor,
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
             visit::walk_stmt(visitor, stmt, expr_cx);
         }
-        ast::StmtMac(*) => visitor.sess.bug("unexpanded macro")
+        ast::StmtMac(..) => visitor.sess.bug("unexpanded macro")
     }
 }
 
@@ -372,8 +372,8 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
     let mut new_cx = cx;
     new_cx.parent = Some(expr.id);
     match expr.node {
-        ast::ExprAssignOp(*) | ast::ExprIndex(*) | ast::ExprBinary(*) |
-        ast::ExprUnary(*) | ast::ExprCall(*) | ast::ExprMethodCall(*) => {
+        ast::ExprAssignOp(..) | ast::ExprIndex(..) | ast::ExprBinary(..) |
+        ast::ExprUnary(..) | ast::ExprCall(..) | ast::ExprMethodCall(..) => {
             // FIXME(#6268) Nested method calls
             //
             // The lifetimes for a call or method call look as follows:
@@ -394,7 +394,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             // parent_to_expr(new_cx, expr.callee_id);
         }
 
-        ast::ExprMatch(*) => {
+        ast::ExprMatch(..) => {
             new_cx.var_parent = Some(expr.id);
         }
 
@@ -452,12 +452,12 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     // The body of the fn itself is either a root scope (top-level fn)
     // or it continues with the inherited scope (closures).
     let body_cx = match *fk {
-        visit::fk_item_fn(*) |
-        visit::fk_method(*) => {
+        visit::fk_item_fn(..) |
+        visit::fk_method(..) => {
             Context {parent: None, var_parent: None, ..cx}
         }
-        visit::fk_anon(*) |
-        visit::fk_fn_block(*) => {
+        visit::fk_anon(..) |
+        visit::fk_fn_block(..) => {
             cx
         }
     };

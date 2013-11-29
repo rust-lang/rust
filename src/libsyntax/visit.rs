@@ -47,7 +47,7 @@ pub fn name_of_fn(fk: &fn_kind) -> Ident {
       fk_item_fn(name, _, _, _) | fk_method(name, _, _) => {
           name
       }
-      fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
+      fk_anon(..) | fk_fn_block(..) => parse::token::special_idents::anon,
     }
 }
 
@@ -57,7 +57,7 @@ pub fn generics_of_fn(fk: &fn_kind) -> Generics {
         fk_method(_, generics, _) => {
             (*generics).clone()
         }
-        fk_anon(*) | fk_fn_block(*) => {
+        fk_anon(..) | fk_fn_block(..) => {
             Generics {
                 lifetimes: opt_vec::Empty,
                 ty_params: opt_vec::Empty,
@@ -501,7 +501,7 @@ pub fn walk_fn<E:Clone, V:Visitor<E>>(visitor: &mut V,
 
             visitor.visit_explicit_self(&method.explicit_self, env.clone());
         }
-        fk_anon(*) | fk_fn_block(*) => {
+        fk_anon(..) | fk_fn_block(..) => {
         }
     }
 

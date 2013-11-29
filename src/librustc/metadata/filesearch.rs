@@ -138,7 +138,7 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
                 }
                 rslt
             }
-            Err(*) => FileDoesntMatch,
+            Err(..) => FileDoesntMatch,
         }
     });
 }

@@ -128,7 +128,6 @@ pub enum RealPredicate {
 
 // The LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[cfg(not(stage0))]
 #[deriving(Eq)]
 #[repr(C)]
 pub enum TypeKind {
@@ -149,42 +148,6 @@ pub enum TypeKind {
     Metadata  = 14,
     X86_MMX   = 15,
 }
-
-// NOTE remove these after snapshot.  (See also #10308.)
-#[cfg(stage0)]
-pub type TypeKind = u32;
-#[cfg(stage0)]
-pub static Void: TypeKind      = 0;
-#[cfg(stage0)]
-pub static Half: TypeKind      = 1;
-#[cfg(stage0)]
-pub static Float: TypeKind     = 2;
-#[cfg(stage0)]
-pub static Double: TypeKind    = 3;
-#[cfg(stage0)]
-pub static X86_FP80: TypeKind  = 4;
-#[cfg(stage0)]
-pub static FP128: TypeKind     = 5;
-#[cfg(stage0)]
-pub static PPC_FP128: TypeKind = 6;
-#[cfg(stage0)]
-pub static Label: TypeKind     = 7;
-#[cfg(stage0)]
-pub static Integer: TypeKind   = 8;
-#[cfg(stage0)]
-pub static Function: TypeKind  = 9;
-#[cfg(stage0)]
-pub static Struct: TypeKind    = 10;
-#[cfg(stage0)]
-pub static Array: TypeKind     = 11;
-#[cfg(stage0)]
-pub static Pointer: TypeKind   = 12;
-#[cfg(stage0)]
-pub static Vector: TypeKind    = 13;
-#[cfg(stage0)]
-pub static Metadata: TypeKind  = 14;
-#[cfg(stage0)]
-pub static X86_MMX: TypeKind   = 15;
 
 #[repr(C)]
 pub enum AtomicBinOp {

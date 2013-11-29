@@ -434,7 +434,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<@str> {
             Some((key, value)) if "lang" == key => {
                 return Some(value);
             }
-            Some(*) | None => {}
+            Some(..) | None => {}
         }
     }
 
@@ -446,7 +446,7 @@ pub fn collect_language_items(crate: &ast::Crate,
                            -> LanguageItems {
     let mut collector = LanguageItemCollector::new(session);
     collector.collect(crate);
-    let LanguageItemCollector { items, _ } = collector;
+    let LanguageItemCollector { items, .. } = collector;
     session.abort_if_errors();
     items
 }

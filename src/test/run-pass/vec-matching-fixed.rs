@@ -2,17 +2,17 @@ fn a() {
     let x = [1, 2, 3];
     match x {
         [1, 2, 4] => unreachable!(),
-        [0, 2, 3, .._] => unreachable!(),
-        [0, .._, 3] => unreachable!(),
-        [0, .._] => unreachable!(),
+        [0, 2, 3, ..] => unreachable!(),
+        [0, .., 3] => unreachable!(),
+        [0, ..] => unreachable!(),
         [1, 2, 3] => (),
         [_, _, _] => unreachable!(),
     }
     match x {
-        [.._] => (),
+        [..] => (),
     }
     match x {
-        [_, _, _, .._] => (),
+        [_, _, _, ..] => (),
     }
     match x {
         [a, b, c] => {
