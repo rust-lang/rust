@@ -343,7 +343,7 @@ mod test {
 
     #[cfg(test)] fn to_json_str<E : Encodable<extra::json::Encoder>>(val: @E) -> ~str {
         let writer = @mut MemWriter::new();
-        let mut encoder = extra::json::Encoder(writer as @mut io::Writer);
+        let mut encoder = extra::json::Encoder::init(writer as @mut io::Writer);
         val.encode(&mut encoder);
         str::from_utf8(*writer.inner_ref())
     }

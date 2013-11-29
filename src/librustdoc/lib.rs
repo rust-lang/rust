@@ -283,7 +283,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
             }
             let crate = match obj.pop(&~"crate") {
                 Some(json) => {
-                    let mut d = json::Decoder(json);
+                    let mut d = json::Decoder::init(json);
                     Decodable::decode(&mut d)
                 }
                 None => return Err(~"malformed json"),
@@ -313,7 +313,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     // straight to the Rust JSON representation.
     let crate_json_str = {
         let w = @mut MemWriter::new();
-        crate.encode(&mut json::Encoder(w as @mut io::Writer));
+        crate.encode(&mut json::Encoder::init(w as @mut io::Writer));
         str::from_utf8(*w.inner_ref())
     };
     let crate_json = match json::from_str(crate_json_str) {
