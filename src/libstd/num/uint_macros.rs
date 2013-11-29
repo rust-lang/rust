@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME(#4375): this shouldn't have to be a nested module named 'generated'
+// FIXME(#4375):  This shouldn't have to be a nested module named 'generated'...
+// FIXME(#10716): ... but now that we could solve that, the import lines and
+//                attributes still prevent a removal of that module.
 
 #[macro_escape];
 #[doc(hidden)];
