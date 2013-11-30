@@ -21,6 +21,7 @@
 use middle::lint;
 
 use syntax::ast;
+use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::visit;
@@ -41,6 +42,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("managed_boxes", Active),
     ("non_ascii_idents", Active),
     ("thread_local", Active),
+    ("link_args", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -111,7 +113,8 @@ impl Visitor<()> for Context {
 
     fn visit_item(&mut self, i: @ast::item, _:()) {
         for attr in i.attrs.iter() {
-            if "thread_local" == attr.name() {
+            if "thread_local" == attr.name() &&
+               cfg!(stage0, remove_this_on_next_snapshot) { // NOTE: snap rem
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
@@ -129,6 +132,16 @@ impl Visitor<()> for Context {
                         }
                         _ => {}
                     }
+                }
+            }
+
+            ast::item_foreign_mod(..) => {
+                if attr::contains_name(i.attrs, "link_args") &&
+                    cfg!(stage0, remove_this_on_next_snapshot) { // NOTE: snap
+                    self.gate_feature("link_args", i.span,
+                                      "the `link_args` attribute is not portable \
+                                       across platforms, it is recommended to \
+                                       use `#[link(name = \"foo\")]` instead")
                 }
             }
 

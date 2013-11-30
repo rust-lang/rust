@@ -25,7 +25,6 @@ use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use rustc::back::link::output_type_exe;
 use rustc::back::link;
-use rustc::driver::session::{lib_crate, bin_crate};
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
@@ -195,8 +194,8 @@ pub fn compile_input(context: &BuildContext,
     debug!("compile_input's sysroot = {}", csysroot.display());
 
     let crate_type = match what {
-        Lib => lib_crate,
-        Test | Bench | Main => bin_crate
+        Lib => session::OutputDylib,
+        Test | Bench | Main => session::OutputExecutable,
     };
     let matches = getopts(debug_flags()
                           + match what {
@@ -239,7 +238,7 @@ pub fn compile_input(context: &BuildContext,
     debug!("Output type = {:?}", output_type);
 
     let options = @session::options {
-        crate_type: crate_type,
+        outputs: ~[crate_type],
         optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),

@@ -13,7 +13,6 @@ use back::link;
 use back::target_strs;
 use back;
 use driver::driver::host_triple;
-use driver::session;
 use metadata::filesearch;
 use metadata;
 use middle::lint;
@@ -29,13 +28,6 @@ use syntax::parse::token;
 use syntax;
 
 use std::hashmap::{HashMap,HashSet};
-
-#[deriving(Clone)]
-pub enum crate_type {
-    bin_crate,
-    lib_crate,
-    unknown_crate,
-}
 
 pub struct config {
     os: abi::Os,
@@ -66,16 +58,16 @@ pub static gc:                      uint = 1 << 17;
 pub static jit:                     uint = 1 << 18;
 pub static debug_info:              uint = 1 << 19;
 pub static extra_debug_info:        uint = 1 << 20;
-pub static statik:                  uint = 1 << 21;
-pub static print_link_args:         uint = 1 << 22;
-pub static no_debug_borrows:        uint = 1 << 23;
-pub static lint_llvm:               uint = 1 << 24;
-pub static print_llvm_passes:       uint = 1 << 25;
-pub static no_vectorize_loops:      uint = 1 << 26;
-pub static no_vectorize_slp:        uint = 1 << 27;
-pub static no_prepopulate_passes:   uint = 1 << 28;
-pub static use_softfp:              uint = 1 << 29;
-pub static gen_crate_map:           uint = 1 << 30;
+pub static print_link_args:         uint = 1 << 21;
+pub static no_debug_borrows:        uint = 1 << 22;
+pub static lint_llvm:               uint = 1 << 23;
+pub static print_llvm_passes:       uint = 1 << 24;
+pub static no_vectorize_loops:      uint = 1 << 25;
+pub static no_vectorize_slp:        uint = 1 << 26;
+pub static no_prepopulate_passes:   uint = 1 << 27;
+pub static use_softfp:              uint = 1 << 28;
+pub static gen_crate_map:           uint = 1 << 29;
+pub static prefer_dynamic:          uint = 1 << 30;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -107,7 +99,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("extra-debug-info", "Extra debugging info (experimental)",
       extra_debug_info),
      ("debug-info", "Produce debug info (experimental)", debug_info),
-     ("static", "Use or produce static libraries or binaries (experimental)", statik),
      ("no-debug-borrows",
       "do not show where borrow checks fail",
       no_debug_borrows),
@@ -129,6 +120,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
       no_vectorize_slp),
      ("soft-float", "Generate software floating point library calls", use_softfp),
      ("gen-crate-map", "Force generation of a toplevel crate map", gen_crate_map),
+     ("prefer-dynamic", "Prefer dynamic linking to static linking", prefer_dynamic),
     ]
 }
 
@@ -144,8 +136,8 @@ pub enum OptLevel {
 pub struct options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    crate_type: crate_type,
-    is_static: bool,
+    outputs: ~[OutputStyle],
+
     gc: bool,
     optimize: OptLevel,
     custom_passes: ~[~str],
@@ -159,6 +151,7 @@ pub struct options {
     addl_lib_search_paths: @mut HashSet<Path>, // This is mutable for rustpkg, which
                                                // updates search paths based on the
                                                // parsed code
+    ar: Option<~str>,
     linker: Option<~str>,
     linker_args: ~[~str],
     maybe_sysroot: Option<@Path>,
@@ -192,6 +185,14 @@ pub enum EntryFnType {
     EntryMain,
     EntryStart,
     EntryNone,
+}
+
+#[deriving(Eq, Clone)]
+pub enum OutputStyle {
+    OutputExecutable,
+    OutputDylib,
+    OutputRlib,
+    OutputStaticlib,
 }
 
 pub struct Session_ {
@@ -337,6 +338,9 @@ impl Session_ {
     pub fn gen_crate_map(&self) -> bool {
         self.debugging_opt(gen_crate_map)
     }
+    pub fn prefer_dynamic(&self) -> bool {
+        self.debugging_opt(prefer_dynamic)
+    }
 
     // pointless function, now...
     pub fn str_of(&self, id: ast::Ident) -> @str {
@@ -357,8 +361,7 @@ impl Session_ {
 /// Some reasonable defaults
 pub fn basic_options() -> @options {
     @options {
-        crate_type: session::lib_crate,
-        is_static: false,
+        outputs: ~[],
         gc: false,
         optimize: No,
         custom_passes: ~[],
@@ -370,6 +373,7 @@ pub fn basic_options() -> @options {
         jit: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: @mut HashSet::new(),
+        ar: None,
         linker: None,
         linker_args: ~[],
         maybe_sysroot: None,
@@ -391,24 +395,17 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn building_library(req_crate_type: crate_type,
-                        crate: &ast::Crate,
-                        testing: bool) -> bool {
-    match req_crate_type {
-      bin_crate => false,
-      lib_crate => true,
-      unknown_crate => {
-        if testing {
-            false
-        } else {
-            match syntax::attr::first_attr_value_str_by_name(
-                crate.attrs,
-                "crate_type") {
-              Some(s) => "lib" == s,
-              _ => false
-            }
+pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
+    for output in options.outputs.iter() {
+        match *output {
+            OutputExecutable => {}
+            OutputStaticlib | OutputDylib | OutputRlib => return true
         }
-      }
+    }
+    if options.test { return false }
+    match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
+        Some(s) => "lib" == s || "rlib" == s || "dylib" == s || "staticlib" == s,
+        _ => false
     }
 }
 
@@ -421,77 +418,5 @@ pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
         abi::OsAndroid => loader::OsAndroid,
         abi::OsMacos => loader::OsMacos,
         abi::OsFreebsd => loader::OsFreebsd
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use driver::session::{bin_crate, building_library, lib_crate};
-    use driver::session::{unknown_crate};
-
-    use syntax::ast;
-    use syntax::attr;
-    use syntax::codemap;
-
-    fn make_crate_type_attr(t: @str) -> ast::Attribute {
-        attr::mk_attr(attr::mk_name_value_item_str(@"crate_type", t))
-    }
-
-    fn make_crate(with_bin: bool, with_lib: bool) -> @ast::Crate {
-        let mut attrs = ~[];
-        if with_bin {
-            attrs.push(make_crate_type_attr(@"bin"));
-        }
-        if with_lib {
-            attrs.push(make_crate_type_attr(@"lib"));
-        }
-        @ast::Crate {
-            module: ast::_mod { view_items: ~[], items: ~[] },
-            attrs: attrs,
-            config: ~[],
-            span: codemap::dummy_sp(),
-        }
-    }
-
-    #[test]
-    fn bin_crate_type_attr_results_in_bin_output() {
-        let crate = make_crate(true, false);
-        assert!(!building_library(unknown_crate, crate, false));
-    }
-
-    #[test]
-    fn lib_crate_type_attr_results_in_lib_output() {
-        let crate = make_crate(false, true);
-        assert!(building_library(unknown_crate, crate, false));
-    }
-
-    #[test]
-    fn bin_option_overrides_lib_crate_type() {
-        let crate = make_crate(false, true);
-        assert!(!building_library(bin_crate, crate, false));
-    }
-
-    #[test]
-    fn lib_option_overrides_bin_crate_type() {
-        let crate = make_crate(true, false);
-        assert!(building_library(lib_crate, crate, false));
-    }
-
-    #[test]
-    fn bin_crate_type_is_default() {
-        let crate = make_crate(false, false);
-        assert!(!building_library(unknown_crate, crate, false));
-    }
-
-    #[test]
-    fn test_option_overrides_lib_crate_type() {
-        let crate = make_crate(false, true);
-        assert!(!building_library(unknown_crate, crate, true));
-    }
-
-    #[test]
-    fn test_option_does_not_override_requested_lib_type() {
-        let crate = make_crate(false, false);
-        assert!(building_library(lib_crate, crate, true));
     }
 }

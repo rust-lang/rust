@@ -51,7 +51,9 @@
 
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];
-#[crate_type = "lib"];
+#[crate_type = "lib"]; // NOTE: remove after stage0 snapshot
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
 
 #[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -64,6 +66,7 @@
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
+#[allow(attribute_usage)]; // NOTE: remove after the next snapshot
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
@@ -79,15 +82,7 @@
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
-// On Linux, link to the runtime with -lrt.
-#[cfg(target_os = "linux")]
-#[doc(hidden)]
-pub mod linkhack {
-    #[link_args="-lrustrt -lrt"]
-    #[link_args = "-lpthread"]
-    extern {
-    }
-}
+mod rtdeps;
 
 /* The Prelude. */
 

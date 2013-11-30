@@ -32,12 +32,15 @@ Rust extras are part of the standard Rust distribution.
 
 #[comment = "Rust extras"];
 #[license = "MIT/ASL2"];
-#[crate_type = "lib"];
+#[crate_type = "lib"]; // NOTE: remove after stage0 snapshot
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
 
 #[feature(macro_rules, globs, managed_boxes)];
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
+#[allow(attribute_usage)]; // NOTE: remove after the next snapshot
 
 use std::str::{StrSlice, OwnedStr};
 

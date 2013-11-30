@@ -77,14 +77,14 @@ use extra::time;
 use extra::sort;
 use syntax::ast::Name;
 use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
-use syntax::ast_util::{local_def};
+use syntax::ast_util::{local_def, is_local};
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::attr::AttrMetaMethods;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -2996,7 +2996,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     return map;
 }
 
-pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
+pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     let mut subcrates: ~[ValueRef] = ~[];
     let mut i = 1;
     let cstore = ccx.sess.cstore;
@@ -3014,19 +3014,20 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         subcrates.push(p2i(ccx, cr));
         i += 1;
     }
-    let event_loop_factory = if !*ccx.sess.building_library {
-        match ccx.tcx.lang_items.event_loop_factory() {
-            Some(did) => unsafe {
+    let event_loop_factory = match ccx.tcx.lang_items.event_loop_factory() {
+        Some(did) => unsafe {
+            if is_local(did) {
+                llvm::LLVMConstPointerCast(get_item_val(ccx, did.node),
+                                           ccx.int_type.ptr_to().to_ref())
+            } else {
                 let name = csearch::get_symbol(ccx.sess.cstore, did);
                 let global = name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
                 });
                 global
-            },
-            None => C_null(ccx.int_type.ptr_to())
-        }
-    } else {
-        C_null(ccx.int_type.ptr_to())
+            }
+        },
+        None => C_null(ccx.int_type.ptr_to())
     };
     unsafe {
         let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
@@ -3106,18 +3107,6 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
     }
 }
 
-// Writes the current ABI version into the crate.
-pub fn write_abi_version(ccx: &mut CrateContext) {
-    unsafe {
-        let llval = C_uint(ccx, abi::abi_version);
-        let llglobal = "rust_abi_version".with_c_str(|buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
-        });
-        llvm::LLVMSetInitializer(llglobal, llval);
-        llvm::LLVMSetGlobalConstant(llglobal, True);
-    }
-}
-
 pub fn trans_crate(sess: session::Session,
                    crate: ast::Crate,
                    analysis: &CrateAnalysis,
@@ -3177,7 +3166,6 @@ pub fn trans_crate(sess: session::Session,
     }
 
     glue::emit_tydescs(ccx);
-    write_abi_version(ccx);
     if ccx.sess.opts.debuginfo {
         debuginfo::finalize(ccx);
     }
@@ -3217,10 +3205,18 @@ pub fn trans_crate(sess: session::Session,
     let llcx = ccx.llcx;
     let link_meta = ccx.link_meta;
     let llmod = ccx.llmod;
+    let crate_types = crate.attrs.iter().filter_map(|a| {
+        if "crate_type" == a.name() {
+            a.value_str()
+        } else {
+            None
+        }
+    }).map(|a| a.to_owned()).collect();
 
     return CrateTranslation {
         context: llcx,
         module: llmod,
-        link: link_meta
+        link: link_meta,
+        crate_types: crate_types,
     };
 }

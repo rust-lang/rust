@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-pretty
 // aux-build:foreign_lib.rs
 
 // The purpose of this test is to check that we can
@@ -16,6 +17,9 @@
 // functions from outside the crate.
 
 extern mod foreign_lib;
+
+#[link(name = "rustrt")] // we have explicitly chosen to require this
+extern {}
 
 pub fn main() {
     unsafe {

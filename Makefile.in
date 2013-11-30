@@ -130,6 +130,14 @@ ifndef DEBUG_BORROWS
   RUSTFLAGS_STAGE2 += -Z no-debug-borrows
 endif
 
+# The executables crated during this compilation process have no need to include
+# static copies of libstd and libextra. We also generate dynamic versions of all
+# libraries, so in the interest of space, prefer dynamic linking throughout the
+# compilation process.
+RUSTFLAGS_STAGE1 += -Z prefer-dynamic
+RUSTFLAGS_STAGE2 += -Z prefer-dynamic
+RUSTFLAGS_STAGE3 += -Z prefer-dynamic
+
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
 
@@ -214,7 +222,7 @@ GENERATED :=
 
 define DEF_LIBS
 
-CFG_RUNTIME_$(1) :=$(call CFG_LIB_NAME_$(1),rustrt)
+CFG_RUNTIME_$(1) :=$(call CFG_STATIC_LIB_NAME_$(1),rustrt)
 CFG_RUSTLLVM_$(1) :=$(call CFG_LIB_NAME_$(1),rustllvm)
 CFG_STDLIB_$(1) :=$(call CFG_LIB_NAME_$(1),std)
 CFG_EXTRALIB_$(1) :=$(call CFG_LIB_NAME_$(1),extra)
@@ -238,6 +246,10 @@ LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
 LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
 LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
 LIBRUSTUV_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustuv)
+
+EXTRALIB_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,extra)
+STDLIB_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,std)
+LIBRUSTUV_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,rustuv)
 
 endef
 
@@ -392,42 +404,25 @@ TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
 TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/$$(CFG_LIBDIR)
 
 # The name of the standard and extra libraries used by rustc
-ifdef CFG_DISABLE_SHAREDSTD
-  HSTDLIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/libstd.rlib
-  TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
+HSTDLIB_DEFAULT$(1)_H_$(3) = \
+  $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB_$(3))
+TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
 
-  HEXTRALIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/libextra.rlib
-  TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/libextra.rlib
+HEXTRALIB_DEFAULT$(1)_H_$(3) = \
+  $$(HLIB$(1)_H_$(3))/$(CFG_EXTRALIB_$(3))
+TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))
 
-  HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/librustc.rlib
-  TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/librustc.rlib
-else
-  HSTDLIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB_$(3))
-  TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
+HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
+  $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC_$(3))
+TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2))
 
-  HEXTRALIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_EXTRALIB_$(3))
-  TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))
-
-  HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC_$(3))
-  TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2))
-
-  HLIBRUSTUV_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTUV_$(3))
-  TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
-endif
+HLIBRUSTUV_DEFAULT$(1)_H_$(3) = \
+  $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTUV_$(3))
+TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3) = \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
 
 # Preqrequisites for using the stageN compiler
 HSREQ$(1)_H_$(3) = \
