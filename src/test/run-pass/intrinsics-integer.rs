@@ -15,12 +15,25 @@
 extern mod extra;
 
 mod rusti {
-    extern "rust-intrinsic" {
+    extern {
+        #[link_name = "llvm.ctpop.i8"]
         pub fn ctpop8(x: i8) -> i8;
+        #[link_name = "llvm.ctpop.i16"]
         pub fn ctpop16(x: i16) -> i16;
+        #[link_name = "llvm.ctpop.i32"]
         pub fn ctpop32(x: i32) -> i32;
+        #[link_name = "llvm.ctpop.i64"]
         pub fn ctpop64(x: i64) -> i64;
 
+        #[link_name = "llvm.bswap.i16"]
+        pub fn bswap16(x: i16) -> i16;
+        #[link_name = "llvm.bswap.i32"]
+        pub fn bswap32(x: i32) -> i32;
+        #[link_name = "llvm.bswap.i64"]
+        pub fn bswap64(x: i64) -> i64;
+    }
+
+    extern "rust-intrinsic" {
         pub fn ctlz8(x: i8) -> i8;
         pub fn ctlz16(x: i16) -> i16;
         pub fn ctlz32(x: i32) -> i32;
@@ -30,10 +43,6 @@ mod rusti {
         pub fn cttz16(x: i16) -> i16;
         pub fn cttz32(x: i32) -> i32;
         pub fn cttz64(x: i64) -> i64;
-
-        pub fn bswap16(x: i16) -> i16;
-        pub fn bswap32(x: i32) -> i32;
-        pub fn bswap64(x: i64) -> i64;
     }
 }
 

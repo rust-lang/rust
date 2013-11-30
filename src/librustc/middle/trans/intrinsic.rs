@@ -38,18 +38,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
-        assert!(num_args <= 4);
-        let mut args = [0 as ValueRef, ..4];
-        let first_real_arg = bcx.fcx.arg_pos(0u);
-        for i in range(0u, num_args) {
-            args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
-        }
-        let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        let llcall = Call(bcx, llfn, args.slice(0, num_args), []);
-        Ret(bcx, llcall);
-    }
-
     fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str, t: ty::t) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
@@ -223,16 +211,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     }
 
     match name {
-        "abort" => {
-            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.trap"));
-            Call(bcx, llfn, [], []);
-            Unreachable(bcx);
-        }
-        "breakpoint" => {
-            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.debugtrap"));
-            Call(bcx, llfn, [], []);
-            RetVoid(bcx);
-        }
         "size_of" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -417,48 +395,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "copy_nonoverlapping_memory" => copy_intrinsic(bcx, false, substs.tys[0]),
         "copy_memory" => copy_intrinsic(bcx, true, substs.tys[0]),
         "set_memory" => memset_intrinsic(bcx, substs.tys[0]),
-        "sqrtf32" => simple_llvm_intrinsic(bcx, "llvm.sqrt.f32", 1),
-        "sqrtf64" => simple_llvm_intrinsic(bcx, "llvm.sqrt.f64", 1),
-        "powif32" => simple_llvm_intrinsic(bcx, "llvm.powi.f32", 2),
-        "powif64" => simple_llvm_intrinsic(bcx, "llvm.powi.f64", 2),
-        "sinf32" => simple_llvm_intrinsic(bcx, "llvm.sin.f32", 1),
-        "sinf64" => simple_llvm_intrinsic(bcx, "llvm.sin.f64", 1),
-        "cosf32" => simple_llvm_intrinsic(bcx, "llvm.cos.f32", 1),
-        "cosf64" => simple_llvm_intrinsic(bcx, "llvm.cos.f64", 1),
-        "powf32" => simple_llvm_intrinsic(bcx, "llvm.pow.f32", 2),
-        "powf64" => simple_llvm_intrinsic(bcx, "llvm.pow.f64", 2),
-        "expf32" => simple_llvm_intrinsic(bcx, "llvm.exp.f32", 1),
-        "expf64" => simple_llvm_intrinsic(bcx, "llvm.exp.f64", 1),
-        "exp2f32" => simple_llvm_intrinsic(bcx, "llvm.exp2.f32", 1),
-        "exp2f64" => simple_llvm_intrinsic(bcx, "llvm.exp2.f64", 1),
-        "logf32" => simple_llvm_intrinsic(bcx, "llvm.log.f32", 1),
-        "logf64" => simple_llvm_intrinsic(bcx, "llvm.log.f64", 1),
-        "log10f32" => simple_llvm_intrinsic(bcx, "llvm.log10.f32", 1),
-        "log10f64" => simple_llvm_intrinsic(bcx, "llvm.log10.f64", 1),
-        "log2f32" => simple_llvm_intrinsic(bcx, "llvm.log2.f32", 1),
-        "log2f64" => simple_llvm_intrinsic(bcx, "llvm.log2.f64", 1),
-        "fmaf32" => simple_llvm_intrinsic(bcx, "llvm.fma.f32", 3),
-        "fmaf64" => simple_llvm_intrinsic(bcx, "llvm.fma.f64", 3),
-        "fabsf32" => simple_llvm_intrinsic(bcx, "llvm.fabs.f32", 1),
-        "fabsf64" => simple_llvm_intrinsic(bcx, "llvm.fabs.f64", 1),
-        "copysignf32" => simple_llvm_intrinsic(bcx, "llvm.copysign.f32", 2),
-        "copysignf64" => simple_llvm_intrinsic(bcx, "llvm.copysign.f64", 2),
-        "floorf32" => simple_llvm_intrinsic(bcx, "llvm.floor.f32", 1),
-        "floorf64" => simple_llvm_intrinsic(bcx, "llvm.floor.f64", 1),
-        "ceilf32" => simple_llvm_intrinsic(bcx, "llvm.ceil.f32", 1),
-        "ceilf64" => simple_llvm_intrinsic(bcx, "llvm.ceil.f64", 1),
-        "truncf32" => simple_llvm_intrinsic(bcx, "llvm.trunc.f32", 1),
-        "truncf64" => simple_llvm_intrinsic(bcx, "llvm.trunc.f64", 1),
-        "rintf32" => simple_llvm_intrinsic(bcx, "llvm.rint.f32", 1),
-        "rintf64" => simple_llvm_intrinsic(bcx, "llvm.rint.f64", 1),
-        "nearbyintf32" => simple_llvm_intrinsic(bcx, "llvm.nearbyint.f32", 1),
-        "nearbyintf64" => simple_llvm_intrinsic(bcx, "llvm.nearbyint.f64", 1),
-        "roundf32" => simple_llvm_intrinsic(bcx, "llvm.round.f32", 1),
-        "roundf64" => simple_llvm_intrinsic(bcx, "llvm.round.f64", 1),
-        "ctpop8" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i8", 1),
-        "ctpop16" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i16", 1),
-        "ctpop32" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i32", 1),
-        "ctpop64" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i64", 1),
         "ctlz8" => count_zeros_intrinsic(bcx, "llvm.ctlz.i8"),
         "ctlz16" => count_zeros_intrinsic(bcx, "llvm.ctlz.i16"),
         "ctlz32" => count_zeros_intrinsic(bcx, "llvm.ctlz.i32"),
@@ -467,9 +403,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "cttz16" => count_zeros_intrinsic(bcx, "llvm.cttz.i16"),
         "cttz32" => count_zeros_intrinsic(bcx, "llvm.cttz.i32"),
         "cttz64" => count_zeros_intrinsic(bcx, "llvm.cttz.i64"),
-        "bswap16" => simple_llvm_intrinsic(bcx, "llvm.bswap.i16", 1),
-        "bswap32" => simple_llvm_intrinsic(bcx, "llvm.bswap.i32", 1),
-        "bswap64" => simple_llvm_intrinsic(bcx, "llvm.bswap.i64", 1),
 
         "i8_add_with_overflow" =>
             with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i8", output_type),

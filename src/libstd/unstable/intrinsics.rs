@@ -172,13 +172,128 @@ pub trait TyVisitor {
     fn visit_closure_ptr(&mut self, ck: uint) -> bool;
 }
 
-extern "rust-intrinsic" {
+extern {
     /// Abort the execution of the process.
+    #[link_name = "llvm.trap"]
     pub fn abort() -> !;
 
     /// Execute a breakpoint trap, for inspection by a debugger.
+    #[link_name = "llvm.debugtrap"]
     pub fn breakpoint();
 
+    #[link_name = "llvm.sqrt.f32"]
+    pub fn sqrtf32(x: f32) -> f32;
+    #[link_name = "llvm.sqrt.f64"]
+    pub fn sqrtf64(x: f64) -> f64;
+
+    #[link_name = "llvm.powi.f32"]
+    pub fn powif32(a: f32, x: i32) -> f32;
+    #[link_name = "llvm.powi.f64"]
+    pub fn powif64(a: f64, x: i32) -> f64;
+
+    #[link_name = "llvm.sin.f32"]
+    pub fn sinf32(x: f32) -> f32;
+    #[link_name = "llvm.sin.f64"]
+    pub fn sinf64(x: f64) -> f64;
+
+    #[link_name = "llvm.cos.f32"]
+    pub fn cosf32(x: f32) -> f32;
+    #[link_name = "llvm.cos.f64"]
+    pub fn cosf64(x: f64) -> f64;
+
+    #[link_name = "llvm.pow.f32"]
+    pub fn powf32(a: f32, x: f32) -> f32;
+    #[link_name = "llvm.pow.f64"]
+    pub fn powf64(a: f64, x: f64) -> f64;
+
+    #[link_name = "llvm.exp.f32"]
+    pub fn expf32(x: f32) -> f32;
+    #[link_name = "llvm.exp.f64"]
+    pub fn expf64(x: f64) -> f64;
+
+    #[link_name = "llvm.exp2.f32"]
+    pub fn exp2f32(x: f32) -> f32;
+    #[link_name = "llvm.exp2.f64"]
+    pub fn exp2f64(x: f64) -> f64;
+
+    #[link_name = "llvm.log.f32"]
+    pub fn logf32(x: f32) -> f32;
+    #[link_name = "llvm.log.f64"]
+    pub fn logf64(x: f64) -> f64;
+
+    #[link_name = "llvm.log10.f32"]
+    pub fn log10f32(x: f32) -> f32;
+    #[link_name = "llvm.log10.f64"]
+    pub fn log10f64(x: f64) -> f64;
+
+    #[link_name = "llvm.log2.f32"]
+    pub fn log2f32(x: f32) -> f32;
+    #[link_name = "llvm.log2.f64"]
+    pub fn log2f64(x: f64) -> f64;
+
+    #[link_name = "llvm.fma.f32"]
+    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+    #[link_name = "llvm.fma.f64"]
+    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+
+    #[link_name = "llvm.fabs.f32"]
+    pub fn fabsf32(x: f32) -> f32;
+    #[link_name = "llvm.fabs.f64"]
+    pub fn fabsf64(x: f64) -> f64;
+
+    #[link_name = "llvm.copysign.f32"]
+    pub fn copysignf32(x: f32, y: f32) -> f32;
+    #[link_name = "llvm.copysign.f64"]
+    pub fn copysignf64(x: f64, y: f64) -> f64;
+
+    #[link_name = "llvm.floor.f32"]
+    pub fn floorf32(x: f32) -> f32;
+    #[link_name = "llvm.floor.f64"]
+    pub fn floorf64(x: f64) -> f64;
+
+    #[link_name = "llvm.ceil.f32"]
+    pub fn ceilf32(x: f32) -> f32;
+    #[link_name = "llvm.ceil.f64"]
+    pub fn ceilf64(x: f64) -> f64;
+
+    #[link_name = "llvm.trunc.f32"]
+    pub fn truncf32(x: f32) -> f32;
+    #[link_name = "llvm.trunc.f64"]
+    pub fn truncf64(x: f64) -> f64;
+
+    #[link_name = "llvm.rint.f32"]
+    pub fn rintf32(x: f32) -> f32;
+    #[link_name = "llvm.rint.f64"]
+    pub fn rintf64(x: f64) -> f64;
+
+    #[link_name = "llvm.nearbyint.f32"]
+    pub fn nearbyintf32(x: f32) -> f32;
+    #[link_name = "llvm.nearbyint.f64"]
+    pub fn nearbyintf64(x: f64) -> f64;
+
+    #[link_name = "llvm.round.f32"]
+    pub fn roundf32(x: f32) -> f32;
+    #[link_name = "llvm.round.f64"]
+    pub fn roundf64(x: f64) -> f64;
+
+    #[link_name = "llvm.ctpop.i8"]
+    pub fn ctpop8(x: i8) -> i8;
+    #[link_name = "llvm.ctpop.i16"]
+    pub fn ctpop16(x: i16) -> i16;
+    #[link_name = "llvm.ctpop.i32"]
+    pub fn ctpop32(x: i32) -> i32;
+    #[link_name = "llvm.ctpop.i64"]
+    pub fn ctpop64(x: i64) -> i64;
+
+    #[link_name = "llvm.bswap.i16"]
+    pub fn bswap16(x: i16) -> i16;
+    #[link_name = "llvm.bswap.i32"]
+    pub fn bswap32(x: i32) -> i32;
+    #[link_name = "llvm.bswap.i64"]
+    pub fn bswap64(x: i64) -> i64;
+}
+
+extern "rust-intrinsic" {
     /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     /// Atomic compare and exchange, acquire ordering.
@@ -366,68 +481,6 @@ extern "rust-intrinsic" {
     /// `min_align_of::<T>()`
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 
-    pub fn sqrtf32(x: f32) -> f32;
-    pub fn sqrtf64(x: f64) -> f64;
-
-    pub fn powif32(a: f32, x: i32) -> f32;
-    pub fn powif64(a: f64, x: i32) -> f64;
-
-    pub fn sinf32(x: f32) -> f32;
-    pub fn sinf64(x: f64) -> f64;
-
-    pub fn cosf32(x: f32) -> f32;
-    pub fn cosf64(x: f64) -> f64;
-
-    pub fn powf32(a: f32, x: f32) -> f32;
-    pub fn powf64(a: f64, x: f64) -> f64;
-
-    pub fn expf32(x: f32) -> f32;
-    pub fn expf64(x: f64) -> f64;
-
-    pub fn exp2f32(x: f32) -> f32;
-    pub fn exp2f64(x: f64) -> f64;
-
-    pub fn logf32(x: f32) -> f32;
-    pub fn logf64(x: f64) -> f64;
-
-    pub fn log10f32(x: f32) -> f32;
-    pub fn log10f64(x: f64) -> f64;
-
-    pub fn log2f32(x: f32) -> f32;
-    pub fn log2f64(x: f64) -> f64;
-
-    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-
-    pub fn fabsf32(x: f32) -> f32;
-    pub fn fabsf64(x: f64) -> f64;
-
-    pub fn copysignf32(x: f32, y: f32) -> f32;
-    pub fn copysignf64(x: f64, y: f64) -> f64;
-
-    pub fn floorf32(x: f32) -> f32;
-    pub fn floorf64(x: f64) -> f64;
-
-    pub fn ceilf32(x: f32) -> f32;
-    pub fn ceilf64(x: f64) -> f64;
-
-    pub fn truncf32(x: f32) -> f32;
-    pub fn truncf64(x: f64) -> f64;
-
-    pub fn rintf32(x: f32) -> f32;
-    pub fn rintf64(x: f64) -> f64;
-
-    pub fn nearbyintf32(x: f32) -> f32;
-    pub fn nearbyintf64(x: f64) -> f64;
-
-    pub fn roundf32(x: f32) -> f32;
-    pub fn roundf64(x: f64) -> f64;
-
-    pub fn ctpop8(x: i8) -> i8;
-    pub fn ctpop16(x: i16) -> i16;
-    pub fn ctpop32(x: i32) -> i32;
-    pub fn ctpop64(x: i64) -> i64;
-
     pub fn ctlz8(x: i8) -> i8;
     pub fn ctlz16(x: i16) -> i16;
     pub fn ctlz32(x: i32) -> i32;
@@ -437,10 +490,6 @@ extern "rust-intrinsic" {
     pub fn cttz16(x: i16) -> i16;
     pub fn cttz32(x: i32) -> i32;
     pub fn cttz64(x: i64) -> i64;
-
-    pub fn bswap16(x: i16) -> i16;
-    pub fn bswap32(x: i32) -> i32;
-    pub fn bswap64(x: i64) -> i64;
 
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
     pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
