@@ -197,6 +197,8 @@ pub static tag_region_param_def: uint = 0x100;
 pub static tag_region_param_def_ident: uint = 0x101;
 pub static tag_region_param_def_def_id: uint = 0x102;
 
+pub static tag_native_libraries: uint = 0x103;
+pub static tag_native_libraries_lib: uint = 0x104;
 
 pub struct LinkMeta {
     name: @str,

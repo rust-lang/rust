@@ -9,10 +9,14 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-pretty
 // aux-build:anon-extern-mod-cross-crate-1.rs
 extern mod anonexternmod;
 
 use anonexternmod::rust_get_test_int;
+
+#[link(name = "rustrt")] // we have explicitly chosen to require this
+extern {}
 
 pub fn main() {
     unsafe {

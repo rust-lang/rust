@@ -11,7 +11,7 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
-use driver::session::{Aggressive};
+use driver::session::{Aggressive, OutputExecutable};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
@@ -164,8 +164,11 @@ pub fn phase_2_configure_and_expand(sess: Session,
                                     mut crate: ast::Crate) -> ast::Crate {
     let time_passes = sess.time_passes();
 
-    *sess.building_library = session::building_library(sess.opts.crate_type,
-                                                       &crate, sess.opts.test);
+    *sess.building_library = session::building_library(sess.opts, &crate);
+    let want_exe = sess.opts.outputs.iter().any(|&o| o == OutputExecutable);
+    if *sess.building_library && want_exe {
+        sess.err("cannot build both a library and an executable");
+    }
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
@@ -225,10 +228,8 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                        syntax::ast_map::map_crate(sess.diagnostic(), crate));
 
     time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(sess.diagnostic(), crate, sess.cstore,
-                              sess.filesearch,
+         creader::read_crates(sess, crate,
                               session::sess_os_to_meta_os(sess.targ_cfg.os),
-                              sess.opts.is_static,
                               token::get_ident_interner()));
 
     let lang_items = time(time_passes, "language item collection", (), |_|
@@ -330,7 +331,8 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 pub struct CrateTranslation {
     context: ContextRef,
     module: ModuleRef,
-    link: LinkMeta
+    link: LinkMeta,
+    crate_types: ~[~str],
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -390,6 +392,7 @@ pub fn phase_6_link_output(sess: Session,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
+                           trans.crate_types,
                            &outputs.obj_filename,
                            &outputs.out_filename,
                            trans.link));
@@ -414,11 +417,6 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
 pub fn stop_after_phase_5(sess: Session) -> bool {
     if sess.opts.output_type != link::output_type_exe {
         debug!("not building executable, returning early from compile_input");
-        return true;
-    }
-
-    if sess.opts.is_static && *sess.building_library {
-        debug!("building static library, returning early from compile_input");
         return true;
     }
 
@@ -652,13 +650,21 @@ pub fn build_session_options(binary: @str,
                              matches: &getopts::Matches,
                              demitter: @diagnostic::Emitter)
                              -> @session::options {
-    let crate_type = if matches.opt_present("lib") {
-        session::lib_crate
-    } else if matches.opt_present("bin") {
-        session::bin_crate
-    } else {
-        session::unknown_crate
-    };
+    let mut outputs = ~[];
+    if matches.opt_present("rlib") {
+        outputs.push(session::OutputRlib)
+    }
+    if matches.opt_present("staticlib") {
+        outputs.push(session::OutputStaticlib)
+    }
+    // dynamic libraries are the "compiler blesssed" default library
+    if matches.opt_present("dylib") || matches.opt_present("lib") {
+        outputs.push(session::OutputDylib)
+    }
+    if matches.opt_present("bin") {
+        outputs.push(session::OutputExecutable)
+    }
+
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
 
@@ -750,11 +756,10 @@ pub fn build_session_options(binary: @str,
     let debuginfo = debugging_opts & session::debug_info != 0 ||
         extra_debuginfo;
 
-    let statik = debugging_opts & session::statik != 0;
-
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
-      Path::init(s.as_slice())
+        Path::init(s.as_slice())
     }).move_iter().collect();
+    let ar = matches.opt_str("ar");
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
         a.split(' ').map(|arg| arg.to_owned()).collect()
@@ -782,8 +787,7 @@ pub fn build_session_options(binary: @str,
     };
 
     let sopts = @session::options {
-        crate_type: crate_type,
-        is_static: statik,
+        outputs: outputs,
         gc: gc,
         optimize: opt_level,
         custom_passes: custom_passes,
@@ -795,6 +799,7 @@ pub fn build_session_options(binary: @str,
         jit: jit,
         output_type: output_type,
         addl_lib_search_paths: @mut addl_lib_search_paths,
+        ar: ar,
         linker: linker,
         linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
@@ -871,7 +876,6 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
 // rustc command line options
 pub fn optgroups() -> ~[getopts::groups::OptGroup] {
  ~[
-  optflag("",  "bin", "Compile an executable crate (default)"),
   optflag("c", "",    "Compile and assemble, but do not link"),
   optmulti("", "cfg", "Configure the compilation
                           environment", "SPEC"),
@@ -881,8 +885,13 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optflag("h", "help","Display this message"),
   optmulti("L", "",   "Add a directory to the library search path",
                               "PATH"),
-  optflag("",  "lib", "Compile a library crate"),
+  optflag("",  "bin", "Compile an executable crate (default)"),
+  optflag("",  "lib", "Compile a rust library crate using the compiler's default"),
+  optflag("",  "rlib", "Compile a rust library crate as an rlib file"),
+  optflag("",  "staticlib", "Compile a static library crate"),
+  optflag("",  "dylib", "Compile a dynamic library crate"),
   optopt("", "linker", "Program to use for linking instead of the default.", "LINKER"),
+  optopt("", "ar", "Program to use for managing archives instead of the default.", "AR"),
   optmulti("",  "link-args", "FLAGS is a space-separated list of flags
                             passed to the linker", "FLAGS"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
@@ -957,19 +966,16 @@ pub fn build_output_filenames(input: &input,
     let obj_path;
     let out_path;
     let sopts = sess.opts;
-    let stop_after_codegen =
-        sopts.output_type != link::output_type_exe ||
-            sopts.is_static && *sess.building_library;
+    let stop_after_codegen = sopts.output_type != link::output_type_exe;
 
-    let obj_suffix =
-        match sopts.output_type {
-          link::output_type_none => ~"none",
-          link::output_type_bitcode => ~"bc",
-          link::output_type_assembly => ~"s",
-          link::output_type_llvm_assembly => ~"ll",
-          // Object and exe output both use the '.o' extension here
-          link::output_type_object | link::output_type_exe => ~"o"
-        };
+    let obj_suffix = match sopts.output_type {
+        link::output_type_none => ~"none",
+        link::output_type_bitcode => ~"bc",
+        link::output_type_assembly => ~"s",
+        link::output_type_llvm_assembly => ~"ll",
+        // Object and exe output both use the '.o' extension here
+        link::output_type_object | link::output_type_exe => ~"o"
+    };
 
     match *ofile {
       None => {
@@ -1047,6 +1053,7 @@ pub fn early_error(emitter: @diagnostic::Emitter, msg: &str) -> ! {
 
 pub fn list_metadata(sess: Session, path: &Path, out: @mut io::Writer) {
     metadata::loader::list_file_metadata(
+        sess,
         token::get_ident_interner(),
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
 }

@@ -262,6 +262,12 @@ pub fn get_item_visibility(cstore: @mut cstore::CStore,
     decoder::get_item_visibility(cdata, def_id.node)
 }
 
+pub fn get_native_libraries(cstore: @mut cstore::CStore,
+                            crate_num: ast::CrateNum) -> ~[~str] {
+    let cdata = cstore::get_crate_data(cstore, crate_num);
+    decoder::get_native_libraries(cdata)
+}
+
 pub fn each_impl(cstore: @mut cstore::CStore,
                  crate_num: ast::CrateNum,
                  callback: |ast::DefId|) {

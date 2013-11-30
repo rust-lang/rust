@@ -50,7 +50,7 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)): \
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_GLOB_$(4)) \
-		$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_DSYM_GLOB_$(4))) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTC_DSYM_GLOB_$(4))) \
 	        $$(HLIB$(2)_H_$(4))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(4)),$$(notdir $$@))
 
@@ -82,6 +82,7 @@ $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_GLOB_$(4)),$$(notdir $$@))
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_RGLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$< $$@
 # Subtle: We do not let the shell expand $$(STDLIB_DSYM_GLOB) directly rather
 # we use Make's $$(wildcard) facility. The reason is that, on mac, when using
@@ -91,9 +92,11 @@ $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 # Make instead expands the glob to nothing, which gives us the correct behavior.
 # (Copy .dsym file if it exists, but do nothing otherwise)
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_RGLOB_$(4))) \
 		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_DSYM_GLOB_$(4))) \
 	        $$(HLIB$(2)_H_$(4))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_GLOB_$(4)),$$(notdir $$@))
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_RGLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB$(2)_H_$(4))/$(CFG_EXTRALIB_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4)) \
@@ -102,11 +105,14 @@ $$(HLIB$(2)_H_$(4))/$(CFG_EXTRALIB_$(4)): \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_RGLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(EXTRALIB_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(EXTRALIB_RGLOB_$(4))) \
 		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(EXTRALIB_DSYM_GLOB_$(4))) \
 	        $$(HLIB$(2)_H_$(4))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_RGLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTUV_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTUV_$(4)) \
@@ -115,35 +121,14 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTUV_$(4)): \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_RGLOB_$(4)),$$(notdir $$@))
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTUV_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTUV_RGLOB_$(4))) \
 		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTUV_DSYM_GLOB_$(4))) \
 	        $$(HLIB$(2)_H_$(4))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
-
-$$(HLIB$(2)_H_$(4))/libstd.rlib: \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/libstd.rlib \
-	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
-	| $$(HLIB$(2)_H_$(4))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-$$(HLIB$(2)_H_$(4))/libextra.rlib: \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/libextra.rlib \
-	$$(HLIB$(2)_H_$(4))/libstd.rlib \
-	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
-	| $$(HLIB$(2)_H_$(4))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-$$(HLIB$(2)_H_$(4))/librustc.rlib: \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/librustc.rlib \
-	$$(HLIB$(2)_H_$(4))/libstd.rlib \
-	$$(HLIB$(2)_H_$(4))/libextra.rlib \
-	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
-	| $$(HLIB$(2)_H_$(4))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_RGLOB_$(4)),$$(notdir $$@))
 
 $$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_RUSTLLVM_$(4)) \

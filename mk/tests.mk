@@ -193,7 +193,7 @@ check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-std check-stage2-extra check-stage2-rpass \
 	check-stage2-rustuv \
 	check-stage2-rustpkg \
-	check-stage2-rfail check-stage2-cfail
+	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 .PHONY: cleantmptestlogs cleantestlibs
@@ -284,7 +284,8 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec			\
-        check-stage$(1)-T-$(2)-H-$(3)-crates-exec                      \
+	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec			\
+        check-stage$(1)-T-$(2)-H-$(3)-crates-exec                       \
 	check-stage$(1)-T-$(2)-H-$(3)-bench-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
@@ -584,6 +585,10 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
 CTEST_RUSTC_FLAGS := $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
 
+# There's no need our entire test suite to take up gigabytes of space on disk
+# including copies of libstd/libextra all over the place
+CTEST_RUSTC_FLAGS := $$(CTEST_RUSTC_FLAGS) -Z prefer-dynamic
+
 # The tests can not be optimized while the rest of the compiler is optimized, so
 # filter out the optimization (if any) from rustc and then figure out if we need
 # to be optimized
@@ -766,6 +771,7 @@ TEST_GROUPS = \
 	cfail \
 	bench \
 	perf \
+	rmake \
 	debuginfo \
 	codegen \
 	doc \
@@ -896,3 +902,37 @@ endef
 
 $(foreach host,$(CFG_HOST),			\
  $(eval $(call DEF_CHECK_FAST_FOR_H,$(host))))
+
+RMAKE_TESTS := $(shell ls -d $(S)src/test/run-make/*/)
+RMAKE_TESTS := $(RMAKE_TESTS:$(S)src/test/run-make/%/=%)
+
+define DEF_RMAKE_FOR_T_H
+# $(1) the stage
+# $(2) target triple
+# $(3) host triple
+
+check-stage$(1)-T-$(2)-H-$(3)-rmake-exec: \
+		$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake)
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake): \
+		$$(RMAKE_TESTS:%=$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok)
+	@touch $$@
+
+$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
+		$(S)src/test/run-make/%/Makefile \
+		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))
+	@rm -rf $(3)/test/run-make/$$*
+	@mkdir -p $(3)/test/run-make/$$*
+	@echo maketest: $$*
+	$$(Q)python $(S)src/etc/maketest.py $$(dir $$<) \
+	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
+	    $(3)/test/run-make/$$* \
+	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))"
+	@touch $$@
+
+endef
+
+$(foreach stage,$(STAGES), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach host,$(CFG_HOST), \
+   $(eval $(call DEF_RMAKE_FOR_T_H,$(stage),$(target),$(host))))))

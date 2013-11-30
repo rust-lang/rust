@@ -21,8 +21,7 @@ fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
 }
 
-pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
-                    -> ~[~str] {
+pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -30,18 +29,28 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
         return ~[];
     }
 
+    let mut flags = ~[];
+
+    if sess.targ_cfg.os == abi::OsFreebsd {
+        flags.push_all([~"-Wl,-rpath,/usr/local/lib/gcc46",
+                        ~"-Wl,-rpath,/usr/local/lib/gcc44",
+                        ~"-Wl,-z,origin"]);
+    }
+
     debug!("preparing the RPATH!");
 
     let sysroot = sess.filesearch.sysroot();
     let output = out_filename;
-    let libs = cstore::get_used_crate_files(sess.cstore);
+    let libs = cstore::get_used_crates(sess.cstore, cstore::RequireDynamic);
+    let libs = libs.move_iter().filter_map(|(_, l)| l.map(|p| p.clone())).collect();
     // We don't currently rpath extern libraries, but we know
     // where rustrt is and we know every rust program needs it
     let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
     let rpaths = get_rpaths(os, sysroot, output, libs,
                             sess.opts.target_triple);
-    rpaths_to_flags(rpaths)
+    flags.push_all(rpaths_to_flags(rpaths));
+    flags
 }
 
 fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
@@ -52,8 +61,11 @@ fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
 }
 
 pub fn rpaths_to_flags(rpaths: &[~str]) -> ~[~str] {
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    rpaths.iter().map(|rpath| format!("-Wl,-rpath,{}",*rpath)).collect()
+    let mut ret = ~[];
+    for rpath in rpaths.iter() {
+        ret.push("-Wl,-rpath," + *rpath);
+    }
+    return ret;
 }
 
 fn get_rpaths(os: abi::Os,
