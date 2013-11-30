@@ -12,22 +12,28 @@
 //! of any type.
 
 use cast::transmute;
+#[cfg(stage0)]
 use cmp::Eq;
 use option::{Option, Some, None};
+#[cfg(stage0)]
 use to_bytes::{IterBytes, Cb};
 use to_str::ToStr;
 use unstable::intrinsics;
 use util::Void;
+#[cfg(not(stage0))]
+use unstable::intrinsics::TypeId;
 
 ///////////////////////////////////////////////////////////////////////////////
 // TypeId
 ///////////////////////////////////////////////////////////////////////////////
 
 /// `TypeId` represents a globally unique identifier for a type
+#[cfg(stage0)]
 pub struct TypeId {
     priv t: u64,
 }
 
+#[cfg(stage0)]
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with
     #[inline]
@@ -36,6 +42,7 @@ impl TypeId {
     }
 }
 
+#[cfg(stage0)]
 impl Eq for TypeId {
     #[inline]
     fn eq(&self, &other: &TypeId) -> bool {
@@ -43,6 +50,7 @@ impl Eq for TypeId {
     }
 }
 
+#[cfg(stage0)]
 impl IterBytes for TypeId {
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         self.t.iter_bytes(lsb0, f)
@@ -188,29 +196,6 @@ mod tests {
     struct Test;
 
     static TEST: &'static str = "Test";
-
-    #[test]
-    fn type_id() {
-        let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
-                         TypeId::of::<Test>());
-        let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
-                         TypeId::of::<Test>());
-
-        assert!(a != b);
-        assert!(a != c);
-        assert!(b != c);
-
-        assert_eq!(a, d);
-        assert_eq!(b, e);
-        assert_eq!(c, f);
-    }
-
-    #[test]
-    fn type_id_hash() {
-        let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>());
-
-        assert_eq!(a.hash(), b.hash());
-    }
 
     #[test]
     fn any_as_void_ptr() {
