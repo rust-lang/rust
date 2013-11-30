@@ -40,10 +40,11 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, FromPrimitive)]
 pub enum NativeLibaryKind {
-    NativeStatic,
-    NativeUnknown,
+    NativeStatic,    // native static library (.a archive)
+    NativeFramework, // OSX-specific
+    NativeUnknown,   // default way to specify a dynamic library
 }
 
 // Where a crate came from on the local filesystem. One of these two options

@@ -1640,9 +1640,17 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     for &(ref lib, kind) in cstore::get_used_libraries(ecx.cstore).iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
-            cstore::NativeUnknown => {
+            cstore::NativeFramework | cstore::NativeUnknown => {
                 ebml_w.start_tag(tag_native_libraries_lib);
+
+                ebml_w.start_tag(tag_native_libraries_kind);
+                ebml_w.writer.write_be_u32(kind as u32);
+                ebml_w.end_tag();
+
+                ebml_w.start_tag(tag_native_libraries_name);
                 ebml_w.writer.write(lib.as_bytes());
+                ebml_w.end_tag();
+
                 ebml_w.end_tag();
             }
         }

@@ -263,7 +263,8 @@ pub fn get_item_visibility(cstore: @mut cstore::CStore,
 }
 
 pub fn get_native_libraries(cstore: @mut cstore::CStore,
-                            crate_num: ast::CrateNum) -> ~[~str] {
+                            crate_num: ast::CrateNum)
+                                -> ~[(cstore::NativeLibaryKind, ~str)] {
     let cdata = cstore::get_crate_data(cstore, crate_num);
     decoder::get_native_libraries(cdata)
 }
