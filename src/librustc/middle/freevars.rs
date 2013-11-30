@@ -88,7 +88,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block)
+fn collect_freevars(def_map: resolve::DefMap, blk: ast::P<ast::Block>)
     -> freevar_info {
     let seen = @mut HashMap::new();
     let refs = @mut ~[];
@@ -110,7 +110,7 @@ struct AnnotateFreevarsVisitor {
 
 impl Visitor<()> for AnnotateFreevarsVisitor {
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                blk:&ast::Block, s:Span, nid:ast::NodeId, _:()) {
+                blk:ast::P<ast::Block>, s:Span, nid:ast::NodeId, _:()) {
         let vars = collect_freevars(self.def_map, blk);
         self.freevars.insert(nid, vars);
         visit::walk_fn(self, fk, fd, blk, s, nid, ());

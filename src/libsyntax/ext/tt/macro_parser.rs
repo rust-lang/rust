@@ -432,11 +432,11 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
         Some(i) => token::nt_item(i),
         None => p.fatal("expected an item keyword")
       },
-      "block" => token::nt_block(~p.parse_block()),
+      "block" => token::nt_block(p.parse_block()),
       "stmt" => token::nt_stmt(p.parse_stmt(~[])),
       "pat" => token::nt_pat(p.parse_pat()),
       "expr" => token::nt_expr(p.parse_expr()),
-      "ty" => token::nt_ty(~p.parse_ty(false /* no need to disambiguate*/)),
+      "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
       "ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(~sn,b) }

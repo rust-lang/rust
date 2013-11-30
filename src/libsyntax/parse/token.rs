@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{Name, Mrk};
+use ast::{P, Name, Mrk};
 use ast_util;
 use parse::token;
 use util::interner::StrInterner;
@@ -101,11 +101,11 @@ pub enum Token {
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
-    nt_block(~ast::Block),
+    nt_block(P<ast::Block>),
     nt_stmt(@ast::Stmt),
     nt_pat( @ast::Pat),
     nt_expr(@ast::Expr),
-    nt_ty(  ~ast::Ty),
+    nt_ty(  P<ast::Ty>),
     nt_ident(~ast::Ident, bool),
     nt_attr(@ast::Attribute),   // #[foo]
     nt_path(~ast::Path),

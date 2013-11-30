@@ -29,7 +29,7 @@ use std::hashmap::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{Block,item,fn_decl,NodeId,Arm,Pat,Stmt,Expr,Local};
+use syntax::ast::{P,Block,item,fn_decl,NodeId,Arm,Pat,Stmt,Expr,Local};
 
 /**
 The region maps encode information about region relationships.
@@ -322,7 +322,7 @@ fn parent_to_expr(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_block(visitor: &mut RegionResolutionVisitor,
-                 blk: &ast::Block,
+                 blk: ast::P<ast::Block>,
                  cx: Context) {
     // Record the parent of this block.
     parent_to_expr(visitor, cx, blk.id, blk.span);
@@ -424,7 +424,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor,
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
               fk: &visit::fn_kind,
               decl: &ast::fn_decl,
-              body: &ast::Block,
+              body: ast::P<ast::Block>,
               sp: Span,
               id: ast::NodeId,
               cx: Context) {
@@ -466,7 +466,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
 impl Visitor<Context> for RegionResolutionVisitor {
 
-    fn visit_block(&mut self, b:&Block, cx:Context) {
+    fn visit_block(&mut self, b:P<Block>, cx:Context) {
         resolve_block(self, b, cx);
     }
 
@@ -474,7 +474,7 @@ impl Visitor<Context> for RegionResolutionVisitor {
         resolve_item(self, i, cx);
     }
 
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, cx:Context) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, cx:Context) {
         resolve_fn(self, fk, fd, b, s, n, cx);
     }
     fn visit_arm(&mut self, a:&Arm, cx:Context) {

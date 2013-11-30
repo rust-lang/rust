@@ -20,6 +20,13 @@ use std::option::Option;
 use std::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
+/// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
+pub type P<T> = @T;
+
+/// Construct a P<T> from a T value.
+pub fn P<T: 'static>(value: T) -> P<T> {
+    @value
+}
 
 // FIXME #6993: in librustc, uses of "ident" should be replaced
 // by just "Name".
@@ -160,7 +167,7 @@ pub struct PathSegment {
     /// The lifetime parameters for this path segment.
     lifetimes: OptVec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    types: OptVec<Ty>,
+    types: OptVec<P<Ty>>,
 }
 
 pub type CrateNum = u32;
@@ -460,7 +467,7 @@ pub enum Stmt_ {
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct Local {
-    ty: Ty,
+    ty: P<Ty>,
     pat: @Pat,
     init: Option<@Expr>,
     id: NodeId,
@@ -481,7 +488,7 @@ pub enum Decl_ {
 pub struct Arm {
     pats: ~[@Pat],
     guard: Option<@Expr>,
-    body: Block,
+    body: P<Block>,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -537,28 +544,28 @@ pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
     ExprVec(~[@Expr], Mutability),
     ExprCall(@Expr, ~[@Expr], CallSugar),
-    ExprMethodCall(NodeId, @Expr, Ident, ~[Ty], ~[@Expr], CallSugar),
+    ExprMethodCall(NodeId, @Expr, Ident, ~[P<Ty>], ~[@Expr], CallSugar),
     ExprTup(~[@Expr]),
     ExprBinary(NodeId, BinOp, @Expr, @Expr),
     ExprUnary(NodeId, UnOp, @Expr),
     ExprLit(@lit),
-    ExprCast(@Expr, Ty),
-    ExprIf(@Expr, Block, Option<@Expr>),
-    ExprWhile(@Expr, Block),
+    ExprCast(@Expr, P<Ty>),
+    ExprIf(@Expr, P<Block>, Option<@Expr>),
+    ExprWhile(@Expr, P<Block>),
     // FIXME #6993: change to Option<Name>
-    ExprForLoop(@Pat, @Expr, Block, Option<Ident>),
+    ExprForLoop(@Pat, @Expr, P<Block>, Option<Ident>),
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name>
-    ExprLoop(Block, Option<Ident>),
+    ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(@Expr, ~[Arm]),
-    ExprFnBlock(fn_decl, Block),
-    ExprProc(fn_decl, Block),
+    ExprFnBlock(P<fn_decl>, P<Block>),
+    ExprProc(P<fn_decl>, P<Block>),
     ExprDoBody(@Expr),
-    ExprBlock(Block),
+    ExprBlock(P<Block>),
 
     ExprAssign(@Expr, @Expr),
     ExprAssignOp(NodeId, BinOp, @Expr, @Expr),
-    ExprField(@Expr, Ident, ~[Ty]),
+    ExprField(@Expr, Ident, ~[P<Ty>]),
     ExprIndex(NodeId, @Expr, @Expr),
 
     /// Expression that looks like a "name". For example,
@@ -727,7 +734,7 @@ pub enum lit_ {
 // type structure in middle/ty.rs as well.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct mt {
-    ty: ~Ty,
+    ty: P<Ty>,
     mutbl: Mutability,
 }
 
@@ -743,7 +750,7 @@ pub struct TypeMethod {
     ident: Ident,
     attrs: ~[Attribute],
     purity: purity,
-    decl: fn_decl,
+    decl: P<fn_decl>,
     generics: Generics,
     explicit_self: explicit_self,
     id: NodeId,
@@ -842,7 +849,7 @@ pub struct TyClosure {
     lifetimes: OptVec<Lifetime>,
     purity: purity,
     onceness: Onceness,
-    decl: fn_decl,
+    decl: P<fn_decl>,
     // Optional optvec distinguishes between "fn()" and "fn:()" so we can
     // implement issue #7264. None means "fn()", which means infer a default
     // bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
@@ -855,7 +862,7 @@ pub struct TyBareFn {
     purity: purity,
     abis: AbiSet,
     lifetimes: OptVec<Lifetime>,
-    decl: fn_decl
+    decl: P<fn_decl>
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -870,7 +877,7 @@ pub enum ty_ {
     ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
-    ty_tup(~[Ty]),
+    ty_tup(~[P<Ty>]),
     ty_path(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     ty_typeof(@Expr),
     // ty_infer means the type should be inferred instead of it having been
@@ -899,7 +906,7 @@ pub struct inline_asm {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct arg {
-    ty: Ty,
+    ty: P<Ty>,
     pat: @Pat,
     id: NodeId,
 }
@@ -907,7 +914,7 @@ pub struct arg {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct fn_decl {
     inputs: ~[arg],
-    output: Ty,
+    output: P<Ty>,
     cf: ret_style,
     variadic: bool
 }
@@ -954,8 +961,8 @@ pub struct method {
     generics: Generics,
     explicit_self: explicit_self,
     purity: purity,
-    decl: fn_decl,
-    body: Block,
+    decl: P<fn_decl>,
+    body: P<Block>,
     id: NodeId,
     span: Span,
     self_id: NodeId,
@@ -977,7 +984,7 @@ pub struct foreign_mod {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct variant_arg {
-    ty: Ty,
+    ty: P<Ty>,
     id: NodeId,
 }
 
@@ -989,7 +996,7 @@ pub enum variant_kind {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct enum_def {
-    variants: ~[variant],
+    variants: ~[P<variant>],
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -1102,7 +1109,7 @@ impl visibility {
 pub struct struct_field_ {
     kind: struct_field_kind,
     id: NodeId,
-    ty: Ty,
+    ty: P<Ty>,
     attrs: ~[Attribute],
 }
 
@@ -1138,17 +1145,17 @@ pub struct item {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum item_ {
-    item_static(Ty, Mutability, @Expr),
-    item_fn(fn_decl, purity, AbiSet, Generics, Block),
+    item_static(P<Ty>, Mutability, @Expr),
+    item_fn(P<fn_decl>, purity, AbiSet, Generics, P<Block>),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(Ty, Generics),
+    item_ty(P<Ty>, Generics),
     item_enum(enum_def, Generics),
     item_struct(@struct_def, Generics),
     item_trait(Generics, ~[trait_ref], ~[trait_method]),
     item_impl(Generics,
               Option<trait_ref>, // (optional) trait this impl implements
-              Ty, // self
+              P<Ty>, // self
               ~[@method]),
     // a macro invocation (which includes macro definition)
     item_mac(mac),
@@ -1166,8 +1173,8 @@ pub struct foreign_item {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum foreign_item_ {
-    foreign_item_fn(fn_decl, Generics),
-    foreign_item_static(Ty, /* is_mutbl */ bool),
+    foreign_item_fn(P<fn_decl>, Generics),
+    foreign_item_static(P<Ty>, /* is_mutbl */ bool),
 }
 
 // The data we save and restore about an inlined item or method.  This is not

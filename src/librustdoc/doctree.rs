@@ -115,7 +115,7 @@ pub struct Function {
 }
 
 pub struct Typedef {
-    ty: ast::Ty,
+    ty: ast::P<ast::Ty>,
     gen: ast::Generics,
     name: Ident,
     id: ast::NodeId,
@@ -125,7 +125,7 @@ pub struct Typedef {
 }
 
 pub struct Static {
-    type_: ast::Ty,
+    type_: ast::P<ast::Ty>,
     mutability: ast::Mutability,
     expr: @ast::Expr,
     name: Ident,
@@ -149,7 +149,7 @@ pub struct Trait {
 pub struct Impl {
     generics: ast::Generics,
     trait_: Option<ast::trait_ref>,
-    for_: ast::Ty,
+    for_: ast::P<ast::Ty>,
     methods: ~[@ast::method],
     attrs: ~[ast::Attribute],
     where: Span,
