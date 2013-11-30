@@ -18,6 +18,7 @@ use metadata::loader;
 use std::hashmap::HashMap;
 use syntax::ast;
 use std::vec;
+use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, dummy_sp};
@@ -191,10 +192,22 @@ fn visit_item(e: &Env, i: @ast::item) {
                             "kind" == k.name()
                         }).and_then(|a| a.value_str());
                         let kind = match kind {
-                            Some(k) if "static" == k => cstore::NativeStatic,
                             Some(k) => {
-                                e.sess.span_fatal(i.span,
-                                    format!("unknown kind: `{}`", k));
+                                if "static" == k {
+                                    cstore::NativeStatic
+                                } else if e.sess.targ_cfg.os == abi::OsMacos &&
+                                          "framework" == k {
+                                    cstore::NativeFramework
+                                } else if "framework" == k {
+                                    e.sess.span_err(m.span,
+                                        "native frameworks are only available \
+                                         on OSX targets");
+                                    cstore::NativeUnknown
+                                } else {
+                                    e.sess.span_err(m.span,
+                                        format!("unknown kind: `{}`", k));
+                                    cstore::NativeUnknown
+                                }
                             }
                             None => cstore::NativeUnknown
                         };
@@ -204,9 +217,10 @@ fn visit_item(e: &Env, i: @ast::item) {
                         let n = match n {
                             Some(n) => n,
                             None => {
-                                e.sess.span_fatal(i.span,
+                                e.sess.span_err(m.span,
                                     "#[link(...)] specified without \
                                      `name = \"foo\"`");
+                                @"foo"
                             }
                         };
                         cstore::add_used_library(cstore, n.to_owned(), kind);

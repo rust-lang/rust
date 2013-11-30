@@ -1015,7 +1015,7 @@ fn link_rlib(sess: Session, obj_filename: &Path,
             cstore::NativeStatic => {
                 a.add_native_library(l.as_slice());
             }
-            cstore::NativeUnknown => {}
+            cstore::NativeFramework | cstore::NativeUnknown => {}
         }
     }
     return a;
@@ -1044,8 +1044,13 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
         };
         a.add_rlib(&p);
         let native_libs = csearch::get_native_libraries(sess.cstore, cnum);
-        for lib in native_libs.iter() {
-            sess.warn(format!("unlinked native library: {}", *lib));
+        for &(kind, ref lib) in native_libs.iter() {
+            let name = match kind {
+                cstore::NativeStatic => "static library",
+                cstore::NativeUnknown => "library",
+                cstore::NativeFramework => "framework",
+            };
+            sess.warn(format!("unlinked native {}: {}", name, *lib));
         }
     }
 }
@@ -1204,8 +1209,17 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                 args.push(cratepath.as_str().unwrap().to_owned());
 
                 let libs = csearch::get_native_libraries(sess.cstore, cnum);
-                for lib in libs.iter() {
-                    args.push("-l" + *lib);
+                for &(kind, ref lib) in libs.iter() {
+                    match kind {
+                        cstore::NativeUnknown => args.push("-l" + *lib),
+                        cstore::NativeFramework => {
+                            args.push(~"-framework");
+                            args.push(lib.to_owned());
+                        }
+                        cstore::NativeStatic => {
+                            sess.bug("statics shouldn't be propagated");
+                        }
+                    }
                 }
             }
             return;
@@ -1262,7 +1276,15 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
-    for &(ref l, _) in cstore::get_used_libraries(sess.cstore).iter() {
-        args.push(~"-l" + *l);
+    for &(ref l, kind) in cstore::get_used_libraries(sess.cstore).iter() {
+        match kind {
+            cstore::NativeUnknown | cstore::NativeStatic => {
+                args.push("-l" + *l);
+            }
+            cstore::NativeFramework => {
+                args.push(~"-framework");
+                args.push(l.to_owned());
+            }
+        }
     }
 }
