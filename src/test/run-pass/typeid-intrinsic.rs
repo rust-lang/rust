@@ -16,8 +16,10 @@ extern mod other1(name = "typeid-intrinsic");
 extern mod other2(name = "typeid-intrinsic2");
 
 use std::unstable::intrinsics;
+use std::unstable::intrinsics::TypeId;
 
 struct A;
+struct Test;
 
 fn main() {
     unsafe {
@@ -50,4 +52,23 @@ fn main() {
         assert_eq!(intrinsics::type_id::<A>(), other1::foo::<A>());
         assert_eq!(other2::foo::<A>(), other1::foo::<A>());
     }
+
+    // sanity test of TypeId
+    let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+                     TypeId::of::<Test>());
+    let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+                     TypeId::of::<Test>());
+
+    assert!(a != b);
+    assert!(a != c);
+    assert!(b != c);
+
+    assert_eq!(a, d);
+    assert_eq!(b, e);
+    assert_eq!(c, f);
+
+    // check it has a hash
+    let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>());
+
+    assert_eq!(a.hash(), b.hash());
 }
