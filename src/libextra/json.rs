@@ -464,7 +464,7 @@ impl Json{
     pub fn to_pretty_str(&self) -> ~str {
         let mut s = MemWriter::new();
         self.to_pretty_writer(&mut s as &mut io::Writer);
-        str::from_utf8(s.inner_ref().as_slice())
+        str::from_utf8_owned(s.inner())
     }
 }
 
@@ -847,7 +847,7 @@ impl<T : Iterator<char>> Parser<T> {
 
 /// Decodes a json value from an `&mut io::Reader`
 pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, Error> {
-    let s = str::from_utf8(rdr.read_to_end());
+    let s = str::from_utf8_owned(rdr.read_to_end());
     let mut parser = Parser::init(s.chars());
     parser.parse()
 }
@@ -1319,9 +1319,9 @@ impl<A:ToJson> ToJson for Option<A> {
 impl to_str::ToStr for Json {
     /// Encodes a json value into a string
     fn to_str(&self) -> ~str {
-        let s = @mut MemWriter::new();
-        self.to_writer(s as @mut io::Writer);
-        str::from_utf8(s.inner_ref().as_slice())
+        let mut s = MemWriter::new();
+        self.to_writer(&mut s as &mut io::Writer);
+        str::from_utf8_owned(s.inner())
     }
 }
 
@@ -1507,14 +1507,14 @@ mod tests {
         assert_eq!(a.clone(), from_str(a.to_pretty_str()).unwrap());
     }
 
-    fn with_str_writer(f: |@mut io::Writer|) -> ~str {
+    fn with_str_writer(f: |&mut io::Writer|) -> ~str {
         use std::io::mem::MemWriter;
         use std::io::Decorator;
         use std::str;
 
-        let m = @mut MemWriter::new();
-        f(m as @mut io::Writer);
-        str::from_utf8(*m.inner_ref())
+        let mut m = MemWriter::new();
+        f(&mut m as &mut io::Writer);
+        str::from_utf8_owned(m.inner())
     }
 
     #[test]
