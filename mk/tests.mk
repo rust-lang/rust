@@ -98,7 +98,7 @@ ifdef CFG_UNIXY_$(1)
 endif
 
 ifdef CFG_WINDOWSY_$(1)
-  CFG_TESTLIB_$(1)=$$(CFG_BUILD_DIR)/$$(2)/$$(strip \
+  CFG_TESTLIB_$(1)=$$(CFG_BUILD_DIR)$$(2)/$$(strip \
    $$(if $$(findstring stage0,$$(1)), \
        stage0/$$(CFG_LIBDIR), \
       $$(if $$(findstring stage1,$$(1)), \
