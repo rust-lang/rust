@@ -16,8 +16,85 @@
 
 //! json parsing and serialization
 /*!
+#What is JSON?
 
-#example of use
+JSON (JavaScript Object Notation) is a way to write data in Javascript.
+Like XML it allow to encode structured data in a text format that can be read by human easily.
+Its native compatibility with javascript and its simple syntax make it use widely. 
+
+Json data are encoded in a form of "key":"value".
+TData type that can by encoded are javascript type : bool (string true or false), double, string, array, object, null.
+Object are list of attribute and value in "key"/"value" form.
+Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
+A simple JSON document encoding a person, his/her age, address and phone numbers could look like:
+
+```rust
+{
+    "FirstName": "John",
+    "LastName": "Doe",
+    "Age": 43,
+    "Address": {
+        "Street": "Downing Street 10",
+        "City": "London",
+        "Country": "Great Britain"
+    },
+    "Phone numbers": [
+        "+44 1234567",
+        "+44 2345678"
+    ]
+}
+```
+
+#Rust implementation
+
+The Rust implementation is based on the serialization API.
+Data to encode must implement the trait serialize::Encodable.
+Data to devode must implement the trait serialize::Decodable.
+Rust compilateur provide an annotation to automaticaly generate
+the code for these trait: #[deriving(Decodable, Encodable)]
+
+To encode using Encodable :
+
+```rust
+let to_encode_object = ....
+let mut encoder = extra::json::Encoder(m as @mut Writer);
+to_encode_object.encode(&mut encoder);
+```
+
+Two wrapper function is provided to encode a Encodable object in a string or a buffer ([u8]): str_encode(&m) and buffer_encode(&m).
+
+```rust
+let to_encode_object = ....
+let encoded_str:~str = extra::json::str_encode(&to_encode_object);
+```
+
+To encode to a json string into an object, when a specific encoding code is needed,
+JSON API provide a trait to_json that can be easier to implement.
+When using to_json the Encodable trait implementation is not mandatory.
+This trait encode the object in a json object which is mostly a TreeMap of the object attribute name / attribute value.
+
+Example :
+
+```rust
+fn to_json( &self ) -> Json {
+    let mut d = ~TreeMap::new();
+    d.insert(~"attr1", self.attr1.to_json());
+    d.insert(~"attr2", self.attr1.to_json());
+    ....
+    Object(d)
+}
+```
+
+To decode a json string using Decodable :
+
+```rust
+let json_str_to_decode: ~str = ....
+let jsonobject = extra::json::from_str(json_str_to_decode);
+let mut decoder = extra::json::Decoder(jsonobject.unwrap());
+let decoded_object: MyStruct = Decodable::decode(&mut decoder); //create the final object
+```
+
+#Examples of use
 
 Needed use for the example:
 
@@ -33,7 +110,7 @@ use std::io::Decorator;
 
 ##First example
 
-use a struct call TestStruct1 and serialeze and unserialize using
+use a struct called TestStruct1 and serialize and unserialize using
 json with the serialization API. Serialization code is generated
 by rustc.
 
@@ -45,16 +122,12 @@ pub struct TestStruct1  {
     dataArray:~[u8],
 }
 ```
-To serialize use the json::Encoder, it call the generated Encodable impl.
-The example use a MemWriter as input stream:
+
+To serialize use the json::str_encode to encode an object in a string. It calls the generated Encodable impl.
 
 ```rust
-let test : TestStruct1 = TestStruct1 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
-let m = @mut MemWriter::new();
-let mut encoder = extra::json::Encoder(m as @mut Writer);
-test.encode(&mut encoder);
-let buf:&~[u8] = m.inner_ref(); //get the serialized values.
-let s = std::str::from_utf8(*buf);
+    let to_encode_object : TestStruct1 = TestStruct1 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+    let encoded_str:~str = str_encode(&to_encode_object);
 ```
 
 To unserialize use the extra::json::from_str and extra::json::Decoder
@@ -69,7 +142,7 @@ let decoded1: TestStruct1 = Decodable::decode(&mut decoder); //create the final 
 
 This example use the ToJson impl to unserialize the json string.
 For this example I declare another struct TestStruct2.
-This struct provide its own impl of Decodable and Encodable (to show own it works).
+This struct provides its own impl of Decodable and Encodable (to show own it works).
 
 ```rust
 pub struct TestStruct2  {
@@ -111,8 +184,8 @@ impl<D:extra::serialize::Decoder> extra::serialize::Decodable<D> for TestStruct2
 
     }
 } 
-
 ```
+
 Seralization using our impl of to_json :
 
 ```rust
@@ -120,6 +193,7 @@ Seralization using our impl of to_json :
     let tjson : Json = test2.to_json();
     let jsonStr:~str = tjson.to_str();
 ```
+
 Unserialize using our impl of Decodable
 
 ```rust
@@ -255,6 +329,21 @@ pub struct Encoder {
 pub fn Encoder(wr: @mut io::Writer) -> Encoder {
     Encoder { wr: wr }
 }
+
+ pub fn buffer_encode<T:Encodable<Encoder>>(to_encode_object: &T) -> ~[u8]  {
+   //Serialize the object in a string using a writer
+    let m = @mut MemWriter::new();
+    let mut encoder = Encoder(m as @mut Writer);
+    to_encode_object.encode(&mut encoder);
+    let buff:&~[u8] = m.inner_ref();
+    (buff.clone())
+} 
+
+pub fn str_encode<T:Encodable<Encoder>>(to_encode_object: &T) -> ~str  {
+    let buff:~[u8] = buffer_encode(to_encode_object);
+    str::from_utf8(buff)
+}
+
 
 impl serialize::Encoder for Encoder {
     fn emit_nil(&mut self) { write!(self.wr, "null") }
@@ -2219,24 +2308,19 @@ mod tests {
         //first possibility to use JSON is the serialization API. 
         //Use a struct that implement Decodable, Encodable.
         //the object to test
-        let test : TestStruct1 = TestStruct1 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
+        let to_encode_object : TestStruct1 = TestStruct1 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
          // encoded ~"{\"dataInt\":1,\"dataStr\":\"toto\",\"dataArray\":[2,3,4,5]}"
 
-        //Serialize the object in a string using a writer
-        let m = @mut MemWriter::new();
-        let mut encoder = Encoder(m as @mut Writer);
-        test.encode(&mut encoder);
-        let buf:&~[u8] = m.inner_ref(); //get the serialized values.
-        let s = from_utf8(*buf);
-
-         assert_eq!(s, ~"{\"1dataInt\":1,\"dataStr\":\"toto\",\"dataArray\":[2,3,4,5]}");
+        //Serialize the Encodable object in a string using str_encode.
+        let encoded_str:~str = str_encode(&to_encode_object);
+         assert_eq!(encoded_str, ~"{\"dataInt\":1,\"dataStr\":\"toto\",\"dataArray\":[2,3,4,5]}");
 
         //unserialize using the object decoder
         //convert the string to a json object.
-        let jsonobject = from_str(s);
+        let jsonobject = from_str(encoded_str);
         let mut decoder = Decoder(jsonobject.unwrap());
         let decoded1: TestStruct1 = serialize::Decodable::decode(&mut decoder); //create the final object
-        assert_eq!(decoded1, test); 
+        assert_eq!(decoded1, to_encode_object); 
     }
 
 
@@ -2321,6 +2405,7 @@ mod tests {
             //thrid use our own encoder to encode
         let test3 : TestStruct2 = TestStruct2 {dataInt: 1, dataStr:~"toto", dataArray:~[2,3,4,5]};
         // encoded {\"dataArray\":[2,3,4,5],\"dataInt\":1,\"dataStr\":\"toto\"}
+        //encoode using Encoder
         let m3 = @mut MemWriter::new();
         let mut encoder3 = Encoder(m3 as @mut Writer);
         test3.encode(&mut encoder3);
