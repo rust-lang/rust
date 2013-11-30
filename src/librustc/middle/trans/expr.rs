@@ -567,8 +567,6 @@ fn trans_to_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     let _icx = push_ctxt("trans_rvalue_datum_unadjusted");
 
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
-
     match expr.node {
         ast::ExprPath(_) | ast::ExprSelf => {
             return trans_def_datum_unadjusted(bcx, expr, bcx.def(expr.id));
@@ -625,8 +623,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> @mut Block
         return bcx;
     }
 
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
-
     match expr.node {
         ast::ExprBreak(label_opt) => {
             return controlflow::trans_break(bcx, label_opt);
@@ -675,8 +671,6 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
                                dest: Dest) -> @mut Block {
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let tcx = bcx.tcx();
-
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::ExprParen(e) => {
@@ -894,8 +888,6 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
     debug!("trans_lvalue(expr={})", bcx.expr_to_str(expr));
     let _indenter = indenter();
-
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     return match expr.node {
         ast::ExprParen(e) => {

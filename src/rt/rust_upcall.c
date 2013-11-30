@@ -51,7 +51,7 @@ struct s_rust_personality_args {
     struct _Unwind_Context *context;
 };
 
-void
+static void
 upcall_s_rust_personality(struct s_rust_personality_args *args) {
     args->retval = PERSONALITY_FUNC(args->version,
                                     args->actions,
@@ -78,6 +78,7 @@ upcall_rust_personality(int version,
     return args.retval;
 }
 
+// NOTE: remove after stage0
 // Landing pads need to call this to insert the
 // correct limit into TLS.
 // NB: This must run on the Rust stack because it
