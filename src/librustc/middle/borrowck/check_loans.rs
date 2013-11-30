@@ -48,14 +48,14 @@ impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
     fn visit_local(&mut self, l:@ast::Local, _:()) {
         check_loans_in_local(self, l);
     }
-    fn visit_block(&mut self, b:&ast::Block, _:()) {
+    fn visit_block(&mut self, b:ast::P<ast::Block>, _:()) {
         check_loans_in_block(self, b);
     }
     fn visit_pat(&mut self, p:&ast::Pat, _:()) {
         check_loans_in_pat(self, p);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:Span, n:ast::NodeId, _:()) {
+                b:ast::P<ast::Block>, s:Span, n:ast::NodeId, _:()) {
         check_loans_in_fn(self, fk, fd, b, s, n);
     }
 }
@@ -64,7 +64,7 @@ pub fn check_loans(bccx: &BorrowckCtxt,
                    dfcx_loans: &LoanDataFlow,
                    move_data: move_data::FlowedMoveData,
                    all_loans: &[Loan],
-                   body: &ast::Block) {
+                   body: ast::P<ast::Block>) {
     debug!("check_loans(body id={:?})", body.id);
 
     let mut clcx = CheckLoanCtxt {
@@ -724,7 +724,7 @@ impl<'self> CheckLoanCtxt<'self> {
 fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
                          fk: &visit::fn_kind,
                          decl: &ast::fn_decl,
-                         body: &ast::Block,
+                         body: ast::P<ast::Block>,
                          sp: Span,
                          id: ast::NodeId) {
     match *fk {
@@ -855,7 +855,7 @@ fn check_loans_in_pat<'a>(this: &mut CheckLoanCtxt<'a>,
 }
 
 fn check_loans_in_block<'a>(this: &mut CheckLoanCtxt<'a>,
-                            blk: &ast::Block)
+                            blk: ast::P<ast::Block>)
 {
     visit::walk_block(this, blk, ());
     this.check_for_conflicting_loans(blk.id);

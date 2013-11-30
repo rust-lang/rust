@@ -269,7 +269,7 @@ fn visit_expr(e: @ast::Expr, wbcx: &mut WbCtxt) {
     visit::walk_expr(wbcx, e, ());
 }
 
-fn visit_block(b: &ast::Block, wbcx: &mut WbCtxt) {
+fn visit_block(b: ast::P<ast::Block>, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -322,7 +322,7 @@ impl Visitor<()> for WbCtxt {
     fn visit_item(&mut self, i:@ast::item, _:()) { visit_item(i, self); }
     fn visit_stmt(&mut self, s:@ast::Stmt, _:()) { visit_stmt(s, self); }
     fn visit_expr(&mut self, ex:@ast::Expr, _:()) { visit_expr(ex, self); }
-    fn visit_block(&mut self, b:&ast::Block, _:()) { visit_block(b, self); }
+    fn visit_block(&mut self, b:ast::P<ast::Block>, _:()) { visit_block(b, self); }
     fn visit_pat(&mut self, p:&ast::Pat, _:()) { visit_pat(p, self); }
     fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(l, self); }
 }
@@ -336,7 +336,7 @@ pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::Expr) -> bool {
 
 pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
-                               blk: &ast::Block,
+                               blk: ast::P<ast::Block>,
                                self_info: Option<SelfInfo>) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;

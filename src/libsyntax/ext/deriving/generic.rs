@@ -175,7 +175,7 @@ StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Unnamed(~[<span of int>])),
 */
 
 use ast;
-use ast::{enum_def, Expr, Ident, Generics, struct_def};
+use ast::{P, enum_def, Expr, Ident, Generics, struct_def};
 
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -279,7 +279,7 @@ pub enum SubstructureFields<'self> {
     [field span, field ident, fields])] (i.e. all fields for self are in the
     first tuple, for other1 are in the second tuple, etc.)
     */
-    EnumNonMatching(&'self [(uint, ast::variant, ~[(Span, Option<Ident>, @Expr)])]),
+    EnumNonMatching(&'self [(uint, P<ast::variant>, ~[(Span, Option<Ident>, @Expr)])]),
 
     /// A static method where Self is a struct.
     StaticStruct(&'self ast::struct_def, StaticFields),
@@ -304,7 +304,7 @@ representing each variant: (variant index, ast::variant instance,
 pub type EnumNonMatchFunc<'self> =
     'self |@ExtCtxt,
            Span,
-           &[(uint, ast::variant, ~[(Span, Option<Ident>, @Expr)])],
+           &[(uint, P<ast::variant>, ~[(Span, Option<Ident>, @Expr)])],
            &[@Expr]|
            -> @Expr;
 
@@ -484,7 +484,7 @@ impl<'self> MethodDef<'self> {
     }
 
     fn get_ret_ty(&self, cx: @ExtCtxt, trait_span: Span,
-                  generics: &Generics, type_ident: Ident) -> ast::Ty {
+                  generics: &Generics, type_ident: Ident) -> P<ast::Ty> {
         self.ret_ty.to_ty(cx, trait_span, type_ident, generics)
     }
 
@@ -494,7 +494,7 @@ impl<'self> MethodDef<'self> {
 
     fn split_self_nonself_args(&self, cx: @ExtCtxt, trait_span: Span,
                                type_ident: Ident, generics: &Generics)
-        -> (ast::explicit_self, ~[@Expr], ~[@Expr], ~[(Ident, ast::Ty)]) {
+        -> (ast::explicit_self, ~[@Expr], ~[@Expr], ~[(Ident, P<ast::Ty>)]) {
 
         let mut self_args = ~[];
         let mut nonself_args = ~[];
@@ -542,7 +542,7 @@ impl<'self> MethodDef<'self> {
                      type_ident: Ident,
                      generics: &Generics,
                      explicit_self: ast::explicit_self,
-                     arg_types: ~[(Ident, ast::Ty)],
+                     arg_types: ~[(Ident, P<ast::Ty>)],
                      body: @Expr) -> @ast::method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_span, type_ident, generics);
@@ -745,7 +745,7 @@ impl<'self> MethodDef<'self> {
                         self_args: &[@Expr],
                         nonself_args: &[@Expr],
                         matching: Option<uint>,
-                        matches_so_far: &mut ~[(uint, ast::variant,
+                        matches_so_far: &mut ~[(uint, P<ast::variant>,
                                               ~[(Span, Option<Ident>, @Expr)])],
                         match_count: uint) -> @Expr {
         if match_count == self_args.len() {
@@ -772,7 +772,7 @@ impl<'self> MethodDef<'self> {
                     // `ref` inside let matches is buggy. Causes havoc wih rusc.
                     // let (variant_index, ref self_vec) = matches_so_far[0];
                     let (variant, self_vec) = match matches_so_far[0] {
-                        (_, ref v, ref s) => (v, s)
+                        (_, v, ref s) => (v, s)
                     };
 
                     let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
@@ -828,15 +828,13 @@ impl<'self> MethodDef<'self> {
                 };
 
                 // matching-variant match
-                let variant = &enum_def.variants[index];
+                let variant = enum_def.variants[index];
                 let (pattern, idents) = create_enum_variant_pattern(cx,
                                                                     variant,
                                                                     current_match_str,
                                                                     ast::MutImmutable);
 
-                matches_so_far.push((index,
-                                     /*bad*/ (*variant).clone(),
-                                     idents));
+                matches_so_far.push((index, variant, idents));
                 let arm_expr = self.build_enum_match(cx, trait_span,
                                                      enum_def,
                                                      type_ident,
@@ -859,15 +857,13 @@ impl<'self> MethodDef<'self> {
                 }
             } else {
                 // create an arm matching on each variant
-                for (index, variant) in enum_def.variants.iter().enumerate() {
+                for (index, &variant) in enum_def.variants.iter().enumerate() {
                     let (pattern, idents) = create_enum_variant_pattern(cx,
                                                                         variant,
                                                                         current_match_str,
                                                                         ast::MutImmutable);
 
-                    matches_so_far.push((index,
-                                         /*bad*/ (*variant).clone(),
-                                         idents));
+                    matches_so_far.push((index, variant, idents));
                     let new_matching =
                         match matching {
                             _ if match_count == 0 => Some(index),

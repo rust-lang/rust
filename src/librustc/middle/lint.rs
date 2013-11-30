@@ -733,19 +733,19 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
         for input in decl.inputs.iter() {
-            check_ty(cx, &input.ty);
+            check_ty(cx, input.ty);
         }
-        check_ty(cx, &decl.output)
+        check_ty(cx, decl.output)
     }
 
     match it.node {
       ast::item_foreign_mod(ref nmod) if !nmod.abis.is_intrinsic() => {
         for ni in nmod.items.iter() {
             match ni.node {
-                ast::foreign_item_fn(ref decl, _) => {
+                ast::foreign_item_fn(decl, _) => {
                     check_foreign_fn(cx, decl);
                 }
-                ast::foreign_item_static(ref t, _) => { check_ty(cx, t); }
+                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
             }
         }
       }
@@ -1267,7 +1267,7 @@ impl<'self> Visitor<()> for Context<'self> {
     }
 
     fn visit_fn(&mut self, fk: &visit::fn_kind, decl: &ast::fn_decl,
-                body: &ast::Block, span: Span, id: ast::NodeId, _: ()) {
+                body: ast::P<ast::Block>, span: Span, id: ast::NodeId, _: ()) {
         let recurse = |this: &mut Context| {
             visit::walk_fn(this, fk, decl, body, span, id, ());
         };

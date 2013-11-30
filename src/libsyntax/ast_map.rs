@@ -115,12 +115,12 @@ pub enum ast_node {
     /// node_variant represents a variant of an enum, e.g., for
     /// `enum A { B, C, D }`, there would be a node_item for `A`, and a
     /// node_variant item for each of `B`, `C`, and `D`.
-    node_variant(variant, @item, @path),
+    node_variant(P<variant>, @item, @path),
     node_expr(@Expr),
     node_stmt(@Stmt),
     node_arg(@Pat),
     node_local(Ident),
-    node_block(Block),
+    node_block(P<Block>),
 
     /// node_struct_ctor represents a tuple struct.
     node_struct_ctor(@struct_def, @item, @path),
@@ -214,7 +214,7 @@ impl Ctx {
     fn map_fn(&mut self,
               fk: &visit::fn_kind,
               decl: &fn_decl,
-              body: &Block,
+              body: P<Block>,
               sp: codemap::Span,
               id: NodeId) {
         for a in decl.inputs.iter() {
@@ -236,9 +236,8 @@ impl Ctx {
         visit::walk_stmt(self, stmt, ());
     }
 
-    fn map_block(&mut self, b: &Block) {
-        // clone is FIXME #2543
-        self.map.insert(b.id, node_block((*b).clone()));
+    fn map_block(&mut self, b: P<Block>) {
+        self.map.insert(b.id, node_block(b));
         visit::walk_block(self, b, ());
     }
 
@@ -262,7 +261,7 @@ impl Visitor<()> for Ctx {
         let item_path = @self.path.clone();
         self.map.insert(i.id, node_item(i, item_path));
         match i.node {
-            item_impl(_, ref maybe_trait, ref ty, ref ms) => {
+            item_impl(_, ref maybe_trait, ty, ref ms) => {
                 // Right now the ident on impls is __extensions__ which isn't
                 // very pretty when debugging, so attempt to select a better
                 // name to use.
@@ -277,13 +276,10 @@ impl Visitor<()> for Ctx {
                 self.path.push(elt);
             }
             item_enum(ref enum_definition, _) => {
-                for v in (*enum_definition).variants.iter() {
+                for &v in enum_definition.variants.iter() {
                     let elt = path_name(i.ident);
-                    // FIXME #2543: bad clone
                     self.map.insert(v.node.id,
-                                    node_variant((*v).clone(),
-                                                 i,
-                                                 self.extend(elt)));
+                                    node_variant(v, i, self.extend(elt)));
                 }
             }
             item_foreign_mod(ref nm) => {
@@ -361,14 +357,14 @@ impl Visitor<()> for Ctx {
     fn visit_fn(&mut self,
                 function_kind: &fn_kind,
                 function_declaration: &fn_decl,
-                block: &Block,
+                block: P<Block>,
                 span: Span,
                 node_id: NodeId,
                 _: ()) {
         self.map_fn(function_kind, function_declaration, block, span, node_id)
     }
 
-    fn visit_block(&mut self, block: &Block, _: ()) {
+    fn visit_block(&mut self, block: P<Block>, _: ()) {
         self.map_block(block)
     }
 
@@ -477,7 +473,7 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
       Some(&node_local(ident)) => {
         format!("local (id={}, name={})", id, itr.get(ident.name))
       }
-      Some(&node_block(ref block)) => {
+      Some(&node_block(block)) => {
         format!("block {} (id={})", pprust::block_to_str(block, itr), id)
       }
       Some(&node_struct_ctor(_, _, path)) => {

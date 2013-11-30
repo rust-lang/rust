@@ -301,7 +301,7 @@ struct NestedItemsDropper {
 }
 
 impl fold::ast_fold for NestedItemsDropper {
-    fn fold_block(&self, blk: &ast::Block) -> ast::Block {
+    fn fold_block(&self, blk: ast::P<ast::Block>) -> ast::P<ast::Block> {
         let stmts_sans_items = blk.stmts.iter().filter_map(|stmt| {
             match stmt.node {
                 ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
@@ -316,7 +316,7 @@ impl fold::ast_fold for NestedItemsDropper {
                 ast::StmtMac(..) => fail!("unexpanded macro in astencode")
             }
         }).collect();
-        let blk_sans_items = ast::Block {
+        let blk_sans_items = ast::P(ast::Block {
             view_items: ~[], // I don't know if we need the view_items here,
                              // but it doesn't break tests!
             stmts: stmts_sans_items,
@@ -324,8 +324,8 @@ impl fold::ast_fold for NestedItemsDropper {
             id: blk.id,
             rules: blk.rules,
             span: blk.span,
-        };
-        fold::noop_fold_block(&blk_sans_items, self)
+        });
+        fold::noop_fold_block(blk_sans_items, self)
     }
 }
 

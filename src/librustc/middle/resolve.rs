@@ -159,7 +159,7 @@ impl Visitor<()> for Resolver {
     fn visit_arm(&mut self, arm:&Arm, _:()) {
         self.resolve_arm(arm);
     }
-    fn visit_block(&mut self, block:&Block, _:()) {
+    fn visit_block(&mut self, block:P<Block>, _:()) {
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr:@Expr, _:()) {
@@ -921,7 +921,7 @@ impl<'self> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'self> {
         self.resolver.build_reduced_graph_for_view_item(view_item, context);
     }
 
-    fn visit_block(&mut self, block:&Block, context:ReducedGraphParent) {
+    fn visit_block(&mut self, block:P<Block>, context:ReducedGraphParent) {
         let np = self.resolver.build_reduced_graph_for_block(block, context);
         visit::walk_block(self, block, np);
     }
@@ -1203,7 +1203,7 @@ impl Resolver {
                 name_bindings.define_type
                     (DefTy(local_def(item.id)), sp, is_public);
 
-                for variant in (*enum_definition).variants.iter() {
+                for &variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
                         variant,
                         local_def(item.id),
@@ -1240,7 +1240,7 @@ impl Resolver {
                 new_parent
             }
 
-            item_impl(_, None, ref ty, ref methods) => {
+            item_impl(_, None, ty, ref methods) => {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
@@ -1250,11 +1250,8 @@ impl Resolver {
                 // the same module that declared the type.
 
                 // Create the module and add all methods.
-                match ty {
-                    &Ty {
-                        node: ty_path(ref path, _, _),
-                        ..
-                    } if path.segments.len() == 1 => {
+                match ty.node {
+                    ty_path(ref path, _, _) if path.segments.len() == 1 => {
                         let name = path_to_ident(path);
 
                         let new_parent = match parent.children.find(&name.name) {
@@ -3569,7 +3566,7 @@ impl Resolver {
 
             item_impl(ref generics,
                       ref implemented_traits,
-                      ref self_type,
+                      self_type,
                       ref methods) => {
                 self.resolve_implementation(item.id,
                                             generics,
@@ -3621,10 +3618,10 @@ impl Resolver {
                                     &ty_m.generics.ty_params);
 
                                 for argument in ty_m.decl.inputs.iter() {
-                                    this.resolve_type(&argument.ty);
+                                    this.resolve_type(argument.ty);
                                 }
 
-                                this.resolve_type(&ty_m.decl.output);
+                                this.resolve_type(ty_m.decl.output);
                             });
                           }
                           provided(m) => {
@@ -3676,7 +3673,7 @@ impl Resolver {
                 });
             }
 
-            item_fn(ref fn_decl, _, _, ref generics, ref block) => {
+            item_fn(fn_decl, _, _, ref generics, block) => {
                 self.resolve_function(OpaqueFunctionRibKind,
                                       Some(fn_decl),
                                       HasTypeParameters
@@ -3760,9 +3757,9 @@ impl Resolver {
 
     fn resolve_function(&mut self,
                             rib_kind: RibKind,
-                            optional_declaration: Option<&fn_decl>,
+                            optional_declaration: Option<P<fn_decl>>,
                             type_parameters: TypeParameters,
-                            block: &Block,
+                            block: P<Block>,
                             self_binding: SelfBinding) {
         // Create a value rib for the function.
         let function_value_rib = @Rib::new(rib_kind);
@@ -3811,12 +3808,12 @@ impl Resolver {
                                              binding_mode,
                                              None);
 
-                        this.resolve_type(&argument.ty);
+                        this.resolve_type(argument.ty);
 
                         debug!("(resolving function) recorded argument");
                     }
 
-                    this.resolve_type(&declaration.output);
+                    this.resolve_type(declaration.output);
                 }
             }
 
@@ -3909,7 +3906,7 @@ impl Resolver {
 
             // Resolve fields.
             for field in fields.iter() {
-                this.resolve_type(&field.node.ty);
+                this.resolve_type(field.node.ty);
             }
         });
     }
@@ -3933,9 +3930,9 @@ impl Resolver {
         };
 
         self.resolve_function(rib_kind,
-                              Some(&method.decl),
+                              Some(method.decl),
                               type_parameters,
-                              &method.body,
+                              method.body,
                               self_binding);
     }
 
@@ -3995,7 +3992,7 @@ impl Resolver {
                     self.resolve_function(MethodRibKind(
                                           id,
                                           Provided(method.id)),
-                                          Some(@method.decl),
+                                          Some(method.decl),
                                           HasTypeParameters
                                             (borrowed_type_parameters,
                                              method.id,
@@ -4027,7 +4024,7 @@ impl Resolver {
 
     fn resolve_local(&mut self, local: @Local) {
         // Resolve the type.
-        self.resolve_type(&local.ty);
+        self.resolve_type(local.ty);
 
         // Resolve the initializer, if necessary.
         match local.init {
@@ -4112,12 +4109,12 @@ impl Resolver {
         self.check_consistent_bindings(arm);
 
         visit::walk_expr_opt(self, arm.guard, ());
-        self.resolve_block(&arm.body);
+        self.resolve_block(arm.body);
 
         self.value_ribs.pop();
     }
 
-    fn resolve_block(&mut self, block: &Block) {
+    fn resolve_block(&mut self, block: P<Block>) {
         debug!("(resolving block) entering block");
         self.value_ribs.push(@Rib::new(NormalRibKind));
 
@@ -4374,7 +4371,7 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.segments
+                    for &ty in path.segments
                                   .iter()
                                   .flat_map(|seg| seg.types.iter()) {
                         self.resolve_type(ty);
@@ -4409,7 +4406,7 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.segments
+                    for &ty in path.segments
                                   .iter()
                                   .flat_map(|s| s.types.iter()) {
                         self.resolve_type(ty);
@@ -4446,7 +4443,7 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.segments
+                    for &ty in path.segments
                                   .iter()
                                   .flat_map(|s| s.types.iter()) {
                         self.resolve_type(ty);
@@ -4550,7 +4547,7 @@ impl Resolver {
                     namespace: Namespace,
                     check_ribs: bool) -> Option<(Def, LastPrivate)> {
         // First, resolve the types.
-        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
+        for &ty in path.segments.iter().flat_map(|s| s.types.iter()) {
             self.resolve_type(ty);
         }
 
@@ -5034,8 +5031,8 @@ impl Resolver {
                 visit::walk_expr(self, expr, ());
             }
 
-            ExprFnBlock(ref fn_decl, ref block) |
-            ExprProc(ref fn_decl, ref block) => {
+            ExprFnBlock(fn_decl, block) |
+            ExprProc(fn_decl, block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl),
                                       NoTypeParameters,

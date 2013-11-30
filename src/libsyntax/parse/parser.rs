@@ -41,7 +41,7 @@ use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int, lit_char};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local};
 use ast::{MutImmutable, MutMutable, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, BiMul, Mutability};
-use ast::{named_field, UnNeg, noreturn, UnNot, Pat, PatBox, PatEnum};
+use ast::{named_field, UnNeg, noreturn, UnNot, P, Pat, PatBox, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatUniq, PatWild, PatWildMulti, private};
 use ast::{BiRem, required};
@@ -190,6 +190,22 @@ macro_rules! maybe_whole (
             }
         }
     );
+    (no_clone $p:expr, $constructor:ident) => (
+        {
+            let __found__ = match *($p).token {
+                INTERPOLATED(token::$constructor(_)) => {
+                    Some(($p).bump_and_get())
+                }
+                _ => None
+            };
+            match __found__ {
+                Some(INTERPOLATED(token::$constructor(x))) => {
+                    return x
+                }
+                _ => {}
+            }
+        }
+    );
     (deref $p:expr, $constructor:ident) => (
         {
             let __found__ = match *($p).token {
@@ -247,8 +263,8 @@ macro_rules! maybe_whole (
                 _ => None
             };
             match __found__ {
-                Some(INTERPOLATED(token::$constructor(ref x))) => {
-                    return (~[], (**x).clone())
+                Some(INTERPOLATED(token::$constructor(x))) => {
+                    return (~[], x)
                 }
                 _ => {}
             }
@@ -960,12 +976,12 @@ impl Parser {
                 let bounds = self.parse_optional_ty_param_bounds();
 
                 let (return_style, output) = self.parse_ret_ty();
-                let decl = ast::fn_decl {
+                let decl = P(ast::fn_decl {
                     inputs: inputs,
                     output: output,
                     cf: return_style,
                     variadic: false
-                };
+                });
 
                 (BorrowedSigil, decl, lifetimes, bounds)
             }
@@ -999,7 +1015,7 @@ impl Parser {
     }
 
     // parse a function type (following the 'fn')
-    pub fn parse_ty_fn_decl(&self, allow_variadic: bool) -> (fn_decl, OptVec<ast::Lifetime>) {
+    pub fn parse_ty_fn_decl(&self, allow_variadic: bool) -> (P<fn_decl>, OptVec<ast::Lifetime>) {
         /*
 
         (fn) <'lt> (S) -> T
@@ -1020,12 +1036,12 @@ impl Parser {
 
         let (inputs, variadic) = self.parse_fn_args(false, allow_variadic);
         let (ret_style, ret_ty) = self.parse_ret_ty();
-        let decl = ast::fn_decl {
+        let decl = P(ast::fn_decl {
             inputs: inputs,
             output: ret_ty,
             cf: ret_style,
             variadic: variadic
-        };
+        });
         (decl, lifetimes)
     }
 
@@ -1114,7 +1130,7 @@ impl Parser {
     // parse a possibly mutable type
     pub fn parse_mt(&self) -> mt {
         let mutbl = self.parse_mutability();
-        let t = ~self.parse_ty(false);
+        let t = self.parse_ty(false);
         mt { ty: t, mutbl: mutbl }
     }
 
@@ -1125,7 +1141,7 @@ impl Parser {
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
         self.expect(&token::COLON);
-        let ty = ~self.parse_ty(false);
+        let ty = self.parse_ty(false);
         let hi = ty.span.hi;
         ast::TypeField {
             ident: id,
@@ -1135,17 +1151,17 @@ impl Parser {
     }
 
     // parse optional return type [ -> TY ] in function decl
-    pub fn parse_ret_ty(&self) -> (ret_style, Ty) {
+    pub fn parse_ret_ty(&self) -> (ret_style, P<Ty>) {
         return if self.eat(&token::RARROW) {
             let lo = self.span.lo;
             if self.eat(&token::NOT) {
                 (
                     noreturn,
-                    Ty {
+                    P(Ty {
                         id: ast::DUMMY_NODE_ID,
                         node: ty_bot,
                         span: mk_sp(lo, self.last_span.hi)
-                    }
+                    })
                 )
             } else {
                 (return_val, self.parse_ty(false))
@@ -1154,11 +1170,11 @@ impl Parser {
             let pos = self.span.lo;
             (
                 return_val,
-                Ty {
+                P(Ty {
                     id: ast::DUMMY_NODE_ID,
                     node: ty_nil,
                     span: mk_sp(pos, pos),
-                }
+                })
             )
         }
     }
@@ -1166,8 +1182,8 @@ impl Parser {
     // parse a type.
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
-    pub fn parse_ty(&self, _: bool) -> Ty {
-        maybe_whole!(deref self, nt_ty);
+    pub fn parse_ty(&self, _: bool) -> P<Ty> {
+        maybe_whole!(no_clone self, nt_ty);
 
         let lo = self.span.lo;
 
@@ -1216,7 +1232,7 @@ impl Parser {
         } else if *self.token == token::LBRACKET {
             // VECTOR
             self.expect(&token::LBRACKET);
-            let mt = mt { ty: ~self.parse_ty(false), mutbl: MutImmutable };
+            let mt = mt { ty: self.parse_ty(false), mutbl: MutImmutable };
 
             // Parse the `, ..e` in `[ int, ..e ]`
             // where `e` is a const expression
@@ -1270,7 +1286,7 @@ impl Parser {
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp}
+        P(Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp})
     }
 
     // parse the type following a @ or a ~
@@ -1300,7 +1316,7 @@ impl Parser {
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         if sigil == OwnedSigil {
-            ctor(mt { ty: ~self.parse_ty(false), mutbl: MutImmutable })
+            ctor(mt { ty: self.parse_ty(false), mutbl: MutImmutable })
         } else {
             ctor(self.parse_mt())
         }
@@ -1375,11 +1391,11 @@ impl Parser {
         let t = if self.eat(&token::COLON) {
             self.parse_ty(false)
         } else {
-            Ty {
+            P(Ty {
                 id: ast::DUMMY_NODE_ID,
                 node: ty_infer,
                 span: mk_sp(self.span.lo, self.span.hi),
-            }
+            })
         };
         ast::arg {
             ty: t,
@@ -1691,7 +1707,7 @@ impl Parser {
     pub fn mk_method_call(&self,
                       rcvr: @Expr,
                       ident: Ident,
-                      tps: ~[Ty],
+                      tps: ~[P<Ty>],
                       args: ~[@Expr],
                       sugar: CallSugar) -> ast::Expr_ {
         ExprMethodCall(ast::DUMMY_NODE_ID, rcvr, ident, tps, args, sugar)
@@ -1701,7 +1717,7 @@ impl Parser {
         ExprIndex(ast::DUMMY_NODE_ID, expr, idx)
     }
 
-    pub fn mk_field(&self, expr: @Expr, ident: Ident, tys: ~[Ty]) -> ast::Expr_ {
+    pub fn mk_field(&self, expr: @Expr, ident: Ident, tys: ~[P<Ty>]) -> ast::Expr_ {
         ExprField(expr, ident, tys)
     }
 
@@ -1784,14 +1800,14 @@ impl Parser {
         } else if self.eat_keyword(keywords::Proc) {
             let decl = self.parse_proc_decl();
             let body = self.parse_expr();
-            let fakeblock = ast::Block {
+            let fakeblock = P(ast::Block {
                 view_items: ~[],
                 stmts: ~[],
                 expr: Some(body),
                 id: ast::DUMMY_NODE_ID,
                 rules: DefaultBlock,
                 span: body.span,
-            };
+            });
 
             return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
         } else if self.eat_keyword(keywords::Self) {
@@ -2442,16 +2458,16 @@ impl Parser {
                   }
                   _ => {
                     // No argument list - `do foo {`
-                      ast::fn_decl {
+                      P(ast::fn_decl {
                           inputs: ~[],
-                          output: Ty {
+                          output: P(Ty {
                               id: ast::DUMMY_NODE_ID,
                               node: ty_infer,
                               span: *self.span
-                          },
+                          }),
                           cf: return_val,
                           variadic: false
-                      }
+                      })
                   }
                 }
             },
@@ -2471,20 +2487,20 @@ impl Parser {
     // this is used both in parsing a lambda expr
     // and in parsing a block expr as e.g. in for...
     pub fn parse_lambda_expr_(&self,
-                              parse_decl: || -> fn_decl,
+                              parse_decl: || -> P<fn_decl>,
                               parse_body: || -> @Expr)
                               -> @Expr {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();
-        let fakeblock = ast::Block {
+        let fakeblock = P(ast::Block {
             view_items: ~[],
             stmts: ~[],
             expr: Some(body),
             id: ast::DUMMY_NODE_ID,
             rules: DefaultBlock,
             span: body.span,
-        };
+        });
 
         return self.mk_expr(lo, body.span.hi,
                             ExprFnBlock(decl, fakeblock));
@@ -2659,14 +2675,14 @@ impl Parser {
                 self.eat(&token::COMMA);
             }
 
-            let blk = ast::Block {
+            let blk = P(ast::Block {
                 view_items: ~[],
                 stmts: ~[],
                 expr: Some(expr),
                 id: ast::DUMMY_NODE_ID,
                 rules: DefaultBlock,
                 span: expr.span,
-            };
+            });
 
             arms.push(ast::Arm { pats: pats, guard: guard, body: blk });
         }
@@ -3132,11 +3148,11 @@ impl Parser {
         let lo = self.span.lo;
         let pat = self.parse_pat();
 
-        let mut ty = Ty {
+        let mut ty = P(Ty {
             id: ast::DUMMY_NODE_ID,
             node: ty_infer,
             span: mk_sp(lo, lo),
-        };
+        });
         if self.eat(&token::COLON) { ty = self.parse_ty(false); }
         let init = self.parse_initializer();
         @ast::Local {
@@ -3280,8 +3296,8 @@ impl Parser {
     }
 
     // parse a block. No inner attrs are allowed.
-    pub fn parse_block(&self) -> Block {
-        maybe_whole!(deref self, nt_block);
+    pub fn parse_block(&self) -> P<Block> {
+        maybe_whole!(no_clone self, nt_block);
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
@@ -3294,7 +3310,7 @@ impl Parser {
 
     // parse a block. Inner attrs are allowed.
     fn parse_inner_attrs_and_block(&self)
-        -> (~[Attribute], Block) {
+        -> (~[Attribute], P<Block>) {
 
         maybe_whole!(pair_empty self, nt_block);
 
@@ -3312,13 +3328,13 @@ impl Parser {
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
-    fn parse_block_tail(&self, lo: BytePos, s: BlockCheckMode) -> Block {
+    fn parse_block_tail(&self, lo: BytePos, s: BlockCheckMode) -> P<Block> {
         self.parse_block_tail_(lo, s, ~[])
     }
 
     // parse the rest of a block expression or function body
     fn parse_block_tail_(&self, lo: BytePos, s: BlockCheckMode,
-                         first_item_attrs: ~[Attribute]) -> Block {
+                         first_item_attrs: ~[Attribute]) -> P<Block> {
         let mut stmts = ~[];
         let mut expr = None;
 
@@ -3429,14 +3445,14 @@ impl Parser {
 
         let hi = self.span.hi;
         self.bump();
-        ast::Block {
+        P(ast::Block {
             view_items: view_items,
             stmts: stmts,
             expr: expr,
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: mk_sp(lo, hi),
-        }
+        })
     }
 
     fn parse_optional_purity(&self) -> ast::purity {
@@ -3516,7 +3532,7 @@ impl Parser {
     }
 
     // parse a generic use site
-    fn parse_generic_values(&self) -> (OptVec<ast::Lifetime>, ~[Ty]) {
+    fn parse_generic_values(&self) -> (OptVec<ast::Lifetime>, ~[P<Ty>]) {
         if !self.eat(&token::LT) {
             (opt_vec::Empty, ~[])
         } else {
@@ -3524,7 +3540,7 @@ impl Parser {
         }
     }
 
-    fn parse_generic_values_after_lt(&self) -> (OptVec<ast::Lifetime>, ~[Ty]) {
+    fn parse_generic_values_after_lt(&self) -> (OptVec<ast::Lifetime>, ~[P<Ty>]) {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
@@ -3579,17 +3595,17 @@ impl Parser {
     }
 
     // parse the argument list and result type of a function declaration
-    pub fn parse_fn_decl(&self, allow_variadic: bool) -> fn_decl {
+    pub fn parse_fn_decl(&self, allow_variadic: bool) -> P<fn_decl> {
 
         let (args, variadic) = self.parse_fn_args(true, allow_variadic);
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
-        ast::fn_decl {
+        P(ast::fn_decl {
             inputs: args,
             output: ret_ty,
             cf: ret_style,
             variadic: variadic
-        }
+        })
     }
 
     fn is_self_ident(&self) -> bool {
@@ -3614,7 +3630,7 @@ impl Parser {
     // parse the argument list and result type of a function
     // that may have a self type.
     fn parse_fn_decl_with_self(&self, parse_arg_fn: |&Parser| -> arg)
-                               -> (explicit_self, fn_decl) {
+                               -> (explicit_self, P<fn_decl>) {
         fn maybe_parse_explicit_self(cnstr: |v: Mutability| ->
                                         ast::explicit_self_,
                                      p: &Parser)
@@ -3775,18 +3791,18 @@ impl Parser {
 
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
-        let fn_decl = ast::fn_decl {
+        let fn_decl = P(ast::fn_decl {
             inputs: fn_inputs,
             output: ret_ty,
             cf: ret_style,
             variadic: false
-        };
+        });
 
         (spanned(lo, hi, explicit_self), fn_decl)
     }
 
     // parse the |arg, arg| header on a lambda
-    fn parse_fn_block_decl(&self) -> fn_decl {
+    fn parse_fn_block_decl(&self) -> P<fn_decl> {
         let inputs_captures = {
             if self.eat(&token::OROR) {
                 ~[]
@@ -3802,19 +3818,19 @@ impl Parser {
         let output = if self.eat(&token::RARROW) {
             self.parse_ty(false)
         } else {
-            Ty { id: ast::DUMMY_NODE_ID, node: ty_infer, span: *self.span }
+            P(Ty { id: ast::DUMMY_NODE_ID, node: ty_infer, span: *self.span })
         };
 
-        ast::fn_decl {
+        P(ast::fn_decl {
             inputs: inputs_captures,
             output: output,
             cf: return_val,
             variadic: false
-        }
+        })
     }
 
     // Parses the `(arg, arg) -> return_type` header on a procedure.
-    fn parse_proc_decl(&self) -> fn_decl {
+    fn parse_proc_decl(&self) -> P<fn_decl> {
         let inputs =
             self.parse_unspanned_seq(&token::LPAREN,
                                      &token::RPAREN,
@@ -3824,19 +3840,19 @@ impl Parser {
         let output = if self.eat(&token::RARROW) {
             self.parse_ty(false)
         } else {
-            Ty {
+            P(Ty {
                 id: ast::DUMMY_NODE_ID,
                 node: ty_infer,
                 span: *self.span,
-            }
+            })
         };
 
-        ast::fn_decl {
+        P(ast::fn_decl {
             inputs: inputs,
             output: output,
             cf: return_val,
             variadic: false
-        }
+        })
     }
 
     // parse the name and optional generic types of a function header.
@@ -4517,7 +4533,7 @@ impl Parser {
                 disr_expr: disr_expr,
                 vis: vis,
             };
-            variants.push(spanned(vlo, self.last_span.hi, vr));
+            variants.push(P(spanned(vlo, self.last_span.hi, vr)));
 
             if !self.eat(&token::COMMA) { break; }
         }

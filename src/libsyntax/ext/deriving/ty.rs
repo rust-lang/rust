@@ -14,7 +14,7 @@ explicit `Self` type to use when specifying impls to be derived.
 */
 
 use ast;
-use ast::{Expr,Generics,Ident};
+use ast::{P,Expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
@@ -62,7 +62,7 @@ impl<'self> Path<'self> {
                  span: Span,
                  self_ty: Ident,
                  self_generics: &Generics)
-                 -> ast::Ty {
+                 -> P<ast::Ty> {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
     }
     pub fn to_path(&self,
@@ -130,7 +130,7 @@ impl<'self> Ty<'self> {
                  span: Span,
                  self_ty: Ident,
                  self_generics: &Generics)
-                 -> ast::Ty {
+                 -> P<ast::Ty> {
         match *self {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);

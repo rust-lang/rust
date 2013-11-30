@@ -90,7 +90,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
                             enum_def: ast::DefId,
                             variant_def: ast::DefId)
                        -> Option<@Expr> {
-    fn variant_expr(variants: &[ast::variant], id: ast::NodeId) -> Option<@Expr> {
+    fn variant_expr(variants: &[ast::P<ast::variant>], id: ast::NodeId) -> Option<@Expr> {
         for variant in variants.iter() {
             if variant.node.id == id {
                 return variant.node.disr_expr;

@@ -590,12 +590,6 @@ impl Visitor<()> for CalleeTranslationVisitor {
 
 }
 
-pub fn body_contains_ret(body: &ast::Block) -> bool {
-    let mut v = CalleeTranslationVisitor{ flag: false };
-    visit::walk_block(&mut v, body, ());
-    v.flag
-}
-
 pub fn trans_call_inner(in_cx: @mut Block,
                         call_info: Option<NodeInfo>,
                         callee_ty: ty::t,

@@ -2054,17 +2054,17 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
 
 trait IdAndTy {
     fn id(&self) -> ast::NodeId;
-    fn ty<'a>(&'a self) -> &'a ast::Ty;
+    fn ty(&self) -> ast::P<ast::Ty>;
 }
 
 impl IdAndTy for ast::variant_arg {
     fn id(&self) -> ast::NodeId { self.id }
-    fn ty<'a>(&'a self) -> &'a ast::Ty { &self.ty }
+    fn ty(&self) -> ast::P<ast::Ty> { self.ty }
 }
 
 impl IdAndTy for @ast::struct_field {
     fn id(&self) -> ast::NodeId { self.node.id }
-    fn ty<'a>(&'a self) -> &'a ast::Ty { &self.node.ty }
+    fn ty(&self) -> ast::P<ast::Ty> { self.node.ty }
 }
 
 pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
@@ -2078,7 +2078,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     // Translate variant arguments to function arguments.
     let fn_args = args.map(|varg| {
         ast::arg {
-            ty: (*varg.ty()).clone(),
+            ty: varg.ty(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
                 codemap::dummy_sp(),
@@ -2149,7 +2149,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
                       id: ast::NodeId, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
-    for variant in enum_definition.variants.iter() {
+    for &variant in enum_definition.variants.iter() {
         let disr_val = vi[*i].disr_val;
         *i += 1;
 
@@ -2187,7 +2187,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         _ => fail!("trans_item"),
     };
     match item.node {
-      ast::item_fn(ref decl, purity, _abis, ref generics, ref body) => {
+      ast::item_fn(decl, purity, _abis, ref generics, body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(

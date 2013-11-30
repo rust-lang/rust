@@ -27,7 +27,7 @@ impl<'self> fold::ast_fold for Context<'self> {
     fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
         fold_mod(self, module)
     }
-    fn fold_block(&self, block: &ast::Block) -> ast::Block {
+    fn fold_block(&self, block: ast::P<ast::Block>) -> ast::P<ast::Block> {
         fold_block(self, block)
     }
     fn fold_foreign_mod(&self, foreign_module: &ast::foreign_mod)
@@ -97,10 +97,10 @@ fn fold_foreign_mod(cx: &Context, nm: &ast::foreign_mod) -> ast::foreign_mod {
 
 fn fold_item_underscore(cx: &Context, item: &ast::item_) -> ast::item_ {
     let item = match *item {
-        ast::item_impl(ref a, ref b, ref c, ref methods) => {
+        ast::item_impl(ref a, ref b, c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
                 .map(|x| *x).collect();
-            ast::item_impl((*a).clone(), (*b).clone(), (*c).clone(), methods)
+            ast::item_impl((*a).clone(), (*b).clone(), c, methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
             let methods = methods.iter()
@@ -129,7 +129,7 @@ fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
     }
 }
 
-fn fold_block(cx: &Context, b: &ast::Block) -> ast::Block {
+fn fold_block(cx: &Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
     let resulting_stmts = b.stmts.iter()
             .filter(|&a| retain_stmt(cx, *a))
             .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())
@@ -137,14 +137,14 @@ fn fold_block(cx: &Context, b: &ast::Block) -> ast::Block {
     let filtered_view_items = b.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();
-    ast::Block {
+    ast::P(ast::Block {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
         expr: b.expr.map(|x| cx.fold_expr(x)),
         id: b.id,
         rules: b.rules,
         span: b.span,
-    }
+    })
 }
 
 fn item_in_cfg(cx: &Context, item: @ast::item) -> bool {

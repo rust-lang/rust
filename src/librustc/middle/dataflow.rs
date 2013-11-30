@@ -429,8 +429,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         self.merge_with_entry_set(expr.id, in_out);
 
         match expr.node {
-            ast::ExprFnBlock(ref decl, ref body) |
-            ast::ExprProc(ref decl, ref body) => {
+            ast::ExprFnBlock(ref decl, body) |
+            ast::ExprProc(ref decl, body) => {
                 if self.dfcx.oper.walk_closures() {
                     // In the absence of once fns, we must assume that
                     // every function body will execute more than
@@ -519,7 +519,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 }
             }
 
-            ast::ExprIf(cond, ref then, els) => {
+            ast::ExprIf(cond, then, els) => {
                 //
                 //     (cond)
                 //       |
@@ -542,7 +542,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 join_bits(&self.dfcx.oper, then_bits, in_out);
             }
 
-            ast::ExprWhile(cond, ref blk) => {
+            ast::ExprWhile(cond, blk) => {
                 //
                 //     (expr) <--+
                 //       |       |
@@ -570,7 +570,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
-            ast::ExprLoop(ref blk, _) => {
+            ast::ExprLoop(blk, _) => {
                 //
                 //     (expr) <--+
                 //       |       |
@@ -623,7 +623,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                     // them into `in_out`, which reflects all bodies to date
                     let mut body = reslice(guards).to_owned();
                     self.walk_pat_alternatives(arm.pats, body, loop_scopes);
-                    self.walk_block(&arm.body, body, loop_scopes);
+                    self.walk_block(arm.body, body, loop_scopes);
                     join_bits(&self.dfcx.oper, body, in_out);
                 }
             }
@@ -730,7 +730,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 }
             }
 
-            ast::ExprBlock(ref blk) => {
+            ast::ExprBlock(blk) => {
                 self.walk_block(blk, in_out, loop_scopes);
             }
 
