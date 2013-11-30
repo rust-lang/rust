@@ -14,8 +14,8 @@ LLVM_DEPS := $(S)/.gitmodules
 else
 
 # This is just a rough approximation of LLVM deps
-LLVM_DEPS_SRC=$(call rwildcard,$(CFG_LLVM_SRC_DIR)/lib,*cpp *hpp)
-LLVM_DEPS_INC=$(call rwildcard,$(CFG_LLVM_SRC_DIR)/include,*cpp *hpp)
+LLVM_DEPS_SRC=$(call rwildcard,$(CFG_LLVM_SRC_DIR)lib,*cpp *hpp)
+LLVM_DEPS_INC=$(call rwildcard,$(CFG_LLVM_SRC_DIR)include,*cpp *hpp)
 LLVM_DEPS=$(LLVM_DEPS_SRC) $(LLVM_DEPS_INC)
 endif
 
