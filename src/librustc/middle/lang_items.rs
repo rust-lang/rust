@@ -82,16 +82,18 @@ pub enum LangItem {
     OpaqueStructLangItem,              // 38
 
     EventLoopFactoryLangItem,          // 39
+
+    TypeIdLangItem,                    // 40
 }
 
 pub struct LanguageItems {
-    items: [Option<ast::DefId>, ..40]
+    items: [Option<ast::DefId>, ..41]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..40 ]
+            items: [ None, ..41 ]
         }
     }
 
@@ -147,6 +149,8 @@ impl LanguageItems {
             38 => "opaque",
 
             39 => "event_loop_factory",
+
+            40 => "type_id",
 
             _ => "???"
         }
@@ -298,6 +302,9 @@ impl LanguageItems {
     pub fn event_loop_factory(&self) -> Option<ast::DefId> {
         self.items[EventLoopFactoryLangItem as uint]
     }
+    pub fn type_id(&self) -> Option<ast::DefId> {
+        self.items[TypeIdLangItem as uint]
+    }
 }
 
 struct LanguageItemCollector {
@@ -382,6 +389,7 @@ impl LanguageItemCollector {
         item_refs.insert("ty_visitor", TyVisitorTraitLangItem as uint);
         item_refs.insert("opaque", OpaqueStructLangItem as uint);
         item_refs.insert("event_loop_factory", EventLoopFactoryLangItem as uint);
+        item_refs.insert("type_id", TypeIdLangItem as uint);
 
         LanguageItemCollector {
             session: session,
