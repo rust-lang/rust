@@ -77,7 +77,7 @@ pub fn trans_if(bcx: @mut Block,
             return with_scope(bcx, thn.info(), "if_true_then", |bcx| {
                 let bcx_out = trans_block(bcx, thn, dest);
                 debuginfo::clear_source_location(bcx.fcx);
-                trans_block_cleanups(bcx_out, block_cleanups(bcx))
+                bcx_out
             })
         } else {
             let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
@@ -90,9 +90,9 @@ pub fn trans_if(bcx: @mut Block,
                                       elexpr.info(),
                                       "if_false_then",
                                       |bcx| {
-                        let bcx_out = trans_if_else(bcx, elexpr, dest);
+                        let bcx_out = trans_if_else(bcx, elexpr, dest, false);
                         debuginfo::clear_source_location(bcx.fcx);
-                        trans_block_cleanups(bcx_out, block_cleanups(bcx))
+                        bcx_out
                     })
                 }
                 // if false { .. }
@@ -116,7 +116,7 @@ pub fn trans_if(bcx: @mut Block,
     let (else_bcx_in, next_bcx) = match els {
       Some(elexpr) => {
           let else_bcx_in = scope_block(bcx, elexpr.info(), "else");
-          let else_bcx_out = trans_if_else(else_bcx_in, elexpr, dest);
+          let else_bcx_out = trans_if_else(else_bcx_in, elexpr, dest, true);
           (else_bcx_in, join_blocks(bcx, [then_bcx_out, else_bcx_out]))
       }
       _ => {
@@ -138,7 +138,7 @@ pub fn trans_if(bcx: @mut Block,
 
     // trans `else [ if { .. } ... | { .. } ]`
     fn trans_if_else(else_bcx_in: @mut Block, elexpr: @ast::Expr,
-                     dest: expr::Dest) -> @mut Block {
+                     dest: expr::Dest, cleanup: bool) -> @mut Block {
         let else_bcx_out = match elexpr.node {
             ast::ExprIf(_, _, _) => {
                 let elseif_blk = ast_util::block_from_expr(elexpr);
@@ -150,8 +150,12 @@ pub fn trans_if(bcx: @mut Block,
             // would be nice to have a constraint on ifs
             _ => else_bcx_in.tcx().sess.bug("strange alternative in if")
         };
-        debuginfo::clear_source_location(else_bcx_in.fcx);
-        trans_block_cleanups(else_bcx_out, block_cleanups(else_bcx_in))
+        if cleanup {
+            debuginfo::clear_source_location(else_bcx_in.fcx);
+            trans_block_cleanups(else_bcx_out, block_cleanups(else_bcx_in))
+        } else {
+            else_bcx_out
+        }
     }
 }
 
