@@ -27,8 +27,14 @@ pub struct MemWriter {
 }
 
 impl MemWriter {
+    /// Create a new `MemWriter`.
     pub fn new() -> MemWriter {
-        MemWriter { buf: vec::with_capacity(128), pos: 0 }
+        MemWriter::with_capacity(128)
+    }
+    /// Create a new `MemWriter`, allocating at least `n` bytes for
+    /// the internal buffer.
+    pub fn with_capacity(n: uint) -> MemWriter {
+        MemWriter { buf: vec::with_capacity(n), pos: 0 }
     }
 }
 
