@@ -730,7 +730,7 @@ fn encode_provided_source(ebml_w: &mut writer::Encoder,
 fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           path: &[ast_map::path_elt],
-                          fields: &[@struct_field],
+                          fields: &[struct_field],
                           global_index: @mut ~[entry<i64>])
                           -> ~[entry<i64>] {
     /* Each class has its own index, since different classes

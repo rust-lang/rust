@@ -92,7 +92,7 @@ pub trait Visitor<E:Clone> {
     fn visit_struct_def(&mut self, s:@struct_def, i:Ident, g:&Generics, n:NodeId, e:E) {
         walk_struct_def(self, s, i, g, n, e)
     }
-    fn visit_struct_field(&mut self, s:@struct_field, e:E) { walk_struct_field(self, s, e) }
+    fn visit_struct_field(&mut self, s:&struct_field, e:E) { walk_struct_field(self, s, e) }
     fn visit_variant(&mut self, v:&variant, g:&Generics, e:E) { walk_variant(self, v, g, e) }
     fn visit_opt_lifetime_ref(&mut self,
                               _span: Span,
@@ -538,7 +538,7 @@ pub fn walk_struct_def<E:Clone, V:Visitor<E>>(visitor: &mut V,
                                  _: NodeId,
                                  env: E) {
     for field in struct_definition.fields.iter() {
-        visitor.visit_struct_field(*field, env.clone())
+        visitor.visit_struct_field(field, env.clone())
     }
 }
 

@@ -1098,7 +1098,7 @@ impl visibility {
     }
 }
 
-#[deriving(Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct struct_field_ {
     kind: struct_field_kind,
     id: NodeId,
@@ -1108,7 +1108,7 @@ pub struct struct_field_ {
 
 pub type struct_field = Spanned<struct_field_>;
 
-#[deriving(Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub enum struct_field_kind {
     named_field(Ident, visibility),
     unnamed_field   // element of a tuple-like struct
@@ -1116,7 +1116,7 @@ pub enum struct_field_kind {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct struct_def {
-    fields: ~[@struct_field], /* fields, not including ctor */
+    fields: ~[struct_field], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<NodeId>
