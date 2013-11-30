@@ -607,7 +607,7 @@ CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
 CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
 CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
-CFG_SUPPORTED_TARGET="$(grep ^CC_*=* $CFG_SRC_DIR/mk/platform.mk | sed -e 's/^CC_//' -e 's/\([^=]*\).*/\1/' | xargs)"
+CFG_SUPPORTED_TARGET="$(grep ^CC_*=* ${CFG_SRC_DIR}mk/platform.mk | sed -e 's/^CC_//' -e 's/\([^=]*\).*/\1/' | xargs)"
 
 # copy host-triples to target-triples so that hosts are a subset of targets
 V_TEMP=""
