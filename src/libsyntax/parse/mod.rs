@@ -341,11 +341,12 @@ mod test {
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::string_to_stmt;
 
-    #[cfg(test)] fn to_json_str<E : Encodable<extra::json::Encoder>>(val: @E) -> ~str {
-        let writer = @mut MemWriter::new();
-        let mut encoder = extra::json::Encoder(writer as @mut io::Writer);
+    #[cfg(test)]
+    fn to_json_str<'a, E: Encodable<extra::json::Encoder<'a>>>(val: &E) -> ~str {
+        let mut writer = MemWriter::new();
+        let mut encoder = extra::json::Encoder::init(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
-        str::from_utf8(*writer.inner_ref())
+        str::from_utf8_owned(writer.inner())
     }
 
     // produce a codemap::span
