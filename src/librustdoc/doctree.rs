@@ -80,7 +80,7 @@ pub struct Struct {
     name: Ident,
     generics: ast::Generics,
     attrs: ~[ast::Attribute],
-    fields: ~[@ast::struct_field],
+    fields: ~[ast::struct_field],
     where: Span,
 }
 
