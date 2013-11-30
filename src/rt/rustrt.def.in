@@ -23,6 +23,14 @@ rust_dbg_call
 rust_dbg_do_nothing
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
+tdefl_compressor_alloc
+tdefl_compressor_free
+tinfl_decompressor_alloc
+tinfl_decompressor_free
+tdefl_init
+tdefl_compress
+tinfl_decompress
+mz_free
 rust_swap_registers
 rust_readdir
 rust_opendir

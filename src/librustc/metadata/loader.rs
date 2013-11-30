@@ -32,7 +32,7 @@ use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::vec;
-use extra::flate;
+use extra::deflate;
 
 pub enum Os {
     OsMacos,
@@ -232,7 +232,7 @@ fn get_metadata_section(os: Os,
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
                 vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
-                    let inflated = flate::inflate_bytes(bytes);
+                    let inflated = deflate::inflate_bytes(bytes);
                     found = Some(@(inflated));
                 });
                 if found != None {
