@@ -346,7 +346,7 @@ mod test {
         let mut writer = MemWriter::new();
         let mut encoder = extra::json::Encoder::init(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
-        str::from_utf8(*writer.inner_ref())
+        str::from_utf8_owned(writer.inner())
     }
 
     // produce a codemap::span

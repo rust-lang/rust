@@ -312,9 +312,12 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
     let crate_json_str = {
-        let w = @mut MemWriter::new();
-        crate.encode(&mut json::Encoder::init(w as @mut io::Writer));
-        str::from_utf8(*w.inner_ref())
+        let mut w = MemWriter::new();
+        {
+            let mut encoder = json::Encoder::init(&mut w as &mut io::Writer);
+            crate.encode(&mut encoder);
+        }
+        str::from_utf8_owned(w.inner())
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,
