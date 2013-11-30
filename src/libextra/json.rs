@@ -49,10 +49,10 @@ A simple JSON document encoding a person, his/her age, address and phone numbers
 #Rust implementation
 
 The Rust implementation is based on the serialization API.
-Data to encode must implement the trait serialize::Encodable.
-Data to devode must implement the trait serialize::Decodable.
-Rust compilateur provide an annotation to automaticaly generate
-the code for these trait: #[deriving(Decodable, Encodable)]
+Data to encode must implement the trait 'serialize::Encodable'.
+Data to devode must implement the trait 'serialize::Decodable'.
+Rust compiler provide an annotation to automatically generate
+the code for these trait: '#[deriving(Decodable, Encodable)]'
 
 To encode using Encodable :
 
@@ -113,7 +113,7 @@ use std::io::Decorator;
 
 ##First example
 
-use a struct called TestStruct1 and serialize and unserialize using
+Use a struct called TestStruct1 and serialize and unserialize using
 json with the serialization API. Serialization code is generated
 by rustc.
 
@@ -126,7 +126,7 @@ pub struct TestStruct1  {
 }
 ```
 
-To serialize use the json::str_encode to encode an object in a string.
+To serialize use the 'json::str_encode' to encode an object in a string.
 It calls the generated Encodable impl.
 
 ```rust
@@ -135,7 +135,7 @@ It calls the generated Encodable impl.
     let encoded_str:~str = str_encode(&to_encode_object);
 ```
 
-To unserialize use the extra::json::from_str and extra::json::Decoder
+To unserialize use the 'extra::json::from_str' and 'extra::json::Decoder'
 
 ```rust
 let jsonobject = extra::json::from_str(s);
@@ -208,8 +208,7 @@ Unserialize using our impl of Decodable
 
 ##Third example
 
-This example use the our impl of Encodable to serialize :
-Encodable impl:
+This example use the our impl of 'Encodable' to serialize :
 
 ```rust
 impl<S:extra::serialize::Encoder> extra::serialize::Encodable<S> for TestStruct2 {
