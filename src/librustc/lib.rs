@@ -16,9 +16,11 @@
 
 #[comment = "The Rust compiler"];
 #[license = "MIT/ASL2"];
-#[crate_type = "lib"];
+#[crate_type = "lib"]; // NOTE: remove after stage0 snapshot
+#[crate_type = "dylib"];
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
+#[allow(attribute_usage)]; // NOTE: remove after the next snapshot
 
 extern mod extra;
 extern mod syntax;
@@ -87,6 +89,7 @@ pub mod front {
 }
 
 pub mod back {
+    pub mod archive;
     pub mod link;
     pub mod abi;
     pub mod upcall;

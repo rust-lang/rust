@@ -1507,18 +1507,14 @@ an `abi` string, as shown here:
 extern "stdcall" { }
 ~~~~
 
-The `link_name` attribute allows the name of the library to be specified.
+The `link` attribute allows the name of the library to be specified. When
+specified the compiler will attempt to link against the native library of the
+specified name.
 
 ~~~~ {.xfail-test}
-#[link_name = "crypto"]
+#[link(name = "crypto")]
 extern { }
 ~~~~
-
-The `nolink` attribute tells the Rust compiler
-not to do any linking for the external block.
-This is particularly useful for creating external blocks for libc,
-which tends to not follow standard library naming conventions
-and is linked to all Rust programs anyway.
 
 The type of a function
 declared in an extern block

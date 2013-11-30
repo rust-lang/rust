@@ -34,12 +34,33 @@ pub struct crate_metadata {
     cnum: ast::CrateNum
 }
 
+#[deriving(Eq)]
+pub enum LinkagePreference {
+    RequireDynamic,
+    RequireStatic,
+}
+
+#[deriving(Eq)]
+pub enum NativeLibaryKind {
+    NativeStatic,
+    NativeUnknown,
+}
+
+// Where a crate came from on the local filesystem. One of these two options
+// must be non-None.
+#[deriving(Eq)]
+pub struct CrateSource {
+    dylib: Option<Path>,
+    rlib: Option<Path>,
+    cnum: ast::CrateNum,
+}
+
 pub struct CStore {
     priv metas: HashMap <ast::CrateNum, @crate_metadata>,
     priv extern_mod_crate_map: extern_mod_crate_map,
-    priv used_crate_files: ~[Path],
-    priv used_libraries: ~[@str],
-    priv used_link_args: ~[@str],
+    priv used_crate_sources: ~[CrateSource],
+    priv used_libraries: ~[(~str, NativeLibaryKind)],
+    priv used_link_args: ~[~str],
     intr: @ident_interner
 }
 
@@ -50,7 +71,7 @@ pub fn mk_cstore(intr: @ident_interner) -> CStore {
     return CStore {
         metas: HashMap::new(),
         extern_mod_crate_map: HashMap::new(),
-        used_crate_files: ~[],
+        used_crate_sources: ~[],
         used_libraries: ~[],
         used_link_args: ~[],
         intr: intr
@@ -88,39 +109,50 @@ pub fn iter_crate_data(cstore: &CStore, i: |ast::CrateNum, @crate_metadata|) {
     }
 }
 
-pub fn add_used_crate_file(cstore: &mut CStore, lib: &Path) {
-    if !cstore.used_crate_files.contains(lib) {
-        cstore.used_crate_files.push((*lib).clone());
+pub fn add_used_crate_source(cstore: &mut CStore, src: CrateSource) {
+    if !cstore.used_crate_sources.contains(&src) {
+        cstore.used_crate_sources.push(src);
     }
 }
 
-pub fn get_used_crate_files(cstore: &CStore) -> ~[Path] {
-    // XXX(pcwalton): Bad copy.
-    return cstore.used_crate_files.clone();
+pub fn get_used_crate_sources<'a>(cstore: &'a CStore) -> &'a [CrateSource] {
+    cstore.used_crate_sources.as_slice()
 }
 
-pub fn add_used_library(cstore: &mut CStore, lib: @str) -> bool {
+pub fn get_used_crates(cstore: &CStore, prefer: LinkagePreference)
+    -> ~[(ast::CrateNum, Option<Path>)]
+{
+    let mut ret = ~[];
+    for src in cstore.used_crate_sources.iter() {
+        ret.push((src.cnum, match prefer {
+            RequireDynamic => src.dylib.clone(),
+            RequireStatic => src.rlib.clone(),
+        }));
+    }
+    return ret;
+}
+
+pub fn add_used_library(cstore: &mut CStore,
+                        lib: ~str, kind: NativeLibaryKind) -> bool {
     assert!(!lib.is_empty());
 
-    if cstore.used_libraries.iter().any(|x| x == &lib) { return false; }
-    cstore.used_libraries.push(lib);
+    if cstore.used_libraries.iter().any(|&(ref x, _)| x == &lib) { return false; }
+    cstore.used_libraries.push((lib, kind));
     true
 }
 
-pub fn get_used_libraries<'a>(cstore: &'a CStore) -> &'a [@str] {
-    let slice: &'a [@str] = cstore.used_libraries;
-    slice
+pub fn get_used_libraries<'a>(cstore: &'a CStore) -> &'a [(~str, NativeLibaryKind)] {
+    cstore.used_libraries.as_slice()
 }
 
 pub fn add_used_link_args(cstore: &mut CStore, args: &str) {
     for s in args.split(' ') {
-        cstore.used_link_args.push(s.to_managed());
+        cstore.used_link_args.push(s.to_owned());
     }
 }
 
-pub fn get_used_link_args<'a>(cstore: &'a CStore) -> &'a [@str] {
-    let slice: &'a [@str] = cstore.used_link_args;
-    slice
+pub fn get_used_link_args<'a>(cstore: &'a CStore) -> &'a [~str] {
+    cstore.used_link_args.as_slice()
 }
 
 pub fn add_extern_mod_stmt_cnum(cstore: &mut CStore,

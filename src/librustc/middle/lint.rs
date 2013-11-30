@@ -808,7 +808,7 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
 }
 
 static crate_attrs: &'static [&'static str] = &[
-    "crate_type", "link", "feature", "no_uv", "no_main", "no_std",
+    "crate_type", "feature", "no_uv", "no_main", "no_std",
     "desc", "comment", "license", "copyright", // not used in rustc now
 ];
 
@@ -830,7 +830,7 @@ static other_attrs: &'static [&'static str] = &[
     "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
     "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
     "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
-    "packed", "simd", "repr", "deriving", "unsafe_destructor",
+    "packed", "simd", "repr", "deriving", "unsafe_destructor", "link",
 
     //mod-level
     "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",

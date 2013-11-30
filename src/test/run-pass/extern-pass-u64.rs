@@ -10,6 +10,7 @@
 
 // Test a call to a function that takes/returns a u64.
 
+#[link(name = "rustrt")]
 extern {
     pub fn rust_dbg_extern_identity_u64(v: u64) -> u64;
 }

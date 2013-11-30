@@ -36,6 +36,7 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                chmod_read_only, platform_library_name};
 use rustc::back::link::get_cc_prog;
 use rustc::metadata::filesearch::rust_path;
+use rustc::driver::session;
 use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
 use syntax::diagnostic;
 use target::*;
@@ -1829,10 +1830,11 @@ fn test_linker_build() {
                                 @diagnostic::Emitter);
     let test_sys = test_sysroot();
     // FIXME (#9639): This needs to handle non-utf8 paths
+    let cc = get_cc_prog(sess);
     command_line_test([test_sys.as_str().unwrap().to_owned(),
                        ~"install",
                        ~"--linker",
-                       get_cc_prog(sess),
+                       cc,
                        ~"foo"],
                       workspace);
     assert_executable_exists(workspace, "foo");

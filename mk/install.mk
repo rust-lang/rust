@@ -88,7 +88,6 @@ install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
 install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call MK_INSTALL_DIR,$$(PTL$(1)$(2)))
-	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTUV_GLOB_$(1)))
@@ -101,7 +100,6 @@ install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
 install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call MK_INSTALL_DIR,$$(PTL$(1)$(2)))
-	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUSTLLVM_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_GLOB_$(1)))
@@ -144,13 +142,15 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustpkg$(X_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(STDLIB_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(STDLIB_RGLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(EXTRALIB_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(EXTRALIB_RGLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTUV_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(LIBRUSTUV_RGLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTC_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBSYNTAX_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD)))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustc.1)
 	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustdoc.1)
@@ -167,11 +167,13 @@ uninstall:
 	$(Q)rm -f $(PHB)/rustpkg$(X_$(CFG_BUILD))
 	$(Q)rm -f $(PHB)/rustdoc$(X_$(CFG_BUILD))
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM_$(CFG_BUILD))
-	$(Q)rm -f $(PHL)/$(CFG_RUNTIME_$(CFG_BUILD))
 	$(Q)for i in \
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(EXTRALIB_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(EXTRALIB_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTUV_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTUV_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD))) \
@@ -232,7 +234,6 @@ endif
 define INSTALL_RUNTIME_TARGET_N
 install-runtime-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$(Q)$(call ADB_SHELL,mkdir,$(CFG_RUNTIME_PUSH_DIR))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CFG_RUNTIME_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(EXTRALIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(LIBRUSTUV_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
@@ -241,7 +242,6 @@ endef
 define INSTALL_RUNTIME_TARGET_CLEANUP_N
 install-runtime-target-$(1)-cleanup:
 	$(Q)$(call ADB,remount)
-	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CFG_RUNTIME_$(1)))
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(STDLIB_GLOB_$(1)))
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(EXTRALIB_GLOB_$(1)))
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(LIBRUSTUV_GLOB_$(1)))
