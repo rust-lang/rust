@@ -1441,18 +1441,6 @@ pub mod llvm {
             call. */
         pub fn LLVMRustGetLastError() -> *c_char;
 
-        /** Prepare the JIT. Returns a memory manager that can load crates. */
-        pub fn LLVMRustPrepareJIT(__morestack: *()) -> *();
-
-        /** Load a crate into the memory manager. */
-        pub fn LLVMRustLoadCrate(MM: *(), Filename: *c_char) -> bool;
-
-        /** Execute the JIT engine. */
-        pub fn LLVMRustBuildJIT(MM: *(),
-                                M: ModuleRef,
-                                EnableSegmentedStacks: bool)
-                                -> ExecutionEngineRef;
-
         /// Print the pass timings since static dtors aren't picking them up.
         pub fn LLVMRustPrintPassTimings();
 
