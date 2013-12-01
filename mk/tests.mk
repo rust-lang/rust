@@ -376,7 +376,8 @@ $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
+	    -L "$$(LLVM_LIBDIR_$(3))"
 
 $(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\

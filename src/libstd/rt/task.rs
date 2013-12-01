@@ -543,6 +543,7 @@ impl Unwinder {
 #[no_split_stack] // - it would be sad for this function to trigger __morestack
 #[doc(hidden)]    // - Function must be `pub` to get exported, but it's
                   //   irrelevant for documentation purposes.
+#[cfg(not(test))] // in testing, use the original libstd's version
 pub extern "C" fn rust_stack_exhausted() {
     use rt::in_green_task_context;
     use rt::task::Task;

@@ -306,7 +306,18 @@ pub mod llvm {
     use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
                     size_t};
 
-    #[link(name = "rustllvm")]
+    // Link to our native llvm bindings (things that we need to use the C++ api
+    // for) and because llvm is written in C++ we need to link against libstdc++
+    //
+    // You'll probably notice that there is an omission of all LLVM libraries
+    // from this location. This is because the set of LLVM libraries that we
+    // link to is mostly defined by LLVM, and the `llvm-config` tool is used to
+    // figure out the exact set of libraries. To do this, the build system
+    // generates an llvmdeps.rs file next to this one which will be
+    // automatically updated whenever LLVM is updated to include an up-to-date
+    // set of the libraries we need to link to LLVM for.
+    #[link(name = "rustllvm", kind = "static")]
+    #[link(name = "stdc++")]
     extern {
         /* Create and destroy contexts. */
         pub fn LLVMContextCreate() -> ContextRef;
