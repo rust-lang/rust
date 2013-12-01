@@ -821,7 +821,7 @@ mod test {
             }
         }
         unlink(filename);
-        let read_str = str::from_utf8_slice(read_mem);
+        let read_str = str::from_utf8(read_mem);
         assert_eq!(read_str, message);
     })
 
@@ -845,7 +845,7 @@ mod test {
             tell_pos_post_read = read_stream.tell();
         }
         unlink(filename);
-        let read_str = str::from_utf8_slice(read_mem);
+        let read_str = str::from_utf8(read_mem);
         assert_eq!(read_str, message.slice(4, 8));
         assert_eq!(tell_pos_pre_read, set_cursor);
         assert_eq!(tell_pos_post_read, message.len() as u64);
@@ -870,7 +870,7 @@ mod test {
             read_stream.read(read_mem);
         }
         unlink(filename);
-        let read_str = str::from_utf8_slice(read_mem);
+        let read_str = str::from_utf8(read_mem);
         assert!(read_str == final_msg.to_owned());
     })
 
@@ -892,15 +892,15 @@ mod test {
 
             read_stream.seek(-4, SeekEnd);
             read_stream.read(read_mem);
-            assert_eq!(str::from_utf8_slice(read_mem), chunk_three);
+            assert_eq!(str::from_utf8(read_mem), chunk_three);
 
             read_stream.seek(-9, SeekCur);
             read_stream.read(read_mem);
-            assert_eq!(str::from_utf8_slice(read_mem), chunk_two);
+            assert_eq!(str::from_utf8(read_mem), chunk_two);
 
             read_stream.seek(0, SeekSet);
             read_stream.read(read_mem);
-            assert_eq!(str::from_utf8_slice(read_mem), chunk_one);
+            assert_eq!(str::from_utf8(read_mem), chunk_one);
         }
         unlink(filename);
     })
@@ -974,7 +974,7 @@ mod test {
             {
                 let n = f.filestem_str();
                 File::open(f).read(mem);
-                let read_str = str::from_utf8_slice(mem);
+                let read_str = str::from_utf8(mem);
                 let expected = match n {
                     None|Some("") => fail!("really shouldn't happen.."),
                     Some(n) => prefix+n

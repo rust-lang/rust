@@ -396,13 +396,13 @@ impl Path {
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponentIter<'a> {
-        self.components().map(str::from_utf8_slice_opt)
+        self.components().map(str::from_utf8_opt)
     }
 
     /// Returns an iterator that yields each component of the path in reverse as Option<&str>.
     /// See components() for details.
     pub fn rev_str_components<'a>(&'a self) -> RevStrComponentIter<'a> {
-        self.rev_components().map(str::from_utf8_slice_opt)
+        self.rev_components().map(str::from_utf8_opt)
     }
 }
 
@@ -684,7 +684,7 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::init($path);
-                    let left = path.$op().map(|x| str::from_utf8_slice(x));
+                    let left = path.$op().map(|x| str::from_utf8(x));
                     assert_eq!(left, $exp);
                 }
             );
