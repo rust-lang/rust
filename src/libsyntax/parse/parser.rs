@@ -3178,7 +3178,7 @@ impl Parser {
     // parse a structure field
     fn parse_name_and_ty(&self,
                          pr: visibility,
-                         attrs: ~[Attribute]) -> @struct_field {
+                         attrs: ~[Attribute]) -> struct_field {
         let lo = self.span.lo;
         if !is_plain_ident(&*self.token) {
             self.fatal("expected ident");
@@ -3186,7 +3186,7 @@ impl Parser {
         let name = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
-        @spanned(lo, self.last_span.hi, ast::struct_field_ {
+        spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, pr),
             id: ast::DUMMY_NODE_ID,
             ty: ty,
@@ -4022,7 +4022,7 @@ impl Parser {
         let class_name = self.parse_ident();
         let generics = self.parse_generics();
 
-        let mut fields: ~[@struct_field];
+        let mut fields: ~[struct_field];
         let is_tuple_like;
 
         if self.eat(&token::LBRACE) {
@@ -4053,7 +4053,7 @@ impl Parser {
                     ty: p.parse_ty(false),
                     attrs: attrs,
                 };
-                @spanned(lo, p.span.hi, struct_field_)
+                spanned(lo, p.span.hi, struct_field_)
             });
             self.expect(&token::SEMI);
         } else if self.eat(&token::SEMI) {
@@ -4091,7 +4091,7 @@ impl Parser {
     pub fn parse_single_struct_field(&self,
                                      vis: visibility,
                                      attrs: ~[Attribute])
-                                     -> @struct_field {
+                                     -> struct_field {
         let a_var = self.parse_name_and_ty(vis, attrs);
         match *self.token {
             token::COMMA => {
@@ -4108,7 +4108,7 @@ impl Parser {
     }
 
     // parse an element of a struct definition
-    fn parse_struct_decl_field(&self) -> @struct_field {
+    fn parse_struct_decl_field(&self) -> struct_field {
 
         let attrs = self.parse_outer_attributes();
 
@@ -4470,7 +4470,7 @@ impl Parser {
     // parse a structure-like enum variant definition
     // this should probably be renamed or refactored...
     fn parse_struct_def(&self) -> @struct_def {
-        let mut fields: ~[@struct_field] = ~[];
+        let mut fields: ~[struct_field] = ~[];
         while *self.token != token::RBRACE {
             fields.push(self.parse_struct_decl_field());
         }

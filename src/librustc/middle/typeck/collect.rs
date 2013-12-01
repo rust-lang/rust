@@ -620,7 +620,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
 
     // Write the type of each of the members
     for f in struct_def.fields.iter() {
-       convert_field(ccx, &tpt.generics, *f);
+       convert_field(ccx, &tpt.generics, f);
     }
     let substs = mk_item_substs(ccx, &tpt.generics, None);
     let selfty = ty::mk_struct(tcx, local_def(id), substs);

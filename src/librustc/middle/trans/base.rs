@@ -2037,7 +2037,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
 }
 
 pub fn trans_tuple_struct(ccx: @mut CrateContext,
-                          fields: &[@ast::struct_field],
+                          fields: &[ast::struct_field],
                           ctor_id: ast::NodeId,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
@@ -2062,7 +2062,7 @@ impl IdAndTy for ast::variant_arg {
     fn ty(&self) -> ast::P<ast::Ty> { self.ty }
 }
 
-impl IdAndTy for @ast::struct_field {
+impl IdAndTy for ast::struct_field {
     fn id(&self) -> ast::NodeId { self.node.id }
     fn ty(&self) -> ast::P<ast::Ty> { self.node.ty }
 }
