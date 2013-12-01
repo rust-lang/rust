@@ -1995,7 +1995,7 @@ pub trait MutableVector<'self, T> {
      * itself) and the second will contain all indices from
      * `mid..len` (excluding the index `len` itself).
      */
-    fn mut_split(self, mid: uint) -> (&'self mut [T],
+    fn mut_split_at(self, mid: uint) -> (&'self mut [T],
                                       &'self mut [T]);
 
     /// Reverse the order of elements in a vector, in place
@@ -2052,7 +2052,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    fn mut_split(self, mid: uint) -> (&'self mut [T], &'self mut [T]) {
+    fn mut_split_at(self, mid: uint) -> (&'self mut [T], &'self mut [T]) {
         unsafe {
             let len = self.len();
             let self2: &'self mut [T] = cast::transmute_copy(&self);
@@ -2592,7 +2592,7 @@ impl<'self, T> Iterator<&'self mut [T]> for MutChunkIter<'self, T> {
         } else {
             let sz = cmp::min(self.remaining, self.chunk_size);
             let tmp = util::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split(sz);
+            let (head, tail) = tmp.mut_split_at(sz);
             self.v = tail;
             self.remaining -= sz;
             Some(head)
@@ -2620,7 +2620,7 @@ impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutChunkIter<'self, T> {
             let remainder = self.remaining % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = util::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split(self.remaining - sz);
+            let (head, tail) = tmp.mut_split_at(self.remaining - sz);
             self.v = head;
             self.remaining -= sz;
             Some(tail)
@@ -3898,10 +3898,10 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_split() {
+    fn test_mut_split_at() {
         let mut values = [1u8,2,3,4,5];
         {
-            let (left, right) = values.mut_split(2);
+            let (left, right) = values.mut_split_at(2);
             assert_eq!(left.slice(0, left.len()), [1, 2]);
             for p in left.mut_iter() {
                 *p += 1;
