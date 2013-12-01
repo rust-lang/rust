@@ -3873,9 +3873,9 @@ impl Resolver {
     fn resolve_struct(&mut self,
                           id: NodeId,
                           generics: &Generics,
-                          fields: &[@struct_field]) {
-        let mut ident_map: HashMap<ast::Ident,@struct_field> = HashMap::new();
-        for &field in fields.iter() {
+                          fields: &[struct_field]) {
+        let mut ident_map: HashMap<ast::Ident, &struct_field> = HashMap::new();
+        for field in fields.iter() {
             match field.node.kind {
                 named_field(ident, _) => {
                     match ident_map.find(&ident) {

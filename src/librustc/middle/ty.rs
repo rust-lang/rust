@@ -3693,7 +3693,7 @@ impl VariantInfo {
             },
             ast::struct_variant_kind(ref struct_def) => {
 
-                let fields: &[@struct_field] = struct_def.fields;
+                let fields: &[struct_field] = struct_def.fields;
 
                 assert!(fields.len() > 0);
 
@@ -4082,7 +4082,7 @@ pub fn lookup_struct_field(cx: ctxt,
     }
 }
 
-fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
+fn struct_field_tys(fields: &[struct_field]) -> ~[field_ty] {
     fields.map(|field| {
         match field.node.kind {
             named_field(ident, visibility) => {

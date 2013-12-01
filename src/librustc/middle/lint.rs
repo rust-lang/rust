@@ -1310,7 +1310,7 @@ impl<'self> Visitor<()> for Context<'self> {
         self.cur_struct_def_id = old_id;
     }
 
-    fn visit_struct_field(&mut self, s: @ast::struct_field, _: ()) {
+    fn visit_struct_field(&mut self, s: &ast::struct_field, _: ()) {
         self.with_lint_attrs(s.node.attrs, |cx| {
             check_missing_doc_struct_field(cx, s);
             check_attrs_usage(cx, s.node.attrs);

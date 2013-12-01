@@ -565,7 +565,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
         }
     }
 
-    fn visit_struct_field(&mut self, struct_field: @struct_field, env: ()) {
+    fn visit_struct_field(&mut self, struct_field: &struct_field, env: ()) {
         self.operation.visit_id(struct_field.node.id);
         visit::walk_struct_field(self, struct_field, env)
     }
