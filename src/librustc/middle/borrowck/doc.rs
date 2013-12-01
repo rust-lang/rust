@@ -666,8 +666,8 @@ The current rules could use some correction:
    function will fail to compile:
 
        fn mut_shift_ref<'a,T>(x: &mut &'a mut [T]) -> &'a mut T {
-           // `mut_split` will restrict mutation against *x:
-           let (head, tail) = (*x).mut_split(1);
+           // `mut_split_at` will restrict mutation against *x:
+           let (head, tail) = (*x).mut_split_at(1);
 
            // Hence mutating `*x` yields an error here:
            *x = tail;
