@@ -362,12 +362,12 @@ pub mod write {
             ~"-o", object.as_str().unwrap().to_owned(),
             assembly.as_str().unwrap().to_owned()];
 
-        debug!("{} {}", cc, args.connect(" "));
+        debug!("{} '{}'", cc, args.connect("' '"));
         let prog = run::process_output(cc, args);
 
         if !prog.status.success() {
             sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
-            sess.note(format!("{} arguments: {}", cc, args.connect(" ")));
+            sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
             sess.note(str::from_utf8(prog.error + prog.output));
             sess.abort_if_errors();
         }
@@ -1061,7 +1061,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
     cc_args.push_all_move(link_args(sess, dylib, obj_filename, out_filename));
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
-        println!("{} link args: {}", cc_prog, cc_args.connect(" "));
+        println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
     }
 
     // May have not found libraries in the right formats.
@@ -1073,7 +1073,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     if !prog.status.success() {
         sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
-        sess.note(format!("{} arguments: {}", cc_prog, cc_args.connect(" ")));
+        sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
         sess.note(str::from_utf8(prog.error + prog.output));
         sess.abort_if_errors();
     }
