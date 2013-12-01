@@ -118,10 +118,10 @@ pub trait ast_fold {
         noop_fold_item(i, self)
     }
 
-    fn fold_struct_field(&self, sf: @struct_field) -> @struct_field {
+    fn fold_struct_field(&self, sf: &struct_field) -> struct_field {
         let fold_attribute = |x| fold_attribute_(x, self);
 
-        @Spanned {
+        Spanned {
             node: ast::struct_field_ {
                 kind: sf.node.kind,
                 id: self.new_id(sf.node.id),
@@ -312,7 +312,7 @@ pub trait ast_fold {
             struct_variant_kind(ref struct_def) => {
                 kind = struct_variant_kind(@ast::struct_def {
                     fields: struct_def.fields.iter()
-                        .map(|f| self.fold_struct_field(*f)).collect(),
+                        .map(|f| self.fold_struct_field(f)).collect(),
                     ctor_id: struct_def.ctor_id.map(|c| self.new_id(c))
                 })
             }
@@ -536,7 +536,7 @@ pub fn fold_generics<T:ast_fold>(generics: &Generics, fld: &T) -> Generics {
 fn fold_struct_def<T:ast_fold>(struct_def: @ast::struct_def, fld: &T)
                                -> @ast::struct_def {
     @ast::struct_def {
-        fields: struct_def.fields.map(|f| fold_struct_field(*f, fld)),
+        fields: struct_def.fields.map(|f| fold_struct_field(f, fld)),
         ctor_id: struct_def.ctor_id.map(|cid| fld.new_id(cid)),
     }
 }
@@ -562,8 +562,8 @@ fn fold_trait_ref<T:ast_fold>(p: &trait_ref, fld: &T) -> trait_ref {
     }
 }
 
-fn fold_struct_field<T:ast_fold>(f: @struct_field, fld: &T) -> @struct_field {
-    @Spanned {
+fn fold_struct_field<T:ast_fold>(f: &struct_field, fld: &T) -> struct_field {
+    Spanned {
         node: ast::struct_field_ {
             kind: f.node.kind,
             id: fld.new_id(f.node.id),

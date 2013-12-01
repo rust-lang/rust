@@ -46,7 +46,7 @@ impl RustdocVisitor {
                 vis: item.vis,
                 attrs: item.attrs.clone(),
                 generics: generics.clone(),
-                fields: sd.fields.iter().map(|x| (*x).clone()).to_owned_vec(),
+                fields: sd.fields.clone(),
                 where: item.span
             }
         }
