@@ -2611,6 +2611,23 @@ impl<'self, T> Iterator<&'self mut [T]> for MutChunkIter<'self, T> {
     }
 }
 
+impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutChunkIter<'self, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'self mut [T]> {
+        if self.remaining == 0 {
+            None
+        } else {
+            let remainder = self.remaining % self.chunk_size;
+            let sz = if remainder != 0 { remainder } else { self.chunk_size };
+            let tmp = util::replace(&mut self.v, &mut []);
+            let (head, tail) = tmp.mut_split(self.remaining - sz);
+            self.v = head;
+            self.remaining -= sz;
+            Some(tail)
+        }
+    }
+}
+
 /// An iterator that moves out of a vector.
 #[deriving(Clone)]
 pub struct MoveIterator<T> {
@@ -4030,6 +4047,18 @@ mod tests {
             }
         }
         let result = [0u8, 0, 0, 1, 1, 1, 2];
+        assert_eq!(v, result);
+    }
+
+    #[test]
+    fn test_mut_chunks_invert() {
+        let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        for (i, chunk) in v.mut_chunks(3).invert().enumerate() {
+            for x in chunk.mut_iter() {
+                *x = i as u8;
+            }
+        }
+        let result = [2u8, 2, 2, 1, 1, 1, 0];
         assert_eq!(v, result);
     }
 
