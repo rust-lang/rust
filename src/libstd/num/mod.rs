@@ -532,6 +532,8 @@ pub trait Float: Real
     fn ln_1p(&self) -> Self;
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;
+
+    fn integer_decode(&self) -> (u64, i16, i8);
 }
 
 /// Returns the exponential of the number, minus `1`, `exp(n) - 1`, in a way

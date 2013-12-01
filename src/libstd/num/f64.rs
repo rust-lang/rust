@@ -756,6 +756,23 @@ impl Float for f64 {
     fn next_after(&self, other: f64) -> f64 {
         next_after(*self, other)
     }
+
+    /// Returns the mantissa, exponent and sign as integers.
+    fn integer_decode(&self) -> (u64, i16, i8) {
+        let bits: u64 = unsafe {
+            ::cast::transmute(*self)
+        };
+        let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
+        let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
+        let mantissa = if exponent == 0 {
+            (bits & 0xfffffffffffff) << 1
+        } else {
+            (bits & 0xfffffffffffff) | 0x10000000000000
+        };
+        // Exponent bias + mantissa shift
+        exponent -= 1023 + 52;
+        (mantissa, exponent, sign)
+    }
 }
 
 //
@@ -1322,5 +1339,17 @@ mod tests {
         assert_eq!(match inf.frexp() { (x, _) => x }, inf)
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
+    }
+
+    #[test]
+    fn test_integer_decode() {
+        assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906u64, -51i16, 1i8));
+        assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931u64, -39i16, -1i8));
+        assert_eq!(2f64.pow(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
+        assert_eq!(0f64.integer_decode(), (0u64, -1075i16, 1i8));
+        assert_eq!((-0f64).integer_decode(), (0u64, -1075i16, -1i8));
+        assert_eq!(INFINITY.integer_decode(), (4503599627370496u64, 972i16, 1i8));
+        assert_eq!(NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
+        assert_eq!(NAN.integer_decode(), (6755399441055744u64, 972i16, 1i8));
     }
 }
