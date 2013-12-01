@@ -47,7 +47,7 @@ pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Bl
 
 pub fn trans_if(bcx: @mut Block,
             cond: &ast::Expr,
-            thn: &ast::Block,
+            thn: ast::P<ast::Block>,
             els: Option<@ast::Expr>,
             dest: expr::Dest)
          -> @mut Block {
@@ -142,9 +142,9 @@ pub fn trans_if(bcx: @mut Block,
         let else_bcx_out = match elexpr.node {
             ast::ExprIf(_, _, _) => {
                 let elseif_blk = ast_util::block_from_expr(elexpr);
-                trans_block(else_bcx_in, &elseif_blk, dest)
+                trans_block(else_bcx_in, elseif_blk, dest)
             }
-            ast::ExprBlock(ref blk) => {
+            ast::ExprBlock(blk) => {
                 trans_block(else_bcx_in, blk, dest)
             }
             // would be nice to have a constraint on ifs

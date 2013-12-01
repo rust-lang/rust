@@ -788,7 +788,7 @@ impl visit::Visitor<()> for @mut FnCtxt {
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
-pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::Block) {
+pub fn resolve_in_block(fcx: @mut FnCtxt, bl: ast::P<ast::Block>) {
     let mut fcx = fcx;
     visit::walk_block(&mut fcx, bl, ());
 }

@@ -655,10 +655,10 @@ mod test {
                       @ast::item{ident:str_to_ident("a"),
                             attrs:~[],
                             id: ast::DUMMY_NODE_ID,
-                            node: ast::item_fn(ast::fn_decl{
+                            node: ast::item_fn(ast::P(ast::fn_decl{
                                 inputs: ~[ast::arg{
-                                    ty: ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                node: ast::ty_path(ast::Path{
+                                    ty: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                       node: ast::ty_path(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: ~[
@@ -671,7 +671,7 @@ mod test {
                                         ],
                                         }, None, ast::DUMMY_NODE_ID),
                                         span:sp(10,13)
-                                    },
+                                    }),
                                     pat: @ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: ast::PatIdent(
@@ -694,19 +694,19 @@ mod test {
                                     },
                                     id: ast::DUMMY_NODE_ID
                                 }],
-                                output: ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                 node: ast::ty_nil,
-                                                 span:sp(15,15)}, // not sure
+                                output: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                       node: ast::ty_nil,
+                                                       span:sp(15,15)}), // not sure
                                 cf: ast::return_val,
                                 variadic: false
-                            },
+                            }),
                                     ast::impure_fn,
                                     abi::AbiSet::Rust(),
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: opt_vec::Empty,
                                         ty_params: opt_vec::Empty,
                                     },
-                                    ast::Block {
+                                    ast::P(ast::Block {
                                         view_items: ~[],
                                         stmts: ~[@Spanned{
                                             node: ast::StmtSemi(@ast::Expr{
@@ -734,7 +734,7 @@ mod test {
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::DefaultBlock, // no idea
                                         span: sp(15,21),
-                                    }),
+                                    })),
                             vis: ast::inherited,
                             span: sp(0,21)}));
     }

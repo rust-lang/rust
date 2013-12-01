@@ -637,10 +637,10 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> @mut Block
         ast::ExprRet(ex) => {
             return controlflow::trans_ret(bcx, ex);
         }
-        ast::ExprWhile(cond, ref body) => {
+        ast::ExprWhile(cond, body) => {
             return controlflow::trans_while(bcx, cond, body);
         }
-        ast::ExprLoop(ref body, opt_label) => {
+        ast::ExprLoop(body, opt_label) => {
             // FIXME #6993: map can go away when ast.rs is changed
             return controlflow::trans_loop(bcx, body, opt_label.map(|x| x.name));
         }
@@ -686,13 +686,13 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
             return trans_def_dps_unadjusted(bcx, expr,
                                             bcx.def(expr.id), dest);
         }
-        ast::ExprIf(cond, ref thn, els) => {
+        ast::ExprIf(cond, thn, els) => {
             return controlflow::trans_if(bcx, cond, thn, els, dest);
         }
         ast::ExprMatch(discr, ref arms) => {
             return _match::trans_match(bcx, expr, discr, *arms, dest);
         }
-        ast::ExprBlock(ref blk) => {
+        ast::ExprBlock(blk) => {
             return base::with_scope(bcx,
                                     blk.info(),
                                     "block-expr body",
@@ -719,8 +719,8 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
         ast::ExprVec(..) | ast::ExprRepeat(..) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        ast::ExprFnBlock(ref decl, ref body) |
-        ast::ExprProc(ref decl, ref body) => {
+        ast::ExprFnBlock(decl, body) |
+        ast::ExprProc(decl, body) => {
             let expr_ty = expr_ty(bcx, expr);
             let sigil = ty::ty_closure_sigil(expr_ty);
             debug!("translating block function {} with type {}",

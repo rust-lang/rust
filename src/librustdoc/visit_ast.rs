@@ -121,11 +121,11 @@ impl RustdocVisitor {
                 },
                 ast::item_enum(ref ed, ref gen) => om.enums.push(visit_enum_def(item, ed, gen)),
                 ast::item_struct(sd, ref gen) => om.structs.push(visit_struct_def(item, sd, gen)),
-                ast::item_fn(ref fd, ref pur, ref abi, ref gen, _) =>
+                ast::item_fn(fd, ref pur, ref abi, ref gen, _) =>
                     om.fns.push(visit_fn(item, fd, pur, abi, gen)),
-                ast::item_ty(ref ty, ref gen) => {
+                ast::item_ty(ty, ref gen) => {
                     let t = Typedef {
-                        ty: ty.clone(),
+                        ty: ty,
                         gen: gen.clone(),
                         name: item.ident,
                         id: item.id,
@@ -135,9 +135,9 @@ impl RustdocVisitor {
                     };
                     om.typedefs.push(t);
                 },
-                ast::item_static(ref ty, ref mut_, ref exp) => {
+                ast::item_static(ty, ref mut_, ref exp) => {
                     let s = Static {
-                        type_: ty.clone(),
+                        type_: ty,
                         mutability: mut_.clone(),
                         expr: exp.clone(),
                         id: item.id,
@@ -161,11 +161,11 @@ impl RustdocVisitor {
                     };
                     om.traits.push(t);
                 },
-                ast::item_impl(ref gen, ref tr, ref ty, ref meths) => {
+                ast::item_impl(ref gen, ref tr, ty, ref meths) => {
                     let i = Impl {
                         generics: gen.clone(),
                         trait_: tr.clone(),
-                        for_: ty.clone(),
+                        for_: ty,
                         methods: meths.clone(),
                         attrs: item.attrs.clone(),
                         id: item.id,

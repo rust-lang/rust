@@ -317,7 +317,7 @@ pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
 
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
-                     body: &ast::Block,
+                     body: ast::P<ast::Block>,
                      id: ast::NodeId,
                      self_info: Option<SelfInfo>,
                      fty: ty::t,
@@ -365,7 +365,7 @@ impl Visitor<()> for GatherLocalsVisitor {
     fn visit_local(&mut self, local:@ast::Local, _:()) {
             let o_ty = match local.ty.node {
               ast::ty_infer => None,
-              _ => Some(self.fcx.to_ty(&local.ty))
+              _ => Some(self.fcx.to_ty(local.ty))
             };
             self.assign(local.id, o_ty);
             debug!("Local variable {} is assigned type {}",
@@ -392,7 +392,7 @@ impl Visitor<()> for GatherLocalsVisitor {
 
     }
 
-    fn visit_block(&mut self, b:&ast::Block, _:()) {
+    fn visit_block(&mut self, b:ast::P<ast::Block>, _:()) {
         // non-obvious: the `blk` variable maps to region lb, so
         // we have to keep this up-to-date.  This
         // is... unfortunate.  It'd be nice to not need this.
@@ -401,7 +401,7 @@ impl Visitor<()> for GatherLocalsVisitor {
 
         // Don't descend into fns and items
     fn visit_fn(&mut self, _:&visit::fn_kind, _:&ast::fn_decl,
-                _:&ast::Block, _:Span, _:ast::NodeId, _:()) { }
+                _:ast::P<ast::Block>, _:Span, _:ast::NodeId, _:()) { }
     fn visit_item(&mut self, _:@ast::item, _:()) { }
 
 }
@@ -412,7 +412,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
                 id: ast::NodeId,
-                body: &ast::Block,
+                body: ast::P<ast::Block>,
                 fn_kind: FnKind,
                 inherited: @Inherited) -> @mut FnCtxt
 {
@@ -498,7 +498,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
     fn gather_locals(fcx: @mut FnCtxt,
                      decl: &ast::fn_decl,
-                     body: &ast::Block,
+                     body: ast::P<ast::Block>,
                      arg_tys: &[ty::t],
                      opt_self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
@@ -580,7 +580,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                             enum_definition.variants,
                             it.id);
       }
-      ast::item_fn(ref decl, _, _, _, ref body) => {
+      ast::item_fn(decl, _, _, _, body) => {
         let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
         // FIXME(#5121) -- won't work for lifetimes that appear in type bounds
@@ -713,8 +713,8 @@ fn check_method_body(ccx: @mut CrateCtxt,
 
     check_bare_fn(
         ccx,
-        &method.decl,
-        &method.body,
+        method.decl,
+        method.body,
         method.id,
         opt_self_info,
         fty,
@@ -1909,7 +1909,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                          rcvr: @ast::Expr,
                          method_name: ast::Ident,
                          args: &[@ast::Expr],
-                         tps: &[ast::Ty],
+                         tps: &[ast::P<ast::Ty>],
                          sugar: ast::CallSugar) {
         check_expr(fcx, rcvr);
 
@@ -1918,7 +1918,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                 expr.span,
                                                 fcx.expr_ty(rcvr));
 
-        let tps = tps.map(|ast_ty| fcx.to_ty(ast_ty));
+        let tps = tps.map(|&ast_ty| fcx.to_ty(ast_ty));
         match method::lookup(fcx,
                              expr,
                              rcvr,
@@ -2215,7 +2215,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                      expr: @ast::Expr,
                      ast_sigil_opt: Option<ast::Sigil>,
                      decl: &ast::fn_decl,
-                     body: &ast::Block,
+                     body: ast::P<ast::Block>,
                      fn_kind: FnKind,
                      expected: Option<ty::t>) {
         let tcx = fcx.ccx.tcx;
@@ -2309,7 +2309,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    expr: @ast::Expr,
                    base: @ast::Expr,
                    field: ast::Name,
-                   tys: &[ast::Ty]) {
+                   tys: &[ast::P<ast::Ty>]) {
         let tcx = fcx.ccx.tcx;
         let bot = check_expr(fcx, base);
         let expr_t = structurally_resolved_type(fcx, expr.span,
@@ -2339,7 +2339,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             _ => ()
         }
 
-        let tps : ~[ty::t] = tys.iter().map(|ty| fcx.to_ty(ty)).collect();
+        let tps : ~[ty::t] = tys.iter().map(|&ty| fcx.to_ty(ty)).collect();
         match method::lookup(fcx,
                              expr,
                              base,
@@ -2872,11 +2872,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::ExprIf(cond, ref then_blk, opt_else_expr) => {
+      ast::ExprIf(cond, then_blk, opt_else_expr) => {
         check_then_else(fcx, cond, then_blk, opt_else_expr,
                         id, expr.span, expected);
       }
-      ast::ExprWhile(cond, ref body) => {
+      ast::ExprWhile(cond, body) => {
         check_expr_has_type(fcx, cond, ty::mk_bool());
         check_block_no_value(fcx, body);
         let cond_ty = fcx.expr_ty(cond);
@@ -2893,7 +2893,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::ExprForLoop(..) =>
           fail!("non-desugared expr_for_loop"),
-      ast::ExprLoop(ref body, _) => {
+      ast::ExprLoop(body, _) => {
         check_block_no_value(fcx, (body));
         if !may_break(tcx, expr.id, body) {
             fcx.write_bot(id);
@@ -2905,7 +2905,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::ExprMatch(discrim, ref arms) => {
         _match::check_match(fcx, expr, discrim, *arms);
       }
-      ast::ExprFnBlock(ref decl, ref body) => {
+      ast::ExprFnBlock(decl, body) => {
         check_expr_fn(fcx,
                       expr,
                       Some(ast::BorrowedSigil),
@@ -2914,7 +2914,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                       Vanilla,
                       expected);
       }
-      ast::ExprProc(ref decl, ref body) => {
+      ast::ExprProc(decl, body) => {
         check_expr_fn(fcx,
                       expr,
                       Some(ast::OwnedSigil),
@@ -2951,7 +2951,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
         };
         match b.node {
-          ast::ExprFnBlock(ref decl, ref body) => {
+          ast::ExprFnBlock(decl, body) => {
             check_expr_fn(fcx, b, None,
                           decl, body, DoBlock, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
@@ -2961,7 +2961,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }
-      ast::ExprBlock(ref b) => {
+      ast::ExprBlock(b) => {
         check_block_with_expected(fcx, b, expected);
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
@@ -2996,7 +2996,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::ExprCast(e, ref t) => {
+      ast::ExprCast(e, t) => {
         check_expr(fcx, e);
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);
@@ -3494,7 +3494,7 @@ pub fn check_simd(tcx: ty::ctxt, sp: Span, id: ast::NodeId) {
 
 pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            sp: Span,
-                           vs: &[ast::variant],
+                           vs: &[ast::P<ast::variant>],
                            id: ast::NodeId) {
 
     fn disr_in_range(ccx: @mut CrateCtxt,
@@ -3525,7 +3525,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
     }
 
     fn do_check(ccx: @mut CrateCtxt,
-                vs: &[ast::variant],
+                vs: &[ast::P<ast::variant>],
                 id: ast::NodeId,
                 hint: attr::ReprAttr)
                 -> ~[@ty::VariantInfo] {
@@ -3535,7 +3535,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
         let mut disr_vals: ~[ty::Disr] = ~[];
         let mut prev_disr_val: Option<ty::Disr> = None;
 
-        for v in vs.iter() {
+        for &v in vs.iter() {
 
             // If the discriminant value is specified explicitly in the enum check whether the
             // initialization expression is valid, otherwise use the last value plus one.
@@ -3766,7 +3766,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         // at the appropriate position.
         let mut result = ~[];
         let mut pushed = false;
-        for (i, ast_type) in pth.segments
+        for (i, &ast_type) in pth.segments
                                 .iter()
                                 .flat_map(|segment| segment.types.iter())
                                 .enumerate() {
@@ -3871,7 +3871,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
+pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(b, |e| {
