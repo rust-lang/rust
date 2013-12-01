@@ -485,7 +485,7 @@ impl<T:Freeze + Send> RWArc<T> {
             // Whatever region the input reference had, it will be safe to use
             // the same region for the output reference. (The only 'unsafe' part
             // of this cast is removing the mutability.)
-            let new_data = cast::transmute_immut(data);
+            let new_data = data;
             // Downgrade ensured the token belonged to us. Just a sanity check.
             assert!(borrow::ref_eq(&(*state).data, new_data));
             // Produce new token

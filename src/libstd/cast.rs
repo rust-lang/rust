@@ -62,12 +62,6 @@ pub unsafe fn transmute<L, G>(thing: L) -> G {
 #[inline]
 pub unsafe fn transmute_mut<'a,T>(ptr: &'a T) -> &'a mut T { transmute(ptr) }
 
-/// Coerce a mutable reference to be immutable.
-#[inline]
-pub unsafe fn transmute_immut<'a,T>(ptr: &'a mut T) -> &'a T {
-    transmute(ptr)
-}
-
 /// Coerce a borrowed pointer to have an arbitrary associated region.
 #[inline]
 pub unsafe fn transmute_region<'a,'b,T>(ptr: &'a T) -> &'b T {
