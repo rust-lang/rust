@@ -19,23 +19,37 @@ use std::hashmap::HashMap;
 use std::to_bytes;
 use std::uint;
 
+/// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
+/// Identifier) that includes network location information, such as hostname or
+/// port number.
 #[deriving(Clone, Eq)]
 pub struct Url {
+    /// The scheme part of a URL, such as `http`, `ftp` or `mailto`.
     scheme: ~str,
+    /// A URL subcomponent for user authentication.
     user: Option<UserInfo>,
+    /// A domain name or IP address.  For example, `www.example.com`.
     host: ~str,
+    /// A TCP port number, for example `8080`.
     port: Option<~str>,
+    /// The path component of a URL, for example `/users/jsmith`.
     path: ~str,
+    /// The query component of a URL.
     query: Query,
+    /// The fragment component.  Does not include the leading hash or pound sign.
     fragment: Option<~str>
 }
 
+/// An optional subcomponent of a URI authority component.
 #[deriving(Clone, Eq)]
 pub struct UserInfo {
+    /// The user name.
     user: ~str,
+    /// Password or other scheme-specific authentication information.
     pass: Option<~str>
 }
 
+/// Represents the query component of a URI.
 pub type Query = ~[(~str, ~str)];
 
 impl Url {
