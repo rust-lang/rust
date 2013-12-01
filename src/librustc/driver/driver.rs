@@ -762,7 +762,13 @@ pub fn build_session_options(binary: @str,
     let ar = matches.opt_str("ar");
     let linker = matches.opt_str("linker");
     let linker_args = matches.opt_strs("link-args").flat_map( |a| {
-        a.split(' ').map(|arg| arg.to_owned()).collect()
+        a.split(' ').filter_map(|arg| {
+            if arg.is_empty() {
+                None
+            } else {
+                Some(arg.to_owned())
+            }
+        }).collect()
     });
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"), demitter);
