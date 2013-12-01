@@ -134,6 +134,7 @@ endif
 # static copies of libstd and libextra. We also generate dynamic versions of all
 # libraries, so in the interest of space, prefer dynamic linking throughout the
 # compilation process.
+RUSTFLAGS_STAGE0 += -Z prefer-dynamic
 RUSTFLAGS_STAGE1 += -Z prefer-dynamic
 RUSTFLAGS_STAGE2 += -Z prefer-dynamic
 RUSTFLAGS_STAGE3 += -Z prefer-dynamic

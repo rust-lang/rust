@@ -313,9 +313,6 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
-    #[cfg(stage0)]
-    pub fn type_id<T: 'static>() -> u64;
-    #[cfg(not(stage0))]
     pub fn type_id<T: 'static>() -> TypeId;
 
 
@@ -504,7 +501,6 @@ pub struct TypeId {
 #[cfg(not(test))]
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with
-    #[cfg(not(stage0))]
     pub fn of<T: 'static>() -> TypeId {
         unsafe { type_id::<T>() }
     }
