@@ -151,8 +151,8 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
               };
               trans_fn(ccx,
                        path,
-                       &mth.decl,
-                       &mth.body,
+                       mth.decl,
+                       mth.body,
                        llfn,
                        self_kind,
                        None,

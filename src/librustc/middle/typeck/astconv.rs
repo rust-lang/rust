@@ -208,7 +208,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     let tps = path.segments
                   .iter()
                   .flat_map(|s| s.types.iter())
-                  .map(|a_t| ast_ty_to_ty(this, rscope, a_t))
+                  .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
                   .collect();
 
     substs {
@@ -413,7 +413,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(ref fields) => {
-        let flds = fields.map(|t| ast_ty_to_ty(this, rscope, t));
+        let flds = fields.map(|&t| ast_ty_to_ty(this, rscope, t));
         ty::mk_tup(tcx, flds)
       }
       ast::ty_bare_fn(ref bf) => {
@@ -421,7 +421,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             tcx.sess.span_err(ast_ty.span, "variadic function must have C calling convention");
           }
           ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.purity,
-                                            bf.abis, &bf.decl))
+                                            bf.abis, bf.decl))
       }
       ast::ty_closure(ref f) => {
         if f.sigil == ast::ManagedSigil {
@@ -444,7 +444,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                       f.onceness,
                                       bounds,
                                       &f.region,
-                                      &f.decl,
+                                      f.decl,
                                       None,
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
@@ -583,7 +583,7 @@ pub fn ty_of_arg<AC:AstConv,
     match a.ty.node {
         ast::ty_infer if expected_ty.is_some() => expected_ty.unwrap(),
         ast::ty_infer => this.ty_infer(a.ty.span),
-        _ => ast_ty_to_ty(this, rscope, &a.ty),
+        _ => ast_ty_to_ty(this, rscope, a.ty),
     }
 }
 
@@ -643,7 +643,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
 
     let output_ty = match decl.output.node {
         ast::ty_infer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, &decl.output)
+        _ => ast_ty_to_ty(this, &rb, decl.output)
     };
 
     return (opt_transformed_self_ty,
@@ -743,7 +743,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     let output_ty = match decl.output.node {
         ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.unwrap(),
         ast::ty_infer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, &decl.output)
+        _ => ast_ty_to_ty(this, &rb, decl.output)
     };
 
     ty::ClosureTy {

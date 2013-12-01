@@ -96,7 +96,7 @@ impl Visitor<()> for ParentVisitor {
     }
 
     fn visit_fn(&mut self, a: &visit::fn_kind, b: &ast::fn_decl,
-                c: &ast::Block, d: Span, id: ast::NodeId, _: ()) {
+                c: ast::P<ast::Block>, d: Span, id: ast::NodeId, _: ()) {
         // We already took care of some trait methods above, otherwise things
         // like impl methods and pub trait methods are parented to the
         // containing module, not the containing trait.
@@ -801,7 +801,7 @@ impl Visitor<()> for SanePrivacyVisitor {
     }
 
     fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &ast::fn_decl,
-                b: &ast::Block, s: Span, n: ast::NodeId, _: ()) {
+                b: ast::P<ast::Block>, s: Span, n: ast::NodeId, _: ()) {
         // This catches both functions and methods
         let orig_in_fn = util::replace(&mut self.in_fn, true);
         visit::walk_fn(self, fk, fd, b, s, n, ());

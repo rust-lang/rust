@@ -35,14 +35,14 @@ impl Visitor<Context> for CheckLoopVisitor {
 
     fn visit_expr(&mut self, e: @ast::Expr, cx:Context) {
         match e.node {
-            ast::ExprWhile(e, ref b) => {
+            ast::ExprWhile(e, b) => {
                 self.visit_expr(e, cx);
                 self.visit_block(b, Loop);
             }
-            ast::ExprLoop(ref b, _) => {
+            ast::ExprLoop(b, _) => {
                 self.visit_block(b, Loop);
             }
-            ast::ExprFnBlock(_, ref b) | ast::ExprProc(_, ref b) => {
+            ast::ExprFnBlock(_, b) | ast::ExprProc(_, b) => {
                 self.visit_block(b, Closure);
             }
             ast::ExprBreak(_) => self.require_loop("break", cx, e.span),

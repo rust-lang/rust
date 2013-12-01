@@ -155,7 +155,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 struct LivenessVisitor;
 
 impl Visitor<@mut IrMaps> for LivenessVisitor {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:@mut IrMaps) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, e:@mut IrMaps) {
         visit_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_local(&mut self, l:@Local, e:@mut IrMaps) { visit_local(self, l, e); }
@@ -347,7 +347,7 @@ impl IrMaps {
 }
 
 impl Visitor<()> for Liveness {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, _:()) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, _:()) {
         check_fn(self, fk, fd, b, s, n);
     }
     fn visit_local(&mut self, l:@Local, _:()) {
@@ -364,7 +364,7 @@ impl Visitor<()> for Liveness {
 fn visit_fn(v: &mut LivenessVisitor,
             fk: &visit::fn_kind,
             decl: &fn_decl,
-            body: &Block,
+            body: P<Block>,
             sp: Span,
             id: NodeId,
             this: @mut IrMaps) {
@@ -1024,7 +1024,7 @@ impl Liveness {
               self.propagate_through_expr(e, succ)
           }
 
-          ExprFnBlock(_, ref blk) | ExprProc(_, ref blk) => {
+          ExprFnBlock(_, blk) | ExprProc(_, blk) => {
               debug!("{} is an ExprFnBlock or ExprProc",
                    expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -1047,7 +1047,7 @@ impl Liveness {
               })
           }
 
-          ExprIf(cond, ref then, els) => {
+          ExprIf(cond, then, els) => {
             //
             //     (cond)
             //       |
@@ -1069,7 +1069,7 @@ impl Liveness {
             self.propagate_through_expr(cond, ln)
           }
 
-          ExprWhile(cond, ref blk) => {
+          ExprWhile(cond, blk) => {
             self.propagate_through_loop(expr, Some(cond), blk, succ)
           }
 
@@ -1077,7 +1077,7 @@ impl Liveness {
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
-          ExprLoop(ref blk, _) => {
+          ExprLoop(blk, _) => {
             self.propagate_through_loop(expr, None, blk, succ)
           }
 
@@ -1101,7 +1101,7 @@ impl Liveness {
             let mut first_merge = true;
             for arm in arms.iter() {
                 let body_succ =
-                    self.propagate_through_block(&arm.body, succ);
+                    self.propagate_through_block(arm.body, succ);
                 let guard_succ =
                     self.propagate_through_opt_expr(arm.guard, body_succ);
                 let arm_succ =
@@ -1247,7 +1247,7 @@ impl Liveness {
             succ
           }
 
-          ExprBlock(ref blk) => {
+          ExprBlock(blk) => {
             self.propagate_through_block(blk, succ)
           }
 

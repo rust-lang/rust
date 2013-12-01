@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, DeclLocal, Expr_, ExprMac, SyntaxContext};
+use ast::{P, Block, Crate, DeclLocal, Expr_, ExprMac, SyntaxContext};
 use ast::{Local, Ident, mac_invoc_tt};
 use ast::{item_mac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{token_tree};
@@ -131,11 +131,11 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         // Desugar expr_for_loop
         // From: `['<ident>:] for <src_pat> in <src_expr> <src_loop_block>`
         // FIXME #6993 : change type of opt_ident to Option<Name>
-        ast::ExprForLoop(src_pat, src_expr, ref src_loop_block, opt_ident) => {
+        ast::ExprForLoop(src_pat, src_expr, src_loop_block, opt_ident) => {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
             let src_expr = fld.fold_expr(src_expr).clone();
-            let src_loop_block = fld.fold_block(src_loop_block).clone();
+            let src_loop_block = fld.fold_block(src_loop_block);
 
             let span = e.span;
 
@@ -144,21 +144,6 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                 @ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: node,
-                    span: span,
-                }
-            }
-
-            fn mk_block(_: @ExtCtxt,
-                        stmts: &[@ast::Stmt],
-                        expr: Option<@ast::Expr>,
-                        span: Span)
-                        -> ast::Block {
-                ast::Block {
-                    view_items: ~[],
-                    stmts: stmts.to_owned(),
-                    expr: expr,
-                    id: ast::DUMMY_NODE_ID,
-                    rules: ast::DefaultBlock,
                     span: span,
                 }
             }
@@ -556,8 +541,6 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
                 id: id,
                 span: span
             } = *local;
-            // types can't be copied automatically because of the owned ptr in ty_tup...
-            let ty = local.ty.clone();
             // expand the pat (it might contain exprs... #:(o)>
             let expanded_pat = fld.fold_pat(pat);
             // find the pat_idents in the pattern:
@@ -582,7 +565,7 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
             let new_init_opt = init.map(|e| fld.fold_expr(e));
             let rewritten_local =
                 @Local {
-                    ty: ty,
+                    ty: local.ty,
                     pat: rewritten_pat,
                     init: new_init_opt,
                     id: id,
@@ -664,7 +647,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
                     _: @ExtCtxt,
                     blk: &Block,
                     fld: &MacroExpander)
-                    -> Block {
+                    -> P<Block> {
     // see note below about treatment of exts table
     with_exts_frame!(extsbox,false,
                      expand_block_elts(*extsbox, blk, fld))
@@ -672,7 +655,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
 
 // expand the elements of a block.
 pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
-                         -> Block {
+                         -> P<Block> {
     let block_info = get_block_info(exts);
     let pending_renames = block_info.pending_renames;
     let rename_fld = renames_to_fold(pending_renames);
@@ -683,14 +666,14 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
             .flat_map(|x| fld.fold_stmt(x).move_iter())
             .collect();
     let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(x)));
-    Block{
+    P(Block {
         view_items: new_view_items,
         stmts: new_stmts,
         expr: new_expr,
         id: fld.new_id(b.id),
         rules: b.rules,
         span: b.span,
-    }
+    })
 }
 
 // get the (innermost) BlockInfo from an exts stack
@@ -1024,7 +1007,7 @@ impl ast_fold for MacroExpander {
                     self)
     }
 
-    fn fold_block(&self, block: &ast::Block) -> ast::Block {
+    fn fold_block(&self, block: P<Block>) -> P<Block> {
         expand_block(self.extsbox,
                      self.cx,
                      block,

@@ -554,7 +554,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
-                ast::item_fn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
+                ast::item_fn(fn_decl, _, _, ref generics, top_level_block) => {
                     (item.ident, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
@@ -565,10 +565,10 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         }
         ast_map::node_method(
             @ast::method {
-                decl: ref fn_decl,
+                decl: fn_decl,
                 ident: ident,
                 generics: ref generics,
-                body: ref top_level_block,
+                body: top_level_block,
                 span: span,
                 ..
             },
@@ -578,8 +578,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
-                ast::ExprFnBlock(ref fn_decl, ref top_level_block) |
-                ast::ExprProc(ref fn_decl, ref top_level_block) => {
+                ast::ExprFnBlock(fn_decl, top_level_block) |
+                ast::ExprProc(fn_decl, top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(name);
                     (name, fn_decl,
@@ -598,10 +598,10 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         ast_map::node_trait_method(
             @ast::provided(
                 @ast::method {
-                    decl: ref fn_decl,
+                    decl: fn_decl,
                     ident: ident,
                     generics: ref generics,
-                    body: ref top_level_block,
+                    body: top_level_block,
                     span: span,
                     ..
                 }),
@@ -2554,7 +2554,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 walk_expr(cx, sub_exp2, scope_stack, scope_map);
             }
 
-            ast::ExprIf(@ref cond_exp, ref then_block, ref opt_else_exp) => {
+            ast::ExprIf(@ref cond_exp, then_block, ref opt_else_exp) => {
                 walk_expr(cx, cond_exp, scope_stack, scope_map);
 
                 with_new_scope(cx,
@@ -2571,7 +2571,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::ExprWhile(@ref cond_exp, ref loop_body) => {
+            ast::ExprWhile(@ref cond_exp, loop_body) => {
                 walk_expr(cx, cond_exp, scope_stack, scope_map);
 
                 with_new_scope(cx,
@@ -2593,8 +2593,8 @@ fn populate_scope_map(cx: &mut CrateContext,
                                             Found unexpanded macro.");
             }
 
-            ast::ExprLoop(ref block, _) |
-            ast::ExprBlock(ref block)   => {
+            ast::ExprLoop(block, _) |
+            ast::ExprBlock(block)   => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,
@@ -2604,14 +2604,14 @@ fn populate_scope_map(cx: &mut CrateContext,
                 })
             }
 
-            ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, .. }, ref block) |
-            ast::ExprProc(ast::fn_decl { inputs: ref inputs, .. }, ref block) => {
+            ast::ExprFnBlock(decl, block) |
+            ast::ExprProc(decl, block) => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,
                                scope_map,
                                |cx, scope_stack, scope_map| {
-                    for &ast::arg { pat: pattern, .. } in inputs.iter() {
+                    for &ast::arg { pat: pattern, .. } in decl.inputs.iter() {
                         walk_pattern(cx, pattern, scope_stack, scope_map);
                     }
 
@@ -2674,7 +2674,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                             walk_expr(cx, guard_exp, scope_stack, scope_map)
                         }
 
-                        walk_block(cx, &arm_ref.body, scope_stack, scope_map);
+                        walk_block(cx, arm_ref.body, scope_stack, scope_map);
                     })
                 }
             }

@@ -207,7 +207,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     let lldecl = match map_node {
       ast_map::node_item(i@@ast::item {
-                node: ast::item_fn(ref decl, _, _, _, ref body),
+                node: ast::item_fn(decl, _, _, _, body),
                 ..
             }, _) => {
         let d = mk_lldecl();
@@ -232,7 +232,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                                      ref_id);
           d
       }
-      ast_map::node_variant(ref v, enum_item, _) => {
+      ast_map::node_variant(v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
         let this_tv = *tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
         let d = mk_lldecl();

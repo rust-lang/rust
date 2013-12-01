@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ast;
+use ast::P;
 use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
@@ -587,7 +588,7 @@ impl Context {
                 ~[]
             ), None);
         let ty = ast::ty_fixed_length_vec(
-            self.ecx.ty_mt(piece_ty.clone(), ast::MutImmutable),
+            self.ecx.ty_mt(piece_ty, ast::MutImmutable),
             self.ecx.expr_uint(self.fmtsp, self.pieces.len())
         );
         let ty = self.ecx.ty(self.fmtsp, ty);
@@ -639,14 +640,14 @@ impl Context {
 
         // We did all the work of making sure that the arguments
         // structure is safe, so we can safely have an unsafe block.
-        let result = self.ecx.expr_block(ast::Block {
+        let result = self.ecx.expr_block(P(ast::Block {
            view_items: ~[],
            stmts: ~[],
            expr: Some(result),
            id: ast::DUMMY_NODE_ID,
            rules: ast::UnsafeBlock(ast::CompilerGenerated),
            span: self.fmtsp,
-        });
+        }));
         let resname = self.ecx.ident_of("__args");
         lets.push(self.ecx.stmt_let(self.fmtsp, false, resname, result));
         let res = self.ecx.expr_ident(self.fmtsp, resname);
