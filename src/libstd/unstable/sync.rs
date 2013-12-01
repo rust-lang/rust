@@ -420,7 +420,7 @@ impl<T:Send> Exclusive<T> {
 
     #[inline]
     pub unsafe fn with_imm<U>(&self, f: |x: &T| -> U) -> U {
-        self.with(|x| f(cast::transmute_immut(x)))
+        self.with(|x| f(x))
     }
 
     #[inline]
