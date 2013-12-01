@@ -3,9 +3,6 @@ LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustConstSmallInt
 LLVMRustConstInt
-LLVMRustLoadCrate
-LLVMRustPrepareJIT
-LLVMRustBuildJIT
 LLVMRustPrintPassTimings
 LLVMRustStartMultithreading
 LLVMCreateObjectFile
