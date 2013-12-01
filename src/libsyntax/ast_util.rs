@@ -11,7 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{Span, dummy_sp};
+use codemap::Span;
 use opt_vec;
 use parse::token;
 use visit::Visitor;
@@ -21,7 +21,6 @@ use std::hashmap::HashMap;
 use std::u32;
 use std::local_data;
 use std::num;
-use std::option;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -197,25 +196,15 @@ pub fn is_call_expr(e: @Expr) -> bool {
     match e.node { ExprCall(..) => true, _ => false }
 }
 
-pub fn block_from_expr(e: @Expr) -> Block {
-    let mut blk = default_block(~[], option::Some::<@Expr>(e), e.id);
-    blk.span = e.span;
-    return blk;
-}
-
-pub fn default_block(
-    stmts1: ~[@Stmt],
-    expr1: Option<@Expr>,
-    id1: NodeId
-) -> Block {
-    ast::Block {
+pub fn block_from_expr(e: @Expr) -> P<Block> {
+    P(Block {
         view_items: ~[],
-        stmts: stmts1,
-        expr: expr1,
-        id: id1,
+        stmts: ~[],
+        expr: Some(e),
+        id: e.id,
         rules: DefaultBlock,
-        span: dummy_sp(),
-    }
+        span: e.span
+    })
 }
 
 pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
@@ -272,7 +261,7 @@ pub fn trait_method_to_ty_method(method: &trait_method) -> TypeMethod {
                 ident: m.ident,
                 attrs: m.attrs.clone(),
                 purity: m.purity,
-                decl: m.decl.clone(),
+                decl: m.decl,
                 generics: m.generics.clone(),
                 explicit_self: m.explicit_self,
                 id: m.id,
@@ -487,7 +476,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
         visit::walk_local(self, local, env)
     }
 
-    fn visit_block(&mut self, block: &Block, env: ()) {
+    fn visit_block(&mut self, block: P<Block>, env: ()) {
         self.operation.visit_id(block.id);
         visit::walk_block(self, block, env)
     }
@@ -531,7 +520,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
     fn visit_fn(&mut self,
                 function_kind: &visit::fn_kind,
                 function_declaration: &fn_decl,
-                block: &Block,
+                block: P<Block>,
                 span: Span,
                 node_id: NodeId,
                 env: ()) {

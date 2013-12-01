@@ -193,7 +193,7 @@ enum UseMode {
 
 impl visit::Visitor<()> for VisitContext {
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl,
-                b:&Block, s:Span, n:NodeId, _:()) {
+                b:P<Block>, s:Span, n:NodeId, _:()) {
         compute_modes_for_fn(self, fk, fd, b, s, n);
     }
     fn visit_expr(&mut self, ex:@Expr, _:()) {
@@ -247,7 +247,7 @@ fn compute_modes_for_local<'a>(cx: &mut VisitContext,
 fn compute_modes_for_fn(cx: &mut VisitContext,
                         fk: &visit::fn_kind,
                         decl: &fn_decl,
-                        body: &Block,
+                        body: P<Block>,
                         span: Span,
                         id: NodeId) {
     for a in decl.inputs.iter() {
@@ -450,7 +450,7 @@ impl VisitContext {
                 self.consume_exprs(*exprs);
             }
 
-            ExprIf(cond_expr, ref then_blk, opt_else_expr) => {
+            ExprIf(cond_expr, then_blk, opt_else_expr) => {
                 self.consume_expr(cond_expr);
                 self.consume_block(then_blk);
                 for else_expr in opt_else_expr.iter() {
@@ -489,11 +489,11 @@ impl VisitContext {
             ExprAgain(..) |
             ExprLit(..) => {}
 
-            ExprLoop(ref blk, _) => {
+            ExprLoop(blk, _) => {
                 self.consume_block(blk);
             }
 
-            ExprWhile(cond_expr, ref blk) => {
+            ExprWhile(cond_expr, blk) => {
                 self.consume_expr(cond_expr);
                 self.consume_block(blk);
             }
@@ -515,7 +515,7 @@ impl VisitContext {
                 }
             }
 
-            ExprBlock(ref blk) => {
+            ExprBlock(blk) => {
                 self.consume_block(blk);
             }
 
@@ -553,8 +553,8 @@ impl VisitContext {
                 self.use_expr(base, comp_mode);
             }
 
-            ExprFnBlock(ref decl, ref body) |
-            ExprProc(ref decl, ref body) => {
+            ExprFnBlock(ref decl, body) |
+            ExprProc(ref decl, body) => {
                 for a in decl.inputs.iter() {
                     self.use_pat(a.pat);
                 }
@@ -604,7 +604,7 @@ impl VisitContext {
             self.consume_expr(*guard);
         }
 
-        self.consume_block(&arm.body);
+        self.consume_block(arm.body);
     }
 
     pub fn use_pat(&mut self, pat: @Pat) {

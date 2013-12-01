@@ -79,7 +79,7 @@ impl<'self> Visitor<()> for LoopQueryVisitor<'self> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
+pub fn loop_query(b: ast::P<ast::Block>, p: |&ast::Expr_| -> bool) -> bool {
     let mut v = LoopQueryVisitor {
         p: p,
         flag: false,
@@ -102,7 +102,7 @@ impl<'self> Visitor<()> for BlockQueryVisitor<'self> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::Block, p: |@ast::Expr| -> bool) -> bool {
+pub fn block_query(b: ast::P<ast::Block>, p: |@ast::Expr| -> bool) -> bool {
     let mut v = BlockQueryVisitor {
         p: p,
         flag: false,

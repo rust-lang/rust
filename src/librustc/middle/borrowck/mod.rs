@@ -29,7 +29,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{fn_decl,Block,NodeId};
+use syntax::ast::{P,fn_decl,Block,NodeId};
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -62,7 +62,7 @@ pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
 impl Visitor<()> for BorrowckCtxt {
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl,
-                b:&Block, s:Span, n:NodeId, _:()) {
+                b:P<Block>, s:Span, n:NodeId, _:()) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
 }
@@ -123,7 +123,7 @@ pub fn check_crate(
 fn borrowck_fn(this: &mut BorrowckCtxt,
                fk: &visit::fn_kind,
                decl: &ast::fn_decl,
-               body: &ast::Block,
+               body: ast::P<ast::Block>,
                sp: Span,
                id: ast::NodeId) {
     match fk {

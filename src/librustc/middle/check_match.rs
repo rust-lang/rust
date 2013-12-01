@@ -45,7 +45,7 @@ impl Visitor<()> for CheckMatchVisitor {
     fn visit_local(&mut self, l:@Local, e:()) {
         check_local(self, self.cx, l, e);
     }
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:()) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, e:()) {
         check_fn(self, self.cx, fk, fd, b, s, n, e);
     }
 }
@@ -827,7 +827,7 @@ fn check_fn(v: &mut CheckMatchVisitor,
                 cx: &MatchCheckCtxt,
                 kind: &visit::fn_kind,
                 decl: &fn_decl,
-                body: &Block,
+                body: P<Block>,
                 sp: Span,
                 id: NodeId,
                 s: ()) {

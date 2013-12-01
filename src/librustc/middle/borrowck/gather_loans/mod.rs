@@ -32,7 +32,7 @@ use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::visit::{Visitor, fn_kind};
-use syntax::ast::{Expr, fn_decl, Block, NodeId, Stmt, Pat, Local};
+use syntax::ast::{P, Expr, fn_decl, Block, NodeId, Stmt, Pat, Local};
 
 mod lifetime;
 mod restrictions;
@@ -77,10 +77,10 @@ impl<'self> visit::Visitor<()> for GatherLoanCtxt<'self> {
     fn visit_expr(&mut self, ex:@Expr, _:()) {
         gather_loans_in_expr(self, ex);
     }
-    fn visit_block(&mut self, b:&Block, _:()) {
+    fn visit_block(&mut self, b:P<Block>, _:()) {
         gather_loans_in_block(self, b);
     }
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block,
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>,
                 s:Span, n:NodeId, _:()) {
         gather_loans_in_fn(self, fk, fd, b, s, n);
     }
@@ -102,7 +102,7 @@ impl<'self> visit::Visitor<()> for GatherLoanCtxt<'self> {
 
 pub fn gather_loans(bccx: &BorrowckCtxt,
                     decl: &ast::fn_decl,
-                    body: &ast::Block)
+                    body: ast::P<ast::Block>)
                     -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
@@ -131,7 +131,7 @@ fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
 fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
                       fk: &fn_kind,
                       decl: &ast::fn_decl,
-                      body: &ast::Block,
+                      body: ast::P<ast::Block>,
                       sp: Span,
                       id: ast::NodeId) {
     match fk {
@@ -150,7 +150,7 @@ fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
 }
 
 fn gather_loans_in_block(this: &mut GatherLoanCtxt,
-                         blk: &ast::Block) {
+                         blk: ast::P<ast::Block>) {
     this.id_range.add(blk.id);
     visit::walk_block(this, blk, ());
 }
@@ -286,7 +286,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::ExprWhile(cond, ref body) => {
+      ast::ExprWhile(cond, body) => {
           // during the condition, can only root for the condition
           this.push_repeating_id(cond.id);
           this.visit_expr(cond, ());
@@ -299,7 +299,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::ExprLoop(ref body, _) => {
+      ast::ExprLoop(body, _) => {
           this.push_repeating_id(body.id);
           visit::walk_expr(this, ex, ());
           this.pop_repeating_id(body.id);

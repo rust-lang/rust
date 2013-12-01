@@ -304,7 +304,7 @@ impl ReachableContext {
         match *node {
             ast_map::node_item(item, _) => {
                 match item.node {
-                    ast::item_fn(_, _, _, _, ref search_block) => {
+                    ast::item_fn(_, _, _, _, search_block) => {
                         if item_might_be_inlined(item) {
                             visit::walk_block(visitor, search_block, ())
                         }
@@ -331,13 +331,13 @@ impl ReachableContext {
                         // Keep going, nothing to get exported
                     }
                     ast::provided(ref method) => {
-                        visit::walk_block(visitor, &method.body, ())
+                        visit::walk_block(visitor, method.body, ())
                     }
                 }
             }
             ast_map::node_method(method, did, _) => {
                 if method_might_be_inlined(self.tcx, method, did) {
-                    visit::walk_block(visitor, &method.body, ())
+                    visit::walk_block(visitor, method.body, ())
                 }
             }
             // Nothing to recurse on for these

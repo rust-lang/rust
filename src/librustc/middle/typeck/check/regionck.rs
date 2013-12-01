@@ -152,7 +152,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::Expr) {
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::Block) {
+pub fn regionck_fn(fcx: @mut FnCtxt, blk: ast::P<ast::Block>) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: blk.id };
     let rcx = &mut rcx;
@@ -182,14 +182,14 @@ impl Visitor<()> for Rcx {
 
     fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(self, l); }
 
-    fn visit_block(&mut self, b:&ast::Block, _:()) { visit_block(self, b); }
+    fn visit_block(&mut self, b:ast::P<ast::Block>, _:()) { visit_block(self, b); }
 }
 
 fn visit_item(_rcx: &mut Rcx, _item: @ast::item) {
     // Ignore items
 }
 
-fn visit_block(rcx: &mut Rcx, b: &ast::Block) {
+fn visit_block(rcx: &mut Rcx, b: ast::P<ast::Block>) {
     rcx.fcx.tcx().region_maps.record_cleanup_scope(b.id);
     visit::walk_block(rcx, b, ());
 }
@@ -431,13 +431,13 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
             check_expr_fn_block(rcx, expr);
         }
 
-        ast::ExprLoop(ref body, _) => {
+        ast::ExprLoop(body, _) => {
             let repeating_scope = rcx.set_repeating_scope(body.id);
             visit::walk_expr(rcx, expr, ());
             rcx.set_repeating_scope(repeating_scope);
         }
 
-        ast::ExprWhile(cond, ref body) => {
+        ast::ExprWhile(cond, body) => {
             let repeating_scope = rcx.set_repeating_scope(cond.id);
             rcx.visit_expr(cond, ());
 

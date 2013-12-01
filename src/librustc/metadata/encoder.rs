@@ -352,7 +352,7 @@ fn encode_struct_fields(ecx: &EncodeContext,
 fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut writer::Encoder,
                             id: NodeId,
-                            variants: &[variant],
+                            variants: &[P<variant>],
                             path: &[ast_map::path_elt],
                             index: @mut ~[entry<i64>],
                             generics: &ast::Generics) {
@@ -1081,7 +1081,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                         def_id.node);
         }
       }
-      item_impl(_, ref opt_trait, ref ty, ref ast_methods) => {
+      item_impl(_, ref opt_trait, ty, ref ast_methods) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let imp = tcx.impls.get(&def_id);

@@ -3868,7 +3868,7 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
                     ..
                 }, _) => {
             let mut last_discriminant: Option<Disr> = None;
-            @enum_definition.variants.iter().map(|variant| {
+            @enum_definition.variants.iter().map(|&variant| {
 
                 let mut discriminant = match last_discriminant {
                     Some(val) => val + 1,

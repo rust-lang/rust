@@ -62,7 +62,7 @@ impl Visitor<()> for Context {
         check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, _:()) {
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, _:()) {
         check_fn(self, fk, fd, b, s, n);
     }
 
@@ -154,7 +154,7 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
 fn check_item(cx: &mut Context, item: @item) {
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
-            item_impl(_, Some(ref trait_ref), ref self_type, _) => {
+            item_impl(_, Some(ref trait_ref), self_type, _) => {
                 check_impl_of_trait(cx, item, trait_ref, self_type);
             }
             _ => {}
@@ -240,7 +240,7 @@ fn check_fn(
     cx: &mut Context,
     fk: &visit::fn_kind,
     decl: &fn_decl,
-    body: &Block,
+    body: P<Block>,
     sp: Span,
     fn_id: NodeId) {
 

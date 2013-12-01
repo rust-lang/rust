@@ -1935,7 +1935,7 @@ fn trans_match_inner(scope_cx: @mut Block,
         // insert bindings into the lllocals map and add cleanups
         bcx = insert_lllocals(bcx, arm_data.bindings_map, true);
 
-        bcx = controlflow::trans_block(bcx, &arm_data.arm.body, dest);
+        bcx = controlflow::trans_block(bcx, arm_data.arm.body, dest);
         bcx = trans_block_cleanups(bcx, block_cleanups(arm_data.bodycx));
         arm_cxs.push(bcx);
     }

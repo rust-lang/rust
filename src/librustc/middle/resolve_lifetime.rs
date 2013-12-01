@@ -84,7 +84,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
     fn visit_fn(&mut self,
                 fk: &visit::fn_kind,
                 fd: &ast::fn_decl,
-                b: &ast::Block,
+                b: ast::P<ast::Block>,
                 s: Span,
                 n: ast::NodeId,
                 scope: &'self ScopeChain<'self>) {
@@ -132,7 +132,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
     }
 
     fn visit_block(&mut self,
-                   b: &ast::Block,
+                   b: ast::P<ast::Block>,
                    scope: &'self ScopeChain<'self>) {
         let scope1 = BlockScope(b.id, scope);
         debug!("pushing block scope {}", b.id);
