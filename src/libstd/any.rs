@@ -12,50 +12,11 @@
 //! of any type.
 
 use cast::transmute;
-#[cfg(stage0)]
-use cmp::Eq;
 use option::{Option, Some, None};
-#[cfg(stage0)]
-use to_bytes::{IterBytes, Cb};
 use to_str::ToStr;
 use unstable::intrinsics;
 use util::Void;
-#[cfg(not(stage0))]
 use unstable::intrinsics::TypeId;
-
-///////////////////////////////////////////////////////////////////////////////
-// TypeId
-///////////////////////////////////////////////////////////////////////////////
-
-/// `TypeId` represents a globally unique identifier for a type
-#[cfg(stage0)]
-pub struct TypeId {
-    priv t: u64,
-}
-
-#[cfg(stage0)]
-impl TypeId {
-    /// Returns the `TypeId` of the type this generic function has been instantiated with
-    #[inline]
-    pub fn of<T: 'static>() -> TypeId {
-        TypeId{ t: unsafe { intrinsics::type_id::<T>() } }
-    }
-}
-
-#[cfg(stage0)]
-impl Eq for TypeId {
-    #[inline]
-    fn eq(&self, &other: &TypeId) -> bool {
-        self.t == other.t
-    }
-}
-
-#[cfg(stage0)]
-impl IterBytes for TypeId {
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        self.t.iter_bytes(lsb0, f)
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
