@@ -802,7 +802,7 @@ impl<'self> Formatter<'self> {
 
     fn runplural(&mut self, value: uint, pieces: &[rt::Piece]) {
         ::uint::to_str_bytes(value, 10, |buf| {
-            let valuestr = str::from_utf8_slice(buf);
+            let valuestr = str::from_utf8(buf);
             for piece in pieces.iter() {
                 self.run(piece, Some(valuestr));
             }
