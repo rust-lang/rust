@@ -166,12 +166,19 @@ impl<W: Writer> BufferedWriter<W> {
     pub fn new(inner: W) -> BufferedWriter<W> {
         BufferedWriter::with_capacity(DEFAULT_CAPACITY, inner)
     }
+
+    fn flush_buf(&mut self) {
+        if self.pos != 0 {
+            self.inner.write(self.buf.slice_to(self.pos));
+            self.pos = 0;
+        }
+    }
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) {
         if self.pos + buf.len() > self.buf.len() {
-            self.flush();
+            self.flush_buf();
         }
 
         if buf.len() > self.buf.len() {
@@ -184,16 +191,13 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 
     fn flush(&mut self) {
-        if self.pos != 0 {
-            self.inner.write(self.buf.slice_to(self.pos));
-            self.pos = 0;
-        }
+        self.flush_buf();
         self.inner.flush();
     }
 }
 
 impl<W: Writer> Decorator<W> for BufferedWriter<W> {
-    fn inner(self) -> W { self.inner }
+    fn inner(mut self) -> W { self.flush_buf(); self.inner }
     fn inner_ref<'a>(&'a self) -> &'a W { &self.inner }
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W { &mut self.inner }
 }
@@ -218,7 +222,7 @@ impl<W: Writer> LineBufferedWriter<W> {
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) {
-        match buf.iter().position(|&b| b == '\n' as u8) {
+        match buf.iter().rposition(|&b| b == '\n' as u8) {
             Some(i) => {
                 self.inner.write(buf.slice_to(i + 1));
                 self.inner.flush();
@@ -387,6 +391,15 @@ mod test {
                    writer.inner_ref().inner_ref().as_slice());
     }
 
+    #[test]
+    fn test_buffered_writer_inner_flushes() {
+        let mut w = BufferedWriter::with_capacity(3, MemWriter::new());
+        w.write([0, 1]);
+        assert_eq!([], w.inner_ref().inner_ref().as_slice());
+        let w = w.inner();
+        assert_eq!([0, 1], w.inner_ref().as_slice());
+    }
+
     // This is just here to make sure that we don't infinite loop in the
     // newtype struct autoderef weirdness
     #[test]
@@ -430,10 +443,15 @@ mod test {
         assert_eq!(*writer.inner_ref().inner_ref(), ~[]);
         writer.flush();
         assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1]);
-        writer.write([0, '\n' as u8, 1]);
-        assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1, 0, '\n' as u8]);
+        writer.write([0, '\n' as u8, 1, '\n' as u8, 2]);
+        assert_eq!(*writer.inner_ref().inner_ref(),
+            ~[0, 1, 0, '\n' as u8, 1, '\n' as u8]);
         writer.flush();
-        assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1, 0, '\n' as u8, 1]);
+        assert_eq!(*writer.inner_ref().inner_ref(),
+            ~[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2]);
+        writer.write([3, '\n' as u8]);
+        assert_eq!(*writer.inner_ref().inner_ref(),
+            ~[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2, 3, '\n' as u8]);
     }
 
     #[bench]
