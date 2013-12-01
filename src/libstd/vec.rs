@@ -1934,6 +1934,18 @@ pub trait MutableVector<'self, T> {
     fn mut_rev_iter(self) -> MutRevIterator<'self, T>;
 
     /**
+     * Returns an iterator over `size` elements of the vector at a time.
+     * The chunks are mutable and do not overlap. If `size` does not divide the
+     * length of the vector, then the last chunk will not have length
+     * `size`.
+     *
+     * # Failure
+     *
+     * Fails if `size` is 0.
+     */
+    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'self, T>;
+
+    /**
      * Returns a mutable reference to the first element in this slice
      * and adjusts the slice in place so that it no longer contains
      * that element. O(1).
@@ -2067,6 +2079,13 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
     fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
         self.mut_iter().invert()
+    }
+
+    #[inline]
+    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'self, T> {
+        assert!(chunk_size > 0);
+        let len = self.len();
+        MutChunkIter { v: self, chunk_size: chunk_size, remaining: len }
     }
 
     fn mut_shift_ref(&mut self) -> &'self mut T {
@@ -2555,6 +2574,59 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 
 iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
+
+/// An iterator over a vector in (non-overlapping) mutable chunks (`size`  elements at a time). When
+/// the vector len is not evenly divided by the chunk size, the last slice of the iteration will be
+/// the remainder.
+pub struct MutChunkIter<'self, T> {
+    priv v: &'self mut [T],
+    priv chunk_size: uint,
+    priv remaining: uint
+}
+
+impl<'self, T> Iterator<&'self mut [T]> for MutChunkIter<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self mut [T]> {
+        if self.remaining == 0 {
+            None
+        } else {
+            let sz = cmp::min(self.remaining, self.chunk_size);
+            let tmp = util::replace(&mut self.v, &mut []);
+            let (head, tail) = tmp.mut_split(sz);
+            self.v = tail;
+            self.remaining -= sz;
+            Some(head)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.remaining == 0 {
+            (0, Some(0))
+        } else {
+            let (n, rem) = self.remaining.div_rem(&self.chunk_size);
+            let n = if rem > 0 { n + 1 } else { n };
+            (n, Some(n))
+        }
+    }
+}
+
+impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutChunkIter<'self, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'self mut [T]> {
+        if self.remaining == 0 {
+            None
+        } else {
+            let remainder = self.remaining % self.chunk_size;
+            let sz = if remainder != 0 { remainder } else { self.chunk_size };
+            let tmp = util::replace(&mut self.v, &mut []);
+            let (head, tail) = tmp.mut_split(self.remaining - sz);
+            self.v = head;
+            self.remaining -= sz;
+            Some(tail)
+        }
+    }
+}
 
 /// An iterator that moves out of a vector.
 #[deriving(Clone)]
@@ -3966,6 +4038,36 @@ mod tests {
         x.pop_ref();
     }
 
+    #[test]
+    fn test_mut_chunks() {
+        let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        for (i, chunk) in v.mut_chunks(3).enumerate() {
+            for x in chunk.mut_iter() {
+                *x = i as u8;
+            }
+        }
+        let result = [0u8, 0, 0, 1, 1, 1, 2];
+        assert_eq!(v, result);
+    }
+
+    #[test]
+    fn test_mut_chunks_invert() {
+        let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        for (i, chunk) in v.mut_chunks(3).invert().enumerate() {
+            for x in chunk.mut_iter() {
+                *x = i as u8;
+            }
+        }
+        let result = [2u8, 2, 2, 1, 1, 1, 0];
+        assert_eq!(v, result);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_mut_chunks_0() {
+        let mut v = [1, 2, 3, 4];
+        let _it = v.mut_chunks(0);
+    }
 
     #[test]
     fn test_mut_shift_ref() {
