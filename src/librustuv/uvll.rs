@@ -524,13 +524,9 @@ pub unsafe fn guess_handle(handle: c_int) -> c_int {
 // second copies of everything. We obviously don't want this, so instead of
 // dying horribly during testing, we allow all of the test rustuv's references
 // to get resolved to the original rustuv crate.
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 #[link(name = "uv_support", kind = "static")]
 #[link(name = "uv", kind = "static")]
-extern {}
-
-#[cfg(not(test), stage0)]
-#[link_args = "-luv -luv_support"]
 extern {}
 
 extern {
@@ -722,26 +718,19 @@ extern {
     pub fn uv_signal_stop(handle: *uv_signal_t) -> c_int;
 }
 
-// various platform libraries required by libuv
-#[cfg(not(stage0), not(target_os = "android"))]
+// libuv requires other native libraries on various platforms. These are all
+// listed here (for each platform)
+
+#[cfg(not(target_os = "android"))] // apparently pthreads isn't on android?
 #[link(name = "pthread")]
 extern {}
-#[cfg(stage0)]
-#[link_args = "-lpthread"]
-extern {}
 
-#[cfg(target_os = "win32", not(stage0))]
+#[cfg(target_os = "win32")]
 #[link(name = "ws2_32")]
 #[link(name = "psapi")]
 #[link(name = "iphlpapi")]
 extern {}
-#[cfg(target_os = "win32", stage0)]
-#[link_args = "-lws2_32 -lpsapi -liphlpapi"]
-extern {}
 
-#[cfg(target_os = "freebsd", not(stage0))]
+#[cfg(target_os = "freebsd")]
 #[link(name = "kvm")]
-extern {}
-#[cfg(target_os = "freebsd", stage0)]
-#[link_args = "-lkvm"]
 extern {}

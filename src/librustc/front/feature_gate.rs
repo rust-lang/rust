@@ -113,8 +113,7 @@ impl Visitor<()> for Context {
 
     fn visit_item(&mut self, i: @ast::item, _:()) {
         for attr in i.attrs.iter() {
-            if "thread_local" == attr.name() &&
-               cfg!(stage0, remove_this_on_next_snapshot) { // NOTE: snap rem
+            if "thread_local" == attr.name() {
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
@@ -136,8 +135,7 @@ impl Visitor<()> for Context {
             }
 
             ast::item_foreign_mod(..) => {
-                if attr::contains_name(i.attrs, "link_args") &&
-                    cfg!(stage0, remove_this_on_next_snapshot) { // NOTE: snap
+                if attr::contains_name(i.attrs, "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
