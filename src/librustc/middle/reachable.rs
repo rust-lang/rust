@@ -128,11 +128,28 @@ impl Visitor<()> for MarkSymbolVisitor {
                 };
 
                 let def_id = def_id_of_def(def);
-                if ReachableContext::
-                    def_id_represents_local_inlined_item(self.tcx, def_id) {
-                        self.worklist.push(def_id.node)
+                if is_local(def_id) {
+                    if ReachableContext::
+                        def_id_represents_local_inlined_item(self.tcx, def_id) {
+                            self.worklist.push(def_id.node)
+                    } else {
+                        match def {
+                            // If this path leads to a static, then we may have
+                            // to do some work to figure out whether the static
+                            // is indeed reachable (address_insignificant
+                            // statics are *never* reachable).
+                            ast::DefStatic(..) => {
+                                self.worklist.push(def_id.node);
+                            }
+
+                            // If this wasn't a static, then this destination is
+                            // surely reachable.
+                            _ => {
+                                self.reachable_symbols.insert(def_id.node);
+                            }
+                        }
                     }
-                self.reachable_symbols.insert(def_id.node);
+                }
             }
             ast::ExprMethodCall(..) => {
                 match self.method_map.find(&expr.id) {
@@ -140,13 +157,15 @@ impl Visitor<()> for MarkSymbolVisitor {
                         origin: typeck::method_static(def_id),
                         ..
                     }) => {
-                        if ReachableContext::
-                            def_id_represents_local_inlined_item(
-                                self.tcx,
-                                def_id) {
-                                self.worklist.push(def_id.node)
-                            }
-                        self.reachable_symbols.insert(def_id.node);
+                        if is_local(def_id) {
+                            if ReachableContext::
+                                def_id_represents_local_inlined_item(
+                                    self.tcx,
+                                    def_id) {
+                                    self.worklist.push(def_id.node)
+                                }
+                            self.reachable_symbols.insert(def_id.node);
+                        }
                     }
                     Some(_) => {}
                     None => {
@@ -310,10 +329,19 @@ impl ReachableContext {
                         }
                     }
 
+                    // Statics with insignificant addresses are not reachable
+                    // because they're inlined specially into all other crates.
+                    ast::item_static(..) => {
+                        if attr::contains_name(item.attrs,
+                                               "address_insignificant") {
+                            self.reachable_symbols.remove(&search_item);
+                        }
+                    }
+
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    ast::item_static(..) | ast::item_ty(..) |
+                    ast::item_ty(..) |
                     ast::item_mod(..) | ast::item_foreign_mod(..) |
                     ast::item_impl(..) | ast::item_trait(..) |
                     ast::item_struct(..) | ast::item_enum(..) => {}
