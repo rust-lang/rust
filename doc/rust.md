@@ -2070,6 +2070,38 @@ The currently implemented features of the compiler are:
                closure as `once` is unlikely to be supported going forward. So
                they are hidden behind this feature until they are to be removed.
 
+* `managed_boxes` - Usage of `@` pointers is gated due to many
+                    planned changes to this feature. In the past, this has meant
+                    "a GC pointer", but the current implementation uses
+                    reference counting and will likely change drastically over
+                    time. Additionally, the `@` syntax will no longer be used to
+                    create GC boxes.
+
+* `asm` - The `asm!` macro provides a means for inline assembly. This is often
+          useful, but the exact syntax for this feature along with its semantics
+          are likely to change, so this macro usage must be opted into.
+
+* `non_ascii_idents` - The compiler supports the use of non-ascii identifiers,
+                       but the implementation is a little rough around the
+                       edges, so this can be seen as an experimental feature for
+                       now until the specification of identifiers is fully
+                       fleshed out.
+
+* `thread_local` - The usage of the `#[thread_local]` attribute is experimental
+                   and should be seen as unstable. This attribute is used to
+                   declare a `static` as being unique per-thread leveraging
+                   LLVM's implementation which works in concert with the kernel
+                   loader and dynamic linker. This is not necessarily available
+                   on all platforms, and usage of it is discouraged (rust
+                   focuses more on task-local data instead of thread-local
+                   data).
+
+* `link_args` - This attribute is used to specify custom flags to the linker,
+                but usage is strongly discouraged. The compiler's usage of the
+                system linker is not guaranteed to continue in the future, and
+                if the system linker is not used then specifying custom flags
+                doesn't have much meaning.
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
 the new feature (because the directive is no longer necessary). However, if
@@ -3611,6 +3643,111 @@ queues, as well as code to copy values between queues and their recipients and
 to serialize values for transmission over operating-system inter-process
 communication facilities.
 
+### Linkage
+
+The Rust compiler supports various methods to link crates together both
+statically and dynamically. This section will explore the various methods to
+link Rust crates together, and more information about native libraries can be
+found in the [ffi tutorial][ffi].
+
+In one session of compilation, the compiler can generate multiple artifacts
+through the usage of command line flags and the `crate_type` attribute.
+
+* `--bin`, `#[crate_type = "bin"]` - A runnable executable will be produced.
+  This requires that there is a `main` function in the crate which will be run
+  when the program begins executing. This will link in all Rust and native
+  dependencies, producing a distributable binary.
+
+* `--lib`, `#[crate_type = "lib"]` - A Rust library will be produced. This is
+  an ambiguous concept as to what exactly is produced because a library can
+  manifest itself in several forms. The purpose of this generic `lib` option is
+  to generate the "compiler recommended" style of library. The output library
+  will always be usable by rustc, but the actual type of library may change
+  from time-to-time. The remaining output types are all different flavors of
+  libraries, and the `lib` type can be seen as an alias for one of them (but
+  the actual one is compiler-defined).
+
+* `--dylib`, `#[crate_type = "dylib"]` - A dynamic Rust library will be
+  produced. This is different from the `lib` output type in that this forces
+  dynamic library generation. The resulting dynamic library can be used as a
+  dependency for other libraries and/or executables.  This output type will
+  create `*.so` files on linux, `*.dylib` files on osx, and `*.dll` files on
+  windows.
+
+* `--staticlib`, `#[crate_type = "staticlib"]` - A static system library will
+  be produced. This is different from other library outputs in that the Rust
+  compiler will never attempt to link to `staticlib` outputs. The purpose of
+  this output type is to create a static library containing all of the local
+  crate's code along with all upstream dependencies. The static library is
+  actually a `*.a` archive on linux and osx and a `*.lib` file on windows. This
+  format is recommended for use in situtations such as linking Rust code into an
+  existing non-Rust application because it will not have dynamic dependencies on
+  other Rust code.
+
+* `--rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be produced.
+  This is used as an intermediate artifact and can be thought of as a "static
+  Rust library". These `rlib` files, unlike `staticlib` files, are interpreted
+  by the Rust compiler in future linkage. This essentially means that `rustc`
+  will look for metadata in `rlib` files like it looks for metadata in dynamic
+  libraries. This form of output is used to produce statically linked
+  executables as well as `staticlib` outputs.
+
+Note that these outputs are stackable in the sense that if multiple are
+specified, then the compiler will produce each form of output at once without
+having to recompile.
+
+With all these different kinds of outputs, if crate A depends on crate B, then
+the compiler could find B in various different forms throughout the system. The
+only forms looked for by the compiler, however, are the `rlib` format and the
+dynamic library format. With these two options for a dependent library, the
+compiler must at some point make a choice between these two formats. With this
+in mind, the compiler follows these rules when determining what format of
+dependencies will be used:
+
+1. If a dynamic library is being produced, then it is required for all upstream
+   Rust dependencies to also be dynamic. This is a limitation of the current
+   implementation of the linkage model.  The reason behind this limitation is to
+   prevent multiple copies of the same upstream library from showing up, and in
+   the future it is planned to support a mixture of dynamic and static linking.
+
+   When producing a dynamic library, the compiler will generate an error if an
+   upstream dependency could not be found, and also if an upstream dependency
+   could only be found in an `rlib` format. Remember that `staticlib` formats
+   are always ignored by `rustc` for crate-linking purposes.
+
+2. If a static library is being produced, all upstream dependecies are
+   required to be available in `rlib` formats. This requirement stems from the
+   same reasons that a dynamic library must have all dynamic dependencies.
+
+   Note that it is impossible to link in native dynamic dependencies to a static
+   library, and in this case warnings will be printed about all unlinked native
+   dynamic dependencies.
+
+3. If an `rlib` file is being produced, then there are no restrictions on what
+   format the upstream dependencies are available in. It is simply required that
+   all upstream dependencies be available for reading metadata from.
+
+   The reason for this is that `rlib` files do not contain any of their upstream
+   dependencies. It wouldn't be very efficient for all `rlib` files to contain a
+   copy of `libstd.rlib`!
+
+4. If an executable is being produced, then things get a little interesting. As
+   with the above limitations in dynamic and static libraries, it is required
+   for all upstream dependencies to be in the same format. The next question is
+   whether to prefer a dynamic or a static format. The compiler currently favors
+   static linking over dynamic linking, but this can be inverted with the `-Z
+   prefer-dynamic` flag to the compiler.
+
+   What this means is that first the compiler will attempt to find all upstream
+   dependencies as `rlib` files, and if successful, it will create a statically
+   linked executable. If an upstream dependency is missing as an `rlib` file,
+   then the compiler will force all dependencies to be dynamic and will generate
+   errors if dynamic versions could not be found.
+
+In general, `--bin` or `--lib` should be sufficient for all compilation needs,
+and the other options are just available if more fine-grained control is desired
+over the output format of a Rust crate.
+
 ### Logging system
 
 The runtime contains a system for directing [logging
@@ -3762,3 +3899,5 @@ Additional specific influences can be seen from the following languages:
 * The typeclass system of Haskell.
 * The lexical identifier rule of Python.
 * The block syntax of Ruby.
+
+[ffi]: tutorial-ffi.html
