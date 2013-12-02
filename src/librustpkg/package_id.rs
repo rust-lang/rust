@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use extra::url;
 use version::{try_getting_version, try_getting_local_version,
               Version, NoVersion, split_version};
 use std::hash::Streaming;
 use std::hash;
+use messages::error;
 
 /// Path-fragment identifier of a package such as
 /// 'github.com/graydon/test'; path must be a relative
@@ -41,9 +43,59 @@ impl Eq for PkgId {
     }
 }
 
+/// Parses `s` as a URL and, if the parse was successful, returns the
+/// portion of the URL without the scheme
+/// for example: git://github.com/catamorphism/foo => github.com/catamorphism/foo
+fn drop_url_scheme<'a>(s: &'a str) -> Option<~str> {
+    match url::get_scheme(s) {
+        Ok((_, rest)) => {
+            // get_scheme leaves in the leading //
+            let len = rest.len();
+            let path_to_use = if len > 2 {
+                let no_slashes = rest.slice(2, len);
+                // Don't display the .git extension, since it's not part of the actual
+                // package ID
+                if no_slashes.ends_with(".git") {
+                    no_slashes.slice(0, len - 6).to_owned()
+                }
+                else {
+                    no_slashes.to_owned()
+                }
+            } else {
+                rest
+            };
+            Some(path_to_use)
+        }
+        Err(_)        => None
+    }
+}
+
+// Fails if this is not a legal package ID,
+// after printing a hint
+fn ensure_legal_package_id(s: &str) {
+    // url::get_path checks that the string contains characters
+    // that are legal in a URL ('#' is legal, so we're good there)
+    let maybe_intended_path = drop_url_scheme(s);
+    let legal = maybe_intended_path.is_none()
+        && url::get_path(s, false).is_ok();
+    if !legal {
+        for maybe_package_id in maybe_intended_path.iter() {
+            error(format!("rustpkg operates on package IDs; did you mean to write \
+                          `{}` instead of `{}`?",
+                  *maybe_package_id,
+                  s));
+        }
+        fail!("Can't parse {} as a package ID", s);
+    }
+}
+
 impl PkgId {
     pub fn new(s: &str) -> PkgId {
         use conditions::bad_pkg_id::cond;
+
+        // Make sure the path is a legal package ID -- it might not even
+        // be a legal path, so we do this first
+        ensure_legal_package_id(s);
 
         let mut given_version = None;
 
