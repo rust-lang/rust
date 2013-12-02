@@ -148,9 +148,9 @@ Options:
 }
 
 pub fn init() {
-    println("rustpkg init
+    println("rustpkg init <bin|lib> package-name
 
-This will turn the current working directory into a workspace. The first
-command you run when starting off a new project.
+This initializes a workspace with the same name as package-name in the current
+directory. The first command you run when starting off a new project.
 ");
 }
