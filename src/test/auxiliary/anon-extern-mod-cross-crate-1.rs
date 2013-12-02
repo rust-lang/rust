@@ -14,7 +14,7 @@
 
 use std::libc;
 
+#[link(name = "rustrt")]
 extern {
-    #[link(name = "rustrt")]
     pub fn rust_get_test_int() -> libc::intptr_t;
 }
