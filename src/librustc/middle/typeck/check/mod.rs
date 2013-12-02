@@ -2248,8 +2248,19 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
-                    (None, ast::impure_fn, ast::BorrowedSigil,
-                     ast::Many, ty::EmptyBuiltinBounds())
+                    let mut sigil = ast::BorrowedSigil;
+                    let mut onceness = ast::Many;
+                    let mut bounds = ty::EmptyBuiltinBounds();
+                    match expr.node {
+                        ast::ExprProc(..) => {
+                            sigil = ast::OwnedSigil;
+                            onceness = ast::Once;
+                            bounds.add(ty::BoundSend);
+                        }
+                        _ => ()
+                    }
+                    (None, ast::impure_fn, sigil,
+                     onceness, bounds)
                 }
             }
         };
