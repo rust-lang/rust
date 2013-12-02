@@ -15,9 +15,6 @@ extern mod anonexternmod;
 
 use anonexternmod::rust_get_test_int;
 
-#[link(name = "rustrt")] // we have explicitly chosen to require this
-extern {}
-
 pub fn main() {
     unsafe {
         rust_get_test_int();
