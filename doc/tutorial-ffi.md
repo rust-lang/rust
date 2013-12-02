@@ -8,13 +8,13 @@ foreign code. Rust is currently unable to call directly into a C++ library, but
 snappy includes a C interface (documented in
 [`snappy-c.h`](https://code.google.com/p/snappy/source/browse/trunk/snappy-c.h)).
 
-The following is a minimal example of calling a foreign function which will compile if snappy is
-installed:
+The following is a minimal example of calling a foreign function which will
+compile if snappy is installed:
 
 ~~~~ {.xfail-test}
 use std::libc::size_t;
 
-#[link_args = "-lsnappy"]
+#[link(name = "snappy")]
 extern {
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
@@ -25,26 +25,28 @@ fn main() {
 }
 ~~~~
 
-The `extern` block is a list of function signatures in a foreign library, in this case with the
-platform's C ABI. The `#[link_args]` attribute is used to instruct the linker to link against the
-snappy library so the symbols are resolved.
+The `extern` block is a list of function signatures in a foreign library, in
+this case with the platform's C ABI. The `#[link(...)]` attribute is used to
+instruct the linker to link against the snappy library so the symbols are
+resolved.
 
-Foreign functions are assumed to be unsafe so calls to them need to be wrapped with `unsafe {}` as a
-promise to the compiler that everything contained within truly is safe. C libraries often expose
-interfaces that aren't thread-safe, and almost any function that takes a pointer argument isn't
-valid for all possible inputs since the pointer could be dangling, and raw pointers fall outside of
+Foreign functions are assumed to be unsafe so calls to them need to be wrapped
+with `unsafe {}` as a promise to the compiler that everything contained within
+truly is safe. C libraries often expose interfaces that aren't thread-safe, and
+almost any function that takes a pointer argument isn't valid for all possible
+inputs since the pointer could be dangling, and raw pointers fall outside of
 Rust's safe memory model.
 
-When declaring the argument types to a foreign function, the Rust compiler will not check if the
-declaration is correct, so specifying it correctly is part of keeping the binding correct at
-runtime.
+When declaring the argument types to a foreign function, the Rust compiler can
+not check if the declaration is correct, so specifying it correctly is part of
+keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
 ~~~~ {.xfail-test}
 use std::libc::{c_int, size_t};
 
-#[link_args = "-lsnappy"]
+#[link(name = "snappy")]
 extern {
     fn snappy_compress(input: *u8,
                        input_length: size_t,
@@ -232,9 +234,72 @@ fn main() {
 
 # Linking
 
-In addition to the `#[link_args]` attribute for explicitly passing arguments to the linker, an
-`extern mod` block will pass `-lmodname` to the linker by default unless it has a `#[nolink]`
-attribute applied.
+The `link` attribute on `extern` blocks provides the basic building block for
+instructing rustc how it will link to native libraries. There are two accepted
+forms of the link attribute today:
+
+* `#[link(name = "foo")]`
+* `#[link(name = "foo", kind = "bar")]`
+
+In both of these cases, `foo` is the name of the native library that we're
+linking to, and in the second case `bar` is the type of native library that the
+compiler is linking to. There are currently three known types of native
+libraries:
+
+* Dynamic - `#[link(name = "readline")]
+* Static - `#[link(name = "my_build_dependency", kind = "static")]
+* Frameworks - `#[link(name = "CoreFoundation", kind = "framework")]
+
+Note that frameworks are only available on OSX targets.
+
+The different `kind` values are meant to differentiate how the native library
+participates in linkage. From a linkage perspective, the rust compiler creates
+two flavors of artifacts: partial (rlib/staticlib) and final (dylib/binary).
+Native dynamic libraries and frameworks are propagated to the final artifact
+boundary, while static libraries are not propagated at all.
+
+A few examples of how this model can be used are:
+
+* A native build dependency. Sometimes some C/C++ glue is needed when writing
+  some rust code, but distribution of the C/C++ code in a library format is just
+  a burden. In this case, the code will be archived into `libfoo.a` and then the
+  rust crate would declare a dependency via `#[link(name = "foo", kind =
+  "static")]`.
+
+  Regardless of the flavor of output for the crate, the native static library
+  will be included in the output, meaning that distribution of the native static
+  library is not necessary.
+
+* A normal dynamic dependency. Common system libraries (like `readline`) are
+  available on a large number of systems, and often a static copy of these
+  libraries cannot be found. When this dependency is included in a rust crate,
+  partial targets (like rlibs) will not link to the library, but when the rlib
+  is included in a final target (like a binary), the native library will be
+  linked in.
+
+On OSX, frameworks behave with the same semantics as a dynamic library.
+
+## The `link_args` attribute
+
+There is one other way to tell rustc how to customize linking, and that is via
+the `link_args` attribute. This attribute is applied to `extern` blocks and
+specifies raw flags which need to get passed to the linker when producing an
+artifact. An example usage would be:
+
+~~~ {.xfail-test}
+#[link_args = "-foo -bar -baz"]
+extern {}
+~~~
+
+Note that this feature is currently hidden behind the `feature(link_args)` gate
+because this is not a sanctioned way of performing linking. Right now rustc
+shells out to the system linker, so it makes sense to provide extra command line
+arguments, but this will not always be the case. In the future rustc may use
+LLVM directly to link native libraries in which case `link_args` will have no
+meaning.
+
+It is highly recommended to *not* use this attribute, and rather use the more
+formal `#[link(...)]` attribute on `extern` blocks instead.
 
 # Unsafe blocks
 
@@ -260,7 +325,7 @@ blocks with the `static` keyword:
 ~~~{.xfail-test}
 use std::libc;
 
-#[link_args = "-lreadline"]
+#[link(name = "readline")]
 extern {
     static rl_readline_version: libc::c_int;
 }
@@ -279,7 +344,7 @@ them.
 use std::libc;
 use std::ptr;
 
-#[link_args = "-lreadline"]
+#[link(name = "readline")]
 extern {
     static mut rl_prompt: *libc::c_char;
 }
