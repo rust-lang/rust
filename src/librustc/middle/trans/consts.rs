@@ -478,6 +478,22 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
               (expr::cast_integral, expr::cast_pointer) => {
                 llvm::LLVMConstIntToPtr(v, llty.to_ref())
               }
+              (expr::cast_pointer, expr::cast_integral) => {
+                // it's impossible to relocate a link-time constant if the
+                // destination is not exactly of the same size than the pointer
+                // if this is the case, emit an error rather than letting
+                // LLVM report the error
+                let bty = type_of::type_of(cx, basety);
+                let csize = machine::llsize_of_alloc(cx, bty);
+                let tsize = machine::llsize_of_alloc(cx, llty);
+                if csize != tsize {
+                    cx.sess.span_fatal(e.span,
+                        "Cannot cast relocated expression to \
+                        a different size because its value is not known at \
+                        compile time");
+                }
+                llvm::LLVMConstPtrToInt(v, llty.to_ref())
+              }
               _ => {
                 cx.sess.impossible_case(e.span,
                                         "bad combination of types for cast")
