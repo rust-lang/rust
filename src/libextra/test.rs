@@ -34,6 +34,7 @@ use std::io;
 use std::io::File;
 use std::io::Writer;
 use std::io::stdio::StdWriter;
+use std::str;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -350,7 +351,7 @@ struct ConsoleTestState<T> {
     ignored: uint,
     measured: uint,
     metrics: MetricMap,
-    failures: ~[TestDesc],
+    failures: ~[(TestDesc, ~[u8])],
     max_name_len: uint, // number of columns to fill when aligning names
 }
 
@@ -484,14 +485,27 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 
     pub fn write_failures(&mut self) {
-        self.write_plain("\nfailures:\n");
         let mut failures = ~[];
-        for f in self.failures.iter() {
+        let mut fail_out  = ~"";
+        for &(ref f, ref stdout) in self.failures.iter() {
             failures.push(f.name.to_str());
+            if stdout.len() > 0 {
+                fail_out.push_str(format!("---- {} stdout ----\n\t",
+                                  f.name.to_str()));
+                let output = str::from_utf8(*stdout);
+                fail_out.push_str(output.replace("\n", "\n\t"));
+                fail_out.push_str("\n");
+            }
         }
+        if fail_out.len() > 0 {
+            self.write_plain("\n");
+            self.write_plain(fail_out);
+        }
+
+        self.write_plain("\nfailures:\n");
         sort::tim_sort(failures);
         for name in failures.iter() {
-            self.write_plain(format!("    {}\n", name.to_str()));
+            self.write_plain(format!("    {}\n", name.as_slice()));
         }
     }
 
@@ -612,7 +626,7 @@ pub fn run_tests_console(opts: &TestOpts,
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
-            TeResult(test, result) => {
+            TeResult(test, result, stdout) => {
                 st.write_log(&test, &result);
                 st.write_result(&result);
                 match result {
@@ -634,7 +648,7 @@ pub fn run_tests_console(opts: &TestOpts,
                     }
                     TrFailed => {
                         st.failed += 1;
-                        st.failures.push(test);
+                        st.failures.push((test, stdout));
                     }
                 }
             }
@@ -696,7 +710,7 @@ fn should_sort_failures_before_printing_them() {
         measured: 0u,
         max_name_len: 10u,
         metrics: MetricMap::new(),
-        failures: ~[test_b, test_a]
+        failures: ~[(test_b, ~[]), (test_a, ~[])]
     };
 
     st.write_failures();
@@ -716,10 +730,10 @@ fn use_color() -> bool { return get_concurrency() == 1; }
 enum TestEvent {
     TeFiltered(~[TestDesc]),
     TeWait(TestDesc, NamePadding),
-    TeResult(TestDesc, TestResult),
+    TeResult(TestDesc, TestResult, ~[u8] /* stdout */),
 }
 
-type MonitorMsg = (TestDesc, TestResult);
+type MonitorMsg = (TestDesc, TestResult, ~[u8] /* stdout */);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
@@ -762,11 +776,11 @@ fn run_tests(opts: &TestOpts,
             pending += 1;
         }
 
-        let (desc, result) = p.recv();
+        let (desc, result, stdout) = p.recv();
         if concurrency != 1 {
             callback(TeWait(desc.clone(), PadNone));
         }
-        callback(TeResult(desc, result));
+        callback(TeResult(desc, result, stdout));
         pending -= 1;
     }
 
@@ -775,8 +789,8 @@ fn run_tests(opts: &TestOpts,
     for b in filtered_benchs_and_metrics.move_iter() {
         callback(TeWait(b.desc.clone(), b.testfn.padding()));
         run_test(!opts.run_benchmarks, b, ch.clone());
-        let (test, result) = p.recv();
-        callback(TeResult(test, result));
+        let (test, result, stdout) = p.recv();
+        callback(TeResult(test, result, stdout));
     }
 }
 
@@ -865,7 +879,7 @@ pub fn run_test(force_ignore: bool,
     let TestDescAndFn {desc, testfn} = test;
 
     if force_ignore || desc.ignore {
-        monitor_ch.send((desc, TrIgnored));
+        monitor_ch.send((desc, TrIgnored, ~[]));
         return;
     }
 
@@ -875,40 +889,43 @@ pub fn run_test(force_ignore: bool,
         let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
             let mut task = task::task();
+            let (mut reader, writer) = io::comm::stream();
             task.name(match desc.name {
                 DynTestName(ref name) => SendStrOwned(name.clone()),
                 StaticTestName(name) => SendStrStatic(name),
             });
+            task.opts.stdout = Some(~writer as ~Writer);
             let result_future = task.future_result();
             task.spawn(testfn_cell.take());
 
+            let stdout = reader.read_to_end();
             let task_result = result_future.recv();
             let test_result = calc_result(&desc, task_result.is_ok());
-            monitor_ch.send((desc.clone(), test_result));
+            monitor_ch.send((desc.clone(), test_result, stdout));
         }
     }
 
     match testfn {
         DynBenchFn(bencher) => {
             let bs = ::test::bench::benchmark(|harness| bencher.run(harness));
-            monitor_ch.send((desc, TrBench(bs)));
+            monitor_ch.send((desc, TrBench(bs), ~[]));
             return;
         }
         StaticBenchFn(benchfn) => {
             let bs = ::test::bench::benchmark(benchfn);
-            monitor_ch.send((desc, TrBench(bs)));
+            monitor_ch.send((desc, TrBench(bs), ~[]));
             return;
         }
         DynMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm)));
+            monitor_ch.send((desc, TrMetrics(mm), ~[]));
             return;
         }
         StaticMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm)));
+            monitor_ch.send((desc, TrMetrics(mm), ~[]));
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),

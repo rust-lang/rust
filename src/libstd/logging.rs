@@ -92,8 +92,10 @@ start, print out all modules registered for logging, and then exit.
 use fmt;
 use option::*;
 use rt::local::Local;
-use rt::logging::{Logger, StdErrLogger};
 use rt::task::Task;
+use std::io;
+use std::io::buffered::LineBufferedWriter;
+use std::io::stdio;
 
 /// This function is called directly by the compiler when using the logging
 /// macros. This function does not take into account whether the log level
@@ -110,18 +112,18 @@ pub fn log(_level: u32, args: &fmt::Arguments) {
                 // Lazily initialize the local task's logger
                 match (*local).logger {
                     // Use the available logger if we have one
-                    Some(ref mut logger) => { logger.log(args); }
+                    Some(ref mut logger) => { fmt::writeln(*logger, args); }
                     None => {
-                        let mut logger = StdErrLogger::new();
-                        logger.log(args);
-                        (*local).logger = Some(logger);
+                        let mut logger = LineBufferedWriter::new(stdio::stderr());
+                        fmt::writeln(&mut logger as &mut io::Writer, args);
+                        (*local).logger = Some(~logger as ~io::Writer);
                     }
                 }
             }
             // If there's no local task, then always log to stderr
             None => {
-                let mut logger = StdErrLogger::new();
-                logger.log(args);
+                let mut logger = stdio::stderr();
+                fmt::writeln(&mut logger as &mut io::Writer, args);
             }
         }
     }
