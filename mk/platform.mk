@@ -88,14 +88,15 @@ AR := ar
 
 CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
 ifeq ($(CFG_C_COMPILER),clang)
+  # The -Qunused-arguments sidesteps spurious warnings from clang
   ifeq ($(origin CC),default)
-    CC=clang
+    CC=clang -Qunused-arguments
   endif
   ifeq ($(origin CXX),default)
-    CXX=clang++
+    CXX=clang++ -Qunused-arguments
   endif
   ifeq ($(origin CPP),default)
-    CPP=clang
+    CPP=clang -Qunused-arguments
   endif
 else
 ifeq ($(CFG_C_COMPILER),gcc)
