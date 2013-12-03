@@ -3225,6 +3225,32 @@ let bo: Binop = add;
 x = bo(5,7);
 ~~~~
 
+### Closure types
+
+The type of a closure mapping an input of type `A` to an output of type `B` is `|A| -> B`. A closure with no arguments or return values has type `||`.
+
+
+An example of creating and calling a closure:
+
+```rust
+let captured_var = 10; 
+
+let closure_no_args = || println!("captured_var={}", captured_var); 
+
+let closure_args = |arg: int| -> int {
+  println!("captured_var={}, arg={}", captured_var, arg); 
+  arg // Note lack of semicolon after 'arg'
+};
+
+fn call_closure(c1: ||, c2: |int| -> int) {
+  c1();
+  c2(2);
+}
+
+call_closure(closure_no_args, closure_args);
+
+```
+
 ### Object types
 
 Every trait item (see [traits](#traits)) defines a type with the same name as the trait.
