@@ -754,6 +754,13 @@ pub fn std_macros() -> @str {
         if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
     ))
 
+    macro_rules! log_enabled(
+        ($lvl:expr) => ( {
+            let lvl = $lvl;
+            lvl <= __log_level() && (lvl != 4 || cfg!(not(ndebug)))
+        } )
+    )
+
     macro_rules! fail(
         () => (
             fail!("explicit failure")
