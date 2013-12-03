@@ -59,7 +59,9 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
     <nav class=\"sub\">
         <form class=\"search-form js-only\">
             <input class=\"search-input\" name=\"search\"
-                   autocomplete=\"off\" />
+                   autocomplete=\"off\"
+                   placeholder=\"Search documentation...\"
+                   type=\"search\" />
             <button class=\"do-search\">Search</button>
         </form>
     </nav>
