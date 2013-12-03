@@ -51,7 +51,6 @@
 
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];
-#[crate_type = "lib"]; // NOTE: remove after stage0 snapshot
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
@@ -59,14 +58,13 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, asm, managed_boxes, thread_local)];
+#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args)];
 
 // Don't link to std. We are std.
 #[no_std];
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
-#[allow(attribute_usage)]; // NOTE: remove after the next snapshot
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top

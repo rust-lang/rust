@@ -161,7 +161,7 @@ pub mod icu {
         use unicode::icu::*;
 
         // #[link_name = "icuuc"]
-        #[link_args = "-licuuc"]
+        #[link(name = "icuuc")]
         extern {
             pub fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
             pub fn u_isdigit(c: UChar32) -> UBool;

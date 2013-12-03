@@ -306,10 +306,8 @@ pub mod llvm {
     use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
                     size_t};
 
-    #[cfg(stage0)]
-    #[link_args = "-lrustllvm"]
-    extern {}
-    #[cfg(not(stage0))] // if you're deleting this, put this on the block below
+    // Don't bring in two copies turing testing.
+    #[cfg(not(test))]
     #[link(name = "rustllvm")]
     extern {}
 
