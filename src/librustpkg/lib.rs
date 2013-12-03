@@ -17,7 +17,6 @@
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
 #[license = "MIT/ASL2"];
-#[crate_type = "lib"]; // NOTE: remove after stage0 snapshot
 #[crate_type = "dylib"];
 
 #[feature(globs, managed_boxes)];

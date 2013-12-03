@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! This module contains the linkage attributes to all runtime dependencies of
-//! the stndard library This varies per-platform, but these libraries are
+//! the standard library This varies per-platform, but these libraries are
 //! necessary for running libstd.
 
 // All platforms need to link to rustrt
@@ -47,8 +47,4 @@ extern {}
 #[cfg(target_os = "macos")]
 #[link(name = "pthread")]
 #[link(name = "stdc++")]
-extern {}
-
-#[cfg(stage0)]
-#[link_args = "-lstdc++"]
 extern {}
