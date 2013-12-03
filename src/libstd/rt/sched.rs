@@ -1173,7 +1173,6 @@ mod test {
         use rt::sleeper_list::SleeperList;
         use rt::stack::StackPool;
         use rt::sched::{Shutdown, TaskFromFriend};
-        use util;
 
         do run_in_bare_thread {
             stress_factor().times(|| {
@@ -1205,7 +1204,7 @@ mod test {
                 handle.send(TaskFromFriend(task));
 
                 handle.send(Shutdown);
-                util::ignore(handle);
+                drop(handle);
 
                 thread.join();
             })
