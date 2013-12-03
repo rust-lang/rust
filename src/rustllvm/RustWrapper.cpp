@@ -539,3 +539,22 @@ extern "C" char *LLVMTypeToString(LLVMTypeRef Type) {
     unwrap<llvm::Type>(Type)->print(os);
     return strdup(os.str().data());
 }
+
+extern "C" bool
+LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
+    Module *Dst = unwrap(dst);
+    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
+    std::string Err;
+    Module *Src = llvm::getLazyBitcodeModule(buf, Dst->getContext(), &Err);
+    if (Src == NULL) {
+        LLVMRustError = Err.c_str();
+        delete buf;
+        return false;
+    }
+
+    if (Linker::LinkModules(Dst, Src, Linker::DestroySource, &Err)) {
+        LLVMRustError = Err.c_str();
+        return false;
+    }
+    return true;
+}

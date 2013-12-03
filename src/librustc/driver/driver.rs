@@ -165,10 +165,7 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     *sess.building_library = session::building_library(sess.opts, &crate);
-    let want_exe = sess.opts.outputs.iter().any(|&o| o == OutputExecutable);
-    if *sess.building_library && want_exe {
-        sess.err("cannot build both a library and an executable");
-    }
+    *sess.outputs = session::collect_outputs(sess.opts, &crate);
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
@@ -337,8 +334,8 @@ pub struct CrateTranslation {
     module: ModuleRef,
     metadata_module: ModuleRef,
     link: LinkMeta,
-    crate_types: ~[~str],
     metadata: ~[u8],
+    reachable: ~[~str],
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -837,7 +834,8 @@ pub fn build_session_(sopts: @session::options,
         building_library: @mut false,
         working_dir: os::getcwd(),
         lints: @mut HashMap::new(),
-        node_id: @mut 1
+        node_id: @mut 1,
+        outputs: @mut ~[],
     }
 }
 

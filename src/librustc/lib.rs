@@ -99,6 +99,7 @@ pub mod back {
     pub mod x86_64;
     pub mod rpath;
     pub mod target_strs;
+    pub mod lto;
 }
 
 pub mod metadata;
