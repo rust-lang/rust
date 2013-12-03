@@ -1127,8 +1127,9 @@ fn link_args(sess: Session,
         }
     }
 
-    add_upstream_rust_crates(&mut args, sess, dylib);
     add_local_native_libraries(&mut args, sess);
+    add_upstream_rust_crates(&mut args, sess, dylib);
+    add_upstream_native_libraries(&mut args, sess);
 
     // # Telling the linker what we're doing
 
@@ -1168,91 +1169,6 @@ fn link_args(sess: Session,
     return args;
 }
 
-// # Rust Crate linking
-//
-// Rust crates are not considered at all when creating an rlib output. All
-// dependencies will be linked when producing the final output (instead of
-// the intermediate rlib version)
-fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
-                            dylib: bool) {
-    // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, stem: &str) -> ~str {
-        if stem.starts_with("lib") &&
-            config.os != abi::OsWin32 {
-            stem.slice(3, stem.len()).to_owned()
-        } else {
-            stem.to_owned()
-        }
-    }
-
-    let cstore = sess.cstore;
-    if !dylib && !sess.prefer_dynamic() {
-        // With an executable, things get a little interesting. As a limitation
-        // of the current implementation, we require that everything must be
-        // static, or everything must be dynamic. The reasons for this are a
-        // little subtle, but as with the above two cases, the goal is to
-        // prevent duplicate copies of the same library showing up. For example,
-        // a static immediate dependency might show up as an upstream dynamic
-        // dependency and we currently have no way of knowing that. We know that
-        // all dynamic libaries require dynamic dependencies (see above), so
-        // it's satisfactory to include either all static libraries or all
-        // dynamic libraries.
-        let crates = cstore::get_used_crates(cstore,
-                                             cstore::RequireStatic);
-        if crates.iter().all(|&(_, ref p)| p.is_some()) {
-            for &(cnum, ref path) in crates.iter() {
-                let cratepath = path.clone().unwrap();
-
-                // If we're linking to the static version of the crate, then
-                // we're mostly good to go. The caveat here is that we need to
-                // pull in the static crate's native dependencies.
-                args.push(cratepath.as_str().unwrap().to_owned());
-
-                let libs = csearch::get_native_libraries(sess.cstore, cnum);
-                for &(kind, ref lib) in libs.iter() {
-                    match kind {
-                        cstore::NativeUnknown => args.push("-l" + *lib),
-                        cstore::NativeFramework => {
-                            args.push(~"-framework");
-                            args.push(lib.to_owned());
-                        }
-                        cstore::NativeStatic => {
-                            sess.bug("statics shouldn't be propagated");
-                        }
-                    }
-                }
-            }
-            return;
-        }
-    }
-
-    // This is a fallback of three different  cases of linking:
-    //
-    // * When creating a dynamic library, all inputs are required to be dynamic
-    //   as well
-    // * If an executable is created with a preference on dynamic linking, then
-    //   this case is the fallback
-    // * If an executable is being created, and one of the inputs is missing as
-    //   a static library, then this is the fallback case.
-    let crates = cstore::get_used_crates(cstore, cstore::RequireDynamic);
-    for &(cnum, ref path) in crates.iter() {
-        let cratepath = match *path {
-            Some(ref p) => p.clone(),
-            None => {
-                sess.err(format!("could not find dynamic library for: `{}`",
-                                 cstore::get_crate_data(sess.cstore, cnum).name));
-                return
-            }
-        };
-        // Just need to tell the linker about where the library lives and what
-        // its name is
-        let dir = cratepath.dirname_str().unwrap();
-        if !dir.is_empty() { args.push("-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, cratepath.filestem_str().unwrap());
-        args.push("-l" + libarg);
-    }
-}
-
 // # Native library linking
 //
 // User-supplied library search paths (-L on the cammand line) These are
@@ -1287,4 +1203,107 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
             }
         }
     }
+}
+
+// # Rust Crate linking
+//
+// Rust crates are not considered at all when creating an rlib output. All
+// dependencies will be linked when producing the final output (instead of
+// the intermediate rlib version)
+fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
+                            dylib: bool) {
+    // Converts a library file-stem into a cc -l argument
+    fn unlib(config: @session::config, stem: &str) -> ~str {
+        if stem.starts_with("lib") &&
+            config.os != abi::OsWin32 {
+            stem.slice(3, stem.len()).to_owned()
+        } else {
+            stem.to_owned()
+        }
+    }
+
+    let cstore = sess.cstore;
+    if !dylib && !sess.prefer_dynamic() {
+        // With an executable, things get a little interesting. As a limitation
+        // of the current implementation, we require that everything must be
+        // static, or everything must be dynamic. The reasons for this are a
+        // little subtle, but as with the above two cases, the goal is to
+        // prevent duplicate copies of the same library showing up. For example,
+        // a static immediate dependency might show up as an upstream dynamic
+        // dependency and we currently have no way of knowing that. We know that
+        // all dynamic libaries require dynamic dependencies (see above), so
+        // it's satisfactory to include either all static libraries or all
+        // dynamic libraries.
+        let crates = cstore::get_used_crates(cstore, cstore::RequireStatic);
+        if crates.iter().all(|&(_, ref p)| p.is_some()) {
+            for (_, path) in crates.move_iter() {
+                let path = path.unwrap();
+                args.push(path.as_str().unwrap().to_owned());
+            }
+            return;
+        }
+    }
+
+    // This is a fallback of three different  cases of linking:
+    //
+    // * When creating a dynamic library, all inputs are required to be dynamic
+    //   as well
+    // * If an executable is created with a preference on dynamic linking, then
+    //   this case is the fallback
+    // * If an executable is being created, and one of the inputs is missing as
+    //   a static library, then this is the fallback case.
+    let crates = cstore::get_used_crates(cstore, cstore::RequireDynamic);
+    for &(cnum, ref path) in crates.iter() {
+        let cratepath = match *path {
+            Some(ref p) => p.clone(),
+            None => {
+                sess.err(format!("could not find dynamic library for: `{}`",
+                                 cstore::get_crate_data(sess.cstore, cnum).name));
+                return
+            }
+        };
+        // Just need to tell the linker about where the library lives and what
+        // its name is
+        let dir = cratepath.dirname_str().unwrap();
+        if !dir.is_empty() { args.push("-L" + dir); }
+        let libarg = unlib(sess.targ_cfg, cratepath.filestem_str().unwrap());
+        args.push("-l" + libarg);
+    }
+}
+
+// Link in all of our upstream crates' native dependencies. Remember that
+// all of these upstream native depenencies are all non-static
+// dependencies. We've got two cases then:
+//
+// 1. The upstream crate is an rlib. In this case we *must* link in the
+//    native dependency because the rlib is just an archive.
+//
+// 2. The upstream crate is a dylib. In order to use the dylib, we have to
+//    have the dependency present on the system somewhere. Thus, we don't
+//    gain a whole lot from not linking in the dynamic dependency to this
+//    crate as well.
+//
+// The use case for this is a little subtle. In theory the native
+// dependencies of a crate a purely an implementation detail of the crate
+// itself, but the problem arises with generic and inlined functions. If a
+// generic function calls a native function, then the generic function must
+// be instantiated in the target crate, meaning that the native symbol must
+// also be resolved in the target crate.
+fn add_upstream_native_libraries(args: &mut ~[~str], sess: Session) {
+    let cstore = sess.cstore;
+    cstore::iter_crate_data(cstore, |cnum, _| {
+        let libs = csearch::get_native_libraries(cstore, cnum);
+        for &(kind, ref lib) in libs.iter() {
+            match kind {
+                cstore::NativeUnknown => args.push("-l" + *lib),
+                cstore::NativeFramework => {
+                    args.push(~"-framework");
+                    args.push(lib.to_owned());
+                }
+                cstore::NativeStatic => {
+                    sess.bug("statics shouldn't be propagated");
+                }
+            }
+        }
+    });
 }
