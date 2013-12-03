@@ -42,7 +42,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
     }
     let o = Process::new(ar, args.as_slice(), opts).finish_with_output();
     if !o.status.success() {
-        sess.err(format!("{} failed with: {}", ar, o.status));
+        sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
+                         o.status));
         sess.note(format!("stdout ---\n{}", str::from_utf8(o.output)));
         sess.note(format!("stderr ---\n{}", str::from_utf8(o.error)));
         sess.abort_if_errors();
@@ -88,14 +89,32 @@ impl Archive {
 
     /// Adds all of the contents of the rlib at the specified path to this
     /// archive.
-    pub fn add_rlib(&mut self, rlib: &Path) {
-        let name = rlib.filename_str().unwrap().split('-').next().unwrap();
-        self.add_archive(rlib, name, [METADATA_FILENAME]);
+    ///
+    /// This ignores adding the bytecode from the rlib, and if LTO is enabled
+    /// then the object file also isn't added.
+    pub fn add_rlib(&mut self, rlib: &Path, name: &str, lto: bool) {
+        let object = format!("{}.o", name);
+        let bytecode = format!("{}.bc", name);
+        let mut ignore = ~[METADATA_FILENAME, bytecode.as_slice()];
+        if lto {
+            ignore.push(object.as_slice());
+        }
+        self.add_archive(rlib, name, ignore);
     }
 
     /// Adds an arbitrary file to this archive
     pub fn add_file(&mut self, file: &Path) {
         run_ar(self.sess, "r", None, [&self.dst, file]);
+    }
+
+    /// Removes a file from this archive
+    pub fn remove_file(&mut self, file: &str) {
+        run_ar(self.sess, "d", None, [&self.dst, &Path::new(file)]);
+    }
+
+    pub fn files(&self) -> ~[~str] {
+        let output = run_ar(self.sess, "t", None, [&self.dst]);
+        str::from_utf8(output.output).lines().map(|s| s.to_owned()).collect()
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str, skip: &[&str]) {
@@ -109,11 +128,17 @@ impl Archive {
         // The reason for this is that archives are keyed off the name of the
         // files, so if two files have the same name they will override one
         // another in the archive (bad).
+        //
+        // We skip any files explicitly desired for skipping, and we also skip
+        // all SYMDEF files as these are just magical placeholders which get
+        // re-created when we make a new archive anyway.
         let files = fs::readdir(loc.path());
         let mut inputs = ~[];
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
             if skip.iter().any(|s| *s == filename) { continue }
+            if filename.contains(".SYMDEF") { continue }
+
             let filename = format!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
             fs::rename(file, &new_filename);
