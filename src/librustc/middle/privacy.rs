@@ -243,7 +243,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
                             ast::sty_static => public_ty,
                             _ => true,
                         } && method.vis == ast::public;
-                        if meth_public || public_trait {
+                        if meth_public || tr.is_some() {
                             self.exported_items.insert(method.id);
                         }
                     }
