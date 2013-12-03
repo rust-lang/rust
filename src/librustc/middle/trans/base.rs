@@ -2521,9 +2521,12 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                 // requested
                                 if attr::contains_name(i.attrs,
                                                        "address_insignificant"){
+                                    if ccx.reachable.contains(&id) {
+                                        ccx.sess.span_bug(i.span,
+                                            "insignificant static is \
+                                             reachable");
+                                    }
                                     lib::llvm::SetUnnamedAddr(g, true);
-                                    lib::llvm::SetLinkage(g,
-                                        lib::llvm::InternalLinkage);
 
                                     // This is a curious case where we must make
                                     // all of these statics inlineable. If a

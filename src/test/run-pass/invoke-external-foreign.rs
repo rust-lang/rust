@@ -18,9 +18,6 @@
 
 extern mod foreign_lib;
 
-#[link(name = "rustrt")] // we have explicitly chosen to require this
-extern {}
-
 pub fn main() {
     unsafe {
         let _foo = foreign_lib::rustrt::rust_get_test_int();
