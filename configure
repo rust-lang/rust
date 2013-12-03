@@ -893,11 +893,11 @@ do
             LLVM_CC_64="ccache clang -Qunused-arguments"
             ;;
             ("clang")
-            LLVM_CXX_32="clang++ -m32"
-            LLVM_CC_32="clang -m32"
+            LLVM_CXX_32="clang++ -m32 -Qunused-arguments"
+            LLVM_CC_32="clang -m32 -Qunused-arguments"
 
-            LLVM_CXX_64="clang++"
-            LLVM_CC_64="clang"
+            LLVM_CXX_64="clang++ -Qunused-arguments"
+            LLVM_CC_64="clang -Qunused-arguments"
             ;;
             ("ccache gcc")
             LLVM_CXX_32="ccache g++ -m32"
