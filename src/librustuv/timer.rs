@@ -77,8 +77,8 @@ impl RtioTimer for TimerWatcher {
         let _missile = match util::replace(&mut self.action, None) {
             None => missile, // no need to do a homing dance
             Some(action) => {
-                util::ignore(missile);      // un-home ourself
-                util::ignore(action);       // destroy the previous action
+                drop(missile);      // un-home ourself
+                drop(action);       // destroy the previous action
                 self.fire_homing_missile()  // re-home ourself
             }
         };
