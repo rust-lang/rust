@@ -207,14 +207,14 @@ impl<T> RingBuf<T> {
             //    start_index to self.elts.len()
             // and then
             //    0 to end_index
-            let (temp, remaining1) = self.elts.mut_split(start_index);
-            let (remaining2, _) = temp.mut_split(end_index);
+            let (temp, remaining1) = self.elts.mut_split_at(start_index);
+            let (remaining2, _) = temp.mut_split_at(end_index);
             RingBufMutIterator { remaining1: remaining1,
                                  remaining2: remaining2,
                                  nelts: self.nelts }
         } else {
             // Items to iterate goes from start_index to end_index:
-            let (empty, elts) = self.elts.mut_split(0);
+            let (empty, elts) = self.elts.mut_split_at(0);
             let remaining1 = elts.mut_slice(start_index, end_index);
             RingBufMutIterator { remaining1: remaining1,
                                  remaining2: empty,

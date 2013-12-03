@@ -858,20 +858,24 @@ pub trait ImmutableVector<'self, T> {
     /// Returns a reversed iterator over a vector
     fn rev_iter(self) -> RevIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
-    /// separated by elements that match `pred`.
+    /// separated by elements that match `pred`.  The matched element
+    /// is not contained in the subslices.
     fn split(self, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
-    /// at most `n` times.
+    /// at most `n` times.  The matched element is not contained in
+    /// the subslices.
     fn splitn(self, n: uint, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
-    /// end of the vector and works backwards.
+    /// end of the vector and works backwards.  The matched element is
+    /// not contained in the subslices.
     fn rsplit(self, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
-    /// works backwards.
+    /// works backwards.  The matched element is not contained in the
+    /// subslices.
     fn rsplitn(self,  n: uint, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
 
     /**
@@ -1933,6 +1937,11 @@ pub trait MutableVector<'self, T> {
     /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'self, T>;
 
+    /// Returns an iterator over the mutable subslices of the vector
+    /// which are separated by elements that match `pred`.  The
+    /// matched element is not contained in the subslices.
+    fn mut_split(self, pred: 'self |&T| -> bool) -> MutSplitIterator<'self, T>;
+
     /**
      * Returns an iterator over `size` elements of the vector at a time.
      * The chunks are mutable and do not overlap. If `size` does not divide the
@@ -1995,7 +2004,7 @@ pub trait MutableVector<'self, T> {
      * itself) and the second will contain all indices from
      * `mid..len` (excluding the index `len` itself).
      */
-    fn mut_split(self, mid: uint) -> (&'self mut [T],
+    fn mut_split_at(self, mid: uint) -> (&'self mut [T],
                                       &'self mut [T]);
 
     /// Reverse the order of elements in a vector, in place
@@ -2052,7 +2061,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    fn mut_split(self, mid: uint) -> (&'self mut [T], &'self mut [T]) {
+    fn mut_split_at(self, mid: uint) -> (&'self mut [T], &'self mut [T]) {
         unsafe {
             let len = self.len();
             let self2: &'self mut [T] = cast::transmute_copy(&self);
@@ -2079,6 +2088,11 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
     fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
         self.mut_iter().invert()
+    }
+
+    #[inline]
+    fn mut_split(self, pred: 'self |&T| -> bool) -> MutSplitIterator<'self, T> {
+        MutSplitIterator { v: self, pred: pred, finished: false }
     }
 
     #[inline]
@@ -2575,6 +2589,73 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 iterator!{struct VecMutIterator -> *mut T, &'self mut T}
 pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 
+/// An iterator over the subslices of the vector which are separated
+/// by elements that match `pred`.
+pub struct MutSplitIterator<'self, T> {
+    priv v: &'self mut [T],
+    priv pred: 'self |t: &T| -> bool,
+    priv finished: bool
+}
+
+impl<'self, T> Iterator<&'self mut [T]> for MutSplitIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self mut [T]> {
+        if self.finished { return None; }
+
+        match self.v.iter().position(|x| (self.pred)(x)) {
+            None => {
+                self.finished = true;
+                let tmp = util::replace(&mut self.v, &mut []);
+                let len = tmp.len();
+                let (head, tail) = tmp.mut_split_at(len);
+                self.v = tail;
+                Some(head)
+            }
+            Some(idx) => {
+                let tmp = util::replace(&mut self.v, &mut []);
+                let (head, tail) = tmp.mut_split_at(idx);
+                self.v = tail.mut_slice_from(1);
+                Some(head)
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.finished { return (0, Some(0)) }
+
+        // if the predicate doesn't match anything, we yield one slice
+        // if it matches every element, we yield len+1 empty slices.
+        // FIXME #9629
+        //(1, Some(self.v.len() + 1))
+        (1, None)
+    }
+}
+
+impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutSplitIterator<'self, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'self mut [T]> {
+        if self.finished { return None; }
+
+        match self.v.iter().rposition(|x| (self.pred)(x)) {
+            None => {
+                self.finished = true;
+                let tmp = util::replace(&mut self.v, &mut []);
+                let len = tmp.len();
+                let (head, tail) = tmp.mut_split_at(len);
+                self.v = tail;
+                Some(head)
+            }
+            Some(idx) => {
+                let tmp = util::replace(&mut self.v, &mut []);
+                let (head, tail) = tmp.mut_split_at(idx);
+                self.v = head;
+                Some(tail.mut_slice_from(1))
+            }
+        }
+    }
+}
+
 /// An iterator over a vector in (non-overlapping) mutable chunks (`size`  elements at a time). When
 /// the vector len is not evenly divided by the chunk size, the last slice of the iteration will be
 /// the remainder.
@@ -2592,7 +2673,7 @@ impl<'self, T> Iterator<&'self mut [T]> for MutChunkIter<'self, T> {
         } else {
             let sz = cmp::min(self.remaining, self.chunk_size);
             let tmp = util::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split(sz);
+            let (head, tail) = tmp.mut_split_at(sz);
             self.v = tail;
             self.remaining -= sz;
             Some(head)
@@ -2620,7 +2701,7 @@ impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutChunkIter<'self, T> {
             let remainder = self.remaining % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = util::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split(self.remaining - sz);
+            let (head, tail) = tmp.mut_split_at(self.remaining - sz);
             self.v = head;
             self.remaining -= sz;
             Some(tail)
@@ -3898,10 +3979,10 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_split() {
+    fn test_mut_split_at() {
         let mut values = [1u8,2,3,4,5];
         {
-            let (left, right) = values.mut_split(2);
+            let (left, right) = values.mut_split_at(2);
             assert_eq!(left.slice(0, left.len()), [1, 2]);
             for p in left.mut_iter() {
                 *p += 1;
@@ -4036,6 +4117,31 @@ mod tests {
     fn test_pop_ref_empty() {
         let mut x: &[int] = [];
         x.pop_ref();
+    }
+
+    #[test]
+    fn test_mut_splitator() {
+        let mut xs = [0,1,0,2,3,0,0,4,5,0];
+        assert_eq!(xs.mut_split(|x| *x == 0).len(), 6);
+        for slice in xs.mut_split(|x| *x == 0) {
+            slice.reverse();
+        }
+        assert_eq!(xs, [0,1,0,3,2,0,0,5,4,0]);
+
+        let mut xs = [0,1,0,2,3,0,0,4,5,0,6,7];
+        for slice in xs.mut_split(|x| *x == 0).take(5) {
+            slice.reverse();
+        }
+        assert_eq!(xs, [0,1,0,3,2,0,0,5,4,0,6,7]);
+    }
+
+    #[test]
+    fn test_mut_splitator_invert() {
+        let mut xs = [1,2,0,3,4,0,0,5,6,0];
+        for slice in xs.mut_split(|x| *x == 0).invert().take(4) {
+            slice.reverse();
+        }
+        assert_eq!(xs, [1,2,0,4,3,0,0,6,5,0]);
     }
 
     #[test]
