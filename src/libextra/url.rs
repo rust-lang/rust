@@ -19,23 +19,51 @@ use std::hashmap::HashMap;
 use std::to_bytes;
 use std::uint;
 
+/// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
+/// Identifier) that includes network location information, such as hostname or
+/// port number.
+///
+/// # Example
+///
+/// ```rust
+/// let url = Url { scheme: ~"https",
+///                 user: Some(UserInfo { user: ~"username", pass: None }),
+///                 host: ~"example.com",
+///                 port: Some(~"8080"),
+///                 path: ~"/foo/bar",
+///                 query: ~[(~"baz", ~"qux")],
+///                 fragment: Some(~"quz") };
+/// // https://username@example.com:8080/foo/bar?baz=qux#quz
+/// ```
 #[deriving(Clone, Eq)]
 pub struct Url {
+    /// The scheme part of a URL, such as `https` in the above example.
     scheme: ~str,
+    /// A URL subcomponent for user authentication.  `username` in the above example.
     user: Option<UserInfo>,
+    /// A domain name or IP address.  For example, `example.com`.
     host: ~str,
+    /// A TCP port number, for example `8080`.
     port: Option<~str>,
+    /// The path component of a URL, for example `/foo/bar`.
     path: ~str,
+    /// The query component of a URL.  `~[(~"baz", ~"qux")]` represents the
+    /// fragment `baz=qux` in the above example.
     query: Query,
+    /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
     fragment: Option<~str>
 }
 
+/// An optional subcomponent of a URI authority component.
 #[deriving(Clone, Eq)]
 pub struct UserInfo {
+    /// The user name.
     user: ~str,
+    /// Password or other scheme-specific authentication information.
     pass: Option<~str>
 }
 
+/// Represents the query component of a URI.
 pub type Query = ~[(~str, ~str)];
 
 impl Url {
