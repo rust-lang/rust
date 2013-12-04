@@ -119,18 +119,25 @@ impl Archive {
     }
 
     fn find_library(&self, name: &str) -> Path {
-        let (prefix, ext) = match self.sess.targ_cfg.os {
+        let (osprefix, osext) = match self.sess.targ_cfg.os {
             abi::OsWin32 => ("", "lib"), _ => ("lib", "a"),
         };
-        let libname = format!("{}{}.{}", prefix, name, ext);
+        // On windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let oslibname = format!("{}{}.{}", osprefix, name, osext);
+        let unixlibname = format!("lib{}.a", name);
 
         let mut rustpath = filesearch::rust_path();
         rustpath.push(self.sess.filesearch.get_target_lib_path());
         let path = self.sess.opts.addl_lib_search_paths.iter();
         for path in path.chain(rustpath.iter()) {
             debug!("looking for {} inside {}", name, path.display());
-            let test = path.join(libname.clone());
+            let test = path.join(oslibname.as_slice());
             if test.exists() { return test }
+            if oslibname != unixlibname {
+                let test = path.join(unixlibname.as_slice());
+                if test.exists() { return test }
+            }
         }
         self.sess.fatal(format!("could not find native static library `{}`, \
                                  perhaps an -L flag is missing?", name));
