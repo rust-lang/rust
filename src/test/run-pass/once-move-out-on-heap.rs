@@ -15,7 +15,6 @@
 #[feature(once_fns)];
 extern mod extra;
 use extra::arc;
-use std::util;
 
 fn foo(blk: proc()) {
     blk();
@@ -25,6 +24,6 @@ fn main() {
     let x = arc::Arc::new(true);
     do foo {
         assert!(*x.get());
-        util::ignore(x);
+        drop(x);
     }
 }

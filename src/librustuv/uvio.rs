@@ -26,7 +26,6 @@ use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
 use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
                   ReadWrite, FileStat};
 use std::io::signal::Signum;
-use std::util;
 use ai = std::io::net::addrinfo;
 
 #[cfg(test)] use std::unstable::run_in_bare_thread;
@@ -104,7 +103,7 @@ impl HomingMissile {
 
 impl Drop for HomingMissile {
     fn drop(&mut self) {
-        let f = ForbidUnwind::new("leaving home");
+        let _f = ForbidUnwind::new("leaving home");
 
         // It would truly be a sad day if we had moved off the home I/O
         // scheduler while we were doing I/O.
@@ -120,8 +119,6 @@ impl Drop for HomingMissile {
                 });
             })
         }
-
-        util::ignore(f);
     }
 }
 

@@ -63,7 +63,7 @@ mod bar {
 fn main() {
     cal(foo::Point{x:3, y:9});
     let a = 3;
-    ignore(a);
+    id(a);
     test::C.b();
     let _a = from_elem(0, 0);
 }
