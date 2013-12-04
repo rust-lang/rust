@@ -691,7 +691,6 @@ mod test {
     #[test]
     fn listen_ip4() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let addr = next_test_ip4();
 
         do spawn {
@@ -701,7 +700,7 @@ mod test {
             let mut w = match w.listen() {
                 Ok(w) => w, Err(e) => fail!("{:?}", e),
             };
-            chan.take().send(());
+            chan.send(());
             match w.accept() {
                 Ok(mut stream) => {
                     let mut buf = [0u8, ..10];
@@ -728,7 +727,6 @@ mod test {
     #[test]
     fn listen_ip6() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let addr = next_test_ip6();
 
         do spawn {
@@ -738,7 +736,7 @@ mod test {
             let mut w = match w.listen() {
                 Ok(w) => w, Err(e) => fail!("{:?}", e),
             };
-            chan.take().send(());
+            chan.send(());
             match w.accept() {
                 Ok(mut stream) => {
                     let mut buf = [0u8, ..10];
@@ -765,14 +763,13 @@ mod test {
     #[test]
     fn udp_recv_ip4() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let client = next_test_ip4();
         let server = next_test_ip4();
 
         do spawn {
             match UdpWatcher::bind(local_loop(), server) {
                 Ok(mut w) => {
-                    chan.take().send(());
+                    chan.send(());
                     let mut buf = [0u8, ..10];
                     match w.recvfrom(buf) {
                         Ok((10, addr)) => assert_eq!(addr, client),
@@ -798,14 +795,13 @@ mod test {
     #[test]
     fn udp_recv_ip6() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let client = next_test_ip6();
         let server = next_test_ip6();
 
         do spawn {
             match UdpWatcher::bind(local_loop(), server) {
                 Ok(mut w) => {
-                    chan.take().send(());
+                    chan.send(());
                     let mut buf = [0u8, ..10];
                     match w.recvfrom(buf) {
                         Ok((10, addr)) => assert_eq!(addr, client),
@@ -834,13 +830,11 @@ mod test {
         let addr = next_test_ip4();
         static MAX: uint = 5000;
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
 
         do spawn {
             let listener = TcpListener::bind(local_loop(), addr).unwrap();
             let mut acceptor = listener.listen().unwrap();
-            chan.take().send(());
+            chan.send(());
             let mut stream = acceptor.accept().unwrap();
             let buf = [1, .. 2048];
             let mut total_bytes_written = 0;
@@ -852,7 +846,7 @@ mod test {
         }
 
         do spawn {
-            port.take().recv();
+            port.recv();
             let mut stream = TcpWatcher::connect(local_loop(), addr).unwrap();
             let mut buf = [0, .. 2048];
             let mut total_bytes_read = 0;
@@ -873,18 +867,16 @@ mod test {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
 
         do spawn {
             let mut client = UdpWatcher::bind(local_loop(), client_addr).unwrap();
-            port.take().recv();
+            port.recv();
             assert!(client.sendto([1], server_addr).is_ok());
             assert!(client.sendto([2], server_addr).is_ok());
         }
 
         let mut server = UdpWatcher::bind(local_loop(), server_addr).unwrap();
-        chan.take().send(());
+        chan.send(());
         let mut buf1 = [0];
         let mut buf2 = [0];
         let (nread1, src1) = server.recvfrom(buf1).unwrap();
@@ -908,14 +900,11 @@ mod test {
         let (p1, c1) = oneshot();
         let (p2, c2) = oneshot();
 
-        let first = Cell::new((p1, c2));
-        let second = Cell::new((p2, c1));
-
         do spawn {
             let l = local_loop();
             let mut server_out = UdpWatcher::bind(l, server_out_addr).unwrap();
             let mut server_in = UdpWatcher::bind(l, server_in_addr).unwrap();
-            let (port, chan) = first.take();
+            let (port, chan) = (p1, c2);
             chan.send(());
             port.recv();
             let msg = [1, .. 2048];
@@ -939,7 +928,7 @@ mod test {
             let l = local_loop();
             let mut client_out = UdpWatcher::bind(l, client_out_addr).unwrap();
             let mut client_in = UdpWatcher::bind(l, client_in_addr).unwrap();
-            let (port, chan) = second.take();
+            let (port, chan) = (p2, c1);
             port.recv();
             chan.send(());
             let mut total_bytes_recv = 0;
@@ -966,14 +955,12 @@ mod test {
     fn test_read_and_block() {
         let addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
 
         do spawn {
             let listener = TcpListener::bind(local_loop(), addr).unwrap();
             let mut acceptor = listener.listen().unwrap();
             let (port2, chan2) = stream();
-            chan.take().send(port2);
+            chan.send(port2);
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
 
@@ -998,7 +985,7 @@ mod test {
         }
 
         do spawn {
-            let port2 = port.take().recv();
+            let port2 = port.recv();
             let mut stream = TcpWatcher::connect(local_loop(), addr).unwrap();
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -1041,18 +1028,14 @@ mod test {
     #[test]
     fn test_homing_closes_correctly() {
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
 
         do task::spawn_sched(task::SingleThreaded) {
-            let chan = Cell::new(chan.take());
             let listener = UdpWatcher::bind(local_loop(), next_test_ip4()).unwrap();
-            chan.take().send(listener);
+            chan.send(listener);
         }
 
         do task::spawn_sched(task::SingleThreaded) {
-            let port = Cell::new(port.take());
-            port.take().recv();
+            port.recv();
         }
     }
 
@@ -1086,13 +1069,13 @@ mod test {
             let mut sched2 = ~Scheduler::new(loop2, worker2, queues.clone(),
                                              sleepers.clone());
 
-            let handle1 = Cell::new(sched1.make_handle());
-            let handle2 = Cell::new(sched2.make_handle());
+            let handle1 = sched1.make_handle();
+            let handle2 = sched2.make_handle();
             let tasksFriendHandle = Cell::new(sched2.make_handle());
 
             let on_exit: proc(UnwindResult) = proc(exit_status) {
-                handle1.take().send(Shutdown);
-                handle2.take().send(Shutdown);
+                handle1.send(Shutdown);
+                handle2.send(Shutdown);
                 assert!(exit_status.is_success());
             };
 
@@ -1133,19 +1116,16 @@ mod test {
             let mut main_task = ~Task::new_root(&mut sched1.stack_pool, None,
                                                 test_function);
             main_task.death.on_exit = Some(on_exit);
-            let main_task = Cell::new(main_task);
 
-            let null_task = Cell::new(~do Task::new_root(&mut sched2.stack_pool,
-                                                         None) || {});
-
-            let sched1 = Cell::new(sched1);
-            let sched2 = Cell::new(sched2);
+            let null_task = ~do Task::new_root(&mut sched2.stack_pool, None) {
+                // nothing
+            };
 
             let thread1 = do Thread::start {
-                sched1.take().bootstrap(main_task.take());
+                sched1.bootstrap(main_task);
             };
             let thread2 = do Thread::start {
-                sched2.take().bootstrap(null_task.take());
+                sched2.bootstrap(null_task);
             };
 
             thread1.join();
@@ -1164,13 +1144,12 @@ mod test {
     #[should_fail] #[test]
     fn tcp_stream_fail_cleanup() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let addr = next_test_ip4();
 
         do spawn {
             let w = TcpListener::bind(local_loop(), addr).unwrap();
             let mut w = w.listen().unwrap();
-            chan.take().send(());
+            chan.send(());
             w.accept();
         }
         port.recv();
@@ -1189,14 +1168,13 @@ mod test {
     fn udp_fail_other_task() {
         let addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
 
         // force the handle to be created on a different scheduler, failure in
         // the original task will force a homing operation back to this
         // scheduler.
         do task::spawn_sched(task::SingleThreaded) {
             let w = UdpWatcher::bind(local_loop(), addr).unwrap();
-            chan.take().send(w);
+            chan.send(w);
         }
 
         let _w = port.recv();
@@ -1208,13 +1186,12 @@ mod test {
     #[ignore(reason = "linked failure")]
     fn linked_failure1() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let addr = next_test_ip4();
 
         do spawn {
             let w = TcpListener::bind(local_loop(), addr).unwrap();
             let mut w = w.listen().unwrap();
-            chan.take().send(());
+            chan.send(());
             w.accept();
         }
 
@@ -1227,13 +1204,12 @@ mod test {
     #[ignore(reason = "linked failure")]
     fn linked_failure2() {
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
         let addr = next_test_ip4();
 
         do spawn {
             let w = TcpListener::bind(local_loop(), addr).unwrap();
             let mut w = w.listen().unwrap();
-            chan.take().send(());
+            chan.send(());
             let mut buf = [0];
             w.accept().unwrap().read(buf);
         }
@@ -1249,11 +1225,10 @@ mod test {
     #[ignore(reason = "linked failure")]
     fn linked_failure3() {
         let (port, chan) = stream();
-        let chan = Cell::new(chan);
         let addr = next_test_ip4();
 
         do spawn {
-            let chan = chan.take();
+            let chan = chan;
             let w = TcpListener::bind(local_loop(), addr).unwrap();
             let mut w = w.listen().unwrap();
             chan.send(());

@@ -163,7 +163,6 @@ impl Drop for TimerWatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::cell::Cell;
     use std::rt::rtio::RtioTimer;
     use super::super::local_loop;
 
@@ -229,10 +228,10 @@ mod test {
     fn closing_channel_during_drop_doesnt_kill_everything() {
         // see issue #10375
         let mut timer = TimerWatcher::new(local_loop());
-        let timer_port = Cell::new(timer.period(1000));
+        let timer_port = timer.period(1000);
 
         do spawn {
-            timer_port.take().try_recv();
+            timer_port.try_recv();
         }
 
         // when we drop the TimerWatcher we're going to destroy the channel,
@@ -243,10 +242,10 @@ mod test {
     fn reset_doesnt_switch_tasks() {
         // similar test to the one above.
         let mut timer = TimerWatcher::new(local_loop());
-        let timer_port = Cell::new(timer.period(1000));
+        let timer_port = timer.period(1000);
 
         do spawn {
-            timer_port.take().try_recv();
+            timer_port.try_recv();
         }
 
         timer.oneshot(1);
@@ -255,10 +254,10 @@ mod test {
     fn reset_doesnt_switch_tasks2() {
         // similar test to the one above.
         let mut timer = TimerWatcher::new(local_loop());
-        let timer_port = Cell::new(timer.period(1000));
+        let timer_port = timer.period(1000);
 
         do spawn {
-            timer_port.take().try_recv();
+            timer_port.try_recv();
         }
 
         timer.sleep(1);

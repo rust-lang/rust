@@ -77,7 +77,6 @@
 
 use prelude::*;
 
-use cell::Cell;
 use comm::{GenericChan, oneshot};
 use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown, TaskFromFriend};
@@ -134,23 +133,19 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
             // Create a task that will later be used to join with the new scheduler
             // thread when it is ready to terminate
             let (thread_port, thread_chan) = oneshot();
-            let thread_port_cell = Cell::new(thread_port);
             let join_task = do Task::build_child(None) {
                 debug!("running join task");
-                let thread_port = thread_port_cell.take();
                 let thread: Thread<()> = thread_port.recv();
                 thread.join();
             };
 
             // Put the scheduler into another thread
-            let new_sched_cell = Cell::new(new_sched);
-            let orig_sched_handle_cell = Cell::new((*sched).make_handle());
-            let join_task_cell = Cell::new(join_task);
+            let orig_sched_handle = (*sched).make_handle();
 
+            let new_sched = new_sched;
             let thread = do Thread::start {
-                let mut new_sched = new_sched_cell.take();
-                let mut orig_sched_handle = orig_sched_handle_cell.take();
-                let join_task = join_task_cell.take();
+                let mut new_sched = new_sched;
+                let mut orig_sched_handle = orig_sched_handle;
 
                 let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
                     debug!("boostrapping a 1:1 scheduler");
@@ -178,9 +173,8 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
 
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
-        let notify_chan = Cell::new(notify_chan);
         let on_exit: proc(UnwindResult) = proc(task_result) {
-            notify_chan.take().send(task_result)
+            notify_chan.send(task_result)
         };
         task.death.on_exit = Some(on_exit);
     }
