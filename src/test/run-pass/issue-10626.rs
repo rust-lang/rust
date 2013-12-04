@@ -25,6 +25,7 @@ fn main () {
         for _ in range(0, 1000) {
             println!("hello?");
         }
+        return;
     }
 
     let config = process::ProcessConfig {
