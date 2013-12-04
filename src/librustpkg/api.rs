@@ -56,12 +56,12 @@ pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
 }
 
 fn file_is_fresh(path: &str, in_hash: &str) -> bool {
-    let path = Path::init(path);
+    let path = Path::new(path);
     path.exists() && in_hash == digest_file_with_date(&path)
 }
 
 fn binary_is_fresh(path: &str, in_hash: &str) -> bool {
-    let path = Path::init(path);
+    let path = Path::new(path);
     path.exists() && in_hash == digest_only_date(&path)
 }
 
@@ -189,7 +189,7 @@ pub fn my_workspace(context: &Context, package_name: &str) -> Path {
     let pkgid = PkgId::new(package_name);
     let workspaces = pkg_parent_workspaces(context, &pkgid);
     if workspaces.is_empty() {
-        bad_pkg_id.raise((Path::init(package_name), package_name.to_owned()));
+        bad_pkg_id.raise((Path::new(package_name), package_name.to_owned()));
     }
     workspaces[0]
 }

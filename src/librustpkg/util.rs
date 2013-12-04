@@ -510,7 +510,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                             self.context.install(
                                 pkg_src,
                                 &WhatToBuild::new(Inferred,
-                                                  JustOne(Path::init(lib_crate_filename))));
+                                                  JustOne(Path::new(lib_crate_filename))));
                         debug!("Installed {}, returned {:?} dependencies and \
                                {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
@@ -548,7 +548,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                 self.exec.discover_input(*what,
                                                          *dep,
                                                          digest_file_with_date(
-                                                             &Path::init(dep.as_slice())));
+                                                             &Path::new(dep.as_slice())));
                             } else if *what == ~"binary" {
                                 add_dep(self.deps,
                                         self.parent_crate.as_str().unwrap().to_owned(),
@@ -556,7 +556,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                 self.exec.discover_input(*what,
                                                          *dep,
                                                          digest_only_date(
-                                                             &Path::init(dep.as_slice())));
+                                                             &Path::new(dep.as_slice())));
                             } else {
                                 fail!("Bad kind: {}", *what);
                             }

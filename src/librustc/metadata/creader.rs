@@ -134,7 +134,7 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
           let meta_items = match path_opt {
               None => meta_items.clone(),
               Some((p, _path_str_style)) => {
-                  let p_path = Path::init(p);
+                  let p_path = Path::new(p);
                   match p_path.filestem_str() {
                       None|Some("") =>
                           e.sess.span_bug(i.span, "Bad package path in `extern mod` item"),
