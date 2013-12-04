@@ -37,6 +37,13 @@ impl<V> Container for SmallIntMap<V> {
     }
 }
 
+impl<V> NewContainer for SmallIntMap<V> {
+    /// Create an empty SmallIntMap with capacity `capacity`
+    fn with_capacity(capacity: uint) -> SmallIntMap<V> {
+        SmallIntMap::with_capacity(capacity)
+    }
+}
+
 impl<V> Mutable for SmallIntMap<V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) { self.v.clear() }

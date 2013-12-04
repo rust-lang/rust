@@ -103,7 +103,7 @@ There are a number of free functions that create or take vectors, for example:
 
 use cast;
 use clone::{Clone, DeepClone};
-use container::{Container, Mutable};
+use container::{Container, Mutable, NewContainer};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
@@ -158,7 +158,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // FIXME (#7136): manually inline from_fn for 2x plus speedup (sadly very
     // important, from_elem is a bottleneck in borrowck!). Unfortunately it
     // still is substantially slower than using the unsafe
-    // vec::with_capacity/ptr::set_memory for primitive types.
+    // container::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
         let p = v.as_mut_ptr();
@@ -827,6 +827,14 @@ impl<T: Clone> CopyableVector<T> for @[T] {
 
     #[inline(always)]
     fn into_owned(self) -> ~[T] { self.to_owned() }
+}
+
+impl<T> NewContainer for ~[T] {
+    #[inline]
+    fn new() -> ~[T] { ~[] }
+
+    #[inline]
+    fn with_capacity(capacity: uint) -> ~[T] { with_capacity(capacity) }
 }
 
 /// Extension methods for vectors

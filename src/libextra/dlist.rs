@@ -132,6 +132,11 @@ impl<T> Container for DList<T> {
     }
 }
 
+impl<T> NewContainer for DList<T> {
+    #[inline]
+    fn with_capacity(_capacity: uint) -> DList<T> { DList::new() }
+}
+
 impl<T> Mutable for DList<T> {
     /// Remove all elements from the DList
     ///

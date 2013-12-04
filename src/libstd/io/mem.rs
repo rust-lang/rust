@@ -38,6 +38,16 @@ impl MemWriter {
     }
 }
 
+impl NewContainer for MemWriter {
+    fn new() -> MemWriter {
+        MemWriter::new()
+    }
+
+    fn with_capacity(n: uint) -> MemWriter {
+        MemWriter::with_capacity(n)
+    }
+}
+
 impl Writer for MemWriter {
     fn write(&mut self, buf: &[u8]) {
         // Make sure the internal buffer is as least as big as where we

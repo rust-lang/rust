@@ -13,7 +13,7 @@
 //! The tables use a keyed hash with new random keys generated for each container, so the ordering
 //! of a set of keys in a hash table is randomized.
 
-use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
+use container::{Container, NewContainer, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use default::Default;
@@ -256,6 +256,16 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 impl<K:Hash + Eq,V> Container for HashMap<K, V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint { self.size }
+}
+
+impl<K:Hash + Eq,V> NewContainer for HashMap<K, V> {
+    fn new() -> HashMap<K, V> {
+        HashMap::new()
+    }
+
+    fn with_capacity(capacity: uint) -> HashMap<K, V> {
+        HashMap::with_capacity(capacity)
+    }
 }
 
 impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
@@ -647,6 +657,16 @@ impl<T:Hash + Eq> Eq for HashSet<T> {
 impl<T:Hash + Eq> Container for HashSet<T> {
     /// Return the number of elements in the set
     fn len(&self) -> uint { self.map.len() }
+}
+
+impl<T:Hash + Eq> NewContainer for HashSet<T> {
+    fn new() -> HashSet<T> {
+        HashSet::new()
+    }
+
+    fn with_capacity(capacity: uint) -> HashSet<T> {
+        HashSet::with_capacity(capacity)
+    }
 }
 
 impl<T:Hash + Eq> Mutable for HashSet<T> {

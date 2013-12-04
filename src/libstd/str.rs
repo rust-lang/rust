@@ -95,7 +95,7 @@ use cast::transmute;
 use char;
 use char::Char;
 use clone::{Clone, DeepClone};
-use container::{Container, Mutable};
+use container::{Container, NewContainer, Mutable};
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Invert, DoubleEndedIterator, ExactSize};
@@ -1321,6 +1321,28 @@ impl Container for ~str {
 impl Container for @str {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
+}
+
+impl NewContainer for ~str {
+    #[inline]
+    fn new() -> ~str { ~"" }
+
+    #[inline]
+    fn with_capacity(capacity: uint) -> ~str {
+        with_capacity(capacity)
+    }
+}
+
+impl NewContainer for @str {
+    #[inline]
+    fn new() -> @str { @"" }
+
+    #[inline]
+    fn with_capacity(capacity: uint) -> @str {
+        unsafe {
+            cast::transmute(at_vec::with_capacity::<@[u8]>(capacity))
+        }
+    }
 }
 
 impl Mutable for ~str {

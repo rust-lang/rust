@@ -38,6 +38,11 @@ impl<T> Container for TrieMap<T> {
     fn len(&self) -> uint { self.length }
 }
 
+impl<T> NewContainer for TrieMap<T> {
+    #[inline]
+    fn with_capacity(_capacity: uint) -> TrieMap<T> { TrieMap::new() }
+}
+
 impl<T> Mutable for TrieMap<T> {
     /// Clear the map, removing all values.
     #[inline]

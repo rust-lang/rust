@@ -35,6 +35,12 @@ impl<T> Container for RingBuf<T> {
     fn len(&self) -> uint { self.nelts }
 }
 
+impl<T> NewContainer for RingBuf<T> {
+    fn new() -> RingBuf<T> { RingBuf::new() }
+
+    fn with_capacity(capacity: uint) -> RingBuf<T> { RingBuf::with_capacity(capacity) }
+}
+
 impl<T> Mutable for RingBuf<T> {
     /// Clear the RingBuf, removing all values.
     fn clear(&mut self) {

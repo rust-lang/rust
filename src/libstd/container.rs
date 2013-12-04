@@ -25,6 +25,15 @@ pub trait Container {
     }
 }
 
+/// A trait to represent constructable containers
+pub trait NewContainer {
+    /// Creates a new container.
+    fn new() -> Self { NewContainer::with_capacity(0) }
+
+    /// Creates a new container with a capacity of `capacity`.
+    fn with_capacity(capacity: uint) -> Self;
+}
+
 /// A trait to represent mutable containers
 pub trait Mutable: Container {
     /// Clear the container, removing all values.
