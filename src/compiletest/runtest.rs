@@ -298,7 +298,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 
                 let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
                          config.adb_test_dir.clone(), config.adb_test_dir.clone(),
-                         str::from_utf8(exe_file.filename().unwrap())).clone();
+                         str::from_utf8(exe_file.filename().unwrap()));
 
                 let mut process = procsrv::run_background("", config.adb_path.clone(),
                         [~"shell",adb_arg.clone()],~[(~"",~"")], Some(~""));
@@ -1151,4 +1151,3 @@ fn run_codegen_test(config: &config, props: &TestProps,
                      (base_lines as f64) / (clang_lines as f64),
                      0.001);
 }
-

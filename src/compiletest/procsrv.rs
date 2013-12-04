@@ -60,12 +60,12 @@ pub fn run(lib_path: &str,
     for input in input.iter() {
         process.input().write(input.as_bytes());
     }
-    let output = process.finish_with_output();
+    let run::ProcessOutput { status, output, error } = process.finish_with_output();
 
     Result {
-        status: output.status,
-        out: str::from_utf8(output.output),
-        err: str::from_utf8(output.error)
+        status: status,
+        out: str::from_utf8_owned(output),
+        err: str::from_utf8_owned(error)
     }
 }
 
@@ -90,4 +90,3 @@ pub fn run_background(lib_path: &str,
 
     return process;
 }
-

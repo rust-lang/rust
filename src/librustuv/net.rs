@@ -81,7 +81,7 @@ pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
             };
             port as u16
         };
-        let ip_str = str::from_utf8_slice(ip_name).trim_right_chars(&'\x00');
+        let ip_str = str::from_utf8(ip_name).trim_right_chars(&'\x00');
         let ip_addr = FromStr::from_str(ip_str).unwrap();
 
         SocketAddr { ip: ip_addr, port: ip_port }

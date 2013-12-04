@@ -162,7 +162,7 @@ impl<'self> FromBase64 for &'self str {
      * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.
      *
-     * You can use the `from_utf8` function in `std::str`
+     * You can use the `from_utf8_owned` function in `std::str`
      * to turn a `[u8]` into a string with characters corresponding to those
      * values.
      *
@@ -180,7 +180,7 @@ impl<'self> FromBase64 for &'self str {
      *     println!("base64 output: {}", hello_str);
      *     let res = hello_str.from_base64();
      *     if res.is_ok() {
-     *       let optBytes = str::from_utf8_opt(res.unwrap());
+     *       let optBytes = str::from_utf8_owned_opt(res.unwrap());
      *       if optBytes.is_some() {
      *         println!("decoded from base64: {}", optBytes.unwrap());
      *       }

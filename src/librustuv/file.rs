@@ -487,8 +487,8 @@ mod test {
 
             let nread = result.unwrap();
             assert!(nread > 0);
-            let read_str = str::from_utf8(read_mem.slice(0, nread as uint));
-            assert_eq!(read_str, ~"hello");
+            let read_str = str::from_utf8(read_mem.slice_to(nread as uint));
+            assert_eq!(read_str, "hello");
         }
         // unlink
         let result = FsRequest::unlink(l(), &path_str.to_c_str());

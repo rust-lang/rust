@@ -1049,7 +1049,7 @@ pub trait Buffer: Reader {
             Some(n) if n == width => {}
             Some(..) | None => return None // read error
         }
-        match str::from_utf8_slice_opt(buf.slice_to(width)) {
+        match str::from_utf8_opt(buf.slice_to(width)) {
             Some(s) => Some(s.char_at(0)),
             None => None
         }

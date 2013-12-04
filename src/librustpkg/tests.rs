@@ -290,13 +290,13 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
     });
     let output = prog.finish_with_output();
     debug!("Output from command {} with args {:?} was {} \\{{}\\}[{:?}]",
-                    cmd, args, str::from_utf8(output.output),
-                   str::from_utf8(output.error),
-                   output.status);
+           cmd, args, str::from_utf8(output.output),
+           str::from_utf8(output.error),
+           output.status);
     if !output.status.success() {
-        debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} ---",
+        debug!("Command {} {:?} failed with exit code {:?}; its output was --- {} {} ---",
               cmd, args, output.status,
-              str::from_utf8(output.output) + str::from_utf8(output.error));
+              str::from_utf8(output.output), str::from_utf8(output.error));
         Fail(output)
     }
     else {
@@ -1204,7 +1204,7 @@ fn test_info() {
     let expected_info = ~"package foo"; // fill in
     let workspace = create_local_package(&PkgId::new("foo"));
     let output = command_line_test([~"info", ~"foo"], workspace.path());
-    assert_eq!(str::from_utf8(output.output), expected_info);
+    assert_eq!(str::from_utf8_owned(output.output), expected_info);
 }
 
 #[test]
