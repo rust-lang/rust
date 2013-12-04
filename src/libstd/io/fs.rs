@@ -1179,7 +1179,7 @@ mod test {
         file.write(bytes!("foo"));
         file.fsync();
         file.datasync();
-        util::ignore(file);
+        drop(file);
     })
 
     test!(fn truncate_works() {
@@ -1210,7 +1210,7 @@ mod test {
         assert_eq!(stat(&path).size, 9);
         assert_eq!(File::open(&path).read_to_end(),
                    (bytes!("fo", 0, 0, 0, 0, "wut")).to_owned());
-        util::ignore(file);
+        drop(file);
     })
 
     test!(fn open_flavors() {
