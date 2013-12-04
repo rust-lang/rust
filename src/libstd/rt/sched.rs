@@ -24,7 +24,6 @@ use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback};
 use borrow::{to_uint};
-use cell::Cell;
 use rand::{XorShiftRng, Rng, Rand};
 use iter::range;
 use unstable::mutex::Mutex;
@@ -235,12 +234,12 @@ impl Scheduler {
         unsafe {
             let event_loop: *mut ~EventLoop = &mut self.event_loop;
 
-            // Our scheduler must be in the task before the event loop
-            // is started.
-            let self_sched = Cell::new(self);
-            Local::borrow(|stask: &mut Task| {
-                stask.sched = Some(self_sched.take());
-            });
+            {
+                // Our scheduler must be in the task before the event loop
+                // is started.
+                let mut stask = Local::borrow(None::<Task>);
+                stask.get().sched = Some(self);
+            }
 
             (*event_loop).run();
         }
@@ -751,10 +750,8 @@ impl Scheduler {
     }
 
     pub fn run_task_later(next_task: ~Task) {
-        let next_task = Cell::new(next_task);
-        Local::borrow(|sched: &mut Scheduler| {
-            sched.enqueue_task(next_task.take());
-        });
+        let mut sched = Local::borrow(None::<Scheduler>);
+        sched.get().enqueue_task(next_task);
     }
 
     /// Yield control to the scheduler, executing another task. This is guaranteed

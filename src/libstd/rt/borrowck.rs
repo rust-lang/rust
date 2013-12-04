@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cell::Cell;
 use c_str::{ToCStr, CString};
 use libc::{c_char, size_t};
 use option::{Option, None, Some};
@@ -35,7 +34,8 @@ pub struct BorrowRecord {
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
-    Local::borrow(|task: &mut Task| task.borrow_list.take())
+    let mut task = Local::borrow(None::<Task>);
+    task.get().borrow_list.take()
 }
 
 fn swap_task_borrow_list(f: |~[BorrowRecord]| -> ~[BorrowRecord]) {
@@ -44,8 +44,9 @@ fn swap_task_borrow_list(f: |~[BorrowRecord]| -> ~[BorrowRecord]) {
         None => ~[]
     };
     let borrows = f(borrows);
-    let borrows = Cell::new(borrows);
-    Local::borrow(|task: &mut Task| task.borrow_list = Some(borrows.take()))
+
+    let mut task = Local::borrow(None::<Task>);
+    task.get().borrow_list = Some(borrows)
 }
 
 pub fn clear_task_borrow_list() {

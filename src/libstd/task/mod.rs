@@ -429,12 +429,11 @@ pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
-        Local::borrow(|task: &mut Task| {
-            match task.name {
-                Some(ref name) => blk(Some(name.as_slice())),
-                None => blk(None)
-            }
-        })
+        let mut task = Local::borrow(None::<Task>);
+        match task.get().name {
+            Some(ref name) => blk(Some(name.as_slice())),
+            None => blk(None)
+        }
     } else {
         fail!("no task name exists in non-green task context")
     }
@@ -456,7 +455,8 @@ pub fn failing() -> bool {
 
     use rt::task::Task;
 
-    Local::borrow(|local: &mut Task| local.unwinder.unwinding)
+    let mut local = Local::borrow(None::<Task>);
+    local.get().unwinder.unwinding
 }
 
 // The following 8 tests test the following 2^3 combinations:
@@ -601,9 +601,9 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    Local::borrow(|sched: &mut ::rt::sched::Scheduler| {
-        sched.sched_id() as int
-    })
+    use rt::sched::Scheduler;
+    let mut sched = Local::borrow(None::<Scheduler>);
+    sched.get().sched_id() as int
 }
 
 #[test]

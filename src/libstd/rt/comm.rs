@@ -25,7 +25,7 @@ use unstable::sync::UnsafeArc;
 use util;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable, SendDeferred};
-use cell::{Cell, RefCell};
+use cell::RefCell;
 use clone::Clone;
 use tuple::ImmutableTuple;
 
@@ -169,10 +169,8 @@ impl<T: Send> ChanOne<T> {
                             Scheduler::run_task(woken_task);
                         });
                     } else {
-                        let recvr = Cell::new(recvr);
-                        Local::borrow(|sched: &mut Scheduler| {
-                            sched.enqueue_blocked_task(recvr.take());
-                        })
+                        let mut sched = Local::borrow(None::<Scheduler>);
+                        sched.get().enqueue_blocked_task(recvr);
                     }
                 }
             }
@@ -230,9 +228,8 @@ impl<T: Send> SelectInner for PortOne<T> {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
         use rand::{Rand};
-        let actually_check = Local::borrow(|sched: &mut Scheduler| {
-            Rand::rand(&mut sched.rng)
-        });
+        let mut sched = Local::borrow(None::<Scheduler>);
+        let actually_check = Rand::rand(&mut sched.get().rng);
         if actually_check {
             unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
         } else {
