@@ -231,7 +231,6 @@ impl HomingIO for PipeAcceptor {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::Cell;
     use std::comm::oneshot;
     use std::rt::rtio::{RtioUnixListener, RtioUnixAcceptor, RtioPipe};
     use std::rt::test::next_test_unix;
@@ -276,12 +275,11 @@ mod tests {
         let path = next_test_unix();
         let path2 = path.clone();
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
 
         do spawn {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
-            chan.take().send(());
+            chan.send(());
             let mut client = p.accept().unwrap();
             let mut buf = [0];
             assert!(client.read(buf).unwrap() == 1);
@@ -301,12 +299,11 @@ mod tests {
         let path = next_test_unix();
         let path2 = path.clone();
         let (port, chan) = oneshot();
-        let chan = Cell::new(chan);
 
         do spawn {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
-            chan.take().send(());
+            chan.send(());
             p.accept();
         }
         port.recv();

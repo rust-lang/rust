@@ -151,7 +151,6 @@ There are two known issues with the current scheme for exit code propagation.
 */
 
 use cast;
-use cell::Cell;
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
@@ -256,8 +255,10 @@ impl Death {
 
     /// Collect failure exit codes from children and propagate them to a parent.
     pub fn collect_failure(&mut self, result: UnwindResult) {
-        let result = Cell::new(result);
-        self.on_exit.take().map(|on_exit| on_exit(result.take()));
+        match self.on_exit.take() {
+            None => {}
+            Some(on_exit) => on_exit(result),
+        }
     }
 
     /// Enter a possibly-nested "atomic" section of code. Just for assertions.
