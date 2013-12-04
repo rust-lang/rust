@@ -914,36 +914,377 @@ between tasks. Custom destructors can only be implemented directly on types
 that are `Owned`, but garbage-collected boxes can still *contain* types with
 custom destructors.
 
-# Boxes
+# Implementing a linked list
+
+An `enum` is a natural fit for describing a linked list, because it can express
+a `List` type as being *either* the end of the list (`Nil`) or another node
+(`Cons`). The full definition of the `Cons` variant will require some thought.
+
+~~~ {.xfail-test}
+enum List {
+    Cons(...), // an incomplete definition of the next element in a List
+    Nil        // the end of a List
+}
+~~~
+
+The obvious approach is to define `Cons` as containing an element in the list
+along with the next `List` node. However, this will generate a compiler error.
+
+~~~ {.xfail-test}
+// error: illegal recursive enum type; wrap the inner value in a box to make it representable
+enum List {
+    Cons(u32, List), // an element (`u32`) and the next node in the list
+    Nil
+}
+~~~
+
+This error message is related to Rust's precise control over memory layout, and
+solving it will require introducing the concept of *boxing*.
+
+## Boxes
 
 A value in Rust is stored directly inside the owner. If a `struct` contains
-four `int` fields, it will be four times as large as a single `int`.  The
-following `struct` type is invalid, as it would have an infinite size:
+four `u32` fields, it will be four times as large as a single `u32`.
 
-~~~~ {.xfail-test}
-struct List {
-    next: Option<List>,
-    data: int
+~~~
+use std::mem::size_of; // bring `size_of` into the current scope, for convenience
+
+struct Foo {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32
 }
-~~~~
 
-> ***Note:*** The `Option` type is an enum representing an *optional* value.
-> It's comparable to a nullable pointer in many other languages, but stores the
-> contained value unboxed.
+assert_eq!(size_of::<Foo>(), size_of::<u32>() * 4);
 
-An *owned box* (`~`) uses a heap allocation to provide the invariant of always
-being the size of a pointer, regardless of the contained type. This can be
-leveraged to create a valid recursive `struct` type with a finite size:
-
-~~~~
-struct List {
-    next: Option<~List>,
-    data: int
+struct Bar {
+    a: Foo,
+    b: Foo,
+    c: Foo,
+    d: Foo
 }
+
+assert_eq!(size_of::<Bar>(), size_of::<u32>() * 16);
+~~~
+
+Our previous attempt at defining the `List` type included an `u32` and a `List`
+directly inside `Cons`, making it at least as big as the sum of both types. The
+type was invalid because the size was infinite!
+
+An *owned box* (`~`) uses a dynamic memory allocation to provide the invariant
+of always being the size of a pointer, regardless of the contained type. This
+can be leverage to create a valid `List` definition:
+
+~~~
+enum List {
+    Cons(u32, ~List),
+    Nil
+}
+~~~
+
+Defining a recursive data structure like this is the canonical example of an
+owned box. Much like an unboxed value, an owned box has a single owner and is
+therefore limited to expressing a tree-like data structure.
+
+Consider an instance of our `List` type:
+
+~~~
+# enum List {
+#     Cons(u32, ~List),
+#     Nil
+# }
+let list = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
+~~~
+
+It represents an owned tree of values, inheriting mutability down the tree and
+being destroyed along with the owner. Since the `list` variable above is
+immutable, the whole list is immutable. The memory allocation itself is the
+box, while the owner holds onto a pointer to it:
+
+      Cons cell        Cons cell        Cons cell
+    +-----------+    +-----+-----+    +-----+-----+
+    |  1  |  ~  | -> |  2  |  ~  | -> |  3  |  ~  | -> Nil
+    +-----------+    +-----+-----+    +-----+-----+
+
+An owned box is a common example of a type with a destructor. The allocated
+memory is cleaned up when the box is destroyed.
+
+## Move semantics
+
+Rust uses a shallow copy for parameter passing, assignment and returning from
+functions. Passing around the `List` will copy only as deep as the pointer to
+the box rather than doing an implicit heap allocation.
+
+~~~
+# enum List {
+#     Cons(u32, ~List),
+#     Nil
+# }
+let xs = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
+let ys = xs; // copies `Cons(u32, pointer)` shallowly
+~~~
+
+Rust will consider a shallow copy of a type with a destructor like `List` to
+*move ownership* of the value. After a value has been moved, the source
+location cannot be used unless it is reinitialized.
+
+~~~
+# enum List {
+#     Cons(u32, ~List),
+#     Nil
+# }
+let mut xs = Nil;
+let ys = xs;
+
+// attempting to use `xs` will result in an error here
+
+xs = Nil;
+
+// `xs` can be used again
+~~~
+
+A destructor call will only occur for a variable that has not been moved from,
+as it is only called a single time.
+
+
+Avoiding a move can be done with the library-defined `clone` method:
+
+~~~~
+let x = ~5;
+let y = x.clone(); // y is a newly allocated box
+let z = x; // no new memory allocated, x can no longer be used
 ~~~~
 
-Since an owned box has a single owner, they are limited to representing
-tree-like data structures.
+The `clone` method is provided by the `Clone` trait, and can be derived for
+our `List` type. Traits will be explained in detail later.
+
+~~~{.xfail-test}
+#[deriving(Clone)]
+enum List {
+    Cons(u32, ~List),
+    Nil
+}
+
+let x = Cons(5, ~Nil);
+let y = x.clone();
+
+// `x` can still be used!
+
+let z = x;
+
+// and now, it can no longer be used since it has been moved from
+~~~
+
+The mutability of a value may be changed by moving it to a new owner:
+
+~~~~
+let r = ~13;
+let mut s = r; // box becomes mutable
+*s += 1;
+let t = s; // box becomes immutable
+~~~~
+
+A simple way to define a function prepending to the `List` type is to take
+advantage of moves:
+
+~~~
+enum List {
+    Cons(u32, ~List),
+    Nil
+}
+
+fn prepend(xs: List, value: u32) -> List {
+    Cons(value, ~xs)
+}
+
+let mut xs = Nil;
+xs = prepend(xs, 1);
+xs = prepend(xs, 2);
+xs = prepend(xs, 3);
+~~~
+
+However, this is not a very flexible definition of `prepend` as it requires
+ownership of a list to be passed in rather than just mutating it in-place.
+
+## References
+
+The obvious signature for a `List` equality comparison is the following:
+
+~~~{.xfail-test}
+fn eq(xs: List, ys: List) -> bool { ... }
+~~~
+
+However, this will cause both lists to be moved into the function. Ownership
+isn't required to compare the lists, so the function should take *references*
+(&T) instead.
+
+~~~{.xfail-test}
+fn eq(xs: &List, ys: &List) -> bool { ... }
+~~~
+
+A reference is a *non-owning* view of a value. A reference can be obtained with the `&` (address-of)
+operator. It can be dereferenced by using the `*` operator. In a pattern, such as `match` expression
+branches, the `ref` keyword can be used to bind to a variable name by-reference rather than
+by-value. A recursive definition of equality using references is as follows:
+
+~~~
+# enum List {
+#     Cons(u32, ~List),
+#     Nil
+# }
+fn eq(xs: &List, ys: &List) -> bool {
+    // Match on the next node in both lists.
+    match (xs, ys) {
+        // If we have reached the end of both lists, they are equal.
+        (&Nil, &Nil) => true,
+        // If the current element in both lists is equal, keep going.
+        (&Cons(x, ~ref next_xs), &Cons(y, ~ref next_ys)) if x == y => eq(next_xs, next_ys),
+        // If the current elements are not equal, the lists are not equal.
+        _ => false
+    }
+}
+
+let xs = Cons(5, ~Cons(10, ~Nil));
+let ys = Cons(5, ~Cons(10, ~Nil));
+assert!(eq(&xs, &ys));
+~~~
+
+Note that Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
+but LLVM is able to handle a simple case like this with optimizations enabled.
+
+## Lists of other types
+
+Our `List` type is currently always a list of 32-bit unsigned integers. By
+leveraging Rust's support for generics, it can be extended to work for any
+element type.
+
+The `u32` in the previous definition can be substituted with a type parameter:
+
+~~~
+enum List<T> {
+    Cons(T, ~List<T>),
+    Nil
+}
+~~~
+
+The old `List` of `u32` is now available as `List<u32>`. The `prepend`
+definition has to be updated too:
+
+~~~
+# enum List<T> {
+#     Cons(T, ~List<T>),
+#     Nil
+# }
+fn prepend<T>(xs: List<T>, value: T) -> List<T> {
+    Cons(value, ~xs)
+}
+~~~
+
+Generic functions and types like this are equivalent to defining specialized
+versions for each set of type parameters.
+
+Using the generic `List<T>` works much like before, thanks to type inference:
+
+~~~
+# enum List<T> {
+#     Cons(T, ~List<T>),
+#     Nil
+# }
+# fn prepend<T>(xs: List<T>, value: T) -> List<T> {
+#     Cons(value, ~xs)
+# }
+let mut xs = Nil; // Unknown type! This is a `List<T>`, but `T` can be anything.
+xs = prepend(xs, 10); // The compiler infers the type of `xs` as `List<int>` from this.
+xs = prepend(xs, 15);
+xs = prepend(xs, 20);
+~~~
+
+The code sample above demonstrates type inference making most type annotations optional. It is
+equivalent to the following type-annotated code:
+
+~~~
+# enum List<T> {
+#     Cons(T, ~List<T>),
+#     Nil
+# }
+# fn prepend<T>(xs: List<T>, value: T) -> List<T> {
+#     Cons(value, ~xs)
+# }
+let mut xs: List<int> = Nil::<int>;
+xs = prepend::<int>(xs, 10);
+xs = prepend::<int>(xs, 15);
+xs = prepend::<int>(xs, 20);
+~~~
+
+In the type grammar, the language uses `Type<T, U, V>` to describe a list of
+type parameters, but expressions use `identifier::<T, U, V>`.
+
+## Defining list equality with generics
+
+Generic functions are type-checked from the definition, so any necessary properties of the type must
+be specified up-front. Our previous definition of list equality relied on the element type having
+the `==` operator available, and took advantage of the lack of a destructor on `u32` to copy it
+without a move of ownership.
+
+We can add a *trait bound* on the `Eq` trait to require that the type implement the `==` operator.
+Two more `ref` annotations need to be added to avoid attempting to move out the element types:
+
+~~~
+# enum List<T> {
+#     Cons(T, ~List<T>),
+#     Nil
+# }
+fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
+    // Match on the next node in both lists.
+    match (xs, ys) {
+        // If we have reached the end of both lists, they are equal.
+        (&Nil, &Nil) => true,
+        // If the current element in both lists is equal, keep going.
+        (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys)) if x == y => eq(next_xs, next_ys),
+        // If the current elements are not equal, the lists are not equal.
+        _ => false
+    }
+}
+
+let xs = Cons('c', ~Cons('a', ~Cons('t', ~Nil)));
+let ys = Cons('c', ~Cons('a', ~Cons('t', ~Nil)));
+assert!(eq(&xs, &ys));
+~~~
+
+This would be a good opportunity to implement the `Eq` trait for our list type, making the `==` and
+`!=` operators available. We'll need to provide an `impl` for the `Eq` trait and a definition of the
+`eq` method. In a method, the `self` parameter refers to an instance of the type we're implementing
+on.
+
+~~~
+# enum List<T> {
+#     Cons(T, ~List<T>),
+#     Nil
+# }
+impl<T: Eq> Eq for List<T> {
+    fn eq(&self, ys: &List<T>) -> bool {
+        // Match on the next node in both lists.
+        match (self, ys) {
+            // If we have reached the end of both lists, they are equal.
+            (&Nil, &Nil) => true,
+            // If the current element in both lists is equal, keep going.
+            (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys)) if x == y => next_xs == next_ys,
+            // If the current elements are not equal, the lists are not equal.
+            _ => false
+        }
+    }
+}
+
+let xs = Cons(5, ~Cons(10, ~Nil));
+let ys = Cons(5, ~Cons(10, ~Nil));
+assert!(xs.eq(&ys));
+assert!(xs == ys);
+assert!(!xs.ne(&ys));
+assert!(!(xs != ys));
+~~~
+
+# More on boxes
 
 The most common use case for owned boxes is creating recursive data structures
 like a binary search tree. Rust's trait-based generics system (covered later in
@@ -961,7 +1302,7 @@ value is returned via a hidden output parameter, and the decision on where to
 place the return value should be left to the caller:
 
 ~~~~
-fn foo() -> (int, int, int, int, int, int) {
+fn foo() -> (u64, u64, u64, u64, u64, u64) {
     (5, 5, 5, 5, 5, 5)
 }
 
@@ -979,32 +1320,6 @@ y += 2;
 let x = ~5; // immutable
 let mut y = ~5; // mutable
 *y += 2; // the * operator is needed to access the contained value
-~~~~
-
-As covered earlier, an owned box has a destructor to clean up the allocated
-memory. This makes it more restricted than an unboxed type with no destructor
-by introducing *move semantics*.
-
-# Move semantics
-
-Rust uses a shallow copy for parameter passing, assignment and returning from
-functions. This is considered a move of ownership for types with destructors.
-After a value has been moved, it can no longer be used from the source location
-and will not be destroyed when the source goes out of scope.
-
-~~~~
-let x = ~5;
-let y = x.clone(); // y is a newly allocated box
-let z = x; // no new memory allocated, x can no longer be used
-~~~~
-
-The mutability of a value may be changed by moving it to a new owner:
-
-~~~~
-let r = ~13;
-let mut s = r; // box becomes mutable
-*s += 1;
-let t = s; // box becomes immutable
 ~~~~
 
 # Borrowed pointers
