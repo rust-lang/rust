@@ -483,7 +483,7 @@ impl CtxMethods for BuildContext {
                     })
                 });
                 // We always *run* the package script
-                let (cfgs, hook_result) = PkgScript::run_custom(&Path::init(pkg_exe), &sysroot);
+                let (cfgs, hook_result) = PkgScript::run_custom(&Path::new(pkg_exe), &sysroot);
                 debug!("Command return code = {:?}", hook_result);
                 if !hook_result.success() {
                     fail!("Error running custom build command")
@@ -509,7 +509,7 @@ impl CtxMethods for BuildContext {
                 // Find crates inside the workspace
                 Everything => pkg_src.find_crates(),
                 // Find only tests
-                Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::init(s)) }),
+                Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path::new(s)) }),
                 // Don't infer any crates -- just build the one that was requested
                 JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
@@ -588,7 +588,7 @@ impl CtxMethods for BuildContext {
         let result = self.install_no_build(pkg_src.build_workspace(),
                                            build_inputs,
                                            &pkg_src.destination_workspace,
-                                           &id).map(|s| Path::init(s.as_slice()));
+                                           &id).map(|s| Path::new(s.as_slice()));
         installed_files = installed_files + result;
         note(format!("Installed package {} to {}",
                      id.to_str(),
@@ -709,10 +709,10 @@ impl CtxMethods for BuildContext {
     }
 
     fn init(&self) {
-        fs::mkdir_recursive(&Path::init("src"), io::UserRWX);
-        fs::mkdir_recursive(&Path::init("bin"), io::UserRWX);
-        fs::mkdir_recursive(&Path::init("lib"), io::UserRWX);
-        fs::mkdir_recursive(&Path::init("build"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("src"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("bin"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("lib"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("build"), io::UserRWX);
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
@@ -894,7 +894,7 @@ pub fn main_args(args: &[~str]) -> int {
     let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
     remaining_args.shift();
     let sroot = match supplied_sysroot {
-        Some(s) => Path::init(s),
+        Some(s) => Path::new(s),
         _ => filesearch::get_or_default_sysroot()
     };
 
