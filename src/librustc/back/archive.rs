@@ -20,6 +20,8 @@ use std::str;
 use extra::tempfile::TempDir;
 use syntax::abi;
 
+pub static METADATA_FILENAME: &'static str = "metadata";
+
 pub struct Archive {
     priv sess: Session,
     priv dst: Path,
@@ -81,17 +83,22 @@ impl Archive {
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) {
         let location = self.find_library(name);
-        self.add_archive(&location, name);
+        self.add_archive(&location, name, []);
     }
 
     /// Adds all of the contents of the rlib at the specified path to this
     /// archive.
     pub fn add_rlib(&mut self, rlib: &Path) {
         let name = rlib.filename_str().unwrap().split('-').next().unwrap();
-        self.add_archive(rlib, name);
+        self.add_archive(rlib, name, [METADATA_FILENAME]);
     }
 
-    fn add_archive(&mut self, archive: &Path, name: &str) {
+    /// Adds an arbitrary file to this archive
+    pub fn add_file(&mut self, file: &Path) {
+        run_ar(self.sess, "r", None, [&self.dst, file]);
+    }
+
+    fn add_archive(&mut self, archive: &Path, name: &str, skip: &[&str]) {
         let loc = TempDir::new("rsar").unwrap();
 
         // First, extract the contents of the archive to a temporary directory
@@ -106,6 +113,7 @@ impl Archive {
         let mut inputs = ~[];
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
+            if skip.iter().any(|s| *s == filename) { continue }
             let filename = format!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
             fs::rename(file, &new_filename);
