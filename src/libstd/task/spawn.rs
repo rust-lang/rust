@@ -184,6 +184,8 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
         };
         task.death.on_exit = Some(on_exit);
     }
+    task.stdout_handle = opts.stdout.take();
+    task.logger = opts.logger.take();
 
     task.name = opts.name.take();
     debug!("spawn calling run_task");

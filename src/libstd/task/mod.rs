@@ -154,7 +154,9 @@ pub struct TaskOpts {
     priv notify_chan: Option<Chan<UnwindResult>>,
     name: Option<SendStr>,
     sched: SchedOpts,
-    stack_size: Option<uint>
+    stack_size: Option<uint>,
+    logger: Option<~Writer>,
+    stdout: Option<~Writer>,
 }
 
 /**
@@ -189,23 +191,6 @@ pub fn task() -> TaskBuilder {
 }
 
 impl TaskBuilder {
-    fn consume(mut self) -> TaskBuilder {
-        let gen_body = self.gen_body.take();
-        let notify_chan = self.opts.notify_chan.take();
-        let name = self.opts.name.take();
-        TaskBuilder {
-            opts: TaskOpts {
-                watched: self.opts.watched,
-                notify_chan: notify_chan,
-                name: name,
-                sched: self.opts.sched,
-                stack_size: self.opts.stack_size
-            },
-            gen_body: gen_body,
-            can_not_copy: None,
-        }
-    }
-
     /// Cause the parent task to collect the child's exit status (and that of
     /// all transitively-watched grandchildren) before reporting its own.
     pub fn watched(&mut self) {
@@ -309,25 +294,11 @@ impl TaskBuilder {
      */
     pub fn spawn(mut self, f: proc()) {
         let gen_body = self.gen_body.take();
-        let notify_chan = self.opts.notify_chan.take();
-        let name = self.opts.name.take();
-        let x = self.consume();
-        let opts = TaskOpts {
-            watched: x.opts.watched,
-            notify_chan: notify_chan,
-            name: name,
-            sched: x.opts.sched,
-            stack_size: x.opts.stack_size
-        };
         let f = match gen_body {
-            Some(gen) => {
-                gen(f)
-            }
-            None => {
-                f
-            }
+            Some(gen) => gen(f),
+            None => f
         };
-        spawn::spawn_raw(opts, f);
+        spawn::spawn_raw(self.opts, f);
     }
 
     /**
@@ -377,7 +348,9 @@ pub fn default_task_opts() -> TaskOpts {
         sched: SchedOpts {
             mode: DefaultScheduler,
         },
-        stack_size: None
+        stack_size: None,
+        logger: None,
+        stdout: None,
     }
 }
 

@@ -32,7 +32,6 @@ use rt::env;
 use io::Writer;
 use rt::kill::Death;
 use rt::local::Local;
-use rt::logging::StdErrLogger;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use send_str::SendStr;
@@ -48,7 +47,6 @@ pub struct Task {
     heap: LocalHeap,
     priv gc: GarbageCollector,
     storage: LocalStorage,
-    logger: Option<StdErrLogger>,
     unwinder: Unwinder,
     death: Death,
     destroyed: bool,
@@ -59,6 +57,7 @@ pub struct Task {
     // Dynamic borrowck debugging info
     borrow_list: Option<~[BorrowRecord]>,
     stdout_handle: Option<~Writer>,
+    logger: Option<~Writer>,
 }
 
 pub enum TaskType {
@@ -285,6 +284,18 @@ impl Task {
             // Run the task main function, then do some cleanup.
             f.finally(|| {
 
+                fn flush(w: Option<~Writer>) {
+                    match w {
+                        Some(mut w) => { w.flush(); }
+                        None => {}
+                    }
+                }
+
+                // First, flush/destroy the user stdout/logger because these
+                // destructors can run arbitrary code.
+                flush(self.stdout_handle.take());
+                flush(self.logger.take());
+
                 // First, destroy task-local storage. This may run user dtors.
                 //
                 // FIXME #8302: Dear diary. I'm so tired and confused.
@@ -309,17 +320,13 @@ impl Task {
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
 
-                // Finally flush and destroy any output handles which the task
-                // owns. There are no boxes here, and no user destructors should
-                // run after this any more.
-                match self.stdout_handle.take() {
-                    Some(handle) => {
-                        let mut handle = handle;
-                        handle.flush();
-                    }
-                    None => {}
-                }
-                self.logger.take();
+                // Finally, just in case user dtors printed/logged during TLS
+                // cleanup and annihilation, re-destroy stdout and the logger.
+                // Note that these will have been initialized with a
+                // runtime-provided type which we have control over what the
+                // destructor does.
+                flush(self.stdout_handle.take());
+                flush(self.logger.take());
             })
         });
 
@@ -627,7 +634,6 @@ pub fn begin_unwind_raw(msg: *c_char, file: *c_char, line: size_t) -> ! {
 /// This is the entry point of unwinding for fail!() and assert!().
 pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
     use any::AnyRefExt;
-    use rt::in_green_task_context;
     use rt::local::Local;
     use rt::task::Task;
     use str::Str;
@@ -644,7 +650,6 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
         let msg = ~msg as ~Any;
 
         {
-            //let msg: &Any = msg;
             let msg_s = match msg.as_ref::<&'static str>() {
                 Some(s) => *s,
                 None => match msg.as_ref::<~str>() {
@@ -653,24 +658,16 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
                 }
             };
 
-            if !in_green_task_context() {
-                rterrln!("failed in non-task context at '{}', {}:{}",
+            if Local::exists(None::<Task>) {
+                task = Local::unsafe_borrow();
+                let name = (*task).name.as_ref().map(|n| n.as_slice());
+                println!("task '{}' failed at '{}', {}:{}",
+                         name.unwrap_or("<unnamed>"), msg_s, file, line);
+            } else {
+                println!("failed in non-task context at '{}', {}:{}",
                          msg_s, file, line);
                 intrinsics::abort();
             }
-
-            task = Local::unsafe_borrow();
-            let n = (*task).name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
-
-            // XXX: this should no get forcibly printed to the console, this should
-            //      either be sent to the parent task (ideally), or get printed to
-            //      the task's logger. Right now the logger is actually a uvio
-            //      instance, which uses unkillable blocks internally for various
-            //      reasons. This will cause serious trouble if the task is failing
-            //      due to mismanagment of its own kill flag, so calling our own
-            //      logger in its current state is a bit of a problem.
-
-            rterrln!("task '{}' failed at '{}', {}:{}", n, msg_s, file, line);
 
             if (*task).unwinder.unwinding {
                 rtabort!("unwinding again");
