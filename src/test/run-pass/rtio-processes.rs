@@ -108,7 +108,7 @@ fn read_all(input: &mut Reader) -> ~str {
     loop {
         match input.read(buf) {
             None => { break }
-            Some(n) => { ret = ret + str::from_utf8(buf.slice_to(n)); }
+            Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n))); }
         }
     }
     return ret;

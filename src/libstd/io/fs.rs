@@ -770,9 +770,9 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match read_stream.read(read_buf).unwrap() {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8(read_buf.slice_to(n))
+                n => str::from_utf8_owned(read_buf.slice_to(n).to_owned())
             };
-            assert!(read_str == message.to_owned());
+            assert_eq!(read_str, message.to_owned());
         }
         unlink(filename);
     })
@@ -801,7 +801,7 @@ mod test {
     })
 
     test!(fn file_test_io_non_positional_read() {
-        let message = "ten-four";
+        let message: &str = "ten-four";
         let mut read_mem = [0, .. 8];
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_rt_io_file_test_positional.txt");
@@ -822,7 +822,7 @@ mod test {
         }
         unlink(filename);
         let read_str = str::from_utf8(read_mem);
-        assert!(read_str == message.to_owned());
+        assert_eq!(read_str, message);
     })
 
     test!(fn file_test_io_seek_and_tell_smoke_test() {
@@ -846,9 +846,9 @@ mod test {
         }
         unlink(filename);
         let read_str = str::from_utf8(read_mem);
-        assert!(read_str == message.slice(4, 8).to_owned());
-        assert!(tell_pos_pre_read == set_cursor);
-        assert!(tell_pos_post_read == message.len() as u64);
+        assert_eq!(read_str, message.slice(4, 8));
+        assert_eq!(tell_pos_pre_read, set_cursor);
+        assert_eq!(tell_pos_post_read, message.len() as u64);
     })
 
     test!(fn file_test_io_seek_and_write() {
@@ -877,9 +877,9 @@ mod test {
     test!(fn file_test_io_seek_shakedown() {
         use std::str;          // 01234567890123
         let initial_msg =   "qwer-asdf-zxcv";
-        let chunk_one = "qwer";
-        let chunk_two = "asdf";
-        let chunk_three = "zxcv";
+        let chunk_one: &str = "qwer";
+        let chunk_two: &str = "asdf";
+        let chunk_three: &str = "zxcv";
         let mut read_mem = [0, .. 4];
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_rt_io_file_test_seek_shakedown.txt");
@@ -892,18 +892,15 @@ mod test {
 
             read_stream.seek(-4, SeekEnd);
             read_stream.read(read_mem);
-            let read_str = str::from_utf8(read_mem);
-            assert!(read_str == chunk_three.to_owned());
+            assert_eq!(str::from_utf8(read_mem), chunk_three);
 
             read_stream.seek(-9, SeekCur);
             read_stream.read(read_mem);
-            let read_str = str::from_utf8(read_mem);
-            assert!(read_str == chunk_two.to_owned());
+            assert_eq!(str::from_utf8(read_mem), chunk_two);
 
             read_stream.seek(0, SeekSet);
             read_stream.read(read_mem);
-            let read_str = str::from_utf8(read_mem);
-            assert!(read_str == chunk_one.to_owned());
+            assert_eq!(str::from_utf8(read_mem), chunk_one);
         }
         unlink(filename);
     })
@@ -982,7 +979,7 @@ mod test {
                     None|Some("") => fail!("really shouldn't happen.."),
                     Some(n) => prefix+n
                 };
-                assert!(expected == read_str);
+                assert_eq!(expected.as_slice(), read_str);
             }
             unlink(f);
         }

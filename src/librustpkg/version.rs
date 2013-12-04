@@ -113,19 +113,19 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
             continue;
         }
 
-    let mut output = None;
-    let output_text = str::from_utf8(outp.output);
-    for l in output_text.lines() {
-        if !l.is_whitespace() {
-            output = Some(l);
-        }
-        match output.and_then(try_parsing_version) {
-            Some(v) => return Some(v),
-            None    => ()
+        let mut output = None;
+        let output_text = str::from_utf8(outp.output);
+        for l in output_text.lines() {
+            if !l.is_whitespace() {
+                output = Some(l);
+            }
+            match output.and_then(try_parsing_version) {
+                Some(v) => return Some(v),
+                None    => ()
+            }
         }
     }
-  }
-  None
+    None
 }
 
 /// If `remote_path` refers to a git repo that can be downloaded,

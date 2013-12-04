@@ -368,7 +368,7 @@ pub mod write {
         if !prog.status.success() {
             sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
             sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
-            sess.note(str::from_utf8(prog.error + prog.output));
+            sess.note(str::from_utf8_owned(prog.error + prog.output));
             sess.abort_if_errors();
         }
     }
@@ -1079,7 +1079,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     if !prog.status.success() {
         sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
         sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
-        sess.note(str::from_utf8(prog.error + prog.output));
+        sess.note(str::from_utf8_owned(prog.error + prog.output));
         sess.abort_if_errors();
     }
 
