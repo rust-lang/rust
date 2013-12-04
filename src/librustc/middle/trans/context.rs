@@ -42,6 +42,7 @@ pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
      llcx: ContextRef,
+     metadata_llmod: ModuleRef,
      td: TargetData,
      tn: TypeNames,
      externs: ExternMap,
@@ -134,11 +135,18 @@ impl CrateContext {
             let llmod = name.with_c_str(|buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             });
+            let metadata_llmod = format!("{}_metadata", name).with_c_str(|buf| {
+                llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
+            });
             let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
             let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
-            data_layout.with_c_str(|buf| llvm::LLVMSetDataLayout(llmod, buf));
+            data_layout.with_c_str(|buf| {
+                llvm::LLVMSetDataLayout(llmod, buf);
+                llvm::LLVMSetDataLayout(metadata_llmod, buf);
+            });
             targ_triple.with_c_str(|buf| {
-                llvm::LLVMRustSetNormalizedTarget(llmod, buf)
+                llvm::LLVMRustSetNormalizedTarget(llmod, buf);
+                llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
             });
             let targ_cfg = sess.targ_cfg;
 
@@ -174,6 +182,7 @@ impl CrateContext {
                   sess: sess,
                   llmod: llmod,
                   llcx: llcx,
+                  metadata_llmod: metadata_llmod,
                   td: td,
                   tn: tn,
                   externs: HashMap::new(),
