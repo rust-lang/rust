@@ -189,8 +189,12 @@ fn main() {
    let mut proc_mode = false;
 
    loop {
-       let line = match io::ignore_io_error(|| rdr.read_line()) {
-           Some(ln) => ln, None => break,
+       let line = {
+           let _guard = io::ignore_io_error();
+           match rdr.read_line() {
+               Some(ln) => ln,
+               None => break,
+           }
        };
        let line = line.trim().to_owned();
 
