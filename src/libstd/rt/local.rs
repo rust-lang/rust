@@ -12,36 +12,28 @@ use option::{Option, Some, None};
 use rt::sched::Scheduler;
 use rt::task::Task;
 use rt::local_ptr;
-use cell::Cell;
 
-pub trait Local {
+/// Encapsulates some task-local data.
+pub trait Local<Borrowed> {
     fn put(value: ~Self);
     fn take() -> ~Self;
     fn exists(unused_value: Option<Self>) -> bool;
-    fn borrow<T>(f: |&mut Self| -> T) -> T;
+    fn borrow(unused_value: Option<Self>) -> Borrowed;
     unsafe fn unsafe_take() -> ~Self;
     unsafe fn unsafe_borrow() -> *mut Self;
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
 
-impl Local for Task {
+impl Local<local_ptr::Borrowed<Task>> for Task {
     #[inline]
     fn put(value: ~Task) { unsafe { local_ptr::put(value) } }
     #[inline]
     fn take() -> ~Task { unsafe { local_ptr::take() } }
     fn exists(_: Option<Task>) -> bool { local_ptr::exists() }
-    fn borrow<T>(f: |&mut Task| -> T) -> T {
-        let mut res: Option<T> = None;
-        let res_ptr: *mut Option<T> = &mut res;
+    #[inline]
+    fn borrow(_: Option<Task>) -> local_ptr::Borrowed<Task> {
         unsafe {
-            local_ptr::borrow(|task| {
-                let result = f(task);
-                *res_ptr = Some(result);
-            })
-        }
-        match res {
-            Some(r) => { r }
-            None => { rtabort!("function failed in local_borrow") }
+            local_ptr::borrow::<Task>()
         }
     }
     #[inline]
@@ -54,13 +46,35 @@ impl Local for Task {
     }
 }
 
-impl Local for Scheduler {
+/// Encapsulates a temporarily-borrowed scheduler.
+pub struct BorrowedScheduler {
+    priv task: local_ptr::Borrowed<Task>,
+}
+
+impl BorrowedScheduler {
+    fn new(mut task: local_ptr::Borrowed<Task>) -> BorrowedScheduler {
+        if task.get().sched.is_none() {
+            rtabort!("no scheduler")
+        } else {
+            BorrowedScheduler {
+                task: task,
+            }
+        }
+    }
+
+    #[inline]
+    pub fn get<'a>(&'a mut self) -> &'a mut ~Scheduler {
+        match self.task.get().sched {
+            None => rtabort!("no scheduler"),
+            Some(ref mut sched) => sched,
+        }
+    }
+}
+
+impl Local<BorrowedScheduler> for Scheduler {
     fn put(value: ~Scheduler) {
-        let value = Cell::new(value);
-        Local::borrow(|task: &mut Task| {
-            let task = task;
-            task.sched = Some(value.take());
-        });
+        let mut task = Local::borrow(None::<Task>);
+        task.get().sched = Some(value);
     }
     #[inline]
     fn take() -> ~Scheduler {
@@ -71,24 +85,12 @@ impl Local for Scheduler {
         }
     }
     fn exists(_: Option<Scheduler>) -> bool {
-        Local::borrow(|task: &mut Task| {
-            match task.sched {
-                Some(ref _task) => true,
-                None => false
-            }
-        })
+        let mut task = Local::borrow(None::<Task>);
+        task.get().sched.is_some()
     }
-    fn borrow<T>(f: |&mut Scheduler| -> T) -> T {
-        Local::borrow(|task: &mut Task| {
-            match task.sched {
-                Some(~ref mut task) => {
-                    f(task)
-                }
-                None => {
-                    rtabort!("no scheduler")
-                }
-            }
-        })
+    #[inline]
+    fn borrow(_: Option<Scheduler>) -> BorrowedScheduler {
+        BorrowedScheduler::new(Local::borrow(None::<Task>))
     }
     unsafe fn unsafe_take() -> ~Scheduler { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut Scheduler {
@@ -182,11 +184,11 @@ mod test {
             let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
             Local::put(task);
 
-            let res = Local::borrow(|_task: &mut Task| {
-                true
-            });
-            assert!(res)
-                let task: ~Task = Local::take();
+            {
+                let _ = Local::borrow(None::<Task>);
+            }
+
+            let task: ~Task = Local::take();
             cleanup_task(task);
         }
     }

@@ -18,8 +18,7 @@
 #[allow(dead_code)];
 
 use cast;
-use cell::Cell;
-use unstable::finally::Finally;
+use ops::Drop;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
@@ -28,20 +27,48 @@ pub use self::native::*;
 #[cfg(not(windows), not(target_os = "android"))]
 pub use self::compiled::*;
 
+/// Encapsulates a borrowed value. When this value goes out of scope, the
+/// pointer is returned.
+pub struct Borrowed<T> {
+    priv val: *(),
+}
+
+#[unsafe_destructor]
+impl<T> Drop for Borrowed<T> {
+    fn drop(&mut self) {
+        unsafe {
+            if self.val.is_null() {
+                rtabort!("Aiee, returning null borrowed object!");
+            }
+            let val: ~T = cast::transmute(self.val);
+            put::<T>(val);
+            assert!(exists());
+        }
+    }
+}
+
+impl<T> Borrowed<T> {
+    pub fn get<'a>(&'a mut self) -> &'a mut T {
+        unsafe {
+            let val_ptr: &mut ~T = cast::transmute(&mut self.val);
+            let val_ptr: &'a mut T = *val_ptr;
+            val_ptr
+        }
+    }
+}
+
 /// Borrow the thread-local value from thread-local storage.
 /// While the value is borrowed it is not available in TLS.
 ///
 /// # Safety note
 ///
 /// Does not validate the pointer type.
-pub unsafe fn borrow<T>(f: |&mut T|) {
-    let mut value = take();
-
-    // XXX: Need a different abstraction from 'finally' here to avoid unsafety
-    let unsafe_ptr = cast::transmute_mut_region(&mut *value);
-    let value_cell = Cell::new(value);
-
-    (|| f(unsafe_ptr)).finally(|| put(value_cell.take()));
+#[inline]
+pub unsafe fn borrow<T>() -> Borrowed<T> {
+    let val: *() = cast::transmute(take::<T>());
+    Borrowed {
+        val: val,
+    }
 }
 
 /// Compiled implementation of accessing the runtime local pointer. This is

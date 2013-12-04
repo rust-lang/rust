@@ -144,17 +144,15 @@ impl Task {
                              f: proc(),
                              home: SchedHome)
                              -> ~Task {
-        let f = Cell::new(f);
-        let home = Cell::new(home);
-        Local::borrow(|running_task: &mut Task| {
-            let mut sched = running_task.sched.take_unwrap();
-            let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
-                                                         stack_size,
-                                                         home.take(),
-                                                         f.take());
-            running_task.sched = Some(sched);
-            new_task
-        })
+        let mut running_task = Local::borrow(None::<Task>);
+        let mut sched = running_task.get().sched.take_unwrap();
+        let new_task = ~running_task.get()
+                                    .new_child_homed(&mut sched.stack_pool,
+                                                     stack_size,
+                                                     home,
+                                                     f);
+        running_task.get().sched = Some(sched);
+        new_task
     }
 
     pub fn build_child(stack_size: Option<uint>, f: proc()) -> ~Task {
@@ -165,17 +163,14 @@ impl Task {
                             f: proc(),
                             home: SchedHome)
                             -> ~Task {
-        let f = Cell::new(f);
-        let home = Cell::new(home);
-        Local::borrow(|running_task: &mut Task| {
-            let mut sched = running_task.sched.take_unwrap();
-            let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
-                                                 stack_size,
-                                                 home.take(),
-                                                 f.take());
-            running_task.sched = Some(sched);
-            new_task
-        })
+        let mut running_task = Local::borrow(None::<Task>);
+        let mut sched = running_task.get().sched.take_unwrap();
+        let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
+                                             stack_size,
+                                             home,
+                                             f);
+        running_task.get().sched = Some(sched);
+        new_task
     }
 
     pub fn build_root(stack_size: Option<uint>, f: proc()) -> ~Task {
@@ -371,26 +366,25 @@ impl Task {
     // Grab both the scheduler and the task from TLS and check if the
     // task is executing on an appropriate scheduler.
     pub fn on_appropriate_sched() -> bool {
-        Local::borrow(|task: &mut Task| {
-            let sched_id = task.sched.get_ref().sched_id();
-            let sched_run_anything = task.sched.get_ref().run_anything;
-            match task.task_type {
-                GreenTask(Some(AnySched)) => {
-                    rtdebug!("anysched task in sched check ****");
-                    sched_run_anything
-                }
-                GreenTask(Some(Sched(SchedHandle { sched_id: ref id, ..}))) => {
-                    rtdebug!("homed task in sched check ****");
-                    *id == sched_id
-                }
-                GreenTask(None) => {
-                    rtabort!("task without home");
-                }
-                SchedTask => {
-                    rtabort!("type error: expected: GreenTask, found: SchedTask");
-                }
+        let mut task = Local::borrow(None::<Task>);
+        let sched_id = task.get().sched.get_ref().sched_id();
+        let sched_run_anything = task.get().sched.get_ref().run_anything;
+        match task.get().task_type {
+            GreenTask(Some(AnySched)) => {
+                rtdebug!("anysched task in sched check ****");
+                sched_run_anything
             }
-        })
+            GreenTask(Some(Sched(SchedHandle { sched_id: ref id, ..}))) => {
+                rtdebug!("homed task in sched check ****");
+                *id == sched_id
+            }
+            GreenTask(None) => {
+                rtabort!("task without home");
+            }
+            SchedTask => {
+                rtabort!("type error: expected: GreenTask, found: SchedTask");
+            }
+        }
     }
 }
 
@@ -440,9 +434,10 @@ impl Coroutine {
             unsafe {
 
                 // Again - might work while safe, or it might not.
-                Local::borrow(|sched: &mut Scheduler| {
-                    sched.run_cleanup_job();
-                });
+                {
+                    let mut sched = Local::borrow(None::<Scheduler>);
+                    sched.get().run_cleanup_job();
+                }
 
                 // To call the run method on a task we need a direct
                 // reference to it. The task is in TLS, so we can
@@ -594,16 +589,19 @@ pub extern "C" fn rust_stack_exhausted() {
         //  #2361 - possible implementation of not using landing pads
 
         if in_green_task_context() {
-            Local::borrow(|task: &mut Task| {
-                let n = task.name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
+            let mut task = Local::borrow(None::<Task>);
+            let n = task.get()
+                        .name
+                        .as_ref()
+                        .map(|n| n.as_slice())
+                        .unwrap_or("<unnamed>");
 
-                // See the message below for why this is not emitted to the
-                // task's logger. This has the additional conundrum of the
-                // logger may not be initialized just yet, meaning that an FFI
-                // call would happen to initialized it (calling out to libuv),
-                // and the FFI call needs 2MB of stack when we just ran out.
-                rterrln!("task '{}' has overflowed its stack", n);
-            })
+            // See the message below for why this is not emitted to the
+            // task's logger. This has the additional conundrum of the
+            // logger may not be initialized just yet, meaning that an FFI
+            // call would happen to initialized it (calling out to libuv),
+            // and the FFI call needs 2MB of stack when we just ran out.
+            rterrln!("task '{}' has overflowed its stack", n);
         } else {
             rterrln!("stack overflow in non-task context");
         }

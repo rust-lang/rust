@@ -1080,11 +1080,10 @@ mod test {
             };
 
             unsafe fn local_io() -> &'static mut IoFactory {
-                Local::borrow(|sched: &mut Scheduler| {
-                    let mut io = None;
-                    sched.event_loop.io(|i| io = Some(i));
-                    cast::transmute(io.unwrap())
-                })
+                let mut sched = Local::borrow(None::<Scheduler>);
+                let mut io = None;
+                sched.get().event_loop.io(|i| io = Some(i));
+                cast::transmute(io.unwrap())
             }
 
             let test_function: proc() = proc() {
