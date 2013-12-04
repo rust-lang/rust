@@ -107,7 +107,7 @@ mod test {
     fn smoke_test() {
         let mem_writer = MemWriter::new();
         let mut deflate_writer = DeflateWriter::new(mem_writer);
-        let in_msg = "test";
+        let in_msg: &str = "test";
         let in_bytes = in_msg.as_bytes();
         deflate_writer.write(in_bytes);
         deflate_writer.flush();
@@ -118,6 +118,6 @@ mod test {
         let bytes_read = inflate_reader.read(out_bytes).unwrap();
         assert_eq!(bytes_read, in_bytes.len());
         let out_msg = str::from_utf8(out_bytes);
-        assert!(in_msg == out_msg);
+        assert_eq!(in_msg, out_msg);
     }
 }

@@ -260,7 +260,7 @@ fn json_encode<'self, T:Encodable<json::Encoder<'self>>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::init(&mut writer as &mut io::Writer);
     t.encode(&mut encoder);
-    str::from_utf8(writer.inner_ref().as_slice())
+    str::from_utf8_owned(writer.inner())
 }
 
 // FIXME(#5121)

@@ -167,7 +167,7 @@ impl CString {
         if self.buf.is_null() { return None; }
         let buf = self.as_bytes();
         let buf = buf.slice_to(buf.len()-1); // chop off the trailing NUL
-        str::from_utf8_slice_opt(buf)
+        str::from_utf8_opt(buf)
     }
 
     /// Return a CString iterator.

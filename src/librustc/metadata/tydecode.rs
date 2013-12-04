@@ -97,8 +97,9 @@ pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
 }
 
 fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
-    let rslt = scan(st, is_last, str::from_utf8);
-    return st.tcx.sess.ident_of(rslt);
+    scan(st, is_last, |bytes| {
+            st.tcx.sess.ident_of(str::from_utf8(bytes))
+        })
 }
 
 pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: ast::CrateNum,
@@ -492,10 +493,11 @@ fn parse_abi_set(st: &mut PState) -> AbiSet {
     assert_eq!(next(st), '[');
     let mut abis = AbiSet::empty();
     while peek(st) != ']' {
-        // FIXME(#5422) str API should not force this copy
-        let abi_str = scan(st, |c| c == ',', str::from_utf8);
-        let abi = abi::lookup(abi_str).expect(abi_str);
-        abis.add(abi);
+         scan(st, |c| c == ',', |bytes| {
+                 let abi_str = str::from_utf8(bytes).to_owned();
+                 let abi = abi::lookup(abi_str).expect(abi_str);
+                 abis.add(abi);
+              });
     }
     assert_eq!(next(st), ']');
     return abis;

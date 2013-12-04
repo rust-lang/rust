@@ -1902,5 +1902,5 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         abbrevs: tyencode::ac_no_abbrevs};
     let wr = @mut MemWriter::new();
     tyencode::enc_ty(wr, cx, t);
-    str::from_utf8(*wr.inner_ref())
+    str::from_utf8_owned(wr.inner_ref().to_owned())
 }
