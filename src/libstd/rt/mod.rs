@@ -281,7 +281,7 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
 
     // Create a work queue for each scheduler, ntimes. Create an extra
     // for the main thread if that flag is set. We won't steal from it.
-    let mut pool = deque::BufferPool::init();
+    let mut pool = deque::BufferPool::new();
     let arr = vec::from_fn(nscheds, |_| pool.deque());
     let (workers, stealers) = vec::unzip(arr.move_iter());
 

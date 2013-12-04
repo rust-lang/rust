@@ -1082,7 +1082,7 @@ mod test {
 
         do run_in_bare_thread {
             let sleepers = SleeperList::new();
-            let mut pool = BufferPool::init();
+            let mut pool = BufferPool::new();
             let (worker1, stealer1) = pool.deque();
             let (worker2, stealer2) = pool.deque();
             let queues = ~[stealer1, stealer2];
