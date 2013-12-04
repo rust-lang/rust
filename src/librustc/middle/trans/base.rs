@@ -3044,19 +3044,24 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         }
 }
 
-pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
-    if !*cx.sess.building_library { return; }
+pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
+    use extra::flate;
+
+    if !*cx.sess.building_library { return ~[]; }
 
     let encode_inlined_item: encoder::encode_inlined_item =
         |ecx, ebml_w, path, ii|
         astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
-    let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
+    let metadata = encoder::encode_metadata(encode_parms, crate);
+    let compressed = encoder::metadata_encoding_version +
+                        flate::deflate_bytes(metadata);
+    let llmeta = C_bytes(compressed);
     let llconst = C_struct([llmeta], false);
     let mut llglobal = "rust_metadata".with_c_str(|buf| {
         unsafe {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst).to_ref(), buf)
+            llvm::LLVMAddGlobal(cx.metadata_llmod, val_ty(llconst).to_ref(), buf)
         }
     });
     unsafe {
@@ -3069,11 +3074,13 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
         let t_ptr_i8 = Type::i8p();
         llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8.to_ref());
         let llvm_used = "llvm.used".with_c_str(|buf| {
-            llvm::LLVMAddGlobal(cx.llmod, Type::array(&t_ptr_i8, 1).to_ref(), buf)
+            llvm::LLVMAddGlobal(cx.metadata_llmod,
+                                Type::array(&t_ptr_i8, 1).to_ref(), buf)
         });
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
         llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
     }
+    return metadata;
 }
 
 pub fn trans_crate(sess: session::Session,
@@ -3140,7 +3147,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     // Translate the metadata.
-    write_metadata(ccx, &crate);
+    let metadata = write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
         println("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs);
@@ -3187,5 +3194,7 @@ pub fn trans_crate(sess: session::Session,
         module: llmod,
         link: link_meta,
         crate_types: crate_types,
+        metadata_module: ccx.metadata_llmod,
+        metadata: metadata,
     };
 }

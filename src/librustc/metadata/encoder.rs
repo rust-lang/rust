@@ -21,13 +21,14 @@ use middle::ty;
 use middle::typeck;
 use middle;
 
+use std::cast;
 use std::hashmap::{HashMap, HashSet};
-use std::io::{Writer, Seek, Decorator};
 use std::io::mem::MemWriter;
+use std::io::{Writer, Seek, Decorator};
 use std::str;
+use std::util;
 use std::vec;
 
-use extra::flate;
 use extra::serialize::Encodable;
 use extra;
 
@@ -46,8 +47,6 @@ use syntax::visit;
 use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
-
-use std::cast;
 
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
@@ -1871,10 +1870,9 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     // remaining % 4 bytes.
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
-    let writer_bytes: &mut ~[u8] = wr.inner_mut_ref();
-
-    metadata_encoding_version.to_owned() +
-        flate::deflate_bytes(*writer_bytes)
+    // This is a horrible thing to do to the outer MemWriter, but thankfully we
+    // don't use it again so... it's ok right?
+    return util::replace(wr.inner_mut_ref(), ~[]);
 }
 
 // Get the encoded string for a type

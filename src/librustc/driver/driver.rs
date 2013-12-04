@@ -335,8 +335,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 pub struct CrateTranslation {
     context: ContextRef,
     module: ModuleRef,
+    metadata_module: ModuleRef,
     link: LinkMeta,
     crate_types: ~[~str],
+    metadata: ~[u8],
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -362,8 +364,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 
         time(sess.time_passes(), "LLVM passes", (), |_|
             link::write::run_passes(sess,
-                                    trans.context,
-                                    trans.module,
+                                    trans,
                                     output_type,
                                     &asm_filename));
 
@@ -376,8 +377,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|
             link::write::run_passes(sess,
-                                    trans.context,
-                                    trans.module,
+                                    trans,
                                     sess.opts.output_type,
                                     &outputs.obj_filename));
     }
@@ -390,10 +390,9 @@ pub fn phase_6_link_output(sess: Session,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
-                           trans.crate_types,
+                           trans,
                            &outputs.obj_filename,
-                           &outputs.out_filename,
-                           trans.link));
+                           &outputs.out_filename));
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
