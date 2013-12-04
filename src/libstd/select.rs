@@ -60,7 +60,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     let c = Cell::new(c);
 
     (|| {
-        let c = Cell::new(c.take());
+        let mut c = Some(c.take());
         let sched: ~Scheduler = Local::take();
         sched.deschedule_running_task_and_then(|sched, task| {
             let task_handles = task.make_selectable(ports.len());
@@ -74,8 +74,10 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
                 }
             }
 
-            let c = Cell::new(c.take());
-            do sched.event_loop.callback { c.take().send_deferred(()) }
+            let c = c.take_unwrap();
+            do sched.event_loop.callback {
+                c.send_deferred(())
+            }
         })
     }).finally(|| {
         // Unkillable is necessary not because getting killed is dangerous here,
@@ -133,7 +135,6 @@ mod test {
     use vec::*;
     use comm::GenericChan;
     use task;
-    use cell::Cell;
     use iter::{Iterator, range};
 
     #[test] #[should_fail]
@@ -246,9 +247,7 @@ mod test {
             let (p3,c3) = oneshot();
             let (p4,c4) = oneshot();
 
-            let x = Cell::new((c2, p3, c4));
             do task::spawn {
-                let (c2, p3, c4) = x.take();
                 p3.recv();   // handshake parent
                 c4.send(()); // normal receive
                 task::deschedule();
@@ -284,10 +283,9 @@ mod test {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {
-                                let c = Cell::new(c);
                                 do spawntask_random {
                                     task::deschedule();
-                                    c.take().send(());
+                                    c.send(());
                                 }
                             }
                         }
