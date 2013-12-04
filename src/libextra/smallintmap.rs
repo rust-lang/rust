@@ -113,6 +113,11 @@ impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
+    /// Create an empty SmallIntMap with capacity `capacity`
+    pub fn with_capacity(capacity: uint) -> SmallIntMap<V> {
+        SmallIntMap{v: vec::with_capacity(capacity)}
+    }
+
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
     }
