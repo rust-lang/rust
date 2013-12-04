@@ -294,17 +294,24 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                                etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
-    // Index the class fields.
+    // Index the class fields. The second argument in the tuple is whether the
+    // field has been bound yet or not.
     let mut field_map = HashMap::new();
     for (i, class_field) in class_fields.iter().enumerate() {
-        field_map.insert(class_field.name, i);
+        field_map.insert(class_field.name, (i, false));
     }
 
     // Typecheck each field.
     let mut found_fields = HashSet::new();
     for field in fields.iter() {
-        match field_map.find(&field.ident.name) {
-            Some(&index) => {
+        match field_map.find_mut(&field.ident.name) {
+            Some(&(_, true)) => {
+                tcx.sess.span_err(span,
+                    format!("field `{}` bound twice in pattern",
+                            tcx.sess.str_of(field.ident)));
+            }
+            Some(&(index, ref mut used)) => {
+                *used = true;
                 let class_field = class_fields[index];
                 let field_type = ty::lookup_field_type(tcx,
                                                        class_id,
