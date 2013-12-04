@@ -2530,9 +2530,9 @@ impl Parser {
     }
 
 
-    // parse a 'for' or 'do'.
-    // the 'for' and 'do' expressions parse as calls, but look like
-    // function calls followed by a closure expression.
+    // parse a 'do'.
+    // the 'do' expression parses as a call, but looks like
+    // a function call followed by a closure expression.
     pub fn parse_sugary_call_expr(&self,
                                   lo: BytePos,
                                   keyword: ~str,
@@ -2540,12 +2540,12 @@ impl Parser {
                                   ctor: |v: @Expr| -> Expr_)
                                   -> @Expr {
         // Parse the callee `foo` in
-        //    for foo || {
-        //    for foo.bar || {
+        //    do foo || {
+        //    do foo.bar || {
         // etc, or the portion of the call expression before the lambda in
-        //    for foo() || {
+        //    do foo() || {
         // or
-        //    for foo.bar(a) || {
+        //    do foo.bar(a) || {
         // Turn on the restriction to stop at | or || so we can parse
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
@@ -2592,7 +2592,7 @@ impl Parser {
             }
             _ => {
                 // There may be other types of expressions that can
-                // represent the callee in `for` and `do` expressions
+                // represent the callee in `do` expressions
                 // but they aren't represented by tests
                 debug!("sugary call on {:?}", e.node);
                 self.span_fatal(
