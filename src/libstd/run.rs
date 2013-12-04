@@ -12,7 +12,6 @@
 
 #[allow(missing_doc)];
 
-use cell::Cell;
 use comm::{stream, SharedChan};
 use io::Reader;
 use io::process::ProcessExit;
@@ -212,8 +211,8 @@ impl Process {
      */
     pub fn finish_with_output(&mut self) -> ProcessOutput {
         self.close_input();
-        let output = Cell::new(self.inner.io[1].take());
-        let error = Cell::new(self.inner.io[2].take());
+        let output = self.inner.io[1].take();
+        let error = self.inner.io[2].take();
 
         // Spawn two entire schedulers to read both stdout and sterr
         // in parallel so we don't deadlock while blocking on one
@@ -224,20 +223,20 @@ impl Process {
         let ch_clone = ch.clone();
 
         do spawn {
-            io::ignore_io_error(|| {
-                match error.take() {
-                    Some(ref mut e) => ch.send((2, e.read_to_end())),
-                    None => ch.send((2, ~[]))
-                }
-            })
+            let _guard = io::ignore_io_error();
+            let mut error = error;
+            match error {
+                Some(ref mut e) => ch.send((2, e.read_to_end())),
+                None => ch.send((2, ~[]))
+            }
         }
         do spawn {
-            io::ignore_io_error(|| {
-                match output.take() {
-                    Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
-                    None => ch_clone.send((1, ~[]))
-                }
-            })
+            let _guard = io::ignore_io_error();
+            let mut output = output;
+            match output {
+                Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
+                None => ch_clone.send((1, ~[]))
+            }
         }
 
         let status = self.finish();

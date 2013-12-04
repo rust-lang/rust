@@ -241,6 +241,7 @@ Out of scope
 #[allow(missing_doc)];
 
 use cast;
+use condition::Guard;
 use container::Container;
 use int;
 use iter::Iterator;
@@ -394,12 +395,12 @@ condition! {
 
 /// Helper for wrapper calls where you want to
 /// ignore any io_errors that might be raised
-pub fn ignore_io_error<T>(cb: || -> T) -> T {
+pub fn ignore_io_error() -> Guard<'static,IoError,()> {
     io_error::cond.trap(|_| {
         // just swallow the error.. downstream users
         // who can make a decision based on a None result
         // won't care
-    }).inside(|| cb())
+    }).guard()
 }
 
 /// Helper for catching an I/O error and wrapping it in a Result object. The
