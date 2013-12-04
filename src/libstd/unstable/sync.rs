@@ -467,7 +467,6 @@ mod tests {
     use prelude::*;
     use super::{Exclusive, UnsafeArc, atomically};
     use task;
-    use util;
     use mem::size_of;
 
     //#[unsafe_no_drop_flag] FIXME: #9758
@@ -571,7 +570,7 @@ mod tests {
         let x2 = x.clone();
         let left_x = x.try_unwrap();
         assert!(left_x.is_self());
-        util::ignore(left_x);
+        drop(left_x);
         assert!(x2.try_unwrap().expect_t("try_unwrap none") == ~~"hello");
     }
 
@@ -590,7 +589,7 @@ mod tests {
         task::deschedule(); // Try to make the unwrapper get blocked first.
         let left_x = x.try_unwrap();
         assert!(left_x.is_self());
-        util::ignore(left_x);
+        drop(left_x);
         p.recv();
     }
 
@@ -620,7 +619,7 @@ mod tests {
             assert!(x2.unwrap() == ~~"hello");
         }
         // Have to get rid of our reference before blocking.
-        util::ignore(x);
+        drop(x);
         res.recv();
     }
 

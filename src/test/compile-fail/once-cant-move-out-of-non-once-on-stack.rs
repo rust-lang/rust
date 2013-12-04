@@ -13,7 +13,6 @@
 
 extern mod extra;
 use extra::arc;
-use std::util;
 
 fn foo(blk: ||) {
     blk();
@@ -24,6 +23,6 @@ fn main() {
     let x = arc::Arc::new(true);
     foo(|| {
         assert!(*x.get());
-        util::ignore(x); //~ ERROR cannot move out of captured outer variable
+        drop(x); //~ ERROR cannot move out of captured outer variable
     })
 }

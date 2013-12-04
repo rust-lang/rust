@@ -86,3 +86,7 @@ pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 // Reexported runtime types
 pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
 pub use task::spawn;
+
+/// Disposes of a value.
+#[inline]
+pub fn drop<T>(_x: T) { }
