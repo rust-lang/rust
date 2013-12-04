@@ -57,9 +57,10 @@ they don't contain references to names that aren't actually defined.
 
 # Getting started
 
-The Rust compiler currently must be built from a [tarball], unless you
-are on Windows, in which case using the [installer][win-exe] is
-recommended.
+There are [nightly builds] available for some Linux distributions. 
+Otherwise, the Rust compiler currently must be built from a [tarball]. 
+See the wiki for [build instructions]. There is a [Windows installer] 
+for Rust 0.8, but it is not supported.
 
 Since the Rust compiler is written in Rust, it must be built by
 a precompiled "snapshot" version of itself (made in an earlier state
@@ -116,7 +117,10 @@ When complete, `make install` will place several programs into
 API-documentation tool; and `rustpkg`, the Rust package manager.
 
 [tarball]: http://static.rust-lang.org/dist/rust-0.8.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-0.8-install.exe
+[Windows installer]: http://static.rust-lang.org/dist/rust-0.8-install.exe
+[build instructions]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+[nightly builds]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
+
 
 ## Compiling your first program
 
