@@ -12,14 +12,15 @@
 
 use to_str::{ToStr,IntoStr};
 use str;
+use str::Str;
 use str::StrSlice;
 use str::OwnedStr;
 use container::Container;
 use cast;
 use iter::Iterator;
-use vec::{ImmutableVector, MutableVector};
+use vec::{ImmutableVector, MutableVector, Vector};
 use to_bytes::IterBytes;
-use option::{Some, None};
+use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
@@ -135,8 +136,22 @@ impl ToStr for Ascii {
 
 /// Trait for converting into an ascii type.
 pub trait AsciiCast<T> {
-    /// Convert to an ascii type
-    fn to_ascii(&self) -> T;
+    /// Convert to an ascii type, fail on non-ASCII input.
+    #[inline]
+    fn to_ascii(&self) -> T {
+        assert!(self.is_ascii());
+        unsafe {self.to_ascii_nocheck()}
+    }
+
+    /// Convert to an ascii type, return None on non-ASCII input.
+    #[inline]
+    fn to_ascii_opt(&self) -> Option<T> {
+        if self.is_ascii() {
+            Some(unsafe { self.to_ascii_nocheck() })
+        } else {
+            None
+        }
+    }
 
     /// Convert to an ascii type, not doing any range asserts
     unsafe fn to_ascii_nocheck(&self) -> T;
@@ -146,12 +161,6 @@ pub trait AsciiCast<T> {
 }
 
 impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
-    #[inline]
-    fn to_ascii(&self) -> &'a[Ascii] {
-        assert!(self.is_ascii());
-        unsafe {self.to_ascii_nocheck()}
-    }
-
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a[Ascii] {
         cast::transmute(*self)
@@ -168,12 +177,6 @@ impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
 
 impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
     #[inline]
-    fn to_ascii(&self) -> &'a [Ascii] {
-        assert!(self.is_ascii());
-        unsafe { self.to_ascii_nocheck() }
-    }
-
-    #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a [Ascii] {
         cast::transmute(*self)
     }
@@ -185,12 +188,6 @@ impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
 }
 
 impl AsciiCast<Ascii> for u8 {
-    #[inline]
-    fn to_ascii(&self) -> Ascii {
-        assert!(self.is_ascii());
-        unsafe {self.to_ascii_nocheck()}
-    }
-
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> Ascii {
         Ascii{ chr: *self }
@@ -204,12 +201,6 @@ impl AsciiCast<Ascii> for u8 {
 
 impl AsciiCast<Ascii> for char {
     #[inline]
-    fn to_ascii(&self) -> Ascii {
-        assert!(self.is_ascii());
-        unsafe {self.to_ascii_nocheck()}
-    }
-
-    #[inline]
     unsafe fn to_ascii_nocheck(&self) -> Ascii {
         Ascii{ chr: *self as u8 }
     }
@@ -222,8 +213,25 @@ impl AsciiCast<Ascii> for char {
 
 /// Trait for copyless casting to an ascii vector.
 pub trait OwnedAsciiCast {
-    /// Take ownership and cast to an ascii vector.
-    fn into_ascii(self) -> ~[Ascii];
+    /// Check if convertible to ascii
+    fn is_ascii(&self) -> bool;
+
+    /// Take ownership and cast to an ascii vector. Fail on non-ASCII input.
+    #[inline]
+    fn into_ascii(self) -> ~[Ascii] {
+        assert!(self.is_ascii());
+        unsafe {self.into_ascii_nocheck()}
+    }
+
+    /// Take ownership and cast to an ascii vector. Return None on non-ASCII input.
+    #[inline]
+    fn into_ascii_opt(self) -> Option<~[Ascii]> {
+        if self.is_ascii() {
+            Some(unsafe { self.into_ascii_nocheck() })
+        } else {
+            None
+        }
+    }
 
     /// Take ownership and cast to an ascii vector.
     /// Does not perform validation checks.
@@ -232,9 +240,8 @@ pub trait OwnedAsciiCast {
 
 impl OwnedAsciiCast for ~[u8] {
     #[inline]
-    fn into_ascii(self) -> ~[Ascii] {
-        assert!(self.is_ascii());
-        unsafe {self.into_ascii_nocheck()}
+    fn is_ascii(&self) -> bool {
+        self.as_slice().is_ascii()
     }
 
     #[inline]
@@ -245,9 +252,8 @@ impl OwnedAsciiCast for ~[u8] {
 
 impl OwnedAsciiCast for ~str {
     #[inline]
-    fn into_ascii(self) -> ~[Ascii] {
-        assert!(self.is_ascii());
-        unsafe {self.into_ascii_nocheck()}
+    fn is_ascii(&self) -> bool {
+        self.as_slice().is_ascii()
     }
 
     #[inline]
@@ -475,9 +481,11 @@ mod tests {
     use super::*;
     use str::from_char;
     use char::from_u32;
+    use option::{Some, None};
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
+        (&[$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (~[$($e:expr),*]) => (~[$(Ascii{chr:$e}),*]);
     )
 
@@ -568,6 +576,32 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_ascii_fail_char_slice() { 'λ'.to_ascii(); }
+
+    fn test_opt() {
+        assert_eq!(65u8.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
+        assert_eq!(255u8.to_ascii_opt(), None);
+
+        assert_eq!('A'.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
+        assert_eq!('λ'.to_ascii_opt(), None);
+
+        assert_eq!("zoä华".to_ascii_opt(), None);
+
+        assert_eq!((&[127u8, 128u8, 255u8]).to_ascii_opt(), None);
+
+        let v = [40u8, 32u8, 59u8];
+        assert_eq!(v.to_ascii_opt(), Some(v2ascii!(&[40, 32, 59])));
+        let v = [127u8, 128u8, 255u8];
+        assert_eq!(v.to_ascii_opt(), None);
+
+        assert_eq!("( ;".to_ascii_opt(), Some(v2ascii!(&[40, 32, 59])));
+        assert_eq!("zoä华".to_ascii_opt(), None);
+
+        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii_opt(), None);
+
+        assert_eq!((~"( ;").into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~"zoä华").into_ascii_opt(), None);
+    }
 
     #[test]
     fn test_to_ascii_upper() {
