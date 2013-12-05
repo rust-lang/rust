@@ -44,6 +44,14 @@ impl TtyWatcher {
             return Err(UvError(uvll::EBADF));
         }
 
+        // libuv was recently changed to not close the stdio file descriptors,
+        // but it did not change the behavior for windows. Until this issue is
+        // fixed, we need to dup the stdio file descriptors because otherwise
+        // uv_close will close them
+        let fd = if cfg!(windows) && fd <= libc::STDERR_FILENO {
+            unsafe { libc::dup(fd) }
+        } else { fd };
+
         // If this file descriptor is indeed guessed to be a tty, then go ahead
         // with attempting to open it as a tty.
         let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
