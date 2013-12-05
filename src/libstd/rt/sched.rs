@@ -27,7 +27,9 @@ use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, Rng, Rand};
 use iter::range;
+use unstable::mutex::Mutex;
 use vec::{OwnedVector};
+
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified
@@ -618,6 +620,12 @@ impl Scheduler {
         unsafe {
             let task: *mut Task = Local::unsafe_borrow();
             (*task).sched.get_mut_ref().run_cleanup_job();
+
+            // See the comments in switch_running_tasks_and_then for why a lock
+            // is acquired here. This is the resumption points and the "bounce"
+            // that it is referring to.
+            (*task).nasty_deschedule_lock.lock();
+            (*task).nasty_deschedule_lock.unlock();
         }
     }
 
@@ -671,6 +679,15 @@ impl Scheduler {
     /// This passes a Scheduler pointer to the fn after the context switch
     /// in order to prevent that fn from performing further scheduling operations.
     /// Doing further scheduling could easily result in infinite recursion.
+    ///
+    /// Note that if the closure provided relinquishes ownership of the
+    /// BlockedTask, then it is possible for the task to resume execution before
+    /// the closure has finished executing. This would naturally introduce a
+    /// race if the closure and task shared portions of the environment.
+    ///
+    /// This situation is currently prevented, or in other words it is
+    /// guaranteed that this function will not return before the given closure
+    /// has returned.
     pub fn deschedule_running_task_and_then(mut ~self,
                                             f: |&mut Scheduler, BlockedTask|) {
         // Trickier - we need to get the scheduler task out of self
@@ -682,10 +699,29 @@ impl Scheduler {
 
     pub fn switch_running_tasks_and_then(~self, next_task: ~Task,
                                          f: |&mut Scheduler, BlockedTask|) {
-        // This is where we convert the BlockedTask-taking closure into one
-        // that takes just a Task
-        self.change_task_context(next_task, |sched, task| {
-            f(sched, BlockedTask::block(task))
+        // And here comes one of the sad moments in which a lock is used in a
+        // core portion of the rust runtime. As always, this is highly
+        // undesirable, so there's a good reason behind it.
+        //
+        // There is an excellent outline of the problem in issue #8132, and it's
+        // summarized in that `f` is executed on a sched task, but its
+        // environment is on the previous task. If `f` relinquishes ownership of
+        // the BlockedTask, then it may introduce a race where `f` is using the
+        // environment as well as the code after the 'deschedule' block.
+        //
+        // The solution we have chosen to adopt for now is to acquire a
+        // task-local lock around this block. The resumption of the task in
+        // context switching will bounce on the lock, thereby waiting for this
+        // block to finish, eliminating the race mentioned above.
+        //
+        // To actually maintain a handle to the lock, we use an unsafe pointer
+        // to it, but we're guaranteed that the task won't exit until we've
+        // unlocked the lock so there's no worry of this memory going away.
+        self.change_task_context(next_task, |sched, mut task| {
+            let lock: *mut Mutex = &mut task.nasty_deschedule_lock;
+            unsafe { (*lock).lock() }
+            f(sched, BlockedTask::block(task));
+            unsafe { (*lock).unlock() }
         })
     }
 
