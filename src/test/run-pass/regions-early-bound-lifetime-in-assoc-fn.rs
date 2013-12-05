@@ -36,4 +36,4 @@ impl<'v, D: Decoder<'v>> Decodable<'v, D> for () {
     }
 }
 
-fn main() { }
+pub fn main() { }
