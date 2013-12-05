@@ -152,7 +152,7 @@ for the rust task is plenty for the C function to have.
 
 A planned future improvement (net yet implemented at the time of this writing)
 is to have a guard page at the end of every rust stack. No rust function will
-hit this guard page (due to rust's usage of LLVM's __morestack). The intention
+hit this guard page (due to Rust's usage of LLVM's `__morestack`). The intention
 for this unmapped page is to prevent infinite recursion in C from overflowing
 onto other rust stacks. If the guard page is hit, then the process will be
 terminated with a message saying that the guard page was hit.
@@ -166,12 +166,12 @@ the stack of the task which is spawned.
 
 # Destructors
 
-Foreign libraries often hand off ownership of resources to the calling code,
-which should be wrapped in a destructor to provide safety and guarantee their
-release.
+Foreign libraries often hand off ownership of resources to the calling code.
+When this occurs, we must use Rust's destructors to provide safety and guarantee
+the release of these resources (especially in the case of failure).
 
-A type with the same functionality as owned boxes can be implemented by
-wrapping `malloc` and `free`:
+As an example, we give a reimplementation of owned boxes by wrapping `malloc`
+and `free`:
 
 ~~~~
 use std::cast;
@@ -179,17 +179,26 @@ use std::libc::{c_void, size_t, malloc, free};
 use std::ptr;
 use std::unstable::intrinsics;
 
-// a wrapper around the handle returned by the foreign code
+// Define a wrapper around the handle returned by the foreign code.
+// Unique<T> has the same semantics as ~T
 pub struct Unique<T> {
+    // It contains a single raw, mutable pointer to the object in question.
     priv ptr: *mut T
 }
 
+// Implement methods for creating and using the values in the box.
+// NB: For simplicity and correctness, we require that T has kind Send
+// (owned boxes relax this restriction, and can contain managed (GC) boxes).
+// This is because, as implemented, the garbage collector would not know
+// about any shared boxes stored in the malloc'd region of memory.
 impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
             let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
+            // move_val_init moves a value into this memory without
+            // attempting to drop the original value.
             intrinsics::move_val_init(&mut *ptr, value);
             Unique{ptr: ptr}
         }
@@ -206,12 +215,20 @@ impl<T: Send> Unique<T> {
     }
 }
 
+// The key ingredient for safety, we associate a destructor with
+// Unique<T>, making the struct manage the raw pointer: when the
+// struct goes out of scope, it will automatically free the raw pointer.
+// NB: This is an unsafe destructor, because rustc will not normally
+// allow destructors to be associated with parametrized types, due to
+// bad interaction with managed boxes. (With the Send restriction,
+// we don't have this problem.)
 #[unsafe_destructor]
 impl<T: Send> Drop for Unique<T> {
     fn drop(&mut self) {
         unsafe {
-            let x = intrinsics::init(); // dummy value to swap in
-            // moving the object out is needed to call the destructor
+            let x = intrinsics::uninit(); // dummy value to swap in
+            // We need to move the object out of the box, so that
+            // the destructor is called (at the end of this scope.)
             ptr::replace_ptr(self.ptr, x);
             free(self.ptr as *c_void)
         }
