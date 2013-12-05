@@ -1,151 +1,79 @@
-// xfail-pretty
-// xfail-test
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 
-use std::cast::transmute;
-use std::libc::{STDOUT_FILENO, c_int, fdopen, fgets, fopen, fputc, fwrite};
-use std::libc::{size_t};
-use std::ptr::null;
+use std::iter::range_step;
+use std::io::{stdin, stdout, File};
 
-static LINE_LEN: u32 = 80;
+static LINE_LEN: uint = 60;
 
-static COMPLEMENTS: [u8, ..256] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-    0,
-    'T' as u8,
-    'V' as u8,
-    'G' as u8,
-    'H' as u8,
-    0,
-    0,
-    'C' as u8,
-    'D' as u8,
-    0,
-    0,
-    'M' as u8,
-    0,
-    'K' as u8,
-    'N' as u8,
-    0,
-    0,
-    0,
-    'Y' as u8,
-    'S' as u8,
-    'A' as u8,
-    'A' as u8,
-    'B' as u8,
-    'W' as u8,
-    0,
-    'R' as u8,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-
-    0,
-    'T' as u8,
-    'V' as u8,
-    'G' as u8,
-    'H' as u8,
-    0,
-    0,
-    'C' as u8,
-    'D' as u8,
-    0,
-    0,
-    'M' as u8,
-    0,
-    'K' as u8,
-    'N' as u8,
-    0,
-    0,
-    0,
-    'Y' as u8,
-    'S' as u8,
-    'A' as u8,
-    'A' as u8,
-    'B' as u8,
-    'W' as u8,
-    0,
-    'R' as u8,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-];
+fn make_complements() -> [u8, ..256] {
+    let transforms = [
+        ('A', 'T'), ('C', 'G'), ('G', 'C'), ('T', 'A'),
+        ('U', 'A'), ('M', 'K'), ('R', 'Y'), ('W', 'W'),
+        ('S', 'S'), ('Y', 'R'), ('K', 'M'), ('V', 'B'),
+        ('H', 'D'), ('D', 'H'), ('B', 'V'), ('N', 'N'),
+        ('\n', '\n')];
+    let mut complements: [u8, ..256] = [0, ..256];
+    for (i, c) in complements.mut_iter().enumerate() {
+        *c = i as u8;
+    }
+    let lower = 'A' as u8 - 'a' as u8;
+    for &(from, to) in transforms.iter() {
+        complements[from as u8] = to as u8;
+        complements[from as u8 - lower] = to as u8;
+    }
+    complements
+}
 
 fn main() {
-    unsafe {
-        let mode = "r";
-        //let stdin = fdopen(STDIN_FILENO as c_int, transmute(&mode[0]));
-        let path = "reversecomplement-input.txt";
-        let stdin = fopen(transmute(&path[0]), transmute(&mode[0]));
-        let mode = "w";
-        let stdout = fdopen(STDOUT_FILENO as c_int, transmute(&mode[0]));
+    let complements = make_complements();
+    let mut data = if std::os::getenv("RUST_BENCH").is_some() {
+        File::open(&Path::init("shootout-k-nucleotide.data")).read_to_end()
+    } else {
+        stdin().read_to_end()
+    };
 
-        let mut out: ~[u8] = ~[];
-        out.reserve(12777888);
-        let mut pos = 0;
+    for seq in data.mut_split(|c| *c == '>' as u8) {
+        // skip header and last \n
+        let begin = match seq.iter().position(|c| *c == '\n' as u8) {
+            None => continue,
+            Some(c) => c
+        };
+        let len = seq.len();
+        let seq = seq.mut_slice(begin + 1, len - 1);
 
-        loop {
-            let needed = pos + (LINE_LEN as uint) + 1;
-            if out.capacity() < needed {
-                out.reserve_at_least(needed);
+        // arrange line breaks
+        let len = seq.len();
+        let off = LINE_LEN - len % (LINE_LEN + 1);
+        for i in range_step(LINE_LEN, len, LINE_LEN + 1) {
+            for j in std::iter::count(i, -1).take(off) {
+                seq[j] = seq[j - 1];
             }
-
-            let mut ptr = out.unsafe_mut_ref(pos);
-            if fgets(transmute(ptr), LINE_LEN as c_int, stdin) == null() {
-                break;
-            }
-
-            // Don't change lines that begin with '>' or ';'.
-            let first = *ptr;
-            if first == ('>' as u8) {
-                while *ptr != 0 {
-                    ptr = ptr.offset(1);
-                }
-                *ptr = '\n' as u8;
-
-                pos = (ptr as uint) - (out.unsafe_ref(0) as uint);
-                fwrite(transmute(out.unsafe_ref(0)),
-                       1,
-                       pos as size_t,
-                       stdout);
-
-                pos = 0;
-                continue;
-            }
-
-            // Complement other lines.
-            loop {
-                let ch = *ptr;
-                if ch == 0 {
-                    break;
-                }
-                *ptr = COMPLEMENTS.unsafe_get(ch as uint);
-                ptr = ptr.offset(1);
-            }
-            *ptr = '\n' as u8;
-
-            pos = (ptr as uint) - (out.unsafe_ref(0) as uint);
+            seq[i - off] = '\n' as u8;
         }
 
-        fwrite(transmute(out.unsafe_ref(0)), 1, pos as size_t, stdout);
+        // reverse complement, as
+        //    seq.reverse(); for c in seq.mut_iter() {*c = complements[*c]}
+        // but faster:
+        let mut it = seq.mut_iter();
+        loop {
+            match (it.next(), it.next_back()) {
+                (Some(front), Some(back)) => {
+                    let tmp = complements[*front];
+                    *front = complements[*back];
+                    *back = tmp;
+                }
+                _ => break // vector exhausted.
+            }
+        }
     }
+
+    stdout().write(data);
 }
