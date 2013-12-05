@@ -70,6 +70,7 @@ pub mod sort;
 pub mod dlist;
 pub mod treemap;
 pub mod btree;
+pub mod lru_cache;
 
 // And ... other stuff
 
