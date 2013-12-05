@@ -36,7 +36,7 @@ use vec::{OwnedVector, MutableVector, ImmutableVector};
 
 pub fn new_test_uv_sched() -> Scheduler {
 
-    let mut pool = BufferPool::init();
+    let mut pool = BufferPool::new();
     let (worker, stealer) = pool.deque();
 
     let mut sched = Scheduler::new(new_event_loop(),
@@ -51,7 +51,7 @@ pub fn new_test_uv_sched() -> Scheduler {
 }
 
 pub fn new_test_sched() -> Scheduler {
-    let mut pool = BufferPool::init();
+    let mut pool = BufferPool::new();
     let (worker, stealer) = pool.deque();
 
     let mut sched = Scheduler::new(basic::event_loop(),
@@ -228,7 +228,7 @@ pub fn run_in_mt_newsched_task(f: proc()) {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        let mut pool = BufferPool::<~Task>::init();
+        let mut pool = BufferPool::<~Task>::new();
         let workers = range(0, nthreads).map(|_| pool.deque());
         let (workers, stealers) = vec::unzip(workers);
 
@@ -381,7 +381,7 @@ pub fn next_test_unix() -> Path {
     if cfg!(unix) {
         os::tmpdir().join(rand::task_rng().gen_ascii_str(20))
     } else {
-        Path::init(r"\\.\pipe\" + rand::task_rng().gen_ascii_str(20))
+        Path::new(r"\\.\pipe\" + rand::task_rng().gen_ascii_str(20))
     }
 }
 

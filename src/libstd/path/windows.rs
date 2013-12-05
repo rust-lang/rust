@@ -93,7 +93,7 @@ impl Eq for Path {
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
-        Path::init_opt(s)
+        Path::new_opt(s)
     }
 }
 
@@ -162,7 +162,7 @@ impl GenericPathUnsafe for Path {
     ///
     /// Raises the `str::not_utf8` condition if not valid UTF-8.
     #[inline]
-    unsafe fn init_unchecked<T: BytesContainer>(path: T) -> Path {
+    unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let (prefix, path) = Path::normalize_(path.container_as_str());
         assert!(!path.is_empty());
         let mut ret = Path{ repr: path, prefix: prefix, sepidx: None };
@@ -303,7 +303,7 @@ impl GenericPathUnsafe for Path {
 
 impl GenericPath for Path {
     #[inline]
-    fn init_opt<T: BytesContainer>(path: T) -> Option<Path> {
+    fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
         let s = path.container_as_str_opt();
         match s {
             None => None,
@@ -311,7 +311,7 @@ impl GenericPath for Path {
                 if contains_nul(s.as_bytes()) {
                     None
                 } else {
-                    Some(unsafe { GenericPathUnsafe::init_unchecked(s) })
+                    Some(unsafe { GenericPathUnsafe::new_unchecked(s) })
                 }
             }
         }
@@ -395,7 +395,7 @@ impl GenericPath for Path {
     }
 
     fn dir_path(&self) -> Path {
-        unsafe { GenericPathUnsafe::init_unchecked(self.dirname_str().unwrap()) }
+        unsafe { GenericPathUnsafe::new_unchecked(self.dirname_str().unwrap()) }
     }
 
     #[inline]
@@ -426,14 +426,14 @@ impl GenericPath for Path {
 
     fn root_path(&self) -> Option<Path> {
         if self.is_absolute() {
-            Some(Path::init(match self.prefix {
+            Some(Path::new(match self.prefix {
                 Some(VerbatimDiskPrefix)|Some(DiskPrefix) => {
                     self.repr.slice_to(self.prefix_len()+1)
                 }
                 _ => self.repr.slice_to(self.prefix_len())
             }))
         } else if is_vol_relative(self) {
-            Some(Path::init(self.repr.slice_to(1)))
+            Some(Path::new(self.repr.slice_to(1)))
         } else {
             None
         }
@@ -563,7 +563,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::init(comps.connect("\\")))
+            Some(Path::new(comps.connect("\\")))
         }
     }
 
@@ -591,14 +591,14 @@ impl Path {
     /// Raises the `null_byte` condition if the vector contains a NUL.
     /// Raises the `str::not_utf8` condition if invalid UTF-8.
     #[inline]
-    pub fn init<T: BytesContainer>(path: T) -> Path {
-        GenericPath::init(path)
+    pub fn new<T: BytesContainer>(path: T) -> Path {
+        GenericPath::new(path)
     }
 
     /// Returns a new Path from a byte vector or string, if possible
     #[inline]
-    pub fn init_opt<T: BytesContainer>(path: T) -> Option<Path> {
-        GenericPath::init_opt(path)
+    pub fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
+        GenericPath::new_opt(path)
     }
 
     /// Returns an iterator that yields each component of the path in turn as a Option<&str>.
@@ -1147,100 +1147,100 @@ mod tests {
     #[test]
     fn test_paths() {
         let empty: &[u8] = [];
-        t!(v: Path::init(empty), b!("."));
-        t!(v: Path::init(b!("\\")), b!("\\"));
-        t!(v: Path::init(b!("a\\b\\c")), b!("a\\b\\c"));
+        t!(v: Path::new(empty), b!("."));
+        t!(v: Path::new(b!("\\")), b!("\\"));
+        t!(v: Path::new(b!("a\\b\\c")), b!("a\\b\\c"));
 
-        t!(s: Path::init(""), ".");
-        t!(s: Path::init("\\"), "\\");
-        t!(s: Path::init("hi"), "hi");
-        t!(s: Path::init("hi\\"), "hi");
-        t!(s: Path::init("\\lib"), "\\lib");
-        t!(s: Path::init("\\lib\\"), "\\lib");
-        t!(s: Path::init("hi\\there"), "hi\\there");
-        t!(s: Path::init("hi\\there.txt"), "hi\\there.txt");
-        t!(s: Path::init("/"), "\\");
-        t!(s: Path::init("hi/"), "hi");
-        t!(s: Path::init("/lib"), "\\lib");
-        t!(s: Path::init("/lib/"), "\\lib");
-        t!(s: Path::init("hi/there"), "hi\\there");
+        t!(s: Path::new(""), ".");
+        t!(s: Path::new("\\"), "\\");
+        t!(s: Path::new("hi"), "hi");
+        t!(s: Path::new("hi\\"), "hi");
+        t!(s: Path::new("\\lib"), "\\lib");
+        t!(s: Path::new("\\lib\\"), "\\lib");
+        t!(s: Path::new("hi\\there"), "hi\\there");
+        t!(s: Path::new("hi\\there.txt"), "hi\\there.txt");
+        t!(s: Path::new("/"), "\\");
+        t!(s: Path::new("hi/"), "hi");
+        t!(s: Path::new("/lib"), "\\lib");
+        t!(s: Path::new("/lib/"), "\\lib");
+        t!(s: Path::new("hi/there"), "hi\\there");
 
-        t!(s: Path::init("hi\\there\\"), "hi\\there");
-        t!(s: Path::init("hi\\..\\there"), "there");
-        t!(s: Path::init("hi/../there"), "there");
-        t!(s: Path::init("..\\hi\\there"), "..\\hi\\there");
-        t!(s: Path::init("\\..\\hi\\there"), "\\hi\\there");
-        t!(s: Path::init("/../hi/there"), "\\hi\\there");
-        t!(s: Path::init("foo\\.."), ".");
-        t!(s: Path::init("\\foo\\.."), "\\");
-        t!(s: Path::init("\\foo\\..\\.."), "\\");
-        t!(s: Path::init("\\foo\\..\\..\\bar"), "\\bar");
-        t!(s: Path::init("\\.\\hi\\.\\there\\."), "\\hi\\there");
-        t!(s: Path::init("\\.\\hi\\.\\there\\.\\.."), "\\hi");
-        t!(s: Path::init("foo\\..\\.."), "..");
-        t!(s: Path::init("foo\\..\\..\\.."), "..\\..");
-        t!(s: Path::init("foo\\..\\..\\bar"), "..\\bar");
+        t!(s: Path::new("hi\\there\\"), "hi\\there");
+        t!(s: Path::new("hi\\..\\there"), "there");
+        t!(s: Path::new("hi/../there"), "there");
+        t!(s: Path::new("..\\hi\\there"), "..\\hi\\there");
+        t!(s: Path::new("\\..\\hi\\there"), "\\hi\\there");
+        t!(s: Path::new("/../hi/there"), "\\hi\\there");
+        t!(s: Path::new("foo\\.."), ".");
+        t!(s: Path::new("\\foo\\.."), "\\");
+        t!(s: Path::new("\\foo\\..\\.."), "\\");
+        t!(s: Path::new("\\foo\\..\\..\\bar"), "\\bar");
+        t!(s: Path::new("\\.\\hi\\.\\there\\."), "\\hi\\there");
+        t!(s: Path::new("\\.\\hi\\.\\there\\.\\.."), "\\hi");
+        t!(s: Path::new("foo\\..\\.."), "..");
+        t!(s: Path::new("foo\\..\\..\\.."), "..\\..");
+        t!(s: Path::new("foo\\..\\..\\bar"), "..\\bar");
 
-        assert_eq!(Path::init(b!("foo\\bar")).into_vec(), b!("foo\\bar").to_owned());
-        assert_eq!(Path::init(b!("\\foo\\..\\..\\bar")).into_vec(),
+        assert_eq!(Path::new(b!("foo\\bar")).into_vec(), b!("foo\\bar").to_owned());
+        assert_eq!(Path::new(b!("\\foo\\..\\..\\bar")).into_vec(),
                    b!("\\bar").to_owned());
 
-        t!(s: Path::init("\\\\a"), "\\a");
-        t!(s: Path::init("\\\\a\\"), "\\a");
-        t!(s: Path::init("\\\\a\\b"), "\\\\a\\b");
-        t!(s: Path::init("\\\\a\\b\\"), "\\\\a\\b");
-        t!(s: Path::init("\\\\a\\b/"), "\\\\a\\b");
-        t!(s: Path::init("\\\\\\b"), "\\b");
-        t!(s: Path::init("\\\\a\\\\b"), "\\a\\b");
-        t!(s: Path::init("\\\\a\\b\\c"), "\\\\a\\b\\c");
-        t!(s: Path::init("\\\\server\\share/path"), "\\\\server\\share\\path");
-        t!(s: Path::init("\\\\server/share/path"), "\\\\server\\share\\path");
-        t!(s: Path::init("C:a\\b.txt"), "C:a\\b.txt");
-        t!(s: Path::init("C:a/b.txt"), "C:a\\b.txt");
-        t!(s: Path::init("z:\\a\\b.txt"), "Z:\\a\\b.txt");
-        t!(s: Path::init("z:/a/b.txt"), "Z:\\a\\b.txt");
-        t!(s: Path::init("ab:/a/b.txt"), "ab:\\a\\b.txt");
-        t!(s: Path::init("C:\\"), "C:\\");
-        t!(s: Path::init("C:"), "C:");
-        t!(s: Path::init("q:"), "Q:");
-        t!(s: Path::init("C:/"), "C:\\");
-        t!(s: Path::init("C:\\foo\\.."), "C:\\");
-        t!(s: Path::init("C:foo\\.."), "C:");
-        t!(s: Path::init("C:\\a\\"), "C:\\a");
-        t!(s: Path::init("C:\\a/"), "C:\\a");
-        t!(s: Path::init("C:\\a\\b\\"), "C:\\a\\b");
-        t!(s: Path::init("C:\\a\\b/"), "C:\\a\\b");
-        t!(s: Path::init("C:a\\"), "C:a");
-        t!(s: Path::init("C:a/"), "C:a");
-        t!(s: Path::init("C:a\\b\\"), "C:a\\b");
-        t!(s: Path::init("C:a\\b/"), "C:a\\b");
-        t!(s: Path::init("\\\\?\\z:\\a\\b.txt"), "\\\\?\\z:\\a\\b.txt");
-        t!(s: Path::init("\\\\?\\C:/a/b.txt"), "\\\\?\\C:/a/b.txt");
-        t!(s: Path::init("\\\\?\\C:\\a/b.txt"), "\\\\?\\C:\\a/b.txt");
-        t!(s: Path::init("\\\\?\\test\\a\\b.txt"), "\\\\?\\test\\a\\b.txt");
-        t!(s: Path::init("\\\\?\\foo\\bar\\"), "\\\\?\\foo\\bar\\");
-        t!(s: Path::init("\\\\.\\foo\\bar"), "\\\\.\\foo\\bar");
-        t!(s: Path::init("\\\\.\\"), "\\\\.\\");
-        t!(s: Path::init("\\\\?\\UNC\\server\\share\\foo"), "\\\\?\\UNC\\server\\share\\foo");
-        t!(s: Path::init("\\\\?\\UNC\\server/share"), "\\\\?\\UNC\\server/share\\");
-        t!(s: Path::init("\\\\?\\UNC\\server"), "\\\\?\\UNC\\server\\");
-        t!(s: Path::init("\\\\?\\UNC\\"), "\\\\?\\UNC\\\\");
-        t!(s: Path::init("\\\\?\\UNC"), "\\\\?\\UNC");
+        t!(s: Path::new("\\\\a"), "\\a");
+        t!(s: Path::new("\\\\a\\"), "\\a");
+        t!(s: Path::new("\\\\a\\b"), "\\\\a\\b");
+        t!(s: Path::new("\\\\a\\b\\"), "\\\\a\\b");
+        t!(s: Path::new("\\\\a\\b/"), "\\\\a\\b");
+        t!(s: Path::new("\\\\\\b"), "\\b");
+        t!(s: Path::new("\\\\a\\\\b"), "\\a\\b");
+        t!(s: Path::new("\\\\a\\b\\c"), "\\\\a\\b\\c");
+        t!(s: Path::new("\\\\server\\share/path"), "\\\\server\\share\\path");
+        t!(s: Path::new("\\\\server/share/path"), "\\\\server\\share\\path");
+        t!(s: Path::new("C:a\\b.txt"), "C:a\\b.txt");
+        t!(s: Path::new("C:a/b.txt"), "C:a\\b.txt");
+        t!(s: Path::new("z:\\a\\b.txt"), "Z:\\a\\b.txt");
+        t!(s: Path::new("z:/a/b.txt"), "Z:\\a\\b.txt");
+        t!(s: Path::new("ab:/a/b.txt"), "ab:\\a\\b.txt");
+        t!(s: Path::new("C:\\"), "C:\\");
+        t!(s: Path::new("C:"), "C:");
+        t!(s: Path::new("q:"), "Q:");
+        t!(s: Path::new("C:/"), "C:\\");
+        t!(s: Path::new("C:\\foo\\.."), "C:\\");
+        t!(s: Path::new("C:foo\\.."), "C:");
+        t!(s: Path::new("C:\\a\\"), "C:\\a");
+        t!(s: Path::new("C:\\a/"), "C:\\a");
+        t!(s: Path::new("C:\\a\\b\\"), "C:\\a\\b");
+        t!(s: Path::new("C:\\a\\b/"), "C:\\a\\b");
+        t!(s: Path::new("C:a\\"), "C:a");
+        t!(s: Path::new("C:a/"), "C:a");
+        t!(s: Path::new("C:a\\b\\"), "C:a\\b");
+        t!(s: Path::new("C:a\\b/"), "C:a\\b");
+        t!(s: Path::new("\\\\?\\z:\\a\\b.txt"), "\\\\?\\z:\\a\\b.txt");
+        t!(s: Path::new("\\\\?\\C:/a/b.txt"), "\\\\?\\C:/a/b.txt");
+        t!(s: Path::new("\\\\?\\C:\\a/b.txt"), "\\\\?\\C:\\a/b.txt");
+        t!(s: Path::new("\\\\?\\test\\a\\b.txt"), "\\\\?\\test\\a\\b.txt");
+        t!(s: Path::new("\\\\?\\foo\\bar\\"), "\\\\?\\foo\\bar\\");
+        t!(s: Path::new("\\\\.\\foo\\bar"), "\\\\.\\foo\\bar");
+        t!(s: Path::new("\\\\.\\"), "\\\\.\\");
+        t!(s: Path::new("\\\\?\\UNC\\server\\share\\foo"), "\\\\?\\UNC\\server\\share\\foo");
+        t!(s: Path::new("\\\\?\\UNC\\server/share"), "\\\\?\\UNC\\server/share\\");
+        t!(s: Path::new("\\\\?\\UNC\\server"), "\\\\?\\UNC\\server\\");
+        t!(s: Path::new("\\\\?\\UNC\\"), "\\\\?\\UNC\\\\");
+        t!(s: Path::new("\\\\?\\UNC"), "\\\\?\\UNC");
 
         // I'm not sure whether \\.\foo/bar should normalize to \\.\foo\bar
         // as information is sparse and this isn't really googleable.
         // I'm going to err on the side of not normalizing it, as this skips the filesystem
-        t!(s: Path::init("\\\\.\\foo/bar"), "\\\\.\\foo/bar");
-        t!(s: Path::init("\\\\.\\foo\\bar"), "\\\\.\\foo\\bar");
+        t!(s: Path::new("\\\\.\\foo/bar"), "\\\\.\\foo/bar");
+        t!(s: Path::new("\\\\.\\foo\\bar"), "\\\\.\\foo\\bar");
     }
 
     #[test]
     fn test_opt_paths() {
-        assert_eq!(Path::init_opt(b!("foo\\bar", 0)), None);
-        assert_eq!(Path::init_opt(b!("foo\\bar", 0x80)), None);
-        t!(v: Path::init_opt(b!("foo\\bar")).unwrap(), b!("foo\\bar"));
-        assert_eq!(Path::init_opt("foo\\bar\0"), None);
-        t!(s: Path::init_opt("foo\\bar").unwrap(), "foo\\bar");
+        assert_eq!(Path::new_opt(b!("foo\\bar", 0)), None);
+        assert_eq!(Path::new_opt(b!("foo\\bar", 0x80)), None);
+        t!(v: Path::new_opt(b!("foo\\bar")).unwrap(), b!("foo\\bar"));
+        assert_eq!(Path::new_opt("foo\\bar\0"), None);
+        t!(s: Path::new_opt("foo\\bar").unwrap(), "foo\\bar");
     }
 
     #[test]
@@ -1253,7 +1253,7 @@ mod tests {
             assert_eq!(v.as_slice(), b!("foo\\bar", 0));
             (b!("\\bar").to_owned())
         }).inside(|| {
-            Path::init(b!("foo\\bar", 0))
+            Path::new(b!("foo\\bar", 0))
         });
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\bar"));
@@ -1301,12 +1301,12 @@ mod tests {
             cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside(|| {
-                Path::init(b!("foo\\bar", 0))
+                Path::new(b!("foo\\bar", 0))
             });
         })
 
         t!(~"set_filename w\\nul" => {
-            let mut p = Path::init(b!("foo\\bar"));
+            let mut p = Path::new(b!("foo\\bar"));
             cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside(|| {
@@ -1315,7 +1315,7 @@ mod tests {
         })
 
         t!(~"push w\\nul" => {
-            let mut p = Path::init(b!("foo\\bar"));
+            let mut p = Path::new(b!("foo\\bar"));
             cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside(|| {
@@ -1327,25 +1327,25 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_not_utf8_fail() {
-        Path::init(b!("hello", 0x80, ".txt"));
+        Path::new(b!("hello", 0x80, ".txt"));
     }
 
     #[test]
     fn test_display_str() {
-        let path = Path::init("foo");
+        let path = Path::new("foo");
         assert_eq!(path.display().to_str(), ~"foo");
-        let path = Path::init(b!("\\"));
+        let path = Path::new(b!("\\"));
         assert_eq!(path.filename_display().to_str(), ~"");
 
         let mut called = false;
-        let path = Path::init("foo");
+        let path = Path::new("foo");
         path.display().with_str(|s| {
             assert_eq!(s, "foo");
             called = true;
         });
         assert!(called);
         called = false;
-        let path = Path::init(b!("\\"));
+        let path = Path::new(b!("\\"));
         path.filename_display().with_str(|s| {
             assert_eq!(s, "");
             called = true;
@@ -1358,7 +1358,7 @@ mod tests {
         macro_rules! t(
             ($path:expr, $exp:expr, $expf:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let f = format!("{}", path.display());
                     assert_eq!(f.as_slice(), $exp);
                     let f = format!("{}", path.filename_display());
@@ -1377,20 +1377,20 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     assert_eq!(path.$op(), Some($exp));
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let left = path.$op();
                     assert_eq!(left, $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     assert_eq!(path.$op(), $exp);
                 }
             )
@@ -1499,7 +1499,7 @@ mod tests {
                 {
                     let path = ($path);
                     let join = ($join);
-                    let mut p1 = Path::init(path);
+                    let mut p1 = Path::new(path);
                     let p2 = p1.clone();
                     p1.push(join);
                     assert_eq!(p1, p2.join(join));
@@ -1515,14 +1515,14 @@ mod tests {
         // so there's no need for the full set of prefix tests
 
         // we do want to check one odd case though to ensure the prefix is re-parsed
-        let mut p = Path::init("\\\\?\\C:");
+        let mut p = Path::new("\\\\?\\C:");
         assert_eq!(prefix(&p), Some(VerbatimPrefix(2)));
         p.push("foo");
         assert_eq!(prefix(&p), Some(VerbatimDiskPrefix));
         assert_eq!(p.as_str(), Some("\\\\?\\C:\\foo"));
 
         // and another with verbatim non-normalized paths
-        let mut p = Path::init("\\\\?\\C:\\a\\");
+        let mut p = Path::new("\\\\?\\C:\\a\\");
         p.push("foo");
         assert_eq!(p.as_str(), Some("\\\\?\\C:\\a\\foo"));
     }
@@ -1532,8 +1532,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
-                    let mut p = Path::init($path);
-                    let push = Path::init($push);
+                    let mut p = Path::new($path);
+                    let push = Path::new($push);
                     p.push(&push);
                     assert_eq!(p.as_str(), Some($exp));
                 }
@@ -1584,14 +1584,14 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
-                    let mut p = Path::init($path);
+                    let mut p = Path::new($path);
                     p.push_many($push);
                     assert_eq!(p.as_str(), Some($exp));
                 }
             );
             (v: $path:expr, $push:expr, $exp:expr) => (
                 {
-                    let mut p = Path::init($path);
+                    let mut p = Path::new($path);
                     p.push_many($push);
                     assert_eq!(p.as_vec(), $exp);
                 }
@@ -1616,7 +1616,7 @@ mod tests {
             (s: $path:expr, $left:expr, $right:expr) => (
                 {
                     let pstr = $path;
-                    let mut p = Path::init(pstr);
+                    let mut p = Path::new(pstr);
                     let result = p.pop();
                     let left = $left;
                     assert!(p.as_str() == Some(left),
@@ -1627,7 +1627,7 @@ mod tests {
             );
             (v: [$($path:expr),+], [$($left:expr),+], $right:expr) => (
                 {
-                    let mut p = Path::init(b!($($path),+));
+                    let mut p = Path::new(b!($($path),+));
                     let result = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(result, $right);
@@ -1673,28 +1673,28 @@ mod tests {
 
     #[test]
     fn test_root_path() {
-        assert_eq!(Path::init("a\\b\\c").root_path(), None);
-        assert_eq!(Path::init("\\a\\b\\c").root_path(), Some(Path::init("\\")));
-        assert_eq!(Path::init("C:a").root_path(), None);
-        assert_eq!(Path::init("C:\\a").root_path(), Some(Path::init("C:\\")));
-        assert_eq!(Path::init("\\\\a\\b\\c").root_path(), Some(Path::init("\\\\a\\b")));
-        assert_eq!(Path::init("\\\\?\\a\\b").root_path(), Some(Path::init("\\\\?\\a")));
-        assert_eq!(Path::init("\\\\?\\C:\\a").root_path(), Some(Path::init("\\\\?\\C:\\")));
-        assert_eq!(Path::init("\\\\?\\UNC\\a\\b\\c").root_path(),
-                   Some(Path::init("\\\\?\\UNC\\a\\b")));
-        assert_eq!(Path::init("\\\\.\\a\\b").root_path(), Some(Path::init("\\\\.\\a")));
+        assert_eq!(Path::new("a\\b\\c").root_path(), None);
+        assert_eq!(Path::new("\\a\\b\\c").root_path(), Some(Path::new("\\")));
+        assert_eq!(Path::new("C:a").root_path(), None);
+        assert_eq!(Path::new("C:\\a").root_path(), Some(Path::new("C:\\")));
+        assert_eq!(Path::new("\\\\a\\b\\c").root_path(), Some(Path::new("\\\\a\\b")));
+        assert_eq!(Path::new("\\\\?\\a\\b").root_path(), Some(Path::new("\\\\?\\a")));
+        assert_eq!(Path::new("\\\\?\\C:\\a").root_path(), Some(Path::new("\\\\?\\C:\\")));
+        assert_eq!(Path::new("\\\\?\\UNC\\a\\b\\c").root_path(),
+                   Some(Path::new("\\\\?\\UNC\\a\\b")));
+        assert_eq!(Path::new("\\\\.\\a\\b").root_path(), Some(Path::new("\\\\.\\a")));
     }
 
     #[test]
     fn test_join() {
-        t!(s: Path::init("a\\b\\c").join(".."), "a\\b");
-        t!(s: Path::init("\\a\\b\\c").join("d"), "\\a\\b\\c\\d");
-        t!(s: Path::init("a\\b").join("c\\d"), "a\\b\\c\\d");
-        t!(s: Path::init("a\\b").join("\\c\\d"), "\\c\\d");
-        t!(s: Path::init(".").join("a\\b"), "a\\b");
-        t!(s: Path::init("\\").join("a\\b"), "\\a\\b");
-        t!(v: Path::init(b!("a\\b\\c")).join(b!("..")), b!("a\\b"));
-        t!(v: Path::init(b!("\\a\\b\\c")).join(b!("d")), b!("\\a\\b\\c\\d"));
+        t!(s: Path::new("a\\b\\c").join(".."), "a\\b");
+        t!(s: Path::new("\\a\\b\\c").join("d"), "\\a\\b\\c\\d");
+        t!(s: Path::new("a\\b").join("c\\d"), "a\\b\\c\\d");
+        t!(s: Path::new("a\\b").join("\\c\\d"), "\\c\\d");
+        t!(s: Path::new(".").join("a\\b"), "a\\b");
+        t!(s: Path::new("\\").join("a\\b"), "\\a\\b");
+        t!(v: Path::new(b!("a\\b\\c")).join(b!("..")), b!("a\\b"));
+        t!(v: Path::new(b!("\\a\\b\\c")).join(b!("d")), b!("\\a\\b\\c\\d"));
         // full join testing is covered under test_push_path, so no need for
         // the full set of prefix tests
     }
@@ -1704,8 +1704,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
-                    let join = Path::init($join);
+                    let path = Path::new($path);
+                    let join = Path::new($join);
                     let res = path.join(&join);
                     assert_eq!(res.as_str(), Some($exp));
                 }
@@ -1729,14 +1729,14 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let res = path.join_many($join);
                     assert_eq!(res.as_str(), Some($exp));
                 }
             );
             (v: $path:expr, $join:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let res = path.join_many($join);
                     assert_eq!(res.as_vec(), $exp);
                 }
@@ -1760,7 +1760,7 @@ mod tests {
             (s: $path:expr, $op:ident, $arg:expr, $res:expr) => (
                 {
                     let pstr = $path;
-                    let path = Path::init(pstr);
+                    let path = Path::new(pstr);
                     let arg = $arg;
                     let res = path.$op(arg);
                     let exp = $res;
@@ -1846,9 +1846,9 @@ mod tests {
                 {
                     let path = $path;
                     let arg = $arg;
-                    let mut p1 = Path::init(path);
+                    let mut p1 = Path::new(path);
                     p1.$set(arg);
-                    let p2 = Path::init(path);
+                    let p2 = Path::new(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
             );
@@ -1856,9 +1856,9 @@ mod tests {
                 {
                     let path = $path;
                     let arg = $arg;
-                    let mut p1 = Path::init(path);
+                    let mut p1 = Path::new(path);
                     p1.$set(arg);
-                    let p2 = Path::init(path);
+                    let p2 = Path::new(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
             )
@@ -1919,19 +1919,19 @@ mod tests {
             )
         )
 
-        t!(v: Path::init(b!("a\\b\\c")), Some(b!("c")), b!("a\\b"), Some(b!("c")), None);
-        t!(s: Path::init("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
-        t!(s: Path::init("."), None, Some("."), None, None);
-        t!(s: Path::init("\\"), None, Some("\\"), None, None);
-        t!(s: Path::init(".."), None, Some(".."), None, None);
-        t!(s: Path::init("..\\.."), None, Some("..\\.."), None, None);
-        t!(s: Path::init("hi\\there.txt"), Some("there.txt"), Some("hi"),
+        t!(v: Path::new(b!("a\\b\\c")), Some(b!("c")), b!("a\\b"), Some(b!("c")), None);
+        t!(s: Path::new("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
+        t!(s: Path::new("."), None, Some("."), None, None);
+        t!(s: Path::new("\\"), None, Some("\\"), None, None);
+        t!(s: Path::new(".."), None, Some(".."), None, None);
+        t!(s: Path::new("..\\.."), None, Some("..\\.."), None, None);
+        t!(s: Path::new("hi\\there.txt"), Some("there.txt"), Some("hi"),
               Some("there"), Some("txt"));
-        t!(s: Path::init("hi\\there"), Some("there"), Some("hi"), Some("there"), None);
-        t!(s: Path::init("hi\\there."), Some("there."), Some("hi"),
+        t!(s: Path::new("hi\\there"), Some("there"), Some("hi"), Some("there"), None);
+        t!(s: Path::new("hi\\there."), Some("there."), Some("hi"),
               Some("there"), Some(""));
-        t!(s: Path::init("hi\\.there"), Some(".there"), Some("hi"), Some(".there"), None);
-        t!(s: Path::init("hi\\..there"), Some("..there"), Some("hi"),
+        t!(s: Path::new("hi\\.there"), Some(".there"), Some("hi"), Some(".there"), None);
+        t!(s: Path::new("hi\\..there"), Some("..there"), Some("hi"),
               Some("."), Some("there"));
 
         // these are already tested in test_components, so no need for extended tests
@@ -1939,12 +1939,12 @@ mod tests {
 
     #[test]
     fn test_dir_path() {
-        t!(s: Path::init("hi\\there").dir_path(), "hi");
-        t!(s: Path::init("hi").dir_path(), ".");
-        t!(s: Path::init("\\hi").dir_path(), "\\");
-        t!(s: Path::init("\\").dir_path(), "\\");
-        t!(s: Path::init("..").dir_path(), "..");
-        t!(s: Path::init("..\\..").dir_path(), "..\\..");
+        t!(s: Path::new("hi\\there").dir_path(), "hi");
+        t!(s: Path::new("hi").dir_path(), ".");
+        t!(s: Path::new("\\hi").dir_path(), "\\");
+        t!(s: Path::new("\\").dir_path(), "\\");
+        t!(s: Path::new("..").dir_path(), "..");
+        t!(s: Path::new("..\\..").dir_path(), "..\\..");
 
         // dir_path is just dirname interpreted as a path.
         // No need for extended tests
@@ -1955,7 +1955,7 @@ mod tests {
         macro_rules! t(
             ($path:expr, $abs:expr, $vol:expr, $cwd:expr, $rel:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
                     let b = path.is_absolute();
                     assert!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
@@ -1995,8 +1995,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $dest:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
-                    let dest = Path::init($dest);
+                    let path = Path::new($path);
+                    let dest = Path::new($dest);
                     let exp = $exp;
                     let res = path.is_ancestor_of(&dest);
                     assert!(res == exp,
@@ -2098,8 +2098,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $child:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
-                    let child = Path::init($child);
+                    let path = Path::new($path);
+                    let child = Path::new($child);
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             );
@@ -2130,8 +2130,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $other:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
-                    let other = Path::init($other);
+                    let path = Path::new($path);
+                    let other = Path::new($other);
                     let res = path.path_relative_from(&other);
                     let exp = $exp;
                     assert!(res.as_ref().and_then(|x| x.as_str()) == exp,
@@ -2264,7 +2264,7 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let comps = path.str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
                     assert!(comps.as_slice() == exp,
@@ -2279,7 +2279,7 @@ mod tests {
             );
             (v: [$($arg:expr),+], $exp:expr) => (
                 {
-                    let path = Path::init(b!($($arg),+));
+                    let path = Path::new(b!($($arg),+));
                     let comps = path.str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
                     assert!(comps.as_slice() == exp,
@@ -2339,7 +2339,7 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $exp:expr) => (
                 {
-                    let path = Path::init($path);
+                    let path = Path::new($path);
                     let comps = path.components().to_owned_vec();
                     let exp: &[&[u8]] = $exp;
                     assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",

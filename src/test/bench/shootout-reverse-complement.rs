@@ -35,7 +35,7 @@ fn make_complements() -> [u8, ..256] {
 fn main() {
     let complements = make_complements();
     let mut data = if std::os::getenv("RUST_BENCH").is_some() {
-        File::open(&Path::init("shootout-k-nucleotide.data")).read_to_end()
+        File::open(&Path::new("shootout-k-nucleotide.data")).read_to_end()
     } else {
         stdin().read_to_end()
     };
