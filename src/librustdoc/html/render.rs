@@ -46,7 +46,6 @@ use std::io::File;
 use std::os;
 use std::str;
 use std::task;
-use std::unstable::finally::Finally;
 use std::vec;
 
 use extra::arc::RWArc;
@@ -642,6 +641,22 @@ impl<'self> Cache {
     }
 }
 
+enum Progress {
+    JobNew,
+    JobDone,
+}
+
+/// A helper object to unconditionally send a value on a chanel.
+struct ChannelGuard {
+    channel: SharedChan<Progress>,
+}
+
+impl Drop for ChannelGuard {
+    fn drop(&mut self) {
+        self.channel.send(JobDone)
+    }
+}
+
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
@@ -674,8 +689,6 @@ impl Context {
             Die,
             Process(Context, clean::Item),
         }
-        enum Progress { JobNew, JobDone }
-
         let workers = match os::getenv("RUSTDOC_WORKERS") {
             Some(s) => {
                 match from_str::<uint>(s) {
@@ -725,16 +738,15 @@ impl Context {
                     match port.recv() {
                         Process(cx, item) => {
                             let mut cx = cx;
-                            let item = Cell::new(item);
-                            (|| {
-                                cx.item(item.take(), |cx, item| {
-                                    prog_chan.send(JobNew);
-                                    chan.send(Process(cx.clone(), item));
-                                })
-                            }).finally(|| {
-                                // If we fail, everything else should still get
-                                // completed
-                                prog_chan.send(JobDone);
+
+                            // If we fail, everything else should still get
+                            // completed.
+                            let _guard = ChannelGuard {
+                                channel: prog_chan.clone(),
+                            };
+                            cx.item(item, |cx, item| {
+                                prog_chan.send(JobNew);
+                                chan.send(Process(cx.clone(), item));
                             })
                         }
                         Die => break,
