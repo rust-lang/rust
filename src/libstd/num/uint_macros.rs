@@ -123,7 +123,7 @@ impl Neg<$T> for $T {
 impl Unsigned for $T {}
 
 impl Integer for $T {
-    /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
+    /// Calculates `div` (`/`) and `rem` (`%`) simultaneously
     #[inline]
     fn div_rem(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
