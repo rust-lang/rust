@@ -23,7 +23,7 @@ fn tester()
 {
     let loader: rsrc_loader = proc(_path) {result::Ok(~"more blah")};
 
-    let path = path::Path::init("blah");
+    let path = path::Path::new("blah");
     assert!(loader(&path).is_ok());
 }
 

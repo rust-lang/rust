@@ -17,6 +17,6 @@ use self::extra::serialize;
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();
-    let mut decoder = json::Decoder::init(json);
+    let mut decoder = json::Decoder::new(json);
     let _x: ~[int] = serialize::Decodable::decode(&mut decoder);
 }

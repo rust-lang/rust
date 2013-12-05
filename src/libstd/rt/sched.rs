@@ -1002,7 +1002,7 @@ mod test {
         do run_in_bare_thread {
 
             let sleepers = SleeperList::new();
-            let mut pool = BufferPool::init();
+            let mut pool = BufferPool::new();
             let (normal_worker, normal_stealer) = pool.deque();
             let (special_worker, special_stealer) = pool.deque();
             let queues = ~[normal_stealer, special_stealer];
@@ -1177,7 +1177,7 @@ mod test {
         do run_in_bare_thread {
             stress_factor().times(|| {
                 let sleepers = SleeperList::new();
-                let mut pool = BufferPool::init();
+                let mut pool = BufferPool::new();
                 let (worker, stealer) = pool.deque();
 
                 let mut sched = ~Scheduler::new(

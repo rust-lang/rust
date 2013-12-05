@@ -16,7 +16,7 @@ use extra::tempfile;
 use std::io::File;
 
 pub fn main() {
-    let dir = tempfile::TempDir::new_in(&Path::init("."), "").unwrap();
+    let dir = tempfile::TempDir::new_in(&Path::new("."), "").unwrap();
     let path = dir.path().join("file");
 
     {
