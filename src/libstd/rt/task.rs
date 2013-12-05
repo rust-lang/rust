@@ -37,6 +37,7 @@ use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use send_str::SendStr;
 use unstable::finally::Finally;
+use unstable::mutex::Mutex;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -59,6 +60,9 @@ pub struct Task {
     // Dynamic borrowck debugging info
     borrow_list: Option<~[BorrowRecord]>,
     stdout_handle: Option<~Writer>,
+
+    // See the comments in the scheduler about why this is necessary
+    nasty_deschedule_lock: Mutex,
 }
 
 pub enum TaskType {
@@ -193,6 +197,7 @@ impl Task {
             task_type: SchedTask,
             borrow_list: None,
             stdout_handle: None,
+            nasty_deschedule_lock: unsafe { Mutex::new() },
         }
     }
 
@@ -227,6 +232,7 @@ impl Task {
             task_type: GreenTask(Some(home)),
             borrow_list: None,
             stdout_handle: None,
+            nasty_deschedule_lock: unsafe { Mutex::new() },
         }
     }
 
@@ -249,6 +255,7 @@ impl Task {
             task_type: GreenTask(Some(home)),
             borrow_list: None,
             stdout_handle: None,
+            nasty_deschedule_lock: unsafe { Mutex::new() },
         }
     }
 
@@ -391,6 +398,8 @@ impl Drop for Task {
     fn drop(&mut self) {
         rtdebug!("called drop for a task: {}", borrow::to_uint(self));
         rtassert!(self.destroyed);
+
+        unsafe { self.nasty_deschedule_lock.destroy(); }
     }
 }
 
