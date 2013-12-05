@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use cast;
-use cell::Cell;
 use comm;
 use ptr;
 use option::{Option,Some,None};
@@ -68,6 +67,35 @@ unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
                           unwrapper: AtomicOption::empty(),
                           data: Some(data) };
     cast::transmute(data)
+}
+
+/// A helper object used by `UnsafeArc::unwrap`.
+struct ChannelAndDataGuard<T> {
+    channel: Option<comm::ChanOne<bool>>,
+    data: Option<~ArcData<T>>,
+}
+
+#[unsafe_destructor]
+impl<T> Drop for ChannelAndDataGuard<T> {
+    fn drop(&mut self) {
+        if task::failing() {
+            // Killed during wait. Because this might happen while
+            // someone else still holds a reference, we can't free
+            // the data now; the "other" last refcount will free it.
+            unsafe {
+                let channel = self.channel.take_unwrap();
+                let data = self.data.take_unwrap();
+                channel.send(false);
+                cast::forget(data);
+            }
+        }
+    }
+}
+
+impl<T> ChannelAndDataGuard<T> {
+    fn unwrap(mut self) -> (comm::ChanOne<bool>, ~ArcData<T>) {
+        (self.channel.take_unwrap(), self.data.take_unwrap())
+    }
 }
 
 impl<T: Send> UnsafeArc<T> {
@@ -160,32 +188,19 @@ impl<T: Send> UnsafeArc<T> {
                     data.data.take_unwrap()
                 } else {
                     // The *next* person who sees the refcount hit 0 will wake us.
-                    let p1 = Cell::new(p1); // argh
-                    // Unlike the above one, this cell is necessary. It will get
-                    // taken either in the do block or in the finally block.
-                    let c2_and_data = Cell::new((c2,data));
-                    (|| {
-                        p1.take().recv();
-                        // Got here. Back in the 'unkillable' without getting killed.
-                        let (c2, data) = c2_and_data.take();
-                        c2.send(true);
-                        // FIXME(#3224): it should be like this
-                        // let ~ArcData { data: user_data, _ } = data;
-                        // user_data
-                        let mut data = data;
-                        data.data.take_unwrap()
-                    }).finally(|| {
-                        if task::failing() {
-                            // Killed during wait. Because this might happen while
-                            // someone else still holds a reference, we can't free
-                            // the data now; the "other" last refcount will free it.
-                            let (c2, data) = c2_and_data.take();
-                            c2.send(false);
-                            cast::forget(data);
-                        } else {
-                            assert!(c2_and_data.is_empty());
-                        }
-                    })
+                    let c2_and_data = ChannelAndDataGuard {
+                        channel: Some(c2),
+                        data: Some(data),
+                    };
+                    p1.recv();
+                    // Got here. Back in the 'unkillable' without getting killed.
+                    let (c2, data) = c2_and_data.unwrap();
+                    c2.send(true);
+                    // FIXME(#3224): it should be like this
+                    // let ~ArcData { data: user_data, _ } = data;
+                    // user_data
+                    let mut data = data;
+                    data.data.take_unwrap()
                 }
             } else {
                 // If 'put' returns the server end back to us, we were rejected;
