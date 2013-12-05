@@ -70,10 +70,10 @@ impl Archive {
             let loc = TempDir::new("rsar").unwrap();
             let archive = os::make_absolute(&self.dst);
             run_ar(self.sess, "x", Some(loc.path()), [&archive,
-                                                      &Path::init(file)]);
+                                                      &Path::new(file)]);
             fs::File::open(&loc.path().join(file)).read_to_end()
         } else {
-            run_ar(self.sess, "p", None, [&self.dst, &Path::init(file)]).output
+            run_ar(self.sess, "p", None, [&self.dst, &Path::new(file)]).output
         }
     }
 

@@ -32,8 +32,8 @@ no restriction on paths beyond disallowing NUL).
 Usage of this module is fairly straightforward. Unless writing platform-specific
 code, `Path` should be used to refer to the platform-native path.
 
-Creation of a path is typically done with either `Path::init(some_str)` or
-`Path::init(some_vec)`. This path can be modified with `.push()` and
+Creation of a path is typically done with either `Path::new(some_str)` or
+`Path::new(some_vec)`. This path can be modified with `.push()` and
 `.pop()` (and other setters). The resulting Path can either be passed to another
 API that expects a path, or can be turned into a &[u8] with `.as_vec()` or a
 Option<&str> with `.as_str()`. Similarly, attributes of the path can be queried
@@ -41,7 +41,7 @@ with methods such as `.filename()`. There are also methods that return a new
 path instead of modifying the receiver, such as `.join()` or `.dir_path()`.
 
 Paths are always kept in normalized form. This means that creating the path
-`Path::init("a/b/../c")` will return the path `a/c`. Similarly any attempt
+`Path::new("a/b/../c")` will return the path `a/c`. Similarly any attempt
 to mutate the path will always leave it in normalized form.
 
 When rendering a path to some form of output, there is a method `.display()`
@@ -53,7 +53,7 @@ actually operates on the path; it is only intended for display.
 ## Example
 
 ```rust
-let mut path = Path::from_str("/tmp/path");
+let mut path = Path::new("/tmp/path");
 debug!("path: {}", path.display());
 path.set_filename("foo");
 path.push("bar");
@@ -151,24 +151,24 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// See individual Path impls for additional restrictions.
     #[inline]
-    fn init<T: BytesContainer>(path: T) -> Self {
+    fn new<T: BytesContainer>(path: T) -> Self {
         if contains_nul(path.container_as_bytes()) {
             let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
             assert!(!contains_nul(path));
-            unsafe { GenericPathUnsafe::init_unchecked(path) }
+            unsafe { GenericPathUnsafe::new_unchecked(path) }
         } else {
-            unsafe { GenericPathUnsafe::init_unchecked(path) }
+            unsafe { GenericPathUnsafe::new_unchecked(path) }
         }
     }
 
     /// Creates a new Path from a byte vector or string, if possible.
     /// The resulting Path will always be normalized.
     #[inline]
-    fn init_opt<T: BytesContainer>(path: T) -> Option<Self> {
+    fn new_opt<T: BytesContainer>(path: T) -> Option<Self> {
         if contains_nul(path.container_as_bytes()) {
             None
         } else {
-            Some(unsafe { GenericPathUnsafe::init_unchecked(path) })
+            Some(unsafe { GenericPathUnsafe::new_unchecked(path) })
         }
     }
 
@@ -382,7 +382,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If `self` represents the root of the filesystem hierarchy, returns `self`.
     fn dir_path(&self) -> Self {
         // self.dirname() returns a NUL-free vector
-        unsafe { GenericPathUnsafe::init_unchecked(self.dirname()) }
+        unsafe { GenericPathUnsafe::new_unchecked(self.dirname()) }
     }
 
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
@@ -510,7 +510,7 @@ pub trait BytesContainer {
 pub trait GenericPathUnsafe {
     /// Creates a new Path without checking for null bytes.
     /// The resulting Path will always be normalized.
-    unsafe fn init_unchecked<T: BytesContainer>(path: T) -> Self;
+    unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Self;
 
     /// Replaces the filename portion of the path without checking for null
     /// bytes.
@@ -694,11 +694,11 @@ mod tests {
     #[test]
     fn test_cstring() {
         let input = "/foo/bar/baz";
-        let path: PosixPath = PosixPath::init(input.to_c_str());
+        let path: PosixPath = PosixPath::new(input.to_c_str());
         assert_eq!(path.as_vec(), input.as_bytes());
 
         let input = r"\foo\bar\baz";
-        let path: WindowsPath = WindowsPath::init(input.to_c_str());
+        let path: WindowsPath = WindowsPath::new(input.to_c_str());
         assert_eq!(path.as_str().unwrap(), input.as_slice());
     }
 }

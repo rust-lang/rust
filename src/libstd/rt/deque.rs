@@ -26,7 +26,7 @@
 //!
 //!     use std::rt::deque::BufferPool;
 //!
-//!     let mut pool = BufferPool::init();
+//!     let mut pool = BufferPool::new();
 //!     let (mut worker, mut stealer) = pool.deque();
 //!
 //!     // Only the worker may push/pop
@@ -139,14 +139,14 @@ struct Buffer<T> {
 impl<T: Send> BufferPool<T> {
     /// Allocates a new buffer pool which in turn can be used to allocate new
     /// deques.
-    pub fn init() -> BufferPool<T> {
+    pub fn new() -> BufferPool<T> {
         BufferPool { pool: Exclusive::new(~[]) }
     }
 
     /// Allocates a new work-stealing deque which will send/receiving memory to
     /// and from this buffer pool.
     pub fn deque(&mut self) -> (Worker<T>, Stealer<T>) {
-        let (a, b) = UnsafeArc::new2(Deque::init(self.clone()));
+        let (a, b) = UnsafeArc::new2(Deque::new(self.clone()));
         (Worker { deque: a }, Stealer { deque: b })
     }
 
@@ -155,7 +155,7 @@ impl<T: Send> BufferPool<T> {
             self.pool.with(|pool| {
                 match pool.iter().position(|x| x.size() >= (1 << bits)) {
                     Some(i) => pool.remove(i),
-                    None => ~Buffer::init(bits)
+                    None => ~Buffer::new(bits)
                 }
             })
         }
@@ -221,7 +221,7 @@ impl<T: Send> Clone for Stealer<T> {
 // personally going to heavily comment what's going on here.
 
 impl<T: Send> Deque<T> {
-    fn init(mut pool: BufferPool<T>) -> Deque<T> {
+    fn new(mut pool: BufferPool<T>) -> Deque<T> {
         let buf = pool.alloc(MIN_BITS);
         Deque {
             bottom: AtomicInt::new(0),
@@ -341,7 +341,7 @@ impl<T: Send> Drop for Deque<T> {
 }
 
 impl<T: Send> Buffer<T> {
-    unsafe fn init(log_size: int) -> Buffer<T> {
+    unsafe fn new(log_size: int) -> Buffer<T> {
         let size = (1 << log_size) * mem::size_of::<T>();
         let buffer = libc::malloc(size as libc::size_t);
         assert!(!buffer.is_null());
@@ -375,7 +375,7 @@ impl<T: Send> Buffer<T> {
     // Again, unsafe because this has incredibly dubious ownership violations.
     // It is assumed that this buffer is immediately dropped.
     unsafe fn resize(&self, b: int, t: int, delta: int) -> Buffer<T> {
-        let mut buf = Buffer::init(self.log_size + delta);
+        let mut buf = Buffer::new(self.log_size + delta);
         for i in range(t, b) {
             buf.put(i, self.get(i));
         }
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn smoke() {
-        let mut pool = BufferPool::init();
+        let mut pool = BufferPool::new();
         let (mut w, mut s) = pool.deque();
         assert_eq!(w.pop(), None);
         assert_eq!(s.steal(), Empty);
@@ -421,7 +421,7 @@ mod tests {
     #[test]
     fn stealpush() {
         static AMT: int = 100000;
-        let mut pool = BufferPool::<int>::init();
+        let mut pool = BufferPool::<int>::new();
         let (mut w, s) = pool.deque();
         let t = do Thread::start {
             let mut s = s;
@@ -447,7 +447,7 @@ mod tests {
     #[test]
     fn stealpush_large() {
         static AMT: int = 100000;
-        let mut pool = BufferPool::<(int, int)>::init();
+        let mut pool = BufferPool::<(int, int)>::new();
         let (mut w, s) = pool.deque();
         let t = do Thread::start {
             let mut s = s;
@@ -509,7 +509,7 @@ mod tests {
 
     #[test]
     fn run_stampede() {
-        let mut pool = BufferPool::<~int>::init();
+        let mut pool = BufferPool::<~int>::new();
         let (w, s) = pool.deque();
         stampede(w, s, 8, 10000);
     }
@@ -517,7 +517,7 @@ mod tests {
     #[test]
     fn many_stampede() {
         static AMT: uint = 4;
-        let mut pool = BufferPool::<~int>::init();
+        let mut pool = BufferPool::<~int>::new();
         let threads = range(0, AMT).map(|_| {
             let (w, s) = pool.deque();
             do Thread::start {
@@ -536,7 +536,7 @@ mod tests {
         static NTHREADS: int = 8;
         static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
         static mut HITS: AtomicUint = INIT_ATOMIC_UINT;
-        let mut pool = BufferPool::<int>::init();
+        let mut pool = BufferPool::<int>::new();
         let (mut w, s) = pool.deque();
 
         let threads = range(0, NTHREADS).map(|_| {
@@ -595,7 +595,7 @@ mod tests {
         static AMT: int = 10000;
         static NTHREADS: int = 4;
         static mut DONE: AtomicBool = INIT_ATOMIC_BOOL;
-        let mut pool = BufferPool::<(int, uint)>::init();
+        let mut pool = BufferPool::<(int, uint)>::new();
         let (mut w, s) = pool.deque();
 
         let (threads, hits) = vec::unzip(range(0, NTHREADS).map(|_| {

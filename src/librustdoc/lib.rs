@@ -140,13 +140,13 @@ pub fn main_args(args: &[~str]) -> int {
 
     info!("going to format");
     let started = time::precise_time_ns();
-    let output = matches.opt_str("o").map(|s| Path::init(s));
+    let output = matches.opt_str("o").map(|s| Path::new(s));
     match matches.opt_str("w") {
         Some(~"html") | None => {
-            html::render::run(crate, output.unwrap_or(Path::init("doc")))
+            html::render::run(crate, output.unwrap_or(Path::new("doc")))
         }
         Some(~"json") => {
-            json_output(crate, res, output.unwrap_or(Path::init("doc.json")))
+            json_output(crate, res, output.unwrap_or(Path::new("doc.json")))
         }
         Some(s) => {
             println!("unknown output format: {}", s);
@@ -194,9 +194,9 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let mut plugins = matches.opt_strs("plugins");
 
     // First, parse the crate and extract all relevant information.
-    let libs = Cell::new(matches.opt_strs("L").map(|s| Path::init(s.as_slice())));
+    let libs = Cell::new(matches.opt_strs("L").map(|s| Path::new(s.as_slice())));
     let cfgs = Cell::new(matches.opt_strs("cfg"));
-    let cr = Cell::new(Path::init(cratefile));
+    let cr = Cell::new(Path::new(cratefile));
     info!("starting to run rustc");
     let (crate, analysis) = do std::task::try {
         let cr = cr.take();
@@ -238,7 +238,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 
     // Load all plugins/passes into a PluginManager
     let path = matches.opt_str("plugin-path").unwrap_or(~"/tmp/rustdoc_ng/plugins");
-    let mut pm = plugins::PluginManager::new(Path::init(path));
+    let mut pm = plugins::PluginManager::new(Path::new(path));
     for pass in passes.iter() {
         let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
             Some(i) => PASSES[i].n1(),
@@ -262,7 +262,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, ~str> {
-    let input = match File::open(&Path::init(input)) {
+    let input = match File::open(&Path::new(input)) {
         Some(f) => f,
         None => return Err(format!("couldn't open {} for reading", input)),
     };
@@ -283,7 +283,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
             }
             let crate = match obj.pop(&~"crate") {
                 Some(json) => {
-                    let mut d = json::Decoder::init(json);
+                    let mut d = json::Decoder::new(json);
                     Decodable::decode(&mut d)
                 }
                 None => return Err(~"malformed json"),
@@ -314,7 +314,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     let crate_json_str = {
         let mut w = MemWriter::new();
         {
-            let mut encoder = json::Encoder::init(&mut w as &mut io::Writer);
+            let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             crate.encode(&mut encoder);
         }
         str::from_utf8_owned(w.inner())

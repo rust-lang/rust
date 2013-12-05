@@ -332,7 +332,7 @@ impl PkgSrc {
             it.nth(prefix-1); // skip elements
         }
         assert!(it.peek().is_some());
-        let mut sub = Path::init(".");
+        let mut sub = Path::new(".");
         for c in it {
             sub.push(c);
         }
@@ -414,11 +414,11 @@ impl PkgSrc {
                                                     (k.clone(), p.as_str().unwrap().to_owned()));
                 prep.exec(proc(exec) {
                     for &(ref kind, ref p) in inputs.iter() {
-                        let pth = Path::init(p.clone());
+                        let pth = Path::new(p.clone());
                         exec.discover_input(*kind, *p, if *kind == ~"file" {
                                 digest_file_with_date(&pth)
                             } else if *kind == ~"binary" {
-                                digest_only_date(&Path::init(p.clone()))
+                                digest_only_date(&Path::new(p.clone()))
                             } else {
                                 fail!("Bad kind in build_crates")
                             });

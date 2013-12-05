@@ -45,7 +45,7 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
         // We're going to be dumping a lot of info. Start on a new line.
         print!("\n\n");
     }
-    let testfile = Path::init(testfile);
+    let testfile = Path::new(testfile);
     debug!("running {}", testfile.display());
     let props = load_props(&testfile);
     debug!("loaded props");
@@ -852,7 +852,7 @@ fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
 }
 
 fn output_testname(testfile: &Path) -> Path {
-    Path::init(testfile.filestem().unwrap())
+    Path::new(testfile.filestem().unwrap())
 }
 
 fn output_base_name(config: &config, testfile: &Path) -> Path {

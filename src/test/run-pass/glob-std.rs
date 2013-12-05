@@ -22,14 +22,14 @@ use std::io;
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
-            io::fs::mkdir(&Path::init(path), io::UserRWX);
+            io::fs::mkdir(&Path::new(path), io::UserRWX);
         } else {
-            io::File::create(&Path::init(path));
+            io::File::create(&Path::new(path));
         }
     }
 
     fn abs_path(path: &str) -> Path {
-        os::getcwd().join(&Path::init(path))
+        os::getcwd().join(&Path::new(path))
     }
 
     fn glob_vec(pattern: &str) -> ~[Path] {
